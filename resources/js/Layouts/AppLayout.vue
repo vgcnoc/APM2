@@ -126,6 +126,7 @@ const menuItems = [
     { type: 'link', href: '/odps', icon: 'git-branch', label: 'ODP', active: (url) => url.startsWith('/odps') },
     { type: 'link', href: '/onts', icon: 'wifi', label: 'ONT', active: (url) => url.startsWith('/onts') },
     { type: 'link', href: '/materials', icon: 'archive', label: 'Material/Barang', active: (url) => url.startsWith('/materials') },
+    { type: 'link', href: '/material-transactions', icon: 'shopping-cart', label: 'Order / Pengambilan', active: (url) => url.startsWith('/material-transactions') },
     { type: 'group', label: 'BILLING & KEUANGAN' },
     { type: 'link', href: '#', icon: 'file-text', label: 'Invoice', active: () => false },
     { type: 'link', href: '#', icon: 'credit-card', label: 'Pembayaran', active: () => false },
@@ -158,5 +159,6 @@ const iconPaths = {
     zap: 'M13 10V3L4 14h7v7l9-11h-7z',
     map: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
     archive: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4',
+    'shopping-cart': 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
 };
 </script>

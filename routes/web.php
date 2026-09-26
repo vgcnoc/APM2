@@ -7,6 +7,7 @@ use App\Http\Controllers\OdpController;
 use App\Http\Controllers\OltController;
 use App\Http\Controllers\OntController;
 use App\Http\Controllers\MaterialController;
+use App\Http\Controllers\MaterialTransactionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -66,6 +67,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('odps', OdpController::class);
     Route::resource('onts', OntController::class);
     Route::resource('materials', MaterialController::class);
+    Route::resource('material-transactions', MaterialTransactionController::class)->except(['edit', 'update', 'destroy']);
 
     // ── Billing & Keuangan ─────────────────────────────────────
     // Route::resource('invoices', InvoiceController::class);
