@@ -187,11 +187,17 @@ class CustomerController extends Controller
         $availableOnts = \App\Models\Ont::whereIn('status', ['Belum Set/Baru Input', 'inactive'])
             ->whereNull('customer_id')
             ->get();
+            
+        $materialTransactions = \App\Models\MaterialTransaction::where('type', 'out')
+            ->latest()
+            ->limit(100)
+            ->get();
 
         return Inertia::render('Customers/Installed', [
             'customers' => $customers,
             'technicians' => $technicians,
             'availableOnts' => $availableOnts,
+            'materialTransactions' => $materialTransactions,
             'filters' => $request->only(['search', 'status']),
         ]);
     }
@@ -469,8 +475,7 @@ class CustomerController extends Controller
             'scheduled_time' => 'required|date_format:H:i',
             'ont_models' => 'nullable|array',
             'ont_models.*' => 'nullable|string',
-            'materials' => 'nullable|array',
-            'materials.*' => 'nullable|string',
+            'material_transaction_id' => 'nullable|string',
             'notes' => 'nullable|string',
         ]);
 
@@ -481,11 +486,8 @@ class CustomerController extends Controller
                 $customNotes[] = "ONT: " . implode(', ', $onts);
             }
         }
-        if (!empty($validated['materials'])) {
-            $mats = array_filter($validated['materials']);
-            if (count($mats) > 0) {
-                $customNotes[] = "Material: " . implode(', ', $mats);
-            }
+        if (!empty($validated['material_transaction_id'])) {
+            $customNotes[] = "Material diambil dari Surat Jalan / Order: " . $validated['material_transaction_id'];
         }
         if (!empty($validated['notes'])) {
             $customNotes[] = "Catatan: " . $validated['notes'];

@@ -157,21 +157,15 @@
                             </div>
                             <div>
                                 <div class="flex items-center justify-between mb-1">
-                                    <label class="block text-xs font-medium text-gray-500">Material</label>
-                                    <button type="button" @click="assignForm.materials.push('')" class="text-blue-500 hover:text-blue-600 focus:outline-none" title="Tambah Material">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                    </button>
+                                    <label class="block text-xs font-medium text-gray-500">Material (Surat Jalan)</label>
                                 </div>
                                 <div class="space-y-2">
-                                    <div v-for="(mat, index) in assignForm.materials" :key="'mat-'+index" class="flex gap-2 items-center">
-                                        <select v-model="assignForm.materials[index]" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
-                                            <option value="">-- Pilih Material --</option>
-                                            <option v-for="opt in materialOptions" :key="opt" :value="opt">{{ opt }}</option>
-                                        </select>
-                                        <button v-if="assignForm.materials.length > 1" type="button" @click="assignForm.materials.splice(index, 1)" class="text-red-500 hover:text-red-600 focus:outline-none" title="Hapus">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
-                                        </button>
-                                    </div>
+                                    <select v-model="assignForm.material_transaction_id" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
+                                        <option value="">-- Pilih Surat Jalan / Order --</option>
+                                        <option v-for="trx in materialTransactions" :key="trx.id" :value="trx.transaction_number">
+                                            {{ trx.transaction_number }} - {{ trx.technician_name }} ({{ trx.date }})
+                                        </option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -267,7 +261,13 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 
-const props = defineProps({ customers: Object, technicians: Array, availableOnts: { type: Array, default: () => [] }, filters: Object });
+const props = defineProps({ 
+    customers: Object, 
+    technicians: Array, 
+    availableOnts: { type: Array, default: () => [] }, 
+    materialTransactions: { type: Array, default: () => [] },
+    filters: Object 
+});
 
 const columns = [
     { key: 'name', label: 'Pelanggan' },
@@ -299,19 +299,9 @@ const assignForm = useForm({
     scheduled_date: '',
     scheduled_time: '',
     ont_models: [''],
-    materials: [''],
+    material_transaction_id: '',
     notes: '',
 });
-
-
-const materialOptions = ref([
-    'Kabel Drop Core + Precon',
-    'Kabel Precon 150m',
-    'Kabel Precon 100m',
-    'Kabel Precon 50m',
-    'Roset',
-    'Patchcord'
-]);
 
 function openAssignModal(customer) {
     activeCustomer.value = customer;
