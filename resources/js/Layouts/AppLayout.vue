@@ -1,65 +1,48 @@
 <template>
-    <div class="flex min-h-screen bg-gray-950">
+    <div class="flex min-h-screen bg-gray-50 font-sans text-gray-900">
         <!-- Sidebar -->
         <aside
             :class="[
-                'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-white/10 bg-gray-950/95 backdrop-blur-xl transition-all duration-300',
+                'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-gray-200 bg-white shadow-sm transition-all duration-300',
                 sidebarOpen ? 'w-64' : 'w-20'
             ]"
         >
             <!-- Logo -->
-            <div class="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shrink-0">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="flex items-center gap-3 px-5 py-5 border-b border-gray-200">
+                <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 shadow-sm">
+                    <svg class="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                     </svg>
                 </div>
                 <div v-show="sidebarOpen" class="transition-opacity duration-200">
-                    <h1 class="text-lg font-bold text-white leading-tight">ISP Manager</h1>
-                    <p class="text-xs text-gray-500">Network & Customer</p>
+                    <h1 class="text-lg font-extrabold text-gray-900 leading-tight">ISP Manager</h1>
+                    <p class="text-[11px] font-semibold text-blue-600 uppercase tracking-widest mt-0.5">Enterprise</p>
                 </div>
             </div>
 
             <!-- Navigation -->
             <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-                <!-- Dashboard -->
-                <SidebarLink href="/" icon="dashboard" :label="sidebarOpen ? 'Dashboard' : ''" :active="$page.url === '/'" />
+                <template v-for="(item, index) in menuItems" :key="index">
+                    <!-- Group Label -->
+                    <div v-if="item.type === 'group' && sidebarOpen" class="pt-5 pb-2 px-4">
+                        <span class="text-[10px] font-bold text-gray-500 tracking-widest uppercase">{{ item.label }}</span>
+                    </div>
 
-                <!-- Data Customers -->
-                <SidebarGroup v-if="sidebarOpen" label="DATA CUSTOMERS" />
-                <SidebarLink href="/customers/booking" icon="bookmark" :label="sidebarOpen ? 'Data Booking' : ''" :active="$page.url.startsWith('/customers/booking')" />
-                <SidebarLink href="/customers/survey" icon="search" :label="sidebarOpen ? 'Survey' : ''" :active="$page.url.startsWith('/customers/survey')" />
-                <SidebarLink href="/customers/installed" icon="check-circle" :label="sidebarOpen ? 'Pasang / Aktif' : ''" :active="$page.url.startsWith('/customers/installed')" />
-                <SidebarLink href="/customers" icon="users" :label="sidebarOpen ? 'Semua Pelanggan' : ''" :active="$page.url === '/customers'" />
-
-                <!-- Infrastruktur -->
-                <SidebarGroup v-if="sidebarOpen" label="INFRASTRUKTUR" />
-                <SidebarLink href="/olts" icon="server" :label="sidebarOpen ? 'OLT' : ''" :active="$page.url.startsWith('/olts')" />
-                <SidebarLink href="/odcs" icon="box" :label="sidebarOpen ? 'ODC' : ''" :active="$page.url.startsWith('/odcs')" />
-                <SidebarLink href="/odps" icon="git-branch" :label="sidebarOpen ? 'ODP' : ''" :active="$page.url.startsWith('/odps')" />
-                <SidebarLink href="/onts" icon="wifi" :label="sidebarOpen ? 'ONT' : ''" :active="$page.url.startsWith('/onts')" />
-
-                <!-- Billing -->
-                <SidebarGroup v-if="sidebarOpen" label="BILLING & KEUANGAN" />
-                <SidebarLink href="#" icon="file-text" :label="sidebarOpen ? 'Invoice' : ''" />
-                <SidebarLink href="#" icon="credit-card" :label="sidebarOpen ? 'Pembayaran' : ''" />
-
-                <!-- Ticketing -->
-                <SidebarGroup v-if="sidebarOpen" label="TICKETING" />
-                <SidebarLink href="#" icon="alert-circle" :label="sidebarOpen ? 'Daftar Laporan' : ''" />
-                <SidebarLink href="#" icon="calendar" :label="sidebarOpen ? 'Jadwal Teknisi' : ''" />
-
-                <!-- Settings -->
-                <SidebarGroup v-if="sidebarOpen" label="PENGATURAN" />
-                <SidebarLink href="#" icon="settings" :label="sidebarOpen ? 'Manajemen User' : ''" />
-                <SidebarLink href="#" icon="package" :label="sidebarOpen ? 'Paket Internet' : ''" />
+                    <!-- Link -->
+                    <Link v-if="item.type === 'link'" :href="item.href" :class="['sidebar-link', { active: item.active($page.url) }]">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
+                        </svg>
+                        <span v-if="sidebarOpen" class="truncate">{{ item.label }}</span>
+                    </Link>
+                </template>
             </nav>
 
             <!-- Sidebar Toggle -->
-            <div class="border-t border-white/10 p-3">
+            <div class="border-t border-gray-200 p-3">
                 <button
                     @click="sidebarOpen = !sidebarOpen"
-                    class="w-full flex items-center justify-center p-2 rounded-xl text-gray-400 hover:bg-white/10 hover:text-white transition-all"
+                    class="w-full flex items-center justify-center p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-all"
                 >
                     <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': !sidebarOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
@@ -73,28 +56,28 @@
             :class="['flex-1 transition-all duration-300', sidebarOpen ? 'ml-64' : 'ml-20']"
         >
             <!-- Top Bar -->
-            <header class="sticky top-0 z-40 glass border-b border-white/10 px-6 py-3">
+            <header class="sticky top-0 z-40 bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="text-lg font-semibold text-white">{{ title }}</h2>
-                        <p v-if="subtitle" class="text-sm text-gray-400">{{ subtitle }}</p>
+                        <h2 class="text-xl font-bold text-gray-900">{{ title }}</h2>
+                        <p v-if="subtitle" class="text-sm font-medium text-gray-500 mt-0.5">{{ subtitle }}</p>
                     </div>
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-5">
                         <!-- Notification Bell -->
-                        <button class="relative p-2 rounded-xl text-gray-400 hover:bg-white/10 hover:text-white transition-all">
+                        <button class="relative p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-600 transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                             </svg>
-                            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                            <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
                         </button>
                         <!-- User Menu -->
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white">
+                        <div class="flex items-center gap-3 pl-5 border-l border-gray-200">
+                            <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-700">
                                 {{ $page.props.auth?.user?.name?.charAt(0) || 'A' }}
                             </div>
                             <div v-if="sidebarOpen" class="hidden md:block">
-                                <p class="text-sm font-medium text-white">{{ $page.props.auth?.user?.name || 'Admin' }}</p>
-                                <p class="text-xs text-gray-500 capitalize">{{ $page.props.auth?.user?.role || 'admin' }}</p>
+                                <p class="text-sm font-bold text-gray-900 leading-tight">{{ $page.props.auth?.user?.name || 'Admin' }}</p>
+                                <p class="text-xs font-medium text-gray-500 capitalize mt-0.5">{{ $page.props.auth?.user?.role || 'admin' }}</p>
                             </div>
                         </div>
                     </div>
@@ -130,12 +113,30 @@ defineProps({
 
 const sidebarOpen = ref(true);
 
-// ── Sidebar Components ─────────────────────────────────────
-</script>
-
-<script>
-// Inline sub-components for sidebar
-import { Link } from '@inertiajs/vue3';
+const menuItems = [
+    { type: 'link', href: '/', icon: 'dashboard', label: 'Dashboard', active: (url) => url === '/' },
+    { type: 'group', label: 'DATA CUSTOMERS' },
+    { type: 'link', href: '/customers/booking', icon: 'bookmark', label: 'Data Booking', active: (url) => url.startsWith('/customers/booking') },
+    { type: 'link', href: '/customers/survey', icon: 'search', label: 'Survey', active: (url) => url.startsWith('/customers/survey') },
+    { type: 'link', href: '/customers/installed', icon: 'check-circle', label: 'Pasang / Aktif', active: (url) => url.startsWith('/customers/installed') },
+    { type: 'link', href: '/customers', icon: 'users', label: 'Semua Pelanggan', active: (url) => url === '/customers' },
+    { type: 'group', label: 'INFRASTRUKTUR' },
+    { type: 'link', href: '/olts', icon: 'server', label: 'OLT', active: (url) => url.startsWith('/olts') },
+    { type: 'link', href: '/odcs', icon: 'box', label: 'ODC', active: (url) => url.startsWith('/odcs') },
+    { type: 'link', href: '/odps', icon: 'git-branch', label: 'ODP', active: (url) => url.startsWith('/odps') },
+    { type: 'link', href: '/onts', icon: 'wifi', label: 'ONT', active: (url) => url.startsWith('/onts') },
+    { type: 'group', label: 'BILLING & KEUANGAN' },
+    { type: 'link', href: '#', icon: 'file-text', label: 'Invoice', active: () => false },
+    { type: 'link', href: '#', icon: 'credit-card', label: 'Pembayaran', active: () => false },
+    { type: 'group', label: 'TICKETING' },
+    { type: 'link', href: '#', icon: 'alert-circle', label: 'Daftar Laporan', active: () => false },
+    { type: 'link', href: '#', icon: 'calendar', label: 'Jadwal Teknisi', active: () => false },
+    { type: 'group', label: 'PENGATURAN' },
+    { type: 'link', href: '/settings/areas', icon: 'map', label: 'Master Area', active: (url) => url.startsWith('/settings/areas') },
+    { type: 'link', href: '/settings/api', icon: 'zap', label: 'API Integrasi', active: (url) => url.startsWith('/settings/api') },
+    { type: 'link', href: '#', icon: 'settings', label: 'Manajemen User', active: () => false },
+    { type: 'link', href: '#', icon: 'package', label: 'Paket Internet', active: () => false },
+];
 
 const iconPaths = {
     dashboard: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
@@ -153,35 +154,7 @@ const iconPaths = {
     calendar: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
     settings: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
     'package': 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
-};
-
-export default {
-    components: {
-        SidebarLink: {
-            props: ['href', 'icon', 'label', 'active'],
-            template: `
-                <Link :href="href" :class="['sidebar-link', { active }]">
-                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getPath(icon)"/>
-                    </svg>
-                    <span v-if="label" class="truncate">{{ label }}</span>
-                </Link>
-            `,
-            methods: {
-                getPath(icon) {
-                    return iconPaths[icon] || iconPaths.dashboard;
-                }
-            },
-            components: { Link },
-        },
-        SidebarGroup: {
-            props: ['label'],
-            template: `
-                <div class="pt-4 pb-1 px-4">
-                    <span class="text-[10px] font-bold text-gray-600 tracking-widest">{{ label }}</span>
-                </div>
-            `,
-        },
-    },
+    zap: 'M13 10V3L4 14h7v7l9-11h-7z',
+    map: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
 };
 </script>

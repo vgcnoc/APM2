@@ -1,5 +1,54 @@
 <template>
     <AppLayout title="Data Booking" subtitle="Calon pelanggan yang baru mendaftar">
+        
+        <!-- Statistik -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <!-- Total Booking -->
+            <div class="glass-card p-6 animate-fade-in-up" style="animation-delay: 0.1s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 mb-1">Total Pendaftar</p>
+                        <h3 class="text-3xl font-bold text-gray-900">{{ stats.total }}</h3>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Menunggu Survey -->
+            <div class="glass-card p-6 animate-fade-in-up" style="animation-delay: 0.2s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 mb-1">Baru (Menunggu Survey)</p>
+                        <h3 class="text-3xl font-bold text-gray-900">{{ stats.baru }}</h3>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-yellow-50 text-yellow-600 flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Telah Disurvey -->
+            <div class="glass-card p-6 animate-fade-in-up" style="animation-delay: 0.3s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 mb-1">Terkirim (Data Survey)</p>
+                        <h3 class="text-3xl font-bold text-gray-900">{{ stats.disurvey }}</h3>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <DataTable
             :columns="columns"
             :data="customers.data"
@@ -7,6 +56,29 @@
             searchPlaceholder="Cari nama, telepon..."
             searchRoute="/customers/booking"
         >
+            <template #filters>
+                <div class="flex items-center gap-2">
+                    <input type="date" v-model="filterDate" class="form-input w-36 text-sm" title="Tanggal Daftar" />
+                    <select v-model="filterArea" class="form-select w-36 text-sm">
+                        <option value="">Semua Area</option>
+                        <option v-for="area in areas" :key="area" :value="area">{{ area }}</option>
+                    </select>
+                    <select v-model="filterStatus" class="form-select w-36 text-sm">
+                        <option value="">Semua Status</option>
+                        <option value="booking">Baru (Booking)</option>
+                        <option value="survey">Disurvey</option>
+                        <option value="installing">Proses Pasang</option>
+                        <option value="active">Aktif</option>
+                    </select>
+                    <button @click="applyFilters" class="px-3 py-2 bg-blue-50 text-blue-600 font-medium rounded-lg hover:bg-blue-100 transition-colors text-sm border border-blue-200">
+                        Tampilkan
+                    </button>
+                    <button @click="resetFilters" class="px-3 py-2 bg-gray-50 text-gray-600 font-medium rounded-lg hover:bg-gray-100 transition-colors text-sm border border-gray-200">
+                        Reset
+                    </button>
+                </div>
+            </template>
+
             <template #actions>
                 <Link href="/customers/create" class="btn-primary">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -19,59 +91,239 @@
             <template #row="{ row }">
                 <td>
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center text-sm font-bold text-white shrink-0">
+                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center text-sm font-bold text-gray-900 shrink-0">
                             {{ row.name.charAt(0) }}
                         </div>
                         <div>
-                            <Link :href="`/customers/${row.id}`" class="text-white font-medium hover:text-blue-400 transition-colors">
+                            <Link :href="`/customers/${row.id}`" class="text-gray-900 font-medium hover:text-blue-400 transition-colors">
                                 {{ row.name }}
                             </Link>
                             <p class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</p>
                         </div>
                     </div>
                 </td>
-                <td class="text-gray-400">{{ row.phone }}</td>
-                <td class="max-w-[250px] truncate text-gray-400 text-xs">{{ row.address }}</td>
+                <td class="text-gray-500">{{ row.phone }}</td>
+                <td class="max-w-[250px] truncate text-gray-500 text-xs">{{ row.address }}</td>
                 <td class="text-xs text-gray-500">{{ row.registration_date }}</td>
                 <td>
-                    <div v-if="row.latitude && row.longitude" class="text-xs font-mono text-cyan-400">
-                        {{ Number(row.latitude).toFixed(4) }}, {{ Number(row.longitude).toFixed(4) }}
+                    <div v-if="row.area" class="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded-md inline-block">
+                        {{ row.area }}
                     </div>
-                    <span v-else class="text-xs text-gray-600">Belum ada</span>
+                    <span v-else class="text-xs text-gray-400 italic">Belum ada</span>
                 </td>
             </template>
 
             <template #rowActions="{ row }">
                 <div class="flex items-center justify-end gap-1">
-                    <Link :href="`/customers/${row.id}`" class="p-2 rounded-lg text-gray-400 hover:bg-white/10 hover:text-blue-400 transition-all" title="Detail">
+                    <button @click="openWhatsApp(row)" class="p-2 rounded-lg text-gray-500 hover:bg-green-50 hover:text-green-500 transition-all" title="Kirim Pesan WhatsApp">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.666.598 1.236.786 1.41.874.174.086.275.072.376-.043l.42-.519c.101-.116.202-.097.361-.044.159.058 1.012.477 1.185.563.173.087.289.129.332.202.043.073.043.423-.101.827z"/>
+                        </svg>
+                    </button>
+                    <button v-if="row.status === 'booking'" @click="requestSurvey(row)" class="p-2 rounded-lg text-gray-500 hover:bg-orange-50 hover:text-orange-500 transition-all" title="Pindah ke Data Survey">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                    <span v-else class="p-2 rounded-lg text-orange-400 font-medium text-xs flex items-center" title="Sudah Masuk Proses Selanjutnya">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        Terkirim
+                    </span>
+                    <button @click="viewCustomer(row)" class="p-2 rounded-lg text-gray-500 hover:bg-white hover:text-blue-400 transition-all" title="Detail Booking">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                         </svg>
-                    </Link>
-                    <Link :href="`/customers/${row.id}/edit`" class="p-2 rounded-lg text-gray-400 hover:bg-white/10 hover:text-yellow-400 transition-all" title="Proses Survey">
+                    </button>
+                    <Link :href="`/customers/${row.id}/edit`" class="p-2 rounded-lg text-gray-500 hover:bg-white hover:text-yellow-400 transition-all" title="Edit Booking">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                         </svg>
                     </Link>
                 </div>
             </template>
         </DataTable>
+
+        <!-- Modal Detail Booking -->
+        <Teleport to="body">
+            <div v-if="showViewModal && selectedCustomer" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer" @click="closeViewModal"></div>
+                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in-up">
+                    <div class="sticky top-0 bg-white/90 backdrop-blur-xl border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+                        <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <span class="p-1.5 rounded-lg bg-blue-500/20 text-blue-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </span>
+                            Detail Form Booking
+                        </h3>
+                        <button @click="closeViewModal" class="text-gray-500 hover:text-gray-900 transition-colors bg-gray-50 hover:bg-white p-2 rounded-xl">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    
+                    <div class="p-6 space-y-6">
+                        <!-- Info Utama -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-1">
+                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Nama Lengkap</p>
+                                <p class="text-sm text-gray-900 font-medium">{{ selectedCustomer.name }}</p>
+                            </div>
+                            <div class="space-y-1">
+                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Kode Pelanggan</p>
+                                <p class="text-sm text-blue-400 font-mono">{{ selectedCustomer.customer_code }}</p>
+                            </div>
+                            <div class="space-y-1">
+                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Email</p>
+                                <p class="text-sm text-gray-900">{{ selectedCustomer.email || '-' }}</p>
+                            </div>
+                            <div class="space-y-1">
+                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Nomor HP / WA</p>
+                                <p class="text-sm text-gray-900">{{ selectedCustomer.phone }}</p>
+                            </div>
+                        </div>
+
+                        <hr class="border-white/5">
+
+                        <!-- Alamat & Paket -->
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-1">
+                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Area / Wilayah</p>
+                                    <p class="text-sm text-gray-900 font-medium">
+                                        <span class="inline-flex px-2 py-1 bg-blue-500/20 text-blue-400 rounded-md border border-blue-500/30">
+                                            {{ selectedCustomer.area || '-' }}
+                                        </span>
+                                    </p>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Alamat Lengkap</p>
+                                    <p class="text-sm text-gray-600 leading-relaxed">{{ selectedCustomer.address }}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                <div class="space-y-1">
+                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Titik Koordinat Lokasi</p>
+                                    <div v-if="selectedCustomer.latitude && selectedCustomer.longitude" class="flex flex-col items-start gap-2 mt-1">
+                                        <p class="text-sm text-cyan-400 font-mono">{{ selectedCustomer.latitude }}, {{ selectedCustomer.longitude }}</p>
+                                        <a :href="`https://www.google.com/maps?q=${selectedCustomer.latitude},${selectedCustomer.longitude}`" target="_blank" class="text-xs bg-white hover:bg-white/20 text-gray-900 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                            Buka di Maps
+                                        </a>
+                                    </div>
+                                    <p v-else class="text-sm text-gray-500">-</p>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Paket Langganan</p>
+                                    <p class="text-sm text-gray-900 font-medium">
+                                        <span class="inline-flex px-2 py-1 bg-purple-500/20 text-purple-400 rounded-md border border-purple-500/30">
+                                            {{ selectedCustomer.package?.name || 'Belum dipilih' }}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="border-white/5">
+
+                        <!-- Catatan Khusus -->
+                        <!-- Foto KTP & Catatan -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
+                            <div class="space-y-1">
+                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Foto KTP</p>
+                                <div v-if="selectedCustomer.identity_photo" class="mt-2 relative group overflow-hidden rounded-xl border border-gray-200">
+                                    <img :src="`/storage/${selectedCustomer.identity_photo}`" alt="Foto KTP" class="w-full h-auto max-h-48 object-cover transition-transform duration-300 group-hover:scale-105" />
+                                    <div class="absolute inset-0 bg-gray-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <a :href="`/storage/${selectedCustomer.identity_photo}`" target="_blank" class="px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-xs font-medium text-gray-900 transition-colors">Lihat Penuh</a>
+                                    </div>
+                                </div>
+                                <div v-else class="bg-gray-50 rounded-xl p-4 border border-gray-200 text-sm text-gray-500 flex items-center justify-center min-h-[100px] italic">
+                                    Tidak ada foto KTP
+                                </div>
+                            </div>
+                            <div class="space-y-1">
+                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Catatan Tambahan</p>
+                                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 text-sm text-gray-600 min-h-[100px]">
+                                    {{ selectedCustomer.notes || 'Tidak ada catatan.' }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="sticky bottom-0 bg-white/90 backdrop-blur-xl border-t border-gray-200 px-6 py-4 flex justify-end">
+                        <button @click="closeViewModal" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl text-sm font-medium transition-colors">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
 
 <script setup>
-import { Link } from '@inertiajs/vue3';
+import { ref } from 'vue';
+import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 
-defineProps({ customers: Object, filters: Object });
+const props = defineProps({ customers: Object, filters: Object, areas: Array, stats: Object });
+
+const filterDate = ref(props.filters?.date || '');
+const filterArea = ref(props.filters?.area || '');
+const filterStatus = ref(props.filters?.status || '');
+
+function applyFilters() {
+    router.get('/customers/booking', {
+        date: filterDate.value || undefined,
+        area: filterArea.value || undefined,
+        status: filterStatus.value || undefined,
+    }, { preserveState: true, preserveScroll: true });
+}
+
+function resetFilters() {
+    filterDate.value = '';
+    filterArea.value = '';
+    filterStatus.value = '';
+    router.get('/customers/booking', {}, { preserveState: true, preserveScroll: true });
+}
 
 const columns = [
     { key: 'name', label: 'Nama Pelanggan' },
     { key: 'phone', label: 'Telepon' },
     { key: 'address', label: 'Alamat' },
     { key: 'date', label: 'Tgl Daftar' },
-    { key: 'coords', label: 'Koordinat' },
+    { key: 'area', label: 'Area / Wilayah' },
 ];
+
+const showViewModal = ref(false);
+const selectedCustomer = ref(null);
+
+function viewCustomer(customer) {
+    selectedCustomer.value = customer;
+    showViewModal.value = true;
+}
+
+function closeViewModal() {
+    showViewModal.value = false;
+    setTimeout(() => {
+        selectedCustomer.value = null;
+    }, 300);
+}
+
+function openWhatsApp(row) {
+    const waNumber = '6281234567890'; // Bisa disesuaikan dengan nomor pembuat jadwal (admin)
+    const message = `Halo Admin, mohon jadwalkan survey untuk pelanggan berikut:\n\nNama: ${row.name}\nKode: ${row.customer_code}\nAlamat: ${row.address}\nTelepon: ${row.phone}`;
+    const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank');
+}
+
+function requestSurvey(row) {
+    if (confirm('Pindahkan pelanggan ini ke Data Survey untuk dijadwalkan?')) {
+        // Kirim request ke backend untuk ubah status ke 'survey'
+        router.post(`/customers/${row.id}/request-survey`, {}, {
+            preserveScroll: true
+        });
+    }
+}
 </script>

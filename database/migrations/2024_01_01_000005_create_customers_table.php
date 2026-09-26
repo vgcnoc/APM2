@@ -15,6 +15,8 @@ return new class extends Migration
             $table->string('email')->nullable();
             $table->string('phone', 20);
             $table->text('address');
+            $table->string('area')->nullable();
+            $table->string('identity_photo')->nullable();
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
             $table->foreignId('package_id')->nullable()->constrained('internet_packages')->nullOnDelete();

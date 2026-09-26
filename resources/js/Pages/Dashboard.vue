@@ -39,14 +39,14 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Revenue Chart -->
             <div class="lg:col-span-2 glass-card p-6 animate-fade-in-up">
-                <h3 class="text-lg font-semibold text-white mb-4">📊 Pendapatan 6 Bulan Terakhir</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">📊 Pendapatan 6 Bulan Terakhir</h3>
                 <div class="h-64 flex items-end gap-3">
                     <div
                         v-for="(item, idx) in revenueChart"
                         :key="idx"
                         class="flex-1 flex flex-col items-center gap-2"
                     >
-                        <span class="text-xs text-gray-400">Rp {{ formatShort(item.total) }}</span>
+                        <span class="text-xs text-gray-500">Rp {{ formatShort(item.total) }}</span>
                         <div
                             class="w-full rounded-t-lg bg-gradient-to-t from-blue-600 to-cyan-400 transition-all duration-700 ease-out"
                             :style="{ height: getBarHeight(item.total) + '%' }"
@@ -61,27 +61,27 @@
 
             <!-- Booking Pipeline -->
             <div class="glass-card p-6 animate-fade-in-up">
-                <h3 class="text-lg font-semibold text-white mb-4">📋 Pipeline Pelanggan</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">📋 Pipeline Pelanggan</h3>
                 <div class="space-y-4">
                     <PipelineItem label="Booking Baru" :count="customerStats.total_booking" color="yellow" />
                     <PipelineItem label="Proses Survey" :count="customerStats.total_survey" color="blue" />
                     <PipelineItem label="Aktif" :count="customerStats.total_active" color="green" />
                 </div>
 
-                <div class="mt-6 pt-4 border-t border-white/10">
-                    <h4 class="text-sm font-medium text-gray-400 mb-3">Pelanggan Terbaru</h4>
+                <div class="mt-6 pt-4 border-t border-gray-200">
+                    <h4 class="text-sm font-medium text-gray-500 mb-3">Pelanggan Terbaru</h4>
                     <div class="space-y-2">
                         <div
                             v-for="cust in recentCustomers"
                             :key="cust.id"
-                            class="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors"
+                            class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors"
                         >
                             <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-xs font-bold text-gray-900">
                                     {{ cust.name.charAt(0) }}
                                 </div>
                                 <div>
-                                    <p class="text-sm text-white font-medium">{{ cust.name }}</p>
+                                    <p class="text-sm text-gray-900 font-medium">{{ cust.name }}</p>
                                     <p class="text-xs text-gray-500">{{ cust.package?.name || 'Belum pilih paket' }}</p>
                                 </div>
                             </div>
@@ -94,7 +94,7 @@
 
         <!-- Recent Tickets -->
         <div class="mt-6 glass-card p-6 animate-fade-in-up">
-            <h3 class="text-lg font-semibold text-white mb-4">🎫 Tiket Gangguan Terbaru</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">🎫 Tiket Gangguan Terbaru</h3>
             <div class="overflow-x-auto">
                 <table class="data-table">
                     <thead>
@@ -164,7 +164,7 @@ function getMonthLabel(m) {
 
 function priorityClass(p) {
     const map = {
-        low: 'bg-gray-500/20 text-gray-400',
+        low: 'bg-gray-500/20 text-gray-500',
         medium: 'bg-blue-500/20 text-blue-400',
         high: 'bg-orange-500/20 text-orange-400',
         critical: 'bg-red-500/20 text-red-400 ring-1 ring-red-500/50',
@@ -183,9 +183,9 @@ export default {
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="w-3 h-3 rounded-full" :class="dotColor"></div>
-                        <span class="text-sm text-gray-300">{{ label }}</span>
+                        <span class="text-sm text-gray-600">{{ label }}</span>
                     </div>
-                    <span class="text-xl font-bold text-white">{{ count }}</span>
+                    <span class="text-xl font-bold text-gray-900">{{ count }}</span>
                 </div>
             `,
             computed: {

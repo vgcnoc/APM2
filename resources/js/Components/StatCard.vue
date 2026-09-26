@@ -2,8 +2,8 @@
     <div :class="['stat-card', color]">
         <div class="flex items-start justify-between">
             <div>
-                <p class="text-sm font-medium text-gray-400 mb-1">{{ title }}</p>
-                <p class="text-3xl font-bold text-white tracking-tight">{{ formattedValue }}</p>
+                <p class="text-sm font-medium text-gray-500 mb-1">{{ title }}</p>
+                <p class="text-3xl font-bold text-gray-900 tracking-tight">{{ formattedValue }}</p>
                 <p v-if="subtitle" class="text-xs text-gray-500 mt-1">{{ subtitle }}</p>
             </div>
             <div :class="['p-3 rounded-xl', iconBgClass]">

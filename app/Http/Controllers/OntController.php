@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Odp;
 use App\Models\Ont;
+use App\Models\Area;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -26,8 +27,11 @@ class OntController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $areas = Area::all();
+
         return Inertia::render('Infrastructure/Ont/Index', [
             'onts' => $onts,
+            'areas' => $areas,
             'filters' => $request->only(['search', 'status', 'odp_id']),
         ]);
     }
@@ -35,23 +39,36 @@ class OntController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'odp_id' => 'required|exists:odps,id',
-            'customer_id' => 'nullable|exists:customers,id',
-            'serial_number' => 'required|string|unique:onts,serial_number',
-            'mac_address' => 'nullable|string|max:17',
+            'area_id' => 'nullable|exists:areas,id',
             'brand' => 'nullable|string|max:100',
             'model' => 'nullable|string|max:100',
-            'port_number' => 'required|integer|min:1',
+            'serial_number' => 'required|string|unique:onts,serial_number',
+            'mac_address' => 'nullable|string|max:20',
+            'vlan_mode' => 'nullable|string',
+            'vlan_id' => 'nullable|string',
+            'access_mode' => 'nullable|string',
+            'ip_login' => 'nullable|string',
+            'login_user' => 'nullable|string',
+            'login_password' => 'nullable|string',
+            'pppoe_user' => 'nullable|string',
+            'pppoe_password' => 'nullable|string',
+            'input_officers' => 'nullable|array',
+            'status' => 'nullable|string',
+            
+            // These can be empty on inventory input
+            'odp_id' => 'nullable|exists:odps,id',
+            'customer_id' => 'nullable|exists:customers,id',
+            'port_number' => 'nullable|integer|min:1',
             'rx_power' => 'nullable|numeric',
             'tx_power' => 'nullable|numeric',
-            'status' => 'in:active,inactive,los,damaged',
             'description' => 'nullable|string',
         ]);
 
         Ont::create($validated);
 
-        // Increment port terpakai di ODP
-        Odp::find($validated['odp_id'])->increment('used_ports');
+        if (isset($validated['odp_id'])) {
+            Odp::find($validated['odp_id'])->increment('used_ports');
+        }
 
         return redirect()->route('onts.index')
             ->with('success', 'Data ONT berhasil ditambahkan.');
@@ -69,16 +86,28 @@ class OntController extends Controller
     public function update(Request $request, Ont $ont): RedirectResponse
     {
         $validated = $request->validate([
-            'odp_id' => 'required|exists:odps,id',
-            'customer_id' => 'nullable|exists:customers,id',
-            'serial_number' => "required|string|unique:onts,serial_number,{$ont->id}",
-            'mac_address' => 'nullable|string|max:17',
+            'area_id' => 'nullable|exists:areas,id',
             'brand' => 'nullable|string|max:100',
             'model' => 'nullable|string|max:100',
-            'port_number' => 'required|integer|min:1',
+            'serial_number' => "required|string|unique:onts,serial_number,{$ont->id}",
+            'mac_address' => 'nullable|string|max:20',
+            'vlan_mode' => 'nullable|string',
+            'vlan_id' => 'nullable|string',
+            'access_mode' => 'nullable|string',
+            'ip_login' => 'nullable|string',
+            'login_user' => 'nullable|string',
+            'login_password' => 'nullable|string',
+            'pppoe_user' => 'nullable|string',
+            'pppoe_password' => 'nullable|string',
+            'input_officers' => 'nullable|array',
+            'status' => 'nullable|string',
+            
+            // These can be empty on inventory input
+            'odp_id' => 'nullable|exists:odps,id',
+            'customer_id' => 'nullable|exists:customers,id',
+            'port_number' => 'nullable|integer|min:1',
             'rx_power' => 'nullable|numeric',
             'tx_power' => 'nullable|numeric',
-            'status' => 'in:active,inactive,los,damaged',
             'description' => 'nullable|string',
         ]);
 

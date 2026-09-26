@@ -55,7 +55,7 @@ const colorClasses = {
     orange: 'bg-orange-500/20 text-orange-400 ring-1 ring-orange-500/30',
     indigo: 'bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/30',
     amber: 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30',
-    gray: 'bg-gray-500/20 text-gray-400 ring-1 ring-gray-500/30',
+    gray: 'bg-gray-500/20 text-gray-500 ring-1 ring-gray-500/30',
 };
 
 const dotColors = {

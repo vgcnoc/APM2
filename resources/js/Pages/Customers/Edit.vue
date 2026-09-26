@@ -2,14 +2,14 @@
     <AppLayout title="Edit Pelanggan" :subtitle="customer.customer_code">
         <div class="max-w-3xl">
             <form @submit.prevent="submit" class="glass-card p-6 space-y-6 animate-fade-in-up">
-                <div class="flex items-center gap-3 pb-4 border-b border-white/10">
+                <div class="flex items-center gap-3 pb-4 border-b border-gray-200">
                     <div class="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center">
                         <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                         </svg>
                     </div>
                     <div>
-                        <h3 class="text-lg font-semibold text-white">Edit Data Pelanggan</h3>
+                        <h3 class="text-lg font-semibold text-gray-900">Edit Data Pelanggan</h3>
                         <p class="text-sm text-gray-500">{{ customer.name }} - {{ customer.customer_code }}</p>
                     </div>
                 </div>
@@ -75,8 +75,8 @@
                 </div>
 
                 <!-- ONT Info (read-only) -->
-                <div v-if="customer.ont" class="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <h4 class="text-sm font-semibold text-gray-400 mb-3">Perangkat Terhubung</h4>
+                <div v-if="customer.ont" class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                    <h4 class="text-sm font-semibold text-gray-500 mb-3">Perangkat Terhubung</h4>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                         <div>
                             <span class="text-gray-500">ONT S/N</span>
@@ -84,20 +84,20 @@
                         </div>
                         <div>
                             <span class="text-gray-500">ODP</span>
-                            <p class="text-gray-300 mt-1">{{ customer.ont.odp?.name || '-' }}</p>
+                            <p class="text-gray-600 mt-1">{{ customer.ont.odp?.name || '-' }}</p>
                         </div>
                         <div>
                             <span class="text-gray-500">Port</span>
-                            <p class="text-gray-300 mt-1">#{{ customer.ont.port_number }}</p>
+                            <p class="text-gray-600 mt-1">#{{ customer.ont.port_number }}</p>
                         </div>
                         <div>
                             <span class="text-gray-500">Rx Power</span>
-                            <p class="text-gray-300 mt-1">{{ customer.ont.rx_power ? `${customer.ont.rx_power} dBm` : '-' }}</p>
+                            <p class="text-gray-600 mt-1">{{ customer.ont.rx_power ? `${customer.ont.rx_power} dBm` : '-' }}</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="flex justify-end gap-3 pt-4 border-t border-white/10">
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
                     <Link :href="`/customers/${customer.id}`" class="btn-ghost">Batal</Link>
                     <button type="submit" :disabled="form.processing" class="btn-primary">
                         {{ form.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}

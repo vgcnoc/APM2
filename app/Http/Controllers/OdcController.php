@@ -6,6 +6,7 @@ use App\Models\Odc;
 use App\Models\Olt;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,6 +28,7 @@ class OdcController extends Controller
         return Inertia::render('Infrastructure/Odc/Index', [
             'odcs' => $odcs,
             'olts' => Olt::where('status', 'active')->get(['id', 'name']),
+            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['search', 'olt_id', 'status']),
         ]);
     }
@@ -35,16 +37,52 @@ class OdcController extends Controller
     {
         $validated = $request->validate([
             'olt_id' => 'required|exists:olts,id',
-            'name' => 'required|string|max:255',
+            'area_id' => 'nullable|exists:areas,id',
+            'name' => 'nullable|string|max:255',
+            'type' => 'required|in:Normal,Split',
             'location' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'capacity' => 'required|integer|min:1',
             'description' => 'nullable|string',
             'status' => 'in:active,inactive,maintenance',
+            'photo' => 'nullable|image|max:2048',
+            'split_units' => 'nullable|array',
         ]);
 
-        Odc::create($validated);
+        if ($validated['type'] === 'Split' && !empty($validated['split_units'])) {
+            foreach ($validated['split_units'] as $unit) {
+                $odcData = [
+                    'olt_id' => $validated['olt_id'],
+                    'area_id' => $validated['area_id'],
+                    'type' => 'Split',
+                    'name' => $unit['name'] ?? 'ODC Split',
+                    'location' => $unit['location'] ?? null,
+                    'latitude' => $unit['latitude'] ?? null,
+                    'longitude' => $unit['longitude'] ?? null,
+                    'start_point' => $unit['start_point'] ?? null,
+                    'end_point' => $unit['end_point'] ?? null,
+                    'cable_pull' => $unit['cable_pull'] ?? null,
+                    'capacity' => $unit['ratio'] ?? ($validated['capacity'] / 2),
+                    'status' => $validated['status'] ?? 'active',
+                    'description' => $validated['description'] ?? null,
+                    'is_split' => true,
+                ];
+                
+                // Note: File upload for split units is a bit tricky if they are sent in an array. 
+                // We'll skip file upload for individual splits via array for now, or assume the parent photo applies.
+                if ($request->hasFile('photo')) {
+                    $odcData['photo'] = $request->file('photo')->store('odcs', 'public');
+                }
+
+                Odc::create($odcData);
+            }
+        } else {
+            if ($request->hasFile('photo')) {
+                $validated['photo'] = $request->file('photo')->store('odcs', 'public');
+            }
+            Odc::create($validated);
+        }
 
         return redirect()->route('odcs.index')
             ->with('success', 'Data ODC berhasil ditambahkan.');
@@ -63,14 +101,24 @@ class OdcController extends Controller
     {
         $validated = $request->validate([
             'olt_id' => 'required|exists:olts,id',
+            'area_id' => 'nullable|exists:areas,id',
             'name' => 'required|string|max:255',
+            'type' => 'required|in:Normal,Split',
             'location' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'capacity' => 'required|integer|min:1',
             'description' => 'nullable|string',
             'status' => 'in:active,inactive,maintenance',
+            'photo' => 'nullable|image|max:2048',
         ]);
+
+        if ($request->hasFile('photo')) {
+            if ($odc->photo) {
+                Storage::disk('public')->delete($odc->photo);
+            }
+            $validated['photo'] = $request->file('photo')->store('odcs', 'public');
+        }
 
         $odc->update($validated);
 

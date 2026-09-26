@@ -1,87 +1,185 @@
 <template>
     <AppLayout title="Tambah Pelanggan Baru" subtitle="Pendaftaran pelanggan ISP baru (Booking)">
-        <div class="max-w-3xl">
-            <form @submit.prevent="submit" class="glass-card p-6 space-y-6 animate-fade-in-up">
-                <!-- Info Header -->
-                <div class="flex items-center gap-3 pb-4 border-b border-white/10">
-                    <div class="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
-                        </svg>
+        <div class="max-w-3xl mx-auto py-8">
+            <!-- Modal Card Replica -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in-up">
+                
+                <!-- Header -->
+                <div class="p-6 flex items-start justify-between border-b border-gray-100">
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                            <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800">Tambah Booking Baru</h3>
+                            <p class="text-sm text-gray-500 mt-1">Masukkan data master pelanggan baru ke dalam sistem.</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 class="text-lg font-semibold text-white">Data Diri Pelanggan</h3>
-                        <p class="text-sm text-gray-500">Isi formulir pendaftaran pelanggan baru</p>
-                    </div>
+                    <Link href="/customers/booking" class="text-gray-500 hover:text-gray-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </Link>
                 </div>
 
-                <!-- Form Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div class="md:col-span-2">
-                        <label class="form-label">Nama Lengkap *</label>
-                        <input v-model="form.name" type="text" class="form-input" placeholder="Masukkan nama lengkap" required />
-                        <p v-if="form.errors.name" class="text-red-400 text-xs mt-1">{{ form.errors.name }}</p>
-                    </div>
-
-                    <div>
-                        <label class="form-label">Email</label>
-                        <input v-model="form.email" type="email" class="form-input" placeholder="email@example.com" />
-                        <p v-if="form.errors.email" class="text-red-400 text-xs mt-1">{{ form.errors.email }}</p>
-                    </div>
-
-                    <div>
-                        <label class="form-label">No. Telepon *</label>
-                        <input v-model="form.phone" type="text" class="form-input" placeholder="08xxxxxxxxxx" required />
-                        <p v-if="form.errors.phone" class="text-red-400 text-xs mt-1">{{ form.errors.phone }}</p>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="form-label">Alamat Lengkap *</label>
-                        <textarea v-model="form.address" class="form-input" rows="3" placeholder="Jl. ... RT/RW, Kel, Kec, Kota" required></textarea>
-                        <p v-if="form.errors.address" class="text-red-400 text-xs mt-1">{{ form.errors.address }}</p>
-                    </div>
-
-                    <div>
-                        <label class="form-label">Latitude</label>
-                        <input v-model="form.latitude" type="number" step="0.00000001" class="form-input" placeholder="-6.2088" />
-                    </div>
-
-                    <div>
-                        <label class="form-label">Longitude</label>
-                        <input v-model="form.longitude" type="number" step="0.00000001" class="form-input" placeholder="106.8456" />
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="form-label">Paket Internet</label>
-                        <select v-model="form.package_id" class="form-select">
-                            <option value="">-- Pilih Paket (opsional) --</option>
-                            <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
-                                {{ pkg.name }} - {{ pkg.speed_mbps }} Mbps - Rp {{ Number(pkg.price).toLocaleString('id-ID') }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="form-label">Catatan</label>
-                        <textarea v-model="form.notes" class="form-input" rows="2" placeholder="Catatan tambahan..."></textarea>
-                    </div>
+                <!-- Error Summary -->
+                <div v-if="Object.keys(form.errors).length > 0" class="p-4 mx-6 mt-6 bg-red-50 border border-red-200 rounded-lg text-red-600">
+                    <p class="font-bold text-sm mb-2">Terjadi kesalahan pada data yang Anda masukkan:</p>
+                    <ul class="list-disc pl-5 text-xs space-y-1">
+                        <li v-for="(error, key) in form.errors" :key="key">{{ error }}</li>
+                    </ul>
                 </div>
 
-                <!-- Actions -->
-                <div class="flex justify-end gap-3 pt-4 border-t border-white/10">
-                    <Link href="/customers/booking" class="btn-ghost">Batal</Link>
-                    <button type="submit" :disabled="form.processing" class="btn-primary">
-                        <svg v-if="form.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
-                        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
-                        {{ form.processing ? 'Menyimpan...' : 'Simpan Booking' }}
-                    </button>
-                </div>
-            </form>
+                <!-- Form Body -->
+                <form @submit.prevent="submit">
+                    <div class="p-6 space-y-5">
+                        
+                        <!-- Row 1 -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Nama Pelanggan <span class="text-red-500">*</span></label>
+                                <input v-model="form.name" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: Budi Santoso" required />
+                                <p v-if="form.errors.name" class="text-red-400 text-xs mt-1">{{ form.errors.name }}</p>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">No WA</label>
+                                <input v-model="form.phone" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: 08123456789" />
+                                <p v-if="form.errors.phone" class="text-red-400 text-xs mt-1">{{ form.errors.phone }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Row 2 -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Area / Wilayah <span class="text-red-500">*</span></label>
+                                <select v-if="!isNewArea" v-model="form.area" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" @change="checkNewArea" required>
+                                    <option value="">-- Pilih Area --</option>
+                                    <option v-for="area in areas" :key="area" :value="area">{{ area }}</option>
+                                    <option value="new">+ Tambah Area Baru...</option>
+                                </select>
+                                <div v-else class="flex gap-2">
+                                    <input v-model="form.area" type="text" class="flex-1 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Ketik area baru..." required />
+                                    <button v-if="areas.length > 0" type="button" @click="cancelNewArea" class="px-3 py-2.5 bg-gray-100 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
+                                        Batal
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Paket Langganan</label>
+                                <select v-model="form.package_id" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                                    <option value="">-- Pilih Paket Langganan --</option>
+                                    <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
+                                        {{ pkg.name }}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Row 3: Kecamatan -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Kecamatan</label>
+                            <input v-model="form.district" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: Sukasari" />
+                        </div>
+
+                        <!-- Row 4: Desa / Kelurahan -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Desa / Kelurahan</label>
+                            <input v-model="form.village" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: Sukamaju" />
+                        </div>
+
+                        <!-- Row 5: RT / RW -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">RT / RW</label>
+                            <input v-model="form.rt_rw" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: 02/04" />
+                        </div>
+
+                        <!-- Row 6: Detail Jalan -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Detail Jalan / Nomor Rumah</label>
+                            <textarea v-model="form.address_detail" rows="3" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-y" placeholder="Jl. Melati No. 12..."></textarea>
+                        </div>
+
+                        <!-- Row 7: Foto KTP -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Foto KTP (Opsional)</label>
+                            <div class="flex items-center w-full px-3 py-2 bg-white border border-gray-300 rounded-lg">
+                                <label class="cursor-pointer bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-md text-xs font-semibold hover:bg-indigo-100 transition-colors">
+                                    Choose File
+                                    <input type="file" @change="e => form.identity_photo = e.target.files[0]" class="hidden" />
+                                </label>
+                                <span class="ml-3 text-sm text-gray-500 truncate">{{ form.identity_photo ? form.identity_photo.name : 'No file chosen' }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Row 8: Titik Koordinat -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Titik Koordinat</label>
+                            <div class="flex gap-2">
+                                <input v-model="form.coordinates" type="text" class="flex-1 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: -6.200000, 106.816666" />
+                                <button type="button" @click="getLocation" class="px-4 py-2.5 bg-gray-100 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    Auto
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Row 9 -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tarif / Base Amount (Rp) <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <span class="text-gray-500 text-sm font-semibold">Rp</span>
+                                    </div>
+                                    <input v-model="form.base_amount" type="number" class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" required />
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tanggal Registrasi</label>
+                                <input v-model="form.registration_date" type="date" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" />
+                            </div>
+                        </div>
+
+                        <!-- Row 10 -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Biaya Pasang Baru (Rp)</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <span class="text-gray-500 text-sm font-semibold">Rp</span>
+                                    </div>
+                                    <input v-model="form.installation_fee" type="number" class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" />
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Sales / Afiliator</label>
+                                <select v-model="form.sales_id" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                                    <option value="">-- Tanpa Sales --</option>
+                                    <option v-for="person in sales" :key="person.id" :value="person.id">
+                                        {{ person.name }}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+                    
+                    <!-- Footer Actions -->
+                    <div class="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 rounded-b-2xl">
+                        <Link href="/customers/booking" class="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                            Batal
+                        </Link>
+                        <button type="submit" :disabled="form.processing" class="px-6 py-2.5 bg-[#5A51E6] hover:bg-indigo-700 text-gray-900 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                            <svg v-if="form.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                            </svg>
+                            {{ form.processing ? 'Menyimpan...' : 'Simpan Pelanggan' }}
+                        </button>
+                    </div>
+                </form>
+
+            </div>
         </div>
     </AppLayout>
 </template>
@@ -89,23 +187,99 @@
 <script setup>
 import { Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { watch, ref, onMounted } from 'vue';
 
-defineProps({
+const props = defineProps({
     packages: Array,
+    sales: Array,
+    areas: Array,
 });
+
+const isNewArea = ref(false);
+
+onMounted(() => {
+    if (!props.areas || props.areas.length === 0) {
+        isNewArea.value = true;
+    }
+});
+
+function checkNewArea(e) {
+    if (e.target.value === 'new') {
+        isNewArea.value = true;
+        form.area = '';
+    }
+}
+
+function cancelNewArea() {
+    isNewArea.value = false;
+    form.area = '';
+}
 
 const form = useForm({
     name: '',
-    email: '',
     phone: '',
-    address: '',
-    latitude: '',
-    longitude: '',
+    area: '',
     package_id: '',
-    notes: '',
+    district: '',
+    village: '',
+    rt_rw: '',
+    address_detail: '',
+    identity_photo: null,
+    coordinates: '',
+    base_amount: 150000,
+    registration_date: new Date().toISOString().split('T')[0],
+    installation_fee: 0,
+    sales_id: '',
 });
 
+watch(() => form.package_id, (newId) => {
+    const pkg = props.packages.find(p => p.id === newId);
+    if (pkg) {
+        form.base_amount = pkg.price;
+    }
+});
+
+function getLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                form.coordinates = `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`;
+            },
+            (error) => {
+                alert('Gagal mendapatkan lokasi: ' + error.message);
+            }
+        );
+    } else {
+        alert('Geolocation tidak didukung oleh browser Anda.');
+    }
+}
+
 function submit() {
-    form.post('/customers');
+    // Combine address parts into one string to match the backend expectation
+    const addressParts = [
+        form.address_detail,
+        form.rt_rw ? `RT/RW: ${form.rt_rw}` : '',
+        form.village ? `Kel. ${form.village}` : '',
+        form.district ? `Kec. ${form.district}` : ''
+    ].filter(Boolean).join(', ');
+    
+    let lat = null;
+    let lng = null;
+    if (form.coordinates) {
+        const parts = form.coordinates.split(',');
+        lat = parts[0] ? parts[0].trim() : null;
+        lng = parts[1] ? parts[1].trim() : null;
+    }
+
+    form.transform((data) => ({
+        ...data,
+        address: addressParts || '-',
+        latitude: lat,
+        longitude: lng,
+    })).post('/customers', {
+        onSuccess: () => {
+            // Sukses diarahkan oleh controller
+        }
+    });
 }
 </script>

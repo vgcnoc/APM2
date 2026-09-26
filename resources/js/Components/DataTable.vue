@@ -1,7 +1,7 @@
 <template>
     <div class="glass-card overflow-hidden animate-fade-in-up">
         <!-- Table Header: Search & Filters -->
-        <div class="p-4 border-b border-white/10">
+        <div class="p-4 border-b border-gray-200">
             <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <!-- Search -->
                 <div class="relative w-full md:w-80">
@@ -40,12 +40,14 @@
                 </thead>
                 <tbody>
                     <tr v-if="!data || data.length === 0">
-                        <td :colspan="columns.length + ($slots.rowActions ? 1 : 0)" class="text-center py-12">
-                            <div class="flex flex-col items-center gap-3">
-                                <svg class="w-12 h-12 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
-                                </svg>
-                                <p class="text-gray-500 text-sm">Tidak ada data ditemukan</p>
+                        <td :colspan="columns.length + ($slots.rowActions ? 1 : 0)" class="text-center py-16">
+                            <div class="flex flex-col items-center gap-4">
+                                <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+                                    <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                                    </svg>
+                                </div>
+                                <p class="text-gray-500 text-sm font-medium">Tidak ada data ditemukan</p>
                             </div>
                         </td>
                     </tr>
@@ -60,11 +62,11 @@
         </div>
 
         <!-- Pagination -->
-        <div v-if="pagination" class="px-4 py-3 border-t border-white/10 flex items-center justify-between">
+        <div v-if="pagination" class="px-5 py-4 border-t border-gray-200 flex items-center justify-between">
             <div class="text-sm text-gray-500">
-                Menampilkan <span class="text-gray-300 font-medium">{{ pagination.from || 0 }}</span>
-                - <span class="text-gray-300 font-medium">{{ pagination.to || 0 }}</span>
-                dari <span class="text-gray-300 font-medium">{{ pagination.total || 0 }}</span> data
+                Menampilkan <span class="text-gray-900 font-bold">{{ pagination.from || 0 }}</span>
+                - <span class="text-gray-900 font-bold">{{ pagination.to || 0 }}</span>
+                dari <span class="text-gray-900 font-bold">{{ pagination.total || 0 }}</span> data
             </div>
             <div class="flex items-center gap-1">
                 <template v-for="link in pagination.links" :key="link.label">
@@ -72,17 +74,17 @@
                         v-if="link.url"
                         :href="link.url"
                         :class="[
-                            'px-3 py-1.5 rounded-lg text-sm transition-all duration-200',
+                            'px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
                             link.active
-                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
-                                : 'text-gray-400 hover:bg-white/10 hover:text-white'
+                                ? 'bg-blue-600 text-gray-900 shadow-sm'
+                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                         ]"
                         v-html="link.label"
                         preserve-scroll
                     />
                     <span
                         v-else
-                        class="px-3 py-1.5 text-sm text-gray-600"
+                        class="px-3 py-1.5 text-sm text-gray-500 font-medium"
                         v-html="link.label"
                     />
                 </template>

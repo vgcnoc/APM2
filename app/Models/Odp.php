@@ -13,9 +13,18 @@ class Odp extends Model
 
     protected $fillable = [
         'odc_id',
+        'area_id',
         'name',
+        'type',
+        'address',
         'latitude',
         'longitude',
+        'start_point',
+        'end_point',
+        'cable_pull',
+        'photo',
+        'is_split',
+        'parent_odp_id',
         'total_ports',
         'used_ports',
         'status',

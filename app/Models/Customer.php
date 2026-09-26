@@ -18,6 +18,8 @@ class Customer extends Model
         'email',
         'phone',
         'address',
+        'area',
+        'identity_photo',
         'latitude',
         'longitude',
         'package_id',
@@ -25,6 +27,9 @@ class Customer extends Model
         'registration_date',
         'activation_date',
         'notes',
+        'base_amount',
+        'installation_fee',
+        'sales_id',
     ];
 
     protected function casts(): array
@@ -156,12 +161,12 @@ class Customer extends Model
 
     public function scopeBooking($query)
     {
-        return $query->where('status', 'booking');
+        return $query->whereIn('status', ['booking', 'survey', 'installing', 'active']);
     }
 
     public function scopeSurvey($query)
     {
-        return $query->where('status', 'survey');
+        return $query->whereIn('status', ['survey', 'installing', 'active']);
     }
 
     public function scopeInstalled($query)

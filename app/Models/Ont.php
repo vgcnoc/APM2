@@ -13,6 +13,7 @@ class Ont extends Model
     protected $fillable = [
         'odp_id',
         'customer_id',
+        'area_id',
         'serial_number',
         'mac_address',
         'brand',
@@ -21,7 +22,29 @@ class Ont extends Model
         'rx_power',
         'tx_power',
         'status',
+        'vlan_mode',
+        'vlan_id',
+        'access_mode',
+        'ip_login',
+        'login_user',
+        'login_password',
+        'pppoe_user',
+        'pppoe_password',
+        'input_officers',
+        'brand',
+        'model',
+        'port_number',
+        'rx_power',
+        'tx_power',
+        'status',
         'description',
+        'start_time',
+        'end_time',
+        'photo_odp',
+        'photo_installation',
+        'photo_ont',
+        'photo_customer',
+        'photo_redaman',
     ];
 
     protected function casts(): array
@@ -30,6 +53,7 @@ class Ont extends Model
             'port_number' => 'integer',
             'rx_power' => 'decimal:2',
             'tx_power' => 'decimal:2',
+            'input_officers' => 'array',
         ];
     }
 
@@ -49,6 +73,14 @@ class Ont extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /**
+     * ONT berada pada satu Area (N:1)
+     */
+    public function area(): BelongsTo
+    {
+        return $this->belongsTo(Area::class);
     }
 
     // ── Computed ───────────────────────────────────────────────

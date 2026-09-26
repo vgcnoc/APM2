@@ -13,13 +13,21 @@ class Odc extends Model
 
     protected $fillable = [
         'olt_id',
+        'area_id',
         'name',
+        'type',
+        'photo',
         'location',
         'latitude',
         'longitude',
         'capacity',
         'description',
         'status',
+        'start_point',
+        'end_point',
+        'cable_pull',
+        'is_split',
+        'parent_odc_id',
     ];
 
     protected function casts(): array
