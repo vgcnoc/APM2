@@ -7,6 +7,9 @@ cd /var/www/APM2
 echo "Pulling latest changes from GitHub..."
 git pull origin main
 
+echo "Running Database Migrations..."
+php artisan migrate --force
+
 echo "Rebuilding assets..."
 npm run build
 

@@ -32,7 +32,7 @@
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Barang</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Kategori</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Stok</th>
-                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Harga Satuan</th>
+                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">H. Modal / Jual</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
                         </thead>
@@ -40,7 +40,7 @@
                             <tr v-for="item in materials.data" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
                                 <td class="py-4 px-6">
                                     <p class="text-sm font-semibold text-gray-900">{{ item.name }}</p>
-                                    <p class="text-xs text-gray-500 mt-0.5 truncate max-w-xs">{{ item.description || '-' }}</p>
+                                    <p v-if="item.supplier" class="text-xs text-blue-600 mt-0.5">Supplier: {{ item.supplier }}</p>
                                 </td>
                                 <td class="py-4 px-6">
                                     <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
@@ -48,13 +48,19 @@
                                     </span>
                                 </td>
                                 <td class="py-4 px-6 text-right">
-                                    <div class="flex items-center justify-end gap-1.5">
-                                        <span class="text-sm font-bold text-gray-900">{{ formatNumber(item.stock) }}</span>
-                                        <span class="text-xs text-gray-500">{{ item.unit }}</span>
+                                    <div class="flex flex-col items-end">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-sm font-bold text-gray-900">{{ formatNumber(item.stock) }}</span>
+                                            <span class="text-xs text-gray-500">{{ item.unit }}</span>
+                                        </div>
+                                        <div v-if="item.category === 'Kabel' && item.total_rolls" class="text-xs text-gray-400 mt-0.5">
+                                            Total {{ item.total_rolls }} roll
+                                        </div>
                                     </div>
                                 </td>
-                                <td class="py-4 px-6 text-right text-sm text-gray-600">
-                                    Rp {{ formatNumber(item.price_per_unit) }}
+                                <td class="py-4 px-6 text-right text-sm">
+                                    <p class="text-gray-900">M: Rp {{ formatNumber(item.price_per_unit) }}</p>
+                                    <p class="text-emerald-600 font-medium">J: Rp {{ formatNumber(item.selling_price) }}</p>
                                 </td>
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex items-center justify-end gap-2">
@@ -108,9 +114,9 @@
         <!-- Modal Form -->
         <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" @click="closeModal"></div>
-            <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-up">
-                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                    <h3 class="text-lg font-bold text-gray-900">{{ isEditing ? 'Edit Material' : 'Tambah Material' }}</h3>
+            <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-y-auto max-h-[90vh] animate-fade-in-up">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                    <h3 class="text-lg font-bold text-gray-900">{{ isEditing ? 'Edit Produk' : 'Tambah Produk Baru' }}</h3>
                     <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -118,16 +124,21 @@
                     </button>
                 </div>
                 <div class="p-6">
-                    <form @submit.prevent="submit" class="space-y-4">
+                    <form @submit.prevent="submit" class="space-y-5">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Barang</label>
-                            <input v-model="form.name" type="text" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" required placeholder="Contoh: Kabel Drop Core 1 Core">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Produk *</label>
+                            <input v-model="form.name" type="text" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" required placeholder="Contoh: Kabel FO 12 Core / Isolasi Hitam">
                         </div>
                         
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+                            <input v-model="form.supplier" type="text" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Nama supplier / distributor">
+                        </div>
+
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                                <select v-model="form.category" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                                <select v-model="form.category" @change="handleCategoryChange" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                                     <option value="">Pilih Kategori...</option>
                                     <option value="Kabel">Kabel</option>
                                     <option value="Konektor / Frecon">Konektor / Frecon</option>
@@ -138,35 +149,75 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Satuan (Unit)</label>
-                                <select v-model="form.unit" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-                                    <option value="pcs">Pcs (Buah)</option>
-                                    <option value="meter">Meter</option>
-                                    <option value="cm">Centimeter (Cm)</option>
-                                    <option value="rol">Rol</option>
-                                    <option value="pack">Pack / Bungkus</option>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Satuan</label>
+                                <input v-if="form.category === 'Kabel'" type="text" v-model="form.unit" disabled class="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed">
+                                <select v-else v-model="form.unit" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                                    <option value="pcs">pcs</option>
+                                    <option value="meter">meter</option>
+                                    <option value="cm">cm</option>
+                                    <option value="rol">rol</option>
+                                    <option value="pack">pack</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <!-- Kabel Calculator -->
+                        <div v-if="form.category === 'Kabel'" class="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
+                            <div class="flex items-center gap-2 mb-3 text-blue-600 font-medium text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                                Kalkulator Kabel (Roll ↔ Meter)
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Meter per Roll</label>
+                                    <input v-model="form.meter_per_roll" @input="calculateCableStock" type="number" step="0.01" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Jumlah Roll</label>
+                                    <input v-model="form.total_rolls" @input="calculateCableStock" type="number" step="0.01" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Harga Modal (per roll)</label>
+                                    <input v-model="form.price_per_unit" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Harga Jual (per roll)</label>
+                                    <input v-model="form.selling_price" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-blue-100 flex justify-between items-center">
+                                <span class="text-xs text-blue-700">Total Stok Tersimpan (Otomatis):</span>
+                                <span class="text-sm font-bold text-blue-700">{{ form.stock }} Meter</span>
+                            </div>
+                        </div>
+
+                        <!-- Normal Stock & Price (Non Kabel) -->
+                        <div v-else class="grid grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Stok Saat Ini</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Stok</label>
                                 <input v-model="form.stock" type="number" step="0.01" min="0" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" required>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Harga Satuan (Rp)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Hrg Modal</label>
                                 <input v-model="form.price_per_unit" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Hrg Jual</label>
+                                <input v-model="form.selling_price" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan Tambahan</label>
-                            <textarea v-model="form.description" rows="2" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"></textarea>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                            <textarea v-model="form.description" rows="3" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"></textarea>
                         </div>
                     </form>
                 </div>
-                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0 z-10">
                     <button type="button" @click="closeModal" class="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors">Batal</button>
                     <button type="button" @click="submit" :disabled="form.processing" class="btn-primary text-sm">
                         {{ form.processing ? 'Menyimpan...' : 'Simpan Data' }}
@@ -178,7 +229,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { router, useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -194,10 +245,14 @@ const editingId = ref(null);
 
 const form = useForm({
     name: '',
+    supplier: '',
     category: '',
     unit: 'pcs',
+    meter_per_roll: 0,
+    total_rolls: 0,
     stock: 0,
     price_per_unit: 0,
+    selling_price: 0,
     description: '',
 });
 
@@ -210,15 +265,36 @@ const performSearch = () => {
     router.get('/materials', { search: search.value }, { preserveState: true });
 };
 
+const handleCategoryChange = () => {
+    if (form.category === 'Kabel') {
+        form.unit = 'roll';
+        calculateCableStock();
+    } else {
+        if (form.unit === 'roll') {
+            form.unit = 'pcs';
+        }
+    }
+};
+
+const calculateCableStock = () => {
+    const meter = parseFloat(form.meter_per_roll) || 0;
+    const rolls = parseFloat(form.total_rolls) || 0;
+    form.stock = meter * rolls;
+};
+
 const openModal = (item = null) => {
     if (item) {
         isEditing.value = true;
         editingId.value = item.id;
         form.name = item.name;
+        form.supplier = item.supplier || '';
         form.category = item.category || '';
         form.unit = item.unit || 'pcs';
+        form.meter_per_roll = item.meter_per_roll || 0;
+        form.total_rolls = item.total_rolls || 0;
         form.stock = item.stock || 0;
         form.price_per_unit = item.price_per_unit || 0;
+        form.selling_price = item.selling_price || 0;
         form.description = item.description || '';
     } else {
         isEditing.value = false;
@@ -234,6 +310,11 @@ const closeModal = () => {
 };
 
 const submit = () => {
+    // Pastikan stok terhitung jika kategori Kabel
+    if (form.category === 'Kabel') {
+        calculateCableStock();
+    }
+    
     if (isEditing.value) {
         form.put(`/materials/${editingId.value}`, {
             onSuccess: () => closeModal(),

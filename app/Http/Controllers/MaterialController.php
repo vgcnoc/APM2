@@ -29,10 +29,14 @@ class MaterialController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'supplier' => 'nullable|string|max:255',
             'category' => 'nullable|string|max:255',
             'unit' => 'required|string|max:50',
+            'meter_per_roll' => 'nullable|numeric|min:0',
+            'total_rolls' => 'nullable|numeric|min:0',
             'stock' => 'required|numeric|min:0',
             'price_per_unit' => 'nullable|numeric|min:0',
+            'selling_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
         ]);
 
@@ -45,10 +49,14 @@ class MaterialController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'supplier' => 'nullable|string|max:255',
             'category' => 'nullable|string|max:255',
             'unit' => 'required|string|max:50',
+            'meter_per_roll' => 'nullable|numeric|min:0',
+            'total_rolls' => 'nullable|numeric|min:0',
             'stock' => 'required|numeric|min:0',
             'price_per_unit' => 'nullable|numeric|min:0',
+            'selling_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
         ]);
 
