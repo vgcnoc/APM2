@@ -6,6 +6,7 @@ use App\Http\Controllers\OdcController;
 use App\Http\Controllers\OdpController;
 use App\Http\Controllers\OltController;
 use App\Http\Controllers\OntController;
+use App\Http\Controllers\MaterialController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -64,6 +65,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('odcs', OdcController::class);
     Route::resource('odps', OdpController::class);
     Route::resource('onts', OntController::class);
+    Route::resource('materials', MaterialController::class);
 
     // ── Billing & Keuangan ─────────────────────────────────────
     // Route::resource('invoices', InvoiceController::class);
