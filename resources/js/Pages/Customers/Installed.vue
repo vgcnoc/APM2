@@ -321,12 +321,24 @@ function updateMaterialItems() {
                     const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
                     return !name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem') && !isRegistered;
                 })
-                .map(item => ({
-                    id: item.id,
-                    name: item.material ? item.material.name : 'Unknown',
-                    qty: item.quantity,
-                    unit: item.unit || (item.material ? item.material.unit : 'pcs')
-                }));
+                .map(item => {
+                    let qty = parseFloat(item.quantity) || 0;
+                    let unit = item.unit || (item.material ? item.material.unit : 'pcs');
+                    
+                    if (item.material && item.material.category === 'Isolasi') {
+                        if (unit === 'pcs') {
+                            qty = qty * (parseFloat(item.material.cm_per_pcs) || 50);
+                            unit = 'cm';
+                        }
+                    }
+                    
+                    return {
+                        id: item.id,
+                        name: item.material ? item.material.name : 'Unknown',
+                        qty: qty,
+                        unit: unit
+                    };
+                });
             assignForm.material_items.push(...mappedItems);
         }
     });
