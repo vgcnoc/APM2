@@ -319,12 +319,18 @@ function updateMaterialItems() {
         if (!trxId) return;
         const trx = props.materialTransactions.find(t => t.transaction_number === trxId);
         if (trx && trx.items) {
-            const mappedItems = trx.items.map(item => ({
-                id: item.id,
-                name: item.material ? item.material.name : 'Unknown',
-                qty: item.quantity,
-                unit: item.unit || (item.material ? item.material.unit : 'pcs')
-            }));
+            const mappedItems = trx.items
+                .filter(item => {
+                    const name = item.material && item.material.name ? item.material.name.toLowerCase() : '';
+                    const category = item.material && item.material.category ? item.material.category.toLowerCase() : '';
+                    return !name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem');
+                })
+                .map(item => ({
+                    id: item.id,
+                    name: item.material ? item.material.name : 'Unknown',
+                    qty: item.quantity,
+                    unit: item.unit || (item.material ? item.material.unit : 'pcs')
+                }));
             assignForm.material_items.push(...mappedItems);
         }
     });
@@ -347,15 +353,25 @@ function addManualMaterial() {
 function getTransactionLabel(trx) {
     let itemsStr = 'Tidak ada barang';
     if (trx.items && trx.items.length > 0) {
-        itemsStr = trx.items.map(item => {
-            const name = item.material ? item.material.name : 'Unknown';
-            const qty = item.quantity;
-            const unit = item.unit || (item.material ? item.material.unit : 'pcs');
-            return `${name} (${qty} ${unit})`;
-        }).join(', ');
-        
-        if (itemsStr.length > 60) {
-            itemsStr = itemsStr.substring(0, 57) + '...';
+        const nonOntItems = trx.items.filter(item => {
+            const name = item.material && item.material.name ? item.material.name.toLowerCase() : '';
+            const category = item.material && item.material.category ? item.material.category.toLowerCase() : '';
+            return !name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem');
+        });
+
+        if (nonOntItems.length > 0) {
+            itemsStr = nonOntItems.map(item => {
+                const name = item.material ? item.material.name : 'Unknown';
+                const qty = item.quantity;
+                const unit = item.unit || (item.material ? item.material.unit : 'pcs');
+                return `${name} (${qty} ${unit})`;
+            }).join(', ');
+            
+            if (itemsStr.length > 60) {
+                itemsStr = itemsStr.substring(0, 57) + '...';
+            }
+        } else {
+            itemsStr = 'Hanya ONT/Modem';
         }
     }
     return `${itemsStr} - ${trx.technician_name}`;
