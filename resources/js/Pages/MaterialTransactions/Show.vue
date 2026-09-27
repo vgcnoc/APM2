@@ -67,6 +67,18 @@
                                     <td class="py-3 px-4">
                                         <p class="text-sm font-bold text-gray-900">{{ item.material?.name || 'Barang Dihapus' }}</p>
                                         <p v-if="item.material?.brand" class="text-xs text-gray-500">{{ item.material.brand }}</p>
+                                        
+                                        <!-- ONT Registration Button -->
+                                        <div v-if="item.material?.category === 'Perangkat Aktif' || (item.material?.name || '').toLowerCase().includes('ont') || (item.material?.name || '').toLowerCase().includes('modem') || (item.material?.name || '').toLowerCase().includes('router')" class="mt-2 print:hidden">
+                                            <button v-if="!item.is_registered_to_ont" @click="openOntModal(item)" class="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 rounded-lg text-xs font-bold transition-colors">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                                Kirim ke Menu ONT
+                                            </button>
+                                            <span v-else class="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-bold">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                Telah Didaftarkan ke ONT
+                                            </span>
+                                        </div>
                                     </td>
                                     <td class="py-3 px-4 text-center">
                                         <span class="text-sm font-bold text-gray-900">{{ item.unit || item.material?.unit || 'pcs' }}</span>
@@ -117,11 +129,71 @@
                 </div>
             </div>
         </div>
+
+        <!-- Register ONT Modal -->
+        <div v-if="showOntModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="closeOntModal"></div>
+            <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+                    <h3 class="text-lg font-bold text-gray-900">Kirim ke Menu ONT</h3>
+                    <button @click="closeOntModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5">
+                        <h4 class="font-bold text-blue-900 mb-1">Barang: {{ selectedItem?.material?.name }}</h4>
+                        <p class="text-sm text-blue-700">Jumlah: <strong>{{ selectedItem?.quantity }} unit</strong></p>
+                    </div>
+
+                    <form @submit.prevent="submitOntRegistration">
+                        <div class="mb-5">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Daftar Serial Number (SN)</label>
+                            <p class="text-xs text-gray-500 mb-3 leading-relaxed">
+                                Pisahkan dengan <strong>koma (,)</strong> atau <strong>enter (baris baru)</strong>.<br>
+                                Gunakan <i>barcode scanner</i> jika perlu.
+                            </p>
+                            <textarea 
+                                v-model="ontForm.sn_list" 
+                                rows="4" 
+                                class="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all font-mono"
+                                placeholder="ZTEG123456, ZTEG765432..."
+                                required
+                            ></textarea>
+                            
+                            <div class="flex justify-between items-center mt-2">
+                                <p class="text-xs text-gray-500">
+                                    Jumlah SN terdeteksi: 
+                                    <span :class="{'text-red-600 font-bold': parsedSnCount > (selectedItem?.quantity || 0), 'text-green-600 font-bold': parsedSnCount === (selectedItem?.quantity || 0), 'text-gray-900 font-bold': parsedSnCount < (selectedItem?.quantity || 0)}">
+                                        {{ parsedSnCount }}
+                                    </span>
+                                    dari {{ selectedItem?.quantity }}
+                                </p>
+                                <p v-if="parsedSnCount > (selectedItem?.quantity || 0)" class="text-xs text-red-500 font-bold">SN Melebihi Kuantitas!</p>
+                            </div>
+                        </div>
+
+                        <div v-if="ontForm.errors.sn_list" class="mb-4 text-sm text-red-500 p-3 bg-red-50 rounded-lg border border-red-100">
+                            {{ ontForm.errors.sn_list }}
+                        </div>
+
+                        <div class="flex justify-end gap-3 pt-2">
+                            <button type="button" @click="closeOntModal" class="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">Batal</button>
+                            <button type="submit" :disabled="ontForm.processing || parsedSnCount === 0 || parsedSnCount > (selectedItem?.quantity || 0)" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                                <svg v-if="ontForm.processing" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                {{ ontForm.processing ? 'Menyimpan...' : 'Daftarkan ke ONT' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </AppLayout>
 </template>
 
 <script setup>
-import { Link } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import { Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
@@ -135,6 +207,43 @@ const formatNumber = (num) => {
 
 const printDocument = () => {
     window.print();
+};
+
+// Ont Registration Logic
+const showOntModal = ref(false);
+const selectedItem = ref(null);
+
+const ontForm = useForm({
+    sn_list: ''
+});
+
+const parsedSnCount = computed(() => {
+    if (!ontForm.sn_list) return 0;
+    return ontForm.sn_list.split(/[\n,]+/).filter(sn => sn.trim() !== '').length;
+});
+
+const openOntModal = (item) => {
+    selectedItem.value = item;
+    ontForm.sn_list = '';
+    ontForm.clearErrors();
+    showOntModal.value = true;
+};
+
+const closeOntModal = () => {
+    showOntModal.value = false;
+    selectedItem.value = null;
+    ontForm.reset();
+};
+
+const submitOntRegistration = () => {
+    if (!selectedItem.value) return;
+    
+    ontForm.post(`/material-transactions/${selectedItem.value.id}/register-ont`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeOntModal();
+        }
+    });
 };
 </script>
 

@@ -98,28 +98,6 @@
                             Sisa Stok: {{ item.unit_mode === 'roll' ? (item.max_stock / item.meter_per_roll).toFixed(2) + ' Roll' : item.max_stock + ' ' + (item.unit || '') }}
                         </p>
                     </div>
-
-                    <!-- Input Serial Number ONT -->
-                    <div v-if="item.is_ont" class="mt-3 col-span-full bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                        <div class="flex items-start gap-3">
-                            <div class="mt-1">
-                                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                </svg>
-                            </div>
-                            <div class="flex-1">
-                                <label class="block text-xs font-bold text-blue-900 mb-1">Daftar Serial Number ONT / Perangkat (Opsional)</label>
-                                <p class="text-[11px] text-blue-600 mb-2 leading-relaxed">Pisahkan dengan koma (,) atau baris baru (enter).<br/>Setiap SN yang dimasukkan akan <strong>otomatis didaftarkan ke Menu ONT</strong> dengan status "Gudang / Teknisi".</p>
-                                <textarea v-model="item.sn_list" rows="2" class="w-full px-3 py-2 text-sm rounded-lg border border-blue-200 focus:ring-blue-500 focus:border-blue-500 bg-white placeholder-blue-300" placeholder="ZTEG1234567, ZTEG7654321..."></textarea>
-                                <div class="flex justify-between items-center mt-1">
-                                    <p class="text-[10px] text-blue-600">Jumlah diinput: <span class="font-bold">{{ item.sn_list ? item.sn_list.split(/[\n,]+/).filter(sn => sn.trim() !== '').length : 0 }}</span> / {{ item.input_quantity }}</p>
-                                    <p v-if="item.sn_list && item.sn_list.split(/[\n,]+/).filter(sn => sn.trim() !== '').length > item.input_quantity" class="text-[10px] text-red-500 font-bold">
-                                        Peringatan: SN melebihi jumlah barang!
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <div v-if="form.errors" class="text-sm text-red-500">
@@ -166,12 +144,12 @@ const form = useForm({
     area: '',
     notes: '',
     items: [
-        { material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, meter_per_roll: 1000, is_ont: false, sn_list: '' }
+        { material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, meter_per_roll: 1000 }
     ]
 });
 
 const addItem = () => {
-    form.items.push({ material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, meter_per_roll: 1000, is_ont: false, sn_list: '' });
+    form.items.push({ material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, meter_per_roll: 1000 });
 };
 
 const removeItem = (index) => {
@@ -184,13 +162,11 @@ const onMaterialSelected = (index) => {
     
     if (material) {
         const isCable = material.category === 'Kabel' || material.name.toLowerCase().includes('kabel');
-        const isOnt = material.category === 'Perangkat Aktif' || material.name.toLowerCase().includes('ont') || material.name.toLowerCase().includes('modem') || material.name.toLowerCase().includes('router');
         
         form.items[index].unit = material.unit;
         form.items[index].unit_manual = material.unit || 'pcs'; // default it to material's original unit
         form.items[index].max_stock = material.stock;
         form.items[index].is_cable = isCable;
-        form.items[index].is_ont = isOnt;
         form.items[index].meter_per_roll = material.meter_per_roll || 1000;
         form.items[index].unit_mode = isCable ? 'meter' : 'default';
         
@@ -208,8 +184,7 @@ const submit = () => {
         items: data.items.map(item => ({
             material_id: item.material_id,
             quantity: item.input_quantity,
-            unit: item.is_cable ? item.unit_mode : item.unit_manual,
-            sn_list: item.is_ont ? item.sn_list : ''
+            unit: item.is_cable ? item.unit_mode : item.unit_manual
         }))
     })).post('/material-transactions');
 };

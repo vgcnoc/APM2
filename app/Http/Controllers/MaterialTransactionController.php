@@ -45,7 +45,6 @@ class MaterialTransactionController extends Controller
             'items.*.material_id' => 'required|exists:materials,id',
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.unit' => 'nullable|string|max:50',
-            'items.*.sn_list' => 'nullable|string',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -100,27 +99,6 @@ class MaterialTransactionController extends Controller
                 }
                 
                 $material->save();
-                
-                // If it's an ONT and sn_list is provided, insert to ONT table
-                if (!empty($itemData['sn_list'])) {
-                    $sns = array_filter(array_map('trim', preg_split('/[\n,]+/', $itemData['sn_list'])));
-                    foreach ($sns as $sn) {
-                        $existing = \App\Models\Ont::where('serial_number', $sn)->first();
-                        if (!$existing) {
-                            \App\Models\Ont::create([
-                                'serial_number' => $sn,
-                                'brand' => $material->name,
-                                'status' => 'Gudang / Teknisi',
-                                'description' => "Order Pengambilan oleh: " . $request->technician_name . " pada " . $request->date . " (Tujuan: " . $request->purpose . ")",
-                            ]);
-                        } else {
-                            $existing->update([
-                                'status' => 'Gudang / Teknisi',
-                                'description' => "Order Pengambilan Ulang oleh: " . $request->technician_name . " pada " . $request->date . " (Tujuan: " . $request->purpose . ")",
-                            ]);
-                        }
-                    }
-                }
             }
 
             $transaction->update(['total_cost' => $totalCost]);
@@ -137,5 +115,42 @@ class MaterialTransactionController extends Controller
         return Inertia::render('MaterialTransactions/Show', [
             'transaction' => $materialTransaction
         ]);
+    }
+
+    public function registerOnt(Request $request, MaterialTransactionItem $item)
+    {
+        $request->validate([
+            'sn_list' => 'required|string',
+        ]);
+
+        $item->load(['transaction', 'material']);
+        
+        $sns = array_filter(array_map('trim', preg_split('/[\n,]+/', $request->sn_list)));
+        
+        // Count to ensure they don't exceed quantity
+        if (count($sns) > $item->quantity) {
+            return back()->withErrors(['sn_list' => 'Jumlah Serial Number (' . count($sns) . ') melebihi jumlah kuantitas barang (' . $item->quantity . ').']);
+        }
+
+        foreach ($sns as $sn) {
+            $existing = \App\Models\Ont::where('serial_number', $sn)->first();
+            if (!$existing) {
+                \App\Models\Ont::create([
+                    'serial_number' => $sn,
+                    'brand' => $item->material->name,
+                    'status' => 'Belum Set/Baru Input',
+                    'description' => "Pengambilan dari Gudang oleh: " . $item->transaction->technician_name . " (Tujuan: " . $item->transaction->purpose . ") pada " . $item->transaction->date,
+                ]);
+            } else {
+                $existing->update([
+                    'status' => 'Belum Set/Baru Input',
+                    'description' => "Pengambilan Ulang dari Gudang oleh: " . $item->transaction->technician_name . " (Tujuan: " . $item->transaction->purpose . ") pada " . $item->transaction->date,
+                ]);
+            }
+        }
+
+        $item->update(['is_registered_to_ont' => true]);
+
+        return back()->with('success', count($sns) . ' perangkat berhasil didaftarkan ke Menu ONT.');
     }
 }

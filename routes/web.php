@@ -68,6 +68,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('onts', OntController::class);
     Route::resource('materials', MaterialController::class);
     Route::resource('material-transactions', MaterialTransactionController::class)->except(['edit', 'update', 'destroy']);
+    Route::post('material-transactions/{item}/register-ont', [MaterialTransactionController::class, 'registerOnt'])->name('material-transactions.register-ont');
 
     // ── Billing & Keuangan ─────────────────────────────────────
     // Route::resource('invoices', InvoiceController::class);
