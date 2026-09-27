@@ -125,7 +125,7 @@ const deleteTransaction = (id) => {
         return;
     }
     if (confirm('Yakin ingin menghapus riwayat transaksi ini? Stok barang akan dikembalikan ke gudang secara otomatis.')) {
-        router.delete(`/material-transactions/${id}`);
+        router.post(`/material-transactions/${id}/delete`);
     }
 };
 </script>
