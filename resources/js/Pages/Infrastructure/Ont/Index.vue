@@ -54,7 +54,7 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-right">
-                                    <Link :href="route('onts.show', ont.id)" class="text-blue-600 hover:text-blue-900 font-medium mr-3">Detail</Link>
+                                    <Link :href="`/onts/${ont.id}`" class="text-blue-600 hover:text-blue-900 font-medium mr-3">Detail</Link>
                                     <button @click="openEditModal(ont)" class="text-indigo-600 hover:text-indigo-900 font-medium mr-3">Edit</button>
                                     <button @click="deleteOnt(ont.id)" class="text-red-600 hover:text-red-900 font-medium">Hapus</button>
                                 </td>

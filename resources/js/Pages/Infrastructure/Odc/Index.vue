@@ -31,6 +31,9 @@
                                 <div class="font-medium text-gray-900">{{ odc.olt ? odc.olt.name : '-' }}</div>
                                 <div v-if="odc.pon_port" class="text-xs text-indigo-600 font-semibold mt-0.5">
                                     PON {{ odc.pon_port }}
+                                    <span v-if="getPonVlansText(odc)" class="text-gray-500 font-normal ml-1 bg-gray-100 px-1.5 py-0.5 rounded">
+                                        {{ getPonVlansText(odc) }}
+                                    </span>
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-600">{{ odc.capacity }} Port</td>
@@ -40,7 +43,7 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-sm text-right">
-                                <Link :href="route('odcs.show', odc.id)" class="text-blue-600 hover:text-blue-900 font-medium mr-3">Detail</Link>
+                                <Link :href="`/odcs/${odc.id}`" class="text-blue-600 hover:text-blue-900 font-medium mr-3">Detail</Link>
                                 <button @click="openEditModal(odc)" class="text-indigo-600 hover:text-indigo-900 font-medium mr-3">Edit</button>
                                 <button @click="deleteOdc(odc.id)" class="text-red-600 hover:text-red-900 font-medium">Hapus</button>
                             </td>
