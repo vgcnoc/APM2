@@ -14,6 +14,7 @@ class Material extends Model
         'meter_per_roll',
         'total_rolls',
         'stock',
+        'initial_stock',
         'price_per_unit',
         'selling_price',
         'description',

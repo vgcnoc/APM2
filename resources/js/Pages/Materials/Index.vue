@@ -63,13 +63,18 @@
                                     </span>
                                 </td>
                                 <td class="py-4 px-6 text-right">
-                                    <div class="flex flex-col items-end">
-                                        <div class="flex items-center gap-1.5">
-                                            <span class="text-sm font-bold text-gray-900">{{ formatNumber(item.stock) }}</span>
+                                    <div class="flex flex-col items-end gap-1">
+                                        <div class="flex items-center gap-1.5" title="Stok Awal">
+                                            <span class="text-[10px] font-bold text-gray-400 uppercase">Awal:</span>
+                                            <span class="text-xs font-semibold text-gray-600">{{ formatNumber(item.initial_stock) }} {{ item.unit }}</span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5" title="Sisa Stok Saat Ini">
+                                            <span class="text-[10px] font-bold text-gray-400 uppercase">Sisa:</span>
+                                            <span class="text-sm font-bold text-blue-600">{{ formatNumber(item.stock) }}</span>
                                             <span class="text-xs text-gray-500">{{ item.unit }}</span>
                                         </div>
                                         <div v-if="item.category === 'Kabel' && item.total_rolls" class="text-xs text-gray-400 mt-0.5">
-                                            Total {{ item.total_rolls }} roll
+                                            ({{ item.total_rolls }} roll)
                                         </div>
                                     </div>
                                 </td>

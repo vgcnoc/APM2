@@ -40,6 +40,8 @@ class MaterialController extends Controller
             'description' => 'nullable|string',
         ]);
 
+        $validated['initial_stock'] = $validated['stock'];
+
         Material::create($validated);
 
         return redirect()->route('materials.index')->with('success', 'Data material berhasil ditambahkan.');
