@@ -4,7 +4,7 @@
             <!-- Header -->
             <div class="flex items-center justify-between mb-6">
                 <div class="flex items-center gap-4">
-                    <Link :href="route('odcs.index')" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                    <Link href="/odcs" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                     </Link>
                     <div>
@@ -20,7 +20,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
-                    <Link :href="route('odcs.index')" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                    <Link href="/odcs" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
                         Kembali
                     </Link>
                 </div>
@@ -39,7 +39,7 @@
                         <div class="space-y-4">
                             <div>
                                 <p class="text-xs text-indigo-500 mb-1">Induk OLT</p>
-                                <Link v-if="odc.olt" :href="route('olts.show', odc.olt.id)" class="text-sm font-bold text-indigo-700 hover:underline">
+                                <Link v-if="odc.olt" :href="`/olts/${odc.olt.id}`" class="text-sm font-bold text-indigo-700 hover:underline">
                                     {{ odc.olt.name }}
                                 </Link>
                                 <span v-else class="text-sm font-medium text-gray-500">-</span>
@@ -110,7 +110,7 @@
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                                         </div>
                                         <div>
-                                            <Link :href="route('odps.show', odp.id)" class="text-sm font-bold text-gray-900 hover:text-purple-600 transition-colors">{{ odp.name }}</Link>
+                                            <Link :href="`/odps/${odp.id}`" class="text-sm font-bold text-gray-900 hover:text-purple-600 transition-colors">{{ odp.name }}</Link>
                                             <div class="text-xs text-gray-500 mt-0.5">
                                                 {{ odp.address || 'Alamat tidak tersedia' }}
                                             </div>

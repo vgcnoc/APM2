@@ -4,7 +4,7 @@
             <!-- Header -->
             <div class="flex items-center justify-between mb-6">
                 <div class="flex items-center gap-4">
-                    <Link :href="route('onts.index')" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                    <Link :href="'/onts'" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                     </Link>
                     <div>
@@ -20,7 +20,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
-                    <Link :href="route('onts.index')" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                    <Link :href="'/onts'" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
                         Kembali
                     </Link>
                 </div>
@@ -59,7 +59,7 @@
                         <div class="space-y-4">
                             <div v-if="ont.odp">
                                 <p class="text-xs text-purple-500 mb-1">Terhubung Ke ODP</p>
-                                <Link :href="route('odps.show', ont.odp.id)" class="text-sm font-bold text-purple-700 hover:underline">
+                                <Link :href="'/odps/' + ont.odp.id" class="text-sm font-bold text-purple-700 hover:underline">
                                     {{ ont.odp.name }}
                                 </Link>
                                 <span class="ml-2 text-xs font-semibold bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">Port {{ ont.port_number || '?' }}</span>
@@ -71,7 +71,7 @@
                             
                             <div v-if="ont.odp && ont.odp.odc">
                                 <p class="text-xs text-purple-500 mb-1">Jalur ODC</p>
-                                <Link :href="route('odcs.show', ont.odp.odc.id)" class="text-sm font-bold text-purple-700 hover:underline">
+                                <Link :href="'/odcs/' + ont.odp.odc.id" class="text-sm font-bold text-purple-700 hover:underline">
                                     {{ ont.odp.odc.name }}
                                 </Link>
                                 <span v-if="ont.odp.odc.pon_port" class="ml-2 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">PON {{ ont.odp.odc.pon_port }}</span>
@@ -79,7 +79,7 @@
                             
                             <div v-if="ont.odp && ont.odp.odc && ont.odp.odc.olt">
                                 <p class="text-xs text-purple-500 mb-1">Induk OLT</p>
-                                <Link :href="route('olts.show', ont.odp.odc.olt.id)" class="text-sm font-bold text-purple-700 hover:underline">
+                                <Link :href="'/olts/' + ont.odp.odc.olt.id" class="text-sm font-bold text-purple-700 hover:underline">
                                     {{ ont.odp.odc.olt.name }}
                                 </Link>
                             </div>

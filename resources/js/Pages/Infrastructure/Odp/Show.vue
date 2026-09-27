@@ -4,7 +4,7 @@
             <!-- Header -->
             <div class="flex items-center justify-between mb-6">
                 <div class="flex items-center gap-4">
-                    <Link :href="route('odps.index')" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                    <Link :href="'/odps'" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                     </Link>
                     <div>
@@ -20,7 +20,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
-                    <Link :href="route('odps.index')" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                    <Link :href="'/odps'" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
                         Kembali
                     </Link>
                 </div>
@@ -39,14 +39,14 @@
                         <div class="space-y-4">
                             <div>
                                 <p class="text-xs text-purple-500 mb-1">Induk ODC</p>
-                                <Link v-if="odp.odc" :href="route('odcs.show', odp.odc.id)" class="text-sm font-bold text-purple-700 hover:underline">
+                                <Link v-if="odp.odc" :href="'/odcs/' + odp.odc.id" class="text-sm font-bold text-purple-700 hover:underline">
                                     {{ odp.odc.name }}
                                 </Link>
                                 <span v-else class="text-sm font-medium text-gray-500">-</span>
                             </div>
                             <div v-if="odp.odc && odp.odc.olt">
                                 <p class="text-xs text-purple-500 mb-1">Induk OLT Utama</p>
-                                <Link :href="route('olts.show', odp.odc.olt.id)" class="text-sm font-bold text-purple-700 hover:underline">
+                                <Link :href="'/olts/' + odp.odc.olt.id" class="text-sm font-bold text-purple-700 hover:underline">
                                     {{ odp.odc.olt.name }}
                                 </Link>
                                 <div class="text-xs text-purple-600 mt-1" v-if="odp.odc.pon_port">

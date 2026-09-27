@@ -4,7 +4,7 @@
             <!-- Header -->
             <div class="flex items-center justify-between mb-6">
                 <div class="flex items-center gap-4">
-                    <Link :href="route('olts.index')" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                    <Link :href="'/olts'" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                     </Link>
                     <div>
@@ -20,7 +20,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
-                    <Link :href="route('olts.index')" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                    <Link :href="'/olts'" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
                         Kembali
                     </Link>
                 </div>
@@ -97,7 +97,7 @@
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                                         </div>
                                         <div>
-                                            <Link :href="route('odcs.show', odc.id)" class="text-sm font-bold text-gray-900 hover:text-indigo-600 transition-colors">{{ odc.name }}</Link>
+                                            <Link :href="'/odcs/' + odc.id" class="text-sm font-bold text-gray-900 hover:text-indigo-600 transition-colors">{{ odc.name }}</Link>
                                             <div class="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
                                                 <span v-if="odc.pon_port" class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-medium">PON {{ odc.pon_port }}</span>
                                                 <span v-if="getPonVlansText(olt, odc.pon_port)" class="text-gray-400">[{{ getPonVlansText(olt, odc.pon_port) }}]</span>
@@ -113,7 +113,7 @@
                                     <div v-for="odp in odc.odps" :key="odp.id" class="flex items-center justify-between bg-white border border-gray-200 rounded p-2 text-xs">
                                         <div class="flex items-center gap-2">
                                             <div class="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
-                                            <Link :href="route('odps.show', odp.id)" class="font-medium text-gray-700 hover:text-purple-600">{{ odp.name }}</Link>
+                                            <Link :href="'/odps/' + odp.id" class="font-medium text-gray-700 hover:text-purple-600">{{ odp.name }}</Link>
                                         </div>
                                         <div class="text-gray-500">{{ odp.total_ports }} Port</div>
                                     </div>
