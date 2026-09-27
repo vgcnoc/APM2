@@ -66,15 +66,26 @@
                                     <div class="flex flex-col items-end gap-1">
                                         <div class="flex items-center gap-1.5" title="Stok Awal">
                                             <span class="text-[10px] font-bold text-gray-400 uppercase">Awal:</span>
-                                            <span class="text-xs font-semibold text-gray-600">{{ formatNumber(item.initial_stock) }} {{ item.unit }}</span>
+                                            <span class="text-xs font-semibold text-gray-600">
+                                                {{ formatNumber(item.initial_stock) }} 
+                                                {{ item.category === 'Kabel' ? 'meter' : (item.category === 'Isolasi' ? 'cm' : (item.category === 'Paku Klem' ? 'pcs' : item.unit)) }}
+                                            </span>
                                         </div>
                                         <div class="flex items-center gap-1.5" title="Sisa Stok Saat Ini">
                                             <span class="text-[10px] font-bold text-gray-400 uppercase">Sisa:</span>
                                             <span class="text-sm font-bold text-blue-600">{{ formatNumber(item.stock) }}</span>
-                                            <span class="text-xs text-gray-500">{{ item.unit }}</span>
+                                            <span class="text-xs text-gray-500">
+                                                {{ item.category === 'Kabel' ? 'meter' : (item.category === 'Isolasi' ? 'cm' : (item.category === 'Paku Klem' ? 'pcs' : item.unit)) }}
+                                            </span>
                                         </div>
                                         <div v-if="item.category === 'Kabel' && item.total_rolls" class="text-xs text-gray-400 mt-0.5">
                                             ({{ item.total_rolls }} roll)
+                                        </div>
+                                        <div v-else-if="item.category === 'Paku Klem' && item.total_packs" class="text-xs text-gray-400 mt-0.5">
+                                            ({{ item.total_packs }} bungkus)
+                                        </div>
+                                        <div v-else-if="item.category === 'Isolasi' && item.total_pieces" class="text-xs text-gray-400 mt-0.5">
+                                            ({{ item.total_pieces }} pcs utuh)
                                         </div>
                                     </div>
                                 </td>
