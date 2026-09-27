@@ -8,13 +8,13 @@ defineProps({
 });
 
 const form = useForm({
-    email: 'admin@isp.local',
-    password: 'password',
+    email: '',
+    password: '',
     remember: false,
 });
 
 const submit = () => {
-    form.post(window.route('login'), {
+    form.post('/login', {
         onFinish: () => form.reset('password'),
     });
 };
@@ -84,7 +84,7 @@ const submit = () => {
 
                     <div>
                         <button type="submit" :disabled="form.processing"
-                            class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-gray-900 bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:-translate-y-0.5"
+                            class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:-translate-y-0.5"
                             :class="{ 'opacity-75 cursor-not-allowed': form.processing }">
                             Sign in
                         </button>
