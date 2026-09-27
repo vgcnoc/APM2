@@ -202,7 +202,7 @@ const submit = () => {
         items: data.items.map(item => ({
             material_id: item.material_id,
             quantity: item.input_quantity,
-            unit: item.is_cable ? item.unit_mode : item.unit_manual
+            unit: (item.is_cable || item.is_pack) ? item.unit_mode : item.unit_manual
         }))
     })).post('/material-transactions');
 };
