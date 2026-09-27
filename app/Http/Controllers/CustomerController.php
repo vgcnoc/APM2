@@ -173,7 +173,19 @@ class CustomerController extends Controller
      */
     public function installed(Request $request): Response
     {
-        $customers = Customer::installed()
+        $baseQuery = Customer::installed();
+        
+        $stats = [
+            'jadwal_pasang' => (clone $baseQuery)->where('status', 'installing')
+                ->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation'))->count(),
+            'laporan_pasang' => (clone $baseQuery)->where('status', 'installing')
+                ->whereHas('technicianSchedules', fn($q) => $q->where('type', 'installation'))
+                ->doesntHave('ont')->count(),
+            'aktivasi' => (clone $baseQuery)->where('status', 'installing')->has('ont')->count(),
+            'aktif' => (clone $baseQuery)->where('status', 'active')->count(),
+        ];
+
+        $customers = (clone $baseQuery)
             ->with(['package', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'installation')->with('technician');
             }])
@@ -199,6 +211,7 @@ class CustomerController extends Controller
             'technicians' => $technicians,
             'availableOnts' => $availableOnts,
             'materialTransactions' => $materialTransactions,
+            'stats' => $stats,
             'filters' => $request->only(['search', 'status']),
         ]);
     }

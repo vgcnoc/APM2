@@ -1,5 +1,34 @@
 <template>
     <AppLayout title="Pelanggan Terpasang" subtitle="Pelanggan yang sedang/sudah diinstalasi">
+        
+        <!-- Statistik Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <StatCard 
+                title="Belum Jadwal Pasang" 
+                :value="stats?.jadwal_pasang || 0" 
+                icon="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                color="blue" 
+            />
+            <StatCard 
+                title="Proses Instalasi" 
+                :value="stats?.laporan_pasang || 0" 
+                icon="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" 
+                color="amber" 
+            />
+            <StatCard 
+                title="Menunggu Aktivasi" 
+                :value="stats?.aktivasi || 0" 
+                icon="M13 10V3L4 14h7v7l9-11h-7z" 
+                color="purple" 
+            />
+            <StatCard 
+                title="Telah Aktif" 
+                :value="stats?.aktif || 0" 
+                icon="M5 13l4 4L19 7" 
+                color="emerald" 
+            />
+        </div>
+
         <DataTable
             :columns="columns"
             :data="customers.data"
@@ -317,12 +346,14 @@ import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
+import StatCard from '@/Components/StatCard.vue';
 
 const props = defineProps({ 
     customers: Object, 
     technicians: Array, 
     availableOnts: { type: Array, default: () => [] }, 
     materialTransactions: { type: Array, default: () => [] },
+    stats: Object,
     filters: Object 
 });
 
