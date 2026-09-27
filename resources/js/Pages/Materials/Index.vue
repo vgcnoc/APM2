@@ -273,10 +273,10 @@ const performSearch = () => {
 
 const handleCategoryChange = () => {
     if (form.category === 'Kabel') {
-        form.unit = 'roll';
+        form.unit = 'meter'; // Base unit for cable is ALWAYS meter
         calculateCableStock();
     } else {
-        if (form.unit === 'roll') {
+        if (form.unit === 'meter' || form.unit === 'roll') {
             form.unit = 'pcs';
         }
     }

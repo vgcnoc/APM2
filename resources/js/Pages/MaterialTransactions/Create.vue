@@ -183,7 +183,7 @@ const submit = () => {
         ...data,
         items: data.items.map(item => ({
             material_id: item.material_id,
-            quantity: item.unit_mode === 'roll' ? (item.input_quantity * item.meter_per_roll) : item.input_quantity,
+            quantity: item.input_quantity,
             unit: item.is_cable ? item.unit_mode : item.unit_manual
         }))
     })).post('/material-transactions');

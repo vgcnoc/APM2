@@ -86,9 +86,14 @@ class MaterialTransactionController extends Controller
                 ]);
 
                 // Deduct Stock
-                $material->stock -= $itemData['quantity'];
+                $deduction = $itemData['quantity'];
+                if ($material->category === 'Kabel' && ($itemData['unit'] === 'roll' || $itemData['unit'] === 'rol')) {
+                    $deduction = $itemData['quantity'] * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
+                }
                 
-                // If it's cable, we might want to roughly recalculate total_rolls, but it's optional
+                $material->stock -= $deduction;
+                
+                // Recalculate total_rolls roughly
                 if ($material->category === 'Kabel' && $material->meter_per_roll > 0) {
                     $material->total_rolls = $material->stock / $material->meter_per_roll;
                 }
