@@ -189,7 +189,7 @@ function submit() {
 
 function deleteArea(id) {
     if (confirm('Apakah Anda yakin ingin menghapus area ini?')) {
-        router.post(`/settings/areas/${id}`, { _method: 'delete' });
+        router.post(`/settings/areas/${id}/delete`);
     }
 }
 </script>

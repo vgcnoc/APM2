@@ -584,7 +584,7 @@ const submit = () => {
 
 const deleteData = (id) => {
     if (confirm('Yakin ingin menghapus data material ini?')) {
-        router.post(`/materials/${id}`, { _method: 'delete' });
+        router.post(`/materials/${id}/delete`);
     }
 };
 </script>

@@ -455,7 +455,7 @@ function submit() {
 
 function deleteOdp(id) {
     if (confirm('Apakah Anda yakin ingin menghapus ODP ini?')) {
-        router.post(`/odps/${id}`, { _method: 'delete' });
+        router.post(`/odps/${id}/delete`);
     }
 }
 </script>
