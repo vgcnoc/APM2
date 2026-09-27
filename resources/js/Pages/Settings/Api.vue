@@ -1,13 +1,34 @@
-<script setup>
-import { Head } from '@inertiajs/vue3';
+﻿<script setup>
+import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import axios from 'axios';
 
+const props = defineProps({
+    appLkUrl: String,
+    appLkToken: String,
+});
+
 const activeTab = ref('auth');
-const endpointUrl = 'http://localhost:8000/api/customers/booking';
+const endpointUrl = ref('');
 const generatedToken = ref('');
 const isGenerating = ref(false);
+
+const configForm = useForm({
+    app_lk_url: props.appLkUrl || '',
+    app_lk_token: props.appLkToken || '',
+});
+
+const saveConfig = () => {
+    configForm.post(route('settings.api.config'), {
+        preserveScroll: true,
+        onSuccess: () => alert('Konfigurasi berhasil disimpan!'),
+    });
+};
+
+onMounted(() => {
+    endpointUrl.value = window.location.origin + '/api/customers/booking';
+});
 
 const connectionStatus = ref('unknown');
 const isTesting = ref(false);
@@ -35,23 +56,46 @@ const generateToken = async () => {
     }
 };
 
-const testConnection = () => {
+const testConnection = async () => {
+    if (!configForm.app_lk_url) {
+        alert('Harap simpan Konfigurasi Webhook app-LK terlebih dahulu.');
+        return;
+    }
+    
     isTesting.value = true;
-    setTimeout(() => {
+    try {
+        const response = await axios.post('/settings/api/test-connection');
+        if (response.data.status === 'success') {
+            connectionStatus.value = 'connected';
+            lastTested.value = new Date().toLocaleString('id-ID');
+            alert(response.data.message);
+        } else {
+            connectionStatus.value = 'disconnected';
+            alert(response.data.message);
+        }
+    } catch (error) {
+        connectionStatus.value = 'disconnected';
+        alert('Gagal menguji koneksi: ' + (error.response?.data?.message || error.message));
+    } finally {
         isTesting.value = false;
-        connectionStatus.value = 'connected';
-        lastTested.value = new Date().toLocaleString('id-ID');
-        alert('Koneksi berhasil! app-LK merespons dengan baik.');
-    }, 1500);
+    }
 };
 
-const syncData = () => {
+const syncData = async () => {
     isSyncing.value = true;
-    setTimeout(() => {
+    try {
+        const response = await axios.post('/settings/api/sync');
+        if (response.data.status === 'success') {
+            lastSynced.value = new Date().toLocaleString('id-ID');
+            alert(response.data.message);
+        } else {
+            alert(response.data.message);
+        }
+    } catch (error) {
+        alert('Sinkronisasi gagal: ' + (error.response?.data?.message || error.message));
+    } finally {
         isSyncing.value = false;
-        lastSynced.value = new Date().toLocaleString('id-ID');
-        alert('Data berhasil disinkronkan ke app-LK.');
-    }, 2000);
+    }
 };
 </script>
 
@@ -172,11 +216,31 @@ Http::withToken(<span class="text-purple-400">$token</span>)->timeout(5)->post(<
                     <!-- Tab: Sync -->
                     <div v-if="activeTab === 'sync'" class="space-y-6 animate-fade-in-up">
                         <div class="flex items-center justify-between">
-                            <h4 class="text-lg font-semibold text-gray-900">Sinkronisasi & Status Koneksi</h4>
+                            <h4 class="text-lg font-semibold text-gray-900">Konfigurasi Webhook & Sinkronisasi</h4>
                         </div>
                         <p class="text-gray-500 text-sm leading-relaxed">
-                            Lakukan pengujian koneksi ke sistem app-LK dan sinkronisasi data pelanggan secara manual.
+                            Atur URL dan Token dari aplikasi app-LK Anda untuk menguji koneksi dan melakukan sinkronisasi data.
                         </p>
+
+                        <!-- Config Form -->
+                        <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                            <form @submit.prevent="saveConfig" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">URL Endpoint app-LK</label>
+                                    <input v-model="configForm.app_lk_url" type="url" placeholder="https://app-lk.example.com" class="form-input w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" required>
+                                    <p class="text-xs text-gray-500 mt-1">URL dasar aplikasi app-LK Anda tanpa slash di akhir.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Bearer Token app-LK</label>
+                                    <input v-model="configForm.app_lk_token" type="text" placeholder="Masukkan token autentikasi app-LK..." class="form-input w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" required>
+                                </div>
+                                <div class="flex justify-end pt-2">
+                                    <button type="submit" :disabled="configForm.processing" class="btn-primary">
+                                        {{ configForm.processing ? 'Menyimpan...' : 'Simpan Konfigurasi' }}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <!-- Status Panel -->
@@ -210,9 +274,9 @@ Http::withToken(<span class="text-purple-400">$token</span>)->timeout(5)->post(<
                             <!-- Sync Panel -->
                             <div class="bg-gray-50 rounded-xl p-6 border border-gray-200 space-y-4">
                                 <div class="flex items-center justify-between">
-                                    <h5 class="text-sm font-medium text-gray-900">Sinkronisasi Data</h5>
+                                    <h5 class="text-sm font-medium text-gray-900">Sinkronisasi Data (Tarik Data)</h5>
                                 </div>
-                                <p class="text-xs text-gray-500">Mendorong data pelanggan terbaru ke platform app-LK.</p>
+                                <p class="text-xs text-gray-500">Menarik (mengambil) data pelanggan terbaru dari platform app-LK ke sistem ini.</p>
                                 
                                 <button 
                                     @click="syncData"

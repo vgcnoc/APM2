@@ -119,8 +119,94 @@ Route::middleware(['auth'])->group(function () {
     Route::post('settings/areas/{area}/delete', [\App\Http\Controllers\AreaController::class, 'destroy'])->name('areas.destroy.post');
     
     Route::get('/settings/api', function () {
-        return inertia('Settings/Api');
+        $settings = json_decode(file_exists(storage_path('app/settings.json')) ? file_get_contents(storage_path('app/settings.json')) : '{}', true);
+        return inertia('Settings/Api', [
+            'appLkUrl' => $settings['app_lk_url'] ?? '',
+            'appLkToken' => $settings['app_lk_token'] ?? ''
+        ]);
     })->name('settings.api');
+
+    Route::post('/settings/api/config', function (Illuminate\Http\Request $request) {
+        $data = $request->validate([
+            'app_lk_url' => 'required|url',
+            'app_lk_token' => 'required|string'
+        ]);
+        file_put_contents(storage_path('app/settings.json'), json_encode($data));
+        return back()->with('success', 'Konfigurasi App-LK berhasil disimpan.');
+    })->name('settings.api.config');
+
+    Route::post('/settings/api/test-connection', function () {
+        $settings = json_decode(file_exists(storage_path('app/settings.json')) ? file_get_contents(storage_path('app/settings.json')) : '{}', true);
+        if (empty($settings['app_lk_url'])) {
+            return response()->json(['status' => 'error', 'message' => 'URL App-LK belum dikonfigurasi.']);
+        }
+        
+        try {
+            $response = Illuminate\Support\Facades\Http::withToken($settings['app_lk_token'] ?? '')
+                ->timeout(10)
+                ->get(rtrim($settings['app_lk_url'], '/') . '/api/ping'); // Sesuaikan dengan endpoint tes di app-LK
+                
+            if ($response->successful()) {
+                return response()->json(['status' => 'success', 'message' => 'Koneksi berhasil! app-LK merespons dengan baik.']);
+            }
+            return response()->json(['status' => 'error', 'message' => 'Koneksi gagal. HTTP Status: ' . $response->status()]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+        }
+    })->name('settings.api.test');
+
+    Route::post('/settings/api/sync', function () {
+        $settings = json_decode(file_exists(storage_path('app/settings.json')) ? file_get_contents(storage_path('app/settings.json')) : '{}', true);
+        if (empty($settings['app_lk_url'])) {
+            return response()->json(['status' => 'error', 'message' => 'URL App-LK belum dikonfigurasi.']);
+        }
+
+        try {
+            // Meminta data dari app-LK (endpoint sesuaikan dengan yang ada di app-LK Anda)
+            $response = Illuminate\Support\Facades\Http::withToken($settings['app_lk_token'] ?? '')
+                ->timeout(15)
+                ->get(rtrim($settings['app_lk_url'], '/') . '/api/customers');
+                
+            if ($response->successful()) {
+                $customers = $response->json();
+                
+                // Jika response JSON ada di dalam key 'data'
+                if (isset($customers['data']) && is_array($customers['data'])) {
+                    $customers = $customers['data'];
+                }
+
+                if (!is_array($customers)) {
+                    return response()->json(['status' => 'error', 'message' => 'Format balasan dari app-LK tidak valid.']);
+                }
+
+                $syncedCount = 0;
+                foreach ($customers as $cust) {
+                    if (empty($cust['name']) || empty($cust['phone'])) continue;
+
+                    // Cek apakah sudah ada (mencegah duplikat berdasarkan nomor HP)
+                    $existing = \App\Models\Customer::where('phone', $cust['phone'])->first();
+                    
+                    if (!$existing) {
+                        \App\Models\Customer::create([
+                            'name' => $cust['name'],
+                            'phone' => $cust['phone'],
+                            'address' => $cust['address'] ?? '-',
+                            'email' => $cust['email'] ?? null,
+                            'area' => $cust['area'] ?? null,
+                            'registration_date' => $cust['registration_date'] ?? null,
+                            'status' => 'booking'
+                        ]);
+                        $syncedCount++;
+                    }
+                }
+
+                return response()->json(['status' => 'success', 'message' => "Berhasil menarik dan mendaftarkan $syncedCount pelanggan baru dari app-LK."]);
+            }
+            return response()->json(['status' => 'error', 'message' => 'Sinkronisasi gagal. HTTP Status: ' . $response->status()]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+        }
+    })->name('settings.api.sync');
 
     Route::post('/settings/api/token', function (Illuminate\Http\Request $request) {
         $user = $request->user();
