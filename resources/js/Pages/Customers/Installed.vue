@@ -175,7 +175,14 @@
                                                 <span class="text-xs font-medium text-blue-900 leading-tight flex-1">{{ item.name }}</span>
                                                 <div class="flex gap-1 shrink-0">
                                                     <input v-model="item.qty" type="number" step="0.01" min="0" class="w-16 px-2 py-1 text-xs border border-blue-200 rounded focus:ring-blue-500" placeholder="Qty">
-                                                    <input v-model="item.unit" type="text" class="w-16 px-2 py-1 text-xs border border-blue-200 rounded focus:ring-blue-500" placeholder="Satuan">
+                                                    <input v-model="item.unit" list="unit-options-list" type="text" class="w-20 px-2 py-1 text-xs border border-blue-200 rounded focus:ring-blue-500" placeholder="Satuan">
+                                                    <datalist id="unit-options-list">
+                                                        <option value="pcs"></option>
+                                                        <option value="meter"></option>
+                                                        <option value="roll"></option>
+                                                        <option value="pack"></option>
+                                                        <option value="box"></option>
+                                                    </datalist>
                                                 </div>
                                             </li>
                                         </ul>
