@@ -235,19 +235,53 @@
                             </div>
                         </div>
 
-                        <!-- Normal Stock & Price (Non Kabel) -->
-                        <div v-else class="grid grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Stok</label>
-                                <input v-model="form.stock" type="number" step="0.01" min="0" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" required>
+                        <!-- Normal Stock & Price Calculator (Non Kabel) -->
+                        <div v-else class="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
+                            <div class="flex items-center gap-2 mb-4 text-blue-600 font-medium text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                </svg>
+                                Kalkulator Stok & Harga (Otomatis)
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Hrg Modal</label>
-                                <input v-model="form.price_per_unit" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                            
+                            <div class="mb-4">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Total Stok Masuk ({{ form.unit || 'pcs' }}) *</label>
+                                <input v-model="form.stock" type="number" step="0.01" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white" required>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Hrg Jual</label>
-                                <input v-model="form.selling_price" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Total Harga Beli (Semua Stok)</label>
+                                    <div class="relative">
+                                        <span class="absolute left-3 top-2 text-gray-500 text-sm">Rp</span>
+                                        <input v-model="tempTotalModal" @input="calculateUnitPrice('modal')" type="number" min="0" class="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white" placeholder="Cth: 1000000">
+                                    </div>
+                                    <p class="text-[10px] text-gray-400 mt-1">Opsional: Ketik total tagihan, harga satuan akan dihitung</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Harga Modal Satuan (per {{ form.unit || 'pcs' }})</label>
+                                    <div class="relative">
+                                        <span class="absolute left-3 top-2 text-gray-500 text-sm">Rp</span>
+                                        <input v-model="form.price_per_unit" @input="calculateTotalPrice('modal')" type="number" min="0" class="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white" placeholder="Cth: 100000">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Total Harga Jual (Semua Stok)</label>
+                                    <div class="relative">
+                                        <span class="absolute left-3 top-2 text-gray-500 text-sm">Rp</span>
+                                        <input v-model="tempTotalJual" @input="calculateUnitPrice('jual')" type="number" min="0" class="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white" placeholder="Opsional...">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Harga Jual Satuan (per {{ form.unit || 'pcs' }})</label>
+                                    <div class="relative">
+                                        <span class="absolute left-3 top-2 text-gray-500 text-sm">Rp</span>
+                                        <input v-model="form.selling_price" @input="calculateTotalPrice('jual')" type="number" min="0" class="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white" placeholder="Cth: 150000">
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -269,7 +303,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { router, useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -282,6 +316,8 @@ const search = ref(props.filters.search || '');
 const showModal = ref(false);
 const isEditing = ref(false);
 const editingId = ref(null);
+const tempTotalModal = ref(null);
+const tempTotalJual = ref(null);
 
 const form = useForm({
     name: '',
@@ -319,6 +355,39 @@ const performSearch = () => {
     router.get('/materials', { search: search.value }, { preserveState: true });
 };
 
+const calculateUnitPrice = (type) => {
+    const stock = parseFloat(form.stock) || 0;
+    if (stock <= 0) return;
+    
+    if (type === 'modal') {
+        const total = parseFloat(tempTotalModal.value) || 0;
+        form.price_per_unit = total > 0 ? Math.round(total / stock) : 0;
+    } else {
+        const total = parseFloat(tempTotalJual.value) || 0;
+        form.selling_price = total > 0 ? Math.round(total / stock) : 0;
+    }
+};
+
+const calculateTotalPrice = (type) => {
+    const stock = parseFloat(form.stock) || 0;
+    
+    if (type === 'modal') {
+        const unitPrice = parseFloat(form.price_per_unit) || 0;
+        tempTotalModal.value = stock > 0 && unitPrice > 0 ? stock * unitPrice : null;
+    } else {
+        const unitPrice = parseFloat(form.selling_price) || 0;
+        tempTotalJual.value = stock > 0 && unitPrice > 0 ? stock * unitPrice : null;
+    }
+};
+
+// Calculate total when stock changes for non-cable items
+watch(() => form.stock, (newVal) => {
+    if (form.category !== 'Kabel') {
+        calculateTotalPrice('modal');
+        calculateTotalPrice('jual');
+    }
+});
+
 const handleCategoryChange = () => {
     if (form.category === 'Kabel') {
         form.unit = 'meter'; // Base unit for cable is ALWAYS meter
@@ -350,10 +419,16 @@ const openModal = (item = null) => {
         form.price_per_unit = item.price_per_unit || 0;
         form.selling_price = item.selling_price || 0;
         form.description = item.description || '';
+        if (form.category !== 'Kabel') {
+            calculateTotalPrice('modal');
+            calculateTotalPrice('jual');
+        }
     } else {
         isEditing.value = false;
         editingId.value = null;
         form.reset();
+        tempTotalModal.value = null;
+        tempTotalJual.value = null;
     }
     showModal.value = true;
 };
