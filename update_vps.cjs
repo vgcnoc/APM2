@@ -5,7 +5,8 @@ const conn = new Client();
 const commands = `
 cd /var/www/APM2
 echo "Pulling latest changes from GitHub..."
-git pull origin main
+git fetch origin
+git reset --hard origin/main
 
 echo "Running Database Migrations..."
 php artisan migrate --force

@@ -314,7 +314,6 @@ const form = useForm({
     status: 'active',
     description: '',
     photo: null,
-    _method: 'post',
     split_units: [
         {
             name: 'ODC Induk',
@@ -397,7 +396,6 @@ function openEditModal(odc) {
     form.status = odc.status;
     form.description = odc.description;
     form.photo = null;
-    form._method = 'put';
     form.clearErrors();
     activeTab.value = 0;
     isModalOpen.value = true;
