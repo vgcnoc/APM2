@@ -96,6 +96,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('material-transactions/{item}/reset-ont', [MaterialTransactionController::class, 'resetOnt'])->name('material-transactions.reset-ont');
     Route::post('material-transactions/{material_transaction}/delete', [MaterialTransactionController::class, 'destroy'])->name('material-transactions.destroy');
 
+    // ── Pengguna & Hak Akses ───────────────────────────────────
+    Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
+    Route::post('users/{user}/update', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update.post');
+    Route::post('users/{user}/delete', [\App\Http\Controllers\UserController::class, 'destroy'])->name('users.destroy.post');
+
     // ── Billing & Keuangan ─────────────────────────────────────
     // Route::resource('invoices', InvoiceController::class);
     // Route::resource('payments', PaymentController::class);

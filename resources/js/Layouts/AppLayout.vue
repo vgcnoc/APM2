@@ -139,7 +139,7 @@ const menuItems = [
     { type: 'group', label: 'PENGATURAN' },
     { type: 'link', href: '/settings/areas', icon: 'map', label: 'Master Area', active: (url) => url.startsWith('/settings/areas') },
     { type: 'link', href: '/settings/api', icon: 'zap', label: 'API Integrasi', active: (url) => url.startsWith('/settings/api') },
-    { type: 'link', href: '#', icon: 'settings', label: 'Manajemen User', active: () => false },
+    { type: 'link', href: '/users', icon: 'users', label: 'Manajemen User', active: (url) => url.startsWith('/users') },
     { type: 'link', href: '#', icon: 'package', label: 'Paket Internet', active: () => false },
 ];
 
