@@ -138,71 +138,74 @@
         <!-- Modal Assign Jadwal Pasang -->
         <div v-if="showAssignModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-up">
-                <div class="p-5 border-b border-gray-200 flex items-center justify-between">
-                    <h3 class="text-lg font-bold text-gray-900">Jadwal Pasang Baru</h3>
-                    <button @click="showAssignModal = false" class="text-gray-500 hover:text-gray-900">
+                <div class="p-5 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        Jadwal Pasang Baru
+                    </h3>
+                    <button @click="showAssignModal = false" class="text-gray-400 hover:text-gray-700 bg-white hover:bg-gray-100 p-1.5 rounded-lg border border-transparent hover:border-gray-200 transition-all">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
                 <form @submit.prevent="submitAssign">
                     <div class="p-5 space-y-4">
                         <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-2">Pilih Teknisi</label>
-                            <div class="space-y-2 max-h-32 overflow-y-auto p-2 border border-gray-200 rounded-lg">
-                                <label v-for="tech in technicians" :key="tech.id" class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" :value="tech.id" v-model="assignForm.technician_ids" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                    <span class="text-sm text-gray-700">{{ tech.name }}</span>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Pilih Teknisi</label>
+                            <div class="space-y-2 max-h-32 overflow-y-auto p-3 border border-gray-200 bg-slate-50/50 rounded-xl shadow-inner">
+                                <label v-for="tech in technicians" :key="tech.id" class="flex items-center gap-3 cursor-pointer p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-blue-100 hover:shadow-sm">
+                                    <input type="checkbox" :value="tech.id" v-model="assignForm.technician_ids" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+                                    <span class="text-sm font-medium text-slate-700">{{ tech.name }}</span>
                                 </label>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-medium text-gray-500 mb-1">Tanggal Pasang</label>
-                                <input v-model="assignForm.scheduled_date" type="date" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500" required />
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Tanggal Pasang</label>
+                                <input v-model="assignForm.scheduled_date" type="date" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all" required />
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-500 mb-1">Waktu (Jam)</label>
-                                <input v-model="assignForm.scheduled_time" type="time" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500" required />
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Waktu (Jam)</label>
+                                <input v-model="assignForm.scheduled_time" type="time" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all" required />
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <div class="flex items-center justify-between mb-1">
-                                    <label class="block text-xs font-medium text-gray-500">Data ONT</label>
-                                    <button type="button" @click="assignForm.ont_models.push('')" class="text-blue-500 hover:text-blue-600 focus:outline-none" title="Tambah ONT">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider">Data ONT</label>
+                                    <button type="button" @click="assignForm.ont_models.push('')" class="text-blue-500 hover:text-blue-600 hover:bg-blue-50 p-1 rounded-md focus:outline-none transition-colors" title="Tambah ONT">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                     </button>
                                 </div>
                                 <div class="space-y-2">
-                                    <div v-for="(ont, index) in assignForm.ont_models" :key="'ont-'+index" class="flex gap-2 items-center">
-                                        <select v-model="assignForm.ont_models[index]" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
+                                    <div v-for="(ont, index) in assignForm.ont_models" :key="'ont-'+index" class="flex gap-2 items-center group">
+                                        <select v-model="assignForm.ont_models[index]" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all">
                                             <option value="">-- Pilih ONT --</option>
                                             <option v-for="ont in availableOnts" :key="ont.id" :value="ont.brand + (ont.model ? ' ' + ont.model : '') + ' (SN: ' + ont.serial_number + ')'">
                                                 {{ ont.brand }} {{ ont.model || '' }} - SN: {{ ont.serial_number }}
                                             </option>
                                         </select>
-                                        <button v-if="assignForm.ont_models.length > 1" type="button" @click="assignForm.ont_models.splice(index, 1)" class="text-red-500 hover:text-red-600 focus:outline-none" title="Hapus">
+                                        <button v-if="assignForm.ont_models.length > 1" type="button" @click="assignForm.ont_models.splice(index, 1)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg opacity-50 group-hover:opacity-100 transition-all focus:outline-none" title="Hapus">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
                                         </button>
                                     </div>
                                 </div>
                             </div>
                             <div>
-                                <div class="flex items-center justify-between mb-1">
-                                    <label class="block text-xs font-medium text-gray-500">Material (Surat Jalan)</label>
-                                    <button type="button" @click="assignForm.material_transaction_ids.push('')" class="text-blue-500 hover:text-blue-600 focus:outline-none" title="Tambah Surat Jalan">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider">Material (Surat Jalan)</label>
+                                    <button type="button" @click="assignForm.material_transaction_ids.push('')" class="text-blue-500 hover:text-blue-600 hover:bg-blue-50 p-1 rounded-md focus:outline-none transition-colors" title="Tambah Surat Jalan">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                     </button>
                                 </div>
                                 <div class="space-y-2">
-                                    <div v-for="(trxId, index) in assignForm.material_transaction_ids" :key="'trx-'+index" class="flex gap-2 items-center">
-                                        <select v-model="assignForm.material_transaction_ids[index]" @change="updateMaterialItems" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
+                                    <div v-for="(trxId, index) in assignForm.material_transaction_ids" :key="'trx-'+index" class="flex gap-2 items-center group">
+                                        <select v-model="assignForm.material_transaction_ids[index]" @change="updateMaterialItems" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all">
                                             <option value="">-- Pilih Surat Jalan / Order --</option>
                                             <option v-for="trx in materialTransactions" :key="trx.id" :value="trx.transaction_number">
                                                 {{ getTransactionLabel(trx) }}
                                             </option>
                                         </select>
-                                        <button v-if="assignForm.material_transaction_ids.length > 1" type="button" @click="removeMaterialTransaction(index)" class="text-red-500 hover:text-red-600 focus:outline-none" title="Hapus">
+                                        <button v-if="assignForm.material_transaction_ids.length > 1" type="button" @click="removeMaterialTransaction(index)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg opacity-50 group-hover:opacity-100 transition-all focus:outline-none" title="Hapus">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
                                         </button>
                                     </div>
@@ -229,13 +232,14 @@
                             </div>
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Catatan (Opsional)</label>
-                            <textarea v-model="assignForm.notes" rows="2" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500"></textarea>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Catatan (Opsional)</label>
+                            <textarea v-model="assignForm.notes" rows="2" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all resize-none"></textarea>
                         </div>
                     </div>
-                    <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
-                        <button type="button" @click="showAssignModal = false" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Batal</button>
-                        <button type="submit" :disabled="assignForm.processing" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+                    <div class="p-5 bg-slate-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
+                        <button type="button" @click="showAssignModal = false" class="px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-slate-900 transition-all shadow-sm">Batal</button>
+                        <button type="submit" :disabled="assignForm.processing" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-md focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-2">
+                            <svg v-if="assignForm.processing" class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             {{ assignForm.processing ? 'Menyimpan...' : 'Tugaskan' }}
                         </button>
                     </div>
