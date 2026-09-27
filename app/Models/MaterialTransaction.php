@@ -14,6 +14,7 @@ class MaterialTransaction extends Model
         'date',
         'technician_name',
         'purpose',
+        'area',
         'notes',
         'total_cost',
         'user_id',

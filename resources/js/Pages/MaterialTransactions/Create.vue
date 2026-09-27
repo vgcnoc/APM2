@@ -14,9 +14,18 @@
                         <input v-model="form.technician_name" type="text" required placeholder="Contoh: Budi, Tim 1" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Tujuan / Peruntukan *</label>
-                    <input v-model="form.purpose" type="text" required placeholder="Contoh: Instalasi Pelanggan Baru (Pak Andi), Ticketing #1234" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tujuan / Peruntukan *</label>
+                        <input v-model="form.purpose" type="text" required placeholder="Contoh: Instalasi (Pak Andi), Ticketing #1234" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Area / Wilayah</label>
+                        <input v-model="form.area" list="area-options" type="text" placeholder="Contoh: Majalengka, Cibaduyut..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                        <datalist id="area-options">
+                            <option v-for="area in areas" :key="area" :value="area"></option>
+                        </datalist>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Catatan Tambahan</label>
@@ -115,6 +124,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     materials: Array,
+    areas: Array,
 });
 
 const getTodayDate = () => {
@@ -131,6 +141,7 @@ const form = useForm({
     date: getTodayDate(),
     technician_name: '',
     purpose: '',
+    area: '',
     notes: '',
     items: [
         { material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, meter_per_roll: 1000 }

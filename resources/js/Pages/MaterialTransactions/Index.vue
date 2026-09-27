@@ -49,7 +49,10 @@
                                 </td>
                                 <td class="py-4 px-6">
                                     <p class="text-sm font-semibold text-gray-900">{{ item.technician_name }}</p>
-                                    <p class="text-xs text-gray-500 mt-0.5">{{ item.purpose }}</p>
+                                    <p class="text-xs text-gray-500 mt-0.5">
+                                        {{ item.purpose }} 
+                                        <span v-if="item.area" class="text-blue-500 font-medium">({{ item.area }})</span>
+                                    </p>
                                 </td>
                                 <td class="py-4 px-6 text-right">
                                     <span class="text-sm font-bold text-gray-900">Rp {{ formatNumber(item.total_cost) }}</span>

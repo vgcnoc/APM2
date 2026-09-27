@@ -39,6 +39,7 @@
                             <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Diberikan Kepada (Teknisi)</h3>
                             <p class="text-base font-bold text-gray-900">{{ transaction.technician_name }}</p>
                             <p class="text-sm text-gray-600 mt-1"><span class="font-medium text-gray-500">Tujuan:</span> {{ transaction.purpose }}</p>
+                            <p v-if="transaction.area" class="text-sm text-gray-600 mt-1"><span class="font-medium text-gray-500">Area/Wilayah:</span> {{ transaction.area }}</p>
                             <p v-if="transaction.notes" class="text-sm text-gray-600 mt-1"><span class="font-medium text-gray-500">Catatan:</span> {{ transaction.notes }}</p>
                         </div>
                         <div>
