@@ -364,9 +364,9 @@ function getTransactionLabel(trx) {
         if (nonOntItems.length > 0) {
             itemsStr = nonOntItems.map(item => {
                 const name = item.material ? item.material.name : 'Unknown';
-                const qty = item.quantity;
-                const unit = item.unit || (item.material ? item.material.unit : 'pcs');
-                return `${name} (${qty} ${unit})`;
+                const stock = item.material ? item.material.stock : 0;
+                const unit = item.material ? item.material.unit : 'pcs';
+                return `${name} (Stok Sisa: ${stock} ${unit})`;
             }).join(', ');
             
             if (itemsStr.length > 60) {
@@ -376,7 +376,7 @@ function getTransactionLabel(trx) {
             itemsStr = 'Hanya ONT/Modem';
         }
     }
-    return `${itemsStr} - ${trx.technician_name}`;
+    return itemsStr;
 }
 
 const status = ref(props.filters?.status || '');
