@@ -34,6 +34,8 @@ class MaterialController extends Controller
             'unit' => 'required|string|max:50',
             'meter_per_roll' => 'nullable|numeric|min:0',
             'total_rolls' => 'nullable|numeric|min:0',
+            'pcs_per_pack' => 'nullable|numeric|min:0',
+            'total_packs' => 'nullable|numeric|min:0',
             'stock' => 'required|numeric|min:0',
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
@@ -56,6 +58,8 @@ class MaterialController extends Controller
             'unit' => 'required|string|max:50',
             'meter_per_roll' => 'nullable|numeric|min:0',
             'total_rolls' => 'nullable|numeric|min:0',
+            'pcs_per_pack' => 'nullable|numeric|min:0',
+            'total_packs' => 'nullable|numeric|min:0',
             'stock' => 'required|numeric|min:0',
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
@@ -85,6 +89,7 @@ class MaterialController extends Controller
         $validated = $request->validate([
             'added_stock' => 'required|numeric|min:0.01',
             'added_rolls' => 'nullable|numeric|min:0',
+            'added_packs' => 'nullable|numeric|min:0',
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
         ]);
@@ -94,6 +99,10 @@ class MaterialController extends Controller
 
         if ($material->category === 'Kabel' && !empty($validated['added_rolls'])) {
             $material->total_rolls += $validated['added_rolls'];
+        }
+
+        if ($material->category === 'Paku Klem' && !empty($validated['added_packs'])) {
+            $material->total_packs += $validated['added_packs'];
         }
 
         if (isset($validated['price_per_unit'])) {

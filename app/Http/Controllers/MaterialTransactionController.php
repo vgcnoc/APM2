@@ -79,6 +79,12 @@ class MaterialTransactionController extends Controller
                     $meterPerRoll = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
                     $pricePerUnit = $pricePerUnit / $meterPerRoll;
                 }
+                
+                // Jika barang adalah Paku Klem, hitung harga jual per pcs (harga 1 bungkus dibagi isi)
+                if ($material->category === 'Paku Klem' && strtolower($itemData['unit'] ?? '') === 'pcs') {
+                    $pcsPerPack = $material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1;
+                    $pricePerUnit = $pricePerUnit / $pcsPerPack;
+                }
 
                 $totalPrice = $itemData['quantity'] * $pricePerUnit;
                 $totalCost += $totalPrice;
@@ -98,12 +104,20 @@ class MaterialTransactionController extends Controller
                 if ($material->category === 'Kabel' && ($itemData['unit'] === 'roll' || $itemData['unit'] === 'rol')) {
                     $deduction = $itemData['quantity'] * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
                 }
+                if ($material->category === 'Paku Klem' && ($itemData['unit'] === 'pack' || $itemData['unit'] === 'bungkus')) {
+                    $deduction = $itemData['quantity'] * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
+                }
                 
                 $material->stock -= $deduction;
                 
                 // Recalculate total_rolls roughly
                 if ($material->category === 'Kabel' && $material->meter_per_roll > 0) {
                     $material->total_rolls = $material->stock / $material->meter_per_roll;
+                }
+                
+                // Recalculate total_packs roughly
+                if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
+                    $material->total_packs = $material->stock / $material->pcs_per_pack;
                 }
                 
                 $material->save();
@@ -184,10 +198,16 @@ class MaterialTransactionController extends Controller
                         if ($material->category === 'Kabel' && ($item->unit === 'roll' || $item->unit === 'rol')) {
                             $addition = $item->quantity * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
                         }
+                        if ($material->category === 'Paku Klem' && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
+                            $addition = $item->quantity * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
+                        }
                         $material->stock += $addition;
                         
                         if ($material->category === 'Kabel' && $material->meter_per_roll > 0) {
                             $material->total_rolls = $material->stock / $material->meter_per_roll;
+                        }
+                        if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
+                            $material->total_packs = $material->stock / $material->pcs_per_pack;
                         }
                         $material->save();
                     }
