@@ -229,6 +229,18 @@
                     </button>
                 </div>
                 <form @submit.prevent="submitReport">
+                    <!-- General Error Alert -->
+                    <div v-if="Object.keys(reportForm.errors).length > 0" class="mx-5 mt-5 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <div>
+                                <p class="text-xs font-bold text-red-800">Terdapat kesalahan:</p>
+                                <ul class="list-disc list-inside text-xs text-red-600 mt-1">
+                                    <li v-for="(error, key) in reportForm.errors" :key="key">{{ error }}</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                     <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
                         <div>
                             <div class="flex items-center justify-between mb-1">
@@ -288,6 +300,7 @@
                                     <span class="text-sm text-gray-600">Unfeasible (Tidak Layak)</span>
                                 </label>
                             </div>
+                            <p v-if="reportForm.errors.feasibility" class="text-red-500 text-xs mt-1">{{ reportForm.errors.feasibility }}</p>
                         </div>
 
                         <div class="pt-4 border-t border-gray-200">

@@ -11,6 +11,9 @@ git reset --hard origin/main
 echo "Running Database Migrations..."
 php artisan migrate --force
 
+echo "Creating storage symlink if missing..."
+php artisan storage:link
+
 echo "Rebuilding assets..."
 npm run build
 

@@ -535,7 +535,7 @@ class CustomerController extends Controller
             'odp_id' => 'nullable|exists:odps,id',
             'distance_meters' => 'nullable|numeric',
             'port_available' => 'nullable|boolean',
-            'feasibility' => 'required|in:feasible,unfeasible',
+            'feasibility' => 'required|in:feasible,not_feasible',
             'notes' => 'nullable|string',
             'photos' => 'nullable|array',
             'photos.*.label' => 'required|string',
