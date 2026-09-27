@@ -161,30 +161,11 @@
                     </div>
 
                     <form @submit.prevent="submitOntRegistration">
-                        <div class="mb-5">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Daftar Serial Number (SN)</label>
-                            <p class="text-xs text-gray-500 mb-3 leading-relaxed">
-                                Pisahkan dengan <strong>koma (,)</strong> atau <strong>enter (baris baru)</strong>.<br>
-                                Gunakan <i>barcode scanner</i> jika perlu.
+                        <div class="mb-5 bg-gray-50 border border-gray-200 rounded-xl p-4">
+                            <p class="text-sm text-gray-700 font-medium mb-1">Pendaftaran Otomatis</p>
+                            <p class="text-xs text-gray-500 leading-relaxed">
+                                Sistem akan membuatkan <strong>{{ selectedItem?.quantity }} unit</strong> ONT dengan Serial Number (SN) sementara secara otomatis. Anda dapat mengedit SN ini nanti saat teknisi memasang perangkat di rumah pelanggan.
                             </p>
-                            <textarea 
-                                v-model="ontForm.sn_list" 
-                                rows="4" 
-                                class="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all font-mono"
-                                placeholder="ZTEG123456, ZTEG765432..."
-                                required
-                            ></textarea>
-                            
-                            <div class="flex justify-between items-center mt-2">
-                                <p class="text-xs text-gray-500">
-                                    Jumlah SN terdeteksi: 
-                                    <span :class="{'text-red-600 font-bold': parsedSnCount > (selectedItem?.quantity || 0), 'text-green-600 font-bold': parsedSnCount === (selectedItem?.quantity || 0), 'text-gray-900 font-bold': parsedSnCount < (selectedItem?.quantity || 0)}">
-                                        {{ parsedSnCount }}
-                                    </span>
-                                    dari {{ selectedItem?.quantity }}
-                                </p>
-                                <p v-if="parsedSnCount > (selectedItem?.quantity || 0)" class="text-xs text-red-500 font-bold">SN Melebihi Kuantitas!</p>
-                            </div>
                         </div>
 
                         <div v-if="ontForm.errors.sn_list" class="mb-4 text-sm text-red-500 p-3 bg-red-50 rounded-lg border border-red-100">
@@ -193,9 +174,9 @@
 
                         <div class="flex justify-end gap-3 pt-2">
                             <button type="button" @click="closeOntModal" class="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">Batal</button>
-                            <button type="submit" :disabled="ontForm.processing || parsedSnCount === 0 || parsedSnCount > (selectedItem?.quantity || 0)" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                            <button type="submit" :disabled="ontForm.processing" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
                                 <svg v-if="ontForm.processing" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                                {{ ontForm.processing ? 'Menyimpan...' : 'Daftarkan ke ONT' }}
+                                {{ ontForm.processing ? 'Memproses...' : 'Daftarkan ke ONT' }}
                             </button>
                         </div>
                     </form>
@@ -229,11 +210,6 @@ const selectedItem = ref(null);
 
 const ontForm = useForm({
     sn_list: ''
-});
-
-const parsedSnCount = computed(() => {
-    if (!ontForm.sn_list) return 0;
-    return ontForm.sn_list.split(/[\n,]+/).filter(sn => sn.trim() !== '').length;
 });
 
 const openOntModal = (item) => {

@@ -127,17 +127,19 @@ class MaterialTransactionController extends Controller
 
     public function registerOnt(Request $request, MaterialTransactionItem $item)
     {
-        $request->validate([
-            'sn_list' => 'required|string',
-        ]);
-
         $item->load(['transaction', 'material']);
         
-        $sns = array_filter(array_map('trim', preg_split('/[\n,]+/', $request->sn_list)));
-        
-        // Count to ensure they don't exceed quantity
-        if (count($sns) > $item->quantity) {
-            return back()->withErrors(['sn_list' => 'Jumlah Serial Number (' . count($sns) . ') melebihi jumlah kuantitas barang (' . $item->quantity . ').']);
+        $sns = [];
+        if ($request->filled('sn_list')) {
+            $sns = array_filter(array_map('trim', preg_split('/[\n,]+/', $request->sn_list)));
+            if (count($sns) > $item->quantity) {
+                return back()->withErrors(['sn_list' => 'Jumlah Serial Number (' . count($sns) . ') melebihi jumlah kuantitas barang (' . $item->quantity . ').']);
+            }
+        } else {
+            // Auto-generate SNs
+            for ($i = 0; $i < $item->quantity; $i++) {
+                $sns[] = 'AUTO-' . strtoupper(Str::random(6)) . '-' . time() . '-' . $i;
+            }
         }
 
         foreach ($sns as $sn) {
