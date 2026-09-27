@@ -37,27 +37,40 @@
                             <tr class="bg-gray-50/50 border-b border-gray-100">
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">No. Transaksi / Tgl</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tujuan / Teknisi</th>
+                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Rincian Barang</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Total HPP (Modal)</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="item in transactions.data" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
-                                <td class="py-4 px-6">
+                                <td class="py-4 px-6 align-top">
                                     <p class="text-sm font-bold text-gray-900">{{ item.transaction_number }}</p>
                                     <p class="text-xs text-gray-500 mt-0.5">{{ item.date }}</p>
                                 </td>
-                                <td class="py-4 px-6">
+                                <td class="py-4 px-6 align-top">
                                     <p class="text-sm font-semibold text-gray-900">{{ item.technician_name }}</p>
                                     <p class="text-xs text-gray-500 mt-0.5">
                                         {{ item.purpose }} 
                                         <span v-if="item.area" class="text-blue-500 font-medium">({{ item.area }})</span>
+                                        <span v-if="item.cabang" class="text-purple-500 font-medium"> - {{ item.cabang }}</span>
                                     </p>
                                 </td>
-                                <td class="py-4 px-6 text-right">
+                                <td class="py-4 px-6 align-top">
+                                    <div class="space-y-1">
+                                        <div v-for="detail in item.items" :key="detail.id" class="text-xs">
+                                            <span class="font-medium text-gray-800">{{ detail.material ? detail.material.name : 'Unknown' }}</span>
+                                            <span class="text-gray-500"> ({{ detail.quantity }} {{ detail.unit || (detail.material ? detail.material.unit : 'pcs') }})</span>
+                                        </div>
+                                        <div v-if="!item.items || item.items.length === 0" class="text-xs text-gray-400 italic">
+                                            Tidak ada barang
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-6 text-right align-top">
                                     <span class="text-sm font-bold text-gray-900">Rp {{ formatNumber(item.total_cost) }}</span>
                                 </td>
-                                <td class="py-4 px-6 text-right">
+                                <td class="py-4 px-6 text-right align-top">
                                     <Link :href="`/material-transactions/${item.id}`" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>

@@ -14,7 +14,7 @@ class MaterialTransactionController extends Controller
 {
     public function index(Request $request)
     {
-        $transactions = MaterialTransaction::with(['user'])
+        $transactions = MaterialTransaction::with(['user', 'items.material'])
             ->latest()
             ->paginate(10);
 
