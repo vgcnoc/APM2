@@ -29,7 +29,12 @@
                             <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ odc.name }}</td>
                             <td class="px-6 py-4 text-sm text-gray-600">
                                 <div class="font-medium text-gray-900">{{ odc.olt ? odc.olt.name : '-' }}</div>
-                                <div v-if="odc.pon_port" class="text-xs text-indigo-600 font-semibold mt-0.5">PON {{ odc.pon_port }}</div>
+                                <div v-if="odc.pon_port" class="text-xs text-indigo-600 font-semibold mt-0.5">
+                                    PON {{ odc.pon_port }}
+                                    <span v-if="getPonVlansText(odc)" class="text-gray-500 font-normal ml-1 bg-gray-100 px-1.5 py-0.5 rounded">
+                                        {{ getPonVlansText(odc) }}
+                                    </span>
+                                </div>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-600">{{ odc.capacity }} Port</td>
                             <td class="px-6 py-4 text-sm">
@@ -436,6 +441,13 @@ function getLocationForSplit(tabIndex) {
     } else {
         alert('Geolocation tidak didukung oleh browser Anda.');
     }
+}
+
+function getPonVlansText(odc) {
+    if (!odc.olt || !odc.pon_port || !odc.olt.pon_vlans) return '';
+    const ponData = odc.olt.pon_vlans.find(p => p.port == odc.pon_port);
+    if (!ponData || !ponData.vlans || ponData.vlans.length === 0) return '';
+    return ponData.vlans.map(v => `${v.name} (${v.vlan_id})`).join(', ');
 }
 
 function submit() {
