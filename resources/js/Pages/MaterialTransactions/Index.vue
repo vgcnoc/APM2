@@ -53,7 +53,6 @@
                                     <p class="text-xs text-gray-500 mt-0.5">
                                         {{ item.purpose }} 
                                         <span v-if="item.area" class="text-blue-500 font-medium">({{ item.area }})</span>
-                                        <span v-if="item.cabang" class="text-purple-500 font-medium"> - {{ item.cabang }}</span>
                                     </p>
                                 </td>
                                 <td class="py-4 px-6 align-top">
