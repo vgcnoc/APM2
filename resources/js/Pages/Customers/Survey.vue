@@ -344,6 +344,17 @@
                                         <input v-model="photo.label" type="text" class="w-full bg-transparent border-b border-gray-300 px-1 py-1.5 text-sm font-medium text-gray-900 focus:border-blue-500 focus:outline-none placeholder-gray-400 transition-colors" placeholder="Label Foto" />
                                         <input type="file" @change="handlePhotoChange(index, $event)" accept="image/*" class="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-xs file:font-medium file:bg-white file:text-gray-700 hover:file:bg-gray-50 cursor-pointer transition-colors" />
                                     </div>
+                                    <div v-if="photo.previewUrl" class="w-16 h-16 rounded-lg overflow-hidden shrink-0 group relative border border-gray-200 shadow-sm">
+                                        <img :src="photo.previewUrl" class="w-full h-full object-cover" />
+                                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
+                                            <a :href="photo.previewUrl" target="_blank" class="text-white hover:text-blue-300 p-1" title="Lihat Penuh">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            </a>
+                                            <a :href="photo.previewUrl" :download="photo.file?.name || 'download'" class="text-white hover:text-blue-300 p-1" title="Download">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                            </a>
+                                        </div>
+                                    </div>
                                     <button v-if="index > 2" type="button" @click="removePhoto(index)" class="p-1 text-gray-500 hover:text-red-400 transition-colors">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                     </button>
@@ -470,6 +481,29 @@
                                 <div v-if="selectedCustomer.surveys[0].notes" class="mt-4 space-y-1">
                                     <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Catatan</p>
                                     <p class="text-sm text-gray-700 italic">{{ selectedCustomer.surveys[0].notes }}</p>
+                                </div>
+                                
+                                <!-- Dokumentasi Foto -->
+                                <div v-if="selectedCustomer.surveys[0].photos && selectedCustomer.surveys[0].photos.length > 0" class="mt-5 border-t border-gray-200 pt-4">
+                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Dokumentasi Survey</p>
+                                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        <div v-for="(photo, idx) in selectedCustomer.surveys[0].photos" :key="idx" class="relative group rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-gray-100 aspect-square">
+                                            <img :src="`/storage/${photo.path}`" :alt="photo.label" class="w-full h-full object-cover" />
+                                            
+                                            <!-- Overlay -->
+                                            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
+                                                <p class="text-xs text-white font-medium truncate drop-shadow-md">{{ photo.label }}</p>
+                                                <div class="flex gap-2">
+                                                    <a :href="`/storage/${photo.path}`" target="_blank" class="flex-1 bg-white/20 hover:bg-white/40 text-white rounded p-1.5 flex justify-center items-center backdrop-blur-sm transition-colors" title="Lihat Penuh">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                                    </a>
+                                                    <a :href="`/storage/${photo.path}`" download class="flex-1 bg-blue-600/80 hover:bg-blue-600 text-white rounded p-1.5 flex justify-center items-center backdrop-blur-sm transition-colors" title="Download">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -816,7 +850,13 @@ function removePhoto(index) {
 }
 
 function handlePhotoChange(index, event) {
-    reportForm.photos[index].file = event.target.files[0];
+    const file = event.target.files[0];
+    reportForm.photos[index].file = file;
+    if (file) {
+        reportForm.photos[index].previewUrl = URL.createObjectURL(file);
+    } else {
+        reportForm.photos[index].previewUrl = null;
+    }
 }
 
 function submitReport() {
