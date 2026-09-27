@@ -163,7 +163,7 @@
                                     <select v-model="assignForm.material_transaction_id" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
                                         <option value="">-- Pilih Surat Jalan / Order --</option>
                                         <option v-for="trx in materialTransactions" :key="trx.id" :value="trx.transaction_number">
-                                            {{ trx.transaction_number }} - {{ trx.technician_name }}
+                                            {{ getTransactionLabel(trx) }}
                                         </option>
                                     </select>
                                     
@@ -303,6 +303,17 @@ const selectedTransactionItems = computed(() => {
         };
     });
 });
+
+function getTransactionLabel(trx) {
+    let itemsStr = 'Tidak ada barang';
+    if (trx.items && trx.items.length > 0) {
+        itemsStr = trx.items.map(item => item.material ? item.material.name : 'Unknown').join(', ');
+        if (itemsStr.length > 40) {
+            itemsStr = itemsStr.substring(0, 37) + '...';
+        }
+    }
+    return `${itemsStr} - ${trx.technician_name} (${trx.date})`;
+}
 
 const status = ref(props.filters?.status || '');
 

@@ -151,13 +151,19 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Satuan</label>
                                 <input v-if="form.category === 'Kabel'" type="text" v-model="form.unit" disabled class="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed">
-                                <select v-else v-model="form.unit" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-                                    <option value="pcs">pcs</option>
-                                    <option value="meter">meter</option>
-                                    <option value="cm">cm</option>
-                                    <option value="rol">rol</option>
-                                    <option value="pack">pack</option>
-                                </select>
+                                <template v-else>
+                                    <input type="text" v-model="form.unit" list="unit-options" placeholder="Ketik atau pilih satuan..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                                    <datalist id="unit-options">
+                                        <option value="pcs"></option>
+                                        <option value="meter"></option>
+                                        <option value="cm"></option>
+                                        <option value="rol"></option>
+                                        <option value="pack"></option>
+                                        <option value="unit"></option>
+                                        <option value="set"></option>
+                                        <option value="box"></option>
+                                    </datalist>
+                                </template>
                             </div>
                         </div>
 
