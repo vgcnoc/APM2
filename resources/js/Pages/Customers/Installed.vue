@@ -326,9 +326,14 @@ function updateMaterialItems() {
                     let unit = item.unit || (item.material ? item.material.unit : 'pcs');
                     
                     if (item.material && item.material.category === 'Isolasi') {
-                        if (unit === 'pcs') {
+                        if (unit === 'pcs' || unit === 'pcs (utuh)') {
                             qty = qty * (parseFloat(item.material.cm_per_pcs) || 50);
                             unit = 'cm';
+                        }
+                    } else if (item.material && item.material.category === 'Paku Klem') {
+                        if (unit === 'bungkus' || unit === 'pack') {
+                            qty = qty * (parseFloat(item.material.pcs_per_pack) || 100);
+                            unit = 'pcs';
                         }
                     }
                     
