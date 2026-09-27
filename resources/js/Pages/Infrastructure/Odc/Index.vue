@@ -27,7 +27,10 @@
                     <tbody class="divide-y divide-gray-100">
                         <tr v-for="odc in odcs.data" :key="odc.id" class="hover:bg-gray-50/50 transition-colors">
                             <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ odc.name }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-600">{{ odc.olt ? odc.olt.name : '-' }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">
+                                <div class="font-medium text-gray-900">{{ odc.olt ? odc.olt.name : '-' }}</div>
+                                <div v-if="odc.pon_port" class="text-xs text-indigo-600 font-semibold mt-0.5">PON {{ odc.pon_port }}</div>
+                            </td>
                             <td class="px-6 py-4 text-sm text-gray-600">{{ odc.capacity }} Port</td>
                             <td class="px-6 py-4 text-sm">
                                 <span class="px-2.5 py-1 rounded-full text-xs font-medium" :class="odc.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'">
@@ -81,6 +84,14 @@
                                         <option v-for="olt in olts" :key="olt.id" :value="olt.id">{{ olt.name }}</option>
                                     </select>
                                     <p v-if="form.errors.olt_id" class="text-red-500 text-xs mt-1">{{ form.errors.olt_id }}</p>
+                                </div>
+                                <div v-if="form.olt_id" :class="form.type === 'Split' ? 'col-span-2' : ''">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Port PON (Opsional)</label>
+                                    <select v-model="form.pon_port" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option value="">Pilih Port PON (Opsional)</option>
+                                        <option v-for="port in selectedOltPonPorts" :key="port" :value="port">PON {{ port }}</option>
+                                    </select>
+                                    <p v-if="form.errors.pon_port" class="text-red-500 text-xs mt-1">{{ form.errors.pon_port }}</p>
                                 </div>
                                 <div class="col-span-2">
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Cabang (Area)</label>
@@ -293,6 +304,7 @@ const activeTab = ref(0);
 const form = useForm({
     name: '',
     olt_id: '',
+    pon_port: '',
     area_id: '',
     type: 'Normal',
     capacity: 144,
@@ -338,6 +350,25 @@ watch(() => form.type, (newType) => {
     }
 });
 
+const selectedOltPonPorts = computed(() => {
+    if (!form.olt_id) return [];
+    const olt = props.olts.find(o => o.id === form.olt_id);
+    if (!olt || !olt.total_pon_ports) return [];
+    return Array.from({ length: olt.total_pon_ports }, (_, i) => i + 1);
+});
+
+// Watch changes to olt_id to reset pon_port if necessary
+watch(() => form.olt_id, (newVal) => {
+    if (newVal) {
+        const olt = props.olts.find(o => o.id === newVal);
+        if (olt && olt.total_pon_ports && form.pon_port > olt.total_pon_ports) {
+            form.pon_port = '';
+        }
+    } else {
+        form.pon_port = '';
+    }
+});
+
 const totalSplitPorts = computed(() => {
     return Number(form.split_units[0].ratio || 0) + Number(form.split_units[1].ratio || 0);
 });
@@ -356,6 +387,7 @@ function openEditModal(odc) {
     editId.value = odc.id;
     form.name = odc.name;
     form.olt_id = odc.olt_id;
+    form.pon_port = odc.pon_port || '';
     form.area_id = odc.area_id || '';
     form.type = odc.type || 'Normal';
     form.capacity = odc.capacity;

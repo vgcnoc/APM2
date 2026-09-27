@@ -27,7 +27,7 @@ class OdcController extends Controller
 
         return Inertia::render('Infrastructure/Odc/Index', [
             'odcs' => $odcs,
-            'olts' => Olt::where('status', 'active')->get(['id', 'name']),
+            'olts' => Olt::where('status', 'active')->get(['id', 'name', 'total_pon_ports']),
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['search', 'olt_id', 'status']),
         ]);
@@ -37,6 +37,7 @@ class OdcController extends Controller
     {
         $validated = $request->validate([
             'olt_id' => 'required|exists:olts,id',
+            'pon_port' => 'nullable|integer|min:1',
             'area_id' => 'nullable|exists:areas,id',
             'name' => 'nullable|string|max:255',
             'type' => 'required|in:Normal,Split',
@@ -54,6 +55,7 @@ class OdcController extends Controller
             foreach ($validated['split_units'] as $unit) {
                 $odcData = [
                     'olt_id' => $validated['olt_id'],
+                    'pon_port' => $validated['pon_port'] ?? null,
                     'area_id' => $validated['area_id'],
                     'type' => 'Split',
                     'name' => $unit['name'] ?? 'ODC Split',
@@ -101,6 +103,7 @@ class OdcController extends Controller
     {
         $validated = $request->validate([
             'olt_id' => 'required|exists:olts,id',
+            'pon_port' => 'nullable|integer|min:1',
             'area_id' => 'nullable|exists:areas,id',
             'name' => 'required|string|max:255',
             'type' => 'required|in:Normal,Split',

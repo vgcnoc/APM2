@@ -13,6 +13,7 @@ class Odc extends Model
 
     protected $fillable = [
         'olt_id',
+        'pon_port',
         'area_id',
         'name',
         'type',
