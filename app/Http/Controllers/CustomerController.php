@@ -189,6 +189,7 @@ class CustomerController extends Controller
             ->get();
             
         $materialTransactions = \App\Models\MaterialTransaction::where('type', 'out')
+            ->with('items.material')
             ->latest()
             ->limit(100)
             ->get();

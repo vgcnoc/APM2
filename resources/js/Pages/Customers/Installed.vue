@@ -163,9 +163,20 @@
                                     <select v-model="assignForm.material_transaction_id" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
                                         <option value="">-- Pilih Surat Jalan / Order --</option>
                                         <option v-for="trx in materialTransactions" :key="trx.id" :value="trx.transaction_number">
-                                            {{ trx.transaction_number }} - {{ trx.technician_name }} ({{ trx.date }})
+                                            {{ trx.transaction_number }} - {{ trx.technician_name }}
                                         </option>
                                     </select>
+                                    
+                                    <!-- Kolom Rincian -->
+                                    <div v-if="selectedTransactionItems.length > 0" class="mt-2 p-3 bg-blue-50/50 border border-blue-100 rounded-lg max-h-32 overflow-y-auto">
+                                        <p class="text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-1.5">Rincian Barang:</p>
+                                        <ul class="space-y-1">
+                                            <li v-for="(item, idx) in selectedTransactionItems" :key="idx" class="text-xs text-blue-900 flex justify-between items-start border-b border-blue-100/50 pb-1 last:border-0 last:pb-0">
+                                                <span class="font-medium pr-2">{{ item.name }}</span>
+                                                <span class="font-bold shrink-0">{{ item.qty }} {{ item.unit }}</span>
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -255,7 +266,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
@@ -277,6 +288,21 @@ const columns = [
     { key: 'topology', label: 'Topologi' },
     { key: 'signal', label: 'Redaman' },
 ];
+
+const selectedTransactionItems = computed(() => {
+    if (!assignForm.material_transaction_id) return [];
+    
+    const trx = props.materialTransactions.find(t => t.transaction_number === assignForm.material_transaction_id);
+    if (!trx || !trx.items) return [];
+    
+    return trx.items.map(item => {
+        return {
+            name: item.material ? item.material.name : 'Unknown',
+            qty: item.quantity,
+            unit: item.material ? item.material.unit : 'pcs'
+        };
+    });
+});
 
 const status = ref(props.filters?.status || '');
 

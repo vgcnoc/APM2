@@ -55,8 +55,9 @@
                                 <tr class="bg-gray-50 border-b border-gray-200 print:bg-gray-100 print:border-gray-900">
                                     <th class="py-3 px-4 text-xs font-bold text-gray-700 uppercase">No</th>
                                     <th class="py-3 px-4 text-xs font-bold text-gray-700 uppercase">Nama Barang / Material</th>
+                                    <th class="py-3 px-4 text-xs font-bold text-gray-700 uppercase text-center">Satuan</th>
                                     <th class="py-3 px-4 text-xs font-bold text-gray-700 uppercase text-center">Kategori</th>
-                                    <th class="py-3 px-4 text-xs font-bold text-gray-700 uppercase text-right">Jumlah (Satuan)</th>
+                                    <th class="py-3 px-4 text-xs font-bold text-gray-700 uppercase text-right">Jumlah</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200 print:divide-gray-900">
@@ -67,13 +68,15 @@
                                         <p v-if="item.material?.brand" class="text-xs text-gray-500">{{ item.material.brand }}</p>
                                     </td>
                                     <td class="py-3 px-4 text-center">
+                                        <span class="text-sm font-bold text-gray-900">{{ item.material?.unit || 'pcs' }}</span>
+                                    </td>
+                                    <td class="py-3 px-4 text-center">
                                         <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 print:bg-transparent print:border print:border-gray-500">
                                             {{ item.material?.category || '-' }}
                                         </span>
                                     </td>
                                     <td class="py-3 px-4 text-right">
                                         <span class="text-sm font-bold text-gray-900">{{ item.quantity }}</span>
-                                        <span class="text-xs text-gray-500 ml-1">{{ item.material?.unit || 'pcs' }}</span>
                                     </td>
                                 </tr>
                             </tbody>
