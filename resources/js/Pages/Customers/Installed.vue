@@ -176,23 +176,18 @@
                                     </div>
                                     
                                     <!-- Kolom Rincian -->
-                                    <div v-if="assignForm.material_items.length > 0" class="mt-2 p-3 bg-blue-50/50 border border-blue-100 rounded-lg max-h-48 overflow-y-auto">
-                                        <p class="text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-2">Rincian Penggunaan Barang:</p>
-                                        <ul class="space-y-2">
-                                            <li v-for="(item, idx) in assignForm.material_items" :key="idx" class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-100/50 pb-2 last:border-0 last:pb-0">
-                                                <input v-model="item.name" type="text" class="flex-1 w-full sm:w-auto px-2 py-1 text-xs border border-blue-200 rounded focus:ring-blue-500 font-medium text-blue-900 bg-white" placeholder="Nama Barang">
-                                                <div class="flex gap-1 shrink-0 items-center">
-                                                    <input v-model="item.qty" type="number" step="0.01" min="0" class="w-16 px-2 py-1 text-xs border border-blue-200 rounded focus:ring-blue-500" placeholder="Qty">
-                                                    <input v-model="item.unit" list="unit-options-list" type="text" class="w-20 px-2 py-1 text-xs border border-blue-200 rounded focus:ring-blue-500" placeholder="Satuan">
-                                                    <datalist id="unit-options-list">
-                                                        <option value="pcs"></option>
-                                                        <option value="meter"></option>
-                                                        <option value="roll"></option>
-                                                        <option value="pack"></option>
-                                                        <option value="box"></option>
-                                                    </datalist>
-                                                    <button type="button" @click="assignForm.material_items.splice(idx, 1)" class="text-red-400 hover:text-red-600 focus:outline-none ml-1" title="Hapus">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    <div v-if="assignForm.material_items.length > 0" class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
+                                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Rincian Penggunaan Barang (Bisa disesuaikan):</p>
+                                        <ul class="space-y-1.5">
+                                            <li v-for="(item, idx) in assignForm.material_items" :key="idx" class="flex items-center justify-between bg-white p-2 rounded border border-gray-100 shadow-sm">
+                                                <div class="flex-1 truncate mr-2">
+                                                    <span class="text-xs font-bold text-gray-800">{{ item.name || 'Barang' }}</span>
+                                                </div>
+                                                <div class="flex gap-1.5 items-center shrink-0">
+                                                    <input v-model="item.qty" type="number" step="0.01" min="0" class="w-16 px-1.5 py-1 text-xs border border-gray-300 rounded focus:ring-blue-500 text-center font-semibold text-blue-700 bg-blue-50/50" placeholder="Qty">
+                                                    <span class="text-[10px] font-medium text-gray-500 w-8 truncate">{{ item.unit }}</span>
+                                                    <button type="button" @click="assignForm.material_items.splice(idx, 1)" class="text-gray-400 hover:text-red-500 p-1" title="Hapus">
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                                     </button>
                                                 </div>
                                             </li>
