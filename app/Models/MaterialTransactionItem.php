@@ -11,6 +11,7 @@ class MaterialTransactionItem extends Model
         'material_transaction_id',
         'material_id',
         'quantity',
+        'unit',
         'price_per_unit',
         'total_price',
     ];

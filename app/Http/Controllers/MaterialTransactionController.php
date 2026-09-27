@@ -41,6 +41,7 @@ class MaterialTransactionController extends Controller
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
             'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.unit' => 'nullable|string|max:50',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -75,6 +76,7 @@ class MaterialTransactionController extends Controller
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
                     'quantity' => $itemData['quantity'],
+                    'unit' => $itemData['unit'] ?? $material->unit,
                     'price_per_unit' => $pricePerUnit,
                     'total_price' => $totalPrice,
                 ]);

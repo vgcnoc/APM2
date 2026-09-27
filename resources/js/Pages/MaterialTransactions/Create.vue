@@ -37,40 +37,57 @@
                 </div>
 
                 <div v-for="(item, index) in form.items" :key="index" class="p-4 rounded-xl border border-gray-100 bg-gray-50/50 relative group">
-                    <button v-if="form.items.length > 1" type="button" @click="removeItem(index)" class="absolute -top-2.5 -right-2.5 w-6 h-6 bg-white border border-red-200 rounded-full text-red-500 hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition-colors shadow-sm z-10">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                    </button>
-
-                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-                        <div class="md:col-span-8">
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Pilih Material *</label>
+                    <div class="grid grid-cols-1 md:flex items-start md:items-end gap-3 mb-2">
+                        <div class="flex-1 min-w-[200px]">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Material *</label>
                             <select v-model="item.material_id" @change="onMaterialSelected(index)" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
-                                <option value="">Pilih Material / Barang...</option>
+                                <option value="">Pilih material</option>
                                 <option v-for="mat in materials" :key="mat.id" :value="mat.id">
                                     {{ mat.name }} (Stok: {{ mat.stock }} {{ mat.unit }})
                                 </option>
                             </select>
                         </div>
-                        <div class="md:col-span-4">
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Jumlah Diambil *</label>
-                            <div class="flex gap-2">
-                                <input v-model="item.input_quantity" type="number" step="0.01" min="0.01" :max="item.unit_mode === 'roll' ? (item.max_stock / (item.meter_per_roll || 1)) : item.max_stock" required class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
-                                
-                                <select v-if="item.is_cable" v-model="item.unit_mode" class="w-24 px-2 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white text-sm">
-                                    <option value="meter">Meter</option>
-                                    <option value="roll">Roll</option>
-                                </select>
-                                <div v-else class="flex items-center px-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 text-sm font-medium whitespace-nowrap">
-                                    {{ item.unit || '...' }}
-                                </div>
-                            </div>
-                            <p v-if="item.is_cable && item.unit_mode === 'roll'" class="text-[10px] text-gray-500 mt-1">
-                                = {{ (item.input_quantity * item.meter_per_roll).toFixed(2) }} Meter
-                            </p>
-                            <p class="text-[10px] text-emerald-600 mt-1" v-if="item.max_stock !== null">
-                                Sisa Stok: {{ item.unit_mode === 'roll' ? (item.max_stock / item.meter_per_roll).toFixed(2) + ' Roll' : item.max_stock + ' ' + (item.unit || '') }}
-                            </p>
+                        
+                        <div class="w-full md:w-32">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Jumlah *</label>
+                            <input v-model="item.input_quantity" type="number" step="0.01" min="0.01" :max="item.unit_mode === 'roll' ? (item.max_stock / (item.meter_per_roll || 1)) : item.max_stock" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
                         </div>
+                        
+                        <div class="w-full md:w-32">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Satuan *</label>
+                            <select v-if="item.is_cable" v-model="item.unit_mode" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
+                                <option value="meter">Meter</option>
+                                <option value="roll">Roll</option>
+                            </select>
+                            <!-- Input Satuan Manual (Datalist) -->
+                            <template v-else>
+                                <input type="text" v-model="item.unit_manual" list="item-unit-options" required placeholder="..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
+                                <datalist id="item-unit-options">
+                                    <option value="pcs"></option>
+                                    <option value="meter"></option>
+                                    <option value="rol"></option>
+                                    <option value="pack"></option>
+                                    <option value="box"></option>
+                                </datalist>
+                            </template>
+                        </div>
+
+                        <div class="md:pb-1">
+                            <button v-if="form.items.length > 1" type="button" @click="removeItem(index)" class="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors shrink-0" title="Hapus baris">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                            <div v-else class="w-10"></div> <!-- Placeholder for alignment -->
+                        </div>
+                    </div>
+                    
+                    <!-- Info text -->
+                    <div class="flex gap-4">
+                        <p v-if="item.is_cable && item.unit_mode === 'roll'" class="text-[10px] text-gray-500 mt-0.5">
+                            = {{ (item.input_quantity * item.meter_per_roll).toFixed(2) }} Meter
+                        </p>
+                        <p class="text-[10px] text-emerald-600 mt-0.5" v-if="item.max_stock !== null">
+                            Sisa Stok: {{ item.unit_mode === 'roll' ? (item.max_stock / item.meter_per_roll).toFixed(2) + ' Roll' : item.max_stock + ' ' + (item.unit || '') }}
+                        </p>
                     </div>
                 </div>
 
@@ -116,12 +133,12 @@ const form = useForm({
     purpose: '',
     notes: '',
     items: [
-        { material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', max_stock: null, is_cable: false, meter_per_roll: 1000 }
+        { material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, meter_per_roll: 1000 }
     ]
 });
 
 const addItem = () => {
-    form.items.push({ material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', max_stock: null, is_cable: false, meter_per_roll: 1000 });
+    form.items.push({ material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, meter_per_roll: 1000 });
 };
 
 const removeItem = (index) => {
@@ -136,6 +153,7 @@ const onMaterialSelected = (index) => {
         const isCable = material.category === 'Kabel' || material.name.toLowerCase().includes('kabel');
         
         form.items[index].unit = material.unit;
+        form.items[index].unit_manual = material.unit || 'pcs'; // default it to material's original unit
         form.items[index].max_stock = material.stock;
         form.items[index].is_cable = isCable;
         form.items[index].meter_per_roll = material.meter_per_roll || 1000;
@@ -154,7 +172,8 @@ const submit = () => {
         ...data,
         items: data.items.map(item => ({
             material_id: item.material_id,
-            quantity: item.unit_mode === 'roll' ? (item.input_quantity * item.meter_per_roll) : item.input_quantity
+            quantity: item.unit_mode === 'roll' ? (item.input_quantity * item.meter_per_roll) : item.input_quantity,
+            unit: item.is_cable ? item.unit_mode : item.unit_manual
         }))
     })).post('/material-transactions');
 };

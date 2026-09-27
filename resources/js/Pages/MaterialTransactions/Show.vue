@@ -68,7 +68,7 @@
                                         <p v-if="item.material?.brand" class="text-xs text-gray-500">{{ item.material.brand }}</p>
                                     </td>
                                     <td class="py-3 px-4 text-center">
-                                        <span class="text-sm font-bold text-gray-900">{{ item.material?.unit || 'pcs' }}</span>
+                                        <span class="text-sm font-bold text-gray-900">{{ item.unit || item.material?.unit || 'pcs' }}</span>
                                     </td>
                                     <td class="py-3 px-4 text-center">
                                         <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 print:bg-transparent print:border print:border-gray-500">

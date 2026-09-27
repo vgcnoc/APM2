@@ -299,7 +299,7 @@ const selectedTransactionItems = computed(() => {
         return {
             name: item.material ? item.material.name : 'Unknown',
             qty: item.quantity,
-            unit: item.material ? item.material.unit : 'pcs'
+            unit: item.unit || (item.material ? item.material.unit : 'pcs')
         };
     });
 });
