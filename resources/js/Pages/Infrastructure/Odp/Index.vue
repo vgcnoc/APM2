@@ -443,7 +443,7 @@ function getLocationForSplit(tabIndex) {
 
 function submit() {
     if (isEditing.value) {
-        form.put(`/odps/${editId.value}`, {
+        form.post(`/odps/${editId.value}/update`, {
             onSuccess: () => closeModal(),
         });
     } else {

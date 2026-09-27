@@ -59,6 +59,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{customer}/mark-installing', [CustomerController::class, 'markInstalling'])
             ->name('mark-installing');
             
+        // Update Pelanggan POST
+        Route::post('/{customer}/update', [CustomerController::class, 'update'])
+            ->name('update.post');
+            
         // Hapus Pelanggan POST
         Route::post('/{customer}/delete', [CustomerController::class, 'destroy'])
             ->name('destroy.post');
@@ -67,18 +71,23 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Infrastruktur (Network Topology) ───────────────────────
     Route::resource('olts', OltController::class);
+    Route::post('olts/{olt}/update', [OltController::class, 'update'])->name('olts.update.post');
     Route::post('olts/{olt}/delete', [OltController::class, 'destroy'])->name('olts.destroy.post');
 
     Route::resource('odcs', OdcController::class);
+    Route::post('odcs/{odc}/update', [OdcController::class, 'update'])->name('odcs.update.post');
     Route::post('odcs/{odc}/delete', [OdcController::class, 'destroy'])->name('odcs.destroy.post');
 
     Route::resource('odps', OdpController::class);
+    Route::post('odps/{odp}/update', [OdpController::class, 'update'])->name('odps.update.post');
     Route::post('odps/{odp}/delete', [OdpController::class, 'destroy'])->name('odps.destroy.post');
 
     Route::resource('onts', OntController::class);
+    Route::post('onts/{ont}/update', [OntController::class, 'update'])->name('onts.update.post');
     Route::post('onts/{ont}/delete', [OntController::class, 'destroy'])->name('onts.destroy.post');
 
     Route::resource('materials', MaterialController::class);
+    Route::post('materials/{material}/update', [MaterialController::class, 'update'])->name('materials.update.post');
     Route::post('materials/{material}/add-stock', [MaterialController::class, 'addStock'])->name('materials.add-stock');
     Route::post('materials/{material}/delete', [MaterialController::class, 'destroy'])->name('materials.destroy.post');
 
@@ -97,6 +106,7 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Master Data & Pengaturan ───────────────────────────────
     Route::resource('settings/areas', \App\Http\Controllers\AreaController::class);
+    Route::post('settings/areas/{area}/update', [\App\Http\Controllers\AreaController::class, 'update'])->name('areas.update.post');
     Route::post('settings/areas/{area}/delete', [\App\Http\Controllers\AreaController::class, 'destroy'])->name('areas.destroy.post');
     
     Route::get('/settings/api', function () {

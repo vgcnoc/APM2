@@ -219,7 +219,7 @@ function closeModal() {
 
 function submit() {
     if (isEditing.value) {
-        form.put(`/olts/${editId.value}`, {
+        form.post(`/olts/${editId.value}/update`, {
             onSuccess: () => closeModal(),
         });
     } else {

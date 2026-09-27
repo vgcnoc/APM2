@@ -779,7 +779,7 @@ const submit = () => {
     }
     
     if (isEditing.value) {
-        form.put(`/materials/${editingId.value}`, {
+        form.post(`/materials/${editingId.value}/update`, {
             onSuccess: () => closeModal(),
         });
     } else {

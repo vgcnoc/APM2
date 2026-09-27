@@ -127,6 +127,6 @@ const form = useForm({
 });
 
 function submit() {
-    form.put(`/customers/${props.customer.id}`);
+    form.post(`/customers/${props.customer.id}/update`);
 }
 </script>

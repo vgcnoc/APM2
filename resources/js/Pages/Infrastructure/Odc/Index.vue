@@ -410,7 +410,7 @@ function getLocationForSplit(tabIndex) {
 
 function submit() {
     if (isEditing.value) {
-        form.post(`/odcs/${editId.value}`, {
+        form.post(`/odcs/${editId.value}/update`, {
             onSuccess: () => closeModal(),
         });
     } else {

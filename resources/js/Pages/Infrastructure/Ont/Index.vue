@@ -350,7 +350,7 @@ function generatePppoe() {
 
 function submit() {
     if (isEditing.value && form.id) {
-        form.put(`/onts/${form.id}`, {
+        form.post(`/onts/${form.id}/update`, {
             onSuccess: () => closeModal(),
         });
     } else {

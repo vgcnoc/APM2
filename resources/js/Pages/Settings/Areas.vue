@@ -177,7 +177,7 @@ function closeModal() {
 
 function submit() {
     if (isEditing.value) {
-        form.put(`/settings/areas/${editId.value}`, {
+        form.post(`/settings/areas/${editId.value}/update`, {
             onSuccess: () => closeModal(),
         });
     } else {
