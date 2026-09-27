@@ -184,7 +184,7 @@ class CustomerController extends Controller
             ->withQueryString();
 
         $technicians = User::where('role', 'teknisi')->where('is_active', true)->get();
-        $availableOnts = \App\Models\Ont::whereIn('status', ['Belum Set/Baru Input', 'inactive'])
+        $availableOnts = \App\Models\Ont::where('status', 'Sudah Set')
             ->whereNull('customer_id')
             ->get();
             

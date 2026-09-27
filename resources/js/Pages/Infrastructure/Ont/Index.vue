@@ -45,9 +45,10 @@
                                 <td class="px-6 py-4 text-sm">
                                     <span class="px-2.5 py-1 rounded-full text-xs font-medium" :class="{
                                         'bg-green-100 text-green-700': ont.status === 'active',
+                                        'bg-blue-100 text-blue-700': ont.status === 'Sudah Set',
                                         'bg-red-100 text-red-700': ont.status === 'los',
                                         'bg-yellow-100 text-yellow-700': ont.status === 'Belum Set/Baru Input',
-                                        'bg-gray-100 text-gray-700': !['active', 'los', 'Belum Set/Baru Input'].includes(ont.status),
+                                        'bg-gray-100 text-gray-700': !['active', 'Sudah Set', 'los', 'Belum Set/Baru Input'].includes(ont.status),
                                     }">
                                         {{ ont.status || '-' }}
                                     </span>
@@ -225,6 +226,7 @@
                             <label class="block text-xs font-bold text-gray-700 mb-2">Status ONT</label>
                             <select v-model="form.status" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <option value="Belum Set/Baru Input">Belum Set/Baru Input</option>
+                                <option value="Sudah Set">Sudah Set (Siap Pasang)</option>
                                 <option value="active">Active (Terpasang)</option>
                                 <option value="inactive">Inactive</option>
                                 <option value="los">LOS</option>
