@@ -476,7 +476,8 @@ class CustomerController extends Controller
             'scheduled_time' => 'required|date_format:H:i',
             'ont_models' => 'nullable|array',
             'ont_models.*' => 'nullable|string',
-            'material_transaction_id' => 'nullable|string',
+            'material_transaction_ids' => 'nullable|array',
+            'material_transaction_ids.*' => 'nullable|string',
             'material_items' => 'nullable|array',
             'material_items.*.name' => 'nullable|string',
             'material_items.*.qty' => 'nullable|numeric',
@@ -491,14 +492,17 @@ class CustomerController extends Controller
                 $customNotes[] = "ONT: " . implode(', ', $onts);
             }
         }
-        if (!empty($validated['material_transaction_id'])) {
-            $trxNotes = ["Material diambil dari Surat Jalan / Order: " . $validated['material_transaction_id']];
-            if (!empty($validated['material_items'])) {
-                foreach ($validated['material_items'] as $mItem) {
-                    $trxNotes[] = " - " . $mItem['name'] . " : " . $mItem['qty'] . " " . $mItem['unit'];
+        if (!empty($validated['material_transaction_ids'])) {
+            $trxs = array_filter($validated['material_transaction_ids']);
+            if (count($trxs) > 0) {
+                $trxNotes = ["Material diambil dari Surat Jalan / Order: " . implode(', ', $trxs)];
+                if (!empty($validated['material_items'])) {
+                    foreach ($validated['material_items'] as $mItem) {
+                        $trxNotes[] = " - " . $mItem['name'] . " : " . $mItem['qty'] . " " . $mItem['unit'];
+                    }
                 }
+                $customNotes[] = implode("\n", $trxNotes);
             }
-            $customNotes[] = implode("\n", $trxNotes);
         }
         if (!empty($validated['notes'])) {
             $customNotes[] = "Catatan Tambahan: " . $validated['notes'];

@@ -158,17 +158,22 @@
                             <div>
                                 <div class="flex items-center justify-between mb-1">
                                     <label class="block text-xs font-medium text-gray-500">Material (Surat Jalan)</label>
-                                    <button type="button" @click="addManualMaterial" class="text-blue-500 hover:text-blue-600 focus:outline-none" title="Tambah Material Manual">
+                                    <button type="button" @click="assignForm.material_transaction_ids.push('')" class="text-blue-500 hover:text-blue-600 focus:outline-none" title="Tambah Surat Jalan">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                     </button>
                                 </div>
                                 <div class="space-y-2">
-                                    <select v-model="assignForm.material_transaction_id" @change="updateMaterialItems" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
-                                        <option value="">-- Pilih Surat Jalan / Order --</option>
-                                        <option v-for="trx in materialTransactions" :key="trx.id" :value="trx.transaction_number">
-                                            {{ getTransactionLabel(trx) }}
-                                        </option>
-                                    </select>
+                                    <div v-for="(trxId, index) in assignForm.material_transaction_ids" :key="'trx-'+index" class="flex gap-2 items-center">
+                                        <select v-model="assignForm.material_transaction_ids[index]" @change="updateMaterialItems" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
+                                            <option value="">-- Pilih Surat Jalan / Order --</option>
+                                            <option v-for="trx in materialTransactions" :key="trx.id" :value="trx.transaction_number">
+                                                {{ getTransactionLabel(trx) }}
+                                            </option>
+                                        </select>
+                                        <button v-if="assignForm.material_transaction_ids.length > 1" type="button" @click="removeMaterialTransaction(index)" class="text-red-500 hover:text-red-600 focus:outline-none" title="Hapus">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+                                        </button>
+                                    </div>
                                     
                                     <!-- Kolom Rincian -->
                                     <div v-if="assignForm.material_items.length > 0" class="mt-2 p-3 bg-blue-50/50 border border-blue-100 rounded-lg max-h-48 overflow-y-auto">
@@ -308,23 +313,26 @@ const columns = [
 // Removed selectedTransactionItems computed property
 
 function updateMaterialItems() {
-    const newVal = assignForm.material_transaction_id;
-    if (!newVal) {
-        assignForm.material_items = [];
-        return;
-    }
-    const trx = props.materialTransactions.find(t => t.transaction_number === newVal);
-    if (!trx || !trx.items) {
-        assignForm.material_items = [];
-        return;
-    }
+    assignForm.material_items = [];
     
-    assignForm.material_items = trx.items.map(item => ({
-        id: item.id,
-        name: item.material ? item.material.name : 'Unknown',
-        qty: item.quantity,
-        unit: item.unit || (item.material ? item.material.unit : 'pcs')
-    }));
+    assignForm.material_transaction_ids.forEach(trxId => {
+        if (!trxId) return;
+        const trx = props.materialTransactions.find(t => t.transaction_number === trxId);
+        if (trx && trx.items) {
+            const mappedItems = trx.items.map(item => ({
+                id: item.id,
+                name: item.material ? item.material.name : 'Unknown',
+                qty: item.quantity,
+                unit: item.unit || (item.material ? item.material.unit : 'pcs')
+            }));
+            assignForm.material_items.push(...mappedItems);
+        }
+    });
+}
+
+function removeMaterialTransaction(index) {
+    assignForm.material_transaction_ids.splice(index, 1);
+    updateMaterialItems();
 }
 
 function addManualMaterial() {
@@ -368,7 +376,7 @@ const assignForm = useForm({
     scheduled_date: '',
     scheduled_time: '',
     ont_models: [''],
-    material_transaction_id: '',
+    material_transaction_ids: [''],
     material_items: [],
     notes: '',
 });
