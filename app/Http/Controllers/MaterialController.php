@@ -67,7 +67,14 @@ class MaterialController extends Controller
 
     public function destroy(Material $material)
     {
-        $material->delete();
-        return redirect()->route('materials.index')->with('success', 'Data material berhasil dihapus.');
+        try {
+            $material->delete();
+            return redirect()->route('materials.index')->with('success', 'Data material berhasil dihapus.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() == "23000") {
+                return redirect()->route('materials.index')->with('error', 'Data material tidak dapat dihapus karena sudah digunakan dalam Riwayat Order/Pengambilan.');
+            }
+            return redirect()->route('materials.index')->with('error', 'Terjadi kesalahan saat menghapus data material.');
+        }
     }
 }
