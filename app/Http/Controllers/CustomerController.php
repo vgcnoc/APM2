@@ -619,7 +619,7 @@ class CustomerController extends Controller
         // Update schedule status if any
         $schedule = $customer->technicianSchedules()->where('type', 'survey')->where('status', 'scheduled')->first();
         if ($schedule) {
-            $schedule->update(['status' => 'completed']);
+            $schedule->update(['status' => 'done']);
         }
 
         if ($validated['feasibility'] === 'feasible') {
