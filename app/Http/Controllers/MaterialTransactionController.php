@@ -171,6 +171,9 @@ class MaterialTransactionController extends Controller
         }
 
         foreach ($sns as $sn) {
+            $area = \App\Models\Area::where('name', $item->transaction->area)->first();
+            $areaId = $area ? $area->id : null;
+
             $existing = \App\Models\Ont::where('serial_number', $sn)->first();
             if (!$existing) {
                 \App\Models\Ont::create([
@@ -178,12 +181,14 @@ class MaterialTransactionController extends Controller
                     'brand' => $item->material->name,
                     'status' => 'Belum Set/Baru Input',
                     'material_transaction_item_id' => $item->id,
+                    'area_id' => $areaId,
                     'description' => "Pengambilan dari Gudang oleh: " . $item->transaction->technician_name . " (Tujuan: " . $item->transaction->purpose . ") pada " . $item->transaction->date,
                 ]);
             } else {
                 $existing->update([
                     'status' => 'Belum Set/Baru Input',
                     'material_transaction_item_id' => $item->id,
+                    'area_id' => $areaId,
                     'description' => "Pengambilan Ulang dari Gudang oleh: " . $item->transaction->technician_name . " (Tujuan: " . $item->transaction->purpose . ") pada " . $item->transaction->date,
                 ]);
             }
