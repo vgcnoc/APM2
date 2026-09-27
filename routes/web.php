@@ -67,6 +67,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('odps', OdpController::class);
     Route::resource('onts', OntController::class);
     Route::resource('materials', MaterialController::class);
+    Route::post('materials/{material}/add-stock', [MaterialController::class, 'addStock'])->name('materials.add-stock');
     Route::resource('material-transactions', MaterialTransactionController::class)->except(['edit', 'update', 'destroy']);
     Route::post('material-transactions/{item}/register-ont', [MaterialTransactionController::class, 'registerOnt'])->name('material-transactions.register-ont');
     Route::post('material-transactions/{material_transaction}/delete', [MaterialTransactionController::class, 'destroy'])->name('material-transactions.destroy');

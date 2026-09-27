@@ -84,7 +84,12 @@
                                 </td>
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex items-center justify-end gap-2">
-                                        <button @click="openModal(item)" class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                                        <button @click="openAddStockModal(item)" title="Tambah Stok Masuk" class="p-1.5 text-emerald-500 hover:text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                            </svg>
+                                        </button>
+                                        <button @click="openModal(item)" title="Edit Data Barang" class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                                             </svg>
@@ -299,6 +304,87 @@
                 </div>
             </div>
         </div>
+        <!-- Modal Add Stock -->
+        <div v-if="showAddStockModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="closeAddStockModal"></div>
+            <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+                    <h3 class="text-lg font-bold text-gray-900">Tambah Stok Masuk</h3>
+                    <button @click="closeAddStockModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="p-6 overflow-y-auto max-h-[calc(100vh-12rem)]">
+                    <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5">
+                        <h4 class="font-bold text-blue-900">{{ selectedMaterial?.name }}</h4>
+                        <div class="flex gap-4 mt-2 text-sm text-blue-800">
+                            <div>Sisa Stok: <span class="font-bold">{{ formatNumber(selectedMaterial?.stock) }} {{ selectedMaterial?.unit }}</span></div>
+                            <div v-if="selectedMaterial?.category === 'Kabel' && selectedMaterial?.total_rolls">Total: <span class="font-bold">{{ selectedMaterial?.total_rolls }} roll</span></div>
+                        </div>
+                    </div>
+
+                    <form @submit.prevent="submitAddStock" class="space-y-5">
+                        <div v-if="selectedMaterial?.category === 'Kabel'" class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tambah Roll Baru *</label>
+                                <div class="flex items-center gap-2">
+                                    <input v-model="addStockForm.added_rolls" @input="calculateAddedCableStock" type="number" step="0.01" min="0" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" required>
+                                    <span class="text-gray-500 text-sm">roll</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Total Meter (Otomatis)</label>
+                                <div class="flex items-center gap-2">
+                                    <input v-model="addStockForm.added_stock" type="number" step="0.01" min="0.01" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-700" readonly>
+                                    <span class="text-gray-500 text-sm">m</span>
+                                </div>
+                                <p class="text-[10px] text-gray-400 mt-1">@ {{ selectedMaterial?.meter_per_roll }} m/roll</p>
+                            </div>
+                        </div>
+                        <div v-else>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Stok Masuk *</label>
+                            <div class="flex items-center gap-2">
+                                <input v-model="addStockForm.added_stock" type="number" step="0.01" min="0.01" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" required>
+                                <span class="text-gray-500 text-sm">{{ selectedMaterial?.unit }}</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Perbarui Harga (Opsional)
+                            </h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Hrg Modal Baru</label>
+                                    <input v-model="addStockForm.price_per_unit" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Hrg Jual Baru</label>
+                                    <input v-model="addStockForm.selling_price" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-2">Kosongkan/biarkan jika harga tidak berubah.</p>
+                        </div>
+                    </form>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0 z-10">
+                    <button type="button" @click="closeAddStockModal" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
+                        Batal
+                    </button>
+                    <button type="button" @click="submitAddStock" :disabled="addStockForm.processing" class="px-5 py-2 text-sm font-medium text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-200 transition-all disabled:opacity-50 flex items-center gap-2">
+                        <svg v-if="addStockForm.processing" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Simpan Stok Baru
+                    </button>
+                </div>
+            </div>
+        </div>
     </AppLayout>
 </template>
 
@@ -314,6 +400,8 @@ const props = defineProps({
 
 const search = ref(props.filters.search || '');
 const showModal = ref(false);
+const showAddStockModal = ref(false);
+const selectedMaterial = ref(null);
 const isEditing = ref(false);
 const editingId = ref(null);
 const tempTotalModal = ref(null);
@@ -330,6 +418,13 @@ const form = useForm({
     price_per_unit: 0,
     selling_price: 0,
     description: '',
+});
+
+const addStockForm = useForm({
+    added_stock: '',
+    added_rolls: '',
+    price_per_unit: '',
+    selling_price: ''
 });
 
 const formatNumber = (num) => {
@@ -436,6 +531,38 @@ const openModal = (item = null) => {
 const closeModal = () => {
     showModal.value = false;
     form.reset();
+};
+
+const openAddStockModal = (item) => {
+    selectedMaterial.value = item;
+    addStockForm.reset();
+    addStockForm.added_stock = '';
+    addStockForm.added_rolls = '';
+    addStockForm.price_per_unit = item.price_per_unit;
+    addStockForm.selling_price = item.selling_price;
+    showAddStockModal.value = true;
+};
+
+const closeAddStockModal = () => {
+    showAddStockModal.value = false;
+    selectedMaterial.value = null;
+    addStockForm.reset();
+};
+
+const calculateAddedCableStock = () => {
+    if (selectedMaterial.value?.category === 'Kabel') {
+        const rolls = parseFloat(addStockForm.added_rolls) || 0;
+        const meterPerRoll = parseFloat(selectedMaterial.value.meter_per_roll) || 0;
+        addStockForm.added_stock = rolls * meterPerRoll;
+    }
+};
+
+const submitAddStock = () => {
+    if (selectedMaterial.value) {
+        addStockForm.post(`/materials/${selectedMaterial.value.id}/add-stock`, {
+            onSuccess: () => closeAddStockModal(),
+        });
+    }
 };
 
 const submit = () => {
