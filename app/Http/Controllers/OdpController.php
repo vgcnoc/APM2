@@ -111,7 +111,17 @@ class OdpController extends Controller
 
     public function destroy(Odp $odp): RedirectResponse
     {
-        $odp->delete();
+        DB::transaction(function () use ($odp) {
+            // Kembalikan ONT yang terhubung menjadi unassigned
+            foreach ($odp->onts as $ont) {
+                $ont->update([
+                    'odp_id' => null, 
+                    'status' => 'Belum Set/Baru Input',
+                    'port_number' => null
+                ]);
+            }
+            $odp->delete();
+        });
 
         return redirect()->route('odps.index')
             ->with('success', 'Data ODP berhasil dihapus.');
