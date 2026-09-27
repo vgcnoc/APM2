@@ -25,12 +25,7 @@ class MaterialTransactionController extends Controller
 
     public function create()
     {
-        $materials = Material::where('stock', '>', 0)
-            ->where('category', 'not like', '%ont%')
-            ->where('category', 'not like', '%modem%')
-            ->where('name', 'not like', '%ont%')
-            ->where('name', 'not like', '%modem%')
-            ->get();
+        $materials = Material::where('stock', '>', 0)->get();
         $areas = \App\Models\Area::orderBy('name')->pluck('name')->toArray();
         $cabangs = MaterialTransaction::whereNotNull('cabang')->where('cabang', '!=', '')->distinct()->orderBy('cabang')->pluck('cabang')->toArray();
         
