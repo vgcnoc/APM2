@@ -121,16 +121,16 @@
                 </div>
             </div>
             
-            <!-- Internal HPP Info (Visible to Admin only, Hidden in print) -->
-            <div class="bg-orange-50 border border-orange-100 rounded-xl p-5 print:hidden">
+            <!-- Internal Value Info (Visible to Admin only, Hidden in print) -->
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-5 print:hidden">
                 <div class="flex items-center gap-3 mb-2">
-                    <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <h3 class="text-sm font-bold text-orange-900">Informasi Internal (HPP)</h3>
+                    <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <h3 class="text-sm font-bold text-blue-900">Informasi Tagihan (Harga Jual)</h3>
                 </div>
-                <p class="text-sm text-orange-800 mb-4">Informasi nilai barang di bawah ini hanya untuk admin dan disembunyikan saat surat jalan dicetak.</p>
-                <div class="flex justify-between items-center bg-white/60 p-4 rounded-lg border border-orange-200/50">
-                    <span class="text-sm font-bold text-orange-900">Total Modal / HPP Pengeluaran Ini:</span>
-                    <span class="text-lg font-black text-orange-600">Rp {{ formatNumber(transaction.total_cost) }}</span>
+                <p class="text-sm text-blue-800 mb-4">Informasi nilai tagihan di bawah ini hanya untuk admin dan disembunyikan saat surat jalan dicetak.</p>
+                <div class="flex justify-between items-center bg-white/60 p-4 rounded-lg border border-blue-200/50">
+                    <span class="text-sm font-bold text-blue-900">Total Tagihan (Harga Jual) Pengeluaran Ini:</span>
+                    <span class="text-lg font-black text-blue-600">Rp {{ formatNumber(transaction.total_cost) }}</span>
                 </div>
             </div>
         </div>

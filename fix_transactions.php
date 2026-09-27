@@ -18,14 +18,14 @@ foreach ($transactions as $t) {
             continue;
         }
         
-        $ppu = $mat->price_per_unit;
+        $ppu = $mat->selling_price; // Changed from price_per_unit to selling_price
         if ($mat->category == 'Kabel' && strtolower($item->unit) == 'meter') {
             $mpr = $mat->meter_per_roll > 0 ? $mat->meter_per_roll : 1000;
             $ppu = $ppu / $mpr;
         }
         
         $correctTotalPrice = $item->quantity * $ppu;
-        if (abs($item->total_price - $correctTotalPrice) > 0.01) {
+        if (abs($item->total_price - $correctTotalPrice) > 0.01 || $item->price_per_unit != $ppu) {
             $item->price_per_unit = $ppu;
             $item->total_price = $correctTotalPrice;
             $item->save();

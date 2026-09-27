@@ -71,10 +71,10 @@ class MaterialTransactionController extends Controller
                     throw new \Exception("Stok {$material->name} tidak mencukupi. Sisa stok: {$material->stock}");
                 }
 
-                $pricePerUnit = $material->price_per_unit ?? 0;
+                $pricePerUnit = $material->selling_price ?? 0;
                 
                 // Jika barang adalah Kabel dan satuan yang diambil adalah meter, 
-                // hitung harga modal per meter (harga 1 roll dibagi panjang 1 roll)
+                // hitung harga jual per meter (harga 1 roll dibagi panjang 1 roll)
                 if ($material->category === 'Kabel' && strtolower($itemData['unit'] ?? '') === 'meter') {
                     $meterPerRoll = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
                     $pricePerUnit = $pricePerUnit / $meterPerRoll;
