@@ -347,12 +347,18 @@ function addManualMaterial() {
 function getTransactionLabel(trx) {
     let itemsStr = 'Tidak ada barang';
     if (trx.items && trx.items.length > 0) {
-        itemsStr = trx.items.map(item => item.material ? item.material.name : 'Unknown').join(', ');
-        if (itemsStr.length > 40) {
-            itemsStr = itemsStr.substring(0, 37) + '...';
+        itemsStr = trx.items.map(item => {
+            const name = item.material ? item.material.name : 'Unknown';
+            const qty = item.quantity;
+            const unit = item.unit || (item.material ? item.material.unit : 'pcs');
+            return `${name} (${qty} ${unit})`;
+        }).join(', ');
+        
+        if (itemsStr.length > 60) {
+            itemsStr = itemsStr.substring(0, 57) + '...';
         }
     }
-    return `${itemsStr} - ${trx.technician_name} (${trx.date})`;
+    return `[${trx.transaction_number}] ${itemsStr} - ${trx.technician_name} (${trx.date})`;
 }
 
 const status = ref(props.filters?.status || '');
