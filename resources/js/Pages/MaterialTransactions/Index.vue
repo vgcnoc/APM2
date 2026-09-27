@@ -56,10 +56,17 @@
                                     </p>
                                 </td>
                                 <td class="py-4 px-6 align-top">
-                                    <div class="space-y-1">
+                                    <div class="space-y-2">
                                         <div v-for="detail in item.items" :key="detail.id" class="text-xs">
-                                            <span class="font-medium text-gray-800">{{ detail.material ? detail.material.name : 'Unknown' }}</span>
-                                            <span class="text-gray-500"> ({{ detail.quantity }} {{ detail.unit || (detail.material ? detail.material.unit : 'pcs') }})</span>
+                                            <div>
+                                                <span class="font-medium text-gray-800">{{ detail.material ? detail.material.name : 'Unknown' }}</span>
+                                                <span class="text-gray-500 ml-1">({{ detail.quantity }} {{ detail.unit || (detail.material ? detail.material.unit : 'pcs') }})</span>
+                                            </div>
+                                            <div v-if="detail.material" class="flex items-center gap-2 mt-0.5 text-[10px]">
+                                                <span class="text-gray-400">Stok Awal: <span class="font-semibold text-gray-600">{{ formatNumber(detail.material.initial_stock) }}</span></span>
+                                                <span class="text-gray-300">|</span>
+                                                <span class="text-gray-400">Sisa Stok: <span class="font-semibold text-blue-600">{{ formatNumber(detail.material.stock) }}</span></span>
+                                            </div>
                                         </div>
                                         <div v-if="!item.items || item.items.length === 0" class="text-xs text-gray-400 italic">
                                             Tidak ada barang

@@ -66,7 +66,12 @@
                                     <td class="py-3 px-4 text-sm text-gray-900 font-medium">{{ index + 1 }}</td>
                                     <td class="py-3 px-4">
                                         <p class="text-sm font-bold text-gray-900">{{ item.material?.name || 'Barang Dihapus' }}</p>
-                                        <p v-if="item.material?.brand" class="text-xs text-gray-500">{{ item.material.brand }}</p>
+                                        <div v-if="item.material" class="mt-1 flex items-center gap-2 text-xs">
+                                            <span class="text-gray-500">Awal: <span class="font-semibold">{{ formatNumber(item.material.initial_stock) }}</span></span>
+                                            <span class="text-gray-300">|</span>
+                                            <span class="text-gray-500">Sisa: <span class="text-blue-600 font-semibold">{{ formatNumber(item.material.stock) }}</span></span>
+                                        </div>
+                                        <p v-if="item.material?.brand" class="text-xs text-gray-500 mt-1">{{ item.material.brand }}</p>
                                         
                                         <!-- ONT Registration Button -->
                                         <div v-if="item.material?.category === 'Perangkat Aktif' || (item.material?.name || '').toLowerCase().includes('ont') || (item.material?.name || '').toLowerCase().includes('modem') || (item.material?.name || '').toLowerCase().includes('router')" class="mt-2 print:hidden">
