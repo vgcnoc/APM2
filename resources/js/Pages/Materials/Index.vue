@@ -210,6 +210,20 @@
                                     <input v-model="form.selling_price" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
                                 </div>
                             </div>
+                            <div class="grid grid-cols-2 gap-4 mt-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Harga Modal (per meter)</label>
+                                    <div class="w-full px-3 py-2 rounded-lg border border-gray-100 bg-gray-50 text-sm font-semibold text-gray-700">
+                                        Rp {{ formatNumber(hargaModalPerMeter) }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Harga Jual (per meter)</label>
+                                    <div class="w-full px-3 py-2 rounded-lg border border-emerald-100 bg-emerald-50 text-sm font-semibold text-emerald-700">
+                                        Rp {{ formatNumber(hargaJualPerMeter) }}
+                                    </div>
+                                </div>
+                            </div>
                             <div class="mt-3 pt-3 border-t border-blue-100 flex justify-between items-center">
                                 <span class="text-xs text-blue-700">Total Stok Tersimpan (Otomatis):</span>
                                 <span class="text-sm font-bold text-blue-700">{{ form.stock }} Meter</span>
@@ -250,7 +264,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { router, useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -281,6 +295,20 @@ const formatNumber = (num) => {
     if (!num) return '0';
     return Number(num).toLocaleString('id-ID');
 };
+
+const hargaModalPerMeter = computed(() => {
+    const meterPerRoll = parseFloat(form.meter_per_roll) || 0;
+    const hargaPerRoll = parseFloat(form.price_per_unit) || 0;
+    if (meterPerRoll <= 0) return 0;
+    return Math.round(hargaPerRoll / meterPerRoll);
+});
+
+const hargaJualPerMeter = computed(() => {
+    const meterPerRoll = parseFloat(form.meter_per_roll) || 0;
+    const hargaPerRoll = parseFloat(form.selling_price) || 0;
+    if (meterPerRoll <= 0) return 0;
+    return Math.round(hargaPerRoll / meterPerRoll);
+});
 
 const performSearch = () => {
     router.get('/materials', { search: search.value }, { preserveState: true });
