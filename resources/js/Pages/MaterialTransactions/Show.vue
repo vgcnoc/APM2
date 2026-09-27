@@ -95,6 +95,10 @@
                                     </td>
                                     <td class="py-3 px-4 text-right">
                                         <span class="text-sm font-bold text-gray-900">{{ item.quantity }}</span>
+                                        <div class="mt-1 flex flex-col items-end gap-0.5">
+                                            <span class="text-xs text-gray-500">@ Rp {{ formatNumber(item.price_per_unit) }}</span>
+                                            <span class="text-xs font-semibold text-emerald-600">Rp {{ formatNumber(item.total_price) }}</span>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>

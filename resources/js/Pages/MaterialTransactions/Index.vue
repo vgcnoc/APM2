@@ -61,6 +61,7 @@
                                             <div>
                                                 <span class="font-medium text-gray-800">{{ detail.material ? detail.material.name : 'Unknown' }}</span>
                                                 <span class="text-gray-500 ml-1">({{ detail.quantity }} {{ detail.unit || (detail.material ? detail.material.unit : 'pcs') }})</span>
+                                                <span class="text-emerald-600 font-medium ml-1">@ Rp {{ formatNumber(detail.price_per_unit) }}</span>
                                             </div>
                                             <div v-if="detail.material" class="flex items-center gap-2 mt-0.5 text-[10px]">
                                                 <span class="text-gray-400">Stok Awal: <span class="font-semibold text-gray-600">{{ formatNumber(detail.material.initial_stock) }}</span></span>
