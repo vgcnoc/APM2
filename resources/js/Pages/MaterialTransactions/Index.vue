@@ -120,6 +120,10 @@ const formatNumber = (num) => {
 };
 
 const deleteTransaction = (id) => {
+    if (!id) {
+        alert('Gagal menghapus: ID Transaksi tidak valid. Silakan refresh halaman.');
+        return;
+    }
     if (confirm('Yakin ingin menghapus riwayat transaksi ini? Stok barang akan dikembalikan ke gudang secara otomatis.')) {
         router.delete(`/material-transactions/${id}`);
     }
