@@ -158,6 +158,9 @@
                             <div>
                                 <div class="flex items-center justify-between mb-1">
                                     <label class="block text-xs font-medium text-gray-500">Material (Surat Jalan)</label>
+                                    <button type="button" @click="addManualMaterial" class="text-blue-500 hover:text-blue-600 focus:outline-none" title="Tambah Material Manual">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    </button>
                                 </div>
                                 <div class="space-y-2">
                                     <select v-model="assignForm.material_transaction_id" @change="updateMaterialItems" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
@@ -172,8 +175,8 @@
                                         <p class="text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-2">Rincian Penggunaan Barang:</p>
                                         <ul class="space-y-2">
                                             <li v-for="(item, idx) in assignForm.material_items" :key="idx" class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-100/50 pb-2 last:border-0 last:pb-0">
-                                                <span class="text-xs font-medium text-blue-900 leading-tight flex-1">{{ item.name }}</span>
-                                                <div class="flex gap-1 shrink-0">
+                                                <input v-model="item.name" type="text" class="flex-1 w-full sm:w-auto px-2 py-1 text-xs border border-blue-200 rounded focus:ring-blue-500 font-medium text-blue-900 bg-white" placeholder="Nama Barang">
+                                                <div class="flex gap-1 shrink-0 items-center">
                                                     <input v-model="item.qty" type="number" step="0.01" min="0" class="w-16 px-2 py-1 text-xs border border-blue-200 rounded focus:ring-blue-500" placeholder="Qty">
                                                     <input v-model="item.unit" list="unit-options-list" type="text" class="w-20 px-2 py-1 text-xs border border-blue-200 rounded focus:ring-blue-500" placeholder="Satuan">
                                                     <datalist id="unit-options-list">
@@ -183,6 +186,9 @@
                                                         <option value="pack"></option>
                                                         <option value="box"></option>
                                                     </datalist>
+                                                    <button type="button" @click="assignForm.material_items.splice(idx, 1)" class="text-red-400 hover:text-red-600 focus:outline-none ml-1" title="Hapus">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                    </button>
                                                 </div>
                                             </li>
                                         </ul>
@@ -319,6 +325,15 @@ function updateMaterialItems() {
         qty: item.quantity,
         unit: item.unit || (item.material ? item.material.unit : 'pcs')
     }));
+}
+
+function addManualMaterial() {
+    assignForm.material_items.push({
+        id: 'manual-' + Date.now(),
+        name: '',
+        qty: 1,
+        unit: 'pcs'
+    });
 }
 
 function getTransactionLabel(trx) {
