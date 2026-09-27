@@ -498,7 +498,7 @@ class CustomerController extends Controller
                 $trxNotes = ["Material diambil dari Surat Jalan / Order: " . implode(', ', $trxs)];
                 if (!empty($validated['material_items'])) {
                     foreach ($validated['material_items'] as $mItem) {
-                        $trxNotes[] = " - " . $mItem['name'] . " : " . $mItem['qty'] . " " . $mItem['unit'];
+                        $trxNotes[] = "Material: " . $mItem['name'] . " (" . $mItem['qty'] . " " . $mItem['unit'] . ")";
                     }
                 }
                 $customNotes[] = implode("\n", $trxNotes);

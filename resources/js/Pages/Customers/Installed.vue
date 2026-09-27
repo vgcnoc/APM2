@@ -145,8 +145,8 @@
                                     <div v-for="(ont, index) in assignForm.ont_models" :key="'ont-'+index" class="flex gap-2 items-center">
                                         <select v-model="assignForm.ont_models[index]" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
                                             <option value="">-- Pilih ONT --</option>
-                                            <option v-for="ont in availableOnts" :key="ont.id" :value="ont.brand + ' ' + ont.model + ' (SN: ' + ont.serial_number + ')'">
-                                                {{ ont.brand }} {{ ont.model }} - SN: {{ ont.serial_number }}
+                                            <option v-for="ont in availableOnts" :key="ont.id" :value="ont.brand + (ont.model ? ' ' + ont.model : '') + ' (SN: ' + ont.serial_number + ')'">
+                                                {{ ont.brand }} {{ ont.model || '' }} - SN: {{ ont.serial_number }}
                                             </option>
                                         </select>
                                         <button v-if="assignForm.ont_models.length > 1" type="button" @click="assignForm.ont_models.splice(index, 1)" class="text-red-500 hover:text-red-600 focus:outline-none" title="Hapus">
