@@ -157,4 +157,37 @@ class MaterialTransactionController extends Controller
 
         return back()->with('success', count($sns) . ' perangkat berhasil didaftarkan ke Menu ONT.');
     }
+
+    public function destroy(MaterialTransaction $materialTransaction)
+    {
+        try {
+            DB::transaction(function () use ($materialTransaction) {
+                // Restore stock
+                foreach ($materialTransaction->items as $item) {
+                    $material = $item->material;
+                    if ($material) {
+                        $addition = $item->quantity;
+                        if ($material->category === 'Kabel' && ($item->unit === 'roll' || $item->unit === 'rol')) {
+                            $addition = $item->quantity * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
+                        }
+                        $material->stock += $addition;
+                        
+                        if ($material->category === 'Kabel' && $material->meter_per_roll > 0) {
+                            $material->total_rolls = $material->stock / $material->meter_per_roll;
+                        }
+                        $material->save();
+                    }
+                }
+                
+                // Delete the transaction (cascade will delete items)
+                $materialTransaction->delete();
+            });
+
+            return redirect()->route('material-transactions.index')
+                ->with('success', 'Riwayat Order berhasil dihapus dan stok telah dikembalikan.');
+        } catch (\Exception $e) {
+            return redirect()->route('material-transactions.index')
+                ->with('error', 'Gagal menghapus riwayat order: ' . $e->getMessage());
+        }
+    }
 }
