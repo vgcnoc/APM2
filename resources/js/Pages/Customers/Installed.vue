@@ -358,7 +358,7 @@ function getTransactionLabel(trx) {
             itemsStr = itemsStr.substring(0, 57) + '...';
         }
     }
-    return `[${trx.transaction_number}] ${itemsStr} - ${trx.technician_name} (${trx.date})`;
+    return `${itemsStr} - ${trx.technician_name}`;
 }
 
 const status = ref(props.filters?.status || '');
