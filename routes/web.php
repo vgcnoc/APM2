@@ -46,6 +46,10 @@ Route::middleware(['auth'])->group(function () {
         // Jadwalkan Survey
         Route::post('/{customer}/assign-survey', [CustomerController::class, 'assignSurvey'])
             ->name('assign-survey');
+
+        // Reschedule Survey
+        Route::post('/{customer}/reschedule-survey', [CustomerController::class, 'rescheduleSurvey'])
+            ->name('reschedule-survey');
             
         // Minta Jadwal Survey
         Route::post('/{customer}/request-survey', [CustomerController::class, 'requestSurvey'])

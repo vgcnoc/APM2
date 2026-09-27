@@ -465,6 +465,48 @@ class CustomerController extends Controller
     }
 
     /**
+     * Reschedule survey (ganti tanggal, waktu, dan/atau petugas)
+     */
+    public function rescheduleSurvey(Request $request, Customer $customer): RedirectResponse
+    {
+        $validated = $request->validate([
+            'technician_id' => 'required|exists:users,id',
+            'scheduled_date' => 'required|date',
+            'scheduled_time' => 'required|date_format:H:i',
+            'notes' => 'nullable|string',
+        ]);
+
+        // Find the existing scheduled survey
+        $schedule = $customer->technicianSchedules()
+            ->where('type', 'survey')
+            ->where('status', 'scheduled')
+            ->first();
+
+        if ($schedule) {
+            $schedule->update([
+                'technician_id' => $validated['technician_id'],
+                'scheduled_date' => $validated['scheduled_date'],
+                'scheduled_time' => $validated['scheduled_time'],
+                'notes' => $validated['notes'] ?? $schedule->notes,
+            ]);
+        } else {
+            // If no existing schedule found, create one
+            TechnicianSchedule::create([
+                'customer_id' => $customer->id,
+                'technician_id' => $validated['technician_id'],
+                'scheduled_date' => $validated['scheduled_date'],
+                'scheduled_time' => $validated['scheduled_time'],
+                'type' => 'survey',
+                'status' => 'scheduled',
+                'notes' => $validated['notes'] ?? null,
+            ]);
+        }
+
+        return redirect()->route('customers.survey')
+            ->with('success', 'Jadwal survey berhasil di-reschedule.');
+    }
+
+    /**
      * Jadwalkan pemasangan
      */
     public function assignInstall(Request $request, Customer $customer): RedirectResponse

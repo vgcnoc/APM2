@@ -149,6 +149,10 @@
                         <button v-else-if="!row.surveys?.length && row.technician_schedules?.length" @click="openReportModal(row)" class="btn-success py-1.5 px-3 text-xs">
                             Isi Laporan
                         </button>
+                        <button v-if="!row.surveys?.length && row.technician_schedules?.length" @click="openRescheduleModal(row)" class="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 hover:text-amber-700 rounded-lg text-xs font-medium transition-colors" title="Reschedule: Ganti tanggal, waktu, atau petugas survey">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            Reschedule
+                        </button>
                         <button v-else-if="row.surveys?.length && row.surveys[0]?.feasibility === 'feasible'" @click="openInstallModal(row)" class="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 hover:text-emerald-300 rounded-lg text-xs font-bold shadow-[0_0_10px_rgba(16,185,129,0.2)] transition-colors" title="Laporan Selesai: Klik untuk menjadwalkan instalasi di menu Pasang/Aktif">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
                             Ready Install
@@ -213,6 +217,62 @@
                         <button type="button" @click="showAssignModal = false" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Batal</button>
                         <button type="submit" :disabled="assignForm.processing" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-gray-900 rounded-lg text-sm font-medium transition-colors">
                             {{ assignForm.processing ? 'Menyimpan...' : 'Tugaskan' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal Reschedule Survey -->
+        <div v-if="showRescheduleModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-up">
+                <div class="p-5 border-b border-gray-200 flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <span class="p-1.5 rounded-lg bg-amber-100 text-amber-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        </span>
+                        Reschedule Survey
+                    </h3>
+                    <button @click="showRescheduleModal = false" class="text-gray-500 hover:text-gray-900">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <form @submit.prevent="submitReschedule">
+                    <div class="p-5 space-y-4">
+                        <!-- Info Pelanggan -->
+                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                            <p class="text-xs text-amber-700 font-medium">Pelanggan: <strong class="text-amber-900">{{ rescheduleCustomer?.name }}</strong></p>
+                            <p v-if="rescheduleCustomer?.technician_schedules?.length" class="text-xs text-amber-600 mt-1">
+                                Jadwal saat ini: {{ rescheduleCustomer.technician_schedules[0].scheduled_date }} {{ rescheduleCustomer.technician_schedules[0].scheduled_time }} — {{ rescheduleCustomer.technician_schedules[0].technician?.name }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Ganti Petugas / Surveyor</label>
+                            <select v-model="rescheduleForm.technician_id" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-amber-500" required>
+                                <option value="">-- Pilih Teknisi --</option>
+                                <option v-for="tech in technicians" :key="tech.id" :value="tech.id">{{ tech.name }}</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Tanggal Baru</label>
+                                <input v-model="rescheduleForm.scheduled_date" type="date" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-amber-500" required />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Waktu Baru</label>
+                                <input v-model="rescheduleForm.scheduled_time" type="time" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-amber-500" required />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Catatan / Alasan Reschedule</label>
+                            <textarea v-model="rescheduleForm.notes" rows="2" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-amber-500" placeholder="Contoh: Petugas berhalangan, jadwal bentrok, dll."></textarea>
+                        </div>
+                    </div>
+                    <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+                        <button type="button" @click="showRescheduleModal = false" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Batal</button>
+                        <button type="submit" :disabled="rescheduleForm.processing" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition-colors">
+                            {{ rescheduleForm.processing ? 'Menyimpan...' : 'Simpan Reschedule' }}
                         </button>
                     </div>
                 </form>
@@ -571,6 +631,42 @@ function submitAssign() {
     assignForm.post(`/customers/${activeCustomer.value.id}/assign-survey`, {
         onSuccess: () => {
             showAssignModal.value = false;
+        }
+    });
+}
+
+// Reschedule Modal Logic
+const showRescheduleModal = ref(false);
+const rescheduleCustomer = ref(null);
+const rescheduleForm = useForm({
+    technician_id: '',
+    scheduled_date: '',
+    scheduled_time: '',
+    notes: ''
+});
+
+function openRescheduleModal(customer) {
+    rescheduleCustomer.value = customer;
+    rescheduleForm.reset();
+    
+    // Pre-fill with existing schedule data
+    const schedule = customer.technician_schedules?.[0];
+    if (schedule) {
+        rescheduleForm.technician_id = schedule.technician_id || '';
+        rescheduleForm.scheduled_date = schedule.scheduled_date || new Date().toISOString().split('T')[0];
+        rescheduleForm.scheduled_time = schedule.scheduled_time || '10:00';
+    } else {
+        rescheduleForm.scheduled_date = new Date().toISOString().split('T')[0];
+        rescheduleForm.scheduled_time = '10:00';
+    }
+    
+    showRescheduleModal.value = true;
+}
+
+function submitReschedule() {
+    rescheduleForm.post(`/customers/${rescheduleCustomer.value.id}/reschedule-survey`, {
+        onSuccess: () => {
+            showRescheduleModal.value = false;
         }
     });
 }
