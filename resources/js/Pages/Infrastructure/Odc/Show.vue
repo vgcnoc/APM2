@@ -151,8 +151,14 @@ const props = defineProps({
 
 function getPonVlansText(odc) {
     if (!odc.olt || !odc.pon_port || !odc.olt.pon_vlans) return '';
-    const ponData = odc.olt.pon_vlans.find(p => p.port == odc.pon_port);
-    if (!ponData || !ponData.vlans || ponData.vlans.length === 0) return '';
+    let vlans = odc.olt.pon_vlans;
+    if (typeof vlans === 'string') {
+        try { vlans = JSON.parse(vlans); } catch (e) { return ''; }
+    }
+    if (!Array.isArray(vlans)) return '';
+    
+    const ponData = vlans.find(p => p.port == odc.pon_port);
+    if (!ponData || !ponData.vlans || !Array.isArray(ponData.vlans) || ponData.vlans.length === 0) return '';
     return ponData.vlans.map(v => `${v.name} (${v.vlan_id})`).join(', ');
 }
 </script>
