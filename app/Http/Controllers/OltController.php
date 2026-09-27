@@ -42,6 +42,7 @@ class OltController extends Controller
             'longitude' => 'nullable|numeric|between:-180,180',
             'status' => 'in:active,inactive,maintenance',
             'description' => 'nullable|string',
+            'pon_vlans' => 'nullable|array',
         ]);
 
         Olt::create($validated);
@@ -73,6 +74,7 @@ class OltController extends Controller
             'longitude' => 'nullable|numeric|between:-180,180',
             'status' => 'in:active,inactive,maintenance',
             'description' => 'nullable|string',
+            'pon_vlans' => 'nullable|array',
         ]);
 
         $olt->update($validated);

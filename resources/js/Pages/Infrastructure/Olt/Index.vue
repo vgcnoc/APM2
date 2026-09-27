@@ -140,6 +140,37 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- VLAN per PON -->
+                        <div class="border border-blue-100 rounded-xl overflow-hidden bg-white">
+                            <div class="bg-blue-50/50 px-4 py-3 border-b border-blue-100 flex items-center justify-between">
+                                <span class="text-sm font-semibold text-blue-900">Konfigurasi VLAN per PON</span>
+                                <button type="button" @click="syncPonVlans" class="text-[10px] bg-blue-600 text-white px-2 py-1 rounded font-bold shadow-sm hover:bg-blue-700 transition-colors">Generate Sesuai Port</button>
+                            </div>
+                            <div class="p-4 space-y-4 max-h-64 overflow-y-auto">
+                                <div v-if="!form.pon_vlans || form.pon_vlans.length === 0" class="text-xs text-gray-500 text-center py-2">
+                                    Klik "Generate Sesuai Port" untuk memunculkan input VLAN.
+                                </div>
+                                <div v-for="(pon, index) in form.pon_vlans" :key="index" class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="text-sm font-bold text-gray-800">PON {{ pon.port }}</h4>
+                                        <button type="button" @click="addVlanToPon(index)" class="text-[10px] px-2 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded font-bold">+ Tambah VLAN</button>
+                                    </div>
+                                    
+                                    <div v-if="pon.vlans.length === 0" class="text-[10px] text-gray-500 italic mb-1">Belum ada VLAN.</div>
+                                    
+                                    <div class="space-y-2">
+                                        <div v-for="(vlan, vIndex) in pon.vlans" :key="vIndex" class="flex items-center gap-2">
+                                            <input v-model="vlan.name" type="text" placeholder="Nama (Cth: Hotspot)" class="flex-1 px-2 py-1.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                            <input v-model="vlan.vlan_id" type="number" placeholder="VLAN ID" class="w-24 px-2 py-1.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                            <button type="button" @click="pon.vlans.splice(vIndex, 1)" class="text-red-500 hover:text-red-700 p-1" title="Hapus VLAN">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                     </div>
                     
@@ -179,12 +210,42 @@ const form = useForm({
     brand: '',
     model: '',
     total_pon_ports: 8,
+    pon_vlans: [],
     location: '',
     latitude: '',
     longitude: '',
     status: 'active',
     description: ''
 });
+
+function syncPonVlans() {
+    const total = parseInt(form.total_pon_ports) || 0;
+    if (total <= 0) return;
+    
+    if (!form.pon_vlans) {
+        form.pon_vlans = [];
+    }
+    
+    // Add new PONs if needed
+    for (let i = 1; i <= total; i++) {
+        if (!form.pon_vlans.find(p => p.port === i)) {
+            form.pon_vlans.push({ port: i, vlans: [] });
+        }
+    }
+    
+    // Remove extra PONs if reduced, but sort them first to be safe
+    form.pon_vlans.sort((a, b) => a.port - b.port);
+    if (form.pon_vlans.length > total) {
+        form.pon_vlans = form.pon_vlans.filter(p => p.port <= total);
+    }
+}
+
+function addVlanToPon(ponIndex) {
+    if (!form.pon_vlans[ponIndex].vlans) {
+        form.pon_vlans[ponIndex].vlans = [];
+    }
+    form.pon_vlans[ponIndex].vlans.push({ name: '', vlan_id: '' });
+}
 
 function openCreateModal() {
     isEditing.value = false;
@@ -203,6 +264,7 @@ function openEditModal(olt) {
     form.brand = olt.brand || '';
     form.model = olt.model || '';
     form.total_pon_ports = olt.total_pon_ports;
+    form.pon_vlans = olt.pon_vlans || [];
     form.location = olt.location || '';
     form.latitude = olt.latitude || '';
     form.longitude = olt.longitude || '';

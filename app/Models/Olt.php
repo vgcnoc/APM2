@@ -17,6 +17,7 @@ class Olt extends Model
         'brand',
         'model',
         'total_pon_ports',
+        'pon_vlans',
         'location',
         'latitude',
         'longitude',
@@ -30,6 +31,7 @@ class Olt extends Model
             'latitude' => 'decimal:8',
             'longitude' => 'decimal:8',
             'total_pon_ports' => 'integer',
+            'pon_vlans' => 'array',
         ];
     }
 
