@@ -323,7 +323,8 @@ function updateMaterialItems() {
                 .filter(item => {
                     const name = item.material && item.material.name ? item.material.name.toLowerCase() : '';
                     const category = item.material && item.material.category ? item.material.category.toLowerCase() : '';
-                    return !name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem');
+                    const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
+                    return !name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem') && !isRegistered;
                 })
                 .map(item => ({
                     id: item.id,
@@ -356,7 +357,8 @@ function getTransactionLabel(trx) {
         const nonOntItems = trx.items.filter(item => {
             const name = item.material && item.material.name ? item.material.name.toLowerCase() : '';
             const category = item.material && item.material.category ? item.material.category.toLowerCase() : '';
-            return !name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem');
+            const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
+            return !name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem') && !isRegistered;
         });
 
         if (nonOntItems.length > 0) {
