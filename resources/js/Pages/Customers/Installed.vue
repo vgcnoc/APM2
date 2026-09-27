@@ -327,9 +327,9 @@
                     <p class="text-sm text-gray-500 mb-6 leading-relaxed">
                         Semua data terkait pelanggan ini (jadwal teknisi, data perangkat, status) akan <strong class="text-red-600">dihapus permanen</strong>. Tindakan ini tidak dapat dibatalkan.
                     </p>
-                    <div class="flex justify-end gap-3">
-                        <button @click="showDeleteModal = false" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Batal</button>
-                        <button @click="executeDelete" :disabled="isDeleting" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors">
+                    <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                        <button @click="showDeleteModal = false" class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">Batal</button>
+                        <button @click="executeDelete" :disabled="isDeleting" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
                             {{ isDeleting ? 'Menghapus...' : 'Ya, Hapus' }}
                         </button>
                     </div>

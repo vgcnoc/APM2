@@ -216,9 +216,9 @@
                             <textarea v-model="assignForm.notes" rows="2" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500"></textarea>
                         </div>
                     </div>
-                    <div class="p-5 bg-gray-500 border-t border-gray-200 flex justify-end gap-3">
-                        <button type="button" @click="showAssignModal = false" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Batal</button>
-                        <button type="submit" :disabled="assignForm.processing" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-gray-900 rounded-lg text-sm font-medium transition-colors">
+                    <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
+                        <button type="button" @click="showAssignModal = false" class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">Batal</button>
+                        <button type="submit" :disabled="assignForm.processing" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                             {{ assignForm.processing ? 'Menyimpan...' : 'Tugaskan' }}
                         </button>
                     </div>
@@ -272,9 +272,9 @@
                             <textarea v-model="rescheduleForm.notes" rows="2" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-amber-500" placeholder="Contoh: Petugas berhalangan, jadwal bentrok, dll."></textarea>
                         </div>
                     </div>
-                    <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
-                        <button type="button" @click="showRescheduleModal = false" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Batal</button>
-                        <button type="submit" :disabled="rescheduleForm.processing" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition-colors">
+                    <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
+                        <button type="button" @click="showRescheduleModal = false" class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">Batal</button>
+                        <button type="submit" :disabled="rescheduleForm.processing" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition-colors shadow-sm focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
                             {{ rescheduleForm.processing ? 'Menyimpan...' : 'Simpan Reschedule' }}
                         </button>
                     </div>
@@ -339,10 +339,10 @@
                             </div>
                             
                             <div class="space-y-3">
-                                <div v-for="(photo, index) in reportForm.photos" :key="index" class="flex items-start gap-3 bg-gray-500 p-3 rounded-lg border border-white/5">
-                                    <div class="flex-1 space-y-2">
-                                        <input v-model="photo.label" type="text" class="w-full bg-transparent border-b border-gray-200 px-1 py-1 text-xs text-gray-600 focus:border-blue-500 focus:outline-none" placeholder="Label Foto" />
-                                        <input type="file" @change="handlePhotoChange(index, $event)" accept="image/*" class="w-full text-xs text-gray-500 file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-white file:text-gray-900 hover:file:bg-white/20 transition-colors" />
+                                <div v-for="(photo, index) in reportForm.photos" :key="index" class="flex items-start gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm transition-all hover:border-blue-200 hover:bg-blue-50/30">
+                                    <div class="flex-1 space-y-3">
+                                        <input v-model="photo.label" type="text" class="w-full bg-transparent border-b border-gray-300 px-1 py-1.5 text-sm font-medium text-gray-900 focus:border-blue-500 focus:outline-none placeholder-gray-400 transition-colors" placeholder="Label Foto" />
+                                        <input type="file" @change="handlePhotoChange(index, $event)" accept="image/*" class="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-xs file:font-medium file:bg-white file:text-gray-700 hover:file:bg-gray-50 cursor-pointer transition-colors" />
                                     </div>
                                     <button v-if="index > 2" type="button" @click="removePhoto(index)" class="p-1 text-gray-500 hover:text-red-400 transition-colors">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -371,9 +371,9 @@
                             <textarea v-model="reportForm.notes" rows="2" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500"></textarea>
                         </div>
                     </div>
-                    <div class="p-5 bg-gray-500 border-t border-gray-200 flex justify-end gap-3">
-                        <button type="button" @click="showReportModal = false" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Batal</button>
-                        <button type="submit" :disabled="reportForm.processing" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-gray-900 rounded-lg text-sm font-medium transition-colors">
+                    <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
+                        <button type="button" @click="showReportModal = false" class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">Batal</button>
+                        <button type="submit" :disabled="reportForm.processing" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                             {{ reportForm.processing ? 'Menyimpan...' : 'Simpan Laporan' }}
                         </button>
                     </div>
@@ -521,9 +521,9 @@
                     <p class="text-sm text-gray-500 mb-6 leading-relaxed">
                         Laporan survey untuk pelanggan ini menyatakan <strong class="text-gray-900">layak (feasible)</strong>. Anda akan diarahkan ke menu <strong>Pasang / Aktif</strong> untuk menjadwalkan teknisi instalasi jaringan.
                     </p>
-                    <div class="flex justify-end gap-3">
-                        <button @click="showInstallModal = false" class="btn-ghost">Batal</button>
-                        <button @click="proceedToInstall" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-gray-900 rounded-lg text-sm font-medium shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-colors">
+                    <div class="flex justify-end gap-3 pt-4 border-t border-gray-200/50">
+                        <button @click="showInstallModal = false" class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">Batal</button>
+                        <button @click="proceedToInstall" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
                             Ya, Lanjutkan
                         </button>
                     </div>
@@ -548,9 +548,9 @@
                     <p class="text-sm text-gray-500 mb-6 leading-relaxed">
                         Semua data terkait pelanggan ini (jadwal survey, hasil survey, jadwal teknisi) akan <strong class="text-red-600">dihapus permanen</strong>. Tindakan ini tidak dapat dibatalkan.
                     </p>
-                    <div class="flex justify-end gap-3">
-                        <button @click="showDeleteModal = false" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Batal</button>
-                        <button @click="executeDelete" :disabled="isDeleting" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors">
+                    <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                        <button @click="showDeleteModal = false" class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">Batal</button>
+                        <button @click="executeDelete" :disabled="isDeleting" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
                             {{ isDeleting ? 'Menghapus...' : 'Ya, Hapus' }}
                         </button>
                     </div>
