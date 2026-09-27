@@ -27,9 +27,25 @@
                         </datalist>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Catatan Tambahan</label>
-                    <textarea v-model="form.notes" rows="2" placeholder="Catatan opsional..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"></textarea>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cabang *</label>
+                        <div class="flex gap-2">
+                            <select v-if="!isCabangManual" v-model="form.cabang" @change="onCabangChange" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
+                                <option value="">-- Pilih Cabang --</option>
+                                <option v-for="cabang in cabangs" :key="cabang" :value="cabang">{{ cabang }}</option>
+                                <option value="manual">+ Tambah Cabang Baru</option>
+                            </select>
+                            <div v-else class="flex w-full gap-2">
+                                <input v-model="form.cabang" type="text" placeholder="Ketik nama cabang..." required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
+                                <button type="button" @click="isCabangManual = false; form.cabang = ''" class="px-3 py-2 text-sm font-medium text-gray-500 hover:text-red-500 transition-colors">Batal</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Catatan Tambahan</label>
+                        <textarea v-model="form.notes" rows="1" placeholder="Catatan opsional..." class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"></textarea>
+                    </div>
                 </div>
             </div>
 
@@ -119,12 +135,14 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import { useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     materials: Array,
     areas: Array,
+    cabangs: Array,
 });
 
 const getTodayDate = () => {
@@ -141,12 +159,22 @@ const form = useForm({
     date: getTodayDate(),
     technician_name: '',
     purpose: '',
+    cabang: '',
     area: '',
     notes: '',
     items: [
         { material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, meter_per_roll: 1000 }
     ]
 });
+
+const isCabangManual = ref(false);
+
+const onCabangChange = (e) => {
+    if (e.target.value === 'manual') {
+        isCabangManual.value = true;
+        form.cabang = '';
+    }
+};
 
 const addItem = () => {
     form.items.push({ material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, meter_per_roll: 1000 });

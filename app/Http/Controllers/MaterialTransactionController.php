@@ -27,10 +27,12 @@ class MaterialTransactionController extends Controller
     {
         $materials = Material::where('stock', '>', 0)->get();
         $areas = \App\Models\Area::orderBy('name')->pluck('name')->toArray();
+        $cabangs = MaterialTransaction::whereNotNull('cabang')->where('cabang', '!=', '')->distinct()->orderBy('cabang')->pluck('cabang')->toArray();
         
         return Inertia::render('MaterialTransactions/Create', [
             'materials' => $materials,
             'areas' => $areas,
+            'cabangs' => $cabangs,
         ]);
     }
 
@@ -41,6 +43,7 @@ class MaterialTransactionController extends Controller
             'technician_name' => 'required|string|max:255',
             'purpose' => 'required|string|max:255',
             'area' => 'nullable|string|max:255',
+            'cabang' => 'nullable|string|max:255',
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
             'items.*.quantity' => 'required|numeric|min:0.01',
@@ -57,6 +60,7 @@ class MaterialTransactionController extends Controller
                 'date' => $request->date,
                 'technician_name' => $request->technician_name,
                 'purpose' => $request->purpose,
+                'cabang' => $request->cabang,
                 'area' => $request->area,
                 'notes' => $request->notes,
                 'user_id' => auth()->id(),
