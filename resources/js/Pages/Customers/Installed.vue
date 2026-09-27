@@ -160,7 +160,7 @@
                                     <label class="block text-xs font-medium text-gray-500">Material (Surat Jalan)</label>
                                 </div>
                                 <div class="space-y-2">
-                                    <select v-model="assignForm.material_transaction_id" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
+                                    <select v-model="assignForm.material_transaction_id" @change="updateMaterialItems" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
                                         <option value="">-- Pilih Surat Jalan / Order --</option>
                                         <option v-for="trx in materialTransactions" :key="trx.id" :value="trx.transaction_number">
                                             {{ getTransactionLabel(trx) }}
@@ -294,7 +294,8 @@ const columns = [
 
 // Removed selectedTransactionItems computed property
 
-watch(() => assignForm.material_transaction_id, (newVal) => {
+function updateMaterialItems() {
+    const newVal = assignForm.material_transaction_id;
     if (!newVal) {
         assignForm.material_items = [];
         return;
@@ -311,7 +312,7 @@ watch(() => assignForm.material_transaction_id, (newVal) => {
         qty: item.quantity,
         unit: item.unit || (item.material ? item.material.unit : 'pcs')
     }));
-});
+}
 
 function getTransactionLabel(trx) {
     let itemsStr = 'Tidak ada barang';
