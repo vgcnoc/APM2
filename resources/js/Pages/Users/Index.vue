@@ -177,15 +177,23 @@
 import { ref, watch } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import debounce from 'lodash/debounce';
+
+// Simple debounce function
+function debounce(func, timeout = 300) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { func.apply(this, args); }, timeout);
+    };
+}
 
 const props = defineProps({
     users: Object,
     filters: Object,
 });
 
-const search = ref(props.filters.search || '');
-const filterRole = ref(props.filters.role || '');
+const search = ref(props.filters?.search || '');
+const filterRole = ref(props.filters?.role || '');
 const isModalOpen = ref(false);
 const isEditing = ref(false);
 
