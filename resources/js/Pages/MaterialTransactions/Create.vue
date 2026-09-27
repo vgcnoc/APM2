@@ -59,7 +59,7 @@
                         
                         <div class="w-full md:w-32">
                             <label class="block text-xs font-medium text-gray-500 mb-1">Jumlah *</label>
-                            <input v-model="item.input_quantity" type="number" step="0.01" min="0.01" :max="item.unit_mode === 'roll' ? (item.max_stock / (item.meter_per_roll || 1)) : item.max_stock" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
+                            <input v-model="item.input_quantity" type="number" step="0.01" min="0.01" :max="item.is_cable && item.unit_mode === 'roll' ? (item.max_stock / (item.meter_per_roll || 1)) : (item.is_pack && item.unit_mode === 'bungkus' ? (item.max_stock / (item.pcs_per_pack || 1)) : item.max_stock)" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
                         </div>
                         
                         <div class="w-full md:w-32">
@@ -67,6 +67,10 @@
                             <select v-if="item.is_cable" v-model="item.unit_mode" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
                                 <option value="meter">Meter</option>
                                 <option value="roll">Roll</option>
+                            </select>
+                            <select v-else-if="item.is_pack" v-model="item.unit_mode" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
+                                <option value="pcs">Pcs</option>
+                                <option value="bungkus">Bungkus</option>
                             </select>
                             <!-- Input Satuan Manual (Datalist) -->
                             <template v-else>
@@ -94,8 +98,11 @@
                         <p v-if="item.is_cable && item.unit_mode === 'roll'" class="text-[10px] text-gray-500 mt-0.5">
                             = {{ (item.input_quantity * item.meter_per_roll).toFixed(2) }} Meter
                         </p>
+                        <p v-else-if="item.is_pack && item.unit_mode === 'bungkus'" class="text-[10px] text-gray-500 mt-0.5">
+                            = {{ (item.input_quantity * item.pcs_per_pack) }} Pcs
+                        </p>
                         <p class="text-[10px] text-emerald-600 mt-0.5" v-if="item.max_stock !== null">
-                            Sisa Stok: {{ item.unit_mode === 'roll' ? (item.max_stock / item.meter_per_roll).toFixed(2) + ' Roll' : item.max_stock + ' ' + (item.unit || '') }}
+                            Sisa Stok: {{ item.is_cable && item.unit_mode === 'roll' ? (item.max_stock / item.meter_per_roll).toFixed(2) + ' Roll' : (item.is_pack && item.unit_mode === 'bungkus' ? (item.max_stock / item.pcs_per_pack).toFixed(2) + ' Bungkus' : item.max_stock + ' ' + (item.unit || '')) }}
                         </p>
                     </div>
                 </div>
@@ -145,14 +152,12 @@ const form = useForm({
     area: '',
     notes: '',
     items: [
-        { material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, meter_per_roll: 1000 }
+        { material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, is_pack: false, meter_per_roll: 1000, pcs_per_pack: 1 }
     ]
 });
 
-
-
 const addItem = () => {
-    form.items.push({ material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, meter_per_roll: 1000 });
+    form.items.push({ material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, is_pack: false, meter_per_roll: 1000, pcs_per_pack: 1 });
 };
 
 const removeItem = (index) => {
@@ -165,13 +170,23 @@ const onMaterialSelected = (index) => {
     
     if (material) {
         const isCable = material.category === 'Kabel' || material.name.toLowerCase().includes('kabel');
+        const isPack = material.category === 'Paku Klem';
         
         form.items[index].unit = material.unit;
         form.items[index].unit_manual = material.unit || 'pcs'; // default it to material's original unit
         form.items[index].max_stock = material.stock;
         form.items[index].is_cable = isCable;
+        form.items[index].is_pack = isPack;
         form.items[index].meter_per_roll = material.meter_per_roll || 1000;
-        form.items[index].unit_mode = isCable ? 'meter' : 'default';
+        form.items[index].pcs_per_pack = material.pcs_per_pack || 1;
+        
+        if (isCable) {
+            form.items[index].unit_mode = 'meter';
+        } else if (isPack) {
+            form.items[index].unit_mode = 'pcs';
+        } else {
+            form.items[index].unit_mode = 'default';
+        }
         
         // Reset quantity if it exceeds max stock
         if (form.items[index].input_quantity > material.stock) {
