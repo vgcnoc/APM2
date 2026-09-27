@@ -36,6 +36,8 @@ class MaterialController extends Controller
             'total_rolls' => 'nullable|numeric|min:0',
             'pcs_per_pack' => 'nullable|numeric|min:0',
             'total_packs' => 'nullable|numeric|min:0',
+            'cm_per_pcs' => 'nullable|numeric|min:0',
+            'total_pieces' => 'nullable|numeric|min:0',
             'stock' => 'required|numeric|min:0',
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
@@ -60,6 +62,8 @@ class MaterialController extends Controller
             'total_rolls' => 'nullable|numeric|min:0',
             'pcs_per_pack' => 'nullable|numeric|min:0',
             'total_packs' => 'nullable|numeric|min:0',
+            'cm_per_pcs' => 'nullable|numeric|min:0',
+            'total_pieces' => 'nullable|numeric|min:0',
             'stock' => 'required|numeric|min:0',
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
@@ -90,6 +94,7 @@ class MaterialController extends Controller
             'added_stock' => 'required|numeric|min:0.01',
             'added_rolls' => 'nullable|numeric|min:0',
             'added_packs' => 'nullable|numeric|min:0',
+            'added_pieces' => 'nullable|numeric|min:0',
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
         ]);
@@ -103,6 +108,10 @@ class MaterialController extends Controller
 
         if ($material->category === 'Paku Klem' && !empty($validated['added_packs'])) {
             $material->total_packs += $validated['added_packs'];
+        }
+
+        if ($material->category === 'Isolasi' && !empty($validated['added_pieces'])) {
+            $material->total_pieces += $validated['added_pieces'];
         }
 
         if (isset($validated['price_per_unit'])) {

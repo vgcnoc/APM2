@@ -85,6 +85,12 @@ class MaterialTransactionController extends Controller
                     $pcsPerPack = $material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1;
                     $pricePerUnit = $pricePerUnit / $pcsPerPack;
                 }
+                
+                // Jika barang adalah Isolasi, hitung harga jual per cm (harga 1 pcs dibagi panjang cm)
+                if ($material->category === 'Isolasi' && strtolower($itemData['unit'] ?? '') === 'cm') {
+                    $cmPerPcs = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50;
+                    $pricePerUnit = $pricePerUnit / $cmPerPcs;
+                }
 
                 $totalPrice = $itemData['quantity'] * $pricePerUnit;
                 $totalCost += $totalPrice;
@@ -107,6 +113,9 @@ class MaterialTransactionController extends Controller
                 if ($material->category === 'Paku Klem' && ($itemData['unit'] === 'pack' || $itemData['unit'] === 'bungkus')) {
                     $deduction = $itemData['quantity'] * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
                 }
+                if ($material->category === 'Isolasi' && ($itemData['unit'] === 'pcs')) {
+                    $deduction = $itemData['quantity'] * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                }
                 
                 $material->stock -= $deduction;
                 
@@ -118,6 +127,11 @@ class MaterialTransactionController extends Controller
                 // Recalculate total_packs roughly
                 if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
                     $material->total_packs = $material->stock / $material->pcs_per_pack;
+                }
+
+                // Recalculate total_pieces roughly
+                if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
+                    $material->total_pieces = $material->stock / $material->cm_per_pcs;
                 }
                 
                 $material->save();
@@ -201,6 +215,9 @@ class MaterialTransactionController extends Controller
                         if ($material->category === 'Paku Klem' && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
                             $addition = $item->quantity * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
                         }
+                        if ($material->category === 'Isolasi' && ($item->unit === 'pcs')) {
+                            $addition = $item->quantity * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                        }
                         $material->stock += $addition;
                         
                         if ($material->category === 'Kabel' && $material->meter_per_roll > 0) {
@@ -208,6 +225,9 @@ class MaterialTransactionController extends Controller
                         }
                         if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
                             $material->total_packs = $material->stock / $material->pcs_per_pack;
+                        }
+                        if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
+                            $material->total_pieces = $material->stock / $material->cm_per_pcs;
                         }
                         $material->save();
                     }

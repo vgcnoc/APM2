@@ -20,5 +20,7 @@ class Material extends Model
         'price_per_unit',
         'selling_price',
         'description',
+        'cm_per_pcs',
+        'total_pieces',
     ];
 }

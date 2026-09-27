@@ -59,7 +59,7 @@
                         
                         <div class="w-full md:w-32">
                             <label class="block text-xs font-medium text-gray-500 mb-1">Jumlah *</label>
-                            <input v-model="item.input_quantity" type="number" step="0.01" min="0.01" :max="item.is_cable && item.unit_mode === 'roll' ? (item.max_stock / (item.meter_per_roll || 1)) : (item.is_pack && item.unit_mode === 'bungkus' ? (item.max_stock / (item.pcs_per_pack || 1)) : item.max_stock)" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
+                            <input v-model="item.input_quantity" type="number" step="0.01" min="0.01" :max="item.is_cable && item.unit_mode === 'roll' ? (item.max_stock / (item.meter_per_roll || 1)) : (item.is_pack && item.unit_mode === 'bungkus' ? (item.max_stock / (item.pcs_per_pack || 1)) : (item.is_isolasi && item.unit_mode === 'pcs' ? (item.max_stock / (item.cm_per_pcs || 1)) : item.max_stock))" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
                         </div>
                         
                         <div class="w-full md:w-32">
@@ -71,6 +71,10 @@
                             <select v-else-if="item.is_pack" v-model="item.unit_mode" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
                                 <option value="pcs">Pcs</option>
                                 <option value="bungkus">Bungkus</option>
+                            </select>
+                            <select v-else-if="item.is_isolasi" v-model="item.unit_mode" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
+                                <option value="cm">Cm</option>
+                                <option value="pcs">Pcs (Utuh)</option>
                             </select>
                             <!-- Input Satuan Manual (Datalist) -->
                             <template v-else>
@@ -101,8 +105,11 @@
                         <p v-else-if="item.is_pack && item.unit_mode === 'bungkus'" class="text-[10px] text-gray-500 mt-0.5">
                             = {{ (item.input_quantity * item.pcs_per_pack) }} Pcs
                         </p>
+                        <p v-else-if="item.is_isolasi && item.unit_mode === 'pcs'" class="text-[10px] text-gray-500 mt-0.5">
+                            = {{ (item.input_quantity * item.cm_per_pcs) }} Cm
+                        </p>
                         <p class="text-[10px] text-emerald-600 mt-0.5" v-if="item.max_stock !== null">
-                            Sisa Stok: {{ item.is_cable && item.unit_mode === 'roll' ? (item.max_stock / item.meter_per_roll).toFixed(2) + ' Roll' : (item.is_pack && item.unit_mode === 'bungkus' ? (item.max_stock / item.pcs_per_pack).toFixed(2) + ' Bungkus' : item.max_stock + ' ' + (item.unit || '')) }}
+                            Sisa Stok: {{ item.is_cable && item.unit_mode === 'roll' ? (item.max_stock / item.meter_per_roll).toFixed(2) + ' Roll' : (item.is_pack && item.unit_mode === 'bungkus' ? (item.max_stock / item.pcs_per_pack).toFixed(2) + ' Bungkus' : (item.is_isolasi && item.unit_mode === 'pcs' ? (item.max_stock / item.cm_per_pcs).toFixed(2) + ' Pcs' : item.max_stock + ' ' + (item.unit || ''))) }}
                         </p>
                     </div>
                 </div>
@@ -152,12 +159,12 @@ const form = useForm({
     area: '',
     notes: '',
     items: [
-        { material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, is_pack: false, meter_per_roll: 1000, pcs_per_pack: 1 }
+        { material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, is_pack: false, is_isolasi: false, meter_per_roll: 1000, pcs_per_pack: 1, cm_per_pcs: 50 }
     ]
 });
 
 const addItem = () => {
-    form.items.push({ material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, is_pack: false, meter_per_roll: 1000, pcs_per_pack: 1 });
+    form.items.push({ material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, is_pack: false, is_isolasi: false, meter_per_roll: 1000, pcs_per_pack: 1, cm_per_pcs: 50 });
 };
 
 const removeItem = (index) => {
@@ -171,19 +178,24 @@ const onMaterialSelected = (index) => {
     if (material) {
         const isCable = material.category === 'Kabel' || material.name.toLowerCase().includes('kabel');
         const isPack = material.category === 'Paku Klem';
+        const isIsolasi = material.category === 'Isolasi';
         
         form.items[index].unit = material.unit;
         form.items[index].unit_manual = material.unit || 'pcs'; // default it to material's original unit
         form.items[index].max_stock = material.stock;
         form.items[index].is_cable = isCable;
         form.items[index].is_pack = isPack;
+        form.items[index].is_isolasi = isIsolasi;
         form.items[index].meter_per_roll = material.meter_per_roll || 1000;
         form.items[index].pcs_per_pack = material.pcs_per_pack || 1;
+        form.items[index].cm_per_pcs = material.cm_per_pcs || 50;
         
         if (isCable) {
             form.items[index].unit_mode = 'meter';
         } else if (isPack) {
             form.items[index].unit_mode = 'pcs';
+        } else if (isIsolasi) {
+            form.items[index].unit_mode = 'cm';
         } else {
             form.items[index].unit_mode = 'default';
         }
@@ -202,7 +214,7 @@ const submit = () => {
         items: data.items.map(item => ({
             material_id: item.material_id,
             quantity: item.input_quantity,
-            unit: (item.is_cable || item.is_pack) ? item.unit_mode : item.unit_manual
+            unit: (item.is_cable || item.is_pack || item.is_isolasi) ? item.unit_mode : item.unit_manual
         }))
     })).post('/material-transactions');
 };

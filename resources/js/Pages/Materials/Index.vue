@@ -288,7 +288,55 @@
                             </div>
                         </div>
 
-                        <!-- Normal Stock & Price Calculator (Non Kabel & Non Klem) -->
+                        <!-- Isolasi Calculator -->
+                        <div v-else-if="form.category === 'Isolasi'" class="bg-amber-50/50 border border-amber-100 rounded-xl p-4">
+                            <div class="flex items-center gap-2 mb-3 text-amber-600 font-medium text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l-7-7m7 7l-2.828 2.828M15 9l-6 6"/>
+                                </svg>
+                                Kalkulator Isolasi (Pcs ↔ Cm)
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Panjang per Pcs (cm)</label>
+                                    <input v-model="form.cm_per_pcs" @input="calculateIsolasiStock" type="number" step="0.1" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Jumlah Pcs (Roll Kecil)</label>
+                                    <input v-model="form.total_pieces" @input="calculateIsolasiStock" type="number" step="0.01" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Harga Modal (per pcs)</label>
+                                    <input v-model="form.price_per_unit" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Harga Jual (per pcs)</label>
+                                    <input v-model="form.selling_price" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mt-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Harga Modal (per cm)</label>
+                                    <div class="w-full px-3 py-2 rounded-lg border border-gray-100 bg-gray-50 text-sm font-semibold text-gray-700">
+                                        Rp {{ formatNumber(hargaModalPerCm) }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Harga Jual (per cm)</label>
+                                    <div class="w-full px-3 py-2 rounded-lg border border-emerald-100 bg-emerald-50 text-sm font-semibold text-emerald-700">
+                                        Rp {{ formatNumber(hargaJualPerCm) }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-amber-100 flex justify-between items-center">
+                                <span class="text-xs text-amber-700">Total Stok Tersimpan (Otomatis):</span>
+                                <span class="text-sm font-bold text-amber-700">{{ form.stock }} Cm</span>
+                            </div>
+                        </div>
+
+                        <!-- Normal Stock & Price Calculator (Non Kabel, Klem, Isolasi) -->
                         <div v-else class="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
                             <div class="flex items-center gap-2 mb-4 text-blue-600 font-medium text-sm">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -409,6 +457,23 @@
                                 <p class="text-[10px] text-gray-400 mt-1">@ {{ selectedMaterial?.pcs_per_pack }} pcs/bungkus</p>
                             </div>
                         </div>
+                        <div v-else-if="selectedMaterial?.category === 'Isolasi'" class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tambah Pcs Baru *</label>
+                                <div class="flex items-center gap-2">
+                                    <input v-model="addStockForm.added_pieces" @input="calculateAddedIsolasiStock" type="number" step="0.01" min="0" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" required>
+                                    <span class="text-gray-500 text-sm">pcs</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Total Cm (Otomatis)</label>
+                                <div class="flex items-center gap-2">
+                                    <input v-model="addStockForm.added_stock" type="number" step="0.01" min="0.01" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-700" readonly>
+                                    <span class="text-gray-500 text-sm">cm</span>
+                                </div>
+                                <p class="text-[10px] text-gray-400 mt-1">@ {{ selectedMaterial?.cm_per_pcs }} cm/pcs</p>
+                            </div>
+                        </div>
                         <div v-else>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Stok Masuk *</label>
                             <div class="flex items-center gap-2">
@@ -481,6 +546,8 @@ const form = useForm({
     total_rolls: 0,
     pcs_per_pack: 0,
     total_packs: 0,
+    cm_per_pcs: 0,
+    total_pieces: 0,
     stock: 0,
     price_per_unit: 0,
     selling_price: 0,
@@ -491,6 +558,7 @@ const addStockForm = useForm({
     added_stock: '',
     added_rolls: '',
     added_packs: '',
+    added_pieces: '',
     price_per_unit: '',
     selling_price: ''
 });
@@ -528,6 +596,20 @@ const hargaJualPerPackPcs = computed(() => {
     return Math.round(hargaPerPack / pcsPerPack);
 });
 
+const hargaModalPerCm = computed(() => {
+    const cmPerPcs = parseFloat(form.cm_per_pcs) || 0;
+    const hargaPerPcs = parseFloat(form.price_per_unit) || 0;
+    if (cmPerPcs <= 0) return 0;
+    return Math.round(hargaPerPcs / cmPerPcs);
+});
+
+const hargaJualPerCm = computed(() => {
+    const cmPerPcs = parseFloat(form.cm_per_pcs) || 0;
+    const hargaPerPcs = parseFloat(form.selling_price) || 0;
+    if (cmPerPcs <= 0) return 0;
+    return Math.round(hargaPerPcs / cmPerPcs);
+});
+
 const performSearch = () => {
     router.get('/materials', { search: search.value }, { preserveState: true });
 };
@@ -559,7 +641,7 @@ const calculateTotalPrice = (type) => {
 
 // Calculate total when stock changes for non-cable and non-klem items
 watch(() => form.stock, (newVal) => {
-    if (form.category !== 'Kabel' && form.category !== 'Paku Klem') {
+    if (form.category !== 'Kabel' && form.category !== 'Paku Klem' && form.category !== 'Isolasi') {
         calculateTotalPrice('modal');
         calculateTotalPrice('jual');
     }
@@ -572,8 +654,11 @@ const handleCategoryChange = () => {
     } else if (form.category === 'Paku Klem') {
         form.unit = 'pcs'; // Base unit for paku klem is ALWAYS pcs
         calculatePackStock();
+    } else if (form.category === 'Isolasi') {
+        form.unit = 'cm'; // Base unit for isolasi is ALWAYS cm
+        calculateIsolasiStock();
     } else {
-        if (form.unit === 'meter' || form.unit === 'roll') {
+        if (form.unit === 'meter' || form.unit === 'roll' || form.unit === 'cm') {
             form.unit = 'pcs';
         }
     }
@@ -591,6 +676,12 @@ const calculatePackStock = () => {
     form.stock = pcs * packs;
 };
 
+const calculateIsolasiStock = () => {
+    const cm = parseFloat(form.cm_per_pcs) || 0;
+    const pcs = parseFloat(form.total_pieces) || 0;
+    form.stock = cm * pcs;
+};
+
 const openModal = (item = null) => {
     if (item) {
         isEditing.value = true;
@@ -603,11 +694,13 @@ const openModal = (item = null) => {
         form.total_rolls = item.total_rolls || 0;
         form.pcs_per_pack = item.pcs_per_pack || 0;
         form.total_packs = item.total_packs || 0;
+        form.cm_per_pcs = item.cm_per_pcs || 0;
+        form.total_pieces = item.total_pieces || 0;
         form.stock = item.stock || 0;
         form.price_per_unit = item.price_per_unit || 0;
         form.selling_price = item.selling_price || 0;
         form.description = item.description || '';
-        if (form.category !== 'Kabel' && form.category !== 'Paku Klem') {
+        if (form.category !== 'Kabel' && form.category !== 'Paku Klem' && form.category !== 'Isolasi') {
             calculateTotalPrice('modal');
             calculateTotalPrice('jual');
         }
@@ -659,6 +752,14 @@ const calculateAddedPackStock = () => {
     }
 };
 
+const calculateAddedIsolasiStock = () => {
+    if (selectedMaterial.value?.category === 'Isolasi') {
+        const pieces = parseFloat(addStockForm.added_pieces) || 0;
+        const cmPerPcs = parseFloat(selectedMaterial.value.cm_per_pcs) || 0;
+        addStockForm.added_stock = pieces * cmPerPcs;
+    }
+};
+
 const submitAddStock = () => {
     if (selectedMaterial.value) {
         addStockForm.post(`/materials/${selectedMaterial.value.id}/add-stock`, {
@@ -673,6 +774,8 @@ const submit = () => {
         calculateCableStock();
     } else if (form.category === 'Paku Klem') {
         calculatePackStock();
+    } else if (form.category === 'Isolasi') {
+        calculateIsolasiStock();
     }
     
     if (isEditing.value) {
