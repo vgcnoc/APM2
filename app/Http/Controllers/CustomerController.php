@@ -341,7 +341,7 @@ class CustomerController extends Controller
             $customer->delete();
         });
 
-        return redirect()->route('customers.index')
+        return redirect()->back()
             ->with('success', 'Data pelanggan berhasil dihapus.');
     }
 

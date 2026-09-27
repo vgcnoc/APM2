@@ -99,6 +99,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                         </svg>
                     </Link>
+                    <button @click="confirmDelete(row)" class="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 border border-transparent hover:border-red-200 transition-all shadow-sm hover:shadow" title="Hapus Pelanggan">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
                 </div>
             </template>
         </DataTable>
@@ -278,6 +281,33 @@
                 </form>
             </div>
         </div>
+        <!-- Modal Konfirmasi Hapus -->
+        <Teleport to="body">
+            <div v-if="showDeleteModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showDeleteModal = false"></div>
+                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-fade-in-up">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Hapus Pelanggan?</h3>
+                            <p class="text-sm text-red-500 font-medium">{{ deleteCustomer?.name }}</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500 mb-6 leading-relaxed">
+                        Semua data terkait pelanggan ini (jadwal teknisi, data perangkat, status) akan <strong class="text-red-600">dihapus permanen</strong>. Tindakan ini tidak dapat dibatalkan.
+                    </p>
+                    <div class="flex justify-end gap-3">
+                        <button @click="showDeleteModal = false" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Batal</button>
+                        <button @click="executeDelete" :disabled="isDeleting" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors">
+                            {{ isDeleting ? 'Menghapus...' : 'Ya, Hapus' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
     </AppLayout>
 </template>
 
@@ -461,6 +491,30 @@ function submitActivation() {
         preserveScroll: true,
         onSuccess: () => {
             showActivationModal.value = false;
+        }
+    });
+}
+
+// Delete Logic
+const showDeleteModal = ref(false);
+const deleteCustomer = ref(null);
+const isDeleting = ref(false);
+
+function confirmDelete(customer) {
+    deleteCustomer.value = customer;
+    showDeleteModal.value = true;
+}
+
+function executeDelete() {
+    isDeleting.value = true;
+    router.post(`/customers/${deleteCustomer.value.id}/delete`, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showDeleteModal.value = false;
+            isDeleting.value = false;
+        },
+        onError: () => {
+            isDeleting.value = false;
         }
     });
 }
