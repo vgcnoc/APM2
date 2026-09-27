@@ -174,7 +174,8 @@ function confirmDelete(customer) {
 }
 
 function deleteCustomer() {
-    router.delete(`/customers/${deletingCustomer.value.id}`, {
+    router.post(`/customers/${deletingCustomer.value.id}`, {
+        _method: 'delete',
         onSuccess: () => {
             showDeleteModal.value = false;
             deletingCustomer.value = null;

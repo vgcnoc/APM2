@@ -231,7 +231,7 @@ function submit() {
 
 function deleteOlt(id) {
     if (confirm('Apakah Anda yakin ingin menghapus OLT ini?')) {
-        router.delete(`/olts/${id}`);
+        router.post(`/olts/${id}`, { _method: 'delete' });
     }
 }
 </script>

@@ -423,7 +423,7 @@ function submit() {
 
 function deleteOdc(id) {
     if (confirm('Apakah Anda yakin ingin menghapus ODC ini?')) {
-        router.delete(`/odcs/${id}`);
+        router.post(`/odcs/${id}`, { _method: 'delete' });
     }
 }
 </script>

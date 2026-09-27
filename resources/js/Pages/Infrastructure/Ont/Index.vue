@@ -362,7 +362,7 @@ function submit() {
 
 function deleteOnt(id) {
     if (confirm('Apakah Anda yakin ingin menghapus data inventaris ONT ini?')) {
-        router.delete(`/onts/${id}`);
+        router.post(`/onts/${id}`, { _method: 'delete' });
     }
 }
 </script>
