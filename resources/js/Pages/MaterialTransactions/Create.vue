@@ -53,12 +53,23 @@
                         </div>
                         <div class="md:col-span-4">
                             <label class="block text-xs font-medium text-gray-500 mb-1">Jumlah Diambil *</label>
-                            <div class="relative">
-                                <input v-model="item.quantity" type="number" step="0.01" min="0.01" :max="item.max_stock" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 pr-16 bg-white">
-                                <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-gray-400 text-sm font-medium">
+                            <div class="flex gap-2">
+                                <input v-model="item.input_quantity" type="number" step="0.01" min="0.01" :max="item.unit_mode === 'roll' ? (item.max_stock / (item.meter_per_roll || 1)) : item.max_stock" required class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
+                                
+                                <select v-if="item.is_cable" v-model="item.unit_mode" class="w-24 px-2 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white text-sm">
+                                    <option value="meter">Meter</option>
+                                    <option value="roll">Roll</option>
+                                </select>
+                                <div v-else class="flex items-center px-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 text-sm font-medium whitespace-nowrap">
                                     {{ item.unit || '...' }}
                                 </div>
                             </div>
+                            <p v-if="item.is_cable && item.unit_mode === 'roll'" class="text-[10px] text-gray-500 mt-1">
+                                = {{ (item.input_quantity * item.meter_per_roll).toFixed(2) }} Meter
+                            </p>
+                            <p class="text-[10px] text-emerald-600 mt-1" v-if="item.max_stock !== null">
+                                Sisa Stok: {{ item.unit_mode === 'roll' ? (item.max_stock / item.meter_per_roll).toFixed(2) + ' Roll' : item.max_stock + ' ' + (item.unit || '') }}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -105,12 +116,12 @@ const form = useForm({
     purpose: '',
     notes: '',
     items: [
-        { material_id: '', quantity: 1, unit: '', max_stock: null }
+        { material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', max_stock: null, is_cable: false, meter_per_roll: 1000 }
     ]
 });
 
 const addItem = () => {
-    form.items.push({ material_id: '', quantity: 1, unit: '', max_stock: null });
+    form.items.push({ material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', max_stock: null, is_cable: false, meter_per_roll: 1000 });
 };
 
 const removeItem = (index) => {
@@ -122,17 +133,29 @@ const onMaterialSelected = (index) => {
     const material = props.materials.find(m => m.id === itemId);
     
     if (material) {
+        const isCable = material.category === 'Kabel' || material.name.toLowerCase().includes('kabel');
+        
         form.items[index].unit = material.unit;
         form.items[index].max_stock = material.stock;
+        form.items[index].is_cable = isCable;
+        form.items[index].meter_per_roll = material.meter_per_roll || 1000;
+        form.items[index].unit_mode = isCable ? 'meter' : 'default';
         
         // Reset quantity if it exceeds max stock
-        if (form.items[index].quantity > material.stock) {
-            form.items[index].quantity = material.stock;
+        if (form.items[index].input_quantity > material.stock) {
+            form.items[index].input_quantity = material.stock;
         }
     }
 };
 
 const submit = () => {
-    form.post('/material-transactions');
+    // Transform data before sending
+    form.transform((data) => ({
+        ...data,
+        items: data.items.map(item => ({
+            material_id: item.material_id,
+            quantity: item.unit_mode === 'roll' ? (item.input_quantity * item.meter_per_roll) : item.input_quantity
+        }))
+    })).post('/material-transactions');
 };
 </script>
