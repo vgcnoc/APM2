@@ -168,12 +168,15 @@
                                     </select>
                                     
                                     <!-- Kolom Rincian -->
-                                    <div v-if="selectedTransactionItems.length > 0" class="mt-2 p-3 bg-blue-50/50 border border-blue-100 rounded-lg max-h-32 overflow-y-auto">
-                                        <p class="text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-1.5">Rincian Barang:</p>
-                                        <ul class="space-y-1">
-                                            <li v-for="(item, idx) in selectedTransactionItems" :key="idx" class="text-xs text-blue-900 flex justify-between items-start border-b border-blue-100/50 pb-1 last:border-0 last:pb-0">
-                                                <span class="font-medium pr-2">{{ item.name }}</span>
-                                                <span class="font-bold shrink-0">{{ item.qty }} {{ item.unit }}</span>
+                                    <div v-if="assignForm.material_items.length > 0" class="mt-2 p-3 bg-blue-50/50 border border-blue-100 rounded-lg max-h-48 overflow-y-auto">
+                                        <p class="text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-2">Rincian Penggunaan Barang:</p>
+                                        <ul class="space-y-2">
+                                            <li v-for="(item, idx) in assignForm.material_items" :key="idx" class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-100/50 pb-2 last:border-0 last:pb-0">
+                                                <span class="text-xs font-medium text-blue-900 leading-tight flex-1">{{ item.name }}</span>
+                                                <div class="flex gap-1 shrink-0">
+                                                    <input v-model="item.qty" type="number" step="0.01" min="0" class="w-16 px-2 py-1 text-xs border border-blue-200 rounded focus:ring-blue-500" placeholder="Qty">
+                                                    <input v-model="item.unit" type="text" class="w-16 px-2 py-1 text-xs border border-blue-200 rounded focus:ring-blue-500" placeholder="Satuan">
+                                                </div>
                                             </li>
                                         </ul>
                                     </div>
@@ -289,19 +292,25 @@ const columns = [
     { key: 'signal', label: 'Redaman' },
 ];
 
-const selectedTransactionItems = computed(() => {
-    if (!assignForm.material_transaction_id) return [];
+// Removed selectedTransactionItems computed property
+
+watch(() => assignForm.material_transaction_id, (newVal) => {
+    if (!newVal) {
+        assignForm.material_items = [];
+        return;
+    }
+    const trx = props.materialTransactions.find(t => t.transaction_number === newVal);
+    if (!trx || !trx.items) {
+        assignForm.material_items = [];
+        return;
+    }
     
-    const trx = props.materialTransactions.find(t => t.transaction_number === assignForm.material_transaction_id);
-    if (!trx || !trx.items) return [];
-    
-    return trx.items.map(item => {
-        return {
-            name: item.material ? item.material.name : 'Unknown',
-            qty: item.quantity,
-            unit: item.unit || (item.material ? item.material.unit : 'pcs')
-        };
-    });
+    assignForm.material_items = trx.items.map(item => ({
+        id: item.id,
+        name: item.material ? item.material.name : 'Unknown',
+        qty: item.quantity,
+        unit: item.unit || (item.material ? item.material.unit : 'pcs')
+    }));
 });
 
 function getTransactionLabel(trx) {
@@ -337,6 +346,7 @@ const assignForm = useForm({
     scheduled_time: '',
     ont_models: [''],
     material_transaction_id: '',
+    material_items: [],
     notes: '',
 });
 

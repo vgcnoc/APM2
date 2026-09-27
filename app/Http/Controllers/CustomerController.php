@@ -477,6 +477,10 @@ class CustomerController extends Controller
             'ont_models' => 'nullable|array',
             'ont_models.*' => 'nullable|string',
             'material_transaction_id' => 'nullable|string',
+            'material_items' => 'nullable|array',
+            'material_items.*.name' => 'nullable|string',
+            'material_items.*.qty' => 'nullable|numeric',
+            'material_items.*.unit' => 'nullable|string',
             'notes' => 'nullable|string',
         ]);
 
@@ -488,12 +492,18 @@ class CustomerController extends Controller
             }
         }
         if (!empty($validated['material_transaction_id'])) {
-            $customNotes[] = "Material diambil dari Surat Jalan / Order: " . $validated['material_transaction_id'];
+            $trxNotes = ["Material diambil dari Surat Jalan / Order: " . $validated['material_transaction_id']];
+            if (!empty($validated['material_items'])) {
+                foreach ($validated['material_items'] as $mItem) {
+                    $trxNotes[] = " - " . $mItem['name'] . " : " . $mItem['qty'] . " " . $mItem['unit'];
+                }
+            }
+            $customNotes[] = implode("\n", $trxNotes);
         }
         if (!empty($validated['notes'])) {
-            $customNotes[] = "Catatan: " . $validated['notes'];
+            $customNotes[] = "Catatan Tambahan: " . $validated['notes'];
         }
-        $finalNotes = implode("\n", $customNotes);
+        $finalNotes = implode("\n\n", $customNotes);
 
         foreach ($validated['technician_ids'] as $techId) {
             TechnicianSchedule::create([
