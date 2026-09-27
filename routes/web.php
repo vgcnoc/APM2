@@ -193,7 +193,7 @@ Route::middleware(['auth'])->group(function () {
                             'address' => $cust['address'] ?? '-',
                             'email' => $cust['email'] ?? null,
                             'area' => $cust['area'] ?? null,
-                            'registration_date' => $cust['registration_date'] ?? null,
+                            'registration_date' => $cust['register_date'] ?? null,
                             'status' => 'booking'
                         ]);
                         $syncedCount++;
