@@ -147,11 +147,13 @@ class MaterialTransactionController extends Controller
                     'serial_number' => $sn,
                     'brand' => $item->material->name,
                     'status' => 'Belum Set/Baru Input',
+                    'material_transaction_item_id' => $item->id,
                     'description' => "Pengambilan dari Gudang oleh: " . $item->transaction->technician_name . " (Tujuan: " . $item->transaction->purpose . ") pada " . $item->transaction->date,
                 ]);
             } else {
                 $existing->update([
                     'status' => 'Belum Set/Baru Input',
+                    'material_transaction_item_id' => $item->id,
                     'description' => "Pengambilan Ulang dari Gudang oleh: " . $item->transaction->technician_name . " (Tujuan: " . $item->transaction->purpose . ") pada " . $item->transaction->date,
                 ]);
             }
@@ -160,6 +162,12 @@ class MaterialTransactionController extends Controller
         $item->update(['is_registered_to_ont' => true]);
 
         return back()->with('success', count($sns) . ' perangkat berhasil didaftarkan ke Menu ONT.');
+    }
+
+    public function resetOnt(MaterialTransactionItem $item)
+    {
+        $item->update(['is_registered_to_ont' => false]);
+        return back()->with('success', 'Status pendaftaran ONT berhasil direset. Silakan daftarkan ulang jika diperlukan.');
     }
 
     public function destroy(MaterialTransaction $materialTransaction)

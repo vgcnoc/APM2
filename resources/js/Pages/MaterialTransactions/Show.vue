@@ -79,10 +79,15 @@
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                                 Kirim ke Menu ONT
                                             </button>
-                                            <span v-else class="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-bold">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                                Telah Didaftarkan ke ONT
-                                            </span>
+                                            <div v-else class="inline-flex items-center gap-2">
+                                                <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-bold">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                    Telah Didaftarkan ke ONT
+                                                </span>
+                                                <button @click="resetOntRegistration(item.id)" class="text-xs text-red-500 hover:text-red-700 underline transition-colors" title="Batal / Reset Status (Jika ONT sudah dihapus dari Data ONT)">
+                                                    Reset
+                                                </button>
+                                            </div>
                                         </div>
                                     </td>
                                     <td class="py-3 px-4 text-center">
@@ -202,7 +207,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { Link, useForm } from '@inertiajs/vue3';
+import { Link, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
@@ -242,6 +247,14 @@ const closeOntModal = () => {
     showOntModal.value = false;
     selectedItem.value = null;
     ontForm.reset();
+};
+
+const resetOntRegistration = (itemId) => {
+    if (confirm('Yakin ingin mereset status pendaftaran ONT ini? Lakukan ini HANYA JIKA Anda sudah menghapus perangkat terkait di Menu Data ONT.')) {
+        router.post(`/material-transactions/${itemId}/reset-ont`, {}, {
+            preserveScroll: true
+        });
+    }
 };
 
 const submitOntRegistration = () => {

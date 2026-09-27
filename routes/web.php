@@ -84,6 +84,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('material-transactions', MaterialTransactionController::class)->except(['edit', 'update', 'destroy']);
     Route::post('material-transactions/{item}/register-ont', [MaterialTransactionController::class, 'registerOnt'])->name('material-transactions.register-ont');
+    Route::post('material-transactions/{item}/reset-ont', [MaterialTransactionController::class, 'resetOnt'])->name('material-transactions.reset-ont');
     Route::post('material-transactions/{material_transaction}/delete', [MaterialTransactionController::class, 'destroy'])->name('material-transactions.destroy');
 
     // ── Billing & Keuangan ─────────────────────────────────────

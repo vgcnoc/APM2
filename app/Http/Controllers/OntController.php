@@ -120,6 +120,8 @@ class OntController extends Controller
     public function destroy(Ont $ont): RedirectResponse
     {
         $odp = $ont->odp;
+        $transactionItemId = $ont->material_transaction_item_id;
+        
         $ont->delete();
 
         // Decrement port terpakai di ODP
@@ -127,6 +129,13 @@ class OntController extends Controller
             $odp->decrement('used_ports');
             if ($odp->status === 'full') {
                 $odp->update(['status' => 'active']);
+            }
+        }
+        
+        if ($transactionItemId) {
+            $remaining = Ont::where('material_transaction_item_id', $transactionItemId)->count();
+            if ($remaining === 0) {
+                \App\Models\MaterialTransactionItem::where('id', $transactionItemId)->update(['is_registered_to_ont' => false]);
             }
         }
 
