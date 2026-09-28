@@ -299,6 +299,7 @@ class CustomerController extends Controller
         return Inertia::render('Customers/Show', [
             'customer' => $customer,
             'availableOdps' => Odp::active()->hasAvailablePort()->with('odc.olt')->get(),
+            'availableOnts' => Ont::where('status', 'Sudah Set')->whereNull('customer_id')->get(),
         ]);
     }
 
@@ -392,6 +393,7 @@ class CustomerController extends Controller
     public function assignOnt(Request $request, Customer $customer): RedirectResponse
     {
         $validated = $request->validate([
+            'ont_id' => 'required|exists:onts,id',
             'odp_id' => 'required|exists:odps,id',
             'port_number' => 'required|integer|min:1',
             'rx_power' => 'nullable|string',
@@ -411,11 +413,11 @@ class CustomerController extends Controller
         if ($request->hasFile('photo_redaman')) $validated['photo_redaman'] = $request->file('photo_redaman')->store('installations', 'public');
 
         DB::transaction(function () use ($validated, $customer) {
-            // Buat atau update ONT (asumsi create berdasarkan existing logic)
-            $ont = Ont::create([
+            // Gunakan ONT dari inventory
+            $ont = Ont::findOrFail($validated['ont_id']);
+            $ont->update([
                 'odp_id' => $validated['odp_id'],
                 'customer_id' => $customer->id,
-                'serial_number' => 'SN-' . strtoupper(\Illuminate\Support\Str::random(8)),
                 'port_number' => $validated['port_number'],
                 'rx_power' => $validated['rx_power'] ?? null,
                 'start_time' => $validated['start_time'] ?? null,

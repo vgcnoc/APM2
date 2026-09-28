@@ -157,7 +157,19 @@
 
                             <!-- STEP 3: Laporan Akhir (Muncul setelah Pasang diklik) -->
                             <div v-show="isInstallingHardware" class="space-y-6 animate-fade-in-up">
-                                <!-- ODP & Port -->
+                                <!-- ONT Inventory & ODP & Port -->
+                                <div class="grid grid-cols-1 gap-4 mb-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">Pilih ONT dari Inventory (Wajib)</label>
+                                        <select v-model="ontForm.ont_id" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" :required="isInstallingHardware">
+                                            <option value="">-- Pilih ONT --</option>
+                                            <option v-for="ontOption in availableOnts" :key="ontOption.id" :value="ontOption.id">
+                                                {{ ontOption.brand }} {{ ontOption.model || '' }} - SN: {{ ontOption.serial_number }}
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-xs font-medium text-gray-500 mb-1">ODP Terdekat (Auto Dropdown)</label>
@@ -559,7 +571,7 @@ import { Link, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 
-const props = defineProps({ customer: Object, availableOdps: Array });
+const props = defineProps({ customer: Object, availableOdps: Array, availableOnts: Array });
 
 const getAssignedTechnicians = (type) => {
     if (!props.customer?.technician_schedules) return '-';
@@ -705,6 +717,7 @@ function handleFileUpload(field, e) {
 }
 
 const ontForm = useForm({
+    ont_id: '',
     odp_id: '',
     port_number: '',
     rx_power: '',
