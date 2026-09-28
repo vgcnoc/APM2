@@ -174,7 +174,9 @@
                                             <select v-model="ontForm.port_number" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" :disabled="!selectedOdp" :required="isInstallingHardware">
                                                 <option value="">-- Pilih Port --</option>
                                                 <template v-if="selectedOdp">
-                                                    <option v-for="i in selectedOdp.total_ports" :key="i" :value="i">Port {{ i }}</option>
+                                                    <option v-for="i in selectedOdp.total_ports" :key="i" :value="i" :disabled="isPortUsed(selectedOdp, i)">
+                                                        Port {{ i }} {{ getPortStatus(selectedOdp, i) }}
+                                                    </option>
                                                 </template>
                                             </select>
                                         </div>
@@ -590,6 +592,21 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 
 const props = defineProps({ customer: Object, availableOdps: Array, availableOnts: Array });
+
+function isPortUsed(odp, portNumber) {
+    if (!odp || !odp.onts) return false;
+    return odp.onts.some(ont => ont.port_number == portNumber && ont.customer_id != props.customer.id);
+}
+
+function getPortStatus(odp, portNumber) {
+    if (!odp || !odp.onts) return '';
+    const ont = odp.onts.find(o => o.port_number == portNumber);
+    if (!ont) return '';
+    
+    if (ont.customer_id == props.customer.id) return '(Port Pelanggan Ini)';
+    if (ont.customer) return `(Terpakai - ${ont.customer.status})`;
+    return '(Terpakai - Kosong)';
+}
 
 const getAssignedTechnicians = (type) => {
     if (!props.customer?.technician_schedules) return '-';
