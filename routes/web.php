@@ -110,6 +110,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('material-transactions/{item}/reset-ont', [MaterialTransactionController::class, 'resetOnt'])->name('material-transactions.reset-ont');
     Route::post('material-transactions/{material_transaction}/delete', [MaterialTransactionController::class, 'destroy'])->name('material-transactions.destroy');
 
+    // ── Data Jaringan (Dashboard Topology) ─────────────────────
+    Route::get('/network-data', [\App\Http\Controllers\NetworkDataController::class, 'index'])->name('network-data.index');
+
     // ── Pengguna & Hak Akses ───────────────────────────────────
     Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
     Route::post('users/{user}/update', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update.post');
