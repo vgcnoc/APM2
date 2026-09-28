@@ -265,7 +265,13 @@
                             <!-- END STEP 3 -->
                             </div>
 
-                            <div v-show="isInstallingHardware" class="flex justify-end pt-4 border-t border-gray-200 mt-6">
+                            <div v-show="isInstallingHardware" class="flex justify-end pt-4 border-t border-gray-200 mt-6 flex-col items-end gap-3">
+                                <div v-if="Object.keys(ontForm.errors).length > 0" class="w-full bg-red-50 text-red-600 p-3 rounded-lg border border-red-200 text-sm">
+                                    <p class="font-bold mb-1">Gagal menyimpan laporan:</p>
+                                    <ul class="list-disc pl-5">
+                                        <li v-for="(error, field) in ontForm.errors" :key="field">{{ error }}</li>
+                                    </ul>
+                                </div>
                                 <button type="submit" :disabled="ontForm.processing" class="btn-primary w-full md:w-auto text-sm py-2 px-6 shadow-md hover:shadow-lg">
                                     {{ ontForm.processing ? 'Menyimpan Laporan...' : 'Kirim Laporan & Selesaikan Instalasi' }}
                                 </button>
@@ -773,9 +779,11 @@ onMounted(() => {
     
     const savedOdp = localStorage.getItem(`apm_odp_id_${props.customer.id}`);
     if (savedOdp) ontForm.odp_id = Number(savedOdp);
+    else if (props.customer.ont?.odp_id) ontForm.odp_id = props.customer.ont.odp_id;
     
     const savedPort = localStorage.getItem(`apm_port_number_${props.customer.id}`);
     if (savedPort) ontForm.port_number = Number(savedPort);
+    else if (props.customer.ont?.port_number) ontForm.port_number = props.customer.ont.port_number;
     
     const savedRx = localStorage.getItem(`apm_rx_power_${props.customer.id}`);
     if (savedRx) ontForm.rx_power = savedRx;
