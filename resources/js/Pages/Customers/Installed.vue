@@ -647,8 +647,8 @@ function openActivationModal(customer) {
     activeCustomer.value = customer;
     activationForm.reset();
     activationForm.activation_date = new Date().toISOString().split('T')[0];
-    activationForm.pppoe_user = customer.ont?.pppoe_user || customer.customer_code || '';
-    activationForm.pppoe_password = customer.ont?.pppoe_password || Math.random().toString(36).slice(-8);
+    activationForm.pppoe_user = customer.ont?.pppoe_user || '';
+    activationForm.pppoe_password = customer.ont?.pppoe_password || '';
     activationForm.vlan_mode = customer.ont?.vlan_mode || '';
     activationForm.vlan_id = customer.ont?.vlan_id || '';
     activationForm.access_mode = customer.ont?.access_mode || 'PPPOE';

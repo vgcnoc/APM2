@@ -825,8 +825,8 @@ function submitAudit() {
 const showActivationModal = ref(false);
 const activationForm = useForm({
     activation_date: new Date().toISOString().split('T')[0],
-    pppoe_user: props.customer?.ont?.pppoe_user || props.customer?.customer_code || '',
-    pppoe_password: props.customer?.ont?.pppoe_password || Math.random().toString(36).slice(-8),
+    pppoe_user: props.customer?.ont?.pppoe_user || '',
+    pppoe_password: props.customer?.ont?.pppoe_password || '',
     vlan_mode: props.customer?.ont?.vlan_mode || '',
     vlan_id: props.customer?.ont?.vlan_id || '',
     access_mode: props.customer?.ont?.access_mode || 'PPPOE',
