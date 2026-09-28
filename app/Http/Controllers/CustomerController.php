@@ -308,11 +308,15 @@ class CustomerController extends Controller
     public function edit(Customer $customer): Response
     {
         $customer->load(['ont.odp', 'package']);
+        
+        $areas = \App\Models\Area::pluck('name');
 
         return Inertia::render('Customers/Edit', [
             'customer' => $customer,
             'packages' => InternetPackage::active()->get(),
             'availableOdps' => Odp::active()->hasAvailablePort()->with('odc.olt')->get(),
+            'sales' => User::where('role', 'sales')->get(),
+            'areas' => $areas,
         ]);
     }
 
@@ -323,15 +327,29 @@ class CustomerController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
             'phone' => 'required|string|max:20',
             'address' => 'required|string',
+            'area' => 'nullable|string',
+            'identity_photo' => 'nullable|image|max:5120',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'package_id' => 'nullable|exists:internet_packages,id',
             'status' => ['required', Rule::in(['booking', 'survey', 'installing', 'active', 'suspended', 'terminated'])],
             'notes' => 'nullable|string',
+            'base_amount' => 'nullable|numeric|min:0',
+            'registration_date' => 'nullable|date',
+            'installation_fee' => 'nullable|numeric|min:0',
+            'sales_id' => 'nullable|exists:users,id',
         ]);
+
+        if ($request->hasFile('identity_photo')) {
+            $validated['identity_photo'] = $request->file('identity_photo')->store('ktp', 'public');
+        }
+
+        // Auto-create new area if not exists in master data
+        if (!empty($validated['area'])) {
+            \App\Models\Area::firstOrCreate(['name' => $validated['area']]);
+        }
 
         // Jika status berubah ke 'active', set activation_date
         if ($validated['status'] === 'active' && $customer->status !== 'active') {
