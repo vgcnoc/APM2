@@ -467,13 +467,26 @@
 
                         <div class="flex items-center justify-between mb-4">
                             <h4 class="text-sm font-bold text-gray-700 border-l-4 border-amber-500 pl-2">Data Konfigurasi ONT</h4>
-                            <button type="button" @click="isEditingOnt = !isEditingOnt" class="text-xs font-semibold px-3 py-1.5 rounded-md border transition-all" :class="isEditingOnt ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'">
-                                <span class="flex items-center gap-1">
-                                    <svg v-if="!isEditingOnt" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                    <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                    {{ isEditingOnt ? 'Kunci Data' : 'Edit Data' }}
-                                </span>
-                            </button>
+                            <div class="flex gap-2">
+                                <button v-if="!isEditingOnt" type="button" @click="isEditingOnt = true" class="text-xs font-semibold px-3 py-1.5 rounded-md border transition-all bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200">
+                                    <span class="flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                        Edit Data
+                                    </span>
+                                </button>
+                                <template v-else>
+                                    <button type="button" @click="isEditingOnt = false" class="text-xs font-semibold px-3 py-1.5 rounded-md border transition-all bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200">
+                                        Batal
+                                    </button>
+                                    <button type="button" @click="saveOntData" :disabled="isSavingOnt" class="text-xs font-semibold px-3 py-1.5 rounded-md border transition-all" :class="isSavingOnt ? 'bg-emerald-50 text-emerald-400 border-emerald-100 cursor-not-allowed' : 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200'">
+                                        <span class="flex items-center gap-1">
+                                            <svg v-if="isSavingOnt" class="animate-spin w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                            <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            {{ isSavingOnt ? 'Menyimpan...' : 'Simpan' }}
+                                        </span>
+                                    </button>
+                                </template>
+                            </div>
                         </div>
                         
                         <div class="grid grid-cols-2 gap-4">
@@ -849,6 +862,23 @@ const activationForm = useForm({
     login_password: props.customer?.ont?.login_password || 'admin',
     notes: ''
 });
+
+const isSavingOnt = ref(false);
+
+function saveOntData() {
+    isSavingOnt.value = true;
+    activationForm.post(`/customers/${props.customer.id}/update-ont-inline`, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            isEditingOnt.value = false;
+            isSavingOnt.value = false;
+        },
+        onError: () => {
+            isSavingOnt.value = false;
+        }
+    });
+}
 
 function submitActivation() {
     activationForm.post(`/customers/${props.customer.id}/activate`, {

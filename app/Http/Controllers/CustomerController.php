@@ -532,6 +532,27 @@ class CustomerController extends Controller
         return redirect()->back()->with('error', 'Pelanggan belum siap diaktivasi.');
     }
 
+    public function updateOntInline(Request $request, Customer $customer)
+    {
+        $validated = $request->validate([
+            'pppoe_user' => 'nullable|string',
+            'pppoe_password' => 'nullable|string',
+            'vlan_mode' => 'nullable|string',
+            'vlan_id' => 'nullable|string',
+            'access_mode' => 'nullable|string',
+            'ip_login' => 'nullable|string',
+            'login_user' => 'nullable|string',
+            'login_password' => 'nullable|string',
+        ]);
+
+        if ($customer->ont) {
+            $customer->ont->update($validated);
+            return response()->json(['success' => true, 'message' => 'Data ONT berhasil disimpan secara langsung.']);
+        }
+        
+        return response()->json(['success' => false, 'message' => 'Data ONT tidak ditemukan.'], 404);
+    }
+
     /**
      * Jadwalkan survey
      */

@@ -67,6 +67,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{customer}/mark-installing', [CustomerController::class, 'markInstalling'])
             ->name('mark-installing');
             
+        // Update ONT via Ajax
+        Route::post('/{customer}/update-ont-inline', [CustomerController::class, 'updateOntInline'])
+            ->name('update-ont-inline');
+            
         // Update Pelanggan POST
         Route::post('/{customer}/update', [CustomerController::class, 'update'])
             ->name('update.post');
