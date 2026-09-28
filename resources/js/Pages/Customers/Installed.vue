@@ -137,8 +137,8 @@
 
         <!-- Modal Assign Jadwal Pasang -->
         <div v-if="showAssignModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-up">
-                <div class="p-5 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[calc(100vh-2rem)] overflow-hidden animate-fade-in-up">
+                <div class="p-5 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white shrink-0">
                     <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                         <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                         Jadwal Pasang Baru
@@ -149,7 +149,7 @@
                 </div>
                 
                 <!-- Informasi Hasil Survey -->
-                <div class="bg-blue-50/50 px-5 py-3 border-b border-blue-100/50 flex flex-col gap-1.5 text-sm">
+                <div class="bg-blue-50/50 px-5 py-3 border-b border-blue-100/50 flex flex-col gap-1.5 text-sm shrink-0">
                     <div class="flex justify-between items-center">
                         <span class="text-slate-500 font-medium text-xs">Pelanggan</span>
                         <span class="font-bold text-slate-800">{{ activeCustomer?.name }}</span>
@@ -167,8 +167,8 @@
                         <span class="font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100/50">{{ activeCustomer?.package?.name || '-' }}</span>
                     </div>
                 </div>
-                <form @submit.prevent="submitAssign">
-                    <div class="p-5 space-y-4">
+                <form @submit.prevent="submitAssign" class="flex flex-col min-h-0">
+                    <div class="p-5 space-y-4 overflow-y-auto">
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Pilih Teknisi</label>
                             
@@ -292,7 +292,7 @@
                             <textarea v-model="assignForm.notes" rows="2" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all resize-none"></textarea>
                         </div>
                     </div>
-                    <div class="p-5 bg-slate-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
+                    <div class="p-5 bg-slate-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl shrink-0">
                         <button type="button" @click="showAssignModal = false" class="px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-slate-900 transition-all shadow-sm">Batal</button>
                         <button type="submit" :disabled="assignForm.processing" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-md focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-2">
                             <svg v-if="assignForm.processing" class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
