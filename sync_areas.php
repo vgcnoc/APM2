@@ -14,10 +14,9 @@ use App\Models\MaterialTransaction;
 $areas = collect();
 
 $customerAreas = Customer::whereNotNull('area')->where('area', '!=', '')->pluck('area');
-$materialAreas = Material::whereNotNull('area')->where('area', '!=', '')->pluck('area');
 $mtAreas = MaterialTransaction::whereNotNull('area')->where('area', '!=', '')->pluck('area');
 
-$allStringAreas = $customerAreas->concat($materialAreas)->concat($mtAreas)->unique();
+$allStringAreas = $customerAreas->concat($mtAreas)->unique();
 
 echo "Found areas: " . implode(', ', $allStringAreas->toArray()) . "\n";
 
@@ -37,15 +36,6 @@ foreach (Customer::whereNull('area_id')->whereNotNull('area')->where('area', '!=
     }
 }
 echo "Updated Customers: $updatedCustomers\n";
-
-$updatedMaterials = 0;
-foreach (Material::whereNull('area_id')->whereNotNull('area')->where('area', '!=', '')->cursor() as $m) {
-    if (isset($areaMap[$m->area])) {
-        $m->update(['area_id' => $areaMap[$m->area]]);
-        $updatedMaterials++;
-    }
-}
-echo "Updated Materials: $updatedMaterials\n";
 
 $updatedTrx = 0;
 foreach (MaterialTransaction::whereNull('area_id')->whereNotNull('area')->where('area', '!=', '')->cursor() as $t) {
