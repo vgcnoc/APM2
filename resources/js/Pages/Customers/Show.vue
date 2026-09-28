@@ -427,7 +427,7 @@
                     </button>
                 </div>
                 <form @submit.prevent="submitActivation">
-                    <div class="p-6 space-y-5">
+                    <div class="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
                         <div class="bg-amber-50 text-amber-800 p-4 rounded-xl text-sm mb-4 border border-amber-200 shadow-sm flex gap-3">
                             <svg class="w-6 h-6 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             <p>Pastikan semua data instalasi dan hasil audit foto sudah benar sebelum mengaktifkan pelanggan ini.</p>
@@ -825,8 +825,8 @@ function submitAudit() {
 const showActivationModal = ref(false);
 const activationForm = useForm({
     activation_date: new Date().toISOString().split('T')[0],
-    pppoe_user: props.customer?.ont?.pppoe_user || '',
-    pppoe_password: props.customer?.ont?.pppoe_password || '',
+    pppoe_user: props.customer?.ont?.pppoe_user || props.customer?.customer_code || '',
+    pppoe_password: props.customer?.ont?.pppoe_password || Math.random().toString(36).slice(-8),
     vlan_mode: props.customer?.ont?.vlan_mode || '',
     vlan_id: props.customer?.ont?.vlan_id || '',
     access_mode: props.customer?.ont?.access_mode || 'PPPOE',

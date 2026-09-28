@@ -325,7 +325,7 @@
                     </button>
                 </div>
                 <form @submit.prevent="submitActivation">
-                    <div class="p-6 space-y-5">
+                    <div class="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
                         <div class="bg-purple-50 text-purple-800 p-4 rounded-xl text-sm mb-4 border border-purple-200 shadow-sm flex gap-3">
                             <svg class="w-6 h-6 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             <p>Pastikan Anda telah memeriksa data fisik dan foto hasil instalasi sebelum melakukan aktivasi.</p>
@@ -647,8 +647,8 @@ function openActivationModal(customer) {
     activeCustomer.value = customer;
     activationForm.reset();
     activationForm.activation_date = new Date().toISOString().split('T')[0];
-    activationForm.pppoe_user = customer.ont?.pppoe_user || '';
-    activationForm.pppoe_password = customer.ont?.pppoe_password || '';
+    activationForm.pppoe_user = customer.ont?.pppoe_user || customer.customer_code || '';
+    activationForm.pppoe_password = customer.ont?.pppoe_password || Math.random().toString(36).slice(-8);
     activationForm.vlan_mode = customer.ont?.vlan_mode || '';
     activationForm.vlan_id = customer.ont?.vlan_id || '';
     activationForm.access_mode = customer.ont?.access_mode || 'PPPOE';
