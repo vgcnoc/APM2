@@ -18,6 +18,7 @@ const statusMap = {
     booking: { label: 'Booking', color: 'yellow' },
     survey: { label: 'Survey', color: 'blue' },
     installing: { label: 'Pemasangan', color: 'indigo' },
+    audit: { label: 'Menunggu Audit', color: 'purple' },
     active: { label: 'Aktif', color: 'green' },
     suspended: { label: 'Suspended', color: 'orange' },
     terminated: { label: 'Terminated', color: 'red' },

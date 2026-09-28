@@ -47,7 +47,10 @@
                 <td>
                     <span class="text-xs text-cyan-400 font-medium">{{ row.package?.name || '-' }}</span>
                 </td>
-                <td><StatusBadge :status="row.status" /></td>
+                <td>
+                    <StatusBadge v-if="row.status === 'installing' && row.ont?.rx_power && !row.is_audited" status="audit" />
+                    <StatusBadge v-else :status="row.status" />
+                </td>
                 <td>
                     <span v-if="row.ont" class="text-xs font-mono text-gray-600">{{ row.ont.serial_number }}</span>
                     <span v-else class="text-xs text-gray-600">-</span>
