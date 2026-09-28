@@ -62,6 +62,14 @@ class Odp extends Model
     }
 
     /**
+     * ODP dimiliki oleh satu Area (N:1)
+     */
+    public function area(): BelongsTo
+    {
+        return $this->belongsTo(Area::class);
+    }
+
+    /**
      * ODP memiliki banyak Survey (1:N)
      */
     public function surveys(): HasMany
