@@ -393,7 +393,6 @@ class CustomerController extends Controller
     public function assignOnt(Request $request, Customer $customer): RedirectResponse
     {
         $validated = $request->validate([
-            'ont_id' => 'required|exists:onts,id',
             'odp_id' => 'required|exists:odps,id',
             'port_number' => 'required|integer|min:1',
             'rx_power' => 'nullable|string',
@@ -413,22 +412,42 @@ class CustomerController extends Controller
         if ($request->hasFile('photo_redaman')) $validated['photo_redaman'] = $request->file('photo_redaman')->store('installations', 'public');
 
         DB::transaction(function () use ($validated, $customer) {
-            // Gunakan ONT dari inventory
-            $ont = Ont::findOrFail($validated['ont_id']);
-            $ont->update([
-                'odp_id' => $validated['odp_id'],
-                'customer_id' => $customer->id,
-                'port_number' => $validated['port_number'],
-                'rx_power' => $validated['rx_power'] ?? null,
-                'start_time' => $validated['start_time'] ?? null,
-                'end_time' => $validated['end_time'] ?? null,
-                'photo_odp' => $validated['photo_odp'] ?? null,
-                'photo_installation' => $validated['photo_installation'] ?? null,
-                'photo_ont' => $validated['photo_ont'] ?? null,
-                'photo_customer' => $validated['photo_customer'] ?? null,
-                'photo_redaman' => $validated['photo_redaman'] ?? null,
-                'status' => 'active',
-            ]);
+            // Check if customer already has an ONT linked (e.g. from assignInstall)
+            $ont = Ont::where('customer_id', $customer->id)->first();
+            
+            if ($ont) {
+                // Update existing linked ONT
+                $ont->update([
+                    'odp_id' => $validated['odp_id'],
+                    'port_number' => $validated['port_number'],
+                    'rx_power' => $validated['rx_power'] ?? null,
+                    'start_time' => $validated['start_time'] ?? null,
+                    'end_time' => $validated['end_time'] ?? null,
+                    'photo_odp' => $validated['photo_odp'] ?? null,
+                    'photo_installation' => $validated['photo_installation'] ?? null,
+                    'photo_ont' => $validated['photo_ont'] ?? null,
+                    'photo_customer' => $validated['photo_customer'] ?? null,
+                    'photo_redaman' => $validated['photo_redaman'] ?? null,
+                    'status' => 'active',
+                ]);
+            } else {
+                // Create new ONT if none is linked
+                $ont = Ont::create([
+                    'odp_id' => $validated['odp_id'],
+                    'customer_id' => $customer->id,
+                    'serial_number' => 'SN-' . strtoupper(\Illuminate\Support\Str::random(8)),
+                    'port_number' => $validated['port_number'],
+                    'rx_power' => $validated['rx_power'] ?? null,
+                    'start_time' => $validated['start_time'] ?? null,
+                    'end_time' => $validated['end_time'] ?? null,
+                    'photo_odp' => $validated['photo_odp'] ?? null,
+                    'photo_installation' => $validated['photo_installation'] ?? null,
+                    'photo_ont' => $validated['photo_ont'] ?? null,
+                    'photo_customer' => $validated['photo_customer'] ?? null,
+                    'photo_redaman' => $validated['photo_redaman'] ?? null,
+                    'status' => 'active',
+                ]);
+            }
 
             // Update used_ports di ODP
             $odp = Odp::find($validated['odp_id']);
@@ -609,9 +628,28 @@ class CustomerController extends Controller
 
         $customNotes = [];
         if (!empty($validated['ont_models'])) {
-            $onts = array_filter($validated['ont_models']);
-            if (count($onts) > 0) {
-                $customNotes[] = "ONT: " . implode(', ', $onts);
+            $ontIds = array_filter($validated['ont_models']);
+            if (count($ontIds) > 0) {
+                $onts = Ont::whereIn('id', $ontIds)->get();
+                $ontNames = [];
+                
+                // Update customer_id in onts table
+                DB::transaction(function () use ($onts, $customer) {
+                    foreach ($onts as $ont) {
+                        $ont->update(['customer_id' => $customer->id]);
+                    }
+                });
+
+                foreach ($onts as $ont) {
+                    $name = $ont->brand;
+                    if ($ont->model) $name .= ' ' . $ont->model;
+                    $name .= ' (SN: ' . $ont->serial_number . ')';
+                    $ontNames[] = $name;
+                }
+                
+                if (count($ontNames) > 0) {
+                    $customNotes[] = "ONT: " . implode(', ', $ontNames);
+                }
             }
         }
         if (!empty($validated['material_transaction_ids'])) {

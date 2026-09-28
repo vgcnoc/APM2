@@ -227,7 +227,7 @@
                                         <div class="flex gap-2 items-center">
                                             <select v-model="assignForm.ont_models[index]" class="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all truncate hover:bg-white">
                                                 <option value="">-- Pilih ONT --</option>
-                                                <option v-for="ontOption in availableOnts" :key="ontOption.id" :value="ontOption.brand + (ontOption.model ? ' ' + ontOption.model : '') + ' (SN: ' + ontOption.serial_number + ')'">
+                                                <option v-for="ontOption in availableOnts" :key="ontOption.id" :value="ontOption.id">
                                                     {{ ontOption.brand }} {{ ontOption.model || '' }} - SN: {{ ontOption.serial_number }}
                                                 </option>
                                             </select>
@@ -552,10 +552,7 @@ function addManualMaterial() {
 
 function getSelectedOntDetails(val) {
     if (!val) return null;
-    return props.availableOnts.find(ont => {
-        const optionVal = ont.brand + (ont.model ? ' ' + ont.model : '') + ' (SN: ' + ont.serial_number + ')';
-        return optionVal === val;
-    });
+    return props.availableOnts.find(ont => ont.id === val);
 }
 
 function getTransactionLabel(trx) {
