@@ -147,15 +147,40 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
+                
+                <!-- Informasi Hasil Survey -->
+                <div class="bg-blue-50/50 px-5 py-3 border-b border-blue-100/50 flex flex-col gap-1.5 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-500 font-medium text-xs">Pelanggan</span>
+                        <span class="font-bold text-slate-800">{{ activeCustomer?.name }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-500 font-medium text-xs">ODP & Jarak Kabel</span>
+                        <span class="font-semibold text-slate-700 text-right">
+                            {{ activeCustomer?.surveys?.[0]?.odp?.name || 'Tidak diketahui' }} 
+                            <span class="text-xs font-normal text-slate-400 mx-1">•</span> 
+                            {{ activeCustomer?.surveys?.[0]?.distance_meters ? activeCustomer.surveys[0].distance_meters + ' m' : '-' }}
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-500 font-medium text-xs">Paket Internet</span>
+                        <span class="font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100/50">{{ activeCustomer?.package?.name || '-' }}</span>
+                    </div>
+                </div>
                 <form @submit.prevent="submitAssign">
                     <div class="p-5 space-y-4">
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Pilih Teknisi</label>
-                            <div class="space-y-2 max-h-32 overflow-y-auto p-3 border border-gray-200 bg-slate-50/50 rounded-xl shadow-inner">
-                                <label v-for="tech in technicians" :key="tech.id" class="flex items-center gap-3 cursor-pointer p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-blue-100 hover:shadow-sm">
-                                    <input type="checkbox" :value="tech.id" v-model="assignForm.technician_ids" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
-                                    <span class="text-sm font-medium text-slate-700">{{ tech.name }}</span>
-                                </label>
+                            <div class="relative">
+                                <select v-model="assignForm.technician_ids" multiple class="w-full bg-white border border-gray-200 rounded-xl px-2 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all h-28">
+                                    <option v-for="tech in technicians" :key="tech.id" :value="tech.id" class="px-3 py-2 hover:bg-slate-50 border-b border-gray-50 last:border-0 rounded cursor-pointer">
+                                        {{ tech.name }}
+                                    </option>
+                                </select>
+                                <p class="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    Tahan tombol Ctrl / Cmd untuk memilih lebih dari satu teknisi
+                                </p>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
@@ -177,16 +202,23 @@
                                     </button>
                                 </div>
                                 <div class="space-y-2">
-                                    <div v-for="(ont, index) in assignForm.ont_models" :key="'ont-'+index" class="flex gap-2 items-center group">
-                                        <select v-model="assignForm.ont_models[index]" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all">
-                                            <option value="">-- Pilih ONT --</option>
-                                            <option v-for="ont in availableOnts" :key="ont.id" :value="ont.brand + (ont.model ? ' ' + ont.model : '') + ' (SN: ' + ont.serial_number + ')'">
-                                                {{ ont.brand }} {{ ont.model || '' }} - SN: {{ ont.serial_number }}
-                                            </option>
-                                        </select>
-                                        <button v-if="assignForm.ont_models.length > 1" type="button" @click="assignForm.ont_models.splice(index, 1)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg opacity-50 group-hover:opacity-100 transition-all focus:outline-none" title="Hapus">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
-                                        </button>
+                                    <div v-for="(ont, index) in assignForm.ont_models" :key="'ont-'+index" class="group">
+                                        <div class="flex gap-2 items-center mb-1">
+                                            <select v-model="assignForm.ont_models[index]" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all truncate">
+                                                <option value="">-- Pilih ONT --</option>
+                                                <option v-for="ontOption in availableOnts" :key="ontOption.id" :value="ontOption.brand + (ontOption.model ? ' ' + ontOption.model : '') + ' (SN: ' + ontOption.serial_number + ')'">
+                                                    {{ ontOption.brand }} {{ ontOption.model || '' }} - SN: {{ ontOption.serial_number }}
+                                                </option>
+                                            </select>
+                                            <button v-if="assignForm.ont_models.length > 1" type="button" @click="assignForm.ont_models.splice(index, 1)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg opacity-50 group-hover:opacity-100 transition-all focus:outline-none shrink-0" title="Hapus">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+                                            </button>
+                                        </div>
+                                        <div v-if="assignForm.ont_models[index] && getSelectedOntDetails(assignForm.ont_models[index])" class="mt-2 bg-indigo-50/50 p-3 rounded-lg border border-indigo-100/50 text-xs text-slate-600 space-y-1">
+                                            <div class="flex justify-between"><span class="font-medium">Merek:</span> <span>{{ getSelectedOntDetails(assignForm.ont_models[index]).brand }}</span></div>
+                                            <div class="flex justify-between"><span class="font-medium">Model:</span> <span>{{ getSelectedOntDetails(assignForm.ont_models[index]).model || '-' }}</span></div>
+                                            <div class="flex justify-between"><span class="font-medium">SN:</span> <span class="font-mono font-semibold text-indigo-600">{{ getSelectedOntDetails(assignForm.ont_models[index]).serial_number }}</span></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -425,6 +457,14 @@ function addManualMaterial() {
         name: '',
         qty: 1,
         unit: 'pcs'
+    });
+}
+
+function getSelectedOntDetails(val) {
+    if (!val) return null;
+    return props.availableOnts.find(ont => {
+        const optionVal = ont.brand + (ont.model ? ' ' + ont.model : '') + ' (SN: ' + ont.serial_number + ')';
+        return optionVal === val;
     });
 }
 

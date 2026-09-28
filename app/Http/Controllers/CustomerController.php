@@ -186,7 +186,7 @@ class CustomerController extends Controller
         ];
 
         $customers = (clone $baseQuery)
-            ->with(['package', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
+            ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'installation')->with('technician');
             }])
             ->search($request->search)
