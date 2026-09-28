@@ -26,6 +26,9 @@ npm run build
 # Generate app key if not generated
 php artisan key:generate --force
 
+# Run migrations
+php artisan migrate --force
+
 echo "--- Deployment Script Part 2 Fixed Done ---"
 `;
 
