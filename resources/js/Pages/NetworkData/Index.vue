@@ -206,7 +206,7 @@
 
                                     <button @click="openOdpDetail(odp)" class="w-full text-center bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                        Lihat Foto & Detail
+                                        Lihat Foto
                                     </button>
 
                                     <!-- Stop Permanen List (Specific to this ODP) -->
@@ -274,7 +274,7 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
-                                    <button @click="openOdpDetail(odp)" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded transition-colors text-xs font-bold">Detail</button>
+                                    <button @click="openOdpDetail(odp)" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded transition-colors text-xs font-bold">Lihat Foto</button>
                                 </td>
                             </tr>
                             <tr v-if="odps.length === 0">
@@ -319,125 +319,39 @@
 
         </div>
 
-        <!-- DETAIL ODP DRAWER -->
+        <!-- FOTO ODP LIGHTBOX -->
         <Teleport to="body">
-            <div v-if="selectedDetailOdp" class="fixed inset-0 z-[100] overflow-hidden">
-                <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="selectedDetailOdp = null"></div>
-                <div class="fixed inset-y-0 right-0 max-w-md w-full flex bg-white shadow-2xl transform transition-transform animate-slide-in-right">
-                    <div class="h-full flex flex-col w-full">
-                        <!-- Drawer Header -->
-                        <div class="px-6 py-4 bg-gray-900 text-white flex items-center justify-between shadow-md z-10">
-                            <div>
-                                <h2 class="text-lg font-black tracking-tight">{{ selectedDetailOdp.name }}</h2>
-                                <p class="text-xs text-gray-400 font-medium flex items-center gap-2 mt-0.5">
-                                    <span class="flex items-center gap-1"><svg class="w-3 h-3 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg> {{ selectedDetailOdp.odc?.name }}</span>
-                                </p>
-                            </div>
-                            <button @click="selectedDetailOdp = null" class="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 p-2 rounded-full transition-colors">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                            </button>
-                        </div>
+            <div v-if="selectedDetailOdp" class="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+                <!-- Dark overlay with click outside to close -->
+                <div class="absolute inset-0 bg-black/90 backdrop-blur-sm transition-opacity" @click="selectedDetailOdp = null"></div>
+                
+                <!-- Close Button (Top Right) -->
+                <button @click="selectedDetailOdp = null" class="absolute top-4 right-4 md:top-6 md:right-6 text-gray-400 hover:text-white bg-black/50 hover:bg-black/80 p-2 rounded-full transition-all z-10">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+
+                <!-- Modal Content -->
+                <div class="relative w-full max-w-5xl max-h-[90vh] flex flex-col items-center justify-center animate-fade-in-up">
+                    <template v-if="selectedDetailOdp.photo">
+                        <!-- Photo container maintaining aspect ratio -->
+                        <img :src="`/storage/${selectedDetailOdp.photo}`" alt="Foto ODP" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
                         
-                        <div class="flex-1 overflow-y-auto bg-gray-50">
-                            <!-- Info Cards -->
-                            <div class="p-6 space-y-6">
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
-                                        <p class="text-[10px] font-bold text-gray-400 uppercase">Kapasitas</p>
-                                        <p class="text-lg font-black text-gray-800">{{ selectedDetailOdp.total_ports }} Port</p>
-                                    </div>
-                                    <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
-                                        <p class="text-[10px] font-bold text-gray-400 uppercase">Tersedia</p>
-                                        <p class="text-lg font-black text-emerald-600">{{ Math.max(0, selectedDetailOdp.total_ports - selectedDetailOdp.used_ports) }} Port</p>
-                                    </div>
-                                </div>
-
-                                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden text-sm">
-                                    <div class="px-4 py-3 border-b border-gray-100 flex items-start justify-between">
-                                        <div>
-                                            <p class="text-xs font-bold text-gray-400 uppercase mb-1">Alamat / Lokasi</p>
-                                            <p class="font-medium text-gray-800">{{ selectedDetailOdp.address || '-' }}</p>
-                                        </div>
-                                        <a v-if="selectedDetailOdp.latitude && selectedDetailOdp.longitude" :href="`https://maps.google.com/?q=${selectedDetailOdp.latitude},${selectedDetailOdp.longitude}`" target="_blank" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                        </a>
-                                    </div>
-                                    <div class="px-4 py-3 border-b border-gray-100 grid grid-cols-2 gap-4">
-                                        <div>
-                                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Area</p>
-                                            <p class="font-medium text-gray-800">{{ selectedDetailOdp.area?.name || '-' }}</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Kode ODP</p>
-                                            <p class="font-mono text-gray-800 text-xs mt-1">{{ selectedDetailOdp.kode_odp || '-' }}</p>
-                                        </div>
-                                    </div>
-                                    <!-- Foto ODP -->
-                                    <div v-if="selectedDetailOdp.photo" class="px-4 py-3 bg-gray-50 border-t border-gray-100">
-                                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-2">Foto ODP</p>
-                                        <a :href="`/storage/${selectedDetailOdp.photo}`" target="_blank" class="block w-full overflow-hidden rounded-lg border border-gray-200 group">
-                                            <img :src="`/storage/${selectedDetailOdp.photo}`" alt="Foto ODP" class="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300" />
-                                            <div class="bg-indigo-600 text-white text-center text-[10px] py-1.5 font-bold uppercase tracking-wider group-hover:bg-indigo-700 transition-colors">
-                                                Lihat / Download Foto (Full)
-                                            </div>
-                                        </a>
-                                    </div>
-                                </div>
-
-                                <!-- Ports List -->
-                                <div>
-                                    <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-3 px-1 flex items-center gap-2">
-                                        <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                        Status Port
-                                    </h3>
-                                    <div class="bg-white border border-gray-200 rounded-xl shadow-sm divide-y divide-gray-100">
-                                        <!-- Perhitungan murni berdasarkan total_ports master data -->
-                                        <div v-for="portNum in selectedDetailOdp.total_ports" :key="portNum" class="p-3 flex items-center gap-4 hover:bg-gray-50 transition-colors">
-                                            <div class="w-10 text-center flex-shrink-0">
-                                                <span class="text-xs font-black text-gray-400">P{{ portNum.toString().padStart(2, '0') }}</span>
-                                            </div>
-                                            
-                                            <div class="flex-1 min-w-0">
-                                                <!-- Jika port digunakan -->
-                                                <template v-if="getPortData(selectedDetailOdp, portNum)">
-                                                    <div v-if="getPortData(selectedDetailOdp, portNum).customer">
-                                                        <div class="flex items-center gap-2 mb-0.5">
-                                                            <div class="w-2 h-2 rounded-full shrink-0" :class="getCustomerStatusColor(getPortData(selectedDetailOdp, portNum).customer.status)"></div>
-                                                            <p class="text-sm font-bold text-gray-900 truncate" :title="getPortData(selectedDetailOdp, portNum).customer.name">
-                                                                {{ getPortData(selectedDetailOdp, portNum).customer.name }}
-                                                            </p>
-                                                        </div>
-                                                        <p class="text-[11px] text-gray-500 font-mono">{{ getPortData(selectedDetailOdp, portNum).customer.customer_code || getPortData(selectedDetailOdp, portNum).serial_number }}</p>
-                                                    </div>
-                                                    <div v-else>
-                                                        <div class="flex items-center gap-2 mb-0.5">
-                                                            <div class="w-2 h-2 rounded-full shrink-0 bg-gray-400"></div>
-                                                            <p class="text-sm font-bold text-gray-600 italic">ONT Inventori (Belum Assign)</p>
-                                                        </div>
-                                                        <p class="text-[11px] text-gray-400 font-mono">{{ getPortData(selectedDetailOdp, portNum).serial_number }}</p>
-                                                    </div>
-                                                </template>
-                                                <!-- Jika port kosong -->
-                                                <template v-else>
-                                                    <div class="flex items-center gap-2 py-1">
-                                                        <div class="w-2 h-2 rounded-full shrink-0 bg-gray-300"></div>
-                                                        <p class="text-sm font-medium text-gray-400">Available</p>
-                                                    </div>
-                                                </template>
-                                            </div>
-                                            
-                                            <!-- Aksi -->
-                                            <div v-if="getPortData(selectedDetailOdp, portNum)?.customer" class="shrink-0">
-                                                <a :href="`/customers/${getPortData(selectedDetailOdp, portNum).customer.id}`" target="_blank" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors block">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                        <!-- Optional Download / Full Link -->
+                        <a :href="`/storage/${selectedDetailOdp.photo}`" target="_blank" class="mt-4 px-6 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-full font-medium transition-colors flex items-center gap-2 backdrop-blur">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            Buka / Download Original
+                        </a>
+                    </template>
+                    <template v-else>
+                        <!-- No Photo Placeholder -->
+                        <div class="bg-gray-800/80 backdrop-blur border border-gray-700 rounded-2xl p-10 md:p-16 text-center max-w-md w-full shadow-2xl">
+                            <div class="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-500">
+                                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                             </div>
+                            <h3 class="text-xl font-bold text-white mb-2">Foto Belum Tersedia</h3>
+                            <p class="text-gray-400 text-sm">Foto untuk ODP <span class="font-bold text-gray-300">{{ selectedDetailOdp.name }}</span> belum diupload ke sistem.</p>
                         </div>
-                    </div>
+                    </template>
                 </div>
             </div>
         </Teleport>
