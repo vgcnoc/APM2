@@ -263,7 +263,7 @@
                                             Rincian Penggunaan Barang (Bisa disesuaikan):
                                         </p>
                                         <ul class="space-y-2">
-                                            <li v-for="(item, idx) in assignForm.material_items" :key="idx" class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-gray-200 shadow-sm hover:border-blue-200 transition-colors">
+                                            <li v-for="(item, idx) in assignForm.material_items" :key="item.id" class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-gray-200 shadow-sm hover:border-blue-200 transition-colors">
                                                 <div class="flex-1 truncate mr-3">
 
                                                     <span class="text-xs font-bold text-gray-800">{{ item.name || 'Barang' }}</span>
@@ -477,45 +477,57 @@ const columns = [
 ];
 
 function updateMaterialItems() {
-    assignForm.material_items = [];
+    const validTransactionItemIds = new Set();
+    const newItemsToAdd = [];
     
     assignForm.material_transaction_ids.forEach(trxId => {
         if (!trxId) return;
         const trx = props.materialTransactions.find(t => t.transaction_number === trxId);
         if (trx && trx.items) {
-            const mappedItems = trx.items
-                .filter(item => {
-                    const name = item.material && item.material.name ? item.material.name.toLowerCase() : '';
-                    const category = item.material && item.material.category ? item.material.category.toLowerCase() : '';
-                    const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
-                    return !name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem') && !isRegistered;
-                })
-                .map(item => {
-                    let qty = parseFloat(item.quantity) || 0;
-                    let unit = item.unit || (item.material ? item.material.unit : 'pcs');
+            trx.items.forEach(item => {
+                const name = item.material && item.material.name ? item.material.name.toLowerCase() : '';
+                const category = item.material && item.material.category ? item.material.category.toLowerCase() : '';
+                const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
+                
+                if (!name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem') && !isRegistered) {
+                    validTransactionItemIds.add(item.id);
                     
-                    if (item.material && item.material.category === 'Isolasi') {
-                        if (unit === 'pcs' || unit === 'pcs (utuh)') {
-                            qty = qty * (parseFloat(item.material.cm_per_pcs) || 50);
-                            unit = 'cm';
+                    const exists = assignForm.material_items.find(mi => mi.id === item.id);
+                    if (!exists) {
+                        let qty = parseFloat(item.quantity) || 0;
+                        let unit = item.unit || (item.material ? item.material.unit : 'pcs');
+                        
+                        if (item.material && item.material.category === 'Isolasi') {
+                            if (unit === 'pcs' || unit === 'pcs (utuh)') {
+                                qty = qty * (parseFloat(item.material.cm_per_pcs) || 50);
+                                unit = 'cm';
+                            }
+                        } else if (item.material && item.material.category === 'Paku Klem') {
+                            if (unit === 'bungkus' || unit === 'pack') {
+                                qty = qty * (parseFloat(item.material.pcs_per_pack) || 100);
+                                unit = 'pcs';
+                            }
                         }
-                    } else if (item.material && item.material.category === 'Paku Klem') {
-                        if (unit === 'bungkus' || unit === 'pack') {
-                            qty = qty * (parseFloat(item.material.pcs_per_pack) || 100);
-                            unit = 'pcs';
-                        }
+                        
+                        newItemsToAdd.push({
+                            id: item.id,
+                            name: item.material ? item.material.name : 'Unknown',
+                            qty: qty,
+                            unit: unit
+                        });
                     }
-                    
-                    return {
-                        id: item.id,
-                        name: item.material ? item.material.name : 'Unknown',
-                        qty: qty,
-                        unit: unit
-                    };
-                });
-            assignForm.material_items.push(...mappedItems);
+                }
+            });
         }
     });
+
+    // Filter existing items to keep manual items and valid transaction items
+    assignForm.material_items = assignForm.material_items.filter(mi => 
+        String(mi.id).startsWith('manual-') || validTransactionItemIds.has(mi.id)
+    );
+
+    // Append new items
+    assignForm.material_items.push(...newItemsToAdd);
 }
 
 function removeMaterialTransaction(index) {
@@ -525,7 +537,7 @@ function removeMaterialTransaction(index) {
 
 function addManualMaterial() {
     assignForm.material_items.push({
-        id: 'manual-' + Date.now(),
+        id: 'manual-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
         name: '',
         qty: 1,
         unit: 'pcs'
