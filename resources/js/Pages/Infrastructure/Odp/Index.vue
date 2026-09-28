@@ -240,7 +240,17 @@
                                     </div>
                                     <div>
                                         <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Foto ODP</label>
+                                        <div v-if="form.existing_photo" class="mb-3">
+                                            <a :href="`/storage/${form.existing_photo}`" target="_blank" class="block w-40 overflow-hidden rounded-lg border border-gray-200 group relative">
+                                                <img :src="`/storage/${form.existing_photo}`" alt="Foto ODP" class="w-full h-24 object-cover" />
+                                                <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold uppercase text-center">
+                                                    Lihat / Download
+                                                </div>
+                                            </a>
+                                            <p class="text-[10px] text-gray-500 mt-1">Upload file baru untuk mengganti foto ini.</p>
+                                        </div>
                                         <input type="file" @change="e => form.photo = e.target.files[0]" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                        <p v-if="form.errors.photo" class="text-red-500 text-xs mt-1">{{ form.errors.photo }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -314,6 +324,7 @@ const form = useForm({
     status: 'active',
     description: '',
     photo: null,
+    existing_photo: null,
     split_units: [
         {
             name: 'ODP Induk 1:4',
@@ -387,6 +398,8 @@ function openCreateModal() {
     isEditing.value = false;
     editId.value = null;
     form.reset();
+    form.photo = null;
+    form.existing_photo = null;
     form.clearErrors();
     activeTab.value = 0;
     isModalOpen.value = true;
@@ -406,6 +419,7 @@ function openEditModal(odp) {
     form.status = odp.status;
     form.description = odp.description;
     form.photo = null; // Clear file input
+    form.existing_photo = odp.photo || null;
     form.clearErrors();
     activeTab.value = 0;
     isModalOpen.value = true;
