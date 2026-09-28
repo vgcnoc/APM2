@@ -403,8 +403,8 @@
                         </div>
                         
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Catatan Tambahan (Opsional)</label>
-                            <textarea v-model="activationForm.notes" rows="2" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm transition-all" placeholder="Catatan internal setelah aktivasi..."></textarea>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan Audit</label>
+                            <textarea v-model="activationForm.notes" rows="3" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm transition-all" placeholder="Tuliskan keterangan atau hasil pemeriksaan audit di sini..."></textarea>
                         </div>
                     </div>
                     <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
