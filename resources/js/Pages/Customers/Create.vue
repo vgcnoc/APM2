@@ -102,12 +102,19 @@
                         <!-- Row 7: Foto KTP -->
                         <div>
                             <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Foto KTP (Opsional)</label>
-                            <div class="flex items-center w-full px-3 py-2 bg-white border border-gray-300 rounded-lg">
-                                <label class="cursor-pointer bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-md text-xs font-semibold hover:bg-indigo-100 transition-colors">
+                            <div class="flex items-start w-full px-3 py-2 bg-white border border-gray-300 rounded-lg gap-4">
+                                <label class="cursor-pointer bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-md text-xs font-semibold hover:bg-indigo-100 transition-colors shrink-0">
                                     Choose File
-                                    <input type="file" @change="e => form.identity_photo = e.target.files[0]" class="hidden" />
+                                    <input type="file" @change="handleKtpUpload" accept="image/*" class="hidden" />
                                 </label>
-                                <span class="ml-3 text-sm text-gray-500 truncate">{{ form.identity_photo ? form.identity_photo.name : 'No file chosen' }}</span>
+                                <div v-if="ktpPreviewUrl" class="flex flex-col gap-1 w-full mt-0.5">
+                                    <div class="flex items-center gap-3">
+                                        <img :src="ktpPreviewUrl" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="showPreviewModal = true" />
+                                        <span class="text-sm text-gray-500 truncate flex-1">{{ form.identity_photo ? form.identity_photo.name : '' }}</span>
+                                    </div>
+                                    <a :href="ktpPreviewUrl" download="Foto_KTP.jpg" class="text-[10px] text-blue-600 hover:underline w-fit ml-1">Download Foto KTP</a>
+                                </div>
+                                <span v-else class="text-sm text-gray-500 truncate mt-1.5">No file chosen</span>
                             </div>
                         </div>
 
@@ -181,6 +188,19 @@
 
             </div>
         </div>
+        <!-- Image Preview Modal -->
+        <Teleport to="body">
+            <div v-if="showPreviewModal && ktpPreviewUrl" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/90 backdrop-blur-sm cursor-pointer" @click="showPreviewModal = false"></div>
+                <div class="relative max-w-4xl w-full h-full flex flex-col items-center justify-center animate-fade-in-up">
+                    <button type="button" @click="showPreviewModal = false" class="absolute top-4 right-4 text-white hover:text-red-500 bg-white/20 hover:bg-white/30 p-2 rounded-full z-10 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                    <img :src="ktpPreviewUrl" class="max-h-[85vh] max-w-full object-contain rounded-lg shadow-2xl" />
+                    <p class="mt-4 text-white font-medium text-lg">Foto KTP</p>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
 
@@ -213,6 +233,20 @@ function checkNewArea(e) {
 function cancelNewArea() {
     isNewArea.value = false;
     form.area = '';
+}
+
+const ktpPreviewUrl = ref(null);
+const showPreviewModal = ref(false);
+
+function handleKtpUpload(e) {
+    const file = e.target.files[0];
+    form.identity_photo = file;
+    if (file) {
+        if (ktpPreviewUrl.value) URL.revokeObjectURL(ktpPreviewUrl.value);
+        ktpPreviewUrl.value = URL.createObjectURL(file);
+    } else {
+        ktpPreviewUrl.value = null;
+    }
 }
 
 const form = useForm({
