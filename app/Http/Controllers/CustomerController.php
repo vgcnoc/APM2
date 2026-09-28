@@ -96,6 +96,10 @@ class CustomerController extends Controller
     {
         $tab = $request->tab ?? 'semua';
         
+        if (auth()->check() && auth()->user()->role === 'teknisi') {
+            $request->merge(['technician_id' => auth()->id()]);
+        }
+        
         $baseQuery = Customer::survey()
             ->with(['surveys.odp', 'surveys.surveyor', 'technicianSchedules.technician'])
             ->when($request->technician_id, function ($q, $techId) {
@@ -174,6 +178,12 @@ class CustomerController extends Controller
     public function installed(Request $request): Response
     {
         $baseQuery = Customer::installed();
+        
+        if (auth()->check() && auth()->user()->role === 'teknisi') {
+            $baseQuery->whereHas('technicianSchedules', function ($q) {
+                $q->where('technician_id', auth()->id())->where('type', 'installation');
+            });
+        }
         
         $stats = [
             'jadwal_pasang' => (clone $baseQuery)->where('status', 'installing')

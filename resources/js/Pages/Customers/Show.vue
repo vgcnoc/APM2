@@ -50,7 +50,7 @@
                         <div class="bg-gray-50 rounded-xl p-4 space-y-2">
                             <p class="text-xs text-gray-500 uppercase font-semibold tracking-wider">Jadwal Survey</p>
                             <template v-if="customer.technician_schedules?.find(s => s.type === 'survey')">
-                                <InfoRow label="Teknisi" :value="customer.technician_schedules.find(s => s.type === 'survey').technician?.name || '-'" />
+                                <InfoRow label="Teknisi" :value="getAssignedTechnicians('survey')" />
                                 <InfoRow label="Tanggal" :value="customer.technician_schedules.find(s => s.type === 'survey').scheduled_date" />
                                 <InfoRow label="Waktu" :value="customer.technician_schedules.find(s => s.type === 'survey').scheduled_time" />
                                 <InfoRow label="Status">
@@ -103,7 +103,7 @@
                         
                         <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 space-y-2">
                             <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
-                            <InfoRow label="Teknisi" :value="customer.technician_schedules.find(s => s.type === 'installation').technician?.name || '-'" />
+                            <InfoRow label="Teknisi" :value="getAssignedTechnicians('installation')" />
                             <InfoRow label="Tanggal Pasang" :value="customer.technician_schedules.find(s => s.type === 'installation').scheduled_date" />
                             <InfoRow label="Waktu Target" :value="customer.technician_schedules.find(s => s.type === 'installation').scheduled_time || '-'" />
                         </div>
@@ -283,7 +283,7 @@
                         
                         <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 space-y-2">
                             <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
-                            <InfoRow label="Teknisi" :value="customer.technician_schedules.find(s => s.type === 'installation').technician?.name || '-'" />
+                            <InfoRow label="Teknisi" :value="getAssignedTechnicians('installation')" />
                             <InfoRow label="Tanggal Pasang" :value="customer.technician_schedules.find(s => s.type === 'installation').scheduled_date" />
                         </div>
                         
@@ -441,6 +441,13 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 
 const props = defineProps({ customer: Object, availableOdps: Array });
+
+const getAssignedTechnicians = (type) => {
+    if (!props.customer?.technician_schedules) return '-';
+    const schedules = props.customer.technician_schedules.filter(s => s.type === type);
+    if (schedules.length === 0) return '-';
+    return schedules.map(s => s.technician?.name).filter(Boolean).join(', ') || '-';
+};
 
 const previewImage = ref(null);
 
