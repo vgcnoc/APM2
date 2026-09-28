@@ -477,12 +477,30 @@ watch(() => props.customer, () => {
             });
         }
     });
-    
     hardwareItems.value = items;
+    
+    // Restore hardware status from localStorage
+    const savedHardware = localStorage.getItem(`apm_hardware_${props.customer.id}`);
+    if (savedHardware) {
+        try {
+            const installedIds = JSON.parse(savedHardware);
+            hardwareItems.value.forEach(item => {
+                if (installedIds.includes(item.id)) {
+                    item.isInstalled = true;
+                }
+            });
+        } catch (e) {
+            console.error('Failed to parse saved hardware state', e);
+        }
+    }
 }, { immediate: true });
 
 function toggleInstallItem(item) {
     item.isInstalled = !item.isInstalled;
+    
+    // Save to localStorage
+    const installedIds = hardwareItems.value.filter(i => i.isInstalled).map(i => i.id);
+    localStorage.setItem(`apm_hardware_${props.customer.id}`, JSON.stringify(installedIds));
 }
 
 const isInstallingHardware = computed(() => {
@@ -556,6 +574,29 @@ onMounted(() => {
     if (savedEnd && !ontForm.end_time) {
         ontForm.end_time = savedEnd;
     }
+    
+    const savedOdp = localStorage.getItem(`apm_odp_id_${props.customer.id}`);
+    if (savedOdp) ontForm.odp_id = savedOdp;
+    
+    const savedPort = localStorage.getItem(`apm_port_number_${props.customer.id}`);
+    if (savedPort) ontForm.port_number = savedPort;
+    
+    const savedRx = localStorage.getItem(`apm_rx_power_${props.customer.id}`);
+    if (savedRx) ontForm.rx_power = savedRx;
+});
+
+// Watch input fields and save to localStorage
+watch(() => ontForm.odp_id, (val) => {
+    if (val) localStorage.setItem(`apm_odp_id_${props.customer.id}`, val);
+    else localStorage.removeItem(`apm_odp_id_${props.customer.id}`);
+});
+watch(() => ontForm.port_number, (val) => {
+    if (val) localStorage.setItem(`apm_port_number_${props.customer.id}`, val);
+    else localStorage.removeItem(`apm_port_number_${props.customer.id}`);
+});
+watch(() => ontForm.rx_power, (val) => {
+    if (val) localStorage.setItem(`apm_rx_power_${props.customer.id}`, val);
+    else localStorage.removeItem(`apm_rx_power_${props.customer.id}`);
 });
 
 function setNow(field) {
@@ -576,6 +617,10 @@ function submitOnt() {
             // Bersihkan localStorage kalau sudah berhasil submit
             localStorage.removeItem(`apm_start_time_${props.customer.id}`);
             localStorage.removeItem(`apm_end_time_${props.customer.id}`);
+            localStorage.removeItem(`apm_odp_id_${props.customer.id}`);
+            localStorage.removeItem(`apm_port_number_${props.customer.id}`);
+            localStorage.removeItem(`apm_rx_power_${props.customer.id}`);
+            localStorage.removeItem(`apm_hardware_${props.customer.id}`);
         }
     });
 }
