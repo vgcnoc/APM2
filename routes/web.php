@@ -30,6 +30,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/booking', [CustomerController::class, 'booking'])->name('booking');
         Route::get('/survey', [CustomerController::class, 'survey'])->name('survey');
         Route::get('/installed', [CustomerController::class, 'installed'])->name('installed');
+        Route::get('/activation', [CustomerController::class, 'activation'])->name('activation');
         Route::get('/active', [CustomerController::class, 'active'])->name('active');
 
         // Assign ONT ke pelanggan

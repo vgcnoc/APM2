@@ -173,11 +173,11 @@ class CustomerController extends Controller
     }
 
     /**
-     * Halaman Pasang (status = installing / active)
+     * Halaman Instalasi (Jadwal & Lapor)
      */
     public function installed(Request $request): Response
     {
-        $baseQuery = Customer::installed()->where('status', 'installing');
+        $baseQuery = Customer::installed()->where('status', 'installing')->doesntHave('ont');
         
         if (auth()->check() && auth()->user()->role === 'teknisi') {
             $baseQuery->whereHas('technicianSchedules', function ($q) {
@@ -189,13 +189,11 @@ class CustomerController extends Controller
             'jadwal_pasang' => (clone $baseQuery)
                 ->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation'))->count(),
             'laporan_pasang' => (clone $baseQuery)
-                ->whereHas('technicianSchedules', fn($q) => $q->where('type', 'installation'))
-                ->doesntHave('ont')->count(),
-            'aktivasi' => (clone $baseQuery)->has('ont')->count(),
+                ->whereHas('technicianSchedules', fn($q) => $q->where('type', 'installation'))->count(),
         ];
 
         $customers = (clone $baseQuery)
-            ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
+            ->with(['package', 'surveys.odp', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'installation')->with('technician');
             }])
             ->search($request->search)
@@ -221,6 +219,34 @@ class CustomerController extends Controller
             'materialTransactions' => $materialTransactions,
             'stats' => $stats,
             'filters' => $request->only(['search', 'tab', 'technician_id', 'date', 'area']),
+        ]);
+    }
+
+    /**
+     * Halaman Aktivasi (Audit & Aktivasi)
+     */
+    public function activation(Request $request): Response
+    {
+        $baseQuery = Customer::installed()->where('status', 'installing')->has('ont');
+        
+        $stats = [
+            'audit' => (clone $baseQuery)->where('is_audited', false)->count(),
+            'aktivasi' => (clone $baseQuery)->where('is_audited', true)->count(),
+        ];
+
+        $customers = (clone $baseQuery)
+            ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
+                $q->where('type', 'installation')->with('technician');
+            }])
+            ->search($request->search)
+            ->orderByDesc('created_at')
+            ->paginate(15)
+            ->withQueryString();
+
+        return Inertia::render('Customers/Activation', [
+            'customers' => $customers,
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'tab', 'date', 'area']),
         ]);
     }
 

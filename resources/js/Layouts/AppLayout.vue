@@ -122,6 +122,7 @@ const menuItems = [
     { type: 'link', href: '/customers/booking', icon: 'bookmark', label: 'Data Booking', active: (url) => url.startsWith('/customers/booking') },
     { type: 'link', href: '/customers/survey', icon: 'search', label: 'Survey', active: (url) => url.startsWith('/customers/survey') },
     { type: 'link', href: '/customers/installed', icon: 'wrench', label: 'Instalasi', active: (url) => url.startsWith('/customers/installed') },
+    { type: 'link', href: '/customers/activation', icon: 'lightning-bolt', label: 'Aktivasi', active: (url) => url.startsWith('/customers/activation') },
     { type: 'link', href: '/customers/active', icon: 'check-circle', label: 'Pelanggan Aktif', active: (url) => url.startsWith('/customers/active') },
     { type: 'link', href: '/customers', icon: 'users', label: 'Semua Pelanggan', active: (url) => url === '/customers' },
     { type: 'group', label: 'INFRASTRUKTUR' },

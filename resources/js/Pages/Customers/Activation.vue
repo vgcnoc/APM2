@@ -1,19 +1,19 @@
 <template>
-    <AppLayout title="Pelanggan Instalasi" subtitle="Pelanggan yang sedang diinstalasi">
+    <AppLayout title="Aktivasi Pelanggan" subtitle="Pelanggan yang menunggu proses audit & aktivasi">
         
         <!-- Statistik Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <StatCard 
-                title="Belum Jadwal Pasang" 
-                :value="stats?.jadwal_pasang || 0" 
-                icon="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                title="Menunggu Audit" 
+                :value="stats?.audit || 0" 
+                icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
                 color="blue" 
             />
             <StatCard 
-                title="Proses Instalasi" 
-                :value="stats?.laporan_pasang || 0" 
-                icon="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" 
-                color="amber" 
+                title="Menunggu Aktivasi" 
+                :value="stats?.aktivasi || 0" 
+                icon="M13 10V3L4 14h7v7l9-11h-7z" 
+                color="purple" 
             />
         </div>
 
@@ -21,8 +21,8 @@
             :columns="columns"
             :data="customers.data"
             :pagination="customers"
-            searchPlaceholder="Cari pelanggan instalasi..."
-            searchRoute="/customers/installed"
+            searchPlaceholder="Cari pelanggan..."
+            searchRoute="/customers/activation"
         >
             <template #row="{ row }">
                 <td>
@@ -65,34 +65,30 @@
 
             <template #rowActions="{ row }">
                 <div class="flex items-center justify-end gap-1.5">
-                    
-                    <!-- 1. Belum Dijadwalkan -->
-                    <button v-if="row.status === 'installing' && (!row.technician_schedules || row.technician_schedules.length === 0)" 
-                        @click="openAssignModal(row)" 
-                        class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Jadwalkan Teknisi">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        Jadwal Pasang
-                    </button>
-                    
-                    <!-- 2. Menunggu Laporan Teknisi -->
-                    <Link v-if="row.status === 'installing' && (row.technician_schedules && row.technician_schedules.length > 0) && !row.ont" 
-                        :href="`/customers/${row.id}`" 
-                        class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Input Laporan Instalasi">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                        Input Laporan
-                    </Link>
 
-
+                    <!-- 3. Selesai Pasang, Menunggu Audit Admin -->
+                    <div v-if="row.status === 'installing' && row.ont && !row.is_audited" class="flex gap-1.5">
+                        <Link :href="`/customers/${row.id}`" 
+                            class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Review Hasil Pemasangan">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            Audit
+                        </Link>
+                    </div>
+                    
+                    <!-- 3.5. Sudah Audit, Menunggu Aktivasi -->
+                    <div v-if="row.status === 'installing' && row.ont && row.is_audited" class="flex gap-1.5">
+                        <button @click="openActivationModal(row)" 
+                            class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Proses Aktivasi Pelanggan">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            Aktivasi
+                        </button>
+                    </div>
 
                     <Link :href="`/customers/${row.id}`" class="p-1.5 rounded-lg text-gray-400 hover:bg-white hover:text-blue-500 border border-transparent hover:border-gray-200 transition-all shadow-sm hover:shadow" title="Detail Lengkap">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>
                     </Link>
-                    <button @click="confirmDelete(row)" class="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 border border-transparent hover:border-red-200 transition-all shadow-sm hover:shadow" title="Hapus Pelanggan">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                    </button>
                 </div>
             </template>
         </DataTable>
@@ -541,11 +537,7 @@ function getTransactionLabel(trx) {
     return itemsStr;
 }
 
-const status = ref(props.filters?.status || '');
 
-function applyFilter() {
-    router.get('/customers/installed', { status: status.value || undefined }, { preserveState: true });
-}
 
 function signalClass(rx) {
     if (!rx) return 'text-gray-500';
