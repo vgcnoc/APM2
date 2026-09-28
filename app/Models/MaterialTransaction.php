@@ -16,6 +16,7 @@ class MaterialTransaction extends Model
         'purpose',
         'cabang',
         'area',
+        'area_id',
         'notes',
         'total_cost',
         'user_id',
@@ -29,5 +30,10 @@ class MaterialTransaction extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function areaModel(): BelongsTo
+    {
+        return $this->belongsTo(Area::class, 'area_id');
     }
 }

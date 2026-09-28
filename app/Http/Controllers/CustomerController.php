@@ -329,7 +329,8 @@ class CustomerController extends Controller
 
         // Auto-create new area if not exists in master data
         if (!empty($validated['area'])) {
-            \App\Models\Area::firstOrCreate(['name' => $validated['area']]);
+            $areaModel = \App\Models\Area::firstOrCreate(['name' => $validated['area']]);
+            $validated['area_id'] = $areaModel->id;
         }
 
         $validated['status'] = 'booking'; // Ensure it goes to booking
@@ -410,7 +411,8 @@ class CustomerController extends Controller
 
         // Auto-create new area if not exists in master data
         if (!empty($validated['area'])) {
-            \App\Models\Area::firstOrCreate(['name' => $validated['area']]);
+            $areaModel = \App\Models\Area::firstOrCreate(['name' => $validated['area']]);
+            $validated['area_id'] = $areaModel->id;
         }
 
         // Jika status berubah ke 'active', set activation_date
@@ -743,6 +745,14 @@ class CustomerController extends Controller
             $ontIds = array_filter($validated['ont_models']);
             if (count($ontIds) > 0) {
                 $onts = Ont::whereIn('id', $ontIds)->get();
+                
+                // VALIDASI AREA ONT
+                foreach ($onts as $ont) {
+                    if ($ont->area_id !== $customer->area_id) {
+                        return redirect()->back()->withErrors(['ont_models' => 'ONT ' . $ont->serial_number . ' tidak sesuai dengan Area/Wilayah pelanggan.'])->with('error', 'Data ONT/Material tidak sesuai dengan Area/Wilayah pelanggan.');
+                    }
+                }
+                
                 $ontNames = [];
                 
                 // Update customer_id in onts table
@@ -767,6 +777,14 @@ class CustomerController extends Controller
         if (!empty($validated['material_transaction_ids'])) {
             $trxs = array_filter($validated['material_transaction_ids']);
             if (count($trxs) > 0) {
+                $transactions = \App\Models\MaterialTransaction::whereIn('transaction_number', $trxs)->get();
+                // VALIDASI AREA MATERIAL TRANSACTION
+                foreach ($transactions as $trx) {
+                    if ($trx->area_id !== $customer->area_id) {
+                        return redirect()->back()->withErrors(['material_transaction_ids' => 'Material/Surat Jalan ' . $trx->transaction_number . ' tidak sesuai dengan Area/Wilayah pelanggan.'])->with('error', 'Data ONT/Material tidak sesuai dengan Area/Wilayah pelanggan.');
+                    }
+                }
+
                 $trxNotes = ["Material diambil dari Surat Jalan / Order: " . implode(', ', $trxs)];
                 if (!empty($validated['material_items'])) {
                     foreach ($validated['material_items'] as $mItem) {

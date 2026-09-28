@@ -26,7 +26,7 @@ class MaterialTransactionController extends Controller
     public function create()
     {
         $materials = Material::where('stock', '>', 0)->get();
-        $areas = \App\Models\Area::orderBy('name')->pluck('name')->toArray();
+        $areas = \App\Models\Area::orderBy('name')->get();
         
         return Inertia::render('MaterialTransactions/Create', [
             'materials' => $materials,
@@ -40,7 +40,7 @@ class MaterialTransactionController extends Controller
             'date' => 'required|date',
             'technician_name' => 'required|string|max:255',
             'purpose' => 'required|string|max:255',
-            'area' => 'nullable|string|max:255',
+            'area_id' => 'required|exists:areas,id',
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
             'items.*.quantity' => 'required|numeric|min:0.01',
@@ -57,7 +57,7 @@ class MaterialTransactionController extends Controller
                 'date' => $request->date,
                 'technician_name' => $request->technician_name,
                 'purpose' => $request->purpose,
-                'area' => $request->area,
+                'area_id' => $request->area_id,
                 'notes' => $request->notes,
                 'user_id' => auth()->id(),
                 'total_cost' => 0, // Will be updated
@@ -66,6 +66,11 @@ class MaterialTransactionController extends Controller
             foreach ($request->items as $itemData) {
                 $material = Material::findOrFail($itemData['material_id']);
                 
+                // Ensure same area
+                if ($material->area_id !== (int) $request->area_id) {
+                    throw new \Exception("Material {$material->name} tidak sesuai dengan Area/Wilayah yang dipilih.");
+                }
+
                 // Ensure sufficient stock
                 if ($material->stock < $itemData['quantity']) {
                     throw new \Exception("Stok {$material->name} tidak mencukupi. Sisa stok: {$material->stock}");

@@ -31,6 +31,7 @@ class Customer extends Model
         'installation_fee',
         'sales_id',
         'is_audited',
+        'area_id',
     ];
 
     protected function casts(): array
@@ -45,6 +46,14 @@ class Customer extends Model
     }
 
     // ── Relationships ──────────────────────────────────────────
+
+    /**
+     * Area tempat pelanggan berada
+     */
+    public function areaModel(): BelongsTo
+    {
+        return $this->belongsTo(Area::class, 'area_id');
+    }
 
     /**
      * Paket internet yang diambil pelanggan

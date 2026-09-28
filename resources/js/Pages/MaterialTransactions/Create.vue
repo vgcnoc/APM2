@@ -20,11 +20,11 @@
                         <input v-model="form.purpose" type="text" required placeholder="Contoh: Instalasi (Pak Andi), Ticketing #1234" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Area / Wilayah</label>
-                        <input v-model="form.area" list="area-options" type="text" placeholder="Contoh: Majalengka, Cibaduyut..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-                        <datalist id="area-options">
-                            <option v-for="area in areas" :key="area" :value="area"></option>
-                        </datalist>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Area / Wilayah *</label>
+                        <select v-model="form.area_id" @change="onAreaChange" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
+                            <option value="">Pilih Area / Wilayah</option>
+                            <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                        </select>
                     </div>
                 </div>
                 <div>
@@ -49,9 +49,9 @@
                     <div class="grid grid-cols-1 md:flex items-start md:items-end gap-3 mb-2">
                         <div class="flex-1 min-w-[200px]">
                             <label class="block text-xs font-medium text-gray-500 mb-1">Material *</label>
-                            <select v-model="item.material_id" @change="onMaterialSelected(index)" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white">
+                            <select v-model="item.material_id" @change="onMaterialSelected(index)" :disabled="!form.area_id" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white disabled:bg-gray-100">
                                 <option value="">Pilih material</option>
-                                <option v-for="mat in materials" :key="mat.id" :value="mat.id">
+                                <option v-for="mat in filteredMaterials" :key="mat.id" :value="mat.id">
                                     {{ mat.name }} (Stok: {{ mat.stock }} {{ mat.unit }})
                                 </option>
                             </select>
@@ -133,13 +133,18 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     materials: Array,
     areas: Array,
+});
+
+const filteredMaterials = computed(() => {
+    if (!form.area_id) return [];
+    return props.materials.filter(m => m.area_id === form.area_id);
 });
 
 const getTodayDate = () => {
@@ -156,7 +161,7 @@ const form = useForm({
     date: getTodayDate(),
     technician_name: '',
     purpose: '',
-    area: '',
+    area_id: '',
     notes: '',
     items: [
         { material_id: '', input_quantity: 1, unit_mode: 'default', unit: '', unit_manual: '', max_stock: null, is_cable: false, is_pack: false, is_isolasi: false, meter_per_roll: 1000, pcs_per_pack: 1, cm_per_pcs: 50 }
@@ -169,6 +174,14 @@ const addItem = () => {
 
 const removeItem = (index) => {
     form.items.splice(index, 1);
+};
+
+const onAreaChange = () => {
+    // Reset material selection when area changes
+    form.items.forEach(item => {
+        item.material_id = '';
+        item.max_stock = null;
+    });
 };
 
 const onMaterialSelected = (index) => {
