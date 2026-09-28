@@ -1,14 +1,8 @@
 <template>
-    <AppLayout title="Aktivasi Pelanggan" subtitle="Pelanggan yang menunggu proses audit & aktivasi">
+    <AppLayout title="Aktivasi Pelanggan" subtitle="Pelanggan yang menunggu proses aktivasi">
         
         <!-- Statistik Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <StatCard 
-                title="Menunggu Audit" 
-                :value="stats?.audit || 0" 
-                icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
-                color="blue" 
-            />
+        <div class="grid grid-cols-1 mb-6">
             <StatCard 
                 title="Menunggu Aktivasi" 
                 :value="stats?.aktivasi || 0" 
@@ -65,15 +59,6 @@
 
             <template #rowActions="{ row }">
                 <div class="flex items-center justify-end gap-1.5">
-
-                    <!-- 3. Selesai Pasang, Menunggu Audit Admin -->
-                    <div v-if="row.status === 'installing' && row.ont && !row.is_audited" class="flex gap-1.5">
-                        <Link :href="`/customers/${row.id}`" 
-                            class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Review Hasil Pemasangan">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                            Audit
-                        </Link>
-                    </div>
                     
                     <!-- 3.5. Sudah Audit, Menunggu Aktivasi -->
                     <div v-if="row.status === 'installing' && row.ont && row.is_audited" class="flex gap-1.5">

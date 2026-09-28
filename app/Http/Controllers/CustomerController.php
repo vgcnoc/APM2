@@ -173,11 +173,11 @@ class CustomerController extends Controller
     }
 
     /**
-     * Halaman Instalasi (Jadwal & Lapor)
+     * Halaman Instalasi (Jadwal, Lapor, Audit)
      */
     public function installed(Request $request): Response
     {
-        $baseQuery = Customer::installed()->where('status', 'installing')->doesntHave('ont');
+        $baseQuery = Customer::installed()->where('status', 'installing')->where('is_audited', false);
         
         if (auth()->check() && auth()->user()->role === 'teknisi') {
             $baseQuery->whereHas('technicianSchedules', function ($q) {
@@ -189,11 +189,13 @@ class CustomerController extends Controller
             'jadwal_pasang' => (clone $baseQuery)
                 ->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation'))->count(),
             'laporan_pasang' => (clone $baseQuery)
-                ->whereHas('technicianSchedules', fn($q) => $q->where('type', 'installation'))->count(),
+                ->whereHas('technicianSchedules', fn($q) => $q->where('type', 'installation'))
+                ->doesntHave('ont')->count(),
+            'audit' => (clone $baseQuery)->has('ont')->where('is_audited', false)->count(),
         ];
 
         $customers = (clone $baseQuery)
-            ->with(['package', 'surveys.odp', 'technicianSchedules' => function ($q) {
+            ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'installation')->with('technician');
             }])
             ->search($request->search)
@@ -223,15 +225,14 @@ class CustomerController extends Controller
     }
 
     /**
-     * Halaman Aktivasi (Audit & Aktivasi)
+     * Halaman Aktivasi
      */
     public function activation(Request $request): Response
     {
-        $baseQuery = Customer::installed()->where('status', 'installing')->has('ont');
+        $baseQuery = Customer::installed()->where('status', 'installing')->where('is_audited', true);
         
         $stats = [
-            'audit' => (clone $baseQuery)->where('is_audited', false)->count(),
-            'aktivasi' => (clone $baseQuery)->where('is_audited', true)->count(),
+            'aktivasi' => (clone $baseQuery)->count(),
         ];
 
         $customers = (clone $baseQuery)
