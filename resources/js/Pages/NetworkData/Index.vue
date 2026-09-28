@@ -474,7 +474,6 @@
 import { ref, computed } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import _ from 'lodash';
 
 const props = defineProps({
     olts: Array,
@@ -510,7 +509,13 @@ const applyFilters = () => {
     form.get(route('network-data.index'), { preserveState: true, preserveScroll: true });
 };
 
-const debouncedSearch = _.debounce(applyFilters, 500);
+let debounceTimeout = null;
+const debouncedSearch = () => {
+    if (debounceTimeout) clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+        applyFilters();
+    }, 500);
+};
 
 const resetFilters = () => {
     form.olt_id = '';
