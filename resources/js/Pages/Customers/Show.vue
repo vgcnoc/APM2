@@ -524,14 +524,64 @@ InfoRow.props = ['icon', 'label', 'value', 'mono'];
 
 const previewUrls = ref({});
 
+function compressAndSaveImage(field, file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            const max_size = 1200;
+
+            if (width > height) {
+                if (width > max_size) {
+                    height *= max_size / width;
+                    width = max_size;
+                }
+            } else {
+                if (height > max_size) {
+                    width *= max_size / height;
+                    height = max_size;
+                }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            try {
+                localStorage.setItem(`apm_${field}_${props.customer.id}`, dataUrl);
+            } catch (e) {
+                console.error("LocalStorage full!", e);
+            }
+        };
+        img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function dataURLtoFile(dataurl, filename) {
+    let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+        bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+    while(n--){
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, {type:mime});
+}
+
 function handleFileUpload(field, e) {
     const file = e.target.files[0];
     ontForm[field] = file;
     if (file) {
         if (previewUrls.value[field]) URL.revokeObjectURL(previewUrls.value[field]);
         previewUrls.value[field] = URL.createObjectURL(file);
+        compressAndSaveImage(field, file);
     } else {
         previewUrls.value[field] = null;
+        localStorage.removeItem(`apm_${field}_${props.customer.id}`);
     }
 }
 
@@ -583,6 +633,17 @@ onMounted(() => {
     
     const savedRx = localStorage.getItem(`apm_rx_power_${props.customer.id}`);
     if (savedRx) ontForm.rx_power = savedRx;
+    
+    // Restore photos
+    const photoFields = ['photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman'];
+    photoFields.forEach(field => {
+        const savedData = localStorage.getItem(`apm_${field}_${props.customer.id}`);
+        if (savedData) {
+            const file = dataURLtoFile(savedData, field + '.jpg');
+            ontForm[field] = file;
+            previewUrls.value[field] = URL.createObjectURL(file);
+        }
+    });
 });
 
 // Watch input fields and save to localStorage
@@ -621,6 +682,9 @@ function submitOnt() {
             localStorage.removeItem(`apm_port_number_${props.customer.id}`);
             localStorage.removeItem(`apm_rx_power_${props.customer.id}`);
             localStorage.removeItem(`apm_hardware_${props.customer.id}`);
+            
+            const photoFields = ['photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman'];
+            photoFields.forEach(field => localStorage.removeItem(`apm_${field}_${props.customer.id}`));
         }
     });
 }
