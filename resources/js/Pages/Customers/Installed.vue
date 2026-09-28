@@ -171,15 +171,30 @@
                     <div class="p-5 space-y-4">
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Pilih Teknisi</label>
-                            <div class="relative">
-                                <select v-model="assignForm.technician_ids" multiple class="w-full bg-white border border-gray-200 rounded-xl px-2 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all h-28">
-                                    <option v-for="tech in technicians" :key="tech.id" :value="tech.id" class="px-3 py-2 hover:bg-slate-50 border-b border-gray-50 last:border-0 rounded cursor-pointer">
-                                        {{ tech.name }}
-                                    </option>
-                                </select>
+                            
+                            <!-- Invisible Backdrop for dropdown -->
+                            <div v-if="showTechDropdown" @click="showTechDropdown = false" class="fixed inset-0 z-[55]"></div>
+                            
+                            <div class="relative z-[60]">
+                                <button type="button" @click="showTechDropdown = !showTechDropdown" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-left text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all flex justify-between items-center h-auto min-h-[44px]">
+                                    <span class="truncate pr-4 leading-tight">
+                                        {{ assignForm.technician_ids.length > 0 
+                                            ? assignForm.technician_ids.map(id => technicians.find(t => t.id === id)?.name).join(', ') 
+                                            : '-- Pilih Teknisi --' 
+                                        }}
+                                    </span>
+                                    <svg class="w-4 h-4 text-gray-400 shrink-0" :class="{'rotate-180': showTechDropdown}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                
+                                <div v-if="showTechDropdown" class="absolute z-10 w-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto py-1">
+                                    <label v-for="tech in technicians" :key="tech.id" class="flex items-center gap-3 cursor-pointer px-4 py-2.5 hover:bg-slate-50 transition-colors border-b border-gray-50 last:border-0">
+                                        <input type="checkbox" :value="tech.id" v-model="assignForm.technician_ids" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+                                        <span class="text-sm font-medium text-slate-700">{{ tech.name }}</span>
+                                    </label>
+                                </div>
                                 <p class="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1">
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    Tahan tombol Ctrl / Cmd untuk memilih lebih dari satu teknisi
+                                    Anda dapat memilih lebih dari satu teknisi
                                 </p>
                             </div>
                         </div>
@@ -193,61 +208,70 @@
                                 <input v-model="assignForm.scheduled_time" type="time" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all" required />
                             </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <div class="flex items-center justify-between mb-1.5">
-                                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider">Data ONT</label>
-                                    <button type="button" @click="assignForm.ont_models.push('')" class="text-blue-500 hover:text-blue-600 hover:bg-blue-50 p-1 rounded-md focus:outline-none transition-colors" title="Tambah ONT">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <div class="space-y-5">
+                            <!-- Data ONT Section -->
+                            <div class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+                                <div class="flex items-center justify-between mb-3">
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Data ONT</label>
+                                    <button type="button" @click="assignForm.ont_models.push('')" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-md focus:outline-none transition-colors border border-transparent hover:border-blue-200 text-xs font-medium flex items-center gap-1" title="Tambah ONT">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                        Tambah
                                     </button>
                                 </div>
-                                <div class="space-y-2">
-                                    <div v-for="(ont, index) in assignForm.ont_models" :key="'ont-'+index" class="group">
-                                        <div class="flex gap-2 items-center mb-1">
-                                            <select v-model="assignForm.ont_models[index]" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all truncate">
+                                <div class="space-y-3">
+                                    <div v-for="(ont, index) in assignForm.ont_models" :key="'ont-'+index" class="group relative">
+                                        <div class="flex gap-2 items-center">
+                                            <select v-model="assignForm.ont_models[index]" class="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all truncate hover:bg-white">
                                                 <option value="">-- Pilih ONT --</option>
                                                 <option v-for="ontOption in availableOnts" :key="ontOption.id" :value="ontOption.brand + (ontOption.model ? ' ' + ontOption.model : '') + ' (SN: ' + ontOption.serial_number + ')'">
                                                     {{ ontOption.brand }} {{ ontOption.model || '' }} - SN: {{ ontOption.serial_number }}
                                                 </option>
                                             </select>
-                                            <button v-if="assignForm.ont_models.length > 1" type="button" @click="assignForm.ont_models.splice(index, 1)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg opacity-50 group-hover:opacity-100 transition-all focus:outline-none shrink-0" title="Hapus">
+                                            <button v-if="assignForm.ont_models.length > 1" type="button" @click="assignForm.ont_models.splice(index, 1)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-all focus:outline-none shrink-0" title="Hapus">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
                                             </button>
                                         </div>
-                                        <div v-if="assignForm.ont_models[index] && getSelectedOntDetails(assignForm.ont_models[index])" class="mt-2 bg-indigo-50/50 p-3 rounded-lg border border-indigo-100/50 text-xs text-slate-600 space-y-1">
-                                            <div class="flex justify-between"><span class="font-medium">Merek:</span> <span>{{ getSelectedOntDetails(assignForm.ont_models[index]).brand }}</span></div>
-                                            <div class="flex justify-between"><span class="font-medium">Model:</span> <span>{{ getSelectedOntDetails(assignForm.ont_models[index]).model || '-' }}</span></div>
-                                            <div class="flex justify-between"><span class="font-medium">SN:</span> <span class="font-mono font-semibold text-indigo-600">{{ getSelectedOntDetails(assignForm.ont_models[index]).serial_number }}</span></div>
+                                        <div v-if="assignForm.ont_models[index] && getSelectedOntDetails(assignForm.ont_models[index])" class="mt-2.5 bg-indigo-50/70 p-3 rounded-lg border border-indigo-100 text-xs text-slate-700 space-y-1.5 shadow-inner">
+                                            <div class="flex justify-between"><span class="text-slate-500">Merek:</span> <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).brand }}</span></div>
+                                            <div class="flex justify-between"><span class="text-slate-500">Model:</span> <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).model || '-' }}</span></div>
+                                            <div class="flex justify-between"><span class="text-slate-500">SN:</span> <span class="font-mono font-bold text-indigo-700 bg-indigo-100/50 px-1 rounded">{{ getSelectedOntDetails(assignForm.ont_models[index]).serial_number }}</span></div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div>
-                                <div class="flex items-center justify-between mb-1.5">
-                                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider">Material (Surat Jalan)</label>
-                                    <button type="button" @click="assignForm.material_transaction_ids.push('')" class="text-blue-500 hover:text-blue-600 hover:bg-blue-50 p-1 rounded-md focus:outline-none transition-colors" title="Tambah Surat Jalan">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            
+                            <!-- Material Section -->
+                            <div class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+                                <div class="flex items-center justify-between mb-3">
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Material (Surat Jalan)</label>
+                                    <button type="button" @click="assignForm.material_transaction_ids.push('')" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-md focus:outline-none transition-colors border border-transparent hover:border-blue-200 text-xs font-medium flex items-center gap-1" title="Tambah Surat Jalan">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                        Tambah
                                     </button>
                                 </div>
-                                <div class="space-y-2">
+                                <div class="space-y-3">
                                     <div v-for="(trxId, index) in assignForm.material_transaction_ids" :key="'trx-'+index" class="flex gap-2 items-center group">
-                                        <select v-model="assignForm.material_transaction_ids[index]" @change="updateMaterialItems" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all">
+                                        <select v-model="assignForm.material_transaction_ids[index]" @change="updateMaterialItems" class="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all hover:bg-white">
                                             <option value="">-- Pilih Surat Jalan / Order --</option>
                                             <option v-for="trx in materialTransactions" :key="trx.id" :value="trx.transaction_number">
                                                 {{ getTransactionLabel(trx) }}
                                             </option>
                                         </select>
-                                        <button v-if="assignForm.material_transaction_ids.length > 1" type="button" @click="removeMaterialTransaction(index)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg opacity-50 group-hover:opacity-100 transition-all focus:outline-none" title="Hapus">
+                                        <button v-if="assignForm.material_transaction_ids.length > 1" type="button" @click="removeMaterialTransaction(index)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-all focus:outline-none" title="Hapus">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
                                         </button>
                                     </div>
                                     
                                     <!-- Kolom Rincian -->
-                                    <div v-if="assignForm.material_items.length > 0" class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
-                                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Rincian Penggunaan Barang (Bisa disesuaikan):</p>
-                                        <ul class="space-y-1.5">
-                                            <li v-for="(item, idx) in assignForm.material_items" :key="idx" class="flex items-center justify-between bg-white p-2 rounded border border-gray-100 shadow-sm">
-                                                <div class="flex-1 truncate mr-2">
+                                    <div v-if="assignForm.material_items.length > 0" class="mt-3 p-3.5 bg-slate-50 border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
+                                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            Rincian Penggunaan Barang (Bisa disesuaikan):
+                                        </p>
+                                        <ul class="space-y-2">
+                                            <li v-for="(item, idx) in assignForm.material_items" :key="idx" class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-gray-200 shadow-sm hover:border-blue-200 transition-colors">
+                                                <div class="flex-1 truncate mr-3">
+
                                                     <span class="text-xs font-bold text-gray-800">{{ item.name || 'Barang' }}</span>
                                                 </div>
                                                 <div class="flex gap-1.5 items-center shrink-0">
@@ -383,6 +407,8 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import StatCard from '@/Components/StatCard.vue';
+
+const showTechDropdown = ref(false);
 
 const props = defineProps({ 
     customers: Object, 
