@@ -103,14 +103,18 @@
                     </Link>
 
                     <!-- 3. Selesai Pasang, Menunggu Audit Admin -->
-                    <div v-if="row.status === 'installing' && row.ont" class="flex gap-1.5">
+                    <div v-if="row.status === 'installing' && row.ont && !row.is_audited" class="flex gap-1.5">
                         <Link :href="`/customers/${row.id}`" 
                             class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Review Hasil Pemasangan">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             Audit
                         </Link>
+                    </div>
+                    
+                    <!-- 3.5. Sudah Audit, Menunggu Aktivasi -->
+                    <div v-if="row.status === 'installing' && row.ont && row.is_audited" class="flex gap-1.5">
                         <button @click="openActivationModal(row)" 
-                            class="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Proses Aktivasi Pelanggan">
+                            class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Proses Aktivasi Pelanggan">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                             Aktivasi
                         </button>
