@@ -437,15 +437,26 @@ class CustomerController extends Controller
 
                 // Kurangi used_ports di ODP
                 if ($odp) {
-                    $odp->decrement('used_ports');
+                    if ($odp->used_ports > 0) {
+                        $odp->decrement('used_ports');
+                        
+                        // Cek dan update status ODP jika sudah tidak penuh
+                        if ($odp->used_ports - 1 < $odp->total_ports && $odp->status === 'full') {
+                            $odp->update(['status' => 'active']);
+                        }
+                    }
                 }
             }
+
+            // Hapus data terkait
+            $customer->technicianSchedules()->delete();
+            $customer->surveys()->delete();
 
             $customer->delete();
         });
 
         return redirect()->back()
-            ->with('success', 'Data pelanggan berhasil dihapus.');
+            ->with('success', 'Data pelanggan berhasil dihapus secara permanen.');
     }
 
     /**
@@ -864,29 +875,5 @@ class CustomerController extends Controller
             ->with('success', 'Permintaan jadwal survey berhasil dikirim.');
     }
 
-    /**
-     * Hapus Pelanggan
-     */
-    public function destroy(Customer $customer): RedirectResponse
-    {
-        // Reset port ODP jika ONT dihapus
-        if ($customer->ont) {
-            $odp = \App\Models\Odp::find($customer->ont->odp_id);
-            if ($odp && $odp->used_ports > 0) {
-                $odp->decrement('used_ports');
-                if ($odp->used_ports < $odp->total_ports && $odp->status === 'full') {
-                    $odp->update(['status' => 'active']);
-                }
-            }
-            $customer->ont->delete();
-        }
 
-        // Hapus data terkait
-        $customer->technicianSchedules()->delete();
-        $customer->surveys()->delete();
-
-        $customer->delete();
-        
-        return redirect()->back()->with('success', 'Data pelanggan berhasil dihapus secara permanen.');
-    }
 }
