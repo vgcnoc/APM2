@@ -168,40 +168,76 @@
                                             </option>
                                         </select>
                                     </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-500 mb-1">Port ODP</label>
-                                        <select v-model="ontForm.port_number" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" :disabled="!selectedOdp" :required="isInstallingHardware">
-                                            <option value="">-- Pilih Port --</option>
-                                            <template v-if="selectedOdp">
-                                                <option v-for="i in selectedOdp.total_ports" :key="i" :value="i">Port {{ i }}</option>
-                                            </template>
-                                        </select>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-500 mb-1">Port ODP</label>
+                                            <select v-model="ontForm.port_number" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" :disabled="!selectedOdp" :required="isInstallingHardware">
+                                                <option value="">-- Pilih Port --</option>
+                                                <template v-if="selectedOdp">
+                                                    <option v-for="i in selectedOdp.total_ports" :key="i" :value="i">Port {{ i }}</option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-500 mb-1">Redaman (dBm)</label>
+                                            <input v-model="ontForm.rx_power" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" placeholder="-15.50" :required="isInstallingHardware" />
+                                        </div>
                                     </div>
                                 </div>
 
                                 <!-- Dokumentasi Foto -->
                             <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
                                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Dokumentasi (Foto Laporan)</p>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-500 mb-1">1. Foto ODP / Port (Wajib)</label>
-                                        <input type="file" @change="e => ontForm.photo_odp = e.target.files[0]" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware" />
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-1">
+                                        <label class="block text-xs font-medium text-gray-500">1. Foto ODP / Port (Wajib)</label>
+                                        <div class="flex items-start gap-3">
+                                            <input type="file" @change="e => handleFileUpload('photo_odp', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !ontForm.photo_odp" />
+                                            <div v-if="previewUrls.photo_odp" class="flex flex-col gap-1 shrink-0">
+                                                <img :src="previewUrls.photo_odp" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_odp, '1. Foto ODP / Port')" />
+                                                <a :href="previewUrls.photo_odp" download="Foto_ODP.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-500 mb-1">2. Foto Instalasi di Rumah (Wajib)</label>
-                                        <input type="file" @change="e => ontForm.photo_installation = e.target.files[0]" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware" />
+                                    <div class="space-y-1">
+                                        <label class="block text-xs font-medium text-gray-500">2. Foto Instalasi di Rumah (Wajib)</label>
+                                        <div class="flex items-start gap-3">
+                                            <input type="file" @change="e => handleFileUpload('photo_installation', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !ontForm.photo_installation" />
+                                            <div v-if="previewUrls.photo_installation" class="flex flex-col gap-1 shrink-0">
+                                                <img :src="previewUrls.photo_installation" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_installation, '2. Foto Instalasi di Rumah')" />
+                                                <a :href="previewUrls.photo_installation" download="Foto_Instalasi.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-500 mb-1">3. Foto Posisi ONT (Wajib)</label>
-                                        <input type="file" @change="e => ontForm.photo_ont = e.target.files[0]" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware" />
+                                    <div class="space-y-1">
+                                        <label class="block text-xs font-medium text-gray-500">3. Foto Posisi ONT (Wajib)</label>
+                                        <div class="flex items-start gap-3">
+                                            <input type="file" @change="e => handleFileUpload('photo_ont', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !ontForm.photo_ont" />
+                                            <div v-if="previewUrls.photo_ont" class="flex flex-col gap-1 shrink-0">
+                                                <img :src="previewUrls.photo_ont" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_ont, '3. Foto Posisi ONT')" />
+                                                <a :href="previewUrls.photo_ont" download="Foto_ONT.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-500 mb-1">4. Foto Selfie Pelanggan (Wajib)</label>
-                                        <input type="file" @change="e => ontForm.photo_customer = e.target.files[0]" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware" />
+                                    <div class="space-y-1">
+                                        <label class="block text-xs font-medium text-gray-500">4. Foto Selfie Pelanggan (Wajib)</label>
+                                        <div class="flex items-start gap-3">
+                                            <input type="file" @change="e => handleFileUpload('photo_customer', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !ontForm.photo_customer" />
+                                            <div v-if="previewUrls.photo_customer" class="flex flex-col gap-1 shrink-0">
+                                                <img :src="previewUrls.photo_customer" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_customer, '4. Foto Selfie Pelanggan')" />
+                                                <a :href="previewUrls.photo_customer" download="Foto_Selfie.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-500 mb-1">5. Foto Redaman (Wajib)</label>
-                                        <input type="file" @change="e => ontForm.photo_redaman = e.target.files[0]" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware" />
+                                    <div class="space-y-1">
+                                        <label class="block text-xs font-medium text-gray-500">5. Foto Redaman (Wajib)</label>
+                                        <div class="flex items-start gap-3">
+                                            <input type="file" @change="e => handleFileUpload('photo_redaman', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !ontForm.photo_redaman" />
+                                            <div v-if="previewUrls.photo_redaman" class="flex flex-col gap-1 shrink-0">
+                                                <img :src="previewUrls.photo_redaman" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_redaman, '5. Foto Redaman')" />
+                                                <a :href="previewUrls.photo_redaman" download="Foto_Redaman.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -461,9 +497,23 @@ const InfoRow = (props, context) => {
 };
 InfoRow.props = ['icon', 'label', 'value', 'mono'];
 
+const previewUrls = ref({});
+
+function handleFileUpload(field, e) {
+    const file = e.target.files[0];
+    ontForm[field] = file;
+    if (file) {
+        if (previewUrls.value[field]) URL.revokeObjectURL(previewUrls.value[field]);
+        previewUrls.value[field] = URL.createObjectURL(file);
+    } else {
+        previewUrls.value[field] = null;
+    }
+}
+
 const ontForm = useForm({
     odp_id: '',
     port_number: '',
+    rx_power: '',
     start_time: '',
     end_time: '',
     photo_odp: null,

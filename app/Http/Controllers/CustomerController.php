@@ -366,6 +366,7 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'odp_id' => 'required|exists:odps,id',
             'port_number' => 'required|integer|min:1',
+            'rx_power' => 'nullable|string',
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i',
             'photo_odp' => 'nullable|image|max:5120',
@@ -382,12 +383,13 @@ class CustomerController extends Controller
         if ($request->hasFile('photo_redaman')) $validated['photo_redaman'] = $request->file('photo_redaman')->store('installations', 'public');
 
         DB::transaction(function () use ($validated, $customer) {
-            // Buat ONT baru
+            // Buat atau update ONT (asumsi create berdasarkan existing logic)
             $ont = Ont::create([
                 'odp_id' => $validated['odp_id'],
                 'customer_id' => $customer->id,
                 'serial_number' => 'SN-' . strtoupper(\Illuminate\Support\Str::random(8)),
                 'port_number' => $validated['port_number'],
+                'rx_power' => $validated['rx_power'] ?? null,
                 'start_time' => $validated['start_time'] ?? null,
                 'end_time' => $validated['end_time'] ?? null,
                 'photo_odp' => $validated['photo_odp'] ?? null,
