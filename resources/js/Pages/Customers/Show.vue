@@ -435,7 +435,7 @@
 </template>
 
 <script setup>
-import { ref, h, computed, watch } from 'vue';
+import { ref, h, computed, watch, onMounted } from 'vue';
 import { Link, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
@@ -545,18 +545,37 @@ const durationText = computed(() => {
     return `${mins} menit`;
 });
 
+onMounted(() => {
+    // Cek apakah ada waktu yang tersimpan di localStorage (jika user tidak sengaja menutup halaman)
+    const savedStart = localStorage.getItem(`apm_start_time_${props.customer.id}`);
+    if (savedStart && !ontForm.start_time) {
+        ontForm.start_time = savedStart;
+    }
+    
+    const savedEnd = localStorage.getItem(`apm_end_time_${props.customer.id}`);
+    if (savedEnd && !ontForm.end_time) {
+        ontForm.end_time = savedEnd;
+    }
+});
+
 function setNow(field) {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
-    ontForm[field] = `${hours}:${minutes}`;
+    const timeString = `${hours}:${minutes}`;
+    ontForm[field] = timeString;
+    
+    // Simpan ke localStorage agar tidak hilang kalau direfresh
+    localStorage.setItem(`apm_${field}_${props.customer.id}`, timeString);
 }
 
 function submitOnt() {
     ontForm.post(`/customers/${props.customer.id}/assign-ont`, {
         preserveScroll: true,
         onSuccess: () => {
-            // success handles redirect automatically based on backend
+            // Bersihkan localStorage kalau sudah berhasil submit
+            localStorage.removeItem(`apm_start_time_${props.customer.id}`);
+            localStorage.removeItem(`apm_end_time_${props.customer.id}`);
         }
     });
 }
