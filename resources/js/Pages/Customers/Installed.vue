@@ -476,18 +476,6 @@ const columns = [
     { key: 'signal', label: 'Redaman' },
 ];
 
-const activeCustomer = ref(null);
-
-const filteredOnts = computed(() => {
-    if (!activeCustomer.value || !activeCustomer.value.area_id) return props.availableOnts;
-    return props.availableOnts.filter(ont => ont.area_id === activeCustomer.value.area_id);
-});
-
-const filteredMaterialTransactions = computed(() => {
-    if (!activeCustomer.value || !activeCustomer.value.area_id) return props.materialTransactions;
-    return props.materialTransactions.filter(trx => trx.area_id === activeCustomer.value.area_id);
-});
-
 function updateMaterialItems() {
     assignForm.material_items = [];
     
@@ -601,6 +589,16 @@ const assignForm = useForm({
     material_transaction_ids: [''],
     material_items: [],
     notes: '',
+});
+
+const filteredOnts = computed(() => {
+    if (!activeCustomer.value || !activeCustomer.value.area_id) return props.availableOnts;
+    return props.availableOnts.filter(ont => ont.area_id === activeCustomer.value.area_id);
+});
+
+const filteredMaterialTransactions = computed(() => {
+    if (!activeCustomer.value || !activeCustomer.value.area_id) return props.materialTransactions;
+    return props.materialTransactions.filter(trx => trx.area_id === activeCustomer.value.area_id);
 });
 
 function openAssignModal(customer) {
