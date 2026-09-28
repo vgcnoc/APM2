@@ -29,6 +29,9 @@ php artisan key:generate --force
 # Run migrations
 php artisan migrate --force
 
+# Sync existing string areas to area_id
+php sync_areas.php
+
 echo "--- Deployment Script Part 2 Fixed Done ---"
 `;
 

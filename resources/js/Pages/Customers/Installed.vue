@@ -592,12 +592,12 @@ const assignForm = useForm({
 });
 
 const filteredOnts = computed(() => {
-    if (!activeCustomer.value || !activeCustomer.value.area_id) return props.availableOnts;
+    if (!activeCustomer.value || !activeCustomer.value.area_id) return [];
     return props.availableOnts.filter(ont => ont.area_id === activeCustomer.value.area_id);
 });
 
 const filteredMaterialTransactions = computed(() => {
-    if (!activeCustomer.value || !activeCustomer.value.area_id) return props.materialTransactions;
+    if (!activeCustomer.value || !activeCustomer.value.area_id) return [];
     return props.materialTransactions.filter(trx => trx.area_id === activeCustomer.value.area_id);
 });
 
