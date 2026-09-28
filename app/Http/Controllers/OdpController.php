@@ -46,13 +46,24 @@ class OdpController extends Controller
             'description' => 'nullable|string',
             'status' => 'in:active,inactive,full,maintenance',
             'split_units' => 'nullable|array',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
         $validated['used_ports'] = 0;
+        
+        if ($request->hasFile('photo')) {
+            $validated['photo'] = $request->file('photo')->store('odp_photos', 'public');
+        }
 
         if ($validated['type'] === 'Split 2' && !empty($validated['split_units'])) {
             // Save as 2 separate ODPs
-            foreach ($validated['split_units'] as $unit) {
+            foreach ($validated['split_units'] as $index => $unit) {
+                $photoPath = null;
+                // Handle file array from split_units
+                if ($request->hasFile("split_units.{$index}.photo")) {
+                    $photoPath = $request->file("split_units.{$index}.photo")->store('odp_photos', 'public');
+                }
+
                 Odp::create([
                     'odc_id' => $validated['odc_id'],
                     'area_id' => $validated['area_id'],
@@ -69,6 +80,7 @@ class OdpController extends Controller
                     'status' => $validated['status'] ?? 'active',
                     'description' => $validated['description'] ?? null,
                     'is_split' => true,
+                    'photo' => $photoPath,
                 ]);
             }
         } else {
@@ -101,7 +113,16 @@ class OdpController extends Controller
             'total_ports' => 'required|integer|in:4,8,16,32',
             'description' => 'nullable|string',
             'status' => 'in:active,inactive,full,maintenance',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
+
+        if ($request->hasFile('photo')) {
+            // Delete old photo if exists
+            if ($odp->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($odp->photo)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($odp->photo);
+            }
+            $validated['photo'] = $request->file('photo')->store('odp_photos', 'public');
+        }
 
         $odp->update($validated);
 

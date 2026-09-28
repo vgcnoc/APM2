@@ -238,6 +238,10 @@
                                             <input v-model="form.longitude" type="text" class="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Longitude" />
                                         </div>
                                     </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Foto ODP</label>
+                                        <input type="file" @change="e => form.photo = e.target.files[0]" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                    </div>
                                 </div>
                             </div>
                             
@@ -309,6 +313,7 @@ const form = useForm({
     longitude: '',
     status: 'active',
     description: '',
+    photo: null,
     split_units: [
         {
             name: 'ODP Induk 1:4',
@@ -400,6 +405,7 @@ function openEditModal(odp) {
     form.longitude = odp.longitude;
     form.status = odp.status;
     form.description = odp.description;
+    form.photo = null; // Clear file input
     form.clearErrors();
     activeTab.value = 0;
     isModalOpen.value = true;

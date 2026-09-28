@@ -372,6 +372,16 @@
                                             <p class="font-mono text-gray-800 text-xs mt-1">{{ selectedDetailOdp.kode_odp || '-' }}</p>
                                         </div>
                                     </div>
+                                    <!-- Foto ODP -->
+                                    <div v-if="selectedDetailOdp.photo" class="px-4 py-3 bg-gray-50 border-t border-gray-100">
+                                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-2">Foto ODP</p>
+                                        <a :href="`/storage/${selectedDetailOdp.photo}`" target="_blank" class="block w-full overflow-hidden rounded-lg border border-gray-200 group">
+                                            <img :src="`/storage/${selectedDetailOdp.photo}`" alt="Foto ODP" class="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300" />
+                                            <div class="bg-indigo-600 text-white text-center text-[10px] py-1.5 font-bold uppercase tracking-wider group-hover:bg-indigo-700 transition-colors">
+                                                Lihat / Download Foto (Full)
+                                            </div>
+                                        </a>
+                                    </div>
                                 </div>
 
                                 <!-- Ports List -->
