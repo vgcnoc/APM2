@@ -340,14 +340,51 @@
                             </div>
                         </div>
 
-                        <div class="flex justify-end pt-4 border-t border-gray-200 mt-6">
-                            <button @click="showActivationModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 border-0 text-white">
-                                Selesaikan Audit & Aktivasi Pelanggan
+                        <div class="flex justify-end pt-4 border-t border-gray-200 mt-6 gap-3">
+                            <button v-if="!customer.is_audited" @click="showAuditModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border-0 text-white">
+                                Selesaikan Audit
+                            </button>
+                            <button v-else @click="showActivationModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 border-0 text-white">
+                                Aktivasi Pelanggan
                             </button>
                         </div>
                     </div>
 
                 </div>
+            </div>
+        </div>
+
+        <!-- Audit Modal -->
+        <div v-if="showAuditModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+                <div class="p-5 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100/50">
+                    <h3 class="text-lg font-bold text-blue-900 flex items-center gap-2">
+                        <span class="text-2xl">📋</span> Audit Instalasi
+                    </h3>
+                    <button @click="showAuditModal = false" class="text-gray-500 hover:text-gray-900">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <form @submit.prevent="submitAudit">
+                    <div class="p-6 space-y-5">
+                        <div class="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm mb-4 border border-blue-200 shadow-sm flex gap-3">
+                            <svg class="w-6 h-6 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <p>Pastikan Anda sudah mengecek semua data instalasi, hasil foto, dan nilai redaman yang dilaporkan teknisi.</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan Audit</label>
+                            <textarea v-model="auditForm.notes" rows="4" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all" placeholder="Tuliskan keterangan atau hasil pemeriksaan audit di sini..."></textarea>
+                        </div>
+                    </div>
+                    <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
+                        <button type="button" @click="showAuditModal = false" class="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">Batal</button>
+                        <button type="submit" :disabled="auditForm.processing" class="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                            <svg v-if="auditForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            {{ auditForm.processing ? 'Memproses...' : 'Setujui & Selesaikan Audit' }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -403,8 +440,8 @@
                         </div>
                         
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan Audit</label>
-                            <textarea v-model="activationForm.notes" rows="3" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm transition-all" placeholder="Tuliskan keterangan atau hasil pemeriksaan audit di sini..."></textarea>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Catatan Tambahan (Opsional)</label>
+                            <textarea v-model="activationForm.notes" rows="2" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm transition-all" placeholder="Catatan internal setelah aktivasi..."></textarea>
                         </div>
                     </div>
                     <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
@@ -685,6 +722,20 @@ function submitOnt() {
             
             const photoFields = ['photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman'];
             photoFields.forEach(field => localStorage.removeItem(`apm_${field}_${props.customer.id}`));
+        }
+    });
+}
+
+const showAuditModal = ref(false);
+const auditForm = useForm({
+    notes: ''
+});
+
+function submitAudit() {
+    auditForm.post(`/customers/${props.customer.id}/audit`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showAuditModal.value = false;
         }
     });
 }

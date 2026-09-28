@@ -449,6 +449,26 @@ class CustomerController extends Controller
     }
 
     /**
+     * Selesaikan audit instalasi
+     */
+    public function audit(Request $request, Customer $customer): RedirectResponse
+    {
+        $validated = $request->validate([
+            'notes' => 'nullable|string',
+        ]);
+
+        if ($customer->status === 'installing' && !$customer->is_audited && $customer->ont) {
+            $customer->update([
+                'is_audited' => true,
+                'notes' => $validated['notes'] ? $customer->notes . "\n[Audit]: " . $validated['notes'] : $customer->notes,
+            ]);
+        }
+
+        return redirect()->back()
+            ->with('success', 'Audit instalasi selesai. Pelanggan kini siap diaktivasi.');
+    }
+
+    /**
      * Aktivasi pelanggan setelah audit selesai
      */
     public function activate(Request $request, Customer $customer): RedirectResponse
@@ -462,7 +482,7 @@ class CustomerController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        if ($customer->status === 'installing' && $customer->ont) {
+        if ($customer->status === 'installing' && $customer->is_audited && $customer->ont) {
             DB::transaction(function () use ($customer, $validated) {
                 $customer->update([
                     'status' => 'active',

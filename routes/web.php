@@ -39,6 +39,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{customer}/assign-install', [CustomerController::class, 'assignInstall'])
             ->name('assign-install');
             
+        // Audit Instalasi
+        Route::post('/{customer}/audit', [CustomerController::class, 'audit'])
+            ->name('audit');
+            
         // Aktivasi Pelanggan
         Route::post('/{customer}/activate', [CustomerController::class, 'activate'])
             ->name('activate');
