@@ -325,7 +325,7 @@
                                 <option v-for="odp in sortedOdps" :key="odp.id" :value="odp.id">
                                     {{ odp.name }} 
                                     {{ odp.distance !== undefined ? `(${Math.round(odp.distance)}m)` : `(${odp.odc?.name})` }} 
-                                    - {{ (odp.total_ports - odp.used_ports) <= 0 ? 'FULL' : `Sisa ${odp.total_ports - odp.used_ports} Port` }}
+                                    - {{ (odp.total_ports - odp.used_ports) <= 0 ? 'FULL' : `Sisa ${Math.max(0, odp.total_ports - odp.used_ports)} Port` }}
                                 </option>
                             </select>
                             <p v-if="nearestOdpMsg" :class="nearestOdpMsg.includes('⚠️') ? 'text-yellow-400' : 'text-emerald-400'" class="mt-1 text-[10px]">{{ nearestOdpMsg }}</p>

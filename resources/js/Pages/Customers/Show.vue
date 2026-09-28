@@ -164,7 +164,7 @@
                                         <select v-model="ontForm.odp_id" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" :required="isInstallingHardware">
                                             <option value="">-- Pilih ODP --</option>
                                             <option v-for="odp in availableOdps" :key="odp.id" :value="odp.id">
-                                                {{ odp.name }} (Sisa {{ odp.total_ports - odp.used_ports }} port)
+                                                {{ odp.name }} (Sisa {{ Math.max(0, odp.total_ports - odp.used_ports) }} port)
                                             </option>
                                         </select>
                                     </div>

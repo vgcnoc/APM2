@@ -126,7 +126,9 @@ class OntController extends Controller
 
         // Decrement port terpakai di ODP
         if ($odp) {
-            $odp->decrement('used_ports');
+            if ($odp->used_ports > 0) {
+                $odp->decrement('used_ports');
+            }
             if ($odp->status === 'full') {
                 $odp->update(['status' => 'active']);
             }

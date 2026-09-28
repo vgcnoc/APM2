@@ -41,6 +41,8 @@ class Odp extends Model
         ];
     }
 
+    protected $appends = ['available_ports'];
+
     // ── Relationships ──────────────────────────────────────────
 
     /**
