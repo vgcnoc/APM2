@@ -173,8 +173,12 @@
                                 <p class="text-sm text-blue-400 font-mono">{{ selectedCustomer.customer_code }}</p>
                             </div>
                             <div class="space-y-1">
-                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Email</p>
-                                <p class="text-sm text-gray-900">{{ selectedCustomer.email || '-' }}</p>
+                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Area / Wilayah</p>
+                                <p class="text-sm text-gray-900 font-medium">
+                                    <span class="inline-flex px-2 py-1 bg-blue-500/20 text-blue-400 rounded-md border border-blue-500/30">
+                                        {{ selectedCustomer.area || '-' }}
+                                    </span>
+                                </p>
                             </div>
                             <div class="space-y-1">
                                 <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Nomor HP / WA</p>
@@ -186,15 +190,7 @@
 
                         <!-- Alamat & Paket -->
                         <div class="space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="space-y-1">
-                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Area / Wilayah</p>
-                                    <p class="text-sm text-gray-900 font-medium">
-                                        <span class="inline-flex px-2 py-1 bg-blue-500/20 text-blue-400 rounded-md border border-blue-500/30">
-                                            {{ selectedCustomer.area || '-' }}
-                                        </span>
-                                    </p>
-                                </div>
+                            <div class="grid grid-cols-1 gap-6">
                                 <div class="space-y-1">
                                     <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Alamat Lengkap</p>
                                     <p class="text-sm text-gray-600 leading-relaxed">{{ selectedCustomer.address }}</p>
