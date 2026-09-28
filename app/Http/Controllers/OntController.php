@@ -64,6 +64,11 @@ class OntController extends Controller
             'description' => 'nullable|string',
         ]);
 
+        if (empty($validated['customer_id'])) {
+            $validated['odp_id'] = null;
+            $validated['port_number'] = null;
+        }
+
         Ont::create($validated);
 
         if (isset($validated['odp_id'])) {
@@ -110,6 +115,11 @@ class OntController extends Controller
             'tx_power' => 'nullable|numeric',
             'description' => 'nullable|string',
         ]);
+
+        if (empty($validated['customer_id'])) {
+            $validated['odp_id'] = null;
+            $validated['port_number'] = null;
+        }
 
         $ont->update($validated);
 

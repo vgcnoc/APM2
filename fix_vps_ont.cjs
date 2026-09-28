@@ -1,7 +1,8 @@
 const { Client } = require('ssh2');
 const conn = new Client();
 conn.on('ready', () => {
-  conn.exec('cd /var/www/APM2 && git fetch && git reset --hard origin/main && npm run build', (err, stream) => {
+  const phpScript = `php /var/www/APM2/artisan tinker --execute="\\App\\Models\\Ont::whereNull('customer_id')->whereNotNull('odp_id')->update(['odp_id' => null, 'port_number' => null]);"`;
+  conn.exec(phpScript, (err, stream) => {
     if (err) throw err;
     stream.on('close', () => { conn.end(); }).on('data', (d) => process.stdout.write(d)).stderr.on('data', (d) => process.stderr.write(d));
   });

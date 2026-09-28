@@ -435,7 +435,12 @@ class CustomerController extends Controller
             // Lepaskan ONT jika ada
             if ($customer->ont) {
                 $odp = $customer->ont->odp;
-                $customer->ont->update(['customer_id' => null, 'status' => 'inactive']);
+                $customer->ont->update([
+                    'customer_id' => null, 
+                    'status' => 'inactive',
+                    'odp_id' => null,
+                    'port_number' => null
+                ]);
 
                 // Kurangi used_ports di ODP
                 if ($odp) {

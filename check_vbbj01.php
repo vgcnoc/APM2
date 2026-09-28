@@ -1,19 +1,14 @@
 <?php
-require __DIR__.'/vendor/autoload.php';
-$app = require_once __DIR__.'/bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+require 'vendor/autoload.php';
+\ = require_once 'bootstrap/app.php';
+\ = \->make(Illuminate\Contracts\Console\Kernel::class);
+\->bootstrap();
 
-use App\Models\Ont;
-use App\Models\Odp;
+\ = \App\Models\Odp::where('name', 'V-BBJ01')->first();
+if (!\) { echo "ODP V-BBJ01 not found\n"; exit; }
 
-$odp = Odp::where('name', 'V-BBJ01')->first();
-if ($odp) {
-    $onts = Ont::where('odp_id', $odp->id)->with('customer')->get();
-    echo "ODP: {$odp->name}, Total Ports: {$odp->total_ports}, Used Ports: {$odp->used_ports}\n";
-    foreach ($onts as $ont) {
-        $cust = $ont->customer ? "Cust: {$ont->customer->name} ({$ont->customer->status})" : "No Cust";
-        echo "ONT: {$ont->serial_number}, Port: {$ont->port_number}, Status: {$ont->status}, $cust\n";
-    }
-} else {
-    echo "ODP not found.\n";
+\ = \App\Models\Ont::where('odp_id', \->id)->with('area', 'customer')->get();
+echo "ODP V-BBJ01 (Area ID: {\->area_id})\n";
+foreach (\ as \) {
+    echo "ONT ID: {\->id}, SN: {\->serial_number}, Area ID: {\->area_id}, Port: {\->port_number}, Customer ID: {\->customer_id}\n";
 }
