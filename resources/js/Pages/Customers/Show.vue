@@ -598,7 +598,7 @@ const ontForm = useForm({
     photo_redaman: null,
 });
 
-const selectedOdp = computed(() => props.availableOdps?.find(o => o.id === ontForm.odp_id));
+const selectedOdp = computed(() => props.availableOdps?.find(o => o.id == ontForm.odp_id));
 
 const durationText = computed(() => {
     if (!ontForm.start_time || !ontForm.end_time) return '-';
@@ -626,10 +626,10 @@ onMounted(() => {
     }
     
     const savedOdp = localStorage.getItem(`apm_odp_id_${props.customer.id}`);
-    if (savedOdp) ontForm.odp_id = savedOdp;
+    if (savedOdp) ontForm.odp_id = Number(savedOdp);
     
     const savedPort = localStorage.getItem(`apm_port_number_${props.customer.id}`);
-    if (savedPort) ontForm.port_number = savedPort;
+    if (savedPort) ontForm.port_number = Number(savedPort);
     
     const savedRx = localStorage.getItem(`apm_rx_power_${props.customer.id}`);
     if (savedRx) ontForm.rx_power = savedRx;
