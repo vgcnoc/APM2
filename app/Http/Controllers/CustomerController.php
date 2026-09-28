@@ -683,8 +683,25 @@ class CustomerController extends Controller
      */
     public function assignInstall(Request $request, Customer $customer): RedirectResponse
     {
+        \Log::info('assignInstall called', ['customer_id' => $customer->id, 'data' => $request->all()]);
+
+        // Normalize scheduled_time - remove seconds if browser sends H:i:s
+        $time = $request->input('scheduled_time');
+        if ($time && preg_match('/^\d{2}:\d{2}:\d{2}$/', $time)) {
+            $request->merge(['scheduled_time' => substr($time, 0, 5)]);
+        }
+
+        // Normalize ont_models - cast integer IDs to strings for validation
+        if ($request->has('ont_models')) {
+            $request->merge([
+                'ont_models' => array_map(function ($v) {
+                    return $v !== null && $v !== '' ? (string) $v : $v;
+                }, $request->input('ont_models', []))
+            ]);
+        }
+
         $validated = $request->validate([
-            'technician_ids' => 'required|array',
+            'technician_ids' => 'required|array|min:1',
             'technician_ids.*' => 'exists:users,id',
             'scheduled_date' => 'required|date',
             'scheduled_time' => 'required|date_format:H:i',
@@ -698,6 +715,8 @@ class CustomerController extends Controller
             'material_items.*.unit' => 'nullable|string',
             'notes' => 'nullable|string',
         ]);
+
+        \Log::info('assignInstall validated OK', ['customer_id' => $customer->id]);
 
         $customNotes = [];
         if (!empty($validated['ont_models'])) {

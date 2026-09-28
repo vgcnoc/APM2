@@ -145,6 +145,12 @@
                 </div>
                 <form @submit.prevent="submitAssign" class="flex flex-col min-h-0">
                     <div class="p-5 space-y-4 overflow-y-auto">
+                        <div v-if="Object.keys(assignForm.errors).length > 0" class="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-200">
+                            <strong>Gagal menyimpan:</strong> Terdapat data yang tidak valid. Silakan periksa kembali isian Anda.
+                            <ul class="list-disc ml-5 mt-1">
+                                <li v-for="(error, field) in assignForm.errors" :key="field">{{ error }}</li>
+                            </ul>
+                        </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Pilih Teknisi</label>
                             
@@ -161,6 +167,7 @@
                                     </span>
                                     <svg class="w-4 h-4 text-gray-400 shrink-0" :class="{'rotate-180': showTechDropdown}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
+                                <div v-if="assignForm.errors.technician_ids" class="text-red-500 text-xs mt-1">{{ assignForm.errors.technician_ids }}</div>
                                 
                                 <div v-if="showTechDropdown" class="absolute z-10 w-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto py-1">
                                     <label v-for="tech in technicians" :key="tech.id" class="flex items-center gap-3 cursor-pointer px-4 py-2.5 hover:bg-slate-50 transition-colors border-b border-gray-50 last:border-0">
@@ -178,10 +185,12 @@
                             <div>
                                 <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Tanggal Pasang</label>
                                 <input v-model="assignForm.scheduled_date" type="date" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all" required />
+                                <div v-if="assignForm.errors.scheduled_date" class="text-red-500 text-xs mt-1">{{ assignForm.errors.scheduled_date }}</div>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Waktu (Jam)</label>
                                 <input v-model="assignForm.scheduled_time" type="time" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all" required />
+                                <div v-if="assignForm.errors.scheduled_time" class="text-red-500 text-xs mt-1">{{ assignForm.errors.scheduled_time }}</div>
                             </div>
                         </div>
                         <div class="space-y-5">
@@ -590,10 +599,27 @@ function openAssignModal(customer) {
 }
 
 function submitAssign() {
-    assignForm.post(`/customers/${activeCustomer.value.id}/assign-install`, {
+    if (!activeCustomer.value || !activeCustomer.value.id) {
+        alert('ERROR: Customer tidak ditemukan! activeCustomer.value = ' + JSON.stringify(activeCustomer.value));
+        return;
+    }
+    
+    const url = `/customers/${activeCustomer.value.id}/assign-install`;
+    console.log('submitAssign URL:', url);
+    console.log('submitAssign Data:', JSON.stringify(assignForm.data()));
+    
+    assignForm.post(url, {
         preserveScroll: true,
         onSuccess: () => {
             showAssignModal.value = false;
+            alert('Jadwal pasang berhasil disimpan!');
+        },
+        onError: (errors) => {
+            console.error('assignInstall errors:', errors);
+            alert('Error validasi: ' + JSON.stringify(errors));
+        },
+        onFinish: () => {
+            console.log('assignInstall finished, processing:', assignForm.processing);
         }
     });
 }
