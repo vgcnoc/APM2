@@ -95,7 +95,7 @@
                             </div>
                         </div>
                     </div>
-                    <div v-if="customer.status === 'installing' && !customer.ont" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
+                    <div v-if="customer.status === 'installing' && (!customer.ont || !customer.ont.rx_power)" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
                         <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                             <span class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">🚀</span>
                             Form Laporan Selesai Instalasi
@@ -275,7 +275,7 @@
                     </div>
 
                     <!-- Audit Data Pemasangan -->
-                    <div v-if="customer.status === 'installing' && customer.ont" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
+                    <div v-if="customer.status === 'installing' && customer.ont && customer.ont.rx_power" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
                         <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                             <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">🛡️</span>
                             Audit Data Pemasangan
