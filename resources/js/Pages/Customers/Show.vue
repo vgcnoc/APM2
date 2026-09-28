@@ -118,7 +118,7 @@
                                         <label class="block text-xs font-medium text-gray-500">Jam Mulai</label>
                                         <button type="button" @click="setNow('start_time')" class="text-[10px] bg-blue-600 text-white px-3 py-1 rounded font-bold hover:bg-blue-700 transition-colors shadow-sm">MULAI SEKARANG</button>
                                     </div>
-                                    <input v-model="ontForm.start_time" type="time" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" required />
+                                    <input v-model="ontForm.start_time" type="time" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:ring-0 cursor-not-allowed" required readonly />
                                 </div>
                             </div>
 
@@ -251,7 +251,7 @@
                                             <label class="block text-xs font-medium text-gray-500">Jam Selesai</label>
                                             <button type="button" @click="setNow('end_time')" class="text-[10px] bg-emerald-600 text-white px-3 py-1 rounded font-bold hover:bg-emerald-700 transition-colors shadow-sm">SELESAI SEKARANG</button>
                                         </div>
-                                        <input v-model="ontForm.end_time" type="time" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" :required="isInstallingHardware" />
+                                        <input v-model="ontForm.end_time" type="time" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:ring-0 cursor-not-allowed" :required="isInstallingHardware" readonly />
                                     </div>
                                     <div class="bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-center h-[38px]">
                                         <div class="flex items-center justify-between">
