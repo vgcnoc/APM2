@@ -45,6 +45,7 @@
                         <thead>
                             <tr class="bg-gray-50/50 border-b border-gray-100">
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Barang</th>
+                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Area</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Kategori</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Stok</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">H. Modal / Jual</th>
@@ -56,6 +57,12 @@
                                 <td class="py-4 px-6">
                                     <p class="text-sm font-semibold text-gray-900">{{ item.name }}</p>
                                     <p v-if="item.supplier" class="text-xs text-blue-600 mt-0.5">Supplier: {{ item.supplier }}</p>
+                                </td>
+                                <td class="py-4 px-6 text-sm text-gray-600">
+                                    <span v-if="item.area_id" class="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-bold border border-indigo-100">
+                                        {{ getAreaName(item.area_id) }}
+                                    </span>
+                                    <span v-else class="text-xs text-gray-400 italic">Belum diset</span>
                                 </td>
                                 <td class="py-4 px-6">
                                     <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
@@ -165,13 +172,21 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">Nama Produk *</label>
                             <input v-model="form.name" type="text" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" required placeholder="Contoh: Kabel FO 12 Core / Isolasi Hitam">
                         </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Area / Wilayah *</label>
+                            <select v-model="form.area_id" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" required>
+                                <option value="">Pilih Area...</option>
+                                <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                            </select>
+                        </div>
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
                             <input v-model="form.supplier" type="text" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="Nama supplier / distributor">
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
                                 <select v-model="form.category" @change="handleCategoryChange" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
@@ -211,7 +226,7 @@
                                 </svg>
                                 Kalkulator Kabel (Roll ↔ Meter)
                             </div>
-                            <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Meter per Roll</label>
                                     <input v-model="form.meter_per_roll" @input="calculateCableStock" type="number" step="0.01" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
@@ -221,7 +236,7 @@
                                     <input v-model="form.total_rolls" @input="calculateCableStock" type="number" step="0.01" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Harga Modal (per roll)</label>
                                     <input v-model="form.price_per_unit" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
@@ -231,7 +246,7 @@
                                     <input v-model="form.selling_price" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4 mt-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Harga Modal (per meter)</label>
                                     <div class="w-full px-3 py-2 rounded-lg border border-gray-100 bg-gray-50 text-sm font-semibold text-gray-700">
@@ -259,7 +274,7 @@
                                 </svg>
                                 Kalkulator Paku Klem (Bungkus ↔ Pcs)
                             </div>
-                            <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Isi Pcs per Bungkus</label>
                                     <input v-model="form.pcs_per_pack" @input="calculatePackStock" type="number" step="1" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
@@ -269,7 +284,7 @@
                                     <input v-model="form.total_packs" @input="calculatePackStock" type="number" step="0.01" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Harga Modal (per bungkus)</label>
                                     <input v-model="form.price_per_unit" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
@@ -279,7 +294,7 @@
                                     <input v-model="form.selling_price" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4 mt-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Harga Modal (per pcs)</label>
                                     <div class="w-full px-3 py-2 rounded-lg border border-gray-100 bg-gray-50 text-sm font-semibold text-gray-700">
@@ -307,7 +322,7 @@
                                 </svg>
                                 Kalkulator Isolasi (Pcs ↔ Cm)
                             </div>
-                            <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Panjang per Pcs (cm)</label>
                                     <input v-model="form.cm_per_pcs" @input="calculateIsolasiStock" type="number" step="0.1" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
@@ -317,7 +332,7 @@
                                     <input v-model="form.total_pieces" @input="calculateIsolasiStock" type="number" step="0.01" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Harga Modal (per pcs)</label>
                                     <input v-model="form.price_per_unit" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
@@ -327,7 +342,7 @@
                                     <input v-model="form.selling_price" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm">
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4 mt-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Harga Modal (per cm)</label>
                                     <div class="w-full px-3 py-2 rounded-lg border border-gray-100 bg-gray-50 text-sm font-semibold text-gray-700">
@@ -361,7 +376,7 @@
                                 <input v-model="form.stock" type="number" step="0.01" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white" required>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Total Harga Beli (Semua Stok)</label>
                                     <div class="relative">
@@ -379,7 +394,7 @@
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Total Harga Jual (Semua Stok)</label>
                                     <div class="relative">
@@ -414,7 +429,7 @@
         <!-- Modal Add Stock -->
         <div v-if="showAddStockModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="closeAddStockModal"></div>
-            <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+            <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-hidden animate-fade-in-up">
                 <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
                     <h3 class="text-lg font-bold text-gray-900">Tambah Stok Masuk</h3>
                     <button @click="closeAddStockModal" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -434,7 +449,7 @@
                     </div>
 
                     <form @submit.prevent="submitAddStock" class="space-y-5">
-                        <div v-if="selectedMaterial?.category === 'Kabel'" class="grid grid-cols-2 gap-4">
+                        <div v-if="selectedMaterial?.category === 'Kabel'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Tambah Roll Baru *</label>
                                 <div class="flex items-center gap-2">
@@ -451,7 +466,7 @@
                                 <p class="text-[10px] text-gray-400 mt-1">@ {{ selectedMaterial?.meter_per_roll }} m/roll</p>
                             </div>
                         </div>
-                        <div v-else-if="selectedMaterial?.category === 'Paku Klem'" class="grid grid-cols-2 gap-4">
+                        <div v-else-if="selectedMaterial?.category === 'Paku Klem'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Tambah Bungkus Baru *</label>
                                 <div class="flex items-center gap-2">
@@ -468,7 +483,7 @@
                                 <p class="text-[10px] text-gray-400 mt-1">@ {{ selectedMaterial?.pcs_per_pack }} pcs/bungkus</p>
                             </div>
                         </div>
-                        <div v-else-if="selectedMaterial?.category === 'Isolasi'" class="grid grid-cols-2 gap-4">
+                        <div v-else-if="selectedMaterial?.category === 'Isolasi'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Tambah Pcs Baru *</label>
                                 <div class="flex items-center gap-2">
@@ -498,7 +513,7 @@
                                 <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 Perbarui Harga (Opsional)
                             </h4>
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Hrg Modal Baru</label>
                                     <input v-model="addStockForm.price_per_unit" type="number" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
@@ -536,6 +551,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     materials: Object,
+    areas: Array,
     filters: Object,
 });
 
@@ -550,6 +566,7 @@ const tempTotalJual = ref(null);
 
 const form = useForm({
     name: '',
+    area_id: '',
     supplier: '',
     category: '',
     unit: 'pcs',
@@ -577,6 +594,12 @@ const addStockForm = useForm({
 const formatNumber = (num) => {
     if (!num) return '0';
     return Number(num).toLocaleString('id-ID');
+};
+
+const getAreaName = (areaId) => {
+    if (!areaId) return '-';
+    const area = props.areas.find(a => a.id === areaId);
+    return area ? area.name : '-';
 };
 
 const hargaModalPerMeter = computed(() => {
@@ -698,6 +721,7 @@ const openModal = (item = null) => {
         isEditing.value = true;
         editingId.value = item.id;
         form.name = item.name;
+        form.area_id = item.area_id || '';
         form.supplier = item.supplier || '';
         form.category = item.category || '';
         form.unit = item.unit || 'pcs';
@@ -719,6 +743,7 @@ const openModal = (item = null) => {
         isEditing.value = false;
         editingId.value = null;
         form.reset();
+        form.area_id = '';
         tempTotalModal.value = null;
         tempTotalJual.value = null;
     }

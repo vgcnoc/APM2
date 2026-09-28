@@ -34,7 +34,7 @@
                     </div>
 
                     <!-- Info -->
-                    <div class="grid grid-cols-2 gap-12 mb-8">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-12 mb-8">
                         <div>
                             <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Diberikan Kepada (Teknisi)</h3>
                             <p class="text-base font-bold text-gray-900">{{ transaction.technician_name }}</p>
@@ -111,7 +111,7 @@
                     </div>
 
                     <!-- Signatures -->
-                    <div class="grid grid-cols-2 gap-12 mt-16 pt-8">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-12 mt-16 pt-8">
                         <div class="text-center">
                             <p class="text-sm font-medium text-gray-600 mb-20">Yang Menerima,</p>
                             <p class="text-sm font-bold text-gray-900 border-b border-gray-900 inline-block px-8 pb-1 uppercase">{{ transaction.technician_name }}</p>
@@ -147,7 +147,7 @@
         <!-- Register ONT Modal -->
         <div v-if="showOntModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="closeOntModal"></div>
-            <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+            <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-hidden animate-fade-in-up">
                 <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
                     <h3 class="text-lg font-bold text-gray-900">Kirim ke Menu ONT</h3>
                     <button @click="closeOntModal" class="text-gray-400 hover:text-gray-600 transition-colors">

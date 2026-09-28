@@ -176,8 +176,7 @@ class MaterialTransactionController extends Controller
         }
 
         foreach ($sns as $sn) {
-            $area = \App\Models\Area::where('name', $item->transaction->area)->first();
-            $areaId = $area ? $area->id : null;
+            $areaId = $item->transaction->area_id;
 
             $existing = \App\Models\Ont::where('serial_number', $sn)->first();
             if (!$existing) {

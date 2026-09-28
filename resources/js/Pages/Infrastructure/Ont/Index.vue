@@ -72,7 +72,7 @@
 
         <!-- Modal Form ONT -->
         <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto">
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl my-auto">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto my-auto">
                 <div class="sticky top-0 z-10 bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between rounded-t-2xl">
                     <h3 class="text-lg font-bold text-gray-900">{{ isEditing ? 'Edit ONT' : 'Tambah ONT Baru' }}</h3>
                     <button @click="closeModal" class="text-gray-400 hover:text-gray-500">
@@ -104,7 +104,7 @@
                                     <span class="text-sm font-semibold text-blue-900">Data Perangkat</span>
                                 </div>
                             </div>
-                            <div class="p-4 grid grid-cols-2 gap-4">
+                            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 mb-1">Merk ONT</label>
                                     <input v-model="form.brand" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Merk ONT" />
@@ -146,7 +146,7 @@
                             
                             <div class="px-4 pb-4">
                                 <h4 class="text-xs font-bold text-gray-700 mt-4 mb-2">IP Login ONT</h4>
-                                <div class="grid grid-cols-2 gap-4">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-xs text-gray-500 mb-1">No IP</label>
                                         <input v-model="form.ip_login" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="192.168.1.1" />
@@ -170,7 +170,7 @@
                                         Generate
                                     </button>
                                 </div>
-                                <div class="grid grid-cols-2 gap-4">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-xs text-gray-500 mb-1">User</label>
                                         <input v-model="form.pppoe_user" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="User PPPoE" />
@@ -204,7 +204,7 @@
                                     
                                     <h5 class="text-xs font-bold text-red-500 mb-3">Petugas {{ index + 1 }}</h5>
                                     
-                                    <div class="grid grid-cols-2 gap-4 mb-3">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
                                         <div>
                                             <label class="block text-xs text-gray-600 mb-1">Nama Petugas Input ONT</label>
                                             <input v-model="officer.name" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-300" placeholder="Pilih atau ketik petugas input" />

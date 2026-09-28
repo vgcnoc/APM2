@@ -190,7 +190,7 @@
                         <!-- ONT Info (read-only) -->
                         <div v-if="customer.ont" class="mt-4 bg-gray-50 rounded-xl p-4 border border-gray-200">
                             <h4 class="text-sm font-bold text-gray-700 mb-3">Perangkat Terhubung (ONT)</h4>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                 <div>
                                     <span class="text-xs text-gray-500 block">ONT S/N</span>
                                     <span class="text-cyan-600 font-mono font-medium">{{ customer.ont.serial_number }}</span>
@@ -234,7 +234,7 @@
         <Teleport to="body">
             <div v-if="showPreviewModal && ktpPreviewUrl" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-black/90 backdrop-blur-sm cursor-pointer" @click="showPreviewModal = false"></div>
-                <div class="relative max-w-4xl w-full h-full flex flex-col items-center justify-center animate-fade-in-up">
+                <div class="relative max-w-4xl w-full max-h-[90vh] overflow-y-auto h-full flex flex-col items-center justify-center animate-fade-in-up">
                     <button type="button" @click="showPreviewModal = false" class="absolute top-4 right-4 text-white hover:text-red-500 bg-white/20 hover:bg-white/30 p-2 rounded-full z-10 transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>

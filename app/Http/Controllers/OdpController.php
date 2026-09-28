@@ -13,7 +13,7 @@ class OdpController extends Controller
 {
     public function index(Request $request): Response
     {
-        $odps = Odp::with('odc.olt')
+        $odps = Odp::with(['odc.olt', 'area'])
             ->withCount('onts')
             ->when($request->search, fn ($q, $s) =>
                 $q->where('name', 'like', "%{$s}%"))
@@ -26,7 +26,7 @@ class OdpController extends Controller
 
         return Inertia::render('Infrastructure/Odp/Index', [
             'odps' => $odps,
-            'odcs' => Odc::with('olt')->where('status', 'active')->get(),
+            'odcs' => Odc::with('olt')->where('status', 'active')->get(['id', 'name', 'area_id', 'capacity']),
             'areas' => \App\Models\Area::orderBy('name')->get(),
             'filters' => $request->only(['search', 'odc_id', 'status', 'available_only']),
         ]);
@@ -48,8 +48,12 @@ class OdpController extends Controller
             'split_units' => 'nullable|array',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
-
         $validated['used_ports'] = 0;
+
+        $odc = Odc::findOrFail($validated['odc_id']);
+        if ($odc->area_id != $validated['area_id']) {
+            return back()->withErrors(['area_id' => 'Area ODP harus sama dengan Area ODC yang dipilih.']);
+        }
         
         if ($request->hasFile('photo')) {
             $validated['photo'] = $request->file('photo')->store('odp_photos', 'public');
@@ -122,6 +126,11 @@ class OdpController extends Controller
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($odp->photo);
             }
             $validated['photo'] = $request->file('photo')->store('odp_photos', 'public');
+        }
+
+        $odc = Odc::findOrFail($validated['odc_id']);
+        if ($odc->area_id != $validated['area_id']) {
+            return back()->withErrors(['area_id' => 'Area ODP harus sama dengan Area ODC yang dipilih.']);
         }
 
         $odp->update($validated);

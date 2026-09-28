@@ -11,6 +11,7 @@ class Olt extends Model
     use HasFactory;
 
     protected $fillable = [
+        'area_id',
         'name',
         'hostname',
         'ip_address',
@@ -43,6 +44,11 @@ class Olt extends Model
     public function odcs(): HasMany
     {
         return $this->hasMany(Odc::class);
+    }
+
+    public function area()
+    {
+        return $this->belongsTo(Area::class);
     }
 
     // ── Computed ───────────────────────────────────────────────

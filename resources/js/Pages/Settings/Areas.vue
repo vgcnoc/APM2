@@ -63,7 +63,7 @@
 
         <!-- Modal -->
         <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto overflow-hidden">
                 <div class="p-6 border-b border-gray-100 flex items-center justify-between">
                     <h3 class="text-lg font-bold text-gray-900">{{ isEditing ? 'Edit Area' : 'Tambah Area Baru' }}</h3>
                     <button @click="closeModal" class="text-gray-400 hover:text-gray-500">

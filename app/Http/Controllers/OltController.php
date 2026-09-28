@@ -12,7 +12,7 @@ class OltController extends Controller
 {
     public function index(Request $request): Response
     {
-        $olts = Olt::withCount('odcs')
+        $olts = Olt::with(['area'])->withCount('odcs')
             ->when($request->search, fn ($q, $s) =>
                 $q->where('name', 'like', "%{$s}%")
                   ->orWhere('ip_address', 'like', "%{$s}%")
@@ -22,8 +22,11 @@ class OltController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $areas = \App\Models\Area::orderBy('name')->get();
+
         return Inertia::render('Infrastructure/Olt/Index', [
             'olts' => $olts,
+            'areas' => $areas,
             'filters' => $request->only(['search', 'status']),
         ]);
     }
@@ -31,6 +34,7 @@ class OltController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'area_id' => 'required|exists:areas,id',
             'name' => 'required|string|max:255',
             'hostname' => 'nullable|string|max:255',
             'ip_address' => 'nullable|ip',
@@ -63,6 +67,7 @@ class OltController extends Controller
     public function update(Request $request, Olt $olt): RedirectResponse
     {
         $validated = $request->validate([
+            'area_id' => 'required|exists:areas,id',
             'name' => 'required|string|max:255',
             'hostname' => 'nullable|string|max:255',
             'ip_address' => 'nullable|ip',

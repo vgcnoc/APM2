@@ -485,7 +485,12 @@ class CustomerController extends Controller
         if ($request->hasFile('photo_customer')) $validated['photo_customer'] = $request->file('photo_customer')->store('installations', 'public');
         if ($request->hasFile('photo_redaman')) $validated['photo_redaman'] = $request->file('photo_redaman')->store('installations', 'public');
 
-        DB::transaction(function () use ($validated, $customer) {
+        $odp = Odp::findOrFail($validated['odp_id']);
+        if ($odp->area_id !== $customer->area_id) {
+            return back()->withErrors(['odp_id' => 'ODP tidak sesuai dengan Area/Wilayah pelanggan.']);
+        }
+
+        DB::transaction(function () use ($validated, $customer, $odp) {
             // Check if customer already has an ONT linked (e.g. from assignInstall)
             $ont = Ont::where('customer_id', $customer->id)->first();
             
@@ -832,6 +837,13 @@ class CustomerController extends Controller
             'photos.*.file' => 'nullable|image|max:5120',
         ]);
 
+        if (!empty($validated['odp_id'])) {
+            $odp = Odp::findOrFail($validated['odp_id']);
+            if ($odp->area_id !== $customer->area_id) {
+                return back()->withErrors(['odp_id' => 'ODP tidak sesuai dengan Area/Wilayah pelanggan.']);
+            }
+        }
+
         $photoPaths = [];
         if ($request->has('photos') && is_array($request->photos)) {
             foreach ($request->photos as $photoItem) {
@@ -895,3 +907,4 @@ class CustomerController extends Controller
 
 
 }
+

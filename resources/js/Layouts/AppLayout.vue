@@ -1,23 +1,30 @@
 <template>
     <div class="flex min-h-screen bg-gray-50 font-sans text-gray-900">
-        <!-- Sidebar -->
+        <div v-show="mobileMenuOpen" class="fixed inset-0 bg-gray-900/50 z-40 lg:hidden transition-opacity" @click="mobileMenuOpen = false"></div>
         <aside
             :class="[
-                'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-gray-200 bg-white shadow-sm transition-all duration-300',
-                sidebarOpen ? 'w-64' : 'w-20'
+                'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-gray-200 bg-white shadow-sm transition-transform duration-300',
+                mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+                sidebarOpen ? 'w-64' : 'w-20 lg:w-20 w-64'
             ]"
         >
             <!-- Logo -->
-            <div class="flex items-center gap-3 px-5 py-5 border-b border-gray-200">
-                <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 shadow-sm">
-                    <svg class="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                    </svg>
+            <div class="flex items-center justify-between px-5 py-5 border-b border-gray-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 shadow-sm">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <div v-show="sidebarOpen" class="transition-opacity duration-200">
+                        <h1 class="text-lg font-extrabold text-gray-900 leading-tight">ISP Manager</h1>
+                        <p class="text-[11px] font-semibold text-blue-600 uppercase tracking-widest mt-0.5">Enterprise</p>
+                    </div>
                 </div>
-                <div v-show="sidebarOpen" class="transition-opacity duration-200">
-                    <h1 class="text-lg font-extrabold text-gray-900 leading-tight">ISP Manager</h1>
-                    <p class="text-[11px] font-semibold text-blue-600 uppercase tracking-widest mt-0.5">Enterprise</p>
-                </div>
+                <!-- Mobile Close Button -->
+                <button @click="mobileMenuOpen = false" class="lg:hidden text-gray-400 hover:text-gray-600 p-1">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
 
             <!-- Navigation -->
@@ -29,7 +36,7 @@
                     </div>
 
                     <!-- Link -->
-                    <Link v-if="item.type === 'link'" :href="item.href" :class="['sidebar-link', { active: item.active($page.url) }]">
+                    <Link v-if="item.type === 'link'" :href="item.href" @click="mobileMenuOpen = false" :class="['sidebar-link', { active: item.active($page.url) }]">
                         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
                         </svg>
@@ -38,8 +45,8 @@
                 </template>
             </nav>
 
-            <!-- Sidebar Toggle -->
-            <div class="border-t border-gray-200 p-3">
+            <!-- Sidebar Toggle (Desktop Only) -->
+            <div class="hidden lg:block border-t border-gray-200 p-3">
                 <button
                     @click="sidebarOpen = !sidebarOpen"
                     class="w-full flex items-center justify-center p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-all"
@@ -53,15 +60,21 @@
 
         <!-- Main Content -->
         <main
-            :class="['flex-1 transition-all duration-300', sidebarOpen ? 'ml-64' : 'ml-20']"
+            :class="['flex-1 transition-all duration-300 min-w-0 flex flex-col', sidebarOpen ? 'lg:ml-64' : 'lg:ml-20']"
         >
             <!-- Top Bar -->
-            <header class="sticky top-0 z-40 bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h2 class="text-xl font-bold text-gray-900">{{ title }}</h2>
-                        <p v-if="subtitle" class="text-sm font-medium text-gray-500 mt-0.5">{{ subtitle }}</p>
+            <header class="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 shadow-sm flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3 min-w-0">
+                    <button @click="mobileMenuOpen = true" class="lg:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                    <div class="min-w-0">
+                        <h2 class="text-lg sm:text-xl font-bold text-gray-900 truncate">{{ title }}</h2>
+                        <p v-if="subtitle" class="text-xs sm:text-sm font-medium text-gray-500 mt-0.5 truncate">{{ subtitle }}</p>
                     </div>
+                </div>
                     <div class="flex items-center gap-5">
                         <!-- Notification Bell -->
                         <button class="relative p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-600 transition-all">
@@ -84,7 +97,6 @@
                             </Link>
                         </div>
                     </div>
-                </div>
             </header>
 
             <!-- Flash Messages -->
@@ -98,7 +110,7 @@
             </div>
 
             <!-- Page Content -->
-            <div class="p-6">
+            <div class="p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-full overflow-hidden">
                 <slot />
             </div>
         </main>
@@ -115,6 +127,7 @@ defineProps({
 });
 
 const sidebarOpen = ref(true);
+const mobileMenuOpen = ref(false);
 
 const menuItems = [
     { type: 'link', href: '/', icon: 'dashboard', label: 'Dashboard', active: (url) => url === '/' },

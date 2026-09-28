@@ -18,6 +18,7 @@
                     <thead>
                         <tr class="bg-gray-50 border-b border-gray-100">
                             <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Nama ODC</th>
+                            <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Area / Wilayah</th>
                             <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Induk OLT</th>
                             <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Kapasitas</th>
                             <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
@@ -27,6 +28,10 @@
                     <tbody class="divide-y divide-gray-100">
                         <tr v-for="odc in odcs.data" :key="odc.id" class="hover:bg-gray-50/50 transition-colors">
                             <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ odc.name }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">
+                                <span v-if="odc.area" class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-bold border border-blue-100">{{ odc.area.name }}</span>
+                                <span v-else class="text-xs text-gray-400 italic">Belum diset</span>
+                            </td>
                             <td class="px-6 py-4 text-sm text-gray-600">
                                 <div class="font-medium text-gray-900">{{ odc.olt ? odc.olt.name : '-' }}</div>
                                 <div v-if="odc.pon_port" class="text-xs text-indigo-600 font-semibold mt-0.5">
@@ -60,7 +65,7 @@
 
         <!-- Modal Tambah/Edit ODC -->
         <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto">
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl my-auto">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto my-auto">
                 <div class="sticky top-0 z-10 bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between rounded-t-2xl">
                     <h3 class="text-lg font-bold text-gray-900">{{ isEditing ? 'Edit ODC' : 'Tambah ODC Baru' }}</h3>
                     <button @click="closeModal" class="text-gray-400 hover:text-gray-500">
@@ -77,17 +82,25 @@
                                 <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                                 <span class="text-sm font-semibold text-indigo-900">Informasi Dasar</span>
                             </div>
-                            <div class="p-4 grid grid-cols-2 gap-4">
+                            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div v-if="form.type !== 'Split'">
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nama ODC</label>
                                     <input v-model="form.name" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="contoh: ODC-01" />
                                     <p v-if="form.errors.name" class="text-red-500 text-xs mt-1">{{ form.errors.name }}</p>
                                 </div>
+                                <div class="col-span-2">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Area / Wilayah</label>
+                                    <select v-model="form.area_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                                        <option value="">Pilih Area</option>
+                                        <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                                    </select>
+                                    <p v-if="form.errors.area_id" class="text-red-500 text-xs mt-1">{{ form.errors.area_id }}</p>
+                                </div>
                                 <div :class="form.type === 'Split' ? 'col-span-2' : ''">
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Induk OLT</label>
-                                    <select v-model="form.olt_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                                    <select v-model="form.olt_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required :disabled="!form.area_id">
                                         <option value="">Pilih OLT Induk</option>
-                                        <option v-for="olt in olts" :key="olt.id" :value="olt.id">{{ olt.name }}</option>
+                                        <option v-for="olt in filteredOlts" :key="olt.id" :value="olt.id">{{ olt.name }}</option>
                                     </select>
                                     <p v-if="form.errors.olt_id" class="text-red-500 text-xs mt-1">{{ form.errors.olt_id }}</p>
                                 </div>
@@ -99,14 +112,7 @@
                                     </select>
                                     <p v-if="form.errors.pon_port" class="text-red-500 text-xs mt-1">{{ form.errors.pon_port }}</p>
                                 </div>
-                                <div class="col-span-2">
-                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Cabang (Area)</label>
-                                    <select v-model="form.area_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                        <option value="">Pilih Cabang (Opsional)</option>
-                                        <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
-                                    </select>
-                                    <p v-if="form.errors.area_id" class="text-red-500 text-xs mt-1">{{ form.errors.area_id }}</p>
-                                </div>
+
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Tipe ODC</label>
                                     <select v-model="form.type" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
@@ -160,7 +166,7 @@
                                     </span>
                                 </div>
                                 <div class="p-4 space-y-4">
-                                    <div class="grid grid-cols-2 gap-4">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nama ODC Unit</label>
                                             <input v-model="form.split_units[activeTab].name" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
@@ -190,7 +196,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="grid grid-cols-2 gap-4">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Titik Awal</label>
                                             <input v-model="form.split_units[activeTab].start_point" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
@@ -371,6 +377,21 @@ watch(() => form.olt_id, (newVal) => {
         }
     } else {
         form.pon_port = '';
+    }
+});
+
+const filteredOlts = computed(() => {
+    if (!form.area_id) return [];
+    return props.olts.filter(o => o.area_id == form.area_id);
+});
+
+watch(() => form.area_id, (newVal) => {
+    // Reset OLT if the selected OLT doesn't belong to the new Area
+    if (form.olt_id) {
+        const olt = props.olts.find(o => o.id === form.olt_id);
+        if (olt && olt.area_id != newVal) {
+            form.olt_id = '';
+        }
     }
 });
 

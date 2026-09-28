@@ -17,7 +17,7 @@
                     />
                 </div>
 
-                <div class="flex items-center gap-3">
+                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
                     <!-- Filters Slot -->
                     <slot name="filters" />
 
@@ -62,13 +62,13 @@
         </div>
 
         <!-- Pagination -->
-        <div v-if="pagination" class="px-5 py-4 border-t border-gray-200 flex items-center justify-between">
-            <div class="text-sm text-gray-500">
+        <div v-if="pagination" class="px-5 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0">
+            <div class="text-sm text-gray-500 text-center sm:text-left">
                 Menampilkan <span class="text-gray-900 font-bold">{{ pagination.from || 0 }}</span>
                 - <span class="text-gray-900 font-bold">{{ pagination.to || 0 }}</span>
                 dari <span class="text-gray-900 font-bold">{{ pagination.total || 0 }}</span> data
             </div>
-            <div class="flex items-center gap-1">
+            <div class="flex flex-wrap items-center justify-center gap-1">
                 <template v-for="link in pagination.links" :key="link.label">
                     <Link
                         v-if="link.url"

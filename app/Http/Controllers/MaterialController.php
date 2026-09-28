@@ -19,8 +19,11 @@ class MaterialController extends Controller
 
         $materials = $query->latest()->paginate(10)->withQueryString();
 
+        $areas = \App\Models\Area::orderBy('name')->get();
+
         return Inertia::render('Materials/Index', [
             'materials' => $materials,
+            'areas' => $areas,
             'filters' => $request->only(['search'])
         ]);
     }
@@ -42,6 +45,7 @@ class MaterialController extends Controller
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
+            'area_id' => 'required|exists:areas,id',
         ]);
 
         $validated['initial_stock'] = $validated['stock'];
@@ -68,6 +72,7 @@ class MaterialController extends Controller
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
+            'area_id' => 'required|exists:areas,id',
         ]);
 
         $material->update($validated);

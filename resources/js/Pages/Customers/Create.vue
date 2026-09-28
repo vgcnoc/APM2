@@ -5,25 +5,25 @@
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in-up">
                 
                 <!-- Header -->
-                <div class="p-6 flex items-start justify-between border-b border-gray-100">
-                    <div class="flex items-start gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
-                            <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="p-4 sm:p-6 flex items-start justify-between border-b border-gray-100">
+                    <div class="flex items-start gap-3 sm:gap-4">
+                        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5 sm:w-6 sm:h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
                             </svg>
                         </div>
                         <div>
-                            <h3 class="text-xl font-bold text-gray-800">Tambah Booking Baru</h3>
-                            <p class="text-sm text-gray-500 mt-1">Masukkan data master pelanggan baru ke dalam sistem.</p>
+                            <h3 class="text-lg sm:text-xl font-bold text-gray-800">Tambah Booking Baru</h3>
+                            <p class="text-xs sm:text-sm text-gray-500 mt-1">Masukkan data master pelanggan baru ke dalam sistem.</p>
                         </div>
                     </div>
-                    <Link href="/customers/booking" class="text-gray-500 hover:text-gray-600 transition-colors">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <Link href="/customers/booking" class="p-1 sm:p-2 text-gray-500 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </Link>
                 </div>
 
                 <!-- Error Summary -->
-                <div v-if="Object.keys(form.errors).length > 0" class="p-4 mx-6 mt-6 bg-red-50 border border-red-200 rounded-lg text-red-600">
+                <div v-if="Object.keys(form.errors).length > 0" class="p-4 mx-4 sm:mx-6 mt-4 sm:mt-6 bg-red-50 border border-red-200 rounded-lg text-red-600">
                     <p class="font-bold text-sm mb-2">Terjadi kesalahan pada data yang Anda masukkan:</p>
                     <ul class="list-disc pl-5 text-xs space-y-1">
                         <li v-for="(error, key) in form.errors" :key="key">{{ error }}</li>
@@ -32,10 +32,10 @@
 
                 <!-- Form Body -->
                 <form @submit.prevent="submit">
-                    <div class="p-6 space-y-5">
+                    <div class="p-4 sm:p-6 space-y-4 sm:space-y-5">
                         
                         <!-- Row 1 -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Nama Pelanggan <span class="text-red-500">*</span></label>
                                 <input v-model="form.name" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: Budi Santoso" required />
@@ -49,7 +49,7 @@
                         </div>
 
                         <!-- Row 2 -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Area / Wilayah <span class="text-red-500">*</span></label>
                                 <select v-if="!isNewArea" v-model="form.area" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" @change="checkNewArea" required>
@@ -102,36 +102,36 @@
                         <!-- Row 7: Foto KTP -->
                         <div>
                             <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Foto KTP (Opsional)</label>
-                            <div class="flex items-start w-full px-3 py-2 bg-white border border-gray-300 rounded-lg gap-4">
-                                <label class="cursor-pointer bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-md text-xs font-semibold hover:bg-indigo-100 transition-colors shrink-0">
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center w-full px-3 py-2 bg-white border border-gray-300 rounded-lg gap-4">
+                                <label class="cursor-pointer bg-indigo-50 text-indigo-600 px-4 py-2 sm:py-1.5 rounded-md text-sm sm:text-xs font-semibold hover:bg-indigo-100 transition-colors w-full sm:w-auto text-center shrink-0">
                                     Choose File
                                     <input type="file" @change="handleKtpUpload" accept="image/*" class="hidden" />
                                 </label>
                                 <div v-if="ktpPreviewUrl" class="flex flex-col gap-1 w-full mt-0.5">
                                     <div class="flex items-center gap-3">
-                                        <img :src="ktpPreviewUrl" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="showPreviewModal = true" />
+                                        <img :src="ktpPreviewUrl" class="h-12 w-12 sm:h-10 sm:w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="showPreviewModal = true" />
                                         <span class="text-sm text-gray-500 truncate flex-1">{{ form.identity_photo ? form.identity_photo.name : '' }}</span>
                                     </div>
-                                    <a :href="ktpPreviewUrl" download="Foto_KTP.jpg" class="text-[10px] text-blue-600 hover:underline w-fit ml-1">Download Foto KTP</a>
+                                    <a :href="ktpPreviewUrl" download="Foto_KTP.jpg" class="text-[10px] sm:text-xs text-blue-600 hover:underline w-fit ml-0 sm:ml-1 mt-1 sm:mt-0">Download Foto KTP</a>
                                 </div>
-                                <span v-else class="text-sm text-gray-500 truncate mt-1.5">No file chosen</span>
+                                <span v-else class="text-sm text-gray-500 truncate mt-1.5 hidden sm:block">No file chosen</span>
                             </div>
                         </div>
 
                         <!-- Row 8: Titik Koordinat -->
                         <div>
                             <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Titik Koordinat</label>
-                            <div class="flex gap-2">
+                            <div class="flex flex-col sm:flex-row gap-2 sm:gap-2">
                                 <input v-model="form.coordinates" type="text" class="flex-1 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: -6.200000, 106.816666" />
-                                <button type="button" @click="getLocation" class="px-4 py-2.5 bg-gray-100 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-2">
+                                <button type="button" @click="getLocation" class="w-full sm:w-auto px-4 py-2.5 bg-gray-100 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex justify-center items-center gap-2">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                    Auto
+                                    Auto GPS
                                 </button>
                             </div>
                         </div>
 
                         <!-- Row 9 -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tarif / Base Amount (Rp) <span class="text-red-500">*</span></label>
                                 <div class="relative">
@@ -148,7 +148,7 @@
                         </div>
 
                         <!-- Row 10 -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Biaya Pasang Baru (Rp)</label>
                                 <div class="relative">
@@ -172,11 +172,11 @@
                     </div>
                     
                     <!-- Footer Actions -->
-                    <div class="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 rounded-b-2xl">
-                        <Link href="/customers/booking" class="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                    <div class="p-4 sm:p-6 bg-gray-50 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-end gap-3 rounded-b-2xl">
+                        <Link href="/customers/booking" class="w-full sm:w-auto text-center px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
                             Batal
                         </Link>
-                        <button type="submit" :disabled="form.processing" class="px-6 py-2.5 bg-[#5A51E6] hover:bg-indigo-700 text-gray-900 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                        <button type="submit" :disabled="form.processing" class="w-full sm:w-auto justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
                             <svg v-if="form.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
@@ -192,7 +192,7 @@
         <Teleport to="body">
             <div v-if="showPreviewModal && ktpPreviewUrl" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-black/90 backdrop-blur-sm cursor-pointer" @click="showPreviewModal = false"></div>
-                <div class="relative max-w-4xl w-full h-full flex flex-col items-center justify-center animate-fade-in-up">
+                <div class="relative max-w-4xl w-full max-h-[90vh] overflow-y-auto h-full flex flex-col items-center justify-center animate-fade-in-up">
                     <button type="button" @click="showPreviewModal = false" class="absolute top-4 right-4 text-white hover:text-red-500 bg-white/20 hover:bg-white/30 p-2 rounded-full z-10 transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>

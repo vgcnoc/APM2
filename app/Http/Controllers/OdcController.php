@@ -14,7 +14,7 @@ class OdcController extends Controller
 {
     public function index(Request $request): Response
     {
-        $odcs = Odc::with('olt')
+        $odcs = Odc::with(['olt', 'area'])
             ->withCount('odps')
             ->when($request->search, fn ($q, $s) =>
                 $q->where('name', 'like', "%{$s}%")
@@ -27,7 +27,7 @@ class OdcController extends Controller
 
         return Inertia::render('Infrastructure/Odc/Index', [
             'odcs' => $odcs,
-            'olts' => Olt::where('status', 'active')->get(['id', 'name', 'total_pon_ports']),
+            'olts' => Olt::where('status', 'active')->get(['id', 'name', 'total_pon_ports', 'area_id']),
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['search', 'olt_id', 'status']),
         ]);
@@ -38,7 +38,7 @@ class OdcController extends Controller
         $validated = $request->validate([
             'olt_id' => 'required|exists:olts,id',
             'pon_port' => 'nullable|integer|min:1',
-            'area_id' => 'nullable|exists:areas,id',
+            'area_id' => 'required|exists:areas,id',
             'name' => 'nullable|string|max:255',
             'type' => 'required|in:Normal,Split',
             'location' => 'nullable|string',
@@ -50,6 +50,11 @@ class OdcController extends Controller
             'photo' => 'nullable|image|max:2048',
             'split_units' => 'nullable|array',
         ]);
+
+        $olt = Olt::findOrFail($validated['olt_id']);
+        if ($olt->area_id != $validated['area_id']) {
+            return back()->withErrors(['area_id' => 'Area ODC harus sama dengan Area OLT yang dipilih.']);
+        }
 
         if ($validated['type'] === 'Split' && !empty($validated['split_units'])) {
             foreach ($validated['split_units'] as $unit) {
@@ -104,7 +109,7 @@ class OdcController extends Controller
         $validated = $request->validate([
             'olt_id' => 'required|exists:olts,id',
             'pon_port' => 'nullable|integer|min:1',
-            'area_id' => 'nullable|exists:areas,id',
+            'area_id' => 'required|exists:areas,id',
             'name' => 'required|string|max:255',
             'type' => 'required|in:Normal,Split',
             'location' => 'nullable|string',
@@ -115,6 +120,11 @@ class OdcController extends Controller
             'status' => 'in:active,inactive,maintenance',
             'photo' => 'nullable|image|max:2048',
         ]);
+
+        $olt = Olt::findOrFail($validated['olt_id']);
+        if ($olt->area_id != $validated['area_id']) {
+            return back()->withErrors(['area_id' => 'Area ODC harus sama dengan Area OLT yang dipilih.']);
+        }
 
         if ($request->hasFile('photo')) {
             if ($odc->photo) {

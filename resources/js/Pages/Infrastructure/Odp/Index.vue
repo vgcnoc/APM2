@@ -17,6 +17,7 @@
                     <thead>
                         <tr class="bg-gray-50 border-b border-gray-100">
                             <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Nama ODP</th>
+                            <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Area / Wilayah</th>
                             <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Induk ODC</th>
                             <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Port</th>
                             <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
@@ -28,6 +29,10 @@
                             <td class="px-6 py-4 text-sm font-medium text-gray-900">
                                 {{ odp.name }}
                                 <span v-if="odp.is_split" class="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">Split</span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-600">
+                                <span v-if="odp.area" class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-bold border border-blue-100">{{ odp.area.name }}</span>
+                                <span v-else class="text-xs text-gray-400 italic">Belum diset</span>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-600">{{ odp.odc ? odp.odc.name : '-' }}</td>
                             <td class="px-6 py-4 text-sm text-gray-600">{{ odp.used_ports }} / {{ odp.total_ports }}</td>
@@ -54,7 +59,7 @@
 
         <!-- Modal Tambah/Edit ODP -->
         <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto">
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl my-auto">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto my-auto">
                 <div class="sticky top-0 z-10 bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between rounded-t-2xl">
                     <h3 class="text-lg font-bold text-gray-900">{{ isEditing ? 'Edit ODP' : 'Tambah ODP Baru' }}</h3>
                     <button @click="closeModal" class="text-gray-400 hover:text-gray-500">
@@ -71,27 +76,27 @@
                                 <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                                 <span class="text-sm font-semibold text-purple-900">Informasi Dasar</span>
                             </div>
-                            <div class="p-4 grid grid-cols-2 gap-4">
+                            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div v-if="form.type !== 'Split 2'">
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nama ODP</label>
                                     <input v-model="form.name" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="contoh: ODP-01-ABC" />
                                     <p v-if="form.errors.name" class="text-red-500 text-xs mt-1">{{ form.errors.name }}</p>
                                 </div>
-                                <div :class="form.type === 'Split 2' ? 'col-span-2' : ''">
-                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Induk ODC</label>
-                                    <select v-model="form.odc_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-                                        <option value="">Pilih ODC Induk</option>
-                                        <option v-for="odc in odcs" :key="odc.id" :value="odc.id">{{ odc.name }}</option>
-                                    </select>
-                                    <p v-if="form.errors.odc_id" class="text-red-500 text-xs mt-1">{{ form.errors.odc_id }}</p>
-                                </div>
                                 <div class="col-span-2">
-                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Cabang</label>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Area / Wilayah</label>
                                     <select v-model="form.area_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-                                        <option value="">Pilih Cabang</option>
+                                        <option value="">Pilih Area</option>
                                         <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
                                     </select>
                                     <p v-if="form.errors.area_id" class="text-red-500 text-xs mt-1">{{ form.errors.area_id }}</p>
+                                </div>
+                                <div :class="form.type === 'Split 2' ? 'col-span-2' : ''">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Induk ODC</label>
+                                    <select v-model="form.odc_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required :disabled="!form.area_id">
+                                        <option value="">Pilih ODC Induk</option>
+                                        <option v-for="odc in filteredOdcs" :key="odc.id" :value="odc.id">{{ odc.name }} ({{ odc.capacity }} Port)</option>
+                                    </select>
+                                    <p v-if="form.errors.odc_id" class="text-red-500 text-xs mt-1">{{ form.errors.odc_id }}</p>
                                 </div>
                                 
                                 <div v-if="isBranchMismatch" class="col-span-2 bg-orange-50 border border-orange-200 rounded-lg p-3 flex gap-3">
@@ -155,7 +160,7 @@
                                     </span>
                                 </div>
                                 <div class="p-4 space-y-4">
-                                    <div class="grid grid-cols-2 gap-4">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nama ODP Unit</label>
                                             <input v-model="form.split_units[activeTab].name" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
@@ -185,7 +190,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="grid grid-cols-2 gap-4">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Titik Awal</label>
                                             <input v-model="form.split_units[activeTab].start_point" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
@@ -385,6 +390,20 @@ watch(() => form.split_units[1].ratio, (newRatio, oldRatio) => {
 
 const totalSplitPorts = computed(() => {
     return Number(form.split_units[0].ratio || 0) + Number(form.split_units[1].ratio || 0);
+});
+
+const filteredOdcs = computed(() => {
+    if (!form.area_id) return [];
+    return props.odcs.filter(o => o.area_id == form.area_id);
+});
+
+watch(() => form.area_id, (newVal) => {
+    if (form.odc_id) {
+        const odc = props.odcs.find(o => o.id === form.odc_id);
+        if (odc && odc.area_id != newVal) {
+            form.odc_id = '';
+        }
+    }
 });
 
 const isBranchMismatch = computed(() => {

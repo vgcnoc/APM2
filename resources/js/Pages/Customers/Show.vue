@@ -163,12 +163,12 @@
                                         <label class="block text-xs font-medium text-gray-500 mb-1">ODP Terdekat (Auto Dropdown)</label>
                                         <select v-model="ontForm.odp_id" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" :required="isInstallingHardware">
                                             <option value="">-- Pilih ODP --</option>
-                                            <option v-for="odp in availableOdps" :key="odp.id" :value="odp.id">
+                                            <option v-for="odp in filteredAvailableOdps" :key="odp.id" :value="odp.id">
                                                 {{ odp.name }} (Sisa {{ Math.max(0, odp.total_ports - odp.used_ports) }} port)
                                             </option>
                                         </select>
                                     </div>
-                                    <div class="grid grid-cols-2 gap-4">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label class="block text-xs font-medium text-gray-500 mb-1">Port ODP</label>
                                             <select v-model="ontForm.port_number" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" :disabled="!selectedOdp" :required="isInstallingHardware">
@@ -364,7 +364,7 @@
 
         <!-- Audit Modal -->
         <div v-if="showAuditModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-hidden animate-fade-in-up">
                 <div class="p-5 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100/50">
                     <h3 class="text-lg font-bold text-blue-900 flex items-center gap-2">
                         <span class="text-2xl">📋</span> Audit Instalasi
@@ -383,7 +383,7 @@
                         <!-- Ringkasan Data ONT -->
                         <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
                             <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Detail Data ONT & Pelanggan</h4>
-                            <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4 text-sm">
                                 <div>
                                     <span class="text-gray-500 block text-[10px] uppercase font-semibold">Nama Pelanggan</span>
                                     <span class="font-bold text-gray-900">{{ customer.name }}</span>
@@ -425,7 +425,7 @@
 
         <!-- Activation Modal -->
         <div v-if="showActivationModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-hidden animate-fade-in-up">
                 <div class="p-5 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-amber-50 to-amber-100/50">
                     <h3 class="text-lg font-bold text-amber-900 flex items-center gap-2">
                         <span class="text-2xl">⚡</span> Aktivasi Pelanggan
@@ -444,7 +444,7 @@
                         <!-- Ringkasan Data ONT -->
                         <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
                             <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Detail Data ONT & Pelanggan</h4>
-                            <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4 text-sm">
                                 <div>
                                     <span class="text-gray-500 block text-[10px] uppercase font-semibold">Nama Pelanggan</span>
                                     <span class="font-bold text-gray-900">{{ customer.name }}</span>
@@ -497,7 +497,7 @@
                             </div>
                         </div>
                         
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE Username</label>
                                 <input v-model="activationForm.pppoe_user" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500'" placeholder="user@isp" :readonly="!isEditingOnt" />
@@ -541,7 +541,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">IP Login ONT</label>
                                 <input v-model="activationForm.ip_login" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500'" placeholder="192.168.1.1" :readonly="!isEditingOnt" />
                             </div>
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Username ONT</label>
                                     <input v-model="activationForm.login_user" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500'" placeholder="admin" :readonly="!isEditingOnt" />
@@ -573,7 +573,7 @@
         <Teleport to="body">
             <div v-if="previewImage" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-black/90 backdrop-blur-sm cursor-pointer" @click="previewImage = null"></div>
-                <div class="relative max-w-4xl w-full h-full flex flex-col items-center justify-center animate-fade-in-up">
+                <div class="relative max-w-4xl w-full max-h-[90vh] overflow-y-auto h-full flex flex-col items-center justify-center animate-fade-in-up">
                     <button @click="previewImage = null" class="absolute top-4 right-4 text-white hover:text-red-500 bg-white/20 hover:bg-white/30 p-2 rounded-full z-10 transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
@@ -592,6 +592,11 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 
 const props = defineProps({ customer: Object, availableOdps: Array, availableOnts: Array });
+
+const filteredAvailableOdps = computed(() => {
+    if (!props.customer?.area_id) return [];
+    return props.availableOdps?.filter(odp => Number(odp.area_id) === Number(props.customer.area_id)) || [];
+});
 
 function isPortUsed(odp, portNumber) {
     if (!odp || !odp.onts) return false;
@@ -794,13 +799,24 @@ onMounted(() => {
         ontForm.end_time = savedEnd;
     }
     
+    let initialOdpId = '';
     const savedOdp = localStorage.getItem(`apm_odp_id_${props.customer.id}`);
-    if (savedOdp) ontForm.odp_id = Number(savedOdp);
-    else if (props.customer.ont?.odp_id) ontForm.odp_id = props.customer.ont.odp_id;
+    if (savedOdp) initialOdpId = Number(savedOdp);
+    else if (props.customer.ont?.odp_id) initialOdpId = props.customer.ont.odp_id;
+    
+    // Ensure initialOdpId matches the area
+    if (initialOdpId) {
+        const isValid = filteredAvailableOdps.value.some(o => o.id == initialOdpId);
+        if (isValid) {
+            ontForm.odp_id = initialOdpId;
+        } else {
+            localStorage.removeItem(`apm_odp_id_${props.customer.id}`);
+        }
+    }
     
     const savedPort = localStorage.getItem(`apm_port_number_${props.customer.id}`);
-    if (savedPort) ontForm.port_number = Number(savedPort);
-    else if (props.customer.ont?.port_number) ontForm.port_number = props.customer.ont.port_number;
+    if (savedPort && ontForm.odp_id) ontForm.port_number = Number(savedPort);
+    else if (props.customer.ont?.port_number && ontForm.odp_id == props.customer.ont.odp_id) ontForm.port_number = props.customer.ont.port_number;
     
     const savedRx = localStorage.getItem(`apm_rx_power_${props.customer.id}`);
     if (savedRx) ontForm.rx_power = savedRx;

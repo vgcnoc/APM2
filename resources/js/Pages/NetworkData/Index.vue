@@ -26,7 +26,7 @@
             </div>
 
             <!-- Stats Overview -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] relative overflow-hidden group hover:border-indigo-100 transition-colors">
                     <div class="absolute -right-4 -top-4 w-16 h-16 bg-blue-50/50 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total ODC</p>
@@ -79,7 +79,7 @@
                     <div class="w-full h-px md:h-8 md:w-px bg-gray-200 hidden md:block"></div>
 
                     <!-- Filter Selects -->
-                    <div class="flex-1 grid grid-cols-2 md:grid-cols-5 gap-3 w-full">
+                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 w-full">
                         <select v-model="form.olt_id" @change="applyFilters" class="w-full border-gray-200 rounded-lg text-sm text-gray-700 py-2 focus:ring-1 focus:ring-indigo-500">
                             <option value="">Semua Server</option>
                             <option v-for="olt in olts" :key="olt.id" :value="olt.id">{{ olt.name }}</option>
@@ -344,7 +344,7 @@
                     </template>
                     <template v-else>
                         <!-- No Photo Placeholder -->
-                        <div class="bg-gray-800/80 backdrop-blur border border-gray-700 rounded-2xl p-10 md:p-16 text-center max-w-md w-full shadow-2xl">
+                        <div class="bg-gray-800/80 backdrop-blur border border-gray-700 rounded-2xl p-10 md:p-16 text-center max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl">
                             <div class="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-500">
                                 <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                             </div>

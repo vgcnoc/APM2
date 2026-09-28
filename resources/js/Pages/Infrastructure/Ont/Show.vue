@@ -142,7 +142,7 @@
                                 
                                 <div class="col-span-1 md:col-span-2 border-t border-gray-100 pt-4 mt-2">
                                     <h4 class="text-sm font-bold text-gray-800 mb-4">Redaman Optik (Optical Power)</h4>
-                                    <div class="grid grid-cols-2 gap-4">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div class="bg-red-50 border border-red-100 rounded-lg p-4">
                                             <p class="text-xs font-bold text-red-500 uppercase tracking-wider mb-1">RX Power</p>
                                             <p class="text-2xl font-bold text-red-700">{{ ont.rx_power ? `${ont.rx_power} dBm` : '-' }}</p>
