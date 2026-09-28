@@ -478,6 +478,15 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Mode Akses</label>
+                                <select v-model="activationForm.access_mode" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm transition-all">
+                                    <option value="PPPOE">PPPoE</option>
+                                    <option value="STATIC">Static IP</option>
+                                    <option value="DHCP">DHCP / Dynamic</option>
+                                </select>
+                            </div>
+                            
+                            <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">VLAN Mode</label>
                                 <select v-model="activationForm.vlan_mode" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm transition-all">
                                     <option value="">-- Pilih --</option>
@@ -487,9 +496,28 @@
                                     <option value="Untagged">Untagged</option>
                                 </select>
                             </div>
-                            <div v-if="activationForm.vlan_mode === 'VLAN'">
+                            
+                            <div v-if="activationForm.vlan_mode === 'VLAN'" class="col-span-full">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">No VLAN ID</label>
                                 <input v-model="activationForm.vlan_id" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm transition-all" placeholder="Misal: 100" />
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Akses Login ONT</h4>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">IP Login ONT</label>
+                                <input v-model="activationForm.ip_login" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm transition-all" placeholder="192.168.1.1" />
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Username ONT</label>
+                                    <input v-model="activationForm.login_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm transition-all" placeholder="admin" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Password ONT</label>
+                                    <input v-model="activationForm.login_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm transition-all" placeholder="admin" />
+                                </div>
                             </div>
                         </div>
                         
@@ -801,6 +829,10 @@ const activationForm = useForm({
     pppoe_password: props.customer?.ont?.pppoe_password || '',
     vlan_mode: props.customer?.ont?.vlan_mode || '',
     vlan_id: props.customer?.ont?.vlan_id || '',
+    access_mode: props.customer?.ont?.access_mode || 'PPPOE',
+    ip_login: props.customer?.ont?.ip_login || '192.168.1.1',
+    login_user: props.customer?.ont?.login_user || 'admin',
+    login_password: props.customer?.ont?.login_password || 'admin',
     notes: ''
 });
 

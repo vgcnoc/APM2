@@ -479,6 +479,10 @@ class CustomerController extends Controller
             'pppoe_password' => 'nullable|string',
             'vlan_mode' => 'nullable|string',
             'vlan_id' => 'nullable|string',
+            'access_mode' => 'nullable|string',
+            'ip_login' => 'nullable|string',
+            'login_user' => 'nullable|string',
+            'login_password' => 'nullable|string',
             'notes' => 'nullable|string',
         ]);
 
@@ -495,6 +499,10 @@ class CustomerController extends Controller
                     'pppoe_password' => $validated['pppoe_password'],
                     'vlan_mode' => $validated['vlan_mode'],
                     'vlan_id' => $validated['vlan_id'],
+                    'access_mode' => $validated['access_mode'],
+                    'ip_login' => $validated['ip_login'],
+                    'login_user' => $validated['login_user'],
+                    'login_password' => $validated['login_password'],
                 ]);
             });
 
