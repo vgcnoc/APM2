@@ -171,41 +171,62 @@
                                         </div>
                                     </div>
 
-                                    <!-- Progress Bar -->
-                                    <div class="mb-4">
-                                        <div class="flex justify-between text-xs font-bold mb-1.5">
-                                            <span class="text-gray-600">{{ odp.used_ports }} / {{ odp.total_ports }} Terpakai</span>
-                                            <span class="text-emerald-600">{{ Math.max(0, odp.total_ports - odp.used_ports) }} Free</span>
+                                    <!-- Address & Coord Pills -->
+                                    <div class="flex flex-wrap gap-2 mb-4">
+                                        <div class="bg-gray-50 border border-gray-200 text-gray-600 text-[10px] px-2 py-1 rounded-md flex items-center gap-1" :title="odp.address">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                            <span class="truncate max-w-[150px]">{{ odp.address || '-' }}</span>
                                         </div>
-                                        <div class="w-full h-2 bg-gray-100 rounded-full overflow-hidden flex">
-                                            <div class="h-full bg-indigo-500" :style="`width: ${(odp.used_ports / odp.total_ports) * 100}%`"></div>
+                                        <div class="bg-gray-50 border border-gray-200 text-gray-600 text-[10px] px-2 py-1 rounded-md flex items-center gap-1">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                            {{ odp.latitude || '-' }}, {{ odp.longitude || '-' }}
+                                        </div>
+                                        <div class="bg-gray-50 border border-gray-200 text-gray-800 font-bold text-[10px] px-2 py-1 rounded-md flex items-center gap-1">
+                                            <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                            {{ odp.total_ports }} Port
                                         </div>
                                     </div>
 
-                                    <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
-                                        <div class="flex items-start gap-2 text-gray-600">
-                                            <svg class="w-3.5 h-3.5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                            <span class="truncate" :title="odp.address">{{ odp.address || '-' }}</span>
-                                        </div>
-                                        <div class="flex items-center gap-2 text-gray-600">
-                                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                            <span class="truncate">{{ odp.area?.name || '-' }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="px-4 py-3 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
-                                    <div class="flex -space-x-2">
-                                        <div class="w-6 h-6 rounded-full bg-emerald-100 border-2 border-white flex items-center justify-center text-[9px] font-bold text-emerald-700" title="Online" v-if="getOdpCustomerStats(odp).active > 0">
-                                            +{{ getOdpCustomerStats(odp).active }}
-                                        </div>
-                                        <div class="w-6 h-6 rounded-full bg-red-100 border-2 border-white flex items-center justify-center text-[9px] font-bold text-red-700" title="Offline/Suspended" v-if="getOdpCustomerStats(odp).offline > 0">
-                                            +{{ getOdpCustomerStats(odp).offline }}
+                                    <!-- Ports List (Directly in Card) -->
+                                    <div class="space-y-1.5 mb-4 max-h-48 overflow-y-auto pr-1 text-xs">
+                                        <div v-for="portNum in odp.total_ports" :key="portNum" class="flex items-center gap-2">
+                                            <span class="text-gray-400 font-mono w-4 text-right">{{ portNum }}</span>
+                                            <template v-if="getPortData(odp, portNum)">
+                                                <div class="w-2 h-2 rounded-full shrink-0" :class="getCustomerStatusColor(getPortData(odp, portNum).customer?.status)"></div>
+                                                <span v-if="getPortData(odp, portNum).customer" class="font-medium text-gray-700 truncate">
+                                                    {{ getPortData(odp, portNum).customer.customer_code }} - {{ getPortData(odp, portNum).customer.name }}
+                                                </span>
+                                                <span v-else class="font-medium text-gray-400 italic">ONT Inventori</span>
+                                            </template>
+                                            <template v-else>
+                                                <div class="w-2 h-2 rounded-full shrink-0 bg-red-400"></div>
+                                            </template>
                                         </div>
                                     </div>
-                                    <button @click="openOdpDetail(odp)" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded transition-colors">
-                                        Lihat Detail
+
+                                    <button @click="openOdpDetail(odp)" class="w-full text-center bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        Lihat Foto & Detail
                                     </button>
+
+                                    <!-- Stop Permanen List (Specific to this ODP) -->
+                                    <div class="mt-4 pt-4 border-t border-gray-100">
+                                        <h5 class="text-[11px] font-bold text-gray-800 mb-2">Stop Permanen</h5>
+                                        <div class="space-y-1">
+                                            <template v-for="cust in getTerminatedCustomersForOdp(odp.id)" :key="cust.id">
+                                                <div class="flex items-start gap-1.5 text-[10px]">
+                                                    <div class="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 mt-1"></div>
+                                                    <span class="text-gray-600">
+                                                        <span class="font-medium text-gray-800">{{ cust.customer_code }}</span> - {{ cust.name }} <span class="text-gray-400">[{{ cust.updated_at ? cust.updated_at.substring(0,10) : '' }}]</span>
+                                                    </span>
+                                                </div>
+                                            </template>
+                                            <div v-if="getTerminatedCustomersForOdp(odp.id).length === 0" class="text-[10px] text-gray-400 italic">
+                                                -
+                                            </div>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
                         </div>
@@ -612,6 +633,10 @@ const getOdpCustomerStats = (odp) => {
         });
     }
     return { active, offline };
+};
+
+const getTerminatedCustomersForOdp = (odpId) => {
+    return props.terminated_customers.filter(cust => cust.ont && cust.ont.odp_id == odpId);
 };
 
 const openOdpDetail = (odp) => {
