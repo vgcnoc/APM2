@@ -372,6 +372,33 @@
                             <p>Pastikan Anda sudah mengecek semua data instalasi, hasil foto, dan nilai redaman yang dilaporkan teknisi.</p>
                         </div>
                         
+                        <!-- Ringkasan Data ONT -->
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Detail Data ONT & Pelanggan</h4>
+                            <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                                <div>
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Nama Pelanggan</span>
+                                    <span class="font-bold text-gray-900">{{ customer.name }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Area/Wilayah</span>
+                                    <span class="font-bold text-gray-900">{{ customer.area || '-' }}</span>
+                                </div>
+                                <div class="col-span-2">
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Paket Berlangganan</span>
+                                    <span class="font-bold text-gray-900">{{ customer.package?.name || '-' }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Nama ODP</span>
+                                    <span class="font-bold text-gray-900">{{ customer.ont?.odp?.name || '-' }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Port ODP</span>
+                                    <span class="font-bold text-gray-900">Port {{ customer.ont?.port_number || '-' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan Audit</label>
                             <textarea v-model="auditForm.notes" rows="4" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all" placeholder="Tuliskan keterangan atau hasil pemeriksaan audit di sini..."></textarea>
@@ -404,6 +431,33 @@
                         <div class="bg-amber-50 text-amber-800 p-4 rounded-xl text-sm mb-4 border border-amber-200 shadow-sm flex gap-3">
                             <svg class="w-6 h-6 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             <p>Pastikan semua data instalasi dan hasil audit foto sudah benar sebelum mengaktifkan pelanggan ini.</p>
+                        </div>
+                        
+                        <!-- Ringkasan Data ONT -->
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Detail Data ONT & Pelanggan</h4>
+                            <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                                <div>
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Nama Pelanggan</span>
+                                    <span class="font-bold text-gray-900">{{ customer.name }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Area/Wilayah</span>
+                                    <span class="font-bold text-gray-900">{{ customer.area || '-' }}</span>
+                                </div>
+                                <div class="col-span-2">
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Paket Berlangganan</span>
+                                    <span class="font-bold text-gray-900">{{ customer.package?.name || '-' }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Nama ODP</span>
+                                    <span class="font-bold text-gray-900">{{ customer.ont?.odp?.name || '-' }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Port ODP</span>
+                                    <span class="font-bold text-gray-900">Port {{ customer.ont?.port_number || '-' }}</span>
+                                </div>
+                            </div>
                         </div>
 
                         <div>

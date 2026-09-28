@@ -330,6 +330,33 @@
                             <svg class="w-6 h-6 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             <p>Pastikan Anda telah memeriksa data fisik dan foto hasil instalasi sebelum melakukan aktivasi.</p>
                         </div>
+                        
+                        <!-- Ringkasan Data ONT -->
+                        <div v-if="activeCustomer" class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Detail Data ONT & Pelanggan</h4>
+                            <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                                <div>
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Nama Pelanggan</span>
+                                    <span class="font-bold text-gray-900">{{ activeCustomer.name }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Area/Wilayah</span>
+                                    <span class="font-bold text-gray-900">{{ activeCustomer.area || '-' }}</span>
+                                </div>
+                                <div class="col-span-2">
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Paket Berlangganan</span>
+                                    <span class="font-bold text-gray-900">{{ activeCustomer.package?.name || '-' }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Nama ODP</span>
+                                    <span class="font-bold text-gray-900">{{ activeCustomer.ont?.odp?.name || '-' }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 block text-[10px] uppercase font-semibold">Port ODP</span>
+                                    <span class="font-bold text-gray-900">Port {{ activeCustomer.ont?.port_number || '-' }}</span>
+                                </div>
+                            </div>
+                        </div>
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Aktivasi</label>
