@@ -32,6 +32,9 @@ php artisan migrate --force
 # Sync existing string areas to area_id
 php sync_areas.php
 
+# Sync used_ports to match physical onts
+php sync_odp_ports.php
+
 echo "--- Deployment Script Part 2 Fixed Done ---"
 `;
 
