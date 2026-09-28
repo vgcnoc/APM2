@@ -489,17 +489,24 @@ class CustomerController extends Controller
     public function assignSurvey(Request $request, Customer $customer): RedirectResponse
     {
         $validated = $request->validate([
-            'technician_id' => 'required|exists:users,id',
+            'technician_ids' => 'required|array',
+            'technician_ids.*' => 'exists:users,id',
             'scheduled_date' => 'required|date',
             'scheduled_time' => 'required|date_format:H:i',
             'notes' => 'nullable|string',
         ]);
 
-        $validated['customer_id'] = $customer->id;
-        $validated['type'] = 'survey';
-        $validated['status'] = 'scheduled';
-
-        TechnicianSchedule::create($validated);
+        foreach ($validated['technician_ids'] as $techId) {
+            TechnicianSchedule::create([
+                'customer_id' => $customer->id,
+                'technician_id' => $techId,
+                'type' => 'survey',
+                'status' => 'scheduled',
+                'scheduled_date' => $validated['scheduled_date'],
+                'scheduled_time' => $validated['scheduled_time'],
+                'notes' => $validated['notes'],
+            ]);
+        }
         
         $customer->update(['status' => 'survey']);
 
@@ -513,35 +520,35 @@ class CustomerController extends Controller
     public function rescheduleSurvey(Request $request, Customer $customer): RedirectResponse
     {
         $validated = $request->validate([
-            'technician_id' => 'required|exists:users,id',
+            'technician_ids' => 'required|array',
+            'technician_ids.*' => 'exists:users,id',
             'scheduled_date' => 'required|date',
             'scheduled_time' => 'required|date_format:H:i',
             'notes' => 'nullable|string',
         ]);
 
-        // Find the existing scheduled survey
-        $schedule = $customer->technicianSchedules()
+        // Find existing notes from old schedule if any
+        $oldSchedule = $customer->technicianSchedules()
             ->where('type', 'survey')
             ->where('status', 'scheduled')
             ->first();
+        $notes = $validated['notes'] ?? ($oldSchedule ? $oldSchedule->notes : null);
 
-        if ($schedule) {
-            $schedule->update([
-                'technician_id' => $validated['technician_id'],
-                'scheduled_date' => $validated['scheduled_date'],
-                'scheduled_time' => $validated['scheduled_time'],
-                'notes' => $validated['notes'] ?? $schedule->notes,
-            ]);
-        } else {
-            // If no existing schedule found, create one
+        // Hapus jadwal survey sebelumnya
+        $customer->technicianSchedules()
+            ->where('type', 'survey')
+            ->where('status', 'scheduled')
+            ->delete();
+
+        foreach ($validated['technician_ids'] as $techId) {
             TechnicianSchedule::create([
                 'customer_id' => $customer->id,
-                'technician_id' => $validated['technician_id'],
-                'scheduled_date' => $validated['scheduled_date'],
-                'scheduled_time' => $validated['scheduled_time'],
+                'technician_id' => $techId,
                 'type' => 'survey',
                 'status' => 'scheduled',
-                'notes' => $validated['notes'] ?? null,
+                'scheduled_date' => $validated['scheduled_date'],
+                'scheduled_time' => $validated['scheduled_time'],
+                'notes' => $notes,
             ]);
         }
 

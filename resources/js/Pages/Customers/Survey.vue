@@ -195,11 +195,14 @@
                 <form @submit.prevent="submitAssign">
                     <div class="p-5 space-y-4">
                         <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Pilih Teknisi / Surveyor</label>
-                            <select v-model="assignForm.technician_id" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500" required>
-                                <option value="">-- Pilih Teknisi --</option>
-                                <option v-for="tech in technicians" :key="tech.id" :value="tech.id">{{ tech.name }}</option>
-                            </select>
+                            <label class="block text-xs font-medium text-gray-500 mb-2">Pilih Teknisi / Surveyor</label>
+                            <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2 bg-slate-50/50">
+                                <label v-for="tech in technicians" :key="tech.id" class="flex items-center gap-3 cursor-pointer px-3 py-2 hover:bg-white rounded-md transition-colors border border-transparent hover:border-gray-100 hover:shadow-sm">
+                                    <input type="checkbox" :value="tech.id" v-model="assignForm.technician_ids" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+                                    <span class="text-sm font-medium text-gray-700">{{ tech.name }}</span>
+                                </label>
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-1.5">* Anda dapat memilih lebih dari satu teknisi</p>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -251,11 +254,14 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Ganti Petugas / Surveyor</label>
-                            <select v-model="rescheduleForm.technician_id" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-amber-500" required>
-                                <option value="">-- Pilih Teknisi --</option>
-                                <option v-for="tech in technicians" :key="tech.id" :value="tech.id">{{ tech.name }}</option>
-                            </select>
+                            <label class="block text-xs font-medium text-gray-500 mb-2">Ganti Petugas / Surveyor</label>
+                            <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto border border-amber-200 rounded-lg p-2 bg-amber-50/30">
+                                <label v-for="tech in technicians" :key="tech.id" class="flex items-center gap-3 cursor-pointer px-3 py-2 hover:bg-white rounded-md transition-colors border border-transparent hover:border-amber-100 hover:shadow-sm">
+                                    <input type="checkbox" :value="tech.id" v-model="rescheduleForm.technician_ids" class="rounded border-amber-300 text-amber-600 focus:ring-amber-500 w-4 h-4">
+                                    <span class="text-sm font-medium text-gray-700">{{ tech.name }}</span>
+                                </label>
+                            </div>
+                            <p class="text-[10px] text-amber-500/70 mt-1.5">* Anda dapat memilih lebih dari satu teknisi</p>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -677,7 +683,7 @@ function resetFilters() {
 const showAssignModal = ref(false);
 const activeCustomer = ref(null);
 const assignForm = useForm({
-    technician_id: '',
+    technician_ids: [],
     scheduled_date: '',
     scheduled_time: '',
     notes: ''
@@ -703,7 +709,7 @@ function submitAssign() {
 const showRescheduleModal = ref(false);
 const rescheduleCustomer = ref(null);
 const rescheduleForm = useForm({
-    technician_id: '',
+    technician_ids: [],
     scheduled_date: '',
     scheduled_time: '',
     notes: ''
@@ -714,11 +720,11 @@ function openRescheduleModal(customer) {
     rescheduleForm.reset();
     
     // Pre-fill with existing schedule data
-    const schedule = customer.technician_schedules?.[0];
-    if (schedule) {
-        rescheduleForm.technician_id = schedule.technician_id || '';
-        rescheduleForm.scheduled_date = schedule.scheduled_date || new Date().toISOString().split('T')[0];
-        rescheduleForm.scheduled_time = schedule.scheduled_time || '10:00';
+    const schedules = customer.technician_schedules?.filter(s => s.type === 'survey');
+    if (schedules && schedules.length > 0) {
+        rescheduleForm.technician_ids = schedules.map(s => s.technician_id);
+        rescheduleForm.scheduled_date = schedules[0].scheduled_date || new Date().toISOString().split('T')[0];
+        rescheduleForm.scheduled_time = schedules[0].scheduled_time || '10:00';
     } else {
         rescheduleForm.scheduled_date = new Date().toISOString().split('T')[0];
         rescheduleForm.scheduled_time = '10:00';
