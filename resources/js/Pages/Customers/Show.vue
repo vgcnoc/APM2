@@ -116,7 +116,7 @@
                                 <div>
                                     <div class="flex justify-between items-center mb-1">
                                         <label class="block text-xs font-medium text-gray-500">Jam Mulai</label>
-                                        <button type="button" @click="setNow('start_time')" class="text-[10px] bg-blue-600 text-white px-3 py-1 rounded font-bold hover:bg-blue-700 transition-colors shadow-sm">MULAI SEKARANG</button>
+                                        <button type="button" @click="setNow('start_time')" :disabled="!!ontForm.start_time" :class="['text-[10px] px-3 py-1 rounded font-bold transition-colors shadow-sm', ontForm.start_time ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700']">MULAI SEKARANG</button>
                                     </div>
                                     <input v-model="ontForm.start_time" type="time" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:ring-0 cursor-not-allowed" required readonly />
                                 </div>
@@ -249,7 +249,7 @@
                                     <div>
                                         <div class="flex justify-between items-center mb-1">
                                             <label class="block text-xs font-medium text-gray-500">Jam Selesai</label>
-                                            <button type="button" @click="setNow('end_time')" class="text-[10px] bg-emerald-600 text-white px-3 py-1 rounded font-bold hover:bg-emerald-700 transition-colors shadow-sm">SELESAI SEKARANG</button>
+                                            <button type="button" @click="setNow('end_time')" :disabled="!!ontForm.end_time" :class="['text-[10px] px-3 py-1 rounded font-bold transition-colors shadow-sm', ontForm.end_time ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700']">SELESAI SEKARANG</button>
                                         </div>
                                         <input v-model="ontForm.end_time" type="time" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:ring-0 cursor-not-allowed" :required="isInstallingHardware" readonly />
                                     </div>
