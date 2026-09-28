@@ -30,6 +30,7 @@ class Customer extends Model
         'base_amount',
         'installation_fee',
         'sales_id',
+        'is_audited',
     ];
 
     protected function casts(): array
@@ -39,6 +40,7 @@ class Customer extends Model
             'longitude' => 'decimal:8',
             'registration_date' => 'date',
             'activation_date' => 'date',
+            'is_audited' => 'boolean',
         ];
     }
 
