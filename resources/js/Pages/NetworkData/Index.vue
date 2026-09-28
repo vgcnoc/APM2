@@ -210,7 +210,7 @@
                                     </button>
 
                                     <!-- Stop Permanen List (Specific to this ODP) -->
-                                    <div class="mt-4 pt-4 border-t border-gray-100">
+                                    <div v-if="getTerminatedCustomersForOdp(odp.id).length > 0" class="mt-4 pt-4 border-t border-gray-100">
                                         <h5 class="text-[11px] font-bold text-gray-800 mb-2">Stop Permanen</h5>
                                         <div class="space-y-1">
                                             <template v-for="cust in getTerminatedCustomersForOdp(odp.id)" :key="cust.id">
@@ -221,9 +221,6 @@
                                                     </span>
                                                 </div>
                                             </template>
-                                            <div v-if="getTerminatedCustomersForOdp(odp.id).length === 0" class="text-[10px] text-gray-400 italic">
-                                                -
-                                            </div>
                                         </div>
                                     </div>
 
