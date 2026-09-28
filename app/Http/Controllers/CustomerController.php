@@ -190,8 +190,17 @@ class CustomerController extends Controller
                 ->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation'))->count(),
             'laporan_pasang' => (clone $baseQuery)
                 ->whereHas('technicianSchedules', fn($q) => $q->where('type', 'installation'))
-                ->doesntHave('ont')->count(),
-            'audit' => (clone $baseQuery)->has('ont')->where('is_audited', false)->count(),
+                ->where(function ($q) {
+                    $q->doesntHave('ont')
+                      ->orWhereHas('ont', function ($q2) {
+                          $q2->whereNull('rx_power');
+                      });
+                })->count(),
+            'audit' => (clone $baseQuery)
+                ->whereHas('ont', function ($q) {
+                    $q->whereNotNull('rx_power');
+                })
+                ->where('is_audited', false)->count(),
         ];
 
         $customers = (clone $baseQuery)
