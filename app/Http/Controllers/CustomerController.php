@@ -177,7 +177,7 @@ class CustomerController extends Controller
      */
     public function installed(Request $request): Response
     {
-        $baseQuery = Customer::installed();
+        $baseQuery = Customer::installed()->where('status', 'installing');
         
         if (auth()->check() && auth()->user()->role === 'teknisi') {
             $baseQuery->whereHas('technicianSchedules', function ($q) {
@@ -186,13 +186,12 @@ class CustomerController extends Controller
         }
         
         $stats = [
-            'jadwal_pasang' => (clone $baseQuery)->where('status', 'installing')
+            'jadwal_pasang' => (clone $baseQuery)
                 ->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation'))->count(),
-            'laporan_pasang' => (clone $baseQuery)->where('status', 'installing')
+            'laporan_pasang' => (clone $baseQuery)
                 ->whereHas('technicianSchedules', fn($q) => $q->where('type', 'installation'))
                 ->doesntHave('ont')->count(),
-            'aktivasi' => (clone $baseQuery)->where('status', 'installing')->has('ont')->count(),
-            'aktif' => (clone $baseQuery)->where('status', 'active')->count(),
+            'aktivasi' => (clone $baseQuery)->has('ont')->count(),
         ];
 
         $customers = (clone $baseQuery)
@@ -200,7 +199,6 @@ class CustomerController extends Controller
                 $q->where('type', 'installation')->with('technician');
             }])
             ->search($request->search)
-            ->when($request->status, fn ($q, $s) => $q->where('status', $s))
             ->orderByDesc('created_at')
             ->paginate(15)
             ->withQueryString();
@@ -222,7 +220,34 @@ class CustomerController extends Controller
             'availableOnts' => $availableOnts,
             'materialTransactions' => $materialTransactions,
             'stats' => $stats,
-            'filters' => $request->only(['search', 'status']),
+            'filters' => $request->only(['search', 'tab', 'technician_id', 'date', 'area']),
+        ]);
+    }
+
+    /**
+     * Halaman Pelanggan Aktif
+     */
+    public function active(Request $request): Response
+    {
+        $baseQuery = Customer::where('status', 'active');
+        
+        $stats = [
+            'aktif' => (clone $baseQuery)->count(),
+        ];
+
+        $customers = (clone $baseQuery)
+            ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
+                $q->where('type', 'installation')->with('technician');
+            }])
+            ->search($request->search)
+            ->orderByDesc('created_at')
+            ->paginate(15)
+            ->withQueryString();
+
+        return Inertia::render('Customers/Active', [
+            'customers' => $customers,
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'tab', 'date', 'area']),
         ]);
     }
 

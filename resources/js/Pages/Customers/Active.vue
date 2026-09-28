@@ -1,8 +1,8 @@
 <template>
-    <AppLayout title="Pelanggan Instalasi" subtitle="Pelanggan yang sedang diinstalasi">
+    <AppLayout title="Pelanggan Terpasang" subtitle="Pelanggan yang sedang/sudah diinstalasi">
         
         <!-- Statistik Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard 
                 title="Belum Jadwal Pasang" 
                 :value="stats?.jadwal_pasang || 0" 
@@ -21,15 +21,29 @@
                 icon="M13 10V3L4 14h7v7l9-11h-7z" 
                 color="purple" 
             />
+            <StatCard 
+                title="Telah Aktif" 
+                :value="stats?.aktif || 0" 
+                icon="M5 13l4 4L19 7" 
+                color="emerald" 
+            />
         </div>
 
         <DataTable
             :columns="columns"
             :data="customers.data"
             :pagination="customers"
-            searchPlaceholder="Cari pelanggan instalasi..."
+            searchPlaceholder="Cari pelanggan aktif..."
             searchRoute="/customers/installed"
         >
+            <template #filters>
+                <select v-model="status" @change="applyFilter" class="form-select w-40">
+                    <option value="">Semua</option>
+                    <option value="installing">Proses Pasang</option>
+                    <option value="active">Aktif</option>
+                </select>
+            </template>
+
             <template #row="{ row }">
                 <td>
                     <div class="flex items-center gap-3">
@@ -72,40 +86,6 @@
             <template #rowActions="{ row }">
                 <div class="flex items-center justify-end gap-1.5">
                     
-                    <!-- 1. Belum Dijadwalkan -->
-                    <button v-if="row.status === 'installing' && (!row.technician_schedules || row.technician_schedules.length === 0)" 
-                        @click="openAssignModal(row)" 
-                        class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Jadwalkan Teknisi">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        Jadwal Pasang
-                    </button>
-                    
-                    <!-- 2. Menunggu Laporan Teknisi -->
-                    <Link v-if="row.status === 'installing' && (row.technician_schedules && row.technician_schedules.length > 0) && !row.ont" 
-                        :href="`/customers/${row.id}`" 
-                        class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Input Laporan Instalasi">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                        Input Laporan
-                    </Link>
-
-                    <!-- 3. Selesai Pasang, Menunggu Audit Admin -->
-                    <div v-if="row.status === 'installing' && row.ont && !row.is_audited" class="flex gap-1.5">
-                        <Link :href="`/customers/${row.id}`" 
-                            class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Review Hasil Pemasangan">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                            Audit
-                        </Link>
-                    </div>
-                    
-                    <!-- 3.5. Sudah Audit, Menunggu Aktivasi -->
-                    <div v-if="row.status === 'installing' && row.ont && row.is_audited" class="flex gap-1.5">
-                        <button @click="openActivationModal(row)" 
-                            class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Proses Aktivasi Pelanggan">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                            Aktivasi
-                        </button>
-                    </div>
-
                     <!-- 4. Sudah Aktif -->
                     <span v-if="row.status === 'active'" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg text-xs font-bold shadow-sm cursor-default">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
