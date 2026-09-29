@@ -41,6 +41,7 @@ class OltController extends Controller
             'brand' => 'nullable|string|max:100',
             'model' => 'nullable|string|max:100',
             'total_pon_ports' => 'required|integer|min:1',
+            'pon_capacity' => 'nullable|integer|min:1',
             'location' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
@@ -49,7 +50,18 @@ class OltController extends Controller
             'pon_vlans' => 'nullable|array',
         ]);
 
-        Olt::create($validated);
+        $olt = Olt::create($validated);
+        
+        // Auto-generate OltPon records
+        $capacity = $request->input('pon_capacity', 64);
+        for ($i = 1; $i <= $olt->total_pon_ports; $i++) {
+            $olt->pons()->create([
+                'port_number' => $i,
+                'name' => "PON {$i}",
+                'capacity' => $capacity,
+                'status' => 'active'
+            ]);
+        }
 
         return redirect()->route('olts.index')
             ->with('success', 'Data OLT berhasil ditambahkan.');
@@ -74,6 +86,7 @@ class OltController extends Controller
             'brand' => 'nullable|string|max:100',
             'model' => 'nullable|string|max:100',
             'total_pon_ports' => 'required|integer|min:1',
+            'pon_capacity' => 'nullable|integer|min:1',
             'location' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
@@ -82,7 +95,28 @@ class OltController extends Controller
             'pon_vlans' => 'nullable|array',
         ]);
 
+        $oldPonCount = $olt->total_pon_ports;
         $olt->update($validated);
+        
+        $capacity = $request->input('pon_capacity', 64);
+        
+        // Add new PONs if increased
+        if ($olt->total_pon_ports > $oldPonCount) {
+            for ($i = $oldPonCount + 1; $i <= $olt->total_pon_ports; $i++) {
+                $olt->pons()->create([
+                    'port_number' => $i,
+                    'name' => "PON {$i}",
+                    'capacity' => $capacity,
+                    'status' => 'active'
+                ]);
+            }
+        }
+
+        // We optionally could update existing PON capacities if requested, 
+        // but typically this isn't strictly required unless explicitly asked.
+        if ($request->has('pon_capacity')) {
+            $olt->pons()->update(['capacity' => $capacity]);
+        }
 
         return redirect()->route('olts.index')
             ->with('success', 'Data OLT berhasil diperbarui.');

@@ -9,6 +9,8 @@ cd /var/www/APM2
 git config --global --add safe.directory /var/www/APM2
 
 # Ensure we have the latest
+git reset --hard HEAD
+git clean -fd
 git pull origin main
 
 # Set proper permissions for Laravel

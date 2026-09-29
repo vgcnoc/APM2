@@ -105,6 +105,11 @@
                                     <p v-if="form.errors.total_pon_ports" class="text-red-500 text-xs mt-1">{{ form.errors.total_pon_ports }}</p>
                                 </div>
                                 <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Kapasitas (ONT per PON)</label>
+                                    <input v-model="form.pon_capacity" type="number" min="1" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Default: 64" />
+                                    <p v-if="form.errors.pon_capacity" class="text-red-500 text-xs mt-1">{{ form.errors.pon_capacity }}</p>
+                                </div>
+                                <div>
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Brand / Merk</label>
                                     <input v-model="form.brand" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="contoh: ZTE" />
                                 </div>
@@ -226,6 +231,7 @@ const form = useForm({
     brand: '',
     model: '',
     total_pon_ports: 8,
+    pon_capacity: 64,
     pon_vlans: [],
     location: '',
     latitude: '',
@@ -282,6 +288,7 @@ function openEditModal(olt) {
     form.brand = olt.brand || '';
     form.model = olt.model || '';
     form.total_pon_ports = olt.total_pon_ports;
+    form.pon_capacity = 64; // Default
     form.pon_vlans = olt.pon_vlans || [];
     form.location = olt.location || '';
     form.latitude = olt.latitude || '';
