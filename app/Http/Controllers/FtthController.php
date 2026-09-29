@@ -92,11 +92,13 @@ class FtthController extends Controller
         $design->load('area');
         $devices = FtthDesignDevice::where('design_id', $design->id)->get();
         $routes = FtthCableRoute::where('design_id', $design->id)->get();
+        $materials = \App\Models\Material::orderBy('name')->get();
 
         return Inertia::render('Ftth/Show', [
             'design' => $design,
             'devices' => $devices,
             'routes' => $routes,
+            'materials' => $materials,
         ]);
     }
 
@@ -147,6 +149,44 @@ class FtthController extends Controller
     {
         $design->delete();
         return redirect()->route('ftth.index')->with('success', 'Perancangan berhasil dihapus.');
+    }
+
+    /**
+     * Submit Review (Update status & materials)
+     */
+    public function submitReview(Request $request, FtthDesign $design)
+    {
+        $validated = $request->validate([
+            'status' => 'required|string',
+            'materials' => 'array',
+            'materials.*.id' => 'required|exists:materials,id',
+            'materials.*.quantity' => 'required|numeric|min:0',
+        ]);
+
+        $design->update(['status' => $validated['status']]);
+
+        // Sync materials
+        FtthDesignMaterial::where('design_id', $design->id)->delete();
+        
+        if (!empty($validated['materials'])) {
+            $insertData = collect($validated['materials'])->filter(function ($item) {
+                return $item['quantity'] > 0;
+            })->map(function ($item) use ($design) {
+                return [
+                    'design_id' => $design->id,
+                    'material_id' => $item['id'],
+                    'quantity' => $item['quantity'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            })->toArray();
+
+            if (!empty($insertData)) {
+                FtthDesignMaterial::insert($insertData);
+            }
+        }
+
+        return response()->json(['success' => true]);
     }
 
     /**

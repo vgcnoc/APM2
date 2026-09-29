@@ -170,18 +170,116 @@
                 </div>
             </div>
         </div>
+        <!-- Review Modal -->
+        <div v-if="showReviewModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" @click="showReviewModal = false"></div>
+            <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl animate-fade-in-up max-h-[90vh] flex flex-col">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Review & Kebutuhan Material</h3>
+                        <p class="text-xs text-gray-500">Kalkulasi otomatis berdasarkan peta perancangan</p>
+                    </div>
+                    <button @click="showReviewModal = false" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                </div>
+                
+                <div class="p-6 overflow-y-auto flex-1 space-y-6">
+                    <!-- Infrastructure Summary -->
+                    <div>
+                        <h4 class="text-sm font-bold text-gray-900 mb-3 border-b pb-2">Ringkasan Infrastruktur Baru</h4>
+                        <div class="grid grid-cols-4 gap-4">
+                            <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center">
+                                <p class="text-xs text-gray-500">Kabel (Net)</p>
+                                <p class="text-lg font-bold text-gray-900">{{ formatDistance(design.total_distance) }}</p>
+                            </div>
+                            <div class="bg-blue-50 p-3 rounded-xl border border-blue-200 text-center">
+                                <p class="text-xs text-blue-600">Estimasi Kabel ({{ design.slack_percentage }}% slack)</p>
+                                <p class="text-lg font-bold text-blue-700">{{ formatDistance(estimatedCable) }}</p>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center">
+                                <p class="text-xs text-gray-500">Perangkat Pasif</p>
+                                <p class="text-lg font-bold text-gray-900">{{ devices.filter(d => ['odc', 'odp'].includes(d.device_type)).length }} unit</p>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 text-center">
+                                <p class="text-xs text-gray-500">Tiang Baru</p>
+                                <p class="text-lg font-bold text-gray-900">{{ devices.filter(d => d.device_type === 'tiang').length }} batang</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Auto-calculated Materials Table -->
+                    <div>
+                        <h4 class="text-sm font-bold text-gray-900 mb-3 border-b pb-2 flex items-center justify-between">
+                            <span>Daftar Material</span>
+                            <button @click="autoCalculateMaterials" class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg hover:bg-indigo-100">🔄 Kalkulasi Ulang</button>
+                        </h4>
+                        
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="py-2 px-3 text-xs font-semibold text-gray-600 border-b">Material</th>
+                                    <th class="py-2 px-3 text-xs font-semibold text-gray-600 border-b w-32">Kategori</th>
+                                    <th class="py-2 px-3 text-xs font-semibold text-gray-600 border-b text-right w-24">Stok Saat Ini</th>
+                                    <th class="py-2 px-3 text-xs font-semibold text-gray-600 border-b text-right w-24">Dibutuhkan</th>
+                                    <th class="py-2 px-3 text-xs font-semibold text-gray-600 border-b text-center w-20">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="mat in calculatedMaterials" :key="mat.id" class="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                                    <td class="py-2 px-3 text-sm text-gray-900">{{ mat.name }}</td>
+                                    <td class="py-2 px-3 text-xs text-gray-500">{{ mat.category || '-' }}</td>
+                                    <td class="py-2 px-3 text-sm text-gray-900 text-right">{{ mat.stock }} {{ mat.unit }}</td>
+                                    <td class="py-2 px-3">
+                                        <input type="number" v-model="mat.quantity" class="w-full px-2 py-1 text-sm text-right border border-gray-300 rounded focus:border-blue-500" min="0">
+                                    </td>
+                                    <td class="py-2 px-3 text-center">
+                                        <span v-if="mat.quantity > mat.stock" class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold">Defisit</span>
+                                        <span v-else-if="mat.quantity > 0" class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">Cukup</span>
+                                        <span v-else class="text-[10px] text-gray-400">-</span>
+                                    </td>
+                                </tr>
+                                <tr v-if="calculatedMaterials.length === 0">
+                                    <td colspan="5" class="py-4 text-center text-xs text-gray-500">Klik "Kalkulasi Ulang" atau tambahkan perangkat di peta.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Status Change -->
+                    <div>
+                        <h4 class="text-sm font-bold text-gray-900 mb-3 border-b pb-2">Status Perancangan</h4>
+                        <select v-model="reviewForm.status" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                            <option value="draft">Draft - Sedang digambar</option>
+                            <option value="design">Perancangan - Selesai digambar</option>
+                            <option value="review">Review - Menunggu persetujuan</option>
+                            <option value="approved">Disetujui - Siap dibangun</option>
+                            <option value="construction">Pembangunan - Sedang dibangun</option>
+                            <option value="completed">Selesai - Telah diaktivasi</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 shrink-0 rounded-b-2xl">
+                    <button @click="showReviewModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">Batal</button>
+                    <button @click="submitReview" :disabled="reviewForm.processing" class="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+                        <svg v-if="reviewForm.processing" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                        Simpan Hasil Review
+                    </button>
+                </div>
+            </div>
+        </div>
     </AppLayout>
 </template>
 
 <script setup>
 import { ref, onMounted, nextTick, computed } from 'vue';
-import { router, Link } from '@inertiajs/vue3';
+import { router, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     design: Object,
     devices: Array,
     routes: Array,
+    materials: Array,
 });
 
 // UI State
@@ -212,6 +310,14 @@ const layers = ref([
 const selectedDeviceType = ref('odp');
 const showDeviceModal = ref(false);
 const newDeviceData = ref({ type: '', name: '', lat: 0, lng: 0, capacity: 8 });
+
+// Review Modal State
+const showReviewModal = ref(false);
+const calculatedMaterials = ref([]);
+const reviewForm = useForm({
+    status: props.design.status,
+    materials: [],
+});
 
 // Measuring State
 const isMeasuring = computed(() => mode.value === 'measure');
@@ -449,8 +555,63 @@ const loadData = (L) => {
     }
 };
 
+const autoCalculateMaterials = () => {
+    calculatedMaterials.value = [];
+    
+    let cableNeeded = estimatedCable.value;
+    let poleNeeded = props.devices?.filter(d => d.device_type === 'tiang').length || 0;
+    let odcNeeded = props.devices?.filter(d => d.device_type === 'odc').length || 0;
+    let odpNeeded = props.devices?.filter(d => d.device_type === 'odp').length || 0;
+    let closureNeeded = odcNeeded + odpNeeded;
+
+    props.materials.forEach(m => {
+        let qty = 0;
+        const name = m.name.toLowerCase();
+        
+        if (name.includes('kabel') || name.includes('fo') || name.includes('fiber')) {
+            qty = cableNeeded;
+        } else if (name.includes('tiang')) {
+            qty = poleNeeded;
+        } else if (name.includes('odc')) {
+            qty = odcNeeded;
+        } else if (name.includes('odp')) {
+            qty = odpNeeded;
+        } else if (name.includes('closure') || name.includes('joint')) {
+            qty = closureNeeded;
+        } else if (name.includes('klem') || name.includes('claim')) {
+            qty = poleNeeded * 2; // Estimasi 2 klem per tiang
+        }
+
+        if (qty > 0) {
+            calculatedMaterials.value.push({
+                id: m.id,
+                name: m.name,
+                category: m.category,
+                unit: m.unit || 'pcs',
+                stock: m.stock || 0,
+                quantity: Math.ceil(qty)
+            });
+        }
+    });
+};
+
 const openReview = () => {
-    alert("Fitur Review & Simpan akan mengkalkulasi kebutuhan material dan menampilkan ringkasan.");
+    autoCalculateMaterials();
+    showReviewModal.value = true;
+};
+
+const submitReview = () => {
+    reviewForm.materials = calculatedMaterials.value.map(m => ({
+        id: m.id,
+        quantity: m.quantity
+    }));
+
+    reviewForm.post(`/ftth/${props.design.id}/review`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showReviewModal.value = false;
+        }
+    });
 };
 </script>
 

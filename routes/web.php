@@ -121,6 +121,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('ftth/api/map-data', [\App\Http\Controllers\FtthController::class, 'mapData'])->name('ftth.map-data');
     Route::post('ftth', [\App\Http\Controllers\FtthController::class, 'store'])->name('ftth.store');
     Route::post('ftth/{design}/update', [\App\Http\Controllers\FtthController::class, 'update'])->name('ftth.update.post');
+    Route::post('ftth/{design}/review', [\App\Http\Controllers\FtthController::class, 'submitReview'])->name('ftth.submit-review');
     Route::post('ftth/{design}/delete', [\App\Http\Controllers\FtthController::class, 'destroy'])->name('ftth.destroy.post');
     Route::post('ftth/cable-routes', [\App\Http\Controllers\FtthController::class, 'storeCableRoute'])->name('ftth.cable-routes.store');
     Route::post('ftth/devices', [\App\Http\Controllers\FtthController::class, 'storeDevice'])->name('ftth.devices.store');
