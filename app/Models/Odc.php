@@ -58,6 +58,11 @@ class Odc extends Model
         return $this->hasMany(Odp::class);
     }
 
+    public function area(): BelongsTo
+    {
+        return $this->belongsTo(Area::class);
+    }
+
     // ── Computed ───────────────────────────────────────────────
 
     public function getTotalOdpsAttribute(): int
