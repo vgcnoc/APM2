@@ -20,6 +20,7 @@
     "dependencies": {
         "@heroicons/vue": "^2.1",
         "apexcharts": "^3.45",
+        "leaflet": "^1.9.4",
         "vue3-apexcharts": "^1.5"
     }
 }

@@ -115,6 +115,16 @@ Route::middleware(['auth'])->group(function () {
     Route::post('materials/{material}/add-stock', [MaterialController::class, 'addStock'])->name('materials.add-stock');
     Route::post('materials/{material}/delete', [MaterialController::class, 'destroy'])->name('materials.destroy.post');
 
+    // FTTH Mapping
+    Route::get('ftth', [\App\Http\Controllers\FtthController::class, 'index'])->name('ftth.index');
+    Route::get('ftth/map-data', [\App\Http\Controllers\FtthController::class, 'mapData'])->name('ftth.map-data');
+    Route::post('ftth', [\App\Http\Controllers\FtthController::class, 'store'])->name('ftth.store');
+    Route::post('ftth/{design}/update', [\App\Http\Controllers\FtthController::class, 'update'])->name('ftth.update.post');
+    Route::post('ftth/{design}/delete', [\App\Http\Controllers\FtthController::class, 'destroy'])->name('ftth.destroy.post');
+    Route::post('ftth/cable-routes', [\App\Http\Controllers\FtthController::class, 'storeCableRoute'])->name('ftth.cable-routes.store');
+    Route::post('ftth/devices', [\App\Http\Controllers\FtthController::class, 'storeDevice'])->name('ftth.devices.store');
+    Route::post('ftth/devices/{device}/position', [\App\Http\Controllers\FtthController::class, 'updateDevicePosition'])->name('ftth.devices.position');
+
     Route::resource('material-transactions', MaterialTransactionController::class)->except(['edit', 'update', 'destroy']);
     Route::post('material-transactions/{item}/register-ont', [MaterialTransactionController::class, 'registerOnt'])->name('material-transactions.register-ont');
     Route::post('material-transactions/{item}/reset-ont', [MaterialTransactionController::class, 'resetOnt'])->name('material-transactions.reset-ont');
