@@ -135,6 +135,9 @@ const selectRole = (role) => {
 };
 
 const formatPermissionName = (name) => {
+    if (name.startsWith('menu_')) {
+        return "Menu " + name.replace('menu_', '').split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
     const parts = name.split('_');
     if (parts.length > 1) {
         return parts[1].charAt(0).toUpperCase() + parts[1].slice(1);

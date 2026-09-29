@@ -16,12 +16,22 @@ class RoleAndPermissionSeeder extends Seeder
 
         // create permissions
         $permissions = [
-            'dashboard_view',
-            'customers_view', 'customers_create', 'customers_edit', 'customers_delete',
-            'network_view', 'network_create', 'network_edit', 'network_delete',
-            'ftth_view', 'ftth_create', 'ftth_edit', 'ftth_delete',
-            'materials_view', 'materials_create', 'materials_edit', 'materials_delete',
-            'roles_manage', 'users_manage', 'settings_manage'
+            // General CRUD Permissions
+            'customers_create', 'customers_edit', 'customers_delete',
+            'network_create', 'network_edit', 'network_delete',
+            'ftth_create', 'ftth_edit', 'ftth_delete',
+            'materials_create', 'materials_edit', 'materials_delete',
+            
+            // Menu Permissions
+            'menu_dashboard',
+            'menu_customers_booking', 'menu_customers_survey', 'menu_customers_installed', 
+            'menu_customers_activation', 'menu_customers_active', 'menu_customers_all',
+            'menu_ftth', 'menu_network_topology', 'menu_network_data',
+            'menu_network_olt', 'menu_network_odc', 'menu_network_odp', 'menu_network_ont',
+            'menu_materials', 'menu_material_transactions',
+            'menu_hr_employees', 'menu_hr_positions',
+            'menu_settings_areas', 'menu_settings_roles', 'menu_settings_branding', 'menu_settings_api',
+            'menu_users', 'menu_internet_packages'
         ];
 
         foreach ($permissions as $permission) {
@@ -34,23 +44,30 @@ class RoleAndPermissionSeeder extends Seeder
 
         $roleNoc = Role::firstOrCreate(['name' => 'noc']);
         $roleNoc->givePermissionTo([
-            'dashboard_view', 'network_view', 'network_create', 'network_edit', 'network_delete',
-            'ftth_view', 'ftth_create', 'ftth_edit', 'ftth_delete'
+            'menu_dashboard', 'menu_ftth', 'menu_network_topology', 'menu_network_data',
+            'menu_network_olt', 'menu_network_odc', 'menu_network_odp', 'menu_network_ont',
+            'network_create', 'network_edit', 'network_delete',
+            'ftth_create', 'ftth_edit', 'ftth_delete',
+            'menu_customers_installed', 'menu_customers_activation'
         ]);
 
         $roleTeknisi = Role::firstOrCreate(['name' => 'teknisi']);
         $roleTeknisi->givePermissionTo([
-            'dashboard_view', 'network_view', 'ftth_view', 'materials_view'
+            'menu_dashboard', 'menu_ftth', 'menu_materials', 'menu_material_transactions',
+            'menu_customers_installed'
         ]);
 
         $roleCs = Role::firstOrCreate(['name' => 'cs']);
         $roleCs->givePermissionTo([
-            'dashboard_view', 'customers_view', 'customers_create', 'customers_edit'
+            'menu_dashboard', 'menu_customers_booking', 'menu_customers_survey', 
+            'menu_customers_active', 'menu_customers_all',
+            'customers_create', 'customers_edit'
         ]);
 
         $roleSales = Role::firstOrCreate(['name' => 'sales']);
         $roleSales->givePermissionTo([
-            'dashboard_view', 'customers_view', 'customers_create'
+            'menu_dashboard', 'menu_customers_booking', 'menu_customers_active',
+            'customers_create'
         ]);
 
         // assign role to existing users based on their 'role' column
