@@ -2,8 +2,10 @@
     <AppLayout title="Detail Pelanggan" :subtitle="customer.customer_code">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            <!-- Profile Card -->
-            <div class="glass-card p-6 animate-fade-in-up">
+            <!-- Left Column -->
+            <div class="space-y-6">
+                <!-- Profile Card -->
+                <div class="glass-card p-6 animate-fade-in-up">
                 <div class="flex flex-col items-center text-center mb-6">
                     <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-gray-900 mb-4 shadow-xl shadow-blue-500/25">
                         {{ customer.name.charAt(0) }}
@@ -94,7 +96,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+            </div>
 
         <!-- Right Column -->
             <div class="lg:col-span-2 space-y-6">
