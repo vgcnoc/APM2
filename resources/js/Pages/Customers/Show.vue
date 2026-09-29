@@ -32,7 +32,71 @@
                 </div>
             </div>
 
-            <!-- Right Column -->
+            <!-- Network Path -->
+            <div v-if="customer.ont" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-indigo-500/20">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <span class="text-indigo-500">🔗</span> Network Path
+                    </h3>
+                    <Link :href="`/network-topology?area_id=${customer.area_id}`" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-1 rounded-md transition-colors">
+                        Lihat Map
+                    </Link>
+                </div>
+                <div class="flex flex-col gap-2 relative ml-2">
+                    <div class="absolute left-[7px] top-2 bottom-2 w-[2px] bg-slate-200"></div>
+                    
+                    <div class="flex items-center gap-3 relative z-10">
+                        <div class="w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center bg-slate-400"></div>
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">SERVER / AREA</span>
+                            <span class="text-xs font-medium text-slate-800">{{ customer.area || 'Unknown Area' }}</span>
+                        </div>
+                    </div>
+                    
+                    <div v-if="customer.ont.odp?.odc?.olt" class="flex items-center gap-3 relative z-10">
+                        <div class="w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center bg-indigo-500"></div>
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">OLT</span>
+                            <span class="text-xs font-medium text-slate-800">{{ customer.ont.odp.odc.olt.name }}</span>
+                        </div>
+                    </div>
+                    
+                    <div v-if="customer.ont.odp?.odc?.pon" class="flex items-center gap-3 relative z-10">
+                        <div class="w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center bg-purple-500"></div>
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">PON PORT {{ customer.ont.odp.odc.pon.port_number }}</span>
+                            <span class="text-xs font-medium text-slate-800">{{ customer.ont.odp.odc.pon.name || `PON ${customer.ont.odp.odc.pon.port_number}` }}</span>
+                        </div>
+                    </div>
+                    
+                    <div v-if="customer.ont.odp?.odc" class="flex items-center gap-3 relative z-10">
+                        <div class="w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center bg-orange-500"></div>
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">ODC</span>
+                            <span class="text-xs font-medium text-slate-800">{{ customer.ont.odp.odc.name }}</span>
+                        </div>
+                    </div>
+                    
+                    <div v-if="customer.ont.odp" class="flex items-center gap-3 relative z-10">
+                        <div class="w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center bg-sky-500"></div>
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">ODP</span>
+                            <span class="text-xs font-medium text-slate-800">{{ customer.ont.odp.name }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-3 relative z-10">
+                        <div class="w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center bg-blue-500 scale-125"></div>
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">PORT ONT</span>
+                            <span class="text-xs font-medium text-slate-800">Port {{ customer.ont.port_number }} ({{ customer.ont.serial_number }})</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column -->
             <div class="lg:col-span-2 space-y-6">
 
                 <!-- Survey & Booking Info -->

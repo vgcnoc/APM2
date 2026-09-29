@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\NetworkTopologyController;
 use App\Http\Controllers\OdcController;
 use App\Http\Controllers\OdpController;
 use App\Http\Controllers\OltController;
@@ -87,6 +88,9 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('olts', OltController::class);
     Route::post('olts/{olt}/update', [OltController::class, 'update'])->name('olts.update.post');
     Route::post('olts/{olt}/delete', [OltController::class, 'destroy'])->name('olts.destroy.post');
+
+    // Network Topology
+    Route::get('network-topology', [NetworkTopologyController::class, 'index'])->name('network-topology.index');
 
     Route::resource('odcs', OdcController::class);
     Route::post('odcs/{odc}/update', [OdcController::class, 'update'])->name('odcs.update.post');

@@ -41,6 +41,11 @@ class Olt extends Model
     /**
      * OLT memiliki banyak ODC (1:N)
      */
+    public function pons(): HasMany
+    {
+        return $this->hasMany(OltPon::class);
+    }
+
     public function odcs(): HasMany
     {
         return $this->hasMany(Odc::class);

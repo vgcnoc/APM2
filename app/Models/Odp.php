@@ -61,6 +61,11 @@ class Odp extends Model
         return $this->hasMany(Ont::class);
     }
 
+    public function ports(): HasMany
+    {
+        return $this->hasMany(OdpPort::class);
+    }
+
     /**
      * ODP dimiliki oleh satu Area (N:1)
      */

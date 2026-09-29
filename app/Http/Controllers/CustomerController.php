@@ -349,6 +349,7 @@ class CustomerController extends Controller
         $customer->load([
             'package',
             'ont.odp.odc.olt',
+            'ont.odp.odc.pon',
             'invoices' => fn ($q) => $q->orderByDesc('period_year')->orderByDesc('period_month')->limit(12),
             'invoices.payments',
             'tickets' => fn ($q) => $q->orderByDesc('created_at')->limit(10),

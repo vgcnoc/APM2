@@ -12,6 +12,7 @@ class Ont extends Model
 
     protected $fillable = [
         'odp_id',
+        'odp_port_id',
         'customer_id',
         'area_id',
         'serial_number',
@@ -65,6 +66,11 @@ class Ont extends Model
     public function odp(): BelongsTo
     {
         return $this->belongsTo(Odp::class);
+    }
+
+    public function port(): BelongsTo
+    {
+        return $this->belongsTo(OdpPort::class, 'odp_port_id');
     }
 
     /**

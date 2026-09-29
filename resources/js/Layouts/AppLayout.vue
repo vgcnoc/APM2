@@ -139,6 +139,7 @@ const menuItems = [
     { type: 'link', href: '/customers/active', icon: 'badge-check', label: 'Pelanggan Aktif', active: (url) => url.startsWith('/customers/active') },
     { type: 'link', href: '/customers', icon: 'users', label: 'Semua Pelanggan', active: (url) => url === '/customers' },
     { type: 'group', label: 'INFRASTRUKTUR' },
+    { type: 'link', href: '/network-topology', icon: 'globe', label: 'Network Topology', active: (url) => url.startsWith('/network-topology') },
     { type: 'link', href: '/network-data', icon: 'globe', label: 'Data Jaringan', active: (url) => url.startsWith('/network-data') },
     { type: 'link', href: '/olts', icon: 'server', label: 'OLT', active: (url) => url.startsWith('/olts') },
     { type: 'link', href: '/odcs', icon: 'box', label: 'ODC', active: (url) => url.startsWith('/odcs') },

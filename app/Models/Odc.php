@@ -13,6 +13,7 @@ class Odc extends Model
 
     protected $fillable = [
         'olt_id',
+        'pon_id',
         'pon_port',
         'area_id',
         'name',
@@ -22,6 +23,7 @@ class Odc extends Model
         'latitude',
         'longitude',
         'capacity',
+        'splitter_ratio',
         'description',
         'status',
         'start_point',
@@ -48,6 +50,11 @@ class Odc extends Model
     public function olt(): BelongsTo
     {
         return $this->belongsTo(Olt::class);
+    }
+
+    public function pon(): BelongsTo
+    {
+        return $this->belongsTo(OltPon::class, 'pon_id');
     }
 
     /**
