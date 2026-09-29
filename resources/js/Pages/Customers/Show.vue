@@ -315,6 +315,31 @@
                                 </div>
                             </div>
                             
+                            <!-- Status Kelengkapan & Validasi -->
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-6">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="text-sm font-bold text-slate-700 uppercase tracking-wider">Status Form Laporan</h4>
+                                    <span :class="['px-3 py-1 rounded-full text-xs font-bold', isInstallationValid ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700']">
+                                        {{ isInstallationValid ? '🟢 SIAP DISELESAIKAN' : '🟠 DATA BELUM LENGKAP' }}
+                                    </span>
+                                </div>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-4">
+                                    <div :class="['flex items-center gap-1.5', isJamMulaiValid ? 'text-green-600' : 'text-gray-400']"><span v-if="isJamMulaiValid">✓</span><span v-else>○</span> Jam Mulai</div>
+                                    <div :class="['flex items-center gap-1.5', isMaterialValid ? 'text-green-600' : 'text-gray-400']"><span v-if="isMaterialValid">✓</span><span v-else>○</span> Material</div>
+                                    <div :class="['flex items-center gap-1.5', isOdpValid ? 'text-green-600' : 'text-gray-400']"><span v-if="isOdpValid">✓</span><span v-else>○</span> ODP</div>
+                                    <div :class="['flex items-center gap-1.5', isPortValid ? 'text-green-600' : 'text-gray-400']"><span v-if="isPortValid">✓</span><span v-else>○</span> Port ODP</div>
+                                    <div :class="['flex items-center gap-1.5', isRedamanValid ? 'text-green-600' : 'text-gray-400']"><span v-if="isRedamanValid">✓</span><span v-else>○</span> Redaman</div>
+                                    <div :class="['flex items-center gap-1.5', isFotoValid ? 'text-green-600' : 'text-gray-400']"><span v-if="isFotoValid">✓</span><span v-else>○</span> Dokumentasi</div>
+                                </div>
+                                
+                                <div v-if="!isInstallationValid && validationErrors.length > 0" class="bg-red-50 text-red-600 p-3 rounded-lg border border-red-100 text-xs">
+                                    <p class="font-bold mb-1 flex items-center gap-1"><span>❌</span> Lengkapi data berikut sebelum selesai:</p>
+                                    <ul class="list-disc pl-5 space-y-0.5">
+                                        <li v-for="err in validationErrors" :key="err">{{ err }}</li>
+                                    </ul>
+                                </div>
+                            </div>
+
                             <!-- Waktu Selesai -->
                             <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mt-4">
                                 <p class="text-xs font-semibold text-blue-800 uppercase tracking-wider mb-3">3. Jam Selesai Pekerjaan</p>
@@ -322,7 +347,7 @@
                                     <div>
                                         <div class="flex justify-between items-center mb-1">
                                             <label class="block text-xs font-medium text-gray-500">Jam Selesai</label>
-                                            <button type="button" @click="setNow('end_time')" :disabled="!!ontForm.end_time" :class="['text-[10px] px-3 py-1 rounded font-bold transition-colors shadow-sm', ontForm.end_time ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700']">SELESAI SEKARANG</button>
+                                            <button type="button" @click="handleSelesaiSekarang" :disabled="!isInstallationValid || !!ontForm.end_time" :class="['text-[10px] px-3 py-1 rounded font-bold transition-colors shadow-sm', !isInstallationValid ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : (ontForm.end_time ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700')]">SELESAI SEKARANG</button>
                                         </div>
                                         <input v-model="ontForm.end_time" type="time" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:ring-0 cursor-not-allowed" :required="isInstallingHardware" readonly />
                                     </div>
@@ -345,8 +370,8 @@
                                         <li v-for="(error, field) in ontForm.errors" :key="field">{{ error }}</li>
                                     </ul>
                                 </div>
-                                <button type="submit" :disabled="ontForm.processing" class="btn-primary w-full md:w-auto text-sm py-2 px-6 shadow-md hover:shadow-lg">
-                                    {{ ontForm.processing ? 'Menyimpan Laporan...' : 'Kirim Laporan & Selesaikan Instalasi' }}
+                                <button type="button" @click="confirmSubmit" :disabled="!isReadyToSubmit || ontForm.processing" :class="['btn-primary w-full md:w-auto text-sm py-2 px-6 shadow-md transition-all', (!isReadyToSubmit || ontForm.processing) ? 'opacity-50 cursor-not-allowed bg-gray-400 hover:bg-gray-400 shadow-none' : 'hover:shadow-lg']">
+                                    {{ ontForm.processing ? 'Mengirim...' : 'Kirim Laporan & Selesaikan Instalasi' }}
                                 </button>
                             </div>
 
@@ -653,6 +678,55 @@
                 </div>
             </div>
         </Teleport>
+        <!-- Confirmation Modal -->
+        <div v-if="showConfirmModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden animate-fade-in-up">
+                <div class="p-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100/50">
+                    <h3 class="text-lg font-bold text-blue-900 flex items-center gap-2">
+                        <span>Konfirmasi Selesai Instalasi</span>
+                    </h3>
+                </div>
+                <div class="p-6 space-y-4 max-h-[60vh] overflow-y-auto text-sm">
+                    <p class="font-medium text-gray-700">Apakah Anda yakin ingin menyelesaikan instalasi?</p>
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="text-gray-500 font-medium">Pelanggan:</div>
+                            <div class="font-bold">{{ customer.name }}</div>
+                            
+                            <div class="text-gray-500 font-medium">ODP:</div>
+                            <div class="font-bold">{{ selectedOdp?.name }}</div>
+                            
+                            <div class="text-gray-500 font-medium">Port:</div>
+                            <div class="font-bold">Port {{ ontForm.port_number }}</div>
+                            
+                            <div class="text-gray-500 font-medium">ONT:</div>
+                            <div class="font-bold">{{ getInstalledOntName() }}</div>
+                            
+                            <div class="text-gray-500 font-medium">Jam Mulai:</div>
+                            <div class="font-bold">{{ ontForm.start_time }}</div>
+                            
+                            <div class="text-gray-500 font-medium">Jam Selesai:</div>
+                            <div class="font-bold">{{ ontForm.end_time }}</div>
+                            
+                            <div class="text-gray-500 font-medium">Total Durasi:</div>
+                            <div class="font-bold text-blue-600">{{ durationText }}</div>
+                            
+                            <div class="text-gray-500 font-medium">Material:</div>
+                            <div class="font-bold">{{ hardwareItems.length }} item</div>
+                            
+                            <div class="text-gray-500 font-medium">Dokumentasi:</div>
+                            <div class="font-bold text-green-600">Lengkap ✓</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+                    <button type="button" @click="showConfirmModal = false" :disabled="ontForm.processing" class="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm">Batal</button>
+                    <button type="button" @click="executeSubmit" :disabled="ontForm.processing" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-md transition-all flex items-center gap-2">
+                        {{ ontForm.processing ? 'Mengirim...' : 'Ya, Kirim & Selesaikan' }}
+                    </button>
+                </div>
+            </div>
+        </div>
     </AppLayout>
 </template>
 
@@ -844,6 +918,77 @@ const ontForm = useForm({
 });
 
 const selectedOdp = computed(() => props.availableOdps?.find(o => o.id == ontForm.odp_id));
+
+const isJamMulaiValid = computed(() => !!ontForm.start_time);
+const isMaterialValid = computed(() => hardwareItems.value.length === 0 || hardwareItems.value.every(i => i.isInstalled));
+const isOdpValid = computed(() => !!ontForm.odp_id && selectedOdp.value && selectedOdp.value.area_id === props.customer.area_id);
+const isPortValid = computed(() => !!ontForm.port_number && !isPortUsed(selectedOdp.value, ontForm.port_number));
+const isRedamanValid = computed(() => !!ontForm.rx_power && !isNaN(parseFloat(ontForm.rx_power)));
+const isFotoValid = computed(() => !!ontForm.photo_odp && !!ontForm.photo_installation && !!ontForm.photo_ont && !!ontForm.photo_customer && !!ontForm.photo_redaman);
+
+const validationErrors = computed(() => {
+    const errors = [];
+    if (!isJamMulaiValid.value) errors.push('Jam Mulai Pekerjaan belum diisi.');
+    if (!isMaterialValid.value) errors.push('Masih ada material wajib yang belum diselesaikan.');
+    if (!isOdpValid.value) errors.push('ODP belum dipilih atau Area ODP tidak sesuai pelanggan.');
+    if (!isPortValid.value) errors.push('Port ODP belum dipilih atau sudah digunakan.');
+    if (!isRedamanValid.value) errors.push('Redaman belum diisi dengan angka valid.');
+    if (!isFotoValid.value) {
+        if (!ontForm.photo_odp) errors.push('Foto ODP / Port wajib diunggah.');
+        if (!ontForm.photo_installation) errors.push('Foto Instalasi di Rumah wajib diunggah.');
+        if (!ontForm.photo_ont) errors.push('Foto Posisi ONT wajib diunggah.');
+        if (!ontForm.photo_customer) errors.push('Foto Selfie Pelanggan wajib diunggah.');
+        if (!ontForm.photo_redaman) errors.push('Foto Redaman wajib diunggah.');
+    }
+    return errors;
+});
+
+const isInstallationValid = computed(() => {
+    return isJamMulaiValid.value && isMaterialValid.value && isOdpValid.value && isPortValid.value && isRedamanValid.value && isFotoValid.value;
+});
+
+const isReadyToSubmit = computed(() => {
+    return isInstallationValid.value && !!ontForm.end_time;
+});
+
+const showConfirmModal = ref(false);
+
+function handleSelesaiSekarang() {
+    if (!isInstallationValid.value) {
+        alert("Lengkapi seluruh data instalasi terlebih dahulu.");
+        return;
+    }
+    
+    // Validasi jam selesai vs jam mulai
+    const now = new Date();
+    const currentHrs = String(now.getHours()).padStart(2, '0');
+    const currentMins = String(now.getMinutes()).padStart(2, '0');
+    const currentTimeStr = `${currentHrs}:${currentMins}`;
+    
+    if (ontForm.start_time) {
+        if (currentTimeStr < ontForm.start_time) {
+            alert("Jam selesai tidak boleh lebih awal dari jam mulai.");
+            return;
+        }
+    }
+    
+    setNow('end_time');
+}
+
+function confirmSubmit() {
+    if (!isReadyToSubmit.value) return;
+    showConfirmModal.value = true;
+}
+
+function executeSubmit() {
+    showConfirmModal.value = false;
+    submitOnt();
+}
+
+function getInstalledOntName() {
+    const ontItem = hardwareItems.value.find(i => i.type === 'ONT');
+    return ontItem ? ontItem.name : '-';
+}
 
 const durationText = computed(() => {
     if (!ontForm.start_time || !ontForm.end_time) return '-';

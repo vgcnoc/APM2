@@ -475,14 +475,14 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'odp_id' => 'required|exists:odps,id',
             'port_number' => 'required|integer|min:1',
-            'rx_power' => 'nullable|string',
-            'start_time' => 'nullable|date_format:H:i',
-            'end_time' => 'nullable|date_format:H:i',
-            'photo_odp' => 'nullable|image|max:5120',
-            'photo_installation' => 'nullable|image|max:5120',
-            'photo_ont' => 'nullable|image|max:5120',
-            'photo_customer' => 'nullable|image|max:5120',
-            'photo_redaman' => 'nullable|image|max:5120',
+            'rx_power' => 'required|string',
+            'start_time' => 'required|date_format:H:i',
+            'end_time' => 'required|date_format:H:i',
+            'photo_odp' => 'required|image|max:5120',
+            'photo_installation' => 'required|image|max:5120',
+            'photo_ont' => 'required|image|max:5120',
+            'photo_customer' => 'required|image|max:5120',
+            'photo_redaman' => 'required|image|max:5120',
         ]);
 
         if ($request->hasFile('photo_odp')) $validated['photo_odp'] = $request->file('photo_odp')->store('installations', 'public');
@@ -496,7 +496,11 @@ class CustomerController extends Controller
             return back()->withErrors(['odp_id' => 'ODP tidak sesuai dengan Area/Wilayah pelanggan.']);
         }
 
-        DB::transaction(function () use ($validated, $customer, $odp) {
+        if ($validated['end_time'] < $validated['start_time']) {
+            return back()->withErrors(['end_time' => 'Jam selesai tidak boleh lebih awal dari jam mulai.']);
+        }
+
+        DB::transaction(function () use ($validated, $customer, $odp, $request) {
             // Check if customer already has an ONT linked (e.g. from assignInstall)
             $ont = Ont::where('customer_id', $customer->id)->first();
             
@@ -537,6 +541,17 @@ class CustomerController extends Controller
             // Update used_ports di ODP
             $odp = Odp::find($validated['odp_id']);
             $odp->increment('used_ports');
+
+            // Update odp_ports if exists
+            $odpPort = \App\Models\OdpPort::where('odp_id', $odp->id)
+                ->where('port_number', $validated['port_number'])
+                ->first();
+            if ($odpPort) {
+                $odpPort->update([
+                    'status' => 'used',
+                    'ont_id' => $ont->id
+                ]);
+            }
 
             // Jika ODP penuh, update statusnya
             if ($odp->used_ports >= $odp->total_ports) {
