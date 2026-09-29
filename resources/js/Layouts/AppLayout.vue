@@ -21,7 +21,7 @@
 
             <!-- Navigation -->
             <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-                <template v-for="(item, index) in menuItems" :key="index">
+                <template v-for="(item, index) in filteredMenuItems" :key="index">
                     <!-- Group Label -->
                     <div v-if="item.type === 'group' && sidebarOpen" class="pt-5 pb-2 px-4">
                         <span class="text-[10px] font-bold text-gray-500 tracking-widest uppercase">{{ item.label }}</span>
@@ -123,39 +123,34 @@ const sidebarOpen = ref(true);
 const mobileMenuOpen = ref(false);
 
 const menuItems = [
-    { type: 'link', href: '/', icon: 'dashboard', label: 'Dashboard', active: (url) => url === '/' },
+    { type: 'link', href: '/', icon: 'dashboard', label: 'Dashboard', active: (url) => url === '/', permission: 'dashboard_view' },
     { type: 'group', label: 'DATA CUSTOMERS' },
-    { type: 'link', href: '/customers/booking', icon: 'document-add', label: 'Data Booking', active: (url) => url.startsWith('/customers/booking') },
-    { type: 'link', href: '/customers/survey', icon: 'clipboard-check', label: 'Survey', active: (url) => url.startsWith('/customers/survey') },
-    { type: 'link', href: '/customers/installed', icon: 'cog', label: 'Instalasi', active: (url) => url.startsWith('/customers/installed') },
-    { type: 'link', href: '/customers/activation', icon: 'key', label: 'Aktivasi', active: (url) => url.startsWith('/customers/activation') },
-    { type: 'link', href: '/customers/active', icon: 'badge-check', label: 'Pelanggan Aktif', active: (url) => url.startsWith('/customers/active') },
-    { type: 'link', href: '/customers', icon: 'users', label: 'Semua Pelanggan', active: (url) => url === '/customers' },
+    { type: 'link', href: '/customers/booking', icon: 'document-add', label: 'Data Booking', active: (url) => url.startsWith('/customers/booking'), permission: 'customers_view' },
+    { type: 'link', href: '/customers/survey', icon: 'clipboard-check', label: 'Survey', active: (url) => url.startsWith('/customers/survey'), permission: 'customers_view' },
+    { type: 'link', href: '/customers/installed', icon: 'cog', label: 'Instalasi', active: (url) => url.startsWith('/customers/installed'), permission: 'customers_view' },
+    { type: 'link', href: '/customers/activation', icon: 'key', label: 'Aktivasi', active: (url) => url.startsWith('/customers/activation'), permission: 'customers_view' },
+    { type: 'link', href: '/customers/active', icon: 'badge-check', label: 'Pelanggan Aktif', active: (url) => url.startsWith('/customers/active'), permission: 'customers_view' },
+    { type: 'link', href: '/customers', icon: 'users', label: 'Semua Pelanggan', active: (url) => url === '/customers', permission: 'customers_view' },
     { type: 'group', label: 'INFRASTRUKTUR' },
-    { type: 'link', href: '/ftth', icon: 'map', label: 'Pemetaan FTTH', active: (url) => url.startsWith('/ftth') },
-    { type: 'link', href: '/network-topology', icon: 'globe', label: 'Network Topology', active: (url) => url.startsWith('/network-topology') },
-    { type: 'link', href: '/network-data', icon: 'globe', label: 'Data Jaringan', active: (url) => url.startsWith('/network-data') },
-    { type: 'link', href: '/olts', icon: 'server', label: 'OLT', active: (url) => url.startsWith('/olts') },
-    { type: 'link', href: '/odcs', icon: 'box', label: 'ODC', active: (url) => url.startsWith('/odcs') },
-    { type: 'link', href: '/odps', icon: 'git-branch', label: 'ODP', active: (url) => url.startsWith('/odps') },
-    { type: 'link', href: '/onts', icon: 'wifi', label: 'ONT', active: (url) => url.startsWith('/onts') },
-    { type: 'link', href: '/materials', icon: 'archive', label: 'Material/Barang', active: (url) => url.startsWith('/materials') },
-    { type: 'link', href: '/material-transactions', icon: 'shopping-cart', label: 'Order / Pengambilan', active: (url) => url.startsWith('/material-transactions') },
-    { type: 'group', label: 'BILLING & KEUANGAN' },
-    { type: 'link', href: '#', icon: 'file-text', label: 'Invoice', active: () => false },
-    { type: 'link', href: '#', icon: 'credit-card', label: 'Pembayaran', active: () => false },
-    { type: 'group', label: 'TICKETING' },
-    { type: 'link', href: '#', icon: 'calendar', label: 'Jadwal Teknisi', active: () => false },
+    { type: 'link', href: '/ftth', icon: 'map', label: 'Pemetaan FTTH', active: (url) => url.startsWith('/ftth'), permission: 'ftth_view' },
+    { type: 'link', href: '/network-topology', icon: 'globe', label: 'Network Topology', active: (url) => url.startsWith('/network-topology'), permission: 'network_view' },
+    { type: 'link', href: '/network-data', icon: 'globe', label: 'Data Jaringan', active: (url) => url.startsWith('/network-data'), permission: 'network_view' },
+    { type: 'link', href: '/olts', icon: 'server', label: 'OLT', active: (url) => url.startsWith('/olts'), permission: 'network_view' },
+    { type: 'link', href: '/odcs', icon: 'box', label: 'ODC', active: (url) => url.startsWith('/odcs'), permission: 'network_view' },
+    { type: 'link', href: '/odps', icon: 'git-branch', label: 'ODP', active: (url) => url.startsWith('/odps'), permission: 'network_view' },
+    { type: 'link', href: '/onts', icon: 'wifi', label: 'ONT', active: (url) => url.startsWith('/onts'), permission: 'network_view' },
+    { type: 'link', href: '/materials', icon: 'archive', label: 'Material/Barang', active: (url) => url.startsWith('/materials'), permission: 'materials_view' },
+    { type: 'link', href: '/material-transactions', icon: 'shopping-cart', label: 'Order / Pengambilan', active: (url) => url.startsWith('/material-transactions'), permission: 'materials_view' },
     { type: 'group', label: 'HR & PERSONALIA' },
-    { type: 'link', href: '/employees', icon: 'users', label: 'Data Karyawan', active: (url) => url.startsWith('/employees') },
-    { type: 'link', href: '/positions', icon: 'briefcase', label: 'Posisi / Jabatan', active: (url) => url.startsWith('/positions') },
+    { type: 'link', href: '/employees', icon: 'users', label: 'Data Karyawan', active: (url) => url.startsWith('/employees'), permission: 'users_manage' },
+    { type: 'link', href: '/positions', icon: 'briefcase', label: 'Posisi / Jabatan', active: (url) => url.startsWith('/positions'), permission: 'users_manage' },
     { type: 'group', label: 'PENGATURAN' },
-    { type: 'link', href: '/settings/areas', icon: 'map', label: 'Master Area', active: (url) => url.startsWith('/settings/areas') },
-    { type: 'link', href: '/settings/branding', icon: 'color-swatch', label: 'Branding Aplikasi', active: (url) => url.startsWith('/settings/branding') },
-    { type: 'link', href: '/settings/api', icon: 'code', label: 'API & Integrasi', active: (url) => url.startsWith('/settings/api') },
-    { type: 'link', href: '/settings/api', icon: 'zap', label: 'API Integrasi', active: (url) => url.startsWith('/settings/api') },
-    { type: 'link', href: '/users', icon: 'users', label: 'Manajemen User', active: (url) => url.startsWith('/users') },
-    { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => url.startsWith('/internet-packages') },
+    { type: 'link', href: '/settings/areas', icon: 'map', label: 'Master Area', active: (url) => url.startsWith('/settings/areas'), permission: 'settings_manage' },
+    { type: 'link', href: '/settings/roles', icon: 'lock-closed', label: 'Manajemen Role & Akses', active: (url) => url.startsWith('/settings/roles'), permission: 'roles_manage' },
+    { type: 'link', href: '/settings/branding', icon: 'color-swatch', label: 'Branding Aplikasi', active: (url) => url.startsWith('/settings/branding'), permission: 'settings_manage' },
+    { type: 'link', href: '/settings/api', icon: 'code', label: 'API & Integrasi', active: (url) => url.startsWith('/settings/api'), permission: 'settings_manage' },
+    { type: 'link', href: '/users', icon: 'users', label: 'Manajemen User', active: (url) => url.startsWith('/users'), permission: 'users_manage' },
+    { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => url.startsWith('/internet-packages'), permission: 'settings_manage' },
 ];
 
 const iconPaths = {
@@ -185,4 +180,37 @@ const iconPaths = {
     briefcase: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
     code: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4',
 };
+
+import { computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+
+const hasPermission = (permission) => {
+    const user = page.props.auth?.user;
+    if (!user) return false;
+    if (user.roles?.includes('admin')) return true;
+    return user.permissions?.includes(permission);
+};
+
+const filteredMenuItems = computed(() => {
+    const filtered = [];
+    let currentGroup = null;
+
+    menuItems.forEach(item => {
+        if (item.type === 'group') {
+            currentGroup = item;
+        } else {
+            if (!item.permission || hasPermission(item.permission)) {
+                if (currentGroup) {
+                    filtered.push(currentGroup);
+                    currentGroup = null;
+                }
+                filtered.push(item);
+            }
+        }
+    });
+
+    return filtered;
+});
 </script>

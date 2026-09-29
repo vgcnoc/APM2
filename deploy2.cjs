@@ -30,6 +30,7 @@ php artisan key:generate --force
 
 # Run migrations
 php artisan migrate --force
+php artisan db:seed --class=RoleAndPermissionSeeder --force
 
 # Sync existing string areas to area_id
 php sync_areas.php

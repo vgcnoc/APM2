@@ -161,6 +161,10 @@ Route::middleware(['auth'])->group(function () {
         return inertia('Settings/Api');
     })->name('settings.api');
 
+    Route::resource('settings/roles', \App\Http\Controllers\RoleController::class)->except(['create', 'show', 'edit']);
+    Route::post('settings/roles/{role}/update', [\App\Http\Controllers\RoleController::class, 'update'])->name('roles.update.post');
+    Route::post('settings/roles/{role}/delete', [\App\Http\Controllers\RoleController::class, 'destroy'])->name('roles.destroy.post');
+
     Route::post('/settings/api/token', function (Illuminate\Http\Request $request) {
         $user = $request->user();
         $user->tokens()->delete(); // Hapus token lama
