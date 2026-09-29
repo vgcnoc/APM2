@@ -1,24 +1,126 @@
 <template>
     <AppLayout title="Riwayat Order & Pengambilan" subtitle="Daftar surat jalan dan pengeluaran material">
         <div class="space-y-6">
-            <!-- Header Actions -->
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div class="w-full sm:w-96 relative">
-                    <input 
-                        type="text" 
-                        placeholder="Cari nomor transaksi atau teknisi..." 
-                        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm"
-                    >
-                    <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Total Transaksi -->
+                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg shadow-blue-500/30 relative overflow-hidden">
+                    <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+                    <div class="relative z-10 flex flex-col h-full justify-between">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-blue-100 font-medium text-sm mb-1">Total Transaksi</p>
+                                <h3 class="text-3xl font-bold">{{ formatNumber(summary.total_transactions) }} <span class="text-lg font-normal text-blue-200">Order</span></h3>
+                            </div>
+                            <div class="p-3 bg-white/20 rounded-xl">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <Link href="/material-transactions/create" class="btn-primary shrink-0 flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Buat Order Pengambilan
-                </Link>
+
+                <!-- Total Item Keluar -->
+                <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg shadow-emerald-500/30 relative overflow-hidden">
+                    <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+                    <div class="relative z-10 flex flex-col h-full justify-between">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-emerald-100 font-medium text-sm mb-1">Total Item Dikeluarkan</p>
+                                <h3 class="text-3xl font-bold">{{ formatNumber(summary.total_items) }} <span class="text-lg font-normal text-emerald-200">Pcs</span></h3>
+                            </div>
+                            <div class="p-3 bg-white/20 rounded-xl">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Nilai Keluar -->
+                <div class="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-6 text-white shadow-lg shadow-amber-500/30 relative overflow-hidden">
+                    <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+                    <div class="relative z-10 flex flex-col h-full justify-between">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-amber-100 font-medium text-sm mb-1">Nilai Barang Keluar</p>
+                                <h3 class="text-3xl font-bold"><span class="text-lg font-normal text-amber-200 mr-1">Rp</span>{{ formatNumber(summary.total_cost) }}</h3>
+                            </div>
+                            <div class="p-3 bg-white/20 rounded-xl">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters & Actions -->
+            <div class="glass-card p-5 animate-fade-in-up">
+                <div class="flex flex-col lg:flex-row justify-between gap-4">
+                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Search -->
+                        <div class="relative">
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Pencarian</label>
+                            <div class="relative">
+                                <input 
+                                    v-model="filterForm.search"
+                                    type="text" 
+                                    placeholder="Cari No. Transaksi, Teknisi..." 
+                                    class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm bg-white"
+                                >
+                                <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Date Range Start -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Dari Tanggal</label>
+                            <input 
+                                v-model="filterForm.start_date"
+                                type="date" 
+                                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm bg-white"
+                            >
+                        </div>
+
+                        <!-- Date Range End -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Sampai Tanggal</label>
+                            <input 
+                                v-model="filterForm.end_date"
+                                type="date" 
+                                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm bg-white"
+                            >
+                        </div>
+
+                        <!-- Technician Filter -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Teknisi</label>
+                            <select 
+                                v-model="filterForm.technician"
+                                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm bg-white"
+                            >
+                                <option value="">Semua Teknisi</option>
+                                <option v-for="tech in technicians" :key="tech" :value="tech">{{ tech }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex items-end gap-3 shrink-0">
+                        <button 
+                            @click="resetFilters" 
+                            class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 font-medium text-sm transition-all flex items-center gap-2"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            Reset
+                        </button>
+                        <Link href="/material-transactions/create" class="btn-primary py-2.5 flex items-center gap-2 shadow-md hover:shadow-lg transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Buat Order
+                        </Link>
+                    </div>
+                </div>
             </div>
 
             <!-- Flash Messages -->
@@ -103,20 +205,92 @@
                     </table>
                 </div>
             </div>
+            
+            <!-- Pagination -->
+            <div v-if="transactions.links && transactions.data.length > 0" class="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
+                <div class="text-sm text-gray-500">
+                    Menampilkan <span class="font-medium text-gray-900">{{ transactions.from }}</span> sampai <span class="font-medium text-gray-900">{{ transactions.to }}</span> dari <span class="font-medium text-gray-900">{{ transactions.total }}</span> transaksi
+                </div>
+                <div class="flex flex-wrap items-center gap-1">
+                    <template v-for="(link, pIndex) in transactions.links" :key="pIndex">
+                        <Link 
+                            v-if="link.url"
+                            :href="link.url" 
+                            v-html="link.label"
+                            class="px-3 py-1 text-sm border rounded-lg transition-colors"
+                            :class="link.active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'"
+                        />
+                        <span 
+                            v-else 
+                            v-html="link.label" 
+                            class="px-3 py-1 text-sm border border-gray-200 rounded-lg text-gray-400 bg-gray-50"
+                        ></span>
+                    </template>
+                </div>
+            </div>
         </div>
     </AppLayout>
 </template>
 
 <script setup>
+import { ref, watch } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     transactions: Object,
+    summary: {
+        type: Object,
+        default: () => ({ total_transactions: 0, total_cost: 0, total_items: 0 })
+    },
+    filters: {
+        type: Object,
+        default: () => ({ search: '', start_date: '', end_date: '', technician: '' })
+    },
+    technicians: {
+        type: Array,
+        default: () => []
+    },
 });
 
 const formatNumber = (num) => {
     if (!num) return '0';
     return Number(num).toLocaleString('id-ID');
+};
+
+const filterForm = ref({
+    search: props.filters?.search || '',
+    start_date: props.filters?.start_date || '',
+    end_date: props.filters?.end_date || '',
+    technician: props.filters?.technician || '',
+});
+
+let timeout = null;
+const applyFilters = () => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => {
+        router.get('/material-transactions', {
+            search: filterForm.value.search,
+            start_date: filterForm.value.start_date,
+            end_date: filterForm.value.end_date,
+            technician: filterForm.value.technician,
+        }, {
+            preserveState: true,
+            replace: true,
+        });
+    }, 300);
+};
+
+watch(filterForm, () => {
+    applyFilters();
+}, { deep: true });
+
+const resetFilters = () => {
+    filterForm.value = {
+        search: '',
+        start_date: '',
+        end_date: '',
+        technician: '',
+    };
 };
 </script>

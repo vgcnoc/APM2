@@ -14,12 +14,64 @@ class MaterialTransactionController extends Controller
 {
     public function index(Request $request)
     {
-        $transactions = MaterialTransaction::with(['user', 'items.material'])
-            ->latest()
-            ->paginate(10);
+        $query = MaterialTransaction::with(['user', 'items.material']);
+
+        if ($request->search) {
+            $query->where(function($q) use ($request) {
+                $q->where('transaction_number', 'like', '%' . $request->search . '%')
+                  ->orWhere('technician_name', 'like', '%' . $request->search . '%')
+                  ->orWhere('purpose', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        if ($request->start_date) {
+            $query->whereDate('date', '>=', $request->start_date);
+        }
+
+        if ($request->end_date) {
+            $query->whereDate('date', '<=', $request->end_date);
+        }
+
+        if ($request->technician) {
+            $query->where('technician_name', $request->technician);
+        }
+
+        $transactions = $query->latest()->paginate(15)->withQueryString();
+
+        // Calculations for cards
+        $baseQuery = MaterialTransaction::query();
+        if ($request->start_date) {
+            $baseQuery->whereDate('date', '>=', $request->start_date);
+        }
+        if ($request->end_date) {
+            $baseQuery->whereDate('date', '<=', $request->end_date);
+        }
+
+        $totalTransactions = (clone $baseQuery)->count();
+        $totalCost = (clone $baseQuery)->sum('total_cost');
+        
+        // Total Items
+        $totalItems = MaterialTransactionItem::whereHas('transaction', function($q) use ($request) {
+            if ($request->start_date) {
+                $q->whereDate('date', '>=', $request->start_date);
+            }
+            if ($request->end_date) {
+                $q->whereDate('date', '<=', $request->end_date);
+            }
+        })->sum('quantity');
+
+        // Get unique technicians for filter
+        $technicians = MaterialTransaction::select('technician_name')->distinct()->whereNotNull('technician_name')->pluck('technician_name');
 
         return Inertia::render('MaterialTransactions/Index', [
             'transactions' => $transactions,
+            'filters' => $request->only(['search', 'start_date', 'end_date', 'technician']),
+            'summary' => [
+                'total_transactions' => $totalTransactions,
+                'total_cost' => $totalCost,
+                'total_items' => $totalItems,
+            ],
+            'technicians' => $technicians,
         ]);
     }
 
