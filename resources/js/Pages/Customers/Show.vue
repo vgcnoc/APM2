@@ -126,9 +126,22 @@
 
         <!-- Right Column -->
             <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Tabs Navigation -->
+                <div class="glass-card p-2 flex gap-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
+                    <button @click="activeTab = 'booking'" :class="['px-4 py-3 rounded-xl text-sm font-bold flex-1 transition-all flex items-center justify-center gap-2', activeTab === 'booking' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50']">
+                        <span class="text-lg">📋</span> Booking & Survey
+                    </button>
+                    <button v-if="customer.status === 'installing' && (!customer.ont || !customer.ont.rx_power)" @click="activeTab = 'installation'" :class="['px-4 py-3 rounded-xl text-sm font-bold flex-1 transition-all flex items-center justify-center gap-2', activeTab === 'installation' ? 'bg-emerald-100 text-emerald-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50']">
+                        <span class="text-lg">🚀</span> Form Instalasi
+                    </button>
+                    <button v-if="(customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active'" @click="activeTab = 'audit'" :class="['px-4 py-3 rounded-xl text-sm font-bold flex-1 transition-all flex items-center justify-center gap-2', activeTab === 'audit' ? 'bg-amber-100 text-amber-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50']">
+                        <span class="text-lg">🛡️</span> Data Instalasi / Audit
+                    </button>
+                </div>
 
-                <!-- Survey & Booking Info -->
-                <div class="glass-card p-6 animate-fade-in-up">
+                <!-- Survey & Booking Info Tab -->
+                <div v-show="activeTab === 'booking'" class="glass-card p-6 animate-fade-in-up">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">📋 Data Booking & Survey</h3>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -187,11 +200,14 @@
                             </div>
                         </div>
                     </div>
-                    <div v-if="customer.status === 'installing' && (!customer.ont || !customer.ont.rx_power)" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
-                        <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                            <span class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">🚀</span>
-                            Form Laporan Selesai Instalasi
-                        </h3>
+                </div>
+
+                <!-- Instalasi Tab -->
+                <div v-show="activeTab === 'installation'" v-if="customer.status === 'installing' && (!customer.ont || !customer.ont.rx_power)" class="glass-card p-6 animate-fade-in-up border-2 border-emerald-500/20">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">🚀</span>
+                        Form Laporan Selesai Instalasi
+                    </h3>
                         
                         <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 space-y-2">
                             <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
@@ -404,12 +420,14 @@
                         </form>
                     </div>
 
-                    <!-- Audit Data Pemasangan -->
-                    <div v-if="customer.status === 'installing' && customer.ont && customer.ont.rx_power" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
-                        <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                            <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">🛡️</span>
-                            Audit Data Pemasangan
-                        </h3>
+                    </div>
+
+                <!-- Audit Data Pemasangan Tab -->
+                <div v-show="activeTab === 'audit'" v-if="(customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active'" class="glass-card p-6 animate-fade-in-up border-2 border-amber-500/20">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">🛡️</span>
+                        Data Instalasi & Audit
+                    </h3>
                         
                         <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 space-y-2">
                             <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
@@ -470,7 +488,7 @@
                             </div>
                         </div>
 
-                        <div class="flex justify-end pt-4 border-t border-gray-200 mt-6 gap-3">
+                        <div v-if="customer.status === 'installing'" class="flex justify-end pt-4 border-t border-gray-200 mt-6 gap-3">
                             <button v-if="!customer.is_audited" @click="showAuditModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border-0 text-white">
                                 Selesaikan Audit
                             </button>
@@ -848,6 +866,8 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 
 const props = defineProps({ customer: Object, availableOdps: Array, availableOnts: Array });
+
+const activeTab = ref(props.customer.status === 'installing' && props.customer.ont && props.customer.ont.rx_power ? 'audit' : (props.customer.status === 'installing' ? 'installation' : (props.customer.status === 'active' ? 'audit' : 'booking')));
 
 const filteredAvailableOdps = computed(() => {
     if (!props.customer?.area_id) return [];
