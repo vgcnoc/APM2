@@ -96,6 +96,32 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Active Customer Configuration -->
+            <div v-if="customer.status === 'active'" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">⚙️</span>
+                        Konfigurasi (Aktif)
+                    </h3>
+                </div>
+                
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
+                    <div class="grid grid-cols-1 gap-3 text-sm">
+                        <InfoRow label="Mode Akses" :value="customer.ont?.access_mode || '-'" />
+                        <InfoRow label="PPPoE User" :value="customer.ont?.pppoe_user || '-'" />
+                        <InfoRow label="VLAN Mode" :value="customer.ont?.vlan_mode || '-'" />
+                        <InfoRow label="VLAN ID" :value="customer.ont?.vlan_id || '-'" />
+                        <InfoRow label="IP Login ONT" :value="customer.ont?.ip_login || '-'" />
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button @click="openEditActiveModal" class="btn-primary w-full justify-center bg-amber-500 hover:bg-amber-600 border-0 shadow-md">
+                        Edit Konfigurasi
+                    </button>
+                </div>
+            </div>
             </div>
 
         <!-- Right Column -->
@@ -726,6 +752,89 @@
                     </button>
                 </div>
             </div>
+        <!-- Edit Active Config Modal -->
+        <div v-if="showEditActiveModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-hidden animate-fade-in-up">
+                <div class="p-5 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-amber-50 to-amber-100/50">
+                    <h3 class="text-lg font-bold text-amber-900 flex items-center gap-2">
+                        <span class="text-2xl">⚙️</span> Edit Konfigurasi ONT
+                    </h3>
+                    <button @click="showEditActiveModal = false" class="text-gray-500 hover:text-gray-900">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <form @submit.prevent="submitEditActive">
+                    <div class="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+                        <div class="bg-amber-50 text-amber-800 p-4 rounded-xl text-sm mb-4 border border-amber-200 shadow-sm flex gap-3">
+                            <svg class="w-6 h-6 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <p>Perbarui data konfigurasi akses ONT untuk pelanggan ini.</p>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE Username</label>
+                                <input v-model="activeConfigForm.pppoe_user" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all" placeholder="user@isp" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE Password</label>
+                                <input v-model="activeConfigForm.pppoe_password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all" placeholder="***" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Mode Akses</label>
+                                <select v-model="activeConfigForm.access_mode" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all">
+                                    <option value="PPPOE">PPPoE</option>
+                                    <option value="STATIC">Static IP</option>
+                                    <option value="DHCP">DHCP / Dynamic</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">VLAN Mode</label>
+                                <select v-model="activeConfigForm.vlan_mode" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all">
+                                    <option value="">-- Pilih --</option>
+                                    <option value="Route">Route</option>
+                                    <option value="Bridge">Bridge</option>
+                                    <option value="VLAN">VLAN (Tagged)</option>
+                                    <option value="Untagged">Untagged</option>
+                                </select>
+                            </div>
+                            
+                            <div v-if="activeConfigForm.vlan_mode === 'VLAN'" class="col-span-full">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">No VLAN ID</label>
+                                <input v-model="activeConfigForm.vlan_id" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all" placeholder="Misal: 100" />
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Akses Login ONT</h4>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">IP Login ONT</label>
+                                <input v-model="activeConfigForm.ip_login" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all" placeholder="192.168.1.1" />
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Username ONT</label>
+                                    <input v-model="activeConfigForm.login_user" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all" placeholder="admin" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Password ONT</label>
+                                    <input v-model="activeConfigForm.login_password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all" placeholder="admin" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
+                        <button type="button" @click="showEditActiveModal = false" class="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">Batal</button>
+                        <button type="submit" :disabled="activeConfigForm.processing" class="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                            <svg v-if="activeConfigForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            {{ activeConfigForm.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </AppLayout>
 </template>
@@ -1142,6 +1251,43 @@ function submitActivation() {
         preserveScroll: true,
         onSuccess: () => {
             showActivationModal.value = false;
+        }
+    });
+}
+
+// ── Edit Active Configuration ───────────────────────────────
+const showEditActiveModal = ref(false);
+const activeConfigForm = useForm({
+    ip_login: '',
+    login_user: '',
+    login_password: '',
+    pppoe_user: '',
+    pppoe_password: '',
+    vlan_mode: '',
+    vlan_id: '',
+    access_mode: 'PPPOE',
+});
+
+function openEditActiveModal() {
+    if (props.customer.ont) {
+        activeConfigForm.ip_login = props.customer.ont.ip_login || '';
+        activeConfigForm.login_user = props.customer.ont.login_user || '';
+        activeConfigForm.login_password = props.customer.ont.login_password || '';
+        activeConfigForm.pppoe_user = props.customer.ont.pppoe_user || '';
+        activeConfigForm.pppoe_password = props.customer.ont.pppoe_password || '';
+        activeConfigForm.vlan_mode = props.customer.ont.vlan_mode || '';
+        activeConfigForm.vlan_id = props.customer.ont.vlan_id || '';
+        activeConfigForm.access_mode = props.customer.ont.access_mode || 'PPPOE';
+    }
+    showEditActiveModal.value = true;
+}
+
+function submitEditActive() {
+    activeConfigForm.post(`/customers/${props.customer.id}/update-ont-inline`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showEditActiveModal.value = false;
+            // router.reload doesn't automatically close toast so we rely on global flash
         }
     });
 }
