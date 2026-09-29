@@ -9,8 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class InternetPackage extends Model
 {
     use HasFactory;
-
-    protected $fillable = ['name', 'speed_mbps', 'price', 'description', 'is_active'];
+    protected $fillable = ['name', 'speed_mbps', 'price', 'access_mode', 'description', 'is_active'];
 
     protected function casts(): array
     {

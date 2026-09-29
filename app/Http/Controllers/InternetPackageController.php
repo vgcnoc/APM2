@@ -32,6 +32,7 @@ class InternetPackageController extends Controller
             'name' => 'required|string|max:255',
             'speed_mbps' => 'required|integer|min:1',
             'price' => 'required|numeric|min:0',
+            'access_mode' => 'required|in:pppoe,hotspot',
             'description' => 'nullable|string',
             'is_active' => 'boolean'
         ]);
@@ -47,6 +48,7 @@ class InternetPackageController extends Controller
             'name' => 'required|string|max:255',
             'speed_mbps' => 'required|integer|min:1',
             'price' => 'required|numeric|min:0',
+            'access_mode' => 'required|in:pppoe,hotspot',
             'description' => 'nullable|string',
             'is_active' => 'boolean'
         ]);

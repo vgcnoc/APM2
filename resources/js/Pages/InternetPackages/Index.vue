@@ -28,6 +28,7 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Paket</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Mode Akses</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Kecepatan</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Harga</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
@@ -39,6 +40,12 @@
                             <td class="px-6 py-4">
                                 <div class="text-sm font-bold text-gray-900">{{ pkg.name }}</div>
                                 <div class="text-xs text-gray-500 mt-1" v-if="pkg.description">{{ pkg.description }}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" 
+                                      :class="pkg.access_mode === 'hotspot' ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800'">
+                                    {{ pkg.access_mode === 'hotspot' ? 'Hotspot' : 'PPPoE' }}
+                                </span>
                             </td>
                             <td class="px-6 py-4">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -64,7 +71,7 @@
                             </td>
                         </tr>
                         <tr v-if="packages.data.length === 0">
-                            <td colspan="5" class="px-6 py-12 text-center">
+                            <td colspan="6" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center">
                                     <svg class="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
@@ -92,10 +99,21 @@
                 
                 <form @submit.prevent="submitForm">
                     <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Nama Paket</label>
-                            <input v-model="form.name" type="text" class="input-text w-full border border-gray-300 rounded-lg px-3 py-2" required placeholder="Contoh: Paket Family 20M">
-                            <div v-if="form.errors.name" class="text-red-500 text-xs mt-1">{{ form.errors.name }}</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">Nama Paket</label>
+                                <input v-model="form.name" type="text" class="input-text w-full border border-gray-300 rounded-lg px-3 py-2" required placeholder="Contoh: Paket Family 20M">
+                                <div v-if="form.errors.name" class="text-red-500 text-xs mt-1">{{ form.errors.name }}</div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">Mode Akses</label>
+                                <select v-model="form.access_mode" class="input-text w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                                    <option value="pppoe">PPPoE</option>
+                                    <option value="hotspot">Hotspot</option>
+                                </select>
+                                <div v-if="form.errors.access_mode" class="text-red-500 text-xs mt-1">{{ form.errors.access_mode }}</div>
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -163,6 +181,7 @@ const editingId = ref(null);
 
 const form = useForm({
     name: '',
+    access_mode: 'pppoe',
     speed_mbps: '',
     price: '',
     description: '',
@@ -180,6 +199,7 @@ const openEditModal = (pkg) => {
     editMode.value = true;
     editingId.value = pkg.id;
     form.name = pkg.name;
+    form.access_mode = pkg.access_mode || 'pppoe';
     form.speed_mbps = pkg.speed_mbps;
     form.price = pkg.price;
     form.description = pkg.description;
