@@ -391,11 +391,26 @@ const setMapType = (type) => {
 // Fullscreen
 const toggleFullscreen = () => {
     isFullscreen.value = !isFullscreen.value;
-    nextTick(() => map?.invalidateSize());
 };
 
 watch(isFullscreen, () => {
-    nextTick(() => map?.invalidateSize());
+    setTimeout(() => {
+        if (map) map.invalidateSize();
+    }, 100);
+    setTimeout(() => {
+        if (map) map.invalidateSize();
+    }, 500);
+});
+
+// Setup ResizeObserver to catch all container changes
+let resizeObserver = null;
+onMounted(() => {
+    resizeObserver = new ResizeObserver(() => {
+        if (map) {
+            requestAnimationFrame(() => map.invalidateSize());
+        }
+    });
+    if (mapEl.value) resizeObserver.observe(mapEl.value);
 });
 
 // Layers
