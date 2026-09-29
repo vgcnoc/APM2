@@ -115,21 +115,8 @@
         <!-- Right Column -->
             <div class="lg:col-span-2 space-y-6">
                 
-                <!-- Tabs Navigation -->
-                <div class="glass-card p-2 flex gap-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
-                    <button @click="activeTab = 'booking'" :class="['px-4 py-3 rounded-xl text-sm font-bold flex-1 transition-all flex items-center justify-center gap-2', activeTab === 'booking' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50']">
-                        <span class="text-lg">📋</span> Booking & Survey
-                    </button>
-                    <button v-if="customer.status === 'installing' && (!customer.ont || !customer.ont.rx_power)" @click="activeTab = 'installation'" :class="['px-4 py-3 rounded-xl text-sm font-bold flex-1 transition-all flex items-center justify-center gap-2', activeTab === 'installation' ? 'bg-emerald-100 text-emerald-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50']">
-                        <span class="text-lg">🚀</span> Form Instalasi
-                    </button>
-                    <button v-if="(customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active'" @click="activeTab = 'audit'" :class="['px-4 py-3 rounded-xl text-sm font-bold flex-1 transition-all flex items-center justify-center gap-2', activeTab === 'audit' ? 'bg-amber-100 text-amber-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50']">
-                        <span class="text-lg">🛡️</span> Data Instalasi / Audit
-                    </button>
-                </div>
-
-                <!-- Survey & Booking Info Tab -->
-                <div v-show="activeTab === 'booking'" class="glass-card p-6 animate-fade-in-up">
+                <!-- Survey & Booking Info Section -->
+                <div class="glass-card p-6 animate-fade-in-up">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">📋 Data Booking & Survey</h3>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -190,8 +177,8 @@
                     </div>
                 </div>
 
-                <!-- Instalasi Tab -->
-                <div v-show="activeTab === 'installation'" v-if="customer.status === 'installing' && (!customer.ont || !customer.ont.rx_power)" class="glass-card p-6 animate-fade-in-up border-2 border-emerald-500/20">
+                <!-- Instalasi Section -->
+                <div v-if="customer.status === 'installing' && (!customer.ont || !customer.ont.rx_power)" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
                     <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">🚀</span>
                         Form Laporan Selesai Instalasi
@@ -410,8 +397,8 @@
 
                     </div>
 
-                <!-- Audit Data Pemasangan Tab -->
-                <div v-show="activeTab === 'audit'" v-if="(customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active'" class="glass-card p-6 animate-fade-in-up border-2 border-amber-500/20">
+                <!-- Audit Data Pemasangan Section -->
+                <div v-if="(customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active'" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
                     <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">🛡️</span>
                         Data Instalasi & Audit
