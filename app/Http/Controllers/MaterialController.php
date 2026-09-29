@@ -13,18 +13,46 @@ class MaterialController extends Controller
         $query = Material::with('stocks.area');
         
         if ($request->search) {
-            $query->where('name', 'like', "%{$request->search}%")
+            $query->where(function($q) use ($request) {
+                $q->where('name', 'like', "%{$request->search}%")
                   ->orWhere('category', 'like', "%{$request->search}%");
+            });
+        }
+        
+        if ($request->category && $request->category !== 'all') {
+            $query->where('category', $request->category);
+        }
+
+        if ($request->stock_status) {
+            if ($request->stock_status === 'empty') {
+                $query->where('stock', '<=', 0);
+            } elseif ($request->stock_status === 'low') {
+                $query->where('stock', '>', 0)->where('stock', '<=', 10);
+            } elseif ($request->stock_status === 'available') {
+                $query->where('stock', '>', 10);
+            }
         }
 
         $materials = $query->latest()->paginate(10)->withQueryString();
 
         $areas = \App\Models\Area::orderBy('name')->get();
+        
+        // Summary Stats
+        $summary = [
+            'total_items' => Material::count(),
+            'out_of_stock' => Material::where('stock', '<=', 0)->count(),
+            'low_stock' => Material::where('stock', '>', 0)->where('stock', '<=', 10)->count(),
+            'total_value' => Material::sum(\Illuminate\Support\Facades\DB::raw('stock * price_per_unit')),
+        ];
+        
+        $categories = Material::select('category')->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category');
 
         return Inertia::render('Materials/Index', [
             'materials' => $materials,
             'areas' => $areas,
-            'filters' => $request->only(['search'])
+            'categories' => $categories,
+            'summary' => $summary,
+            'filters' => $request->only(['search', 'category', 'stock_status'])
         ]);
     }
 

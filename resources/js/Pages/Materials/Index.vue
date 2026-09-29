@@ -1,21 +1,84 @@
 <template>
     <AppLayout title="Data Material / Barang" subtitle="Kelola persediaan material infrastruktur jaringan">
         <div class="space-y-6">
-            <!-- Header Actions -->
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div class="w-full sm:w-96 relative">
-                    <input 
-                        type="text" 
-                        v-model="search" 
-                        placeholder="Cari nama atau kategori barang..." 
-                        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm"
-                        @keyup.enter="performSearch"
-                    >
-                    <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="glass-card p-5 border-2 border-blue-500/10 hover:border-blue-500/30 transition-all">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-blue-100 text-blue-600 rounded-xl">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Item</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ summary?.total_items || 0 }}</p>
+                        </div>
+                    </div>
                 </div>
-                <button @click="openModal()" class="btn-primary shrink-0 flex items-center gap-2">
+                <div class="glass-card p-5 border-2 border-emerald-500/10 hover:border-emerald-500/30 transition-all">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Nilai Aset</p>
+                            <p class="text-xl font-bold text-gray-900">Rp {{ formatNumber(summary?.total_value || 0) }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-card p-5 border-2 border-amber-500/10 hover:border-amber-500/30 transition-all">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-amber-100 text-amber-600 rounded-xl">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Stok Menipis</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ summary?.low_stock || 0 }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-card p-5 border-2 border-red-500/10 hover:border-red-500/30 transition-all">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-red-100 text-red-600 rounded-xl">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Stok Habis</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ summary?.out_of_stock || 0 }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Header Actions & Filters -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-2">
+                <div class="w-full md:w-auto flex flex-col sm:flex-row gap-3 flex-1">
+                    <div class="relative w-full sm:w-80">
+                        <input 
+                            type="text" 
+                            v-model="search" 
+                            placeholder="Cari nama barang..." 
+                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm"
+                            @keyup.enter="performSearch"
+                        >
+                        <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                    
+                    <select v-model="filterCategory" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
+                        <option value="all">Semua Kategori</option>
+                        <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+                    </select>
+
+                    <select v-model="filterStockStatus" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
+                        <option value="">Status Stok</option>
+                        <option value="available">Stok Tersedia (>10)</option>
+                        <option value="low">Stok Menipis (1-10)</option>
+                        <option value="empty">Stok Habis (0)</option>
+                    </select>
+                </div>
+
+                <button @click="openModal()" class="btn-primary w-full md:w-auto shrink-0 flex items-center justify-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
@@ -554,10 +617,14 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 const props = defineProps({
     materials: Object,
     areas: Array,
+    categories: Array,
+    summary: Object,
     filters: Object,
 });
 
 const search = ref(props.filters.search || '');
+const filterCategory = ref(props.filters.category || 'all');
+const filterStockStatus = ref(props.filters.stock_status || '');
 const showModal = ref(false);
 const showAddStockModal = ref(false);
 const selectedMaterial = ref(null);
@@ -647,7 +714,11 @@ const hargaJualPerCm = computed(() => {
 });
 
 const performSearch = () => {
-    router.get('/materials', { search: search.value }, { preserveState: true });
+    router.get('/materials', { 
+        search: search.value,
+        category: filterCategory.value,
+        stock_status: filterStockStatus.value
+    }, { preserveState: true, preserveScroll: true });
 };
 
 const calculateUnitPrice = (type) => {
