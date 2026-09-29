@@ -352,12 +352,14 @@ onMounted(async () => {
 
     tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
-        maxZoom: 19,
+        maxZoom: 24,
+        maxNativeZoom: 19,
     }).addTo(map);
 
     satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: '© Esri',
-        maxZoom: 19,
+        maxZoom: 24,
+        maxNativeZoom: 19,
     });
 
     // Init layer groups

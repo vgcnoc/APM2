@@ -102,7 +102,7 @@
                         <!-- CABLE MODE -->
                         <div v-if="mode === 'cable'" class="p-4">
                             <div class="bg-blue-50 text-blue-700 p-3 rounded-xl text-xs mb-4 border border-blue-100">
-                                Klik titik awal (misal ODC/ODP), lalu klik titik akhir untuk menggambar jalur kabel.
+                                Klik titik awal, lalu klik berkali-kali mengikuti jalan untuk menggambar jalur kabel.
                             </div>
 
                             <div v-if="activeCablePoints.length > 0" class="p-3 bg-gray-50 rounded-xl border border-gray-200 mb-4">
@@ -111,8 +111,9 @@
                                 <p class="text-sm text-blue-600 font-bold">{{ formatDistance(activeCableDistance) }}</p>
                                 
                                 <div class="mt-3 space-y-2">
+                                    <button @click="undoCablePoint" class="w-full bg-white border border-gray-300 text-gray-700 rounded-lg py-1.5 text-xs hover:bg-gray-50">↩ Undo Titik Terakhir</button>
                                     <button @click="finishCable" class="w-full btn-primary py-1.5 text-xs">Simpan Jalur</button>
-                                    <button @click="cancelCable" class="w-full bg-white border border-gray-300 text-gray-700 rounded-lg py-1.5 text-xs hover:bg-gray-50">Batal</button>
+                                    <button @click="cancelCable" class="w-full bg-red-50 text-red-600 border border-red-200 rounded-lg py-1.5 text-xs hover:bg-red-100">Batal / Hapus</button>
                                 </div>
                             </div>
                             <div v-else class="text-center py-8 text-gray-400 text-sm">
@@ -124,12 +125,15 @@
                         <!-- MEASURE MODE -->
                         <div v-if="mode === 'measure'" class="p-4">
                             <div class="bg-orange-50 text-orange-700 p-3 rounded-xl text-xs mb-4 border border-orange-100">
-                                Klik pada peta untuk mengukur jarak antar titik.
+                                Klik berkali-kali pada peta (mengikuti jalan) untuk mengukur jarak akurat.
                             </div>
                             <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                                 <p class="text-xs text-gray-500 mb-1">Total Jarak</p>
                                 <p class="text-2xl font-bold text-gray-900">{{ formatDistance(measureDistance) }}</p>
-                                <button @click="clearMeasure" v-if="measurePoints.length > 0" class="mt-3 w-full text-xs py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">Reset Pengukuran</button>
+                                <div v-if="measurePoints.length > 0" class="mt-3 flex gap-2">
+                                    <button @click="undoMeasurePoint" class="flex-1 text-xs py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">↩ Undo</button>
+                                    <button @click="clearMeasure" class="flex-1 text-xs py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">Reset</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -444,6 +448,30 @@ const addCablePoint = async (latlng, L) => {
     }
 };
 
+const undoCablePoint = () => {
+    if (activeCablePoints.value.length === 0) return;
+    
+    // Remove last marker
+    const marker = activeCableMarkers.pop();
+    drawLayer.removeLayer(marker);
+    activeCablePoints.value.pop();
+
+    // Re-draw line
+    if (activeCableLine) drawLayer.removeLayer(activeCableLine);
+    activeCableDistance.value = 0;
+
+    if (activeCablePoints.value.length > 1) {
+        activeCableLine = L.polyline(activeCablePoints.value, { color: '#3b82f6', weight: 3 }).addTo(drawLayer);
+        let total = 0;
+        for (let i = 1; i < activeCablePoints.value.length; i++) {
+            total += map.distance(activeCablePoints.value[i - 1], activeCablePoints.value[i]);
+        }
+        activeCableDistance.value = total;
+    } else {
+        activeCableLine = null;
+    }
+};
+
 const cancelCable = () => {
     activeCablePoints.value = [];
     activeCableDistance.value = 0;
@@ -484,6 +512,28 @@ const addMeasurePoint = async (latlng, L) => {
             total += map.distance(measurePoints.value[i - 1], measurePoints.value[i]);
         }
         measureDistance.value = total;
+    }
+};
+
+const undoMeasurePoint = () => {
+    if (measurePoints.value.length === 0) return;
+    
+    const marker = measureMarkers.pop();
+    drawLayer.removeLayer(marker);
+    measurePoints.value.pop();
+
+    if (measureLine) drawLayer.removeLayer(measureLine);
+    measureDistance.value = 0;
+
+    if (measurePoints.value.length > 1) {
+        measureLine = L.polyline(measurePoints.value, { color: '#ea580c', weight: 3, dashArray: '5, 5' }).addTo(drawLayer);
+        let total = 0;
+        for (let i = 1; i < measurePoints.value.length; i++) {
+            total += map.distance(measurePoints.value[i - 1], measurePoints.value[i]);
+        }
+        measureDistance.value = total;
+    } else {
+        measureLine = null;
     }
 };
 
