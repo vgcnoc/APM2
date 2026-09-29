@@ -681,10 +681,10 @@ class CustomerController extends Controller
 
         if ($customer->ont) {
             $customer->ont->update($validated);
-            return response()->json(['success' => true, 'message' => 'Data ONT berhasil disimpan secara langsung.']);
+            return back()->with('success', 'Data konfigurasi ONT berhasil diperbarui.');
         }
         
-        return response()->json(['success' => false, 'message' => 'Data ONT tidak ditemukan.'], 404);
+        return back()->with('error', 'Data ONT tidak ditemukan.');
     }
 
     /**
