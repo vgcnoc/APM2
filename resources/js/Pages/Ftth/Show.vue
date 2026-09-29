@@ -39,7 +39,14 @@
 
                 <!-- Right Actions -->
                 <div class="flex items-center gap-2">
-                    <button @click="openReview" class="btn-primary text-sm px-4 py-1.5">
+                    <span :class="{'bg-green-100 text-green-700': design.status === 'approved', 'bg-yellow-100 text-yellow-700': design.status === 'review', 'bg-gray-100 text-gray-700': design.status === 'draft'}" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                        {{ design.status }}
+                    </span>
+                    <a v-if="design.status !== 'draft'" :href="`/ftth/${design.id}/export`" target="_blank" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 px-4 py-1.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        Export PDF
+                    </a>
+                    <button v-if="design.status === 'draft'" @click="openReview" class="btn-primary text-sm px-4 py-1.5">
                         📝 Review & Simpan
                     </button>
                 </div>
@@ -318,6 +325,7 @@ const layers = ref([
     { key: 'customer', label: 'Pelanggan', color: '#8b5cf6', visible: true },
     { key: 'routes', label: 'Jalur Kabel', color: '#3b82f6', visible: true },
     { key: 'tiang', label: 'Tiang', color: '#64748b', visible: true },
+    { key: 'coverage', label: 'Area Coverage', color: '#10b981', visible: false },
 ]);
 
 const selectedDeviceType = ref('odp');
@@ -586,17 +594,35 @@ const loadData = (L) => {
         iconAnchor: [12, 12],
     });
 
+    // Existing OLT
+    props.design.area?.olts?.forEach(olt => {
+        if (!olt.latitude || !olt.longitude) return;
+        L.marker([olt.latitude, olt.longitude], { icon: createIcon('#ef4444', 'OLT') }).bindPopup(`<b>${olt.name}</b>`).addTo(layerGroups['olt']);
+        L.circle([olt.latitude, olt.longitude], { radius: 2000, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.05, weight: 1, dashArray: '5,5' }).addTo(layerGroups['coverage']);
+    });
+    // Existing ODC
+    props.design.area?.odcs?.forEach(odc => {
+        if (!odc.latitude || !odc.longitude) return;
+        L.marker([odc.latitude, odc.longitude], { icon: createIcon('#f59e0b', 'ODC') }).bindPopup(`<b>${odc.name}</b>`).addTo(layerGroups['odc']);
+        L.circle([odc.latitude, odc.longitude], { radius: 500, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.08, weight: 1, dashArray: '5,5' }).addTo(layerGroups['coverage']);
+    });
+    // Existing ODP
+    props.design.area?.odps?.forEach(odp => {
+        if (!odp.latitude || !odp.longitude) return;
+        L.marker([odp.latitude, odp.longitude], { icon: createIcon('#22c55e', 'ODP') }).bindPopup(`<b>${odp.name}</b>`).addTo(layerGroups['odp']);
+        L.circle([odp.latitude, odp.longitude], { radius: 150, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.1, weight: 1 }).addTo(layerGroups['coverage']);
+    });
+
     // Render design devices
     props.devices?.forEach(d => {
-        if (!d.latitude) return;
+        if (!d.latitude || !d.longitude) return;
         const typeInfo = deviceTypes.find(t => t.id === d.device_type) || { color: '#64748b' };
         
         const marker = L.marker([d.latitude, d.longitude], { 
             icon: createIcon(typeInfo.color, d.device_type.toUpperCase().substring(0,3)),
-            draggable: true // Enable drag and drop
+            draggable: true
         }).bindPopup(`<div class="text-sm font-bold">${d.name || d.device_type}</div><div class="text-xs text-gray-500">Rencana Baru</div>`);
         
-        // Handle dragend to save new position
         marker.on('dragend', async (e) => {
             const pos = e.target.getLatLng();
             try {
@@ -606,11 +632,18 @@ const loadData = (L) => {
                 });
             } catch (err) {
                 alert('Gagal mengupdate posisi');
-                e.target.setLatLng([d.latitude, d.longitude]); // Revert
+                e.target.setLatLng([d.latitude, d.longitude]);
             }
         });
 
         marker.addTo(layerGroups[d.device_type] || layerGroups.odp);
+
+        // Draw Coverage
+        if (d.device_type === 'odc') {
+            L.circle([d.latitude, d.longitude], { radius: 500, color: typeInfo.color, fillColor: typeInfo.color, fillOpacity: 0.08, weight: 1, dashArray: '5,5' }).addTo(layerGroups['coverage']);
+        } else if (d.device_type === 'odp') {
+            L.circle([d.latitude, d.longitude], { radius: 150, color: typeInfo.color, fillColor: typeInfo.color, fillOpacity: 0.1, weight: 1 }).addTo(layerGroups['coverage']);
+        }
     });
 
     // Render cable routes

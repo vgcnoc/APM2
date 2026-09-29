@@ -89,7 +89,7 @@ class FtthController extends Controller
      */
     public function show(FtthDesign $design)
     {
-        $design->load('area');
+        $design->load(['area', 'area.olts', 'area.odcs', 'area.odps', 'area.customers']);
         $devices = FtthDesignDevice::where('design_id', $design->id)->get();
         $routes = FtthCableRoute::where('design_id', $design->id)->get();
         $materials = \App\Models\Material::orderBy('name')->get();
@@ -252,5 +252,19 @@ class FtthController extends Controller
         $device->update($validated);
 
         return response()->json(['success' => true]);
+    }
+    public function exportPdf(FtthDesign $design)
+    {
+        $design->load(['area', 'materials.material']);
+        $devices = FtthDesignDevice::where('design_id', $design->id)->get();
+        $routes = FtthCableRoute::where('design_id', $design->id)->get();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.ftth-design', [
+            'design' => $design,
+            'devices' => $devices,
+            'routes' => $routes,
+        ]);
+
+        return $pdf->download('FTTH_Design_' . \Illuminate\Support\Str::slug($design->name) . '.pdf');
     }
 }
