@@ -163,9 +163,14 @@
                                         <label class="block text-xs font-medium text-gray-500 mb-1">ODP Terdekat (Auto Dropdown)</label>
                                         <select v-model="ontForm.odp_id" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" :required="isInstallingHardware">
                                             <option value="">-- Pilih ODP --</option>
-                                            <option v-for="odp in filteredAvailableOdps" :key="odp.id" :value="odp.id">
-                                                {{ odp.name }} (Sisa {{ Math.max(0, odp.total_ports - odp.used_ports) }} port)
-                                            </option>
+                                            <template v-if="filteredAvailableOdps.length === 0">
+                                                <option value="" disabled>Tidak ada ODP di area ini</option>
+                                            </template>
+                                            <template v-else>
+                                                <option v-for="odp in filteredAvailableOdps" :key="odp.id" :value="odp.id" :disabled="(odp.total_ports - odp.used_ports) <= 0">
+                                                    {{ odp.name }} - {{ (odp.total_ports - odp.used_ports) <= 0 ? 'FULL' : `Sisa ${Math.max(0, odp.total_ports - odp.used_ports)} port` }}
+                                                </option>
+                                            </template>
                                         </select>
                                     </div>
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

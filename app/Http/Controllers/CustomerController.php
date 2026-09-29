@@ -360,7 +360,7 @@ class CustomerController extends Controller
 
         return Inertia::render('Customers/Show', [
             'customer' => $customer,
-            'availableOdps' => Odp::active()->hasAvailablePort()->with(['odc.olt', 'onts.customer'])->get(),
+            'availableOdps' => Odp::active()->with(['odc.olt', 'onts.customer'])->get(),
             'availableOnts' => Ont::where('status', 'Sudah Set')->whereNull('customer_id')->get(),
         ]);
     }
@@ -377,7 +377,7 @@ class CustomerController extends Controller
         return Inertia::render('Customers/Edit', [
             'customer' => $customer,
             'packages' => InternetPackage::active()->get(),
-            'availableOdps' => Odp::active()->hasAvailablePort()->with('odc.olt')->get(),
+            'availableOdps' => Odp::active()->with('odc.olt')->get(),
             'sales' => User::where('role', 'sales')->get(),
             'areas' => $areas,
         ]);

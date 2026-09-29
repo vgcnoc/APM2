@@ -322,11 +322,16 @@
                             </div>
                             <select v-model="reportForm.odp_id" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
                                 <option value="">-- Pilih ODP --</option>
-                                <option v-for="odp in sortedOdps" :key="odp.id" :value="odp.id">
-                                    {{ odp.name }} 
-                                    {{ odp.distance !== undefined ? `(${Math.round(odp.distance)}m)` : `(${odp.odc?.name})` }} 
-                                    - {{ (odp.total_ports - odp.used_ports) <= 0 ? 'FULL' : `Sisa ${Math.max(0, odp.total_ports - odp.used_ports)} Port` }}
-                                </option>
+                                <template v-if="sortedOdps.length === 0">
+                                    <option value="" disabled>Tidak ada ODP di area ini</option>
+                                </template>
+                                <template v-else>
+                                    <option v-for="odp in sortedOdps" :key="odp.id" :value="odp.id" :disabled="(odp.total_ports - odp.used_ports) <= 0">
+                                        {{ odp.name }} 
+                                        {{ odp.distance !== undefined && odp.distance < 9999999 ? `(${Math.round(odp.distance)}m)` : `(${odp.odc?.name})` }} 
+                                        - {{ (odp.total_ports - odp.used_ports) <= 0 ? 'FULL' : `Sisa ${Math.max(0, odp.total_ports - odp.used_ports)} Port` }}
+                                    </option>
+                                </template>
                             </select>
                             <p v-if="nearestOdpMsg" :class="nearestOdpMsg.includes('⚠️') ? 'text-yellow-400' : 'text-emerald-400'" class="mt-1 text-[10px]">{{ nearestOdpMsg }}</p>
                         </div>
