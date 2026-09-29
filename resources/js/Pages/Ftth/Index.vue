@@ -166,7 +166,10 @@
                                 <td class="py-3 px-6 text-right text-sm font-semibold text-gray-900">{{ formatDistance(d.total_distance) }}</td>
                                 <td class="py-3 px-6 text-right">
                                     <div class="flex items-center justify-end gap-2">
-                                        <button @click="openModal(d)" title="Edit" class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                                        <Link :href="`/ftth/${d.id}`" title="Buka Workspace" class="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100 transition-colors">
+                                            Buka Peta
+                                        </Link>
+                                        <button @click="openModal(d)" title="Edit" class="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                         </button>
                                         <button @click="deleteDesign(d.id)" class="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
@@ -453,7 +456,7 @@ const loadMapData = async () => {
         const params = {};
         if (selectedArea.value) params.area_id = selectedArea.value;
 
-        const res = await fetch('/ftth/map-data?' + new URLSearchParams(params));
+        const res = await fetch('/ftth/api/map-data?' + new URLSearchParams(params));
         const data = await res.json();
 
         const L = await import('leaflet');

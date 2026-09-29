@@ -1,0 +1,460 @@
+<template>
+    <AppLayout :title="design.name" subtitle="Workspace Perancangan Jaringan FTTH">
+        <template #header-actions>
+            <div class="flex items-center gap-3">
+                <span :class="statusBadge(design.status)" class="px-3 py-1.5 rounded-xl text-xs font-bold border uppercase tracking-wider">
+                    {{ statusLabel(design.status) }}
+                </span>
+                <Link href="/ftth" class="btn-secondary text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                    Kembali
+                </Link>
+            </div>
+        </template>
+
+        <!-- Main Layout: Toolbar + Sidebar + Map -->
+        <div class="flex flex-col h-[calc(100vh-140px)] min-h-[600px] bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            
+            <!-- Workspace Toolbar -->
+            <div class="h-14 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between px-4 shrink-0">
+                <!-- Modes -->
+                <div class="flex items-center gap-1 bg-gray-200/50 p-1 rounded-xl">
+                    <button @click="setMode('view')" :class="mode === 'view' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        View
+                    </button>
+                    <button @click="setMode('device')" :class="mode === 'device' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        + Perangkat
+                    </button>
+                    <button @click="setMode('cable')" :class="mode === 'cable' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                        + Tarik Kabel
+                    </button>
+                    <button @click="setMode('measure')" :class="mode === 'measure' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                        Ukur
+                    </button>
+                </div>
+
+                <!-- Right Actions -->
+                <div class="flex items-center gap-2">
+                    <button @click="openReview" class="btn-primary text-sm px-4 py-1.5">
+                        📝 Review & Simpan
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex flex-1 overflow-hidden relative">
+                <!-- Sidebar Tools -->
+                <div class="w-72 bg-white border-r border-gray-100 flex flex-col z-10 shadow-[4px_0_15px_-3px_rgba(0,0,0,0.05)]">
+                    
+                    <!-- Context Panel based on Mode -->
+                    <div class="flex-1 overflow-y-auto">
+                        <!-- VIEW MODE -->
+                        <div v-if="mode === 'view'" class="p-4 space-y-4">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Informasi Rancangan</h3>
+                            <div class="space-y-3">
+                                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                    <p class="text-xs text-gray-500 mb-1">Area</p>
+                                    <p class="text-sm font-medium text-gray-900">{{ design.area?.name || '-' }}</p>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                    <p class="text-xs text-gray-500 mb-1">Total Panjang Jalur</p>
+                                    <p class="text-lg font-bold text-blue-600">{{ formatDistance(design.total_distance) }}</p>
+                                    <p class="text-[10px] text-gray-400 mt-1">Estimasi Kabel ({{ design.slack_percentage }}% slack): {{ formatDistance(estimatedCable) }}</p>
+                                </div>
+                            </div>
+
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mt-6 mb-3">Layers</h3>
+                            <div class="space-y-2">
+                                <label v-for="layer in layers" :key="layer.key" class="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+                                    <input type="checkbox" v-model="layer.visible" @change="toggleLayer(layer)" class="w-4 h-4 rounded border-gray-300 text-blue-600">
+                                    <div class="w-4 h-4 rounded-full flex items-center justify-center text-[10px]" :style="{ background: layer.color }"></div>
+                                    <span class="text-sm font-medium text-gray-700">{{ layer.label }}</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- ADD DEVICE MODE -->
+                        <div v-if="mode === 'device'" class="p-4">
+                            <div class="bg-blue-50 text-blue-700 p-3 rounded-xl text-xs mb-4 border border-blue-100">
+                                Pilih jenis perangkat, lalu <b>klik pada peta</b> untuk menempatkannya.
+                            </div>
+                            
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Jenis Perangkat</h3>
+                            <div class="space-y-2">
+                                <button v-for="dev in deviceTypes" :key="dev.id" 
+                                    @click="selectDeviceType(dev.id)"
+                                    :class="selectedDeviceType === dev.id ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'"
+                                    class="w-full text-left px-4 py-3 rounded-xl border transition-all flex items-center gap-3">
+                                    <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs text-white" :style="{ background: dev.color }">
+                                        {{ dev.icon }}
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-900">{{ dev.name }}</p>
+                                        <p class="text-[10px] text-gray-500">{{ dev.desc }}</p>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- CABLE MODE -->
+                        <div v-if="mode === 'cable'" class="p-4">
+                            <div class="bg-blue-50 text-blue-700 p-3 rounded-xl text-xs mb-4 border border-blue-100">
+                                Klik titik awal (misal ODC/ODP), lalu klik titik akhir untuk menggambar jalur kabel.
+                            </div>
+
+                            <div v-if="activeCablePoints.length > 0" class="p-3 bg-gray-50 rounded-xl border border-gray-200 mb-4">
+                                <p class="text-xs font-bold text-gray-700 mb-2">Jalur Aktif</p>
+                                <p class="text-sm">{{ activeCablePoints.length }} Titik</p>
+                                <p class="text-sm text-blue-600 font-bold">{{ formatDistance(activeCableDistance) }}</p>
+                                
+                                <div class="mt-3 space-y-2">
+                                    <button @click="finishCable" class="w-full btn-primary py-1.5 text-xs">Simpan Jalur</button>
+                                    <button @click="cancelCable" class="w-full bg-white border border-gray-300 text-gray-700 rounded-lg py-1.5 text-xs hover:bg-gray-50">Batal</button>
+                                </div>
+                            </div>
+                            <div v-else class="text-center py-8 text-gray-400 text-sm">
+                                <svg class="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
+                                Klik pada peta untuk memulai jalur kabel
+                            </div>
+                        </div>
+
+                        <!-- MEASURE MODE -->
+                        <div v-if="mode === 'measure'" class="p-4">
+                            <div class="bg-orange-50 text-orange-700 p-3 rounded-xl text-xs mb-4 border border-orange-100">
+                                Klik pada peta untuk mengukur jarak antar titik.
+                            </div>
+                            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                                <p class="text-xs text-gray-500 mb-1">Total Jarak</p>
+                                <p class="text-2xl font-bold text-gray-900">{{ formatDistance(measureDistance) }}</p>
+                                <button @click="clearMeasure" v-if="measurePoints.length > 0" class="mt-3 w-full text-xs py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">Reset Pengukuran</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map Container -->
+                <div class="flex-1 relative bg-gray-200">
+                    <div ref="mapEl" class="absolute inset-0"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Device Modal Content (Triggered after map click) -->
+        <div v-if="showDeviceModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" @click="showDeviceModal = false"></div>
+            <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-sm animate-fade-in-up">
+                <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-gray-900">Detail Perangkat</h3>
+                    <button @click="showDeviceModal = false" class="text-gray-400 hover:text-gray-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Jenis</label>
+                        <input type="text" :value="deviceTypes.find(d => d.id === newDeviceData.type)?.name" disabled class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Nama / Label *</label>
+                        <input v-model="newDeviceData.name" type="text" class="w-full px-3 py-2 rounded-lg border border-gray-200 focus:border-blue-500 text-sm" placeholder="Contoh: ODP-01">
+                    </div>
+                    <div v-if="newDeviceData.type === 'odp'">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Kapasitas Port</label>
+                        <select v-model="newDeviceData.capacity" class="w-full px-3 py-2 rounded-lg border border-gray-200 focus:border-blue-500 text-sm">
+                            <option value="8">8 Port</option>
+                            <option value="16">16 Port</option>
+                        </select>
+                    </div>
+                    <button @click="saveDevice" class="w-full btn-primary py-2 text-sm mt-2">Simpan Perangkat</button>
+                </div>
+            </div>
+        </div>
+    </AppLayout>
+</template>
+
+<script setup>
+import { ref, onMounted, nextTick, computed } from 'vue';
+import { router, Link } from '@inertiajs/vue3';
+import AppLayout from '@/Layouts/AppLayout.vue';
+
+const props = defineProps({
+    design: Object,
+    devices: Array,
+    routes: Array,
+});
+
+// UI State
+const mode = ref('view');
+const mapEl = ref(null);
+let map = null;
+let layerGroups = {};
+let drawLayer = null; // For temp drawing
+let tempMarkers = [];
+
+// Device Types
+const deviceTypes = [
+    { id: 'olt', name: 'OLT', desc: 'Optical Line Terminal', color: '#ef4444', icon: '🔴' },
+    { id: 'odc', name: 'ODC', desc: 'Optical Distribution Cabinet', color: '#f59e0b', icon: '🟠' },
+    { id: 'odp', name: 'ODP', desc: 'Optical Distribution Point', color: '#22c55e', icon: '🟢' },
+    { id: 'tiang', name: 'Tiang', desc: 'Tiang Telekomunikasi', color: '#64748b', icon: '⚫' },
+];
+
+const layers = ref([
+    { key: 'olt', label: 'OLT', color: '#ef4444', visible: true },
+    { key: 'odc', label: 'ODC', color: '#f59e0b', visible: true },
+    { key: 'odp', label: 'ODP', color: '#22c55e', visible: true },
+    { key: 'customer', label: 'Pelanggan', color: '#8b5cf6', visible: true },
+    { key: 'routes', label: 'Jalur Kabel', color: '#3b82f6', visible: true },
+    { key: 'tiang', label: 'Tiang', color: '#64748b', visible: true },
+]);
+
+const selectedDeviceType = ref('odp');
+const showDeviceModal = ref(false);
+const newDeviceData = ref({ type: '', name: '', lat: 0, lng: 0, capacity: 8 });
+
+// Measuring State
+const isMeasuring = computed(() => mode.value === 'measure');
+const measurePoints = ref([]);
+const measureDistance = ref(0);
+let measureLine = null;
+let measureMarkers = [];
+
+// Cable State
+const activeCablePoints = ref([]);
+const activeCableDistance = ref(0);
+let activeCableLine = null;
+let activeCableMarkers = [];
+
+// Computed
+const estimatedCable = computed(() => {
+    const dist = parseFloat(props.design.total_distance) || 0;
+    const slack = dist * ((parseFloat(props.design.slack_percentage) || 5) / 100);
+    return dist + slack;
+});
+
+// Helpers
+const formatDistance = (m) => {
+    if (!m || m === 0) return '0 m';
+    if (m >= 1000) return (m / 1000).toFixed(2) + ' km';
+    return Math.round(m) + ' m';
+};
+const statusBadge = (s) => ({
+    'draft': 'bg-gray-100 text-gray-600 border-gray-300',
+    'design': 'bg-blue-100 text-blue-700 border-blue-300',
+    'review': 'bg-amber-100 text-amber-700 border-amber-300',
+}[s] || 'bg-gray-100 text-gray-600 border-gray-300');
+const statusLabel = (s) => ({'draft': 'Draft', 'design': 'Perancangan', 'review': 'Review'}[s] || s);
+
+const setMode = (newMode) => {
+    mode.value = newMode;
+    clearMeasure();
+    cancelCable();
+};
+
+const selectDeviceType = (type) => {
+    selectedDeviceType.value = type;
+};
+
+// Map Init
+onMounted(async () => {
+    await nextTick();
+    const L = await import('leaflet');
+    await import('leaflet/dist/leaflet.css');
+
+    map = L.map(mapEl.value, {
+        center: [-6.2, 106.8],
+        zoom: 13,
+        zoomControl: false,
+    });
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 20,
+    }).addTo(map);
+
+    layers.value.forEach(l => { layerGroups[l.key] = L.layerGroup().addTo(map); });
+    drawLayer = L.layerGroup().addTo(map);
+
+    // Map Click Handler
+    map.on('click', (e) => {
+        if (mode.value === 'device') {
+            handleDeviceClick(e.latlng);
+        } else if (mode.value === 'measure') {
+            addMeasurePoint(e.latlng, L);
+        } else if (mode.value === 'cable') {
+            addCablePoint(e.latlng, L);
+        }
+    });
+
+    loadData(L);
+});
+
+// Device Placement
+const handleDeviceClick = (latlng) => {
+    newDeviceData.value = {
+        type: selectedDeviceType.value,
+        name: `${selectedDeviceType.value.toUpperCase()}-`,
+        lat: latlng.lat,
+        lng: latlng.lng,
+        capacity: 8
+    };
+    showDeviceModal.value = true;
+};
+
+const saveDevice = async () => {
+    try {
+        await axios.post('/ftth/devices', {
+            design_id: props.design.id,
+            device_type: newDeviceData.value.type,
+            name: newDeviceData.value.name,
+            latitude: newDeviceData.value.lat,
+            longitude: newDeviceData.value.lng,
+            meta: { capacity: newDeviceData.value.capacity }
+        });
+        showDeviceModal.value = false;
+        router.reload(); // Refresh data
+    } catch (e) {
+        alert('Gagal menyimpan perangkat');
+    }
+};
+
+// Cable Drawing
+const addCablePoint = async (latlng, L) => {
+    activeCablePoints.value.push(latlng);
+    const marker = L.circleMarker(latlng, { radius: 4, color: '#3b82f6', fillColor: '#fff', fillOpacity: 1, weight: 2 }).addTo(drawLayer);
+    activeCableMarkers.push(marker);
+
+    if (activeCablePoints.value.length > 1) {
+        if (activeCableLine) drawLayer.removeLayer(activeCableLine);
+        activeCableLine = L.polyline(activeCablePoints.value, { color: '#3b82f6', weight: 3 }).addTo(drawLayer);
+        
+        let total = 0;
+        for (let i = 1; i < activeCablePoints.value.length; i++) {
+            total += map.distance(activeCablePoints.value[i - 1], activeCablePoints.value[i]);
+        }
+        activeCableDistance.value = total;
+    }
+};
+
+const cancelCable = () => {
+    activeCablePoints.value = [];
+    activeCableDistance.value = 0;
+    drawLayer?.clearLayers();
+    activeCableLine = null;
+    activeCableMarkers = [];
+};
+
+const finishCable = async () => {
+    if (activeCablePoints.value.length < 2) return;
+    try {
+        await axios.post('/ftth/cable-routes', {
+            design_id: props.design.id,
+            distance: activeCableDistance.value,
+            route_points: activeCablePoints.value.map(p => [p.lat, p.lng]),
+            cable_type: 'FO',
+            core_count: 12
+        });
+        cancelCable();
+        router.reload();
+    } catch (e) {
+        alert('Gagal menyimpan jalur kabel');
+    }
+};
+
+// Measuring
+const addMeasurePoint = async (latlng, L) => {
+    measurePoints.value.push(latlng);
+    const marker = L.circleMarker(latlng, { radius: 5, color: '#ea580c', fillColor: '#fff', fillOpacity: 1, weight: 2 }).addTo(drawLayer);
+    measureMarkers.push(marker);
+
+    if (measurePoints.value.length > 1) {
+        if (measureLine) drawLayer.removeLayer(measureLine);
+        measureLine = L.polyline(measurePoints.value, { color: '#ea580c', weight: 3, dashArray: '5, 5' }).addTo(drawLayer);
+        
+        let total = 0;
+        for (let i = 1; i < measurePoints.value.length; i++) {
+            total += map.distance(measurePoints.value[i - 1], measurePoints.value[i]);
+        }
+        measureDistance.value = total;
+    }
+};
+
+const clearMeasure = () => {
+    measurePoints.value = [];
+    measureDistance.value = 0;
+    measureMarkers.forEach(m => drawLayer?.removeLayer(m));
+    measureMarkers = [];
+    if (measureLine) { drawLayer?.removeLayer(measureLine); measureLine = null; }
+};
+
+const toggleLayer = (layer) => {
+    if (layer.visible) layerGroups[layer.key]?.addTo(map);
+    else map?.removeLayer(layerGroups[layer.key]);
+};
+
+// Load Data
+const loadData = (L) => {
+    const createIcon = (color, label) => L.divIcon({
+        className: 'custom-marker',
+        html: `<div style="background:${color};width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;font-weight:bold;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3)">${label}</div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+    });
+
+    // Render design devices
+    props.devices?.forEach(d => {
+        if (!d.latitude) return;
+        const typeInfo = deviceTypes.find(t => t.id === d.device_type) || { color: '#64748b' };
+        
+        const marker = L.marker([d.latitude, d.longitude], { 
+            icon: createIcon(typeInfo.color, d.device_type.toUpperCase().substring(0,3)),
+            draggable: true // Enable drag and drop
+        }).bindPopup(`<div class="text-sm font-bold">${d.name || d.device_type}</div><div class="text-xs text-gray-500">Rencana Baru</div>`);
+        
+        // Handle dragend to save new position
+        marker.on('dragend', async (e) => {
+            const pos = e.target.getLatLng();
+            try {
+                await axios.post(`/ftth/devices/${d.id}/position`, {
+                    latitude: pos.lat,
+                    longitude: pos.lng
+                });
+            } catch (err) {
+                alert('Gagal mengupdate posisi');
+                e.target.setLatLng([d.latitude, d.longitude]); // Revert
+            }
+        });
+
+        marker.addTo(layerGroups[d.device_type] || layerGroups.odp);
+    });
+
+    // Render cable routes
+    props.routes?.forEach(r => {
+        if (!r.route_points) return;
+        L.polyline(r.route_points, { color: '#3b82f6', weight: 3 })
+         .bindPopup(`${formatDistance(r.distance)}`)
+         .addTo(layerGroups.routes);
+    });
+
+    // Fit bounds if we have points
+    const allPoints = [
+        ...(props.devices || []).map(d => [d.latitude, d.longitude]),
+        ...(props.routes || []).flatMap(r => r.route_points || [])
+    ].filter(p => p && p[0]);
+
+    if (allPoints.length > 0) {
+        map.fitBounds(L.latLngBounds(allPoints).pad(0.1));
+    }
+};
+
+const openReview = () => {
+    alert("Fitur Review & Simpan akan mengkalkulasi kebutuhan material dan menampilkan ringkasan.");
+};
+</script>
+
+<style>
+@import 'leaflet/dist/leaflet.css';
+.custom-marker { background: transparent !important; border: none !important; }
+</style>

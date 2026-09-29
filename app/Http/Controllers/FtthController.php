@@ -85,6 +85,22 @@ class FtthController extends Controller
     }
 
     /**
+     * Show design workspace
+     */
+    public function show(FtthDesign $design)
+    {
+        $design->load('area');
+        $devices = FtthDesignDevice::where('design_id', $design->id)->get();
+        $routes = FtthCableRoute::where('design_id', $design->id)->get();
+
+        return Inertia::render('Ftth/Show', [
+            'design' => $design,
+            'devices' => $devices,
+            'routes' => $routes,
+        ]);
+    }
+
+    /**
      * Store a new FTTH design
      */
     public function store(Request $request)

@@ -117,7 +117,8 @@ Route::middleware(['auth'])->group(function () {
 
     // FTTH Mapping
     Route::get('ftth', [\App\Http\Controllers\FtthController::class, 'index'])->name('ftth.index');
-    Route::get('ftth/map-data', [\App\Http\Controllers\FtthController::class, 'mapData'])->name('ftth.map-data');
+    Route::get('ftth/{design}', [\App\Http\Controllers\FtthController::class, 'show'])->name('ftth.show');
+    Route::get('ftth/api/map-data', [\App\Http\Controllers\FtthController::class, 'mapData'])->name('ftth.map-data');
     Route::post('ftth', [\App\Http\Controllers\FtthController::class, 'store'])->name('ftth.store');
     Route::post('ftth/{design}/update', [\App\Http\Controllers\FtthController::class, 'update'])->name('ftth.update.post');
     Route::post('ftth/{design}/delete', [\App\Http\Controllers\FtthController::class, 'destroy'])->name('ftth.destroy.post');
