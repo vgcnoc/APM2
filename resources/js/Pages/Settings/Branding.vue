@@ -13,10 +13,11 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-4">Preview Logo Saat Ini</label>
                             
                             <div class="bg-gray-100 rounded-xl p-8 flex items-center justify-center border-2 border-dashed border-gray-300 relative min-h-[160px]">
-                                <img v-if="previewUrl || $page.props.app_logo" 
+                                <img v-if="(previewUrl || $page.props.app_logo) && !imageError" 
                                      :src="previewUrl || $page.props.app_logo" 
                                      class="max-h-[80px] w-auto object-contain" 
-                                     alt="Logo Preview" />
+                                     alt="Logo Preview"
+                                     @error="handleImageError" />
                                 
                                 <div v-else class="text-center">
                                     <div class="w-16 h-16 mx-auto mb-3 text-gray-400">
@@ -56,6 +57,11 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 
 const fileInput = ref(null);
 const previewUrl = ref(null);
+const imageError = ref(false);
+
+const handleImageError = () => {
+    imageError.value = true;
+};
 
 const form = useForm({
     app_logo: null,
@@ -68,9 +74,11 @@ const handleFileChange = (e) => {
         form.app_logo = file;
         form.remove_logo = false;
         previewUrl.value = URL.createObjectURL(file);
+        imageError.value = false;
     } else {
         form.app_logo = null;
         previewUrl.value = null;
+        imageError.value = false;
     }
 };
 

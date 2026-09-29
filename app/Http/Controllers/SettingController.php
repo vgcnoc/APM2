@@ -11,9 +11,7 @@ class SettingController extends Controller
 {
     public function branding()
     {
-        return Inertia::render('Settings/Branding', [
-            'app_logo' => Setting::get('app_logo')
-        ]);
+        return Inertia::render('Settings/Branding');
     }
 
     public function updateBranding(Request $request)

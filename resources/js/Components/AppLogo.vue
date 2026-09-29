@@ -1,11 +1,12 @@
 <template>
     <div class="flex items-center justify-center">
         <!-- Logo from Settings -->
-        <img v-if="$page.props.app_logo" 
+        <img v-if="$page.props.app_logo && !imageError" 
              :src="$page.props.app_logo" 
              class="object-contain w-auto transition-all duration-300" 
              :class="sizeClasses"
-             alt="Application Logo" />
+             alt="Application Logo" 
+             @error="handleImageError" />
              
         <!-- Default Fallback Logo (rendered as a single SVG) -->
         <div v-else class="flex items-center" :class="[sidebarCollapsed ? 'justify-center w-full' : '']">
@@ -31,7 +32,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+
+import { usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
     sidebarCollapsed: {
@@ -43,6 +46,18 @@ const props = defineProps({
         type: String,
         default: 'desktop' // desktop, mobile, tablet, login
     }
+});
+
+const page = usePage();
+const imageError = ref(false);
+
+const handleImageError = () => {
+    imageError.value = true;
+};
+
+// Reset image error state if logo URL changes
+watch(() => page.props.app_logo, () => {
+    imageError.value = false;
 });
 
 // Calculate sizes for the uploaded image based on context and state
