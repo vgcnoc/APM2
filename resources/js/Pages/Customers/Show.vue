@@ -5,93 +5,105 @@
             <!-- Left Column -->
             <div class="space-y-6">
                 <!-- Profile Card -->
-                <div class="glass-card p-6 animate-fade-in-up">
-                <div class="flex flex-col items-center text-center mb-6">
-                    <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-gray-900 mb-4 shadow-xl shadow-blue-500/25">
-                        {{ customer.name.charAt(0) }}
+                <div class="glass-card overflow-hidden animate-fade-in-up">
+                    <div class="h-28 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 relative">
+                        <div class="absolute -bottom-12 left-1/2 -translate-x-1/2">
+                            <div class="w-24 h-24 rounded-2xl bg-white p-1 shadow-xl shadow-indigo-500/20">
+                                <div class="w-full h-full rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-4xl font-bold text-white shadow-inner">
+                                    {{ customer.name.charAt(0).toUpperCase() }}
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <h2 class="text-xl font-bold text-gray-900">{{ customer.name }}</h2>
-                    <p class="text-sm font-mono text-gray-500">{{ customer.customer_code }}</p>
-                    <StatusBadge :status="customer.status" class="mt-2" />
-                </div>
+                    <div class="pt-16 pb-6 px-6 flex flex-col items-center text-center">
+                        <h2 class="text-xl font-bold text-gray-900 mb-1">{{ customer.name }}</h2>
+                        <p class="text-xs font-mono text-indigo-600 font-bold bg-indigo-50 px-3 py-1 rounded-full mb-3">{{ customer.customer_code }}</p>
+                        <StatusBadge :status="customer.status" />
+                    </div>
 
-                <div class="space-y-3 border-t border-gray-200 pt-4">
-                    <InfoRow icon="📞" label="Telepon" :value="customer.phone" />
-                    <InfoRow icon="📧" label="Email" :value="customer.email || '-'" />
-                    <InfoRow icon="📍" label="Alamat" :value="customer.address" />
-                    <InfoRow icon="📦" label="Paket" :value="customer.package?.name || 'Belum pilih'" />
-                    <InfoRow icon="📅" label="Registrasi" :value="customer.registration_date" />
-                    <InfoRow icon="✅" label="Aktivasi" :value="customer.activation_date || '-'" />
-                </div>
+                    <div class="px-6 pb-6 space-y-4">
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                            <InfoRow icon="📞" label="Telepon" :value="customer.phone" />
+                            <InfoRow icon="📧" label="Email" :value="customer.email || '-'" />
+                            <InfoRow icon="📍" label="Alamat" :value="customer.address" />
+                            <InfoRow icon="📦" label="Paket" :value="customer.package?.name || 'Belum pilih'" />
+                            <div class="pt-3 mt-3 border-t border-slate-200 space-y-3">
+                                <InfoRow icon="📅" label="Registrasi" :value="customer.registration_date" />
+                                <InfoRow icon="✅" label="Aktivasi" :value="customer.activation_date || '-'" />
+                            </div>
+                        </div>
 
-                <div class="flex gap-2 mt-6">
-                    <Link :href="`/customers/${customer.id}/edit`" class="btn-primary flex-1 justify-center">
-                        Edit
-                    </Link>
-                    <Link href="/customers" class="btn-ghost flex-1 justify-center">
-                        Kembali
-                    </Link>
+                        <div class="flex gap-2 pt-2">
+                            <Link :href="`/customers/${customer.id}/edit`" class="btn-primary flex-1 justify-center py-2.5 text-sm shadow-md hover:shadow-lg transition-all">
+                                Edit Profil
+                            </Link>
+                            <Link href="/customers" class="btn-ghost flex-1 justify-center py-2.5 text-sm transition-all hover:bg-slate-100">
+                                Kembali
+                            </Link>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
             <!-- Network Path -->
-            <div v-if="customer.ont" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-indigo-500/20">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                        <span class="text-indigo-500">🔗</span> Network Path
+            <div v-if="customer.ont" class="glass-card overflow-hidden mt-6 animate-fade-in-up border border-indigo-100">
+                <div class="bg-gradient-to-r from-indigo-50 to-blue-50/30 p-5 border-b border-indigo-100 flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-indigo-900 flex items-center gap-2 uppercase tracking-wider">
+                        <span class="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg shadow-sm">🔗</span> Network Path
                     </h3>
-                    <Link :href="`/network-topology?area_id=${customer.area_id}`" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-1 rounded-md transition-colors">
-                        Lihat Map
+                    <Link :href="`/network-topology?area_id=${customer.area_id}`" class="text-[10px] font-bold text-indigo-700 bg-white border border-indigo-200 hover:border-indigo-400 hover:text-indigo-900 px-3 py-1.5 rounded-lg shadow-sm transition-all">
+                        LIHAT MAP
                     </Link>
                 </div>
-                <div class="flex flex-col gap-2 relative ml-2">
-                    <div class="absolute left-[7px] top-2 bottom-2 w-[2px] bg-slate-200"></div>
-                    
-                    <div class="flex items-center gap-3 relative z-10">
-                        <div class="w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center bg-slate-400"></div>
-                        <div class="flex flex-col">
-                            <span class="text-[10px] font-bold text-slate-500 uppercase">SERVER / AREA</span>
-                            <span class="text-xs font-medium text-slate-800">{{ customer.area || 'Unknown Area' }}</span>
+                <div class="p-6 bg-slate-50/50">
+                    <div class="flex flex-col gap-3 relative ml-2">
+                        <div class="absolute left-[7px] top-4 bottom-4 w-[2px] bg-gradient-to-b from-slate-200 via-indigo-200 to-blue-300 rounded-full"></div>
+                        
+                        <div class="flex items-center gap-4 relative z-10 group">
+                            <div class="w-4 h-4 rounded-full border-[3px] border-white shadow-md flex items-center justify-center bg-slate-400 group-hover:scale-125 transition-transform"></div>
+                            <div class="flex flex-col bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm w-full group-hover:border-slate-300 transition-colors">
+                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">SERVER / AREA</span>
+                                <span class="text-xs font-bold text-slate-700">{{ customer.area || 'Unknown Area' }}</span>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div v-if="customer.ont.odp?.odc?.olt" class="flex items-center gap-3 relative z-10">
-                        <div class="w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center bg-indigo-500"></div>
-                        <div class="flex flex-col">
-                            <span class="text-[10px] font-bold text-slate-500 uppercase">OLT</span>
-                            <span class="text-xs font-medium text-slate-800">{{ customer.ont.odp.odc.olt.name }}</span>
+                        
+                        <div v-if="customer.ont.odp?.odc?.olt" class="flex items-center gap-4 relative z-10 group">
+                            <div class="w-4 h-4 rounded-full border-[3px] border-white shadow-md flex items-center justify-center bg-indigo-500 group-hover:scale-125 transition-transform"></div>
+                            <div class="flex flex-col bg-white px-3 py-2 rounded-xl border border-indigo-100 shadow-sm w-full group-hover:border-indigo-300 transition-colors">
+                                <span class="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">OLT</span>
+                                <span class="text-xs font-bold text-indigo-900">{{ customer.ont.odp.odc.olt.name }}</span>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div v-if="customer.ont.odp?.odc?.pon" class="flex items-center gap-3 relative z-10">
-                        <div class="w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center bg-purple-500"></div>
-                        <div class="flex flex-col">
-                            <span class="text-[10px] font-bold text-slate-500 uppercase">PON PORT {{ customer.ont.odp.odc.pon.port_number }}</span>
-                            <span class="text-xs font-medium text-slate-800">{{ customer.ont.odp.odc.pon.name || `PON ${customer.ont.odp.odc.pon.port_number}` }}</span>
+                        
+                        <div v-if="customer.ont.odp?.odc?.pon" class="flex items-center gap-4 relative z-10 group">
+                            <div class="w-4 h-4 rounded-full border-[3px] border-white shadow-md flex items-center justify-center bg-purple-500 group-hover:scale-125 transition-transform"></div>
+                            <div class="flex flex-col bg-white px-3 py-2 rounded-xl border border-purple-100 shadow-sm w-full group-hover:border-purple-300 transition-colors">
+                                <span class="text-[9px] font-bold text-purple-400 uppercase tracking-widest">PON PORT {{ customer.ont.odp.odc.pon.port_number }}</span>
+                                <span class="text-xs font-bold text-purple-900">{{ customer.ont.odp.odc.pon.name || `PON ${customer.ont.odp.odc.pon.port_number}` }}</span>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div v-if="customer.ont.odp?.odc" class="flex items-center gap-3 relative z-10">
-                        <div class="w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center bg-orange-500"></div>
-                        <div class="flex flex-col">
-                            <span class="text-[10px] font-bold text-slate-500 uppercase">ODC</span>
-                            <span class="text-xs font-medium text-slate-800">{{ customer.ont.odp.odc.name }}</span>
+                        
+                        <div v-if="customer.ont.odp?.odc" class="flex items-center gap-4 relative z-10 group">
+                            <div class="w-4 h-4 rounded-full border-[3px] border-white shadow-md flex items-center justify-center bg-orange-500 group-hover:scale-125 transition-transform"></div>
+                            <div class="flex flex-col bg-white px-3 py-2 rounded-xl border border-orange-100 shadow-sm w-full group-hover:border-orange-300 transition-colors">
+                                <span class="text-[9px] font-bold text-orange-400 uppercase tracking-widest">ODC</span>
+                                <span class="text-xs font-bold text-orange-900">{{ customer.ont.odp.odc.name }}</span>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div v-if="customer.ont.odp" class="flex items-center gap-3 relative z-10">
-                        <div class="w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center bg-sky-500"></div>
-                        <div class="flex flex-col">
-                            <span class="text-[10px] font-bold text-slate-500 uppercase">ODP</span>
-                            <span class="text-xs font-medium text-slate-800">{{ customer.ont.odp.name }}</span>
+                        
+                        <div v-if="customer.ont.odp" class="flex items-center gap-4 relative z-10 group">
+                            <div class="w-4 h-4 rounded-full border-[3px] border-white shadow-md flex items-center justify-center bg-sky-500 group-hover:scale-125 transition-transform"></div>
+                            <div class="flex flex-col bg-white px-3 py-2 rounded-xl border border-sky-100 shadow-sm w-full group-hover:border-sky-300 transition-colors">
+                                <span class="text-[9px] font-bold text-sky-400 uppercase tracking-widest">ODP</span>
+                                <span class="text-xs font-bold text-sky-900">{{ customer.ont.odp.name }}</span>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-3 relative z-10">
-                        <div class="w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center bg-blue-500 scale-125"></div>
-                        <div class="flex flex-col">
-                            <span class="text-[10px] font-bold text-slate-500 uppercase">PORT ONT</span>
-                            <span class="text-xs font-medium text-slate-800">Port {{ customer.ont.port_number }} ({{ customer.ont.serial_number }})</span>
+                        
+                        <div class="flex items-center gap-4 relative z-10 group">
+                            <div class="w-5 h-5 rounded-full border-[3px] border-white shadow-md flex items-center justify-center bg-blue-500 -ml-0.5 group-hover:scale-110 transition-transform"></div>
+                            <div class="flex flex-col bg-blue-50 px-3 py-2 rounded-xl border border-blue-200 shadow-sm w-full group-hover:border-blue-400 transition-colors">
+                                <span class="text-[9px] font-bold text-blue-500 uppercase tracking-widest">PORT ONT</span>
+                                <span class="text-xs font-bold text-blue-900">Port {{ customer.ont.port_number }} ({{ customer.ont.serial_number }})</span>
+                            </div>
                         </div>
                     </div>
                 </div>
