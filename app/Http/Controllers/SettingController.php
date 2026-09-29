@@ -21,7 +21,7 @@ class SettingController extends Controller
             'remove_logo' => 'nullable|boolean'
         ]);
 
-        if ($request->remove_logo) {
+        if ($request->boolean('remove_logo')) {
             $oldLogo = Setting::get('app_logo');
             if ($oldLogo && Storage::disk('public')->exists($oldLogo)) {
                 Storage::disk('public')->delete($oldLogo);
