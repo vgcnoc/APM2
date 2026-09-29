@@ -189,8 +189,23 @@ const page = usePage();
 const hasPermission = (permission) => {
     const user = page.props.auth?.user;
     if (!user) return false;
-    if (user.roles?.includes('admin')) return true;
-    return user.permissions?.includes(permission);
+    
+    // Cek super admin (spatie)
+    let roles = [];
+    if (Array.isArray(user.roles)) roles = user.roles;
+    else if (user.roles) roles = Object.values(user.roles);
+    
+    if (roles.includes('admin')) return true;
+    
+    // Fallback legacy role column
+    if (user.role === 'admin') return true;
+
+    // Cek permission spesifik
+    let perms = [];
+    if (Array.isArray(user.permissions)) perms = user.permissions;
+    else if (user.permissions) perms = Object.values(user.permissions);
+    
+    return perms.includes(permission);
 };
 
 const filteredMenuItems = computed(() => {
