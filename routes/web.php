@@ -81,6 +81,10 @@ Route::middleware(['auth'])->group(function () {
         // Hapus Pelanggan POST
         Route::post('/{customer}/delete', [CustomerController::class, 'destroy'])
             ->name('destroy.post');
+            
+        // Hapus Semua Data Booking POST
+        Route::post('/destroy-all-booking', [CustomerController::class, 'destroyAllBooking'])
+            ->name('destroy-all-booking.post');
     });
     Route::resource('customers', CustomerController::class);
 

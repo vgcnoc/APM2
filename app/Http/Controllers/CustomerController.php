@@ -960,6 +960,57 @@ class CustomerController extends Controller
             ->with('success', 'Permintaan jadwal survey berhasil dikirim.');
     }
 
+    /**
+     * Hapus Satu Data Pelanggan (Terutama Booking)
+     */
+    public function destroy(Customer $customer): RedirectResponse
+    {
+        // Authorization check if using spatie roles
+        // If they don't have permission, they shouldn't reach here, but let's double check
+        if (!auth()->user()->can('customers_delete') && !auth()->user()->hasRole('admin')) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus data pelanggan.');
+        }
 
+        // Jangan hapus jika status bukan booking dan memiliki banyak relasi penting (kecuali diperlukan)
+        if ($customer->status !== 'booking' && $customer->status !== 'terminated') {
+             return redirect()->back()->with('error', 'Hanya data dengan status Booking atau Terminated yang dapat dihapus secara langsung.');
+        }
+
+        // Hapus (Soft delete jika memungkinkan, namun Customer saat ini belum tentu pakai SoftDeletes, kita pakai delete biasa)
+        $customer->delete();
+        
+        return redirect()->back()->with('success', 'Data booking berhasil dihapus.');
+    }
+
+    /**
+     * Hapus Semua Data Booking berdasarkan filter
+     */
+    public function destroyAllBooking(Request $request): RedirectResponse
+    {
+        if (!auth()->user()->can('customers_delete') && !auth()->user()->hasRole('admin')) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus data pelanggan.');
+        }
+
+        $query = Customer::booking()
+            ->when($request->date, function ($q, $date) {
+                $q->whereDate('created_at', $date);
+            })
+            ->when($request->area, function ($q, $area) {
+                $q->where(function($sub) use ($area) {
+                    $sub->where('area', $area);
+                });
+            })
+            ->when($request->search, function($q, $search) {
+                $q->search($search);
+            });
+
+        $count = $query->count();
+        if ($count > 0) {
+            $query->delete();
+            return redirect()->back()->with('success', "Semua data booking ($count data) berhasil dihapus.");
+        }
+
+        return redirect()->back()->with('error', 'Tidak ada data booking yang sesuai filter untuk dihapus.');
+    }
 }
 

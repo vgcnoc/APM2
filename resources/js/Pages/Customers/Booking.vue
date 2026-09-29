@@ -80,12 +80,21 @@
             </template>
 
             <template #actions>
-                <Link href="/customers/create" class="btn-primary">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Booking Baru
-                </Link>
+                <div class="flex items-center gap-2">
+                    <button v-if="$page.props.auth.user.roles?.includes('admin') || $page.props.auth.user.permissions?.includes('customers_delete')" 
+                        @click="confirmDeleteAll" 
+                        :disabled="!customers.data.length"
+                        class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-medium text-sm rounded-xl transition-colors border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        Hapus Semua
+                    </button>
+                    <Link href="/customers/create" class="btn-primary">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Booking Baru
+                    </Link>
+                </div>
             </template>
 
             <template #row="{ row }">
@@ -140,6 +149,13 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                         </svg>
                     </Link>
+                    <button v-if="$page.props.auth.user.roles?.includes('admin') || $page.props.auth.user.permissions?.includes('customers_delete')" 
+                        @click="confirmDelete(row)" 
+                        class="p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-500 transition-all" title="Hapus Booking">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
                 </div>
             </template>
         </DataTable>
@@ -254,6 +270,52 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- Modal Konfirmasi Hapus Satu Data -->
+        <Teleport to="body">
+            <div v-if="showDeleteModal && selectedCustomerToDelete" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer" @click="showDeleteModal = false"></div>
+                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center animate-fade-in-up">
+                    <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">Hapus Data Booking?</h3>
+                    <p class="text-sm text-gray-500 mb-6">
+                        Apakah Anda yakin ingin menghapus data booking <b>{{ selectedCustomerToDelete.name }}</b>? Tindakan ini tidak dapat dibatalkan.
+                    </p>
+                    <div class="flex items-center justify-center gap-3">
+                        <button @click="showDeleteModal = false" class="btn-secondary w-full">Batal</button>
+                        <button @click="deleteCustomer" :disabled="isDeleting" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium text-sm rounded-xl transition-colors w-full flex justify-center items-center">
+                            <svg v-if="isDeleting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span v-else>Hapus</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Modal Konfirmasi Hapus Semua Data -->
+        <Teleport to="body">
+            <div v-if="showDeleteAllModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-red-900/60 backdrop-blur-sm cursor-pointer" @click="showDeleteAllModal = false"></div>
+                <div class="relative bg-white border border-red-200 rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center animate-fade-in-up">
+                    <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-red-50">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">Hapus Semua Data Booking?</h3>
+                    <p class="text-sm text-gray-500 mb-6">
+                        Semua data booking (sesuai filter aktif) akan dihapus secara permanen dan tindakan ini tidak dapat dibatalkan. Yakin ingin melanjutkan?
+                    </p>
+                    <div class="flex items-center justify-center gap-3">
+                        <button @click="showDeleteAllModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm rounded-xl transition-colors w-full">Batal</button>
+                        <button @click="deleteAllBooking" :disabled="isDeletingAll" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium text-sm rounded-xl transition-colors w-full flex justify-center items-center shadow-sm shadow-red-200">
+                            <svg v-if="isDeletingAll" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span v-else>Hapus Semua</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
 
@@ -321,5 +383,56 @@ function requestSurvey(row) {
             preserveScroll: true
         });
     }
+}
+
+// Fitur Hapus Satu Data
+const showDeleteModal = ref(false);
+const selectedCustomerToDelete = ref(null);
+const isDeleting = ref(false);
+
+function confirmDelete(customer) {
+    selectedCustomerToDelete.value = customer;
+    showDeleteModal.value = true;
+}
+
+function deleteCustomer() {
+    if (!selectedCustomerToDelete.value) return;
+    
+    isDeleting.value = true;
+    router.post(`/customers/${selectedCustomerToDelete.value.id}/delete`, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showDeleteModal.value = false;
+            selectedCustomerToDelete.value = null;
+        },
+        onFinish: () => {
+            isDeleting.value = false;
+        }
+    });
+}
+
+// Fitur Hapus Semua Data Booking
+const showDeleteAllModal = ref(false);
+const isDeletingAll = ref(false);
+
+function confirmDeleteAll() {
+    showDeleteAllModal.value = true;
+}
+
+function deleteAllBooking() {
+    isDeletingAll.value = true;
+    router.post('/customers/destroy-all-booking', {
+        date: filterDate.value || undefined,
+        area: filterArea.value || undefined,
+        search: props.filters?.search || undefined
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showDeleteAllModal.value = false;
+        },
+        onFinish: () => {
+            isDeletingAll.value = false;
+        }
+    });
 }
 </script>
