@@ -350,16 +350,16 @@ onMounted(async () => {
         zoomControl: true,
     });
 
-    tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
+    tileLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        attribution: '© Google',
         maxZoom: 24,
-        maxNativeZoom: 19,
+        maxNativeZoom: 21,
     }).addTo(map);
 
-    satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '© Esri',
+    satLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+        attribution: '© Google',
         maxZoom: 24,
-        maxNativeZoom: 19,
+        maxNativeZoom: 21,
     });
 
     // Init layer groups

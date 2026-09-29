@@ -142,6 +142,12 @@
                 <!-- Map Container -->
                 <div class="flex-1 relative bg-gray-200">
                     <div ref="mapEl" class="absolute inset-0"></div>
+                    
+                    <!-- Map Type Toggle -->
+                    <div class="absolute top-3 right-3 z-[1000] bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 flex">
+                        <button @click="setMapType('street')" :class="mapType === 'street' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'" class="px-3 py-2 text-xs font-medium transition-colors">Map</button>
+                        <button @click="setMapType('satellite')" :class="mapType === 'satellite' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'" class="px-3 py-2 text-xs font-medium transition-colors">Satellite</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -288,8 +294,11 @@ const props = defineProps({
 
 // UI State
 const mode = ref('view');
+const mapType = ref('street');
 const mapEl = ref(null);
 let map = null;
+let tileLayer = null;
+let satLayer = null;
 let layerGroups = {};
 let drawLayer = null; // For temp drawing
 let tempMarkers = [];
@@ -362,6 +371,17 @@ const setMode = (newMode) => {
     cancelCable();
 };
 
+const setMapType = (type) => {
+    mapType.value = type;
+    if (type === 'satellite') {
+        map.removeLayer(tileLayer);
+        satLayer.addTo(map);
+    } else {
+        map.removeLayer(satLayer);
+        tileLayer.addTo(map);
+    }
+};
+
 const selectDeviceType = (type) => {
     selectedDeviceType.value = type;
 };
@@ -379,10 +399,17 @@ onMounted(async () => {
     });
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
-        maxZoom: 20,
+    tileLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        attribution: '© Google',
+        maxZoom: 24,
+        maxNativeZoom: 21,
     }).addTo(map);
+
+    satLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+        attribution: '© Google',
+        maxZoom: 24,
+        maxNativeZoom: 21,
+    });
 
     layers.value.forEach(l => { layerGroups[l.key] = L.layerGroup().addTo(map); });
     drawLayer = L.layerGroup().addTo(map);
