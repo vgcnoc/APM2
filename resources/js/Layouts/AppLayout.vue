@@ -10,17 +10,9 @@
         >
             <!-- Logo -->
             <div class="flex items-center justify-between px-5 py-5 border-b border-gray-200">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 shadow-sm">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                        </svg>
-                    </div>
-                    <div v-show="sidebarOpen" class="transition-opacity duration-200">
-                        <h1 class="text-lg font-extrabold text-gray-900 leading-tight">ISP Manager</h1>
-                        <p class="text-[11px] font-semibold text-blue-600 uppercase tracking-widest mt-0.5">Enterprise</p>
-                    </div>
-                </div>
+                <Link href="/" class="block">
+                    <AppLogo :sidebar-collapsed="!sidebarOpen" context="desktop" />
+                </Link>
                 <!-- Mobile Close Button -->
                 <button @click="mobileMenuOpen = false" class="lg:hidden text-gray-400 hover:text-gray-600 p-1">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -120,6 +112,7 @@
 <script setup>
 import { ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
+import AppLogo from '@/Components/AppLogo.vue';
 
 defineProps({
     title: { type: String, default: 'Dashboard' },
@@ -155,6 +148,8 @@ const menuItems = [
     { type: 'link', href: '#', icon: 'calendar', label: 'Jadwal Teknisi', active: () => false },
     { type: 'group', label: 'PENGATURAN' },
     { type: 'link', href: '/settings/areas', icon: 'map', label: 'Master Area', active: (url) => url.startsWith('/settings/areas') },
+    { type: 'link', href: '/settings/branding', icon: 'color-swatch', label: 'Branding Aplikasi', active: (url) => url.startsWith('/settings/branding') },
+    { type: 'link', href: '/settings/api', icon: 'code', label: 'API & Integrasi', active: (url) => url.startsWith('/settings/api') },
     { type: 'link', href: '/settings/api', icon: 'zap', label: 'API Integrasi', active: (url) => url.startsWith('/settings/api') },
     { type: 'link', href: '/users', icon: 'users', label: 'Manajemen User', active: (url) => url.startsWith('/users') },
     { type: 'link', href: '#', icon: 'package', label: 'Paket Internet', active: () => false },
@@ -181,6 +176,7 @@ const iconPaths = {
     'package': 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
     zap: 'M13 10V3L4 14h7v7l9-11h-7z',
     map: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
+    'color-swatch': 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01',
     archive: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4',
     'shopping-cart': 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
 };

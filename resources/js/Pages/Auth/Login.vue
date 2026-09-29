@@ -1,5 +1,6 @@
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
+import AppLogo from '@/Components/AppLogo.vue';
 
 defineProps({
     status: {
@@ -28,15 +29,8 @@ const submit = () => {
         <div class="absolute -top-40 -right-40 w-96 h-96 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
         <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-indigo-100 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
 
-        <div class="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-            <div class="flex justify-center text-blue-600">
-                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                </svg>
-            </div>
-            <h2 class="mt-4 text-center text-3xl font-extrabold text-gray-900 tracking-tight">
-                ISP Management
-            </h2>
+        <div class="sm:mx-auto sm:w-full sm:max-w-md relative z-10 flex flex-col items-center">
+            <AppLogo context="login" />
             <p class="mt-2 text-center text-sm text-gray-600">
                 Sign in to your account
             </p>

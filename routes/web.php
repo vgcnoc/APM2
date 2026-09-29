@@ -135,6 +135,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('settings/areas/{area}/update', [\App\Http\Controllers\AreaController::class, 'update'])->name('areas.update.post');
     Route::post('settings/areas/{area}/delete', [\App\Http\Controllers\AreaController::class, 'destroy'])->name('areas.destroy.post');
     
+    Route::get('/settings/branding', [\App\Http\Controllers\SettingController::class, 'branding'])->name('settings.branding');
+    Route::post('/settings/branding', [\App\Http\Controllers\SettingController::class, 'updateBranding'])->name('settings.branding.update');
+
     Route::get('/settings/api', function () {
         return inertia('Settings/Api');
     })->name('settings.api');
