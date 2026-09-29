@@ -402,13 +402,13 @@ onMounted(async () => {
     tileLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
         attribution: '© Google',
         maxZoom: 24,
-        maxNativeZoom: 21,
+        maxNativeZoom: 19,
     }).addTo(map);
 
     satLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
         attribution: '© Google',
         maxZoom: 24,
-        maxNativeZoom: 21,
+        maxNativeZoom: 19,
     });
 
     layers.value.forEach(l => { layerGroups[l.key] = L.layerGroup().addTo(map); });
