@@ -177,6 +177,92 @@
                     </div>
                 </div>
 
+                <!-- Konfigurasi Layanan & ONT Section -->
+                <div v-if="customer.status === 'active'" class="glass-card p-6 mt-6 animate-fade-in-up border border-indigo-100 shadow-md">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <span class="bg-indigo-100 text-indigo-600 p-2 rounded-lg">⚙️</span>
+                            Konfigurasi Layanan & ONT
+                        </h3>
+                        <div class="flex gap-2">
+                            <button v-if="!isEditingOnt" type="button" @click="isEditingOnt = true" class="text-xs font-bold px-4 py-2 rounded-lg transition-all bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900 shadow-sm">
+                                <span class="flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                    Edit Konfigurasi
+                                </span>
+                            </button>
+                            <template v-else>
+                                <button type="button" @click="isEditingOnt = false" class="text-xs font-bold px-4 py-2 rounded-lg transition-all bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-sm">
+                                    Batal
+                                </button>
+                                <button type="button" @click="saveOntData" :disabled="isSavingOnt" class="text-xs font-bold px-4 py-2 rounded-lg transition-all shadow-sm" :class="isSavingOnt ? 'bg-emerald-100 text-emerald-400 cursor-not-allowed' : 'bg-emerald-500 text-white hover:bg-emerald-600 hover:shadow-md'">
+                                    <span class="flex items-center gap-2">
+                                        <svg v-if="isSavingOnt" class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        {{ isSavingOnt ? 'Menyimpan...' : 'Simpan Perubahan' }}
+                                    </span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">PPPoE Username</label>
+                                <input v-model="activationForm.pppoe_user" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed font-medium' : 'bg-white border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium'" placeholder="user@isp" :readonly="!isEditingOnt" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">PPPoE Password</label>
+                                <input v-model="activationForm.pppoe_password" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed font-medium' : 'bg-white border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium'" placeholder="***" :readonly="!isEditingOnt" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Mode Akses</label>
+                                <select v-model="activationForm.access_mode" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed font-medium' : 'bg-white border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium'" :disabled="!isEditingOnt">
+                                    <option value="PPPOE">PPPoE</option>
+                                    <option value="STATIC">Static IP</option>
+                                    <option value="DHCP">DHCP / Dynamic</option>
+                                    <option value="HOTSPOT">Hotspot</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">VLAN Mode</label>
+                                <select v-model="activationForm.vlan_mode" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed font-medium' : 'bg-white border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium'" :disabled="!isEditingOnt">
+                                    <option value="">-- Pilih --</option>
+                                    <option value="Route">Route</option>
+                                    <option value="Bridge">Bridge</option>
+                                    <option value="VLAN">VLAN (Tagged)</option>
+                                    <option value="Untagged">Untagged</option>
+                                </select>
+                            </div>
+                            
+                            <div v-if="activationForm.vlan_mode === 'VLAN'" class="col-span-full">
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">No VLAN ID</label>
+                                <input v-model="activationForm.vlan_id" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed font-medium' : 'bg-white border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium'" placeholder="Misal: 100" :readonly="!isEditingOnt" />
+                            </div>
+                        </div>
+                        
+                        <div class="pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">IP Login ONT</label>
+                                <input v-model="activationForm.ip_login" type="text" class="w-full border rounded-lg px-4 py-2 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed text-sm' : 'bg-white border-blue-300 focus:ring-2 focus:ring-blue-500 text-sm'" placeholder="192.168.1.1" :readonly="!isEditingOnt" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">User ONT</label>
+                                <input v-model="activationForm.login_user" type="text" class="w-full border rounded-lg px-4 py-2 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed text-sm' : 'bg-white border-blue-300 focus:ring-2 focus:ring-blue-500 text-sm'" placeholder="admin" :readonly="!isEditingOnt" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Pass ONT</label>
+                                <input v-model="activationForm.login_password" type="text" class="w-full border rounded-lg px-4 py-2 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed text-sm' : 'bg-white border-blue-300 focus:ring-2 focus:ring-blue-500 text-sm'" placeholder="admin" :readonly="!isEditingOnt" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Audit Data Pemasangan Section -->
                 <div v-if="(customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active'" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
                     <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
