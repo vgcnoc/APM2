@@ -177,6 +177,82 @@
                     </div>
                 </div>
 
+                <!-- Audit Data Pemasangan Section -->
+                <div v-if="(customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active'" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">🛡️</span>
+                        Data Instalasi & Audit
+                    </h3>
+                        
+                        <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 space-y-2">
+                            <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
+                            <InfoRow label="Teknisi" :value="getAssignedTechnicians('installation')" />
+                            <InfoRow label="Tanggal Pasang" :value="customer.technician_schedules.find(s => s.type === 'installation').scheduled_date" />
+                        </div>
+                        
+                        <div v-if="hardwareItems.length > 0" class="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-6">
+                            <p class="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-3">Kebutuhan Material (Telah Dipasang)</p>
+                            <div class="space-y-2">
+                                <div v-for="item in hardwareItems" :key="item.id" class="text-sm text-gray-700 bg-white p-3 rounded-lg border border-amber-200 shadow-sm flex items-center justify-between">
+                                    <div>
+                                        <span class="text-xs text-gray-500 font-medium block mb-1">{{ item.type }}</span>
+                                        <span class="font-bold text-gray-900">{{ item.name }}</span>
+                                    </div>
+                                    <div class="text-emerald-600 font-bold flex items-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        Dipasang
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div class="space-y-2">
+                                <InfoRow label="Waktu Mulai" :value="customer.ont.start_time || '-'" />
+                                <InfoRow label="Waktu Selesai" :value="customer.ont.end_time || '-'" />
+                            </div>
+                            <div class="space-y-2">
+                                <InfoRow label="Port ODP" :value="`Port ${customer.ont.port_number}`" />
+                                <InfoRow label="Serial Number (Auto)" :value="customer.ont.serial_number" />
+                            </div>
+                        </div>
+                        
+                        <div class="pt-4 border-t border-gray-200 mt-4">
+                            <p class="text-xs text-gray-500 mb-3 uppercase font-semibold">Hasil Dokumentasi Lapangan:</p>
+                            <div class="flex gap-4 overflow-x-auto pb-2">
+                                <div v-if="customer.ont.photo_odp" class="shrink-0 group relative">
+                                    <img :src="`/storage/${customer.ont.photo_odp}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_odp}`, 'Foto ODP / Port')" />
+                                    <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto ODP</div>
+                                </div>
+                                <div v-if="customer.ont.photo_installation" class="shrink-0 group relative">
+                                    <img :src="`/storage/${customer.ont.photo_installation}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_installation}`, 'Foto Instalasi di Rumah')" />
+                                    <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Instalasi</div>
+                                </div>
+                                <div v-if="customer.ont.photo_ont" class="shrink-0 group relative">
+                                    <img :src="`/storage/${customer.ont.photo_ont}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_ont}`, 'Foto Posisi ONT')" />
+                                    <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto ONT</div>
+                                </div>
+                                <div v-if="customer.ont.photo_customer" class="shrink-0 group relative">
+                                    <img :src="`/storage/${customer.ont.photo_customer}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_customer}`, 'Foto Selfie Pelanggan')" />
+                                    <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Selfie</div>
+                                </div>
+                                <div v-if="customer.ont.photo_redaman" class="shrink-0 group relative">
+                                    <img :src="`/storage/${customer.ont.photo_redaman}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_redaman}`, 'Foto Redaman')" />
+                                    <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Redaman</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="customer.status === 'installing'" class="flex justify-end pt-4 border-t border-gray-200 mt-6 gap-3">
+                            <button v-if="!customer.is_audited" @click="showAuditModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border-0 text-white">
+                                Selesaikan Audit
+                            </button>
+                            <button v-else @click="showActivationModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 border-0 text-white">
+                                Aktivasi Pelanggan
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <!-- Instalasi Section -->
                 <div v-if="customer.status === 'installing' && (!customer.ont || !customer.ont.rx_power)" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
                     <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -397,82 +473,6 @@
 
                     </div>
 
-                <!-- Audit Data Pemasangan Section -->
-                <div v-if="(customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active'" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">🛡️</span>
-                        Data Instalasi & Audit
-                    </h3>
-                        
-                        <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 space-y-2">
-                            <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
-                            <InfoRow label="Teknisi" :value="getAssignedTechnicians('installation')" />
-                            <InfoRow label="Tanggal Pasang" :value="customer.technician_schedules.find(s => s.type === 'installation').scheduled_date" />
-                        </div>
-                        
-                        <div v-if="hardwareItems.length > 0" class="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-6">
-                            <p class="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-3">Kebutuhan Material (Telah Dipasang)</p>
-                            <div class="space-y-2">
-                                <div v-for="item in hardwareItems" :key="item.id" class="text-sm text-gray-700 bg-white p-3 rounded-lg border border-amber-200 shadow-sm flex items-center justify-between">
-                                    <div>
-                                        <span class="text-xs text-gray-500 font-medium block mb-1">{{ item.type }}</span>
-                                        <span class="font-bold text-gray-900">{{ item.name }}</span>
-                                    </div>
-                                    <div class="text-emerald-600 font-bold flex items-center gap-1">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                        Dipasang
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                            <div class="space-y-2">
-                                <InfoRow label="Waktu Mulai" :value="customer.ont.start_time || '-'" />
-                                <InfoRow label="Waktu Selesai" :value="customer.ont.end_time || '-'" />
-                            </div>
-                            <div class="space-y-2">
-                                <InfoRow label="Port ODP" :value="`Port ${customer.ont.port_number}`" />
-                                <InfoRow label="Serial Number (Auto)" :value="customer.ont.serial_number" />
-                            </div>
-                        </div>
-                        
-                        <div class="pt-4 border-t border-gray-200 mt-4">
-                            <p class="text-xs text-gray-500 mb-3 uppercase font-semibold">Hasil Dokumentasi Lapangan:</p>
-                            <div class="flex gap-4 overflow-x-auto pb-2">
-                                <div v-if="customer.ont.photo_odp" class="shrink-0 group relative">
-                                    <img :src="`/storage/${customer.ont.photo_odp}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_odp}`, 'Foto ODP / Port')" />
-                                    <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto ODP</div>
-                                </div>
-                                <div v-if="customer.ont.photo_installation" class="shrink-0 group relative">
-                                    <img :src="`/storage/${customer.ont.photo_installation}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_installation}`, 'Foto Instalasi di Rumah')" />
-                                    <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Instalasi</div>
-                                </div>
-                                <div v-if="customer.ont.photo_ont" class="shrink-0 group relative">
-                                    <img :src="`/storage/${customer.ont.photo_ont}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_ont}`, 'Foto Posisi ONT')" />
-                                    <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto ONT</div>
-                                </div>
-                                <div v-if="customer.ont.photo_customer" class="shrink-0 group relative">
-                                    <img :src="`/storage/${customer.ont.photo_customer}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_customer}`, 'Foto Selfie Pelanggan')" />
-                                    <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Selfie</div>
-                                </div>
-                                <div v-if="customer.ont.photo_redaman" class="shrink-0 group relative">
-                                    <img :src="`/storage/${customer.ont.photo_redaman}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_redaman}`, 'Foto Redaman')" />
-                                    <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Redaman</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div v-if="customer.status === 'installing'" class="flex justify-end pt-4 border-t border-gray-200 mt-6 gap-3">
-                            <button v-if="!customer.is_audited" @click="showAuditModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border-0 text-white">
-                                Selesaikan Audit
-                            </button>
-                            <button v-else @click="showActivationModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 border-0 text-white">
-                                Aktivasi Pelanggan
-                            </button>
-                        </div>
-                    </div>
-                </div>
         <!-- Audit Modal -->
         <div v-if="showAuditModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-hidden animate-fade-in-up">
