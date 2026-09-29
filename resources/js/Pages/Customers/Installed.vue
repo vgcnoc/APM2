@@ -1,6 +1,34 @@
 <template>
     <AppLayout title="Pelanggan Instalasi" subtitle="Pelanggan yang sedang diinstalasi">
         
+        <!-- Statistik Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <StatCard 
+                title="Jadwal Pasang" 
+                :value="stats?.jadwal_pasang || 0" 
+                icon="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                color="blue" 
+            />
+            <StatCard 
+                title="Laporan Pasang" 
+                :value="stats?.laporan_pasang || 0" 
+                icon="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" 
+                color="amber" 
+            />
+            <StatCard 
+                title="Menunggu Audit" 
+                :value="stats?.audit || 0" 
+                icon="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
+                color="purple" 
+            />
+            <StatCard 
+                title="Menunggu Aktivasi" 
+                :value="stats?.menunggu_aktivasi || 0" 
+                icon="M13 10V3L4 14h7v7l9-11h-7z" 
+                color="emerald" 
+            />
+        </div>
+
         <!-- Tabs Menu -->
         <div class="flex flex-wrap gap-2 mb-6">
             <Link href="/customers/installed" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', !filters.tab ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-indigo-600']">
@@ -22,6 +50,10 @@
             <Link href="/customers/installed?tab=menunggu_aktivasi" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'menunggu_aktivasi' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-emerald-600']">
                 <span>Menunggu Aktivasi</span>
                 <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'menunggu_aktivasi' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.menunggu_aktivasi || 0 }}</span>
+            </Link>
+            <Link href="/customers/installed?tab=selesai" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'selesai' ? 'bg-cyan-600 text-white shadow-md shadow-cyan-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-cyan-600']">
+                <span>Selesai / Aktif</span>
+                <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'selesai' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.selesai || 0 }}</span>
             </Link>
         </div>
 
@@ -460,6 +492,7 @@ import StatCard from '@/Components/StatCard.vue';
 const showTechDropdown = ref(false);
 
 const getCustomerProgressStatus = (customer) => {
+    if (customer.status === 'active') return 'active';
     if (customer.is_audited) return 'menunggu_aktivasi';
     if (customer.ont && customer.ont.rx_power) return 'audit';
     if (customer.technician_schedules && customer.technician_schedules.length > 0) return 'laporan_pasang';
