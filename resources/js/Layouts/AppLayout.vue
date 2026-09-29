@@ -187,45 +187,57 @@ import { usePage } from '@inertiajs/vue3';
 const page = usePage();
 
 const hasPermission = (permission) => {
-    const user = page.props.auth?.user;
-    if (!user) return false;
-    
-    // Cek super admin (spatie)
-    let roles = [];
-    if (Array.isArray(user.roles)) roles = user.roles;
-    else if (user.roles) roles = Object.values(user.roles);
-    
-    if (roles.includes('admin')) return true;
-    
-    // Fallback legacy role column
-    if (user.role === 'admin') return true;
+    try {
+        const user = page.props.auth?.user;
+        if (!user) return true; // Fallback jika user blm ter-load
+        
+        // Fallback legacy role column
+        if (user.role === 'admin' || user.role === 'Super Admin') return true;
 
-    // Cek permission spesifik
-    let perms = [];
-    if (Array.isArray(user.permissions)) perms = user.permissions;
-    else if (user.permissions) perms = Object.values(user.permissions);
-    
-    return perms.includes(permission);
+        // Cek super admin (spatie)
+        let roles = [];
+        if (Array.isArray(user.roles)) roles = user.roles;
+        else if (user.roles) roles = Object.values(user.roles);
+        
+        if (roles.includes('admin') || roles.includes('Super Admin')) return true;
+
+        // Cek permission spesifik
+        let perms = [];
+        if (Array.isArray(user.permissions)) perms = user.permissions;
+        else if (user.permissions) perms = Object.values(user.permissions);
+        
+        if (perms.includes(permission)) return true;
+        
+        return false;
+    } catch (e) {
+        console.error("Error in hasPermission:", e);
+        return true; // Tampilkan jika error agar tidak blank
+    }
 };
 
 const filteredMenuItems = computed(() => {
-    const filtered = [];
-    let currentGroup = null;
+    try {
+        const filtered = [];
+        let currentGroup = null;
 
-    menuItems.forEach(item => {
-        if (item.type === 'group') {
-            currentGroup = item;
-        } else {
-            if (!item.permission || hasPermission(item.permission)) {
-                if (currentGroup) {
-                    filtered.push(currentGroup);
-                    currentGroup = null;
+        menuItems.forEach(item => {
+            if (item.type === 'group') {
+                currentGroup = item;
+            } else {
+                if (!item.permission || hasPermission(item.permission)) {
+                    if (currentGroup) {
+                        filtered.push(currentGroup);
+                        currentGroup = null;
+                    }
+                    filtered.push(item);
                 }
-                filtered.push(item);
             }
-        }
-    });
+        });
 
-    return filtered;
+        return filtered;
+    } catch (e) {
+        console.error("Error in filteredMenuItems:", e);
+        return menuItems; // Tampilkan semua jika error
+    }
 });
 </script>
