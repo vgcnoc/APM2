@@ -97,31 +97,7 @@
                 </div>
             </div>
 
-            <!-- Active Customer Configuration -->
-            <div v-if="customer.status === 'active'" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                        <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">⚙️</span>
-                        Konfigurasi (Aktif)
-                    </h3>
-                </div>
-                
-                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
-                    <div class="grid grid-cols-1 gap-3 text-sm">
-                        <InfoRow label="Mode Akses" :value="customer.ont?.access_mode || '-'" />
-                        <InfoRow label="PPPoE User" :value="customer.ont?.pppoe_user || '-'" />
-                        <InfoRow label="VLAN Mode" :value="customer.ont?.vlan_mode || '-'" />
-                        <InfoRow label="VLAN ID" :value="customer.ont?.vlan_id || '-'" />
-                        <InfoRow label="IP Login ONT" :value="customer.ont?.ip_login || '-'" />
-                    </div>
-                </div>
 
-                <div class="flex justify-end">
-                    <button @click="openEditActiveModal" class="btn-primary w-full justify-center bg-amber-500 hover:bg-amber-600 border-0 shadow-md">
-                        Edit Konfigurasi
-                    </button>
-                </div>
-            </div>
             </div>
 
         <!-- Right Column -->
