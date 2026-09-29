@@ -149,5 +149,8 @@ Route::middleware(['auth'])->group(function () {
         return response()->json(['token' => $token]);
     })->name('settings.api.token');
     // Route::resource('users', UserController::class)->middleware('role:admin');
-    // Route::resource('packages', InternetPackageController::class);
+    
+    Route::resource('internet-packages', \App\Http\Controllers\InternetPackageController::class)->except(['create', 'show', 'edit']);
+    Route::post('internet-packages/{internet_package}/update', [\App\Http\Controllers\InternetPackageController::class, 'update'])->name('internet-packages.update.post');
+    Route::post('internet-packages/{internet_package}/delete', [\App\Http\Controllers\InternetPackageController::class, 'destroy'])->name('internet-packages.destroy.post');
 });

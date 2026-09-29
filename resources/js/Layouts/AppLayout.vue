@@ -152,7 +152,7 @@ const menuItems = [
     { type: 'link', href: '/settings/api', icon: 'code', label: 'API & Integrasi', active: (url) => url.startsWith('/settings/api') },
     { type: 'link', href: '/settings/api', icon: 'zap', label: 'API Integrasi', active: (url) => url.startsWith('/settings/api') },
     { type: 'link', href: '/users', icon: 'users', label: 'Manajemen User', active: (url) => url.startsWith('/users') },
-    { type: 'link', href: '#', icon: 'package', label: 'Paket Internet', active: () => false },
+    { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => url.startsWith('/internet-packages') },
 ];
 
 const iconPaths = {
