@@ -195,13 +195,13 @@
         </div>
 
         <!-- Flash -->
-        <div v-if="$page.props.flash?.success" class="fixed bottom-6 right-6 z-50 flex items-center gap-3 p-4 rounded-xl bg-emerald-600 text-white shadow-2xl animate-fade-in-up">
+        <div v-if="$page.props.flash?.success" class="fixed bottom-6 right-6 z-[9999] flex items-center gap-3 p-4 rounded-xl bg-emerald-600 text-white shadow-2xl animate-fade-in-up">
             <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <span class="text-sm font-medium">{{ $page.props.flash.success }}</span>
         </div>
 
         <!-- Design Modal -->
-        <div v-if="showDesignModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div v-if="showDesignModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" @click="showDesignModal = false"></div>
             <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-y-auto max-h-[90vh] animate-fade-in-up">
                 <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">

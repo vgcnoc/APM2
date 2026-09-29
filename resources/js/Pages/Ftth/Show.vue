@@ -143,7 +143,7 @@
         </div>
 
         <!-- Add Device Modal Content (Triggered after map click) -->
-        <div v-if="showDeviceModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div v-if="showDeviceModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" @click="showDeviceModal = false"></div>
             <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-sm animate-fade-in-up">
                 <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -171,7 +171,7 @@
             </div>
         </div>
         <!-- Review Modal -->
-        <div v-if="showReviewModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div v-if="showReviewModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" @click="showReviewModal = false"></div>
             <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl animate-fade-in-up max-h-[90vh] flex flex-col">
                 <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
