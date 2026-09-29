@@ -4,7 +4,7 @@ const conn = new Client();
 
 const commands = `
 cd /var/www/APM2
-cat .env | grep APP_URL
+cat config/filesystems.php | grep -A 5 "'public' =>"
 `;
 
 conn.on('ready', () => {

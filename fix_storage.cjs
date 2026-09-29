@@ -4,7 +4,8 @@ const conn = new Client();
 
 const commands = `
 cd /var/www/APM2
-cat .env | grep APP_URL
+php artisan storage:link
+echo "--- Storage Link Created ---"
 `;
 
 conn.on('ready', () => {

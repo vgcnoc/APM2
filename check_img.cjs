@@ -4,7 +4,10 @@ const conn = new Client();
 
 const commands = `
 cd /var/www/APM2
-cat .env | grep APP_URL
+php artisan tinker --execute="echo \\\\App\\\\Models\\\\Setting::get('app_logo');" > current_logo.txt
+LOGO_PATH=$(cat current_logo.txt)
+echo "Current logo is: $LOGO_PATH"
+curl -I -H "Host: bill.viruzs.my.id" "http://127.0.0.1/storage/$LOGO_PATH"
 `;
 
 conn.on('ready', () => {

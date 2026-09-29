@@ -4,7 +4,7 @@ const conn = new Client();
 
 const commands = `
 cd /var/www/APM2
-cat .env | grep APP_URL
+curl -I http://bill.viruzs.my.id/storage/logos/VkHucZhN0pU97l7lgWq34qy7obgeVo4jpBrWbzER.png
 `;
 
 conn.on('ready', () => {

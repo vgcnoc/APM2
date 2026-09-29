@@ -3,8 +3,7 @@ const { Client } = require('ssh2');
 const conn = new Client();
 
 const commands = `
-cd /var/www/APM2
-cat .env | grep APP_URL
+curl -I -k "https://bill.viruzs.my.id/storage/logos/ADiZwBIpzMb12XgrgzDFq5jkjJST4ywlKrOyXlmN.png"
 `;
 
 conn.on('ready', () => {

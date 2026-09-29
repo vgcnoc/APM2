@@ -4,7 +4,9 @@ const conn = new Client();
 
 const commands = `
 cd /var/www/APM2
-cat .env | grep APP_URL
+sed -i 's/APP_URL=http:\\/\\/bill.viruzs.my.id/APP_URL=https:\\/\\/bill.viruzs.my.id/g' .env
+php artisan config:clear
+php artisan cache:clear
 `;
 
 conn.on('ready', () => {

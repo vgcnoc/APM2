@@ -4,7 +4,9 @@ const conn = new Client();
 
 const commands = `
 cd /var/www/APM2
-cat .env | grep APP_URL
+php artisan tinker --execute="echo \\\\Illuminate\\\\Support\\\\Facades\\\\Storage::url(\\\\App\\\\Models\\\\Setting::get('app_logo'));" > current_url.txt
+URL_PATH=$(cat current_url.txt)
+echo "URL PATH: $URL_PATH"
 `;
 
 conn.on('ready', () => {
