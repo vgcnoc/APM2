@@ -108,6 +108,9 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('employees', \App\Http\Controllers\EmployeeController::class);
     Route::post('employees/{employee}/update', [\App\Http\Controllers\EmployeeController::class, 'update'])->name('employees.update.post');
     Route::post('employees/{employee}/delete', [\App\Http\Controllers\EmployeeController::class, 'destroy'])->name('employees.destroy.post');
+    Route::resource('positions', \App\Http\Controllers\PositionController::class);
+    Route::post('positions/{position}/update', [\App\Http\Controllers\PositionController::class, 'update'])->name('positions.update.post');
+    Route::post('positions/{position}/delete', [\App\Http\Controllers\PositionController::class, 'destroy'])->name('positions.destroy.post');
     Route::post('materials/{material}/update', [MaterialController::class, 'update'])->name('materials.update.post');
     Route::post('materials/{material}/add-stock', [MaterialController::class, 'addStock'])->name('materials.add-stock');
     Route::post('materials/{material}/delete', [MaterialController::class, 'destroy'])->name('materials.destroy.post');

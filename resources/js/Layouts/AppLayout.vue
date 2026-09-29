@@ -147,6 +147,7 @@ const menuItems = [
     { type: 'link', href: '#', icon: 'calendar', label: 'Jadwal Teknisi', active: () => false },
     { type: 'group', label: 'HR & PERSONALIA' },
     { type: 'link', href: '/employees', icon: 'users', label: 'Data Karyawan', active: (url) => url.startsWith('/employees') },
+    { type: 'link', href: '/positions', icon: 'briefcase', label: 'Posisi / Jabatan', active: (url) => url.startsWith('/positions') },
     { type: 'group', label: 'PENGATURAN' },
     { type: 'link', href: '/settings/areas', icon: 'map', label: 'Master Area', active: (url) => url.startsWith('/settings/areas') },
     { type: 'link', href: '/settings/branding', icon: 'color-swatch', label: 'Branding Aplikasi', active: (url) => url.startsWith('/settings/branding') },
@@ -180,5 +181,7 @@ const iconPaths = {
     'color-swatch': 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01',
     archive: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4',
     'shopping-cart': 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
+    briefcase: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
+    code: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4',
 };
 </script>

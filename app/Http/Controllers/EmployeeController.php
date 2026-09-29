@@ -19,10 +19,12 @@ class EmployeeController extends Controller
         $employees = $query->latest()->paginate(10)->withQueryString();
         
         $areas = \App\Models\Area::orderBy('name')->get();
+        $positions = \App\Models\Position::orderBy('name')->get();
 
         return \Inertia\Inertia::render('Employees/Index', [
             'employees' => $employees,
             'areas' => $areas,
+            'positions' => $positions,
             'filters' => $request->only(['search'])
         ]);
     }
