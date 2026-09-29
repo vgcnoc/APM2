@@ -752,6 +752,8 @@
                     </button>
                 </div>
             </div>
+        </div>
+
         <!-- Edit Active Config Modal -->
         <div v-if="showEditActiveModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-hidden animate-fade-in-up">
