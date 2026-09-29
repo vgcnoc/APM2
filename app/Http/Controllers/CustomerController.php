@@ -466,6 +466,11 @@ class CustomerController extends Controller
      */
     public function destroy(Customer $customer): RedirectResponse
     {
+        // Authorization check if using spatie roles
+        if (auth()->check() && !auth()->user()->can('customers_delete') && !auth()->user()->hasRole('admin')) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus data pelanggan.');
+        }
+
         DB::transaction(function () use ($customer) {
             // Lepaskan ONT jika ada
             if ($customer->ont) {
@@ -958,28 +963,6 @@ class CustomerController extends Controller
         
         return redirect()->route('customers.booking')
             ->with('success', 'Permintaan jadwal survey berhasil dikirim.');
-    }
-
-    /**
-     * Hapus Satu Data Pelanggan (Terutama Booking)
-     */
-    public function destroy(Customer $customer): RedirectResponse
-    {
-        // Authorization check if using spatie roles
-        // If they don't have permission, they shouldn't reach here, but let's double check
-        if (!auth()->user()->can('customers_delete') && !auth()->user()->hasRole('admin')) {
-            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus data pelanggan.');
-        }
-
-        // Jangan hapus jika status bukan booking dan memiliki banyak relasi penting (kecuali diperlukan)
-        if ($customer->status !== 'booking' && $customer->status !== 'terminated') {
-             return redirect()->back()->with('error', 'Hanya data dengan status Booking atau Terminated yang dapat dihapus secara langsung.');
-        }
-
-        // Hapus (Soft delete jika memungkinkan, namun Customer saat ini belum tentu pakai SoftDeletes, kita pakai delete biasa)
-        $customer->delete();
-        
-        return redirect()->back()->with('success', 'Data booking berhasil dihapus.');
     }
 
     /**
