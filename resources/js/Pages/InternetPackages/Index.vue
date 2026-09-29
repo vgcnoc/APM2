@@ -77,41 +77,44 @@
                 </table>
             </div>
             
-            <div class="px-6 py-4 border-t border-gray-200" v-if="packages.links.length > 3">
-                <Pagination :links="packages.links" />
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-center gap-2" v-if="packages.links && packages.links.length > 3">
+                <template v-for="(link, idx) in packages.links" :key="idx">
+                    <Link v-if="link.url" :href="link.url" v-html="link.label" class="px-3 py-1 border rounded" :class="link.active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"></Link>
+                    <span v-else v-html="link.label" class="px-3 py-1 border rounded bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"></span>
+                </template>
             </div>
         </div>
 
         <!-- Modal Form -->
-        <Modal :show="showModal" @close="closeModal">
-            <div class="p-6">
+        <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto my-auto p-6">
                 <h3 class="text-lg font-bold text-gray-900 mb-6 border-b pb-4">{{ editMode ? 'Edit Paket Internet' : 'Tambah Paket Internet' }}</h3>
                 
                 <form @submit.prevent="submitForm">
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Nama Paket</label>
-                            <input v-model="form.name" type="text" class="input-text" required placeholder="Contoh: Paket Family 20M">
+                            <input v-model="form.name" type="text" class="input-text w-full border border-gray-300 rounded-lg px-3 py-2" required placeholder="Contoh: Paket Family 20M">
                             <div v-if="form.errors.name" class="text-red-500 text-xs mt-1">{{ form.errors.name }}</div>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-1">Kecepatan (Mbps)</label>
-                                <input v-model="form.speed_mbps" type="number" class="input-text" required min="1" placeholder="Contoh: 20">
+                                <input v-model="form.speed_mbps" type="number" class="input-text w-full border border-gray-300 rounded-lg px-3 py-2" required min="1" placeholder="Contoh: 20">
                                 <div v-if="form.errors.speed_mbps" class="text-red-500 text-xs mt-1">{{ form.errors.speed_mbps }}</div>
                             </div>
 
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-1">Harga (Rp)</label>
-                                <input v-model="form.price" type="number" class="input-text" required min="0" placeholder="Contoh: 150000">
+                                <input v-model="form.price" type="number" class="input-text w-full border border-gray-300 rounded-lg px-3 py-2" required min="0" placeholder="Contoh: 150000">
                                 <div v-if="form.errors.price" class="text-red-500 text-xs mt-1">{{ form.errors.price }}</div>
                             </div>
                         </div>
 
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Deskripsi (Opsional)</label>
-                            <textarea v-model="form.description" class="input-text h-24" placeholder="Keterangan atau fasilitas paket..."></textarea>
+                            <textarea v-model="form.description" class="input-text h-24 w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Keterangan atau fasilitas paket..."></textarea>
                             <div v-if="form.errors.description" class="text-red-500 text-xs mt-1">{{ form.errors.description }}</div>
                         </div>
 
@@ -122,23 +125,21 @@
                     </div>
 
                     <div class="mt-8 flex justify-end gap-3 pt-6 border-t border-gray-100">
-                        <button type="button" @click="closeModal" class="btn-secondary">Batal</button>
-                        <button type="submit" class="btn-primary" :disabled="form.processing">
+                        <button type="button" @click="closeModal" class="btn-secondary px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50">Batal</button>
+                        <button type="submit" class="btn-primary px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" :disabled="form.processing">
                             {{ editMode ? 'Simpan Perubahan' : 'Tambah Paket' }}
                         </button>
                     </div>
                 </form>
             </div>
-        </Modal>
+        </div>
     </AppLayout>
 </template>
 
 <script setup>
 import { ref } from 'vue';
-import { router, useForm } from '@inertiajs/vue3';
+import { router, useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import Pagination from '@/Components/Pagination.vue';
-import Modal from '@/Components/Modal.vue';
 
 const props = defineProps({
     packages: Object,
