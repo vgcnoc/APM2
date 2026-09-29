@@ -36,7 +36,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
-            'app_logo' => \App\Models\Setting::get('app_logo') ? '/storage/' . \App\Models\Setting::get('app_logo') : null,
+            'app_logo' => \App\Models\Setting::get('app_logo') ? \Illuminate\Support\Facades\Storage::url(\App\Models\Setting::get('app_logo')) : null,
         ];
     }
 }
