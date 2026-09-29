@@ -55,7 +55,7 @@
             <!-- Filters & Actions -->
             <div class="glass-card p-5 animate-fade-in-up">
                 <div class="flex flex-col lg:flex-row justify-between gap-4">
-                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                         <!-- Search -->
                         <div class="relative">
                             <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Pencarian</label>
@@ -101,6 +101,18 @@
                             >
                                 <option value="">Semua Teknisi</option>
                                 <option v-for="tech in technicians" :key="tech" :value="tech">{{ tech }}</option>
+                            </select>
+                        </div>
+
+                        <!-- Area / Wilayah Filter -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Area / Wilayah</label>
+                            <select 
+                                v-model="filterForm.area_id"
+                                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm bg-white"
+                            >
+                                <option value="">Semua Area</option>
+                                <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
                             </select>
                         </div>
                     </div>
@@ -245,9 +257,13 @@ const props = defineProps({
     },
     filters: {
         type: Object,
-        default: () => ({ search: '', start_date: '', end_date: '', technician: '' })
+        default: () => ({ search: '', start_date: '', end_date: '', technician: '', area_id: '' })
     },
     technicians: {
+        type: Array,
+        default: () => []
+    },
+    areas: {
         type: Array,
         default: () => []
     },
@@ -263,6 +279,7 @@ const filterForm = ref({
     start_date: props.filters?.start_date || '',
     end_date: props.filters?.end_date || '',
     technician: props.filters?.technician || '',
+    area_id: props.filters?.area_id || '',
 });
 
 let timeout = null;
@@ -274,6 +291,7 @@ const applyFilters = () => {
             start_date: filterForm.value.start_date,
             end_date: filterForm.value.end_date,
             technician: filterForm.value.technician,
+            area_id: filterForm.value.area_id,
         }, {
             preserveState: true,
             replace: true,
@@ -291,6 +309,7 @@ const resetFilters = () => {
         start_date: '',
         end_date: '',
         technician: '',
+        area_id: '',
     };
 };
 </script>

@@ -14,7 +14,7 @@ class MaterialTransactionController extends Controller
 {
     public function index(Request $request)
     {
-        $query = MaterialTransaction::with(['user', 'items.material']);
+        $query = MaterialTransaction::with(['user', 'items.material', 'areaModel']);
 
         if ($request->search) {
             $query->where(function($q) use ($request) {
@@ -36,6 +36,10 @@ class MaterialTransactionController extends Controller
             $query->where('technician_name', $request->technician);
         }
 
+        if ($request->area_id) {
+            $query->where('area_id', $request->area_id);
+        }
+
         $transactions = $query->latest()->paginate(15)->withQueryString();
 
         // Calculations for cards
@@ -45,6 +49,9 @@ class MaterialTransactionController extends Controller
         }
         if ($request->end_date) {
             $baseQuery->whereDate('date', '<=', $request->end_date);
+        }
+        if ($request->area_id) {
+            $baseQuery->where('area_id', $request->area_id);
         }
 
         $totalTransactions = (clone $baseQuery)->count();
@@ -58,20 +65,26 @@ class MaterialTransactionController extends Controller
             if ($request->end_date) {
                 $q->whereDate('date', '<=', $request->end_date);
             }
+            if ($request->area_id) {
+                $q->where('area_id', $request->area_id);
+            }
         })->sum('quantity');
 
         // Get unique technicians for filter
         $technicians = MaterialTransaction::select('technician_name')->distinct()->whereNotNull('technician_name')->pluck('technician_name');
+        
+        $areas = \App\Models\Area::orderBy('name')->get();
 
         return Inertia::render('MaterialTransactions/Index', [
             'transactions' => $transactions,
-            'filters' => $request->only(['search', 'start_date', 'end_date', 'technician']),
+            'filters' => $request->only(['search', 'start_date', 'end_date', 'technician', 'area_id']),
             'summary' => [
                 'total_transactions' => $totalTransactions,
                 'total_cost' => $totalCost,
                 'total_items' => $totalItems,
             ],
             'technicians' => $technicians,
+            'areas' => $areas,
         ]);
     }
 
