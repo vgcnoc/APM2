@@ -45,7 +45,7 @@
                         <thead>
                             <tr class="bg-gray-50/50 border-b border-gray-100">
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Barang</th>
-                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Area</th>
+
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Kategori</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Stok</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">H. Modal / Jual</th>
@@ -58,12 +58,7 @@
                                     <p class="text-sm font-semibold text-gray-900">{{ item.name }}</p>
                                     <p v-if="item.supplier" class="text-xs text-blue-600 mt-0.5">Supplier: {{ item.supplier }}</p>
                                 </td>
-                                <td class="py-4 px-6 text-sm text-gray-600">
-                                    <span v-if="item.area_id" class="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-bold border border-indigo-100">
-                                        {{ getAreaName(item.area_id) }}
-                                    </span>
-                                    <span v-else class="text-xs text-gray-400 italic">Belum diset</span>
-                                </td>
+
                                 <td class="py-4 px-6">
                                     <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
                                         {{ item.category || 'Lainnya' }}
@@ -79,13 +74,19 @@
                                             </span>
                                         </div>
                                         <div class="flex items-center gap-1.5" title="Sisa Stok Saat Ini">
-                                            <span class="text-[10px] font-bold text-gray-400 uppercase">Sisa:</span>
+                                            <span class="text-[10px] font-bold text-gray-400 uppercase">Total Sisa:</span>
                                             <span class="text-sm font-bold text-blue-600">{{ formatNumber(item.stock) }}</span>
                                             <span class="text-xs text-gray-500">
                                                 {{ item.category === 'Kabel' ? 'meter' : (item.category === 'Isolasi' ? 'cm' : (item.category === 'Paku Klem' ? 'pcs' : item.unit)) }}
                                             </span>
                                         </div>
-                                        <div v-if="item.category === 'Kabel' && item.total_rolls" class="text-xs text-gray-400 mt-0.5">
+                                        <div v-if="item.stocks && item.stocks.length > 0" class="flex flex-col items-end w-full mt-1.5 gap-0.5 border-t border-gray-100 pt-1.5">
+                                            <div v-for="s in item.stocks" :key="s.id" class="flex items-center justify-between w-full max-w-[140px] bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
+                                                <span class="text-[9px] font-medium text-gray-600 truncate max-w-[70px]" :title="s.area?.name">{{ s.area?.name || 'Area' }}</span>
+                                                <span class="text-[10px] font-bold text-gray-700">{{ formatNumber(s.stock) }}</span>
+                                            </div>
+                                        </div>
+                                        <div v-if="item.category === 'Kabel' && item.total_rolls" class="text-xs text-gray-400 mt-1">
                                             ({{ item.total_rolls }} roll)
                                         </div>
                                         <div v-else-if="item.category === 'Paku Klem' && item.total_packs" class="text-xs text-gray-400 mt-0.5">
@@ -171,14 +172,6 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Nama Produk *</label>
                             <input v-model="form.name" type="text" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" required placeholder="Contoh: Kabel FO 12 Core / Isolasi Hitam">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Area / Wilayah *</label>
-                            <select v-model="form.area_id" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" required>
-                                <option value="">Pilih Area...</option>
-                                <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
-                            </select>
                         </div>
                         
                         <div>
@@ -525,6 +518,15 @@
                             </div>
                             <p class="text-[10px] text-gray-400 mt-2">Kosongkan/biarkan jika harga tidak berubah.</p>
                         </div>
+                        
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Area / Wilayah untuk Stok Ini *</label>
+                            <select v-model="addStockForm.area_id" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" required>
+                                <option value="">Pilih Area...</option>
+                                <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                            </select>
+                            <p class="text-[10px] text-gray-400 mt-1">Stok akan ditambahkan ke lokasi/Area yang dipilih.</p>
+                        </div>
                     </form>
                 </div>
                 <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0 z-10">
@@ -566,7 +568,6 @@ const tempTotalJual = ref(null);
 
 const form = useForm({
     name: '',
-    area_id: '',
     supplier: '',
     category: '',
     unit: 'pcs',
@@ -583,6 +584,7 @@ const form = useForm({
 });
 
 const addStockForm = useForm({
+    area_id: '',
     added_stock: '',
     added_rolls: '',
     added_packs: '',
@@ -721,7 +723,6 @@ const openModal = (item = null) => {
         isEditing.value = true;
         editingId.value = item.id;
         form.name = item.name;
-        form.area_id = item.area_id || '';
         form.supplier = item.supplier || '';
         form.category = item.category || '';
         form.unit = item.unit || 'pcs';
@@ -743,7 +744,6 @@ const openModal = (item = null) => {
         isEditing.value = false;
         editingId.value = null;
         form.reset();
-        form.area_id = '';
         tempTotalModal.value = null;
         tempTotalJual.value = null;
     }
@@ -758,6 +758,7 @@ const closeModal = () => {
 const openAddStockModal = (item) => {
     selectedMaterial.value = item;
     addStockForm.reset();
+    addStockForm.area_id = '';
     addStockForm.added_stock = '';
     addStockForm.added_rolls = '';
     addStockForm.added_packs = '';

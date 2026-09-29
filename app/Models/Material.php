@@ -23,11 +23,10 @@ class Material extends Model
         'description',
         'cm_per_pcs',
         'total_pieces',
-        'area_id',
     ];
 
-    public function area(): BelongsTo
+    public function stocks()
     {
-        return $this->belongsTo(Area::class);
+        return $this->hasMany(MaterialStock::class);
     }
 }

@@ -66,14 +66,14 @@ class MaterialTransactionController extends Controller
             foreach ($request->items as $itemData) {
                 $material = Material::findOrFail($itemData['material_id']);
                 
-                // Ensure same area
-                if ($material->area_id !== (int) $request->area_id) {
-                    throw new \Exception("Material {$material->name} tidak sesuai dengan Area/Wilayah yang dipilih.");
-                }
+                $materialStock = \App\Models\MaterialStock::firstOrCreate(
+                    ['material_id' => $material->id, 'area_id' => $request->area_id],
+                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                );
 
-                // Ensure sufficient stock
-                if ($material->stock < $itemData['quantity']) {
-                    throw new \Exception("Stok {$material->name} tidak mencukupi. Sisa stok: {$material->stock}");
+                // Ensure sufficient stock in that area
+                if ($materialStock->stock < $itemData['quantity']) {
+                    throw new \Exception("Stok {$material->name} di Area/Wilayah ini tidak mencukupi. Sisa stok: {$materialStock->stock}");
                 }
 
                 $pricePerUnit = $material->selling_price ?? 0;
@@ -123,23 +123,28 @@ class MaterialTransactionController extends Controller
                 }
                 
                 $material->stock -= $deduction;
+                $materialStock->stock -= $deduction;
                 
                 // Recalculate total_rolls roughly
                 if ($material->category === 'Kabel' && $material->meter_per_roll > 0) {
                     $material->total_rolls = $material->stock / $material->meter_per_roll;
+                    $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
                 }
                 
                 // Recalculate total_packs roughly
                 if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
                     $material->total_packs = $material->stock / $material->pcs_per_pack;
+                    $materialStock->total_packs = $materialStock->stock / $material->pcs_per_pack;
                 }
 
                 // Recalculate total_pieces roughly
                 if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
                     $material->total_pieces = $material->stock / $material->cm_per_pcs;
+                    $materialStock->total_pieces = $materialStock->stock / $material->cm_per_pcs;
                 }
                 
                 $material->save();
+                $materialStock->save();
             }
 
             $transaction->update(['total_cost' => $totalCost]);
@@ -227,18 +232,28 @@ class MaterialTransactionController extends Controller
                         if ($material->category === 'Isolasi' && ($item->unit === 'pcs')) {
                             $addition = $item->quantity * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
                         }
+                        $materialStock = \App\Models\MaterialStock::firstOrCreate(
+                            ['material_id' => $material->id, 'area_id' => $materialTransaction->area_id],
+                            ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                        );
+
                         $material->stock += $addition;
+                        $materialStock->stock += $addition;
                         
                         if ($material->category === 'Kabel' && $material->meter_per_roll > 0) {
                             $material->total_rolls = $material->stock / $material->meter_per_roll;
+                            $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
                         }
                         if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
                             $material->total_packs = $material->stock / $material->pcs_per_pack;
+                            $materialStock->total_packs = $materialStock->stock / $material->pcs_per_pack;
                         }
                         if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
                             $material->total_pieces = $material->stock / $material->cm_per_pcs;
+                            $materialStock->total_pieces = $materialStock->stock / $material->cm_per_pcs;
                         }
                         $material->save();
+                        $materialStock->save();
                     }
                 }
                 
