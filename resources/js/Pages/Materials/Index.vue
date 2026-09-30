@@ -247,8 +247,9 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
                                 <select v-model="form.category" @change="handleCategoryChange" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                                     <option value="">Pilih Kategori...</option>
-                                    <option value="Kabel">Kabel</option>
-                                    <option value="Konektor / Frecon">Konektor / Frecon</option>
+                                    <option value="Kabel">Kabel Drop Biasa</option>
+                                    <option value="Kabel Drop / Frecon">Kabel Drop / Frecon</option>
+                                    <option value="Konektor / Frecon">Konektor (Fascon, dll)</option>
                                     <option value="Isolasi">Isolasi</option>
                                     <option value="Paku Klem">Paku Klem</option>
                                     <option value="Perangkat Aktif">Perangkat Aktif</option>
@@ -257,7 +258,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Satuan</label>
-                                <input v-if="form.category === 'Kabel'" type="text" v-model="form.unit" disabled class="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed">
+                                <input v-if="form.category === 'Kabel' || form.category === 'Kabel Drop / Frecon'" type="text" v-model="form.unit" disabled class="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed">
                                 <template v-else>
                                     <input type="text" v-model="form.unit" list="unit-options" placeholder="Ketik atau pilih satuan..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                                     <datalist id="unit-options">
@@ -275,7 +276,7 @@
                         </div>
 
                         <!-- Kabel Calculator -->
-                        <div v-if="form.category === 'Kabel'" class="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
+                        <div v-if="form.category === 'Kabel' || form.category === 'Kabel Drop / Frecon'" class="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
                             <div class="flex items-center gap-2 mb-3 text-blue-600 font-medium text-sm">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
@@ -748,15 +749,15 @@ const calculateTotalPrice = (type) => {
 
 // Calculate total when stock changes for non-cable and non-klem items
 watch(() => form.stock, (newVal) => {
-    if (form.category !== 'Kabel' && form.category !== 'Paku Klem' && form.category !== 'Isolasi') {
+    if (form.category !== 'Kabel' && form.category !== 'Kabel Drop / Frecon' && form.category !== 'Paku Klem' && form.category !== 'Isolasi') {
         calculateTotalPrice('modal');
         calculateTotalPrice('jual');
     }
 });
 
 const handleCategoryChange = () => {
-    if (form.category === 'Kabel') {
-        form.unit = 'meter'; // Base unit for cable is ALWAYS meter
+    if (form.category === 'Kabel' || form.category === 'Kabel Drop / Frecon') {
+        form.unit = form.category === 'Kabel' ? 'meter' : 'roll'; // Drop core biasa = meter, Frecon = roll
         calculateCableStock();
     } else if (form.category === 'Paku Klem') {
         form.unit = 'pcs'; // Base unit for paku klem is ALWAYS pcs
@@ -774,7 +775,11 @@ const handleCategoryChange = () => {
 const calculateCableStock = () => {
     const meter = parseFloat(form.meter_per_roll) || 0;
     const rolls = parseFloat(form.total_rolls) || 0;
-    form.stock = meter * rolls;
+    if (form.category === 'Kabel Drop / Frecon' || form.unit === 'roll' || form.unit === 'pcs') {
+        form.stock = rolls; // Untuk Frecon, fisik gudang tetap berupa roll/pcs
+    } else {
+        form.stock = meter * rolls; // Untuk kabel biasa, fisik gudang berupa meteran
+    }
 };
 
 const calculatePackStock = () => {

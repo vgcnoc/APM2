@@ -631,6 +631,14 @@ function updateMaterialItems() {
                                 qty = qty * (parseFloat(item.material.pcs_per_pack) || 100);
                                 unit = 'pcs';
                             }
+                        } else if (item.material && (item.material.category === 'Kabel Drop' || item.material.category === 'Kabel Drop / Frecon' || item.material.category === 'Kabel Frecon')) {
+                            if (unit === 'roll' || unit === 'pcs') {
+                                let mpr = parseFloat(item.material.meter_per_roll);
+                                if (mpr && mpr > 0) {
+                                    qty = qty * mpr;
+                                    unit = 'meter';
+                                }
+                            }
                         }
                         
                         newItemsToAdd.push({
