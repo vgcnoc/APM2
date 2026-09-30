@@ -698,14 +698,22 @@ function getTransactionLabel(trx) {
                 
                 // Get area stock if available
                 if (item.material && item.material.stocks && trx.area_id) {
-                    const areaStock = item.material.stocks.find(s => s.area_id === trx.area_id);
+                    const areaStock = item.material.stocks.find(s => parseInt(s.area_id) === parseInt(trx.area_id));
                     if (areaStock) {
                         stock = areaStock.stock;
                     }
                 }
                 
                 const unit = item.material ? item.material.unit : 'pcs';
-                return `${name} (Stok Sisa: ${stock} ${unit})`;
+                let extra = '';
+                if (item.material && (item.material.category === 'Kabel Drop / Frecon' || item.material.category === 'Kabel Frecon')) {
+                    const mpr = parseFloat(item.material.meter_per_roll) || 0;
+                    if (mpr > 0) {
+                        extra = ` = ${stock * mpr} m`;
+                    }
+                }
+                
+                return `${name} (Stok Sisa: ${stock} ${unit}${extra})`;
             }).join(', ');
             
             if (itemsStr.length > 60) {
