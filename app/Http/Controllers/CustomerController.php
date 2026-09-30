@@ -242,6 +242,20 @@ class CustomerController extends Controller
         }
 
         $customers = $customerQuery
+            ->when($request->package_id, fn($q, $pkg) => $q->where('package_id', $pkg))
+            ->when($request->technician_id, function($q, $techId) {
+                $q->whereHas('technicianSchedules', function($sub) use ($techId) {
+                    $sub->where('technician_id', $techId)->where('type', 'installation');
+                });
+            })
+            ->when($request->date, function($q, $date) {
+                $q->whereHas('technicianSchedules', function($sub) use ($date) {
+                    $sub->where('scheduled_date', $date)->where('type', 'installation');
+                });
+            })
+            ->when($request->area, function($q, $area) {
+                $q->where('area', $area);
+            })
             ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'installation')->with('technician');
             }])
@@ -266,8 +280,9 @@ class CustomerController extends Controller
             'technicians' => $technicians,
             'availableOnts' => $availableOnts,
             'materialTransactions' => $materialTransactions,
+            'packages' => \App\Models\InternetPackage::active()->get(),
             'stats' => $stats,
-            'filters' => $request->only(['search', 'tab', 'technician_id', 'date', 'area']),
+            'filters' => $request->only(['search', 'tab', 'technician_id', 'date', 'area', 'package_id']),
         ]);
     }
 

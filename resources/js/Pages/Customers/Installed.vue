@@ -31,23 +31,23 @@
 
         <!-- Tabs Menu -->
         <div class="flex flex-wrap gap-2 mb-6">
-            <Link href="/customers/installed" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', !filters.tab ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-indigo-600']">
+            <Link :href="getTabUrl('')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', !filters.tab ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-indigo-600']">
                 <span>Semua</span>
                 <span :class="['px-2 py-0.5 rounded-full text-xs', !filters.tab ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.semua || 0 }}</span>
             </Link>
-            <Link href="/customers/installed?tab=jadwal_pasang" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'jadwal_pasang' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-blue-600']">
+            <Link :href="getTabUrl('jadwal_pasang')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'jadwal_pasang' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-blue-600']">
                 <span>Jadwal Pasang</span>
                 <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'jadwal_pasang' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.jadwal_pasang || 0 }}</span>
             </Link>
-            <Link href="/customers/installed?tab=laporan_pasang" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'laporan_pasang' ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-amber-500']">
+            <Link :href="getTabUrl('laporan_pasang')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'laporan_pasang' ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-amber-500']">
                 <span>Laporan Pasang</span>
                 <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'laporan_pasang' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.laporan_pasang || 0 }}</span>
             </Link>
-            <Link href="/customers/installed?tab=audit" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'audit' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-purple-600']">
+            <Link :href="getTabUrl('audit')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'audit' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-purple-600']">
                 <span>Audit</span>
                 <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'audit' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.audit || 0 }}</span>
             </Link>
-            <Link href="/customers/installed?tab=selesai_instalasi" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'selesai_instalasi' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-emerald-600']">
+            <Link :href="getTabUrl('selesai_instalasi')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'selesai_instalasi' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-emerald-600']">
                 <span>Selesai Instalasi</span>
                 <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'selesai_instalasi' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.selesai_instalasi || 0 }}</span>
             </Link>
@@ -60,6 +60,33 @@
             searchPlaceholder="Cari pelanggan instalasi..."
             searchRoute="/customers/installed"
         >
+            <template #filters>
+                <form @submit.prevent="applyFilter" class="flex flex-wrap items-center gap-2">
+                    <select v-model="filterState.package_id" class="form-select w-36 text-sm">
+                        <option value="">Semua Paket</option>
+                        <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
+                            {{ pkg.name }}
+                        </option>
+                    </select>
+
+                    <select v-model="filterState.technician_id" class="form-select w-40 text-sm">
+                        <option value="">Semua Teknisi</option>
+                        <option v-for="tech in technicians" :key="tech.id" :value="tech.id">
+                            {{ tech.name }}
+                        </option>
+                    </select>
+                    
+                    <input type="date" v-model="filterState.date" class="form-input w-36 text-sm" placeholder="Tgl Pasang">
+
+                    <button type="submit" class="btn-primary py-2 text-sm shadow-sm">
+                        Tampilkan
+                    </button>
+                    
+                    <button type="button" @click="resetFilter" class="btn-ghost py-2 text-sm">
+                        Reset
+                    </button>
+                </form>
+            </template>
             <template #row="{ row }">
                 <td>
                     <div class="flex items-center gap-3">
@@ -500,6 +527,7 @@ const props = defineProps({
     technicians: Array, 
     availableOnts: { type: Array, default: () => [] }, 
     materialTransactions: { type: Array, default: () => [] },
+    packages: { type: Array, default: () => [] },
     stats: Object,
     filters: Object 
 });
@@ -614,10 +642,36 @@ function getTransactionLabel(trx) {
     return itemsStr;
 }
 
-const status = ref(props.filters?.status || '');
+const filterState = ref({
+    package_id: props.filters?.package_id || '',
+    technician_id: props.filters?.technician_id || '',
+    date: props.filters?.date || '',
+    tab: props.filters?.tab || '',
+});
+
+function getTabUrl(tab) {
+    const params = new URLSearchParams();
+    if (tab) params.append('tab', tab);
+    if (filterState.value.package_id) params.append('package_id', filterState.value.package_id);
+    if (filterState.value.technician_id) params.append('technician_id', filterState.value.technician_id);
+    if (filterState.value.date) params.append('date', filterState.value.date);
+    if (props.filters?.search) params.append('search', props.filters.search);
+    
+    return `/customers/installed?${params.toString()}`;
+}
 
 function applyFilter() {
-    router.get('/customers/installed', { status: status.value || undefined }, { preserveState: true });
+    router.get('/customers/installed', {
+        ...filterState.value,
+        search: props.filters?.search || undefined
+    }, { preserveState: true, preserveScroll: true });
+}
+
+function resetFilter() {
+    filterState.value.package_id = '';
+    filterState.value.technician_id = '';
+    filterState.value.date = '';
+    applyFilter();
 }
 
 function signalClass(rx) {
