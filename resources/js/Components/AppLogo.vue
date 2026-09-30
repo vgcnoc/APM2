@@ -1,12 +1,11 @@
 <template>
-    <div class="flex items-center justify-center">
+    <div class="flex flex-col items-center justify-center">
         <!-- Logo from Settings -->
-        <img v-if="$page.props.app_logo && !imageError" 
+        <img v-if="$page.props.app_logo" 
              :src="$page.props.app_logo" 
              class="object-contain w-auto transition-all duration-300" 
              :class="sizeClasses"
-             alt="Application Logo" 
-             @error="handleImageError" />
+             alt="Application Logo" />
              
         <!-- Default Fallback Logo (rendered as a single SVG) -->
         <div v-else class="flex items-center" :class="[sidebarCollapsed ? 'justify-center w-full' : '']">
