@@ -177,7 +177,7 @@ class CustomerController extends Controller
      */
     public function installed(Request $request): Response
     {
-        $baseQuery = Customer::installed()->where('status', 'installing')->where('is_audited', false);
+        $baseQuery = Customer::installed()->where('status', 'installing');
         
         if (auth()->check() && auth()->user()->role === 'teknisi') {
             $baseQuery->whereHas('technicianSchedules', function ($q) {
@@ -200,9 +200,12 @@ class CustomerController extends Controller
                       });
                 })->count(),
             'audit' => (clone $baseQuery)
+                ->where('is_audited', false)
                 ->whereHas('ont', function ($q) {
                     $q->whereNotNull('rx_power');
                 })->count(),
+            'selesai_instalasi' => (clone $baseQuery)
+                ->where('is_audited', true)->count(),
         ];
 
         $customerQuery = clone $baseQuery;
@@ -219,9 +222,11 @@ class CustomerController extends Controller
                           });
                     });
             } elseif ($request->tab === 'audit') {
-                $customerQuery->whereHas('ont', function ($q) {
+                $customerQuery->where('is_audited', false)->whereHas('ont', function ($q) {
                         $q->whereNotNull('rx_power');
                     });
+            } elseif ($request->tab === 'selesai_instalasi') {
+                $customerQuery->where('is_audited', true);
             }
         }
 
@@ -383,6 +388,7 @@ class CustomerController extends Controller
 
         return Inertia::render('Customers/Show', [
             'customer' => $customer,
+            'source' => request()->query('source'),
             'availableOdps' => Odp::active()->with(['odc.olt', 'onts.customer'])->get(),
             'availableOnts' => Ont::where('status', 'Sudah Set')->whereNull('customer_id')->get(),
         ]);

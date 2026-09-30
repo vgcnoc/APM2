@@ -123,7 +123,7 @@
                         🚀 Instalasi
                     </button>
                     <button v-if="(customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active'" @click="activeTab = 'audit'" :class="activeTab === 'audit' ? 'bg-purple-50 text-purple-600 shadow-sm ring-1 ring-purple-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
-                        ✅ {{ customer.is_audited || customer.status === 'active' ? 'Aktivasi Layanan' : 'Audit Instalasi' }}
+                        ✅ {{ (customer.is_audited || customer.status === 'active') && source !== 'instalasi' ? 'Aktivasi Layanan' : 'Audit Instalasi' }}
                     </button>
                 </div>
                 
@@ -345,7 +345,7 @@
                             <button v-if="!customer.is_audited" @click="showAuditModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border-0 text-white">
                                 Selesaikan Audit
                             </button>
-                            <button v-else @click="showActivationModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 border-0 text-white">
+                            <button v-else-if="source !== 'instalasi'" @click="showActivationModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 border-0 text-white">
                                 Aktivasi Pelanggan
                             </button>
                         </div>
@@ -944,7 +944,7 @@ import { Link, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 
-const props = defineProps({ customer: Object, availableOdps: Array, availableOnts: Array });
+const props = defineProps({ customer: Object, availableOdps: Array, availableOnts: Array, source: String });
 
 const activeTab = ref(props.customer.status === 'installing' && props.customer.ont && props.customer.ont.rx_power ? 'audit' : (props.customer.status === 'installing' ? 'installation' : (props.customer.status === 'active' ? 'audit' : 'booking')));
 

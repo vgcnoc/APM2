@@ -2,7 +2,7 @@
     <AppLayout title="Pelanggan Instalasi" subtitle="Pelanggan yang sedang diinstalasi">
         
         <!-- Statistik Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard 
                 title="Jadwal Pasang" 
                 :value="stats?.jadwal_pasang || 0" 
@@ -21,6 +21,12 @@
                 icon="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
                 color="purple" 
             />
+            <StatCard 
+                title="Selesai Instalasi" 
+                :value="stats?.selesai_instalasi || 0" 
+                icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
+                color="emerald" 
+            />
         </div>
 
         <!-- Tabs Menu -->
@@ -38,8 +44,12 @@
                 <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'laporan_pasang' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.laporan_pasang || 0 }}</span>
             </Link>
             <Link href="/customers/installed?tab=audit" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'audit' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-purple-600']">
-                <span>Menunggu Audit</span>
+                <span>Audit</span>
                 <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'audit' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.audit || 0 }}</span>
+            </Link>
+            <Link href="/customers/installed?tab=selesai_instalasi" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'selesai_instalasi' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-emerald-600']">
+                <span>Selesai Instalasi</span>
+                <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'selesai_instalasi' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.selesai_instalasi || 0 }}</span>
             </Link>
         </div>
 
@@ -57,7 +67,7 @@
                             {{ row.name.charAt(0) }}
                         </div>
                         <div>
-                            <Link :href="`/customers/${row.id}`" class="text-gray-900 font-medium hover:text-blue-400 transition-colors">
+                            <Link :href="`/customers/${row.id}?source=instalasi`" class="text-gray-900 font-medium hover:text-blue-400 transition-colors">
                                 {{ row.name }}
                             </Link>
                             <p class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</p>
@@ -104,7 +114,7 @@
                     
                     <!-- 2. Menunggu Laporan Teknisi -->
                     <Link v-if="row.status === 'installing' && (row.technician_schedules && row.technician_schedules.length > 0) && (!row.ont || !row.ont.rx_power)" 
-                        :href="`/customers/${row.id}`" 
+                        :href="`/customers/${row.id}?source=instalasi`" 
                         class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Input Laporan Instalasi">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                         Input Laporan
@@ -113,14 +123,14 @@
 
                     <!-- 3. Selesai Pasang, Menunggu Audit Admin -->
                     <div v-if="row.status === 'installing' && row.ont && row.ont.rx_power && !row.is_audited" class="flex gap-1.5">
-                        <Link :href="`/customers/${row.id}`" 
+                        <Link :href="`/customers/${row.id}?source=instalasi`" 
                             class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Review Hasil Pemasangan">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             Audit
                         </Link>
                     </div>
 
-                    <Link :href="`/customers/${row.id}`" class="p-1.5 rounded-lg text-gray-400 hover:bg-white hover:text-blue-500 border border-transparent hover:border-gray-200 transition-all shadow-sm hover:shadow" title="Detail Lengkap">
+                    <Link :href="`/customers/${row.id}?source=instalasi`" class="p-1.5 rounded-lg text-gray-400 hover:bg-white hover:text-blue-500 border border-transparent hover:border-gray-200 transition-all shadow-sm hover:shadow" title="Detail Lengkap">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
