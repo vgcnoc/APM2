@@ -694,7 +694,16 @@ function getTransactionLabel(trx) {
         if (nonOntItems.length > 0) {
             itemsStr = nonOntItems.map(item => {
                 const name = item.material ? item.material.name : 'Unknown';
-                const stock = item.material ? item.material.stock : 0;
+                let stock = item.material ? item.material.stock : 0;
+                
+                // Get area stock if available
+                if (item.material && item.material.stocks && trx.area_id) {
+                    const areaStock = item.material.stocks.find(s => s.area_id === trx.area_id);
+                    if (areaStock) {
+                        stock = areaStock.stock;
+                    }
+                }
+                
                 const unit = item.material ? item.material.unit : 'pcs';
                 return `${name} (Stok Sisa: ${stock} ${unit})`;
             }).join(', ');
