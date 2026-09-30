@@ -321,11 +321,35 @@
 
 <script setup>
 import { ref } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 
 const props = defineProps({ customers: Object, filters: Object, areas: Array, stats: Object });
+const page = usePage();
+
+const canDeleteCustomers = () => {
+    try {
+        const user = page.props.auth?.user;
+        if (!user) return false;
+        if (user.role === 'admin' || user.role === 'Super Admin') return true;
+        
+        let roles = [];
+        if (Array.isArray(user.roles)) roles = user.roles;
+        else if (user.roles) roles = Object.values(user.roles);
+        
+        if (roles.includes('admin') || roles.includes('Super Admin')) return true;
+        
+        let perms = [];
+        if (Array.isArray(user.permissions)) perms = user.permissions;
+        else if (user.permissions) perms = Object.values(user.permissions);
+        
+        return perms.includes('menu_customers_booking') || perms.includes('customers_delete');
+    } catch (e) {
+        console.error("Auth check error:", e);
+        return false;
+    }
+};
 
 const filterDate = ref(props.filters?.date || '');
 const filterArea = ref(props.filters?.area || '');
