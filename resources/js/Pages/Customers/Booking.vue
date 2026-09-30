@@ -55,6 +55,8 @@
             :pagination="customers"
             searchPlaceholder="Cari nama, telepon..."
             searchRoute="/customers/booking"
+            selectable
+            v-model:selected="selectedIds"
         >
             <template #filters>
                 <div class="flex items-center gap-2">
@@ -81,12 +83,11 @@
 
             <template #actions>
                 <div class="flex items-center gap-2">
-                    <button v-if="canDelete" 
+                    <button v-if="canDelete && selectedIds.length > 0" 
                         @click="confirmDeleteAll" 
-                        :disabled="!customers.data.length"
-                        class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-medium text-sm rounded-xl transition-colors border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                        class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-medium text-sm rounded-xl transition-colors border border-red-200 flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                        Hapus Semua
+                        Hapus Terpilih ({{ selectedIds.length }})
                     </button>
                     <Link href="/customers/create" class="btn-primary">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -302,9 +303,11 @@
                     <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-red-50">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-900 mb-2">Hapus Semua Data Booking?</h3>
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">
+                        Hapus {{ selectedIds.length }} Data Terpilih?
+                    </h3>
                     <p class="text-sm text-gray-500 mb-6">
-                        Semua data booking (sesuai filter aktif) akan dihapus secara permanen dan tindakan ini tidak dapat dibatalkan. Yakin ingin melanjutkan?
+                        Data terpilih akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.
                     </p>
                     <div class="flex items-center justify-center gap-3">
                         <button @click="showDeleteAllModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm rounded-xl transition-colors w-full">Batal</button>
@@ -327,6 +330,8 @@ import DataTable from '@/Components/DataTable.vue';
 
 const props = defineProps({ customers: Object, filters: Object, areas: Array, stats: Object });
 const page = usePage();
+
+const selectedIds = ref([]);
 
 const canDelete = computed(() => {
     try {
@@ -460,14 +465,13 @@ function confirmDeleteAll() {
 
 function deleteAllBooking() {
     isDeletingAll.value = true;
-    router.post('/customers/destroy-all-booking', {
-        date: filterDate.value || undefined,
-        area: filterArea.value || undefined,
-        search: props.filters?.search || undefined
+    router.post('/customers/bulk-destroy', {
+        ids: selectedIds.value
     }, {
         preserveScroll: true,
         onSuccess: () => {
             showDeleteAllModal.value = false;
+            selectedIds.value = [];
         },
         onFinish: () => {
             isDeletingAll.value = false;

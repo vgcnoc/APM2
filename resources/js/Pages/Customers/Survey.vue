@@ -56,6 +56,8 @@
             :pagination="customers"
             searchPlaceholder="Cari pelanggan..."
             :searchRoute="buildSearchRoute()"
+            selectable
+            v-model:selected="selectedIds"
         >
             <template #filters>
                 <!-- Filter Teknisi -->
@@ -92,6 +94,18 @@
                     </button>
                 </div>
             </template>
+            
+            <template #actions>
+                <div class="flex items-center gap-2">
+                    <button v-if="canDelete && selectedIds.length > 0" 
+                        @click="bulkDelete" 
+                        class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-medium text-sm rounded-lg transition-colors border border-red-200 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        Hapus Terpilih ({{ selectedIds.length }})
+                    </button>
+                </div>
+            </template>
+            
             <template #row="{ row }">
                 <td>
                     <div class="flex items-center gap-3">
@@ -607,14 +621,60 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { Link, useForm, router } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import { Link, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import StatCard from '@/Components/StatCard.vue';
 
 const props = defineProps({ customers: Object, availableOdps: Array, technicians: Array, areas: Array, stats: Object, filters: Object });
+
+const page = usePage();
+const selectedIds = ref([]);
+
+const canDelete = computed(() => {
+    try {
+        if (!page || !page.props || !page.props.auth || !page.props.auth.user) return false;
+        
+        const user = page.props.auth.user;
+        
+        if (user.role && typeof user.role === 'string') {
+            const roleStr = user.role.toLowerCase().trim();
+            if (roleStr === 'admin' || roleStr === 'super admin' || roleStr.includes('admin')) {
+                return true;
+            }
+        }
+        
+        let roles = [];
+        if (Array.isArray(user.roles)) roles = user.roles;
+        else if (user.roles) roles = Object.values(user.roles);
+        
+        for (let r of roles) {
+            if (typeof r === 'string') {
+                const rStr = r.toLowerCase().trim();
+                if (rStr === 'admin' || rStr === 'super admin' || rStr.includes('admin')) return true;
+            }
+        }
+        
+        let perms = [];
+        if (Array.isArray(user.permissions)) perms = user.permissions;
+        else if (user.permissions) perms = Object.values(user.permissions);
+        
+        return perms.includes('menu_customers_survey') || perms.includes('customers_survey_delete') || perms.includes('customers_delete');
+    } catch (e) {
+        return false;
+    }
+});
+
+function bulkDelete() {
+    if (confirm(`Hapus ${selectedIds.value.length} data terpilih secara permanen?`)) {
+        router.post('/customers/bulk-destroy', { ids: selectedIds.value }, {
+            preserveScroll: true,
+            onSuccess: () => selectedIds.value = []
+        });
+    }
+}
 
 const columns = [
     { key: 'name', label: 'Pelanggan' },

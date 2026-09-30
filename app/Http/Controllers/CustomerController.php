@@ -970,35 +970,49 @@ class CustomerController extends Controller
             ->with('success', 'Permintaan jadwal survey berhasil dikirim.');
     }
 
-    /**
-     * Hapus Semua Data Booking berdasarkan filter
-     */
-    public function destroyAllBooking(Request $request): RedirectResponse
+    public function bulkDestroy(Request $request): RedirectResponse
     {
         if (!auth()->user()->can('customers_delete') && !auth()->user()->hasRole('admin')) {
             return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus data pelanggan.');
         }
 
-        $query = Customer::booking()
-            ->when($request->date, function ($q, $date) {
-                $q->whereDate('created_at', $date);
-            })
-            ->when($request->area, function ($q, $area) {
-                $q->where(function($sub) use ($area) {
-                    $sub->where('area', $area);
-                });
-            })
-            ->when($request->search, function($q, $search) {
-                $q->search($search);
-            });
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:customers,id'
+        ]);
 
-        $count = $query->count();
-        if ($count > 0) {
-            $query->delete();
-            return redirect()->back()->with('success', "Semua data booking ($count data) berhasil dihapus.");
-        }
+        $count = 0;
+        DB::transaction(function () use ($request, &$count) {
+            $customers = Customer::whereIn('id', $request->ids)->get();
+            foreach ($customers as $customer) {
+                // Lepaskan ONT jika ada
+                if ($customer->ont) {
+                    $odp = $customer->ont->odp;
+                    $customer->ont->update([
+                        'customer_id' => null, 
+                        'status' => 'inactive',
+                        'odp_id' => null,
+                        'port_number' => null
+                    ]);
 
-        return redirect()->back()->with('error', 'Tidak ada data booking yang sesuai filter untuk dihapus.');
+                    if ($odp && $odp->used_ports > 0) {
+                        $odp->decrement('used_ports');
+                        if ($odp->used_ports - 1 < $odp->total_ports && $odp->status === 'full') {
+                            $odp->update(['status' => 'active']);
+                        }
+                    }
+                }
+                
+                // Hapus data terkait
+                $customer->technicianSchedules()->delete();
+                $customer->surveys()->delete();
+                $customer->delete();
+                
+                $count++;
+            }
+        });
+
+        return redirect()->back()->with('success', "$count data pelanggan berhasil dihapus secara permanen.");
     }
 }
 

@@ -6,6 +6,8 @@
             :pagination="customers"
             searchPlaceholder="Cari nama, kode, telepon..."
             searchRoute="/customers"
+            selectable
+            v-model:selected="selectedIds"
         >
             <!-- Filter Slot -->
             <template #filters>
@@ -132,8 +134,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { ref , computed} from 'vue';
+import { Link, router , usePage} from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
@@ -144,6 +146,46 @@ const props = defineProps({
     filters: Object,
     statusOptions: Object,
 });
+
+
+
+const page = usePage();
+const selectedIds = ref([]);
+
+const canDelete = computed(() => {
+    try {
+        if (!page || !page.props || !page.props.auth || !page.props.auth.user) return false;
+        const user = page.props.auth.user;
+        if (user.role && typeof user.role === 'string') {
+            const roleStr = user.role.toLowerCase().trim();
+            if (roleStr === 'admin' || roleStr === 'super admin' || roleStr.includes('admin')) return true;
+        }
+        let roles = [];
+        if (Array.isArray(user.roles)) roles = user.roles;
+        else if (user.roles) roles = Object.values(user.roles);
+        for (let r of roles) {
+            if (typeof r === 'string') {
+                const rStr = r.toLowerCase().trim();
+                if (rStr === 'admin' || rStr === 'super admin' || rStr.includes('admin')) return true;
+            }
+        }
+        let perms = [];
+        if (Array.isArray(user.permissions)) perms = user.permissions;
+        else if (user.permissions) perms = Object.values(user.permissions);
+        return perms.includes('menu_customers_survey') || perms.includes('customers_survey_delete') || perms.includes('customers_delete');
+    } catch (e) {
+        return false;
+    }
+});
+
+function bulkDelete() {
+    if (confirm(`Hapus ${selectedIds.value.length} data terpilih secara permanen?`)) {
+        router.post('/customers/bulk-destroy', { ids: selectedIds.value }, {
+            preserveScroll: true,
+            onSuccess: () => selectedIds.value = []
+        });
+    }
+}
 
 const columns = [
     { key: 'name', label: 'Pelanggan' },
