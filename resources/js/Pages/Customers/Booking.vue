@@ -81,7 +81,7 @@
 
             <template #actions>
                 <div class="flex items-center gap-2">
-                    <button v-if="$page.props.auth.user.role === 'admin' || $page.props.auth.user.roles?.includes('admin') || $page.props.auth.user.permissions?.includes('customers_delete')" 
+                    <button v-if="canDeleteCustomers()" 
                         @click="confirmDeleteAll" 
                         :disabled="!customers.data.length"
                         class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-medium text-sm rounded-xl transition-colors border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
@@ -149,7 +149,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                         </svg>
                     </Link>
-                    <button v-if="$page.props.auth.user.role === 'admin' || $page.props.auth.user.roles?.includes('admin') || $page.props.auth.user.permissions?.includes('customers_delete')" 
+                    <button v-if="canDeleteCustomers()" 
                         @click="confirmDelete(row)" 
                         class="p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-500 transition-all" title="Hapus Booking">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
