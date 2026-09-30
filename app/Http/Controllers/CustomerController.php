@@ -889,12 +889,24 @@ class CustomerController extends Controller
                                 
                                 if ($materialStock) {
                                     $qty = floatval($mItem['qty']);
-                                    // Handle Frecon unit input
                                     $material = \App\Models\Material::find($transactionItem->material_id);
-                                    if ($material && ($material->category === 'Kabel Drop / Frecon' || $material->category === 'Kabel Frecon')) {
-                                        if (strtolower($mItem['unit']) === 'roll' || strtolower($mItem['unit']) === 'pcs') {
-                                            $mpr = floatval($material->meter_per_roll) > 0 ? floatval($material->meter_per_roll) : 1000;
-                                            $qty = $qty * $mpr;
+                                    if ($material) {
+                                        $unitLower = strtolower($mItem['unit']);
+                                        if (in_array($material->category, ['Kabel Drop', 'Kabel Drop / Frecon', 'Kabel Frecon', 'Kabel'])) {
+                                            if ($unitLower === 'roll' || $unitLower === 'rol' || $unitLower === 'pcs') {
+                                                $mpr = floatval($material->meter_per_roll) > 0 ? floatval($material->meter_per_roll) : 1000;
+                                                $qty = $qty * $mpr;
+                                            }
+                                        } else if ($material->category === 'Paku Klem') {
+                                            if ($unitLower === 'pack' || $unitLower === 'bungkus') {
+                                                $ppp = floatval($material->pcs_per_pack) > 0 ? floatval($material->pcs_per_pack) : 1;
+                                                $qty = $qty * $ppp;
+                                            }
+                                        } else if ($material->category === 'Isolasi') {
+                                            if ($unitLower === 'pcs' || $unitLower === 'pcs (utuh)') {
+                                                $cpp = floatval($material->cm_per_pcs) > 0 ? floatval($material->cm_per_pcs) : 50;
+                                                $qty = $qty * $cpp;
+                                            }
                                         }
                                     }
                                     $materialStock->stock -= $qty;
