@@ -39,8 +39,8 @@ class Customer extends Model
         return [
             'latitude' => 'decimal:8',
             'longitude' => 'decimal:8',
-            'registration_date' => 'date',
-            'activation_date' => 'date',
+            'registration_date' => 'date:Y-m-d',
+            'activation_date' => 'date:Y-m-d',
             'is_audited' => 'boolean',
         ];
     }
