@@ -13,13 +13,44 @@ class RoleController extends Controller
     public function index(Request $request)
     {
         $roles = Role::with('permissions')->get();
-        $permissions = Permission::all()->groupBy(function($item) {
-            return explode('_', $item->name)[0];
-        });
+        $allPermissions = Permission::all();
+        
+        // Group permissions logically
+        $groupedPermissions = [];
+        
+        foreach ($allPermissions as $perm) {
+            if (str_starts_with($perm->name, 'menu_')) {
+                // It's a menu permission, use it as a base group
+                $groupName = $perm->name;
+                if (!isset($groupedPermissions[$groupName])) {
+                    $groupedPermissions[$groupName] = ['menu' => $perm, 'actions' => []];
+                } else {
+                    $groupedPermissions[$groupName]['menu'] = $perm;
+                }
+            } else {
+                // It's an action permission, try to find its parent menu
+                // e.g. customers_booking_create -> menu_customers_booking
+                $parts = explode('_', $perm->name);
+                $action = array_pop($parts); // create, edit, delete
+                $base = implode('_', $parts); // customers_booking
+                $expectedMenu = 'menu_' . $base;
+                
+                if (isset($groupedPermissions[$expectedMenu])) {
+                    $groupedPermissions[$expectedMenu]['actions'][] = $perm;
+                } else {
+                    // Try generic (like customers_create -> belongs to all customers menus? Or just create a group for it)
+                    $genericMenu = 'menu_' . $base;
+                    if (!isset($groupedPermissions[$genericMenu])) {
+                        $groupedPermissions[$genericMenu] = ['menu' => null, 'actions' => []];
+                    }
+                    $groupedPermissions[$genericMenu]['actions'][] = $perm;
+                }
+            }
+        }
 
         return Inertia::render('Settings/Roles/Index', [
             'roles' => $roles,
-            'permissions' => $permissions
+            'permissions' => $groupedPermissions
         ]);
     }
 

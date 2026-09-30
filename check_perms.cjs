@@ -3,12 +3,7 @@ const conn = new Client();
 
 const commands = `
 cd /var/www/APM2
-php artisan tinker --execute="
-\\$users = \\App\\Models\\User::with('roles.permissions', 'permissions')->get();
-foreach(\\$users as \\$u) {
-    echo \\$u->email . ' (Role: ' . \\$u->role . ') -> Roles: ' . json_encode(\\$u->getRoleNames()) . ' -> Perms: ' . json_encode(\\$u->getAllPermissions()->pluck('name')) . \"\\n\";
-}
-"
+php artisan tinker --execute="var_dump(\\\\Spatie\\\\Permission\\\\Models\\\\Permission::pluck('name')->toArray());"
 `;
 
 conn.on('ready', () => {

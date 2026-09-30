@@ -350,7 +350,7 @@ const canDelete = computed(() => {
         if (Array.isArray(user.permissions)) perms = user.permissions;
         else if (user.permissions) perms = Object.values(user.permissions);
         
-        return perms.includes('menu_customers_booking') || perms.includes('customers_delete');
+        return perms.includes('menu_customers_booking') || perms.includes('customers_booking_delete');
     } catch (e) {
         console.error("Auth check error:", e);
         return false;

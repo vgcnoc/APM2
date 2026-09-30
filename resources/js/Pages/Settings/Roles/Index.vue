@@ -54,16 +54,19 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6" :class="{'opacity-50 pointer-events-none': selectedRole.name === 'admin'}">
                         <div v-for="(group, key) in permissions" :key="key" class="bg-gray-50 p-4 rounded-xl border border-gray-100">
                             <div class="flex items-center justify-between mb-3 border-b border-gray-200 pb-2">
-                                <h4 class="font-bold text-gray-700 capitalize">{{ key }}</h4>
+                                <label class="flex items-center gap-3 cursor-pointer">
+                                    <input v-if="group.menu" type="checkbox" v-model="selectedPermissions" :value="group.menu.name" class="w-5 h-5 rounded text-blue-600 border-gray-300">
+                                    <h4 class="font-bold text-gray-700">{{ formatPermissionName(key) }}</h4>
+                                </label>
                                 <label class="flex items-center gap-2 cursor-pointer">
                                     <input type="checkbox" @change="toggleGroup(key, $event.target.checked)" :checked="isGroupFullyChecked(key)" class="w-4 h-4 rounded text-blue-600 border-gray-300">
                                     <span class="text-xs font-medium text-gray-500">Pilih Semua</span>
                                 </label>
                             </div>
-                            <div class="space-y-2">
-                                <label v-for="perm in group" :key="perm.id" class="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
+                            <div class="space-y-2 pl-8" v-if="group.actions && group.actions.length > 0">
+                                <label v-for="perm in group.actions" :key="perm.id" class="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
                                     <input type="checkbox" v-model="selectedPermissions" :value="perm.name" class="w-4 h-4 rounded text-blue-600 border-gray-300">
-                                    <span class="text-sm font-medium text-gray-700">{{ formatPermissionName(perm.name) }}</span>
+                                    <span class="text-sm font-medium text-gray-700">{{ formatActionName(perm.name) }}</span>
                                 </label>
                             </div>
                         </div>
@@ -140,24 +143,38 @@ const formatPermissionName = (name) => {
     }
     const parts = name.split('_');
     if (parts.length > 1) {
-        return parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
+        return parts.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     }
     return name;
 };
 
+const formatActionName = (name) => {
+    const parts = name.split('_');
+    const action = parts[parts.length - 1];
+    return "Hak Akses " + action.charAt(0).toUpperCase() + action.slice(1);
+};
+
 const isGroupFullyChecked = (groupKey) => {
-    const groupPerms = props.permissions[groupKey].map(p => p.name);
-    return groupPerms.every(p => selectedPermissions.value.includes(p));
+    const group = props.permissions[groupKey];
+    let allPerms = [];
+    if (group.menu) allPerms.push(group.menu.name);
+    if (group.actions) allPerms = allPerms.concat(group.actions.map(p => p.name));
+    if (allPerms.length === 0) return false;
+    return allPerms.every(p => selectedPermissions.value.includes(p));
 };
 
 const toggleGroup = (groupKey, isChecked) => {
-    const groupPerms = props.permissions[groupKey].map(p => p.name);
+    const group = props.permissions[groupKey];
+    let allPerms = [];
+    if (group.menu) allPerms.push(group.menu.name);
+    if (group.actions) allPerms = allPerms.concat(group.actions.map(p => p.name));
+    
     if (isChecked) {
-        groupPerms.forEach(p => {
+        allPerms.forEach(p => {
             if (!selectedPermissions.value.includes(p)) selectedPermissions.value.push(p);
         });
     } else {
-        selectedPermissions.value = selectedPermissions.value.filter(p => !groupPerms.includes(p));
+        selectedPermissions.value = selectedPermissions.value.filter(p => !allPerms.includes(p));
     }
 };
 
