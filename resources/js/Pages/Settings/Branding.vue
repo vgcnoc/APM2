@@ -8,11 +8,16 @@
                 </div>
 
                 <div class="p-6">
-                    <form @submit.prevent="submitForm">
+                    <!-- Success message -->
+                    <div v-if="$page.props.flash?.success" class="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm font-medium">
+                        ✅ {{ $page.props.flash.success }}
+                    </div>
+
+                    <form @submit.prevent="submitForm" enctype="multipart/form-data">
                         <div class="mb-6">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Nama Aplikasi</label>
                             <input type="text" v-model="form.app_name" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Contoh: ISP Manager" />
-                            <p class="text-xs text-gray-500 mt-2">Nama ini akan ditampilkan jika logo belum diupload.</p>
+                            <p class="text-xs text-gray-500 mt-2">Nama ini akan ditampilkan jika logo belum diupload. Kosongkan jika ingin full logo.</p>
                             <div v-if="form.errors.app_name" class="text-red-500 text-xs mt-1">{{ form.errors.app_name }}</div>
                         </div>
 
@@ -43,8 +48,9 @@
                         </div>
 
                         <div class="flex items-center gap-3 pt-6 border-t border-gray-100">
-                            <button type="submit" :disabled="form.processing || (!form.app_name && !form.app_logo && !form.remove_logo && form.app_name === $page.props.app_name)" class="btn-primary">
-                                Simpan Perubahan
+                            <button type="submit" :disabled="form.processing" class="btn-primary">
+                                <span v-if="form.processing">Menyimpan...</span>
+                                <span v-else>Simpan Perubahan</span>
                             </button>
                             <button type="button" v-if="$page.props.app_logo" @click="removeLogo" :disabled="form.processing" class="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
                                 Hapus Logo
@@ -59,7 +65,7 @@
 
 <script setup>
 import { ref } from 'vue';
-import { usePage, useForm } from '@inertiajs/vue3';
+import { usePage, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const page = usePage();
@@ -67,48 +73,73 @@ const page = usePage();
 const fileInput = ref(null);
 const previewUrl = ref(null);
 const imageError = ref(false);
+const isSubmitting = ref(false);
 
 const handleImageError = () => {
     imageError.value = true;
 };
 
-const form = useForm({
+const form = {
+    processing: false,
+    errors: {},
     app_name: page.props.app_name || '',
     app_logo: null,
     remove_logo: false
-});
+};
+
+const formRef = ref(form);
 
 const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-        form.app_logo = file;
-        form.remove_logo = false;
+        formRef.value.app_logo = file;
+        formRef.value.remove_logo = false;
         previewUrl.value = URL.createObjectURL(file);
         imageError.value = false;
     } else {
-        form.app_logo = null;
+        formRef.value.app_logo = null;
         previewUrl.value = null;
         imageError.value = false;
     }
 };
 
 const submitForm = () => {
-    form.post(route('settings.branding.update'), {
-        preserveScroll: true,
+    const data = new FormData();
+    data.append('app_name', formRef.value.app_name || '');
+    
+    if (formRef.value.app_logo) {
+        data.append('app_logo', formRef.value.app_logo);
+    }
+    
+    if (formRef.value.remove_logo) {
+        data.append('remove_logo', '1');
+    }
+
+    formRef.value.processing = true;
+
+    router.post(route('settings.branding.update'), data, {
         forceFormData: true,
+        preserveScroll: true,
         onSuccess: () => {
-            form.app_logo = null;
-            form.remove_logo = false;
+            formRef.value.processing = false;
+            formRef.value.app_logo = null;
+            formRef.value.remove_logo = false;
             if (fileInput.value) fileInput.value.value = '';
             previewUrl.value = null;
+            // Force full page reload to refresh all shared props (logo in sidebar etc.)
+            window.location.reload();
+        },
+        onError: (errors) => {
+            formRef.value.processing = false;
+            formRef.value.errors = errors;
         }
     });
 };
 
 const removeLogo = () => {
     if (confirm('Apakah Anda yakin ingin menghapus logo ini dan kembali ke logo default?')) {
-        form.remove_logo = true;
-        form.app_logo = null;
+        formRef.value.remove_logo = true;
+        formRef.value.app_logo = null;
         previewUrl.value = null;
         submitForm();
     }
