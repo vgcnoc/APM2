@@ -17,9 +17,14 @@ class SettingController extends Controller
     public function updateBranding(Request $request)
     {
         $request->validate([
+            'app_name' => 'nullable|string|max:255',
             'app_logo' => 'nullable|image|max:2048',
             'remove_logo' => 'nullable|boolean'
         ]);
+
+        if ($request->has('app_name')) {
+            Setting::set('app_name', $request->app_name);
+        }
 
         if ($request->boolean('remove_logo')) {
             $oldLogo = Setting::get('app_logo');
