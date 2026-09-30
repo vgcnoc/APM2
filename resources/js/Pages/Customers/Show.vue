@@ -350,7 +350,6 @@
                             </button>
                         </div>
                     </div>
-                </div>
 
                 <!-- Instalasi Section (Blank State) -->
                 <div v-show="activeTab === 'installation' && (isAudit || customer.status === 'active')" class="glass-card p-8 mt-6 animate-fade-in-up border border-gray-200 text-center space-y-4">
@@ -800,8 +799,6 @@
                     </div>
                 </form>
             </div>
-            
-            </div> <!-- Close Right Column -->
         </div>
 
         <!-- Image Preview Modal -->
