@@ -242,15 +242,14 @@ class CustomerController extends Controller
         }
 
         $customers = $customerQuery
-            ->when($request->package_id, fn($q, $pkg) => $q->where('package_id', $pkg))
-            ->when($request->technician_id, function($q, $techId) {
-                $q->whereHas('technicianSchedules', function($sub) use ($techId) {
-                    $sub->where('technician_id', $techId)->where('type', 'installation');
+            ->when($request->date_from, function($q, $dateFrom) {
+                $q->whereHas('technicianSchedules', function($sub) use ($dateFrom) {
+                    $sub->where('scheduled_date', '>=', $dateFrom)->where('type', 'installation');
                 });
             })
-            ->when($request->date, function($q, $date) {
-                $q->whereHas('technicianSchedules', function($sub) use ($date) {
-                    $sub->where('scheduled_date', $date)->where('type', 'installation');
+            ->when($request->date_to, function($q, $dateTo) {
+                $q->whereHas('technicianSchedules', function($sub) use ($dateTo) {
+                    $sub->where('scheduled_date', '<=', $dateTo)->where('type', 'installation');
                 });
             })
             ->when($request->area, function($q, $area) {
@@ -275,14 +274,17 @@ class CustomerController extends Controller
             ->limit(100)
             ->get();
 
+        $areas = \App\Models\Area::orderBy('name')->pluck('name')->toArray();
+
         return Inertia::render('Customers/Installed', [
             'customers' => $customers,
             'technicians' => $technicians,
             'availableOnts' => $availableOnts,
             'materialTransactions' => $materialTransactions,
             'packages' => \App\Models\InternetPackage::active()->get(),
+            'areas' => $areas,
             'stats' => $stats,
-            'filters' => $request->only(['search', 'tab', 'technician_id', 'date', 'area', 'package_id']),
+            'filters' => $request->only(['search', 'tab', 'date_from', 'date_to', 'area']),
         ]);
     }
 

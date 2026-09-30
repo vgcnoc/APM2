@@ -64,21 +64,26 @@
         >
             <template #filters>
                 <form @submit.prevent="applyFilter" class="flex flex-wrap items-center gap-2">
-                    <select v-model="filterState.package_id" class="form-select w-36 text-sm">
-                        <option value="">Semua Paket</option>
-                        <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
-                            {{ pkg.name }}
+                    <select v-model="filterState.area" class="form-select w-36 text-sm">
+                        <option value="">Semua Area</option>
+                        <option v-for="area in areas" :key="area" :value="area">
+                            {{ area }}
                         </option>
                     </select>
 
-                    <select v-model="filterState.technician_id" class="form-select w-40 text-sm">
-                        <option value="">Semua Teknisi</option>
-                        <option v-for="tech in technicians" :key="tech.id" :value="tech.id">
-                            {{ tech.name }}
-                        </option>
+                    <select v-model="filterState.tab" class="form-select w-40 text-sm">
+                        <option value="">Semua Status</option>
+                        <option value="jadwal_pasang">Jadwal Pasang</option>
+                        <option value="laporan_pasang">Laporan Pasang</option>
+                        <option value="audit">Audit</option>
+                        <option value="selesai_instalasi">Selesai Instalasi</option>
                     </select>
                     
-                    <input type="date" v-model="filterState.date" class="form-input w-36 text-sm" placeholder="Tgl Pasang">
+                    <div class="flex items-center gap-1">
+                        <input type="date" v-model="filterState.date_from" class="form-input w-36 text-sm" title="Tanggal Dari">
+                        <span class="text-xs text-gray-500 font-medium px-1">s/d</span>
+                        <input type="date" v-model="filterState.date_to" class="form-input w-36 text-sm" title="Tanggal Sampai">
+                    </div>
 
                     <button type="submit" class="btn-primary py-2 text-sm shadow-sm">
                         Tampilkan
@@ -541,6 +546,7 @@ const props = defineProps({
     availableOnts: { type: Array, default: () => [] }, 
     materialTransactions: { type: Array, default: () => [] },
     packages: { type: Array, default: () => [] },
+    areas: { type: Array, default: () => [] },
     stats: Object,
     filters: Object 
 });
@@ -696,18 +702,18 @@ function getTransactionLabel(trx) {
 }
 
 const filterState = ref({
-    package_id: props.filters?.package_id || '',
-    technician_id: props.filters?.technician_id || '',
-    date: props.filters?.date || '',
+    date_from: props.filters?.date_from || '',
+    date_to: props.filters?.date_to || '',
+    area: props.filters?.area || '',
     tab: props.filters?.tab || '',
 });
 
 function getTabUrl(tab) {
     const params = new URLSearchParams();
     if (tab) params.append('tab', tab);
-    if (filterState.value.package_id) params.append('package_id', filterState.value.package_id);
-    if (filterState.value.technician_id) params.append('technician_id', filterState.value.technician_id);
-    if (filterState.value.date) params.append('date', filterState.value.date);
+    if (filterState.value.date_from) params.append('date_from', filterState.value.date_from);
+    if (filterState.value.date_to) params.append('date_to', filterState.value.date_to);
+    if (filterState.value.area) params.append('area', filterState.value.area);
     if (props.filters?.search) params.append('search', props.filters.search);
     
     return `/customers/installed?${params.toString()}`;
@@ -721,9 +727,10 @@ function applyFilter() {
 }
 
 function resetFilter() {
-    filterState.value.package_id = '';
-    filterState.value.technician_id = '';
-    filterState.value.date = '';
+    filterState.value.date_from = '';
+    filterState.value.date_to = '';
+    filterState.value.area = '';
+    filterState.value.tab = '';
     applyFilter();
 }
 
