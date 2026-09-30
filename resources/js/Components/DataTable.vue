@@ -32,6 +32,12 @@
             <table class="data-table">
                 <thead>
                     <tr>
+                        <th v-if="selectable" class="w-12 text-center px-4">
+                            <input type="checkbox" 
+                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 shadow-sm" 
+                                :checked="isAllSelected" 
+                                @change="toggleAll" />
+                        </th>
                         <th v-for="col in columns" :key="col.key" :class="col.class">
                             {{ col.label }}
                         </th>
@@ -52,6 +58,12 @@
                         </td>
                     </tr>
                     <tr v-else v-for="(row, index) in data" :key="row.id || index" class="animate-fade-in-up" :style="{ animationDelay: `${index * 0.03}s` }">
+                        <td v-if="selectable" class="w-12 text-center px-4">
+                            <input type="checkbox" 
+                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 shadow-sm" 
+                                :value="row.id" 
+                                v-model="localSelected" />
+                        </td>
                         <slot name="row" :row="row" :index="index" />
                         <td v-if="$slots.rowActions" class="text-right">
                             <slot name="rowActions" :row="row" />
@@ -103,7 +115,38 @@ const props = defineProps({
     pagination: { type: Object, default: null },
     searchPlaceholder: { type: String, default: 'Cari data...' },
     searchRoute: { type: String, default: '' },
+    selectable: { type: Boolean, default: false },
+    selected: { type: Array, default: () => [] },
 });
+
+const emit = defineEmits(['update:selected']);
+
+import { computed } from 'vue';
+
+const localSelected = computed({
+    get: () => props.selected,
+    set: (val) => emit('update:selected', val)
+});
+
+const isAllSelected = computed(() => {
+    return props.data && props.data.length > 0 && props.data.every(row => localSelected.value.includes(row.id));
+});
+
+function toggleAll(e) {
+    if (e.target.checked) {
+        // Add all current page items that aren't already selected
+        const currentIds = props.data.map(r => r.id);
+        const newSelected = [...localSelected.value];
+        currentIds.forEach(id => {
+            if (!newSelected.includes(id)) newSelected.push(id);
+        });
+        localSelected.value = newSelected;
+    } else {
+        // Remove all current page items from selected
+        const currentIds = props.data.map(r => r.id);
+        localSelected.value = localSelected.value.filter(id => !currentIds.includes(id));
+    }
+}
 
 const searchQuery = ref('');
 let searchTimeout = null;
