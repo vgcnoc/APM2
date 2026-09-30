@@ -350,7 +350,6 @@
                             </button>
                         </div>
                     </div>
-                </div>
                 <!-- Instalasi Section (Blank State) -->
                 <div v-show="activeTab === 'installation' && (isAudit || customer.status === 'active')" class="glass-card p-8 mt-6 animate-fade-in-up border border-gray-200 text-center space-y-4">
                     <div class="text-5xl mb-2">✅</div>
@@ -594,6 +593,7 @@
 
                     </div>
 
+        </div> <!-- Close Grid -->
         <!-- Audit Modal -->
         <div v-if="showAuditModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-hidden animate-fade-in-up">
