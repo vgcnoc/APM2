@@ -66,35 +66,35 @@
                             </div>
                         </div>
                         
-                        <div v-if="customer.ont.odp?.odc?.olt" class="flex items-center gap-4 relative z-10 group">
+                        <div v-if="customer.ont?.odp?.odc?.olt" class="flex items-center gap-4 relative z-10 group">
                             <div class="w-4 h-4 rounded-full border-[3px] border-white shadow-md flex items-center justify-center bg-indigo-500 group-hover:scale-125 transition-transform"></div>
                             <div class="flex flex-col bg-white px-3 py-2 rounded-xl border border-indigo-100 shadow-sm w-full group-hover:border-indigo-300 transition-colors">
                                 <span class="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">OLT</span>
-                                <span class="text-xs font-bold text-indigo-900">{{ customer.ont.odp.odc.olt.name }}</span>
+                                <span class="text-xs font-bold text-indigo-900">{{ customer.ont?.odp.odc.olt.name }}</span>
                             </div>
                         </div>
                         
-                        <div v-if="customer.ont.odp?.odc?.pon" class="flex items-center gap-4 relative z-10 group">
+                        <div v-if="customer.ont?.odp?.odc?.pon" class="flex items-center gap-4 relative z-10 group">
                             <div class="w-4 h-4 rounded-full border-[3px] border-white shadow-md flex items-center justify-center bg-purple-500 group-hover:scale-125 transition-transform"></div>
                             <div class="flex flex-col bg-white px-3 py-2 rounded-xl border border-purple-100 shadow-sm w-full group-hover:border-purple-300 transition-colors">
-                                <span class="text-[9px] font-bold text-purple-400 uppercase tracking-widest">PON PORT {{ customer.ont.odp.odc.pon.port_number }}</span>
-                                <span class="text-xs font-bold text-purple-900">{{ customer.ont.odp.odc.pon.name || `PON ${customer.ont.odp.odc.pon.port_number}` }}</span>
+                                <span class="text-[9px] font-bold text-purple-400 uppercase tracking-widest">PON PORT {{ customer.ont?.odp.odc.pon.port_number }}</span>
+                                <span class="text-xs font-bold text-purple-900">{{ customer.ont?.odp.odc.pon.name || `PON ${customer.ont?.odp.odc.pon.port_number}` }}</span>
                             </div>
                         </div>
                         
-                        <div v-if="customer.ont.odp?.odc" class="flex items-center gap-4 relative z-10 group">
+                        <div v-if="customer.ont?.odp?.odc" class="flex items-center gap-4 relative z-10 group">
                             <div class="w-4 h-4 rounded-full border-[3px] border-white shadow-md flex items-center justify-center bg-orange-500 group-hover:scale-125 transition-transform"></div>
                             <div class="flex flex-col bg-white px-3 py-2 rounded-xl border border-orange-100 shadow-sm w-full group-hover:border-orange-300 transition-colors">
                                 <span class="text-[9px] font-bold text-orange-400 uppercase tracking-widest">ODC</span>
-                                <span class="text-xs font-bold text-orange-900">{{ customer.ont.odp.odc.name }}</span>
+                                <span class="text-xs font-bold text-orange-900">{{ customer.ont?.odp.odc.name }}</span>
                             </div>
                         </div>
                         
-                        <div v-if="customer.ont.odp" class="flex items-center gap-4 relative z-10 group">
+                        <div v-if="customer.ont?.odp" class="flex items-center gap-4 relative z-10 group">
                             <div class="w-4 h-4 rounded-full border-[3px] border-white shadow-md flex items-center justify-center bg-sky-500 group-hover:scale-125 transition-transform"></div>
                             <div class="flex flex-col bg-white px-3 py-2 rounded-xl border border-sky-100 shadow-sm w-full group-hover:border-sky-300 transition-colors">
                                 <span class="text-[9px] font-bold text-sky-400 uppercase tracking-widest">ODP</span>
-                                <span class="text-xs font-bold text-sky-900">{{ customer.ont.odp.name }}</span>
+                                <span class="text-xs font-bold text-sky-900">{{ customer.ont?.odp.name }}</span>
                             </div>
                         </div>
                         
@@ -102,7 +102,7 @@
                             <div class="w-5 h-5 rounded-full border-[3px] border-white shadow-md flex items-center justify-center bg-blue-500 -ml-0.5 group-hover:scale-110 transition-transform"></div>
                             <div class="flex flex-col bg-blue-50 px-3 py-2 rounded-xl border border-blue-200 shadow-sm w-full group-hover:border-blue-400 transition-colors">
                                 <span class="text-[9px] font-bold text-blue-500 uppercase tracking-widest">PORT ONT</span>
-                                <span class="text-xs font-bold text-blue-900">Port {{ customer.ont.port_number }} ({{ customer.ont.serial_number }})</span>
+                                <span class="text-xs font-bold text-blue-900">Port {{ customer.ont?.port_number }} ({{ customer.ont?.serial_number }})</span>
                             </div>
                         </div>
                     </div>
@@ -122,7 +122,7 @@
                     <button v-if="customer.status !== 'booking' && customer.status !== 'survey'" @click="activeTab = 'installation'" :class="activeTab === 'installation' ? 'bg-emerald-50 text-emerald-600 shadow-sm ring-1 ring-emerald-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
                         🚀 Instalasi
                     </button>
-                    <button v-if="(customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active'" @click="activeTab = 'audit'" :class="activeTab === 'audit' ? 'bg-purple-50 text-purple-600 shadow-sm ring-1 ring-purple-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
+                    <button v-if="(customer.status === 'installing' && customer.ont && customer.ont?.rx_power) || customer.status === 'active'" @click="activeTab = 'audit'" :class="activeTab === 'audit' ? 'bg-purple-50 text-purple-600 shadow-sm ring-1 ring-purple-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
                         ✅ {{ (customer.is_audited || customer.status === 'active') && source !== 'instalasi' ? 'Aktivasi Layanan' : 'Audit Instalasi' }}
                     </button>
                 </div>
@@ -276,7 +276,7 @@
                 </div>
                 
                 <!-- Audit Data Pemasangan Section -->
-                <div v-show="activeTab === 'audit' && ((customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active')" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
+                <div v-show="activeTab === 'audit' && ((customer.status === 'installing' && customer.ont && customer.ont?.rx_power) || customer.status === 'active')" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
                     <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">🛡️</span>
                         Data Instalasi & Audit
@@ -306,36 +306,36 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                             <div class="space-y-2">
-                                <InfoRow label="Waktu Mulai" :value="customer.ont.start_time || '-'" />
-                                <InfoRow label="Waktu Selesai" :value="customer.ont.end_time || '-'" />
+                                <InfoRow label="Waktu Mulai" :value="customer.ont?.start_time || '-'" />
+                                <InfoRow label="Waktu Selesai" :value="customer.ont?.end_time || '-'" />
                             </div>
                             <div class="space-y-2">
-                                <InfoRow label="Port ODP" :value="`Port ${customer.ont.port_number}`" />
-                                <InfoRow label="Serial Number (Auto)" :value="customer.ont.serial_number" />
+                                <InfoRow label="Port ODP" :value="`Port ${customer.ont?.port_number}`" />
+                                <InfoRow label="Serial Number (Auto)" :value="customer.ont?.serial_number" />
                             </div>
                         </div>
                         
                         <div class="pt-4 border-t border-gray-200 mt-4">
                             <p class="text-xs text-gray-500 mb-3 uppercase font-semibold">Hasil Dokumentasi Lapangan:</p>
                             <div class="flex gap-4 overflow-x-auto pb-2">
-                                <div v-if="customer.ont.photo_odp" class="shrink-0 group relative">
-                                    <img :src="`/storage/${customer.ont.photo_odp}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_odp}`, 'Foto ODP / Port')" />
+                                <div v-if="customer.ont?.photo_odp" class="shrink-0 group relative">
+                                    <img :src="`/storage/${customer.ont?.photo_odp}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont?.photo_odp}`, 'Foto ODP / Port')" />
                                     <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto ODP</div>
                                 </div>
-                                <div v-if="customer.ont.photo_installation" class="shrink-0 group relative">
-                                    <img :src="`/storage/${customer.ont.photo_installation}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_installation}`, 'Foto Instalasi di Rumah')" />
+                                <div v-if="customer.ont?.photo_installation" class="shrink-0 group relative">
+                                    <img :src="`/storage/${customer.ont?.photo_installation}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont?.photo_installation}`, 'Foto Instalasi di Rumah')" />
                                     <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Instalasi</div>
                                 </div>
-                                <div v-if="customer.ont.photo_ont" class="shrink-0 group relative">
-                                    <img :src="`/storage/${customer.ont.photo_ont}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_ont}`, 'Foto Posisi ONT')" />
+                                <div v-if="customer.ont?.photo_ont" class="shrink-0 group relative">
+                                    <img :src="`/storage/${customer.ont?.photo_ont}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont?.photo_ont}`, 'Foto Posisi ONT')" />
                                     <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto ONT</div>
                                 </div>
-                                <div v-if="customer.ont.photo_customer" class="shrink-0 group relative">
-                                    <img :src="`/storage/${customer.ont.photo_customer}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_customer}`, 'Foto Selfie Pelanggan')" />
+                                <div v-if="customer.ont?.photo_customer" class="shrink-0 group relative">
+                                    <img :src="`/storage/${customer.ont?.photo_customer}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont?.photo_customer}`, 'Foto Selfie Pelanggan')" />
                                     <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Selfie</div>
                                 </div>
-                                <div v-if="customer.ont.photo_redaman" class="shrink-0 group relative">
-                                    <img :src="`/storage/${customer.ont.photo_redaman}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont.photo_redaman}`, 'Foto Redaman')" />
+                                <div v-if="customer.ont?.photo_redaman" class="shrink-0 group relative">
+                                    <img :src="`/storage/${customer.ont?.photo_redaman}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont?.photo_redaman}`, 'Foto Redaman')" />
                                     <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Redaman</div>
                                 </div>
                             </div>
@@ -352,7 +352,7 @@
                     </div>
                 </div>
                 <!-- Instalasi Section (Blank State) -->
-                <div v-show="activeTab === 'installation' && ((customer.ont && customer.ont.rx_power) || customer.status === 'active')" class="glass-card p-8 mt-6 animate-fade-in-up border border-gray-200 text-center space-y-4">
+                <div v-show="activeTab === 'installation' && ((customer.ont && customer.ont?.rx_power) || customer.status === 'active')" class="glass-card p-8 mt-6 animate-fade-in-up border border-gray-200 text-center space-y-4">
                     <div class="text-5xl mb-2">✅</div>
                     <h3 class="text-2xl font-bold text-gray-900">Instalasi Telah Selesai</h3>
                     <p class="text-gray-500 max-w-lg mx-auto">Laporan pemasangan lapangan telah disubmit. Anda dapat melihat dokumentasi lapangan (foto ODP, pelanggan, redaman, dll) di tab <strong>Audit Instalasi</strong>.</p>
@@ -365,7 +365,7 @@
                 </div>
 
                 <!-- Instalasi Section (Form) -->
-                <div v-show="activeTab === 'installation' && customer.status === 'installing' && (!customer.ont || !customer.ont.rx_power)" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
+                <div v-show="activeTab === 'installation' && customer.status === 'installing' && (!customer.ont || !customer.ont?.rx_power)" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
                     <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">🚀</span>
                         Form Laporan Selesai Instalasi
@@ -959,7 +959,7 @@ import StatusBadge from '@/Components/StatusBadge.vue';
 
 const props = defineProps({ customer: Object, availableOdps: Array, availableOnts: Array, source: String });
 
-const activeTab = ref(props.customer.status === 'installing' && props.customer.ont && props.customer.ont.rx_power ? 'audit' : (props.customer.status === 'installing' ? 'installation' : (props.customer.status === 'active' ? 'audit' : 'booking')));
+const activeTab = ref(props.customer.status === 'installing' && props.customer.ont && props.customer.ont?.rx_power ? 'audit' : (props.customer.status === 'installing' ? 'installation' : (props.customer.status === 'active' ? 'audit' : 'booking')));
 
 const filteredAvailableOdps = computed(() => {
     if (!props.customer?.area_id) return [];
@@ -1241,7 +1241,7 @@ onMounted(() => {
     let initialOdpId = '';
     const savedOdp = localStorage.getItem(`apm_odp_id_${props.customer.id}`);
     if (savedOdp) initialOdpId = Number(savedOdp);
-    else if (props.customer.ont?.odp_id) initialOdpId = props.customer.ont.odp_id;
+    else if (props.customer.ont?.odp_id) initialOdpId = props.customer.ont?.odp_id;
     
     // Ensure initialOdpId matches the area
     if (initialOdpId) {
@@ -1255,7 +1255,7 @@ onMounted(() => {
     
     const savedPort = localStorage.getItem(`apm_port_number_${props.customer.id}`);
     if (savedPort && ontForm.odp_id) ontForm.port_number = Number(savedPort);
-    else if (props.customer.ont?.port_number && ontForm.odp_id == props.customer.ont.odp_id) ontForm.port_number = props.customer.ont.port_number;
+    else if (props.customer.ont?.port_number && ontForm.odp_id == props.customer.ont?.odp_id) ontForm.port_number = props.customer.ont?.port_number;
     
     const savedRx = localStorage.getItem(`apm_rx_power_${props.customer.id}`);
     if (savedRx) ontForm.rx_power = savedRx;
@@ -1384,14 +1384,14 @@ const activeConfigForm = useForm({
 
 function openEditActiveModal() {
     if (props.customer.ont) {
-        activeConfigForm.ip_login = props.customer.ont.ip_login || '';
-        activeConfigForm.login_user = props.customer.ont.login_user || '';
-        activeConfigForm.login_password = props.customer.ont.login_password || '';
-        activeConfigForm.pppoe_user = props.customer.ont.pppoe_user || '';
-        activeConfigForm.pppoe_password = props.customer.ont.pppoe_password || '';
-        activeConfigForm.vlan_mode = props.customer.ont.vlan_mode || '';
-        activeConfigForm.vlan_id = props.customer.ont.vlan_id || '';
-        activeConfigForm.access_mode = props.customer.ont.access_mode || 'PPPOE';
+        activeConfigForm.ip_login = props.customer.ont?.ip_login || '';
+        activeConfigForm.login_user = props.customer.ont?.login_user || '';
+        activeConfigForm.login_password = props.customer.ont?.login_password || '';
+        activeConfigForm.pppoe_user = props.customer.ont?.pppoe_user || '';
+        activeConfigForm.pppoe_password = props.customer.ont?.pppoe_password || '';
+        activeConfigForm.vlan_mode = props.customer.ont?.vlan_mode || '';
+        activeConfigForm.vlan_id = props.customer.ont?.vlan_id || '';
+        activeConfigForm.access_mode = props.customer.ont?.access_mode || 'PPPOE';
     }
     showEditActiveModal.value = true;
 }
