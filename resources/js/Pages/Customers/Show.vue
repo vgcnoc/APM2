@@ -190,7 +190,7 @@
                 </div>
 
                 <!-- Konfigurasi Layanan & ONT Section -->
-                <div v-show="activeTab === 'audit' && customer.status === 'active'" class="glass-card p-6 mt-6 animate-fade-in-up border border-indigo-100 shadow-md">
+                <div v-show="activeTab === 'audit' && customer.status === 'active' && source !== 'instalasi'" class="glass-card p-6 mt-6 animate-fade-in-up border border-indigo-100 shadow-md">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
                             <span class="bg-indigo-100 text-indigo-600 p-2 rounded-lg">⚙️</span>
