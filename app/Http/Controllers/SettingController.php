@@ -60,4 +60,74 @@ class SettingController extends Controller
 
         return redirect()->back()->with('success', 'Branding berhasil diperbarui.');
     }
+
+    public function apiTest(Request $request)
+    {
+        $settings = json_decode(file_exists(storage_path('app/settings.json')) ? file_get_contents(storage_path('app/settings.json')) : '{}', true);
+        if (empty($settings['app_lk_url'])) {
+            return response()->json(['status' => 'error', 'message' => 'URL App-LK belum dikonfigurasi.']);
+        }
+        try {
+            $response = \Illuminate\Support\Facades\Http::withToken($settings['app_lk_token'] ?? '')
+                ->timeout(15)
+                ->get(rtrim($settings['app_lk_url'], '/') . '/api/ping');
+            if ($response->successful()) {
+                return response()->json(['status' => 'success', 'message' => 'Koneksi berhasil! app-LK merespons dengan baik.']);
+            }
+            return response()->json(['status' => 'error', 'message' => 'Koneksi gagal. HTTP Status: ' . $response->status()]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+        }
+    }
+
+    public function apiSync(Request $request)
+    {
+        $settings = json_decode(file_exists(storage_path('app/settings.json')) ? file_get_contents(storage_path('app/settings.json')) : '{}', true);
+        if (empty($settings['app_lk_url'])) {
+            return response()->json(['status' => 'error', 'message' => 'URL App-LK belum dikonfigurasi.']);
+        }
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::withToken($settings['app_lk_token'] ?? '')
+                ->timeout(15)
+                ->get(rtrim($settings['app_lk_url'], '/') . '/api/customers');
+                
+            if ($response->successful()) {
+                $customers = $response->json();
+                
+                if (isset($customers['data']) && is_array($customers['data'])) {
+                    $customers = $customers['data'];
+                }
+
+                if (!is_array($customers)) {
+                    return response()->json(['status' => 'error', 'message' => 'Format balasan dari app-LK tidak valid.']);
+                }
+
+                $syncedCount = 0;
+                foreach ($customers as $cust) {
+                    if (empty($cust['name']) || empty($cust['phone'])) continue;
+
+                    $existing = \App\Models\Customer::where('phone', $cust['phone'])->first();
+                    
+                    if (!$existing) {
+                        \App\Models\Customer::create([
+                            'name' => $cust['name'],
+                            'phone' => $cust['phone'],
+                            'address' => $cust['address'] ?? '-',
+                            'email' => $cust['email'] ?? null,
+                            'status' => 'booking',
+                            'area' => $cust['area'] ?? null,
+                            'registration_date' => $cust['registration_date'] ?? null,
+                        ]);
+                        $syncedCount++;
+                    }
+                }
+
+                return response()->json(['status' => 'success', 'message' => "Berhasil menarik dan mendaftarkan $syncedCount pelanggan baru dari app-LK."]);
+            }
+            return response()->json(['status' => 'error', 'message' => 'Sinkronisasi gagal. HTTP Status: ' . $response->status()]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
+        }
+    }
 }

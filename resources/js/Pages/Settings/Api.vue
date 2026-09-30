@@ -35,23 +35,41 @@ const generateToken = async () => {
     }
 };
 
-const testConnection = () => {
+const testConnection = async () => {
     isTesting.value = true;
-    setTimeout(() => {
-        isTesting.value = false;
-        connectionStatus.value = 'connected';
+    try {
+        const response = await axios.post('/settings/api/test');
+        if (response.data.status === 'success') {
+            connectionStatus.value = 'connected';
+            alert(response.data.message);
+        } else {
+            connectionStatus.value = 'disconnected';
+            alert(response.data.message || 'Koneksi gagal.');
+        }
         lastTested.value = new Date().toLocaleString('id-ID');
-        alert('Koneksi berhasil! app-LK merespons dengan baik.');
-    }, 1500);
+    } catch (error) {
+        connectionStatus.value = 'disconnected';
+        alert(error.response?.data?.message || 'Terjadi kesalahan saat menguji koneksi.');
+    } finally {
+        isTesting.value = false;
+    }
 };
 
-const syncData = () => {
+const syncData = async () => {
     isSyncing.value = true;
-    setTimeout(() => {
+    try {
+        const response = await axios.post('/settings/api/sync');
+        if (response.data.status === 'success') {
+            lastSynced.value = new Date().toLocaleString('id-ID');
+            alert(response.data.message);
+        } else {
+            alert(response.data.message || 'Gagal sinkronisasi data.');
+        }
+    } catch (error) {
+        alert(error.response?.data?.message || 'Terjadi kesalahan saat sinkronisasi.');
+    } finally {
         isSyncing.value = false;
-        lastSynced.value = new Date().toLocaleString('id-ID');
-        alert('Data berhasil disinkronkan ke app-LK.');
-    }, 2000);
+    }
 };
 </script>
 
