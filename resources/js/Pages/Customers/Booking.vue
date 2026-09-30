@@ -81,7 +81,7 @@
 
             <template #actions>
                 <div class="flex items-center gap-2">
-                    <button v-if="$page.props.auth.user?.role === 'admin' || $page.props.auth.user?.role === 'Super Admin' || canDeleteCustomers()" 
+                    <button v-if="canDelete" 
                         @click="confirmDeleteAll" 
                         :disabled="!customers.data.length"
                         class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-medium text-sm rounded-xl transition-colors border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
@@ -149,7 +149,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                         </svg>
                     </Link>
-                    <button v-if="$page.props.auth.user?.role === 'admin' || $page.props.auth.user?.role === 'Super Admin' || canDeleteCustomers()" 
+                    <button v-if="canDelete" 
                         @click="confirmDelete(row)" 
                         class="p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-500 transition-all" title="Hapus Booking">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -320,7 +320,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
@@ -328,17 +328,23 @@ import DataTable from '@/Components/DataTable.vue';
 const props = defineProps({ customers: Object, filters: Object, areas: Array, stats: Object });
 const page = usePage();
 
-const canDeleteCustomers = () => {
+const canDelete = computed(() => {
     try {
-        const user = page.props.auth?.user;
+        if (!page || !page.props) return false;
+        
+        const auth = page.props.auth;
+        if (!auth) return false;
+        
+        const user = auth.user;
         if (!user) return false;
-        if (user.role === 'admin' || user.role === 'Super Admin') return true;
+        
+        if (user.role === 'admin' || user.role === 'Super Admin' || user.role === 'Admin') return true;
         
         let roles = [];
         if (Array.isArray(user.roles)) roles = user.roles;
         else if (user.roles) roles = Object.values(user.roles);
         
-        if (roles.includes('admin') || roles.includes('Super Admin')) return true;
+        if (roles.includes('admin') || roles.includes('Super Admin') || roles.includes('Admin')) return true;
         
         let perms = [];
         if (Array.isArray(user.permissions)) perms = user.permissions;
@@ -349,7 +355,7 @@ const canDeleteCustomers = () => {
         console.error("Auth check error:", e);
         return false;
     }
-};
+});
 
 const filterDate = ref(props.filters?.date || '');
 const filterArea = ref(props.filters?.area || '');
