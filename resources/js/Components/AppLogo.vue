@@ -17,9 +17,8 @@
                 <!-- Lightning Icon -->
                 <path d="M22 14V7L13 18H20V25L29 14H22Z" fill="white" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 <!-- Text: Dynamic App Name -->
-                <text x="52" y="24" fill="#111827" font-family="system-ui, sans-serif" font-size="18" font-weight="800">{{ $page.props.app_name || 'ISP Manager' }}</text>
-                <!-- Text: Enterprise -->
-                <text x="52" y="38" fill="currentColor" font-family="system-ui, sans-serif" font-size="10" font-weight="700" letter-spacing="0.1em">ENTERPRISE</text>
+                <text x="52" y="24" fill="#111827" font-family="system-ui, sans-serif" font-size="18" font-weight="800">{{ $page.props.app_name !== null ? $page.props.app_name : 'ISP Manager' }}</text>
+                <text v-if="$page.props.app_name !== ''" x="52" y="38" fill="currentColor" font-family="system-ui, sans-serif" font-size="10" font-weight="700" letter-spacing="0.1em">ENTERPRISE</text>
             </svg>
             
             <!-- Icon-only SVG for collapsed sidebar -->

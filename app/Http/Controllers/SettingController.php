@@ -23,7 +23,7 @@ class SettingController extends Controller
         ]);
 
         if ($request->has('app_name')) {
-            Setting::set('app_name', $request->app_name);
+            Setting::set('app_name', $request->app_name ?? '');
         }
 
         if ($request->boolean('remove_logo')) {
