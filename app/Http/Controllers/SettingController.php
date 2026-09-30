@@ -16,6 +16,9 @@ class SettingController extends Controller
 
     public function updateBranding(Request $request)
     {
+        \Log::info('updateBranding payload:', $request->all());
+        \Log::info('hasFile app_logo:', [$request->hasFile('app_logo')]);
+        
         $request->validate([
             'app_name' => 'nullable|string|max:255',
             'app_logo' => 'nullable|image|max:2048',
