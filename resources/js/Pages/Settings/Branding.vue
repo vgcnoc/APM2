@@ -95,6 +95,7 @@ const handleFileChange = (e) => {
 const submitForm = () => {
     form.post(route('settings.branding.update'), {
         preserveScroll: true,
+        forceFormData: true,
         onSuccess: () => {
             form.app_logo = null;
             form.remove_logo = false;
