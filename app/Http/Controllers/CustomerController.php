@@ -177,7 +177,7 @@ class CustomerController extends Controller
      */
     public function installed(Request $request): Response
     {
-        $baseQuery = Customer::installed()->where('status', 'installing');
+        $baseQuery = Customer::installed();
         
         if (auth()->check() && auth()->user()->role === 'teknisi') {
             $baseQuery->whereHas('technicianSchedules', function ($q) {
@@ -200,12 +200,18 @@ class CustomerController extends Controller
                       });
                 })->count(),
             'audit' => (clone $baseQuery)
+                ->where('status', 'installing')
                 ->where('is_audited', false)
                 ->whereHas('ont', function ($q) {
                     $q->whereNotNull('rx_power');
                 })->count(),
             'selesai_instalasi' => (clone $baseQuery)
-                ->where('is_audited', true)->count(),
+                ->where(function ($q) {
+                    $q->where('status', 'active')
+                      ->orWhere(function ($q2) {
+                          $q2->where('status', 'installing')->where('is_audited', true);
+                      });
+                })->count(),
         ];
 
         $customerQuery = clone $baseQuery;
@@ -222,11 +228,16 @@ class CustomerController extends Controller
                           });
                     });
             } elseif ($request->tab === 'audit') {
-                $customerQuery->where('is_audited', false)->whereHas('ont', function ($q) {
+                $customerQuery->where('status', 'installing')->where('is_audited', false)->whereHas('ont', function ($q) {
                         $q->whereNotNull('rx_power');
                     });
             } elseif ($request->tab === 'selesai_instalasi') {
-                $customerQuery->where('is_audited', true);
+                $customerQuery->where(function ($q) {
+                    $q->where('status', 'active')
+                      ->orWhere(function ($q2) {
+                          $q2->where('status', 'installing')->where('is_audited', true);
+                      });
+                });
             }
         }
 
