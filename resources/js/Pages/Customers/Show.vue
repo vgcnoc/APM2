@@ -114,9 +114,21 @@
 
         <!-- Right Column -->
             <div class="lg:col-span-2 space-y-6">
+                <!-- Tabs Navigation -->
+                <div class="flex flex-wrap gap-1 bg-white p-1 rounded-xl shadow-sm border border-gray-100">
+                    <button @click="activeTab = 'booking'" :class="activeTab === 'booking' ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
+                        📋 Booking & Survey
+                    </button>
+                    <button v-if="customer.status !== 'booking' && customer.status !== 'survey'" @click="activeTab = 'installation'" :class="activeTab === 'installation' ? 'bg-emerald-50 text-emerald-600 shadow-sm ring-1 ring-emerald-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
+                        🚀 Instalasi
+                    </button>
+                    <button v-if="(customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active'" @click="activeTab = 'audit'" :class="activeTab === 'audit' ? 'bg-purple-50 text-purple-600 shadow-sm ring-1 ring-purple-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
+                        ✅ Audit & Aktivasi
+                    </button>
+                </div>
                 
                 <!-- Survey & Booking Info Section -->
-                <div class="glass-card p-6 animate-fade-in-up">
+                <div v-show="activeTab === 'booking'" class="glass-card p-6 animate-fade-in-up">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">📋 Data Booking & Survey</h3>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -178,7 +190,7 @@
                 </div>
 
                 <!-- Konfigurasi Layanan & ONT Section -->
-                <div v-if="customer.status === 'active'" class="glass-card p-6 mt-6 animate-fade-in-up border border-indigo-100 shadow-md">
+                <div v-show="activeTab === 'audit' && customer.status === 'active'" class="glass-card p-6 mt-6 animate-fade-in-up border border-indigo-100 shadow-md">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
                             <span class="bg-indigo-100 text-indigo-600 p-2 rounded-lg">⚙️</span>
@@ -264,7 +276,7 @@
                 </div>
                 
                 <!-- Audit Data Pemasangan Section -->
-                <div v-if="(customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active'" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
+                <div v-show="activeTab === 'audit' && ((customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active')" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
                     <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">🛡️</span>
                         Data Instalasi & Audit
@@ -340,20 +352,30 @@
                     </div>
                 </div>
                 <!-- Instalasi Section -->
-                <div v-if="customer.status === 'installing' && (!customer.ont || !customer.ont.rx_power)" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
+                <div v-show="activeTab === 'installation' && customer.status === 'installing' && (!customer.ont || !customer.ont.rx_power)" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
                     <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">🚀</span>
                         Form Laporan Selesai Instalasi
                     </h3>
-                        
                         <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 space-y-2">
                             <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
                             <InfoRow label="Teknisi" :value="getAssignedTechnicians('installation')" />
                             <InfoRow label="Tanggal Pasang" :value="customer.technician_schedules.find(s => s.type === 'installation').scheduled_date" />
                             <InfoRow label="Waktu Target" :value="customer.technician_schedules.find(s => s.type === 'installation').scheduled_time || '-'" />
                         </div>
+                        <div v-else class="bg-amber-50 p-6 rounded-xl border border-amber-200 text-center space-y-3 mb-6">
+                            <div class="text-3xl">⚠️</div>
+                            <h4 class="font-bold text-amber-800 text-lg">Belum Ada Jadwal Pasang</h4>
+                            <p class="text-sm text-amber-700 max-w-lg mx-auto">Pelanggan ini belum dijadwalkan untuk pemasangan. Silakan kembali ke halaman <strong>Instalasi</strong> dan klik tombol <strong>Jadwalkan Pasang</strong> untuk memilih teknisi dan waktu instalasi.</p>
+                            <div class="pt-2">
+                                <Link href="/customers/installed" class="btn-primary inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 border-none px-6 py-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                                    Kembali ke Data Instalasi
+                                </Link>
+                            </div>
+                        </div>
 
-                        <form @submit.prevent="submitOnt" class="space-y-6">
+                        <form v-if="customer.technician_schedules?.find(s => s.type === 'installation')" @submit.prevent="submitOnt" class="space-y-6">
                             
                             <!-- STEP 1: Mulai -->
                             <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
