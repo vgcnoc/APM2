@@ -535,8 +535,8 @@ const showTechDropdown = ref(false);
 const getCustomerProgressStatus = (customer) => {
     if (customer.status === 'active') return 'active';
     if (customer.is_audited) return 'menunggu_aktivasi';
+    if (customer.technician_schedules && customer.technician_schedules.some(s => s.type === 'installation' && s.status === 'scheduled')) return 'laporan_pasang';
     if (customer.ont && customer.ont.rx_power) return 'audit';
-    if (customer.technician_schedules && customer.technician_schedules.length > 0) return 'laporan_pasang';
     return 'jadwal_pasang';
 };
 

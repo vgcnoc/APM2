@@ -198,16 +198,15 @@ class CustomerController extends Controller
                 ->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation'))->count(),
             'laporan_pasang' => (clone $baseQuery)
                 ->where('status', 'installing')
-                ->whereHas('technicianSchedules', fn($q) => $q->where('type', 'installation'))
-                ->where(function ($q) {
-                    $q->doesntHave('ont')
-                      ->orWhereHas('ont', function ($q2) {
-                          $q2->whereNull('rx_power');
-                      });
+                ->whereHas('technicianSchedules', function($q) {
+                    $q->where('type', 'installation')->where('status', 'scheduled');
                 })->count(),
             'audit' => (clone $baseQuery)
                 ->where('status', 'installing')
                 ->where('is_audited', false)
+                ->whereDoesntHave('technicianSchedules', function($q) {
+                    $q->where('type', 'installation')->where('status', 'scheduled');
+                })
                 ->whereHas('ont', function ($q) {
                     $q->whereNotNull('rx_power');
                 })->count(),
@@ -223,15 +222,13 @@ class CustomerController extends Controller
             if ($request->tab === 'jadwal_pasang') {
                 $customerQuery->where('status', 'installing')->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation'));
             } elseif ($request->tab === 'laporan_pasang') {
-                $customerQuery->where('status', 'installing')->whereHas('technicianSchedules', fn($q) => $q->where('type', 'installation'))
-                    ->where(function ($q) {
-                        $q->doesntHave('ont')
-                          ->orWhereHas('ont', function ($q2) {
-                              $q2->whereNull('rx_power');
-                          });
-                    });
+                $customerQuery->where('status', 'installing')->whereHas('technicianSchedules', function($q) {
+                    $q->where('type', 'installation')->where('status', 'scheduled');
+                });
             } elseif ($request->tab === 'audit') {
-                $customerQuery->where('status', 'installing')->where('is_audited', false)->whereHas('ont', function ($q) {
+                $customerQuery->where('status', 'installing')->where('is_audited', false)->whereDoesntHave('technicianSchedules', function($q) {
+                    $q->where('type', 'installation')->where('status', 'scheduled');
+                })->whereHas('ont', function ($q) {
                         $q->whereNotNull('rx_power');
                     });
             } elseif ($request->tab === 'selesai_instalasi') {
