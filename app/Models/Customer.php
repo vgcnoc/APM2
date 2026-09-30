@@ -182,7 +182,7 @@ class Customer extends Model
 
     public function scopeInstalled($query)
     {
-        return $query->whereIn('status', ['installing', 'active']);
+        return $query->where('status', 'installing');
     }
 
     public function scopeSearch($query, ?string $search)

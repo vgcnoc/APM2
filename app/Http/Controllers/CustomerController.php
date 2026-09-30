@@ -57,7 +57,9 @@ class CustomerController extends Controller
             })
             ->when($request->area, function ($q, $area) {
                 $q->where(function($sub) use ($area) {
-                    $sub->where('area', $area); // Since it's a dropdown, exact match is better
+                    $sub->whereHas('areaModel', function($q2) use ($area) {
+                        $q2->where('name', $area);
+                    })->orWhere('area', $area);
                 });
             })
             ->when($request->status, function ($q, $status) {
@@ -115,7 +117,11 @@ class CustomerController extends Controller
                 $q->whereDate('created_at', $date);
             })
             ->when($request->area, function ($q, $area) {
-                $q->where('area', $area);
+                $q->where(function($sub) use ($area) {
+                    $sub->whereHas('areaModel', function($q2) use ($area) {
+                        $q2->where('name', $area);
+                    })->orWhere('area', $area);
+                });
             })
             ->search($request->search);
 
@@ -206,12 +212,9 @@ class CustomerController extends Controller
                     $q->whereNotNull('rx_power');
                 })->count(),
             'selesai_instalasi' => (clone $baseQuery)
-                ->where(function ($q) {
-                    $q->where('status', 'active')
-                      ->orWhere(function ($q2) {
-                          $q2->where('status', 'installing')->where('is_audited', true);
-                      });
-                })->count(),
+                ->where('status', 'installing')
+                ->where('is_audited', true)
+                ->count(),
         ];
 
         $customerQuery = clone $baseQuery;
@@ -232,12 +235,7 @@ class CustomerController extends Controller
                         $q->whereNotNull('rx_power');
                     });
             } elseif ($request->tab === 'selesai_instalasi') {
-                $customerQuery->where(function ($q) {
-                    $q->where('status', 'active')
-                      ->orWhere(function ($q2) {
-                          $q2->where('status', 'installing')->where('is_audited', true);
-                      });
-                });
+                $customerQuery->where('status', 'installing')->where('is_audited', true);
             }
         }
 
@@ -253,7 +251,11 @@ class CustomerController extends Controller
                 });
             })
             ->when($request->area, function($q, $area) {
-                $q->where('area', $area);
+                $q->where(function($sub) use ($area) {
+                    $sub->whereHas('areaModel', function($q2) use ($area) {
+                        $q2->where('name', $area);
+                    })->orWhere('area', $area);
+                });
             })
             ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'installation')->with('technician');
