@@ -117,9 +117,11 @@ class SettingController extends Controller
                             'email' => $cust['email'] ?? null,
                             'status' => 'booking',
                             'area' => $cust['area'] ?? $cust['wilayah'] ?? $cust['region'] ?? null,
-                            'registration_date' => isset($cust['registration_date']) 
-                                ? \Carbon\Carbon::parse($cust['registration_date'])->toDateString() 
-                                : (isset($cust['created_at']) ? \Carbon\Carbon::parse($cust['created_at'])->toDateString() : null),
+                            'registration_date' => !empty($cust['register_date'])
+                                ? \Carbon\Carbon::parse($cust['register_date'])->toDateString()
+                                : (!empty($cust['registration_date']) 
+                                    ? \Carbon\Carbon::parse($cust['registration_date'])->toDateString() 
+                                    : (!empty($cust['created_at']) ? \Carbon\Carbon::parse($cust['created_at'])->toDateString() : null)),
                         ]);
                         $syncedCount++;
                     }
