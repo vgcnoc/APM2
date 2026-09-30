@@ -51,25 +51,57 @@
                         <p class="text-sm font-medium">Role <b>Admin</b> memiliki seluruh hak akses (Super Admin). Anda tidak dapat mengubah hak akses untuk role ini.</p>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6" :class="{'opacity-50 pointer-events-none': selectedRole.name === 'admin'}">
-                        <div v-for="(group, key) in permissions" :key="key" class="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                            <div class="flex items-center justify-between mb-3 border-b border-gray-200 pb-2">
-                                <label class="flex items-center gap-3 cursor-pointer">
-                                    <input v-if="group.menu" type="checkbox" v-model="selectedPermissions" :value="group.menu.name" class="w-5 h-5 rounded text-blue-600 border-gray-300">
-                                    <h4 class="font-bold text-gray-700">{{ formatPermissionName(key) }}</h4>
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" @change="toggleGroup(key, $event.target.checked)" :checked="isGroupFullyChecked(key)" class="w-4 h-4 rounded text-blue-600 border-gray-300">
-                                    <span class="text-xs font-medium text-gray-500">Pilih Semua</span>
-                                </label>
-                            </div>
-                            <div class="space-y-2 pl-8" v-if="group.actions && group.actions.length > 0">
-                                <label v-for="perm in group.actions" :key="perm.id" class="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
-                                    <input type="checkbox" v-model="selectedPermissions" :value="perm.name" class="w-4 h-4 rounded text-blue-600 border-gray-300">
-                                    <span class="text-sm font-medium text-gray-700">{{ formatActionName(perm.name) }}</span>
-                                </label>
-                            </div>
-                        </div>
+                    <div class="overflow-x-auto rounded-xl border border-gray-200" :class="{'opacity-50 pointer-events-none': selectedRole.name === 'admin'}">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm text-left">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-4 font-bold text-gray-700 uppercase tracking-wider">Nama Menu / Modul</th>
+                                    <th class="px-6 py-4 font-bold text-gray-700 uppercase tracking-wider text-center">Lihat Menu</th>
+                                    <th class="px-6 py-4 font-bold text-gray-700 uppercase tracking-wider text-center">Tambah (Create)</th>
+                                    <th class="px-6 py-4 font-bold text-gray-700 uppercase tracking-wider text-center">Ubah (Edit)</th>
+                                    <th class="px-6 py-4 font-bold text-gray-700 uppercase tracking-wider text-center">Hapus (Delete)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-100">
+                                <tr v-for="(group, key) in permissions" :key="key" class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 font-semibold text-gray-900">
+                                        {{ formatPermissionName(key) }}
+                                    </td>
+                                    
+                                    <!-- Lihat Menu -->
+                                    <td class="px-6 py-4 text-center">
+                                        <label v-if="group.menu" class="inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" v-model="selectedPermissions" :value="group.menu.name" class="w-5 h-5 rounded text-blue-600 border-gray-300">
+                                        </label>
+                                        <span v-else class="text-gray-300">-</span>
+                                    </td>
+                                    
+                                    <!-- Create -->
+                                    <td class="px-6 py-4 text-center">
+                                        <label v-if="getActionPerm(group, 'create')" class="inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" v-model="selectedPermissions" :value="getActionPerm(group, 'create').name" class="w-5 h-5 rounded text-green-600 border-gray-300">
+                                        </label>
+                                        <span v-else class="text-gray-300">-</span>
+                                    </td>
+                                    
+                                    <!-- Edit -->
+                                    <td class="px-6 py-4 text-center">
+                                        <label v-if="getActionPerm(group, 'edit')" class="inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" v-model="selectedPermissions" :value="getActionPerm(group, 'edit').name" class="w-5 h-5 rounded text-yellow-500 border-gray-300">
+                                        </label>
+                                        <span v-else class="text-gray-300">-</span>
+                                    </td>
+                                    
+                                    <!-- Delete -->
+                                    <td class="px-6 py-4 text-center">
+                                        <label v-if="getActionPerm(group, 'delete')" class="inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" v-model="selectedPermissions" :value="getActionPerm(group, 'delete').name" class="w-5 h-5 rounded text-red-600 border-gray-300">
+                                        </label>
+                                        <span v-else class="text-gray-300">-</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
                 
@@ -154,28 +186,9 @@ const formatActionName = (name) => {
     return "Hak Akses " + action.charAt(0).toUpperCase() + action.slice(1);
 };
 
-const isGroupFullyChecked = (groupKey) => {
-    const group = props.permissions[groupKey];
-    let allPerms = [];
-    if (group.menu) allPerms.push(group.menu.name);
-    if (group.actions) allPerms = allPerms.concat(group.actions.map(p => p.name));
-    if (allPerms.length === 0) return false;
-    return allPerms.every(p => selectedPermissions.value.includes(p));
-};
-
-const toggleGroup = (groupKey, isChecked) => {
-    const group = props.permissions[groupKey];
-    let allPerms = [];
-    if (group.menu) allPerms.push(group.menu.name);
-    if (group.actions) allPerms = allPerms.concat(group.actions.map(p => p.name));
-    
-    if (isChecked) {
-        allPerms.forEach(p => {
-            if (!selectedPermissions.value.includes(p)) selectedPermissions.value.push(p);
-        });
-    } else {
-        selectedPermissions.value = selectedPermissions.value.filter(p => !allPerms.includes(p));
-    }
+const getActionPerm = (group, action) => {
+    if (!group.actions) return null;
+    return group.actions.find(p => p.name.endsWith(`_${action}`));
 };
 
 const savePermissions = () => {
