@@ -1,10 +1,10 @@
 <template>
     <div class="glass-card overflow-hidden animate-fade-in-up">
         <!-- Table Header: Search & Filters -->
-        <div class="p-4 border-b border-gray-200">
+        <div class="p-4 border-b border-gray-200 space-y-4">
             <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <!-- Search -->
-                <div class="relative w-full md:w-80">
+                <div class="relative w-full md:w-80 shrink-0">
                     <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
@@ -17,13 +17,15 @@
                     />
                 </div>
 
-                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
-                    <!-- Filters Slot -->
-                    <slot name="filters" />
-
-                    <!-- Action Buttons Slot -->
+                <!-- Action Buttons Slot -->
+                <div v-if="$slots.actions" class="flex flex-wrap items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
                     <slot name="actions" />
                 </div>
+            </div>
+
+            <!-- Filters Slot -->
+            <div v-if="$slots.filters" class="px-4 py-3 bg-slate-50/70 border border-slate-100 rounded-xl flex flex-wrap items-center gap-3 w-full shadow-sm">
+                <slot name="filters" />
             </div>
         </div>
 
