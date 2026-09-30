@@ -16,20 +16,19 @@
                     <form @submit.prevent="submitForm" enctype="multipart/form-data">
                         <div class="mb-6">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Nama Aplikasi</label>
-                            <input type="text" v-model="form.app_name" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Contoh: ISP Manager" />
+                            <input type="text" v-model="appName" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Contoh: ISP Manager" />
                             <p class="text-xs text-gray-500 mt-2">Nama ini akan ditampilkan jika logo belum diupload. Kosongkan jika ingin full logo.</p>
-                            <div v-if="form.errors.app_name" class="text-red-500 text-xs mt-1">{{ form.errors.app_name }}</div>
                         </div>
 
                         <div class="mb-8">
                             <label class="block text-sm font-semibold text-gray-700 mb-4">Preview Logo Saat Ini</label>
                             
                             <div class="bg-gray-100 rounded-xl p-8 flex items-center justify-center border-2 border-dashed border-gray-300 relative min-h-[160px]">
-                                <img v-if="(previewUrl || $page.props.app_logo) && !imageError" 
-                                     :src="previewUrl || $page.props.app_logo" 
+                                <img v-if="logoPreview" 
+                                     :src="logoPreview" 
                                      class="max-h-[80px] w-auto object-contain" 
                                      alt="Logo Preview"
-                                     @error="handleImageError" />
+                                     @error="onImgError" />
                                 
                                 <div v-else class="text-center">
                                     <div class="w-16 h-16 mx-auto mb-3 text-gray-400">
@@ -44,15 +43,14 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Upload Logo Baru</label>
                             <input type="file" ref="fileInput" @change="handleFileChange" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
                             <p class="text-xs text-gray-500 mt-2">Gunakan format PNG, JPG, atau SVG dengan background transparan. Disarankan ukuran horizontal (landscape).</p>
-                            <div v-if="form.errors.app_logo" class="text-red-500 text-xs mt-1">{{ form.errors.app_logo }}</div>
                         </div>
 
                         <div class="flex items-center gap-3 pt-6 border-t border-gray-100">
-                            <button type="submit" :disabled="form.processing" class="btn-primary">
-                                <span v-if="form.processing">Menyimpan...</span>
+                            <button type="submit" :disabled="isSubmitting" class="btn-primary">
+                                <span v-if="isSubmitting">Menyimpan...</span>
                                 <span v-else>Simpan Perubahan</span>
                             </button>
-                            <button type="button" v-if="$page.props.app_logo" @click="removeLogo" :disabled="form.processing" class="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+                            <button type="button" v-if="props.current_logo" @click="removeLogo" :disabled="isSubmitting" class="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
                                 Hapus Logo
                             </button>
                         </div>
@@ -64,84 +62,103 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { usePage, router } from '@inertiajs/vue3';
+import { ref, onMounted } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
+const props = defineProps({
+    current_logo: String,
+    current_app_name: String,
+});
+
 const page = usePage();
-
 const fileInput = ref(null);
-const previewUrl = ref(null);
-const imageError = ref(false);
+const selectedFile = ref(null);
 const isSubmitting = ref(false);
+const appName = ref(props.current_app_name || '');
 
-const handleImageError = () => {
-    imageError.value = true;
+// Logo preview: use selected file preview, or current logo from props
+const logoPreview = ref(props.current_logo || null);
+
+const onImgError = () => {
+    logoPreview.value = null;
 };
-
-const form = {
-    processing: false,
-    errors: {},
-    app_name: page.props.app_name || '',
-    app_logo: null,
-    remove_logo: false
-};
-
-const formRef = ref(form);
 
 const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-        formRef.value.app_logo = file;
-        formRef.value.remove_logo = false;
-        previewUrl.value = URL.createObjectURL(file);
-        imageError.value = false;
-    } else {
-        formRef.value.app_logo = null;
-        previewUrl.value = null;
-        imageError.value = false;
+        selectedFile.value = file;
+        logoPreview.value = URL.createObjectURL(file);
     }
 };
 
 const submitForm = () => {
-    const data = new FormData();
-    data.append('app_name', formRef.value.app_name || '');
+    isSubmitting.value = true;
     
-    if (formRef.value.app_logo) {
-        data.append('app_logo', formRef.value.app_logo);
-    }
+    const formData = new FormData();
+    formData.append('app_name', appName.value);
     
-    if (formRef.value.remove_logo) {
-        data.append('remove_logo', '1');
+    if (selectedFile.value) {
+        formData.append('app_logo', selectedFile.value);
     }
 
-    formRef.value.processing = true;
+    // Get CSRF token from cookie (Laravel sets XSRF-TOKEN cookie)
+    const xsrfToken = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('XSRF-TOKEN='))
+        ?.split('=')[1];
 
-    router.post(route('settings.branding.update'), data, {
-        forceFormData: true,
-        preserveScroll: true,
-        onSuccess: () => {
-            formRef.value.processing = false;
-            formRef.value.app_logo = null;
-            formRef.value.remove_logo = false;
-            if (fileInput.value) fileInput.value.value = '';
-            previewUrl.value = null;
-            // Force full page reload to refresh all shared props (logo in sidebar etc.)
-            window.location.reload();
+    fetch(route('settings.branding.update'), {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            ...(xsrfToken ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrfToken) } : {}),
         },
-        onError: (errors) => {
-            formRef.value.processing = false;
-            formRef.value.errors = errors;
-        }
+        credentials: 'same-origin',
+    })
+    .then(response => {
+        isSubmitting.value = false;
+        // Force full page reload to refresh everything including sidebar
+        window.location.href = route('settings.branding');
+    })
+    .catch(error => {
+        isSubmitting.value = false;
+        alert('Gagal menyimpan: ' + error.message);
     });
 };
 
 const removeLogo = () => {
-    if (confirm('Apakah Anda yakin ingin menghapus logo ini dan kembali ke logo default?')) {
-        formRef.value.remove_logo = true;
-        formRef.value.app_logo = null;
-        previewUrl.value = null;
-        submitForm();
+    if (confirm('Apakah Anda yakin ingin menghapus logo ini?')) {
+        isSubmitting.value = true;
+        
+        const formData = new FormData();
+        formData.append('remove_logo', '1');
+        formData.append('app_name', appName.value);
+        
+        const xsrfToken = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('XSRF-TOKEN='))
+            ?.split('=')[1];
+
+        fetch(route('settings.branding.update'), {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                ...(xsrfToken ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrfToken) } : {}),
+            },
+            credentials: 'same-origin',
+        })
+        .then(() => {
+            window.location.href = route('settings.branding');
+        })
+        .catch(error => {
+            isSubmitting.value = false;
+            alert('Gagal menghapus: ' + error.message);
+        });
     }
 };
 </script>
