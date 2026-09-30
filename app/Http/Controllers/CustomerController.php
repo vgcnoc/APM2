@@ -177,7 +177,7 @@ class CustomerController extends Controller
      */
     public function installed(Request $request): Response
     {
-        $baseQuery = Customer::installed();
+        $baseQuery = Customer::installed()->where('status', 'installing')->where('is_audited', false);
         
         if (auth()->check() && auth()->user()->role === 'teknisi') {
             $baseQuery->whereHas('technicianSchedules', function ($q) {
@@ -200,16 +200,9 @@ class CustomerController extends Controller
                       });
                 })->count(),
             'audit' => (clone $baseQuery)
-                ->where('status', 'installing')
                 ->whereHas('ont', function ($q) {
                     $q->whereNotNull('rx_power');
-                })
-                ->where('is_audited', false)->count(),
-            'menunggu_aktivasi' => (clone $baseQuery)
-                ->where('status', 'installing')
-                ->where('is_audited', true)->count(),
-            'selesai' => (clone $baseQuery)
-                ->where('status', 'active')->count(),
+                })->count(),
         ];
 
         $customerQuery = clone $baseQuery;
@@ -226,14 +219,9 @@ class CustomerController extends Controller
                           });
                     });
             } elseif ($request->tab === 'audit') {
-                $customerQuery->where('status', 'installing')->whereHas('ont', function ($q) {
+                $customerQuery->whereHas('ont', function ($q) {
                         $q->whereNotNull('rx_power');
-                    })
-                    ->where('is_audited', false);
-            } elseif ($request->tab === 'menunggu_aktivasi') {
-                $customerQuery->where('status', 'installing')->where('is_audited', true);
-            } elseif ($request->tab === 'selesai') {
-                $customerQuery->where('status', 'active');
+                    });
             }
         }
 

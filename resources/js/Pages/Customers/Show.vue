@@ -123,7 +123,7 @@
                         🚀 Instalasi
                     </button>
                     <button v-if="(customer.status === 'installing' && customer.ont && customer.ont.rx_power) || customer.status === 'active'" @click="activeTab = 'audit'" :class="activeTab === 'audit' ? 'bg-purple-50 text-purple-600 shadow-sm ring-1 ring-purple-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
-                        ✅ Audit & Aktivasi
+                        ✅ {{ customer.is_audited || customer.status === 'active' ? 'Aktivasi Layanan' : 'Audit Instalasi' }}
                     </button>
                 </div>
                 

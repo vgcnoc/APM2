@@ -2,7 +2,7 @@
     <AppLayout title="Pelanggan Instalasi" subtitle="Pelanggan yang sedang diinstalasi">
         
         <!-- Statistik Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <StatCard 
                 title="Jadwal Pasang" 
                 :value="stats?.jadwal_pasang || 0" 
@@ -20,12 +20,6 @@
                 :value="stats?.audit || 0" 
                 icon="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
                 color="purple" 
-            />
-            <StatCard 
-                title="Menunggu Aktivasi" 
-                :value="stats?.menunggu_aktivasi || 0" 
-                icon="M13 10V3L4 14h7v7l9-11h-7z" 
-                color="emerald" 
             />
         </div>
 
@@ -46,15 +40,6 @@
             <Link href="/customers/installed?tab=audit" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'audit' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-purple-600']">
                 <span>Menunggu Audit</span>
                 <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'audit' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.audit || 0 }}</span>
-            </Link>
-            <Link href="/customers/installed?tab=menunggu_aktivasi" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'menunggu_aktivasi' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-emerald-600']">
-                <span>Menunggu Aktivasi</span>
-                <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'menunggu_aktivasi' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.menunggu_aktivasi || 0 }}</span>
-            </Link>
-            <Link href="/customers/installed?tab=selesai" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'selesai' ? 'bg-cyan-600 text-white shadow-md shadow-cyan-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-cyan-600']">
-                <span>Selesai / Aktif</span>
-                <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'selesai' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.selesai || 0 }}</span>
-            </Link>
         </div>
 
         <DataTable
