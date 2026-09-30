@@ -144,7 +144,15 @@ const props = defineProps({
 
 const filteredMaterials = computed(() => {
     if (!form.area_id) return [];
-    return props.materials.filter(m => m.area_id === form.area_id);
+    return props.materials
+        .map(m => {
+            const areaStock = m.stocks ? m.stocks.find(s => s.area_id === form.area_id) : null;
+            if (areaStock && areaStock.stock > 0) {
+                return { ...m, stock: areaStock.stock };
+            }
+            return null;
+        })
+        .filter(m => m !== null);
 });
 
 const getTodayDate = () => {
@@ -186,10 +194,10 @@ const onAreaChange = () => {
 
 const onMaterialSelected = (index) => {
     const itemId = form.items[index].material_id;
-    const material = props.materials.find(m => m.id === itemId);
+    const material = filteredMaterials.value.find(m => m.id === itemId);
     
     if (material) {
-        const isCable = material.category === 'Kabel' || material.name.toLowerCase().includes('kabel');
+        const isCable = material.category === 'Kabel' || material.category === 'Kabel Drop / Frecon' || material.name.toLowerCase().includes('kabel');
         const isPack = material.category === 'Paku Klem';
         const isIsolasi = material.category === 'Isolasi';
         

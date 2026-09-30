@@ -90,7 +90,7 @@ class MaterialTransactionController extends Controller
 
     public function create()
     {
-        $materials = Material::where('stock', '>', 0)->get();
+        $materials = Material::with('stocks')->get();
         $areas = \App\Models\Area::orderBy('name')->get();
         
         return Inertia::render('MaterialTransactions/Create', [
