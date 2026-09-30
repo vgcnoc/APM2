@@ -330,27 +330,36 @@ const page = usePage();
 
 const canDelete = computed(() => {
     try {
-        if (!page || !page.props) return false;
+        if (!page || !page.props || !page.props.auth || !page.props.auth.user) return false;
         
-        const auth = page.props.auth;
-        if (!auth) return false;
+        const user = page.props.auth.user;
         
-        const user = auth.user;
-        if (!user) return false;
+        // 1. Check Role String (insensitive and trimmed)
+        if (user.role && typeof user.role === 'string') {
+            const roleStr = user.role.toLowerCase().trim();
+            if (roleStr === 'admin' || roleStr === 'super admin' || roleStr.includes('admin')) {
+                return true;
+            }
+        }
         
-        if (user.role === 'admin' || user.role === 'Super Admin' || user.role === 'Admin') return true;
-        
+        // 2. Check Roles Array (Spatie)
         let roles = [];
         if (Array.isArray(user.roles)) roles = user.roles;
         else if (user.roles) roles = Object.values(user.roles);
         
-        if (roles.includes('admin') || roles.includes('Super Admin') || roles.includes('Admin')) return true;
+        for (let r of roles) {
+            if (typeof r === 'string') {
+                const rStr = r.toLowerCase().trim();
+                if (rStr === 'admin' || rStr === 'super admin' || rStr.includes('admin')) return true;
+            }
+        }
         
+        // 3. Check Permissions (Spatie)
         let perms = [];
         if (Array.isArray(user.permissions)) perms = user.permissions;
         else if (user.permissions) perms = Object.values(user.permissions);
         
-        return perms.includes('menu_customers_booking') || perms.includes('customers_booking_delete');
+        return perms.includes('menu_customers_booking') || perms.includes('customers_booking_delete') || perms.includes('customers_delete');
     } catch (e) {
         console.error("Auth check error:", e);
         return false;
