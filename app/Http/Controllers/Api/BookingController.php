@@ -22,6 +22,8 @@ class BookingController extends Controller
             'address' => 'required|string',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
+            'area' => 'nullable|string|max:255',
+            'registration_date' => 'nullable|date',
         ]);
 
         if ($validator->fails()) {
@@ -40,6 +42,8 @@ class BookingController extends Controller
             'address' => $request->address,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
+            'area' => $request->area,
+            'registration_date' => $request->registration_date,
             'status' => 'booking',
         ]);
 
