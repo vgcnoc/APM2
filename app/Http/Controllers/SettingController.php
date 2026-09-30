@@ -110,6 +110,21 @@ class SettingController extends Controller
                     $existing = \App\Models\Customer::where('phone', $cust['phone'])->first();
                     
                     if (!$existing) {
+                        $paketName = $cust['paket'] ?? null;
+                        $packageId = null;
+                        if ($paketName) {
+                            $pkg = \App\Models\InternetPackage::where('name', $paketName)->first();
+                            if ($pkg) $packageId = $pkg->id;
+                        }
+                        
+                        $salesId = $cust['sales_id'] ?? null;
+                        if ($salesId) {
+                            $user = \App\Models\User::find($salesId);
+                            if (!$user) $salesId = null;
+                        }
+
+                        $notes = "Sinkronisasi dari App-LK:\nPaket: " . ($paketName ?? '-') . "\nSales ID: " . ($cust['sales_id'] ?? '-');
+
                         \App\Models\Customer::create([
                             'name' => $cust['name'],
                             'phone' => $cust['phone'],
@@ -117,6 +132,9 @@ class SettingController extends Controller
                             'email' => $cust['email'] ?? null,
                             'status' => 'booking',
                             'area' => $cust['area'] ?? $cust['wilayah'] ?? $cust['region'] ?? null,
+                            'package_id' => $packageId,
+                            'sales_id' => $salesId,
+                            'notes' => $notes,
                             'registration_date' => !empty($cust['register_date'])
                                 ? \Carbon\Carbon::parse($cust['register_date'])->toDateString()
                                 : (!empty($cust['registration_date']) 

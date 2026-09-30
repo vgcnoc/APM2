@@ -64,6 +64,14 @@ class Customer extends Model
     }
 
     /**
+     * Sales / Marketing yang mendaftarkan pelanggan
+     */
+    public function sales(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'sales_id');
+    }
+
+    /**
      * ONT yang terpasang di pelanggan (1:1 secara logika)
      */
     public function ont(): HasOne

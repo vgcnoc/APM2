@@ -68,7 +68,7 @@ class CustomerController extends Controller
             ->search($request->search);
 
         $customers = (clone $query)
-            ->with('package')
+            ->with(['package', 'sales'])
             ->orderByDesc('created_at')
             ->paginate(15)
             ->withQueryString();

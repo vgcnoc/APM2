@@ -114,6 +114,19 @@
                 </td>
                 <td class="text-gray-500">{{ row.phone }}</td>
                 <td class="max-w-[250px] truncate text-gray-500 text-xs">{{ row.address }}</td>
+                <td>
+                    <span v-if="row.package" class="inline-flex px-2 py-1 bg-purple-50 text-purple-600 rounded-md text-xs font-medium border border-purple-100">
+                        {{ row.package.name }}
+                    </span>
+                    <span v-else class="text-xs text-gray-400 italic">-</span>
+                </td>
+                <td class="text-xs text-gray-700 font-medium">
+                    <span v-if="row.sales" class="flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                        {{ row.sales.name }}
+                    </span>
+                    <span v-else class="text-gray-400 italic">-</span>
+                </td>
                 <td class="text-xs text-gray-500">{{ row.registration_date }}</td>
                 <td>
                     <div v-if="row.area" class="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded-md inline-block">
@@ -394,6 +407,8 @@ const columns = [
     { key: 'name', label: 'Nama Pelanggan' },
     { key: 'phone', label: 'Telepon' },
     { key: 'address', label: 'Alamat' },
+    { key: 'package', label: 'Paket Langganan' },
+    { key: 'sales', label: 'Sales' },
     { key: 'date', label: 'Tgl Daftar' },
     { key: 'area', label: 'Area / Wilayah' },
 ];
