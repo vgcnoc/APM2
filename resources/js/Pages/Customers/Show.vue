@@ -122,7 +122,7 @@
                     <button v-if="customer.status !== 'booking' && customer.status !== 'survey'" @click="activeTab = 'installation'" :class="activeTab === 'installation' ? 'bg-emerald-50 text-emerald-600 shadow-sm ring-1 ring-emerald-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
                         🚀 Instalasi
                     </button>
-                    <button v-if="(customer.status === 'installing' && customer.ont && customer.ont?.rx_power) || customer.status === 'active'" @click="activeTab = 'audit'" :class="activeTab === 'audit' ? 'bg-purple-50 text-purple-600 shadow-sm ring-1 ring-purple-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
+                    <button v-if="isAudit || customer.status === 'active'" @click="activeTab = 'audit'" :class="activeTab === 'audit' ? 'bg-purple-50 text-purple-600 shadow-sm ring-1 ring-purple-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
                         ✅ {{ (customer.is_audited || customer.status === 'active') && source !== 'instalasi' ? 'Aktivasi Layanan' : 'Audit Instalasi' }}
                     </button>
                 </div>
@@ -276,7 +276,7 @@
                 </div>
                 
                 <!-- Audit Data Pemasangan Section -->
-                <div v-show="activeTab === 'audit' && ((customer.status === 'installing' && customer.ont && customer.ont?.rx_power) || customer.status === 'active')" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
+                <div v-show="activeTab === 'audit' && (isAudit || customer.status === 'active')" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
                     <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">🛡️</span>
                         Data Instalasi & Audit
@@ -352,7 +352,7 @@
                     </div>
                 </div>
                 <!-- Instalasi Section (Blank State) -->
-                <div v-show="activeTab === 'installation' && ((customer.ont && customer.ont?.rx_power) || customer.status === 'active')" class="glass-card p-8 mt-6 animate-fade-in-up border border-gray-200 text-center space-y-4">
+                <div v-show="activeTab === 'installation' && (isAudit || customer.status === 'active')" class="glass-card p-8 mt-6 animate-fade-in-up border border-gray-200 text-center space-y-4">
                     <div class="text-5xl mb-2">✅</div>
                     <h3 class="text-2xl font-bold text-gray-900">Instalasi Telah Selesai</h3>
                     <p class="text-gray-500 max-w-lg mx-auto">Laporan pemasangan lapangan telah disubmit. Anda dapat melihat dokumentasi lapangan (foto ODP, pelanggan, redaman, dll) di tab <strong>Audit Instalasi</strong>.</p>
@@ -365,7 +365,7 @@
                 </div>
 
                 <!-- Instalasi Section (Form) -->
-                <div v-show="activeTab === 'installation' && customer.status === 'installing' && (!customer.ont || !customer.ont?.rx_power)" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
+                <div v-show="activeTab === 'installation' && isLaporanPasang" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
                     <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">🚀</span>
                         Form Laporan Selesai Instalasi
@@ -959,7 +959,24 @@ import StatusBadge from '@/Components/StatusBadge.vue';
 
 const props = defineProps({ customer: Object, availableOdps: Array, availableOnts: Array, source: String });
 
-const activeTab = ref(props.customer.status === 'installing' && props.customer.ont && props.customer.ont?.rx_power ? 'audit' : (props.customer.status === 'installing' ? 'installation' : (props.customer.status === 'active' ? 'audit' : 'booking')));
+const isInstallationScheduled = computed(() => {
+    return props.customer.technician_schedules && props.customer.technician_schedules.some(s => s.type === 'installation' && s.status === 'scheduled');
+});
+
+const isLaporanPasang = computed(() => {
+    return props.customer.status === 'installing' && isInstallationScheduled.value;
+});
+
+const isAudit = computed(() => {
+    return props.customer.status === 'installing' && !isInstallationScheduled.value && props.customer.ont && props.customer.ont.rx_power;
+});
+
+const activeTab = ref(
+    isLaporanPasang.value ? 'installation' :
+    (isAudit.value ? 'audit' : 
+    (props.customer.status === 'installing' ? 'installation' : 
+    (props.customer.status === 'active' ? 'audit' : 'booking')))
+);
 
 const filteredAvailableOdps = computed(() => {
     if (!props.customer?.area_id) return [];
