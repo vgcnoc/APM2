@@ -11,7 +11,11 @@ class SettingController extends Controller
 {
     public function branding()
     {
-        return Inertia::render('Settings/Branding');
+        $logo = Setting::get('app_logo');
+        return Inertia::render('Settings/Branding', [
+            'current_logo' => $logo ? asset('storage/' . $logo) : null,
+            'current_app_name' => Setting::get('app_name', ''),
+        ]);
     }
 
     public function updateBranding(Request $request)
@@ -43,6 +47,15 @@ class SettingController extends Controller
             
             $path = $request->file('app_logo')->store('logos', 'public');
             Setting::set('app_logo', $path);
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            $logo = Setting::get('app_logo');
+            return response()->json([
+                'success' => true,
+                'message' => 'Branding berhasil diperbarui.',
+                'app_logo' => $logo ? asset('storage/' . $logo) : null,
+            ]);
         }
 
         return redirect()->back()->with('success', 'Branding berhasil diperbarui.');
