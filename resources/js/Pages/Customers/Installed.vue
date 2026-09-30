@@ -705,15 +705,8 @@ function getTransactionLabel(trx) {
                 }
                 
                 const unit = item.material ? item.material.unit : 'pcs';
-                let extra = '';
-                if (item.material && (item.material.category === 'Kabel Drop / Frecon' || item.material.category === 'Kabel Frecon')) {
-                    const mpr = parseFloat(item.material.meter_per_roll) || 0;
-                    if (mpr > 0) {
-                        extra = ` = ${stock * mpr} m`;
-                    }
-                }
                 
-                return `${name} (Stok Sisa: ${stock} ${unit}${extra})`;
+                return `${name} (Stok Sisa: ${stock} ${unit})`;
             }).join(', ');
             
             if (itemsStr.length > 60) {

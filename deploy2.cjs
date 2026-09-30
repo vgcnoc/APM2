@@ -38,6 +38,8 @@ php sync_areas.php
 # Sync used_ports to match physical onts
 php sync_odp_ports.php
 
+php fix_frecon_unit.php
+
 echo "--- Deployment Script Part 2 Fixed Done ---"
 `;
 

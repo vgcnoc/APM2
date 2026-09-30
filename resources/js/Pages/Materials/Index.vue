@@ -757,7 +757,7 @@ watch(() => form.stock, (newVal) => {
 
 const handleCategoryChange = () => {
     if (form.category === 'Kabel' || form.category === 'Kabel Drop / Frecon') {
-        form.unit = form.category === 'Kabel' ? 'meter' : 'roll'; // Drop core biasa = meter, Frecon = roll
+        form.unit = 'meter'; // BOTH drop core and frecon are stored in meter
         calculateCableStock();
     } else if (form.category === 'Paku Klem') {
         form.unit = 'pcs'; // Base unit for paku klem is ALWAYS pcs
@@ -775,11 +775,7 @@ const handleCategoryChange = () => {
 const calculateCableStock = () => {
     const meter = parseFloat(form.meter_per_roll) || 0;
     const rolls = parseFloat(form.total_rolls) || 0;
-    if (form.category === 'Kabel Drop / Frecon' || form.unit === 'roll' || form.unit === 'pcs') {
-        form.stock = rolls; // Untuk Frecon, fisik gudang tetap berupa roll/pcs
-    } else {
-        form.stock = meter * rolls; // Untuk kabel biasa, fisik gudang berupa meteran
-    }
+    form.stock = meter * rolls; // ALWAYS store in meter!
 };
 
 const calculatePackStock = () => {
