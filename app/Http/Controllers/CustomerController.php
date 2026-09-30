@@ -878,6 +878,30 @@ class CustomerController extends Controller
                 if (!empty($validated['material_items'])) {
                     foreach ($validated['material_items'] as $mItem) {
                         $trxNotes[] = "Material: " . $mItem['name'] . " (" . $mItem['qty'] . " " . $mItem['unit'] . ")";
+                        
+                        // Deduct Area Stock
+                        if (isset($mItem['id']) && is_numeric($mItem['id'])) {
+                            $transactionItem = \App\Models\MaterialTransactionItem::find($mItem['id']);
+                            if ($transactionItem && $transactionItem->material_id) {
+                                $materialStock = \App\Models\MaterialStock::where('material_id', $transactionItem->material_id)
+                                    ->where('area_id', $customer->area_id)
+                                    ->first();
+                                
+                                if ($materialStock) {
+                                    $qty = floatval($mItem['qty']);
+                                    // Handle Frecon unit input
+                                    $material = \App\Models\Material::find($transactionItem->material_id);
+                                    if ($material && ($material->category === 'Kabel Drop / Frecon' || $material->category === 'Kabel Frecon')) {
+                                        if (strtolower($mItem['unit']) === 'roll' || strtolower($mItem['unit']) === 'pcs') {
+                                            $mpr = floatval($material->meter_per_roll) > 0 ? floatval($material->meter_per_roll) : 1000;
+                                            $qty = $qty * $mpr;
+                                        }
+                                    }
+                                    $materialStock->stock -= $qty;
+                                    $materialStock->save();
+                                }
+                            }
+                        }
                     }
                 }
                 $customNotes[] = implode("\n", $trxNotes);

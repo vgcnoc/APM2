@@ -136,9 +136,9 @@ class MaterialTransactionController extends Controller
                     ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
                 );
 
-                // Ensure sufficient stock in that area
-                if ($materialStock->stock < $itemData['quantity']) {
-                    throw new \Exception("Stok {$material->name} di Area/Wilayah ini tidak mencukupi. Sisa stok: {$materialStock->stock}");
+                // Ensure sufficient stock in global inventory
+                if ($material->stock < $itemData['quantity']) {
+                    throw new \Exception("Stok {$material->name} di Gudang Utama tidak mencukupi. Sisa stok: {$material->stock}");
                 }
 
                 $pricePerUnit = $material->selling_price ?? 0;
@@ -188,7 +188,7 @@ class MaterialTransactionController extends Controller
                 }
                 
                 $material->stock -= $deduction;
-                $materialStock->stock -= $deduction;
+                $materialStock->stock += $deduction;
                 
                 // Recalculate total_rolls roughly
                 if ($material->category === 'Kabel' && $material->meter_per_roll > 0) {
