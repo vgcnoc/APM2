@@ -1,30 +1,8 @@
 const { Client } = require('ssh2');
-
 const conn = new Client();
-
-const commands = `
-cd /var/www/APM2
-php artisan storage:link
-echo "--- Storage Link Created ---"
-`;
-
 conn.on('ready', () => {
-  console.log('Client :: ready');
-  conn.exec(commands, (err, stream) => {
+  conn.exec('cd /var/www/APM2 && rm -rf public/storage && php artisan storage:link', (err, stream) => {
     if (err) throw err;
-    stream.on('close', (code, signal) => {
-      console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
-      conn.end();
-    }).on('data', (data) => {
-      process.stdout.write(data);
-    }).stderr.on('data', (data) => {
-      process.stderr.write(data);
-    });
+    stream.on('close', () => conn.end()).on('data', (d) => process.stdout.write(d)).stderr.on('data', (d) => process.stderr.write(d));
   });
-}).connect({
-  host: '157.66.140.17',
-  port: 22,
-  username: 'root',
-  password: 'viruzs123',
-  readyTimeout: 30000
-});
+}).connect({ host: '157.66.140.17', port: 22, username: 'root', password: 'viruzs123', readyTimeout: 30000 });
