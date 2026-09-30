@@ -16,8 +16,8 @@
                 <rect width="40" height="40" y="4" rx="10" fill="currentColor"/>
                 <!-- Lightning Icon -->
                 <path d="M22 14V7L13 18H20V25L29 14H22Z" fill="white" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <!-- Text: ISP Manager -->
-                <text x="52" y="24" fill="#111827" font-family="system-ui, sans-serif" font-size="18" font-weight="800">ISP Manager</text>
+                <!-- Text: Dynamic App Name -->
+                <text x="52" y="24" fill="#111827" font-family="system-ui, sans-serif" font-size="18" font-weight="800">{{ $page.props.app_name || 'ISP Manager' }}</text>
                 <!-- Text: Enterprise -->
                 <text x="52" y="38" fill="currentColor" font-family="system-ui, sans-serif" font-size="10" font-weight="700" letter-spacing="0.1em">ENTERPRISE</text>
             </svg>
@@ -63,18 +63,18 @@ watch(() => page.props.app_logo, () => {
 // Calculate sizes for the uploaded image based on context and state
 const sizeClasses = computed(() => {
     if (props.sidebarCollapsed) {
-        return 'max-h-[32px] sm:max-h-[40px] px-1'; // Shrink when sidebar collapsed
+        return 'h-[32px] sm:h-[40px] w-auto px-1'; // Shrink when sidebar collapsed
     }
     
     switch (props.context) {
         case 'mobile':
-            return 'max-h-[32px] sm:max-h-[40px]';
+            return 'h-[32px] sm:h-[40px] w-auto';
         case 'tablet':
-            return 'max-h-[36px] sm:max-h-[44px]';
+            return 'h-[36px] sm:h-[44px] w-auto';
         case 'login':
-            return 'max-h-[48px] sm:max-h-[64px] mb-6';
+            return 'h-[48px] sm:h-[64px] w-auto mb-6';
         default:
-            return 'max-h-[40px] sm:max-h-[48px]';
+            return 'h-[40px] sm:h-[48px] w-auto';
     }
 });
 

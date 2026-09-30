@@ -9,6 +9,13 @@
 
                 <div class="p-6">
                     <form @submit.prevent="submitForm">
+                        <div class="mb-6">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Nama Aplikasi</label>
+                            <input type="text" v-model="form.app_name" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Contoh: ISP Manager" />
+                            <p class="text-xs text-gray-500 mt-2">Nama ini akan ditampilkan jika logo belum diupload.</p>
+                            <div v-if="form.errors.app_name" class="text-red-500 text-xs mt-1">{{ form.errors.app_name }}</div>
+                        </div>
+
                         <div class="mb-8">
                             <label class="block text-sm font-semibold text-gray-700 mb-4">Preview Logo Saat Ini</label>
                             
@@ -36,7 +43,7 @@
                         </div>
 
                         <div class="flex items-center gap-3 pt-6 border-t border-gray-100">
-                            <button type="submit" :disabled="form.processing || (!form.app_logo && !form.remove_logo)" class="btn-primary">
+                            <button type="submit" :disabled="form.processing || (!form.app_name && !form.app_logo && !form.remove_logo && form.app_name === $page.props.app_name)" class="btn-primary">
                                 Simpan Perubahan
                             </button>
                             <button type="button" v-if="$page.props.app_logo" @click="removeLogo" :disabled="form.processing" class="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
@@ -52,8 +59,10 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { usePage, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+
+const page = usePage();
 
 const fileInput = ref(null);
 const previewUrl = ref(null);
@@ -64,6 +73,7 @@ const handleImageError = () => {
 };
 
 const form = useForm({
+    app_name: page.props.app_name || '',
     app_logo: null,
     remove_logo: false
 });
