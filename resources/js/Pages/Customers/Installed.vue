@@ -555,8 +555,6 @@ const props = defineProps({
 });
 
 
-
-const page = usePage();
 const selectedIds = ref([]);
 
 const canDelete = computed(() => {
