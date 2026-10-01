@@ -183,7 +183,7 @@ class CustomerController extends Controller
      */
     public function installed(Request $request): Response
     {
-        $baseQuery = Customer::installed();
+        $baseQuery = Customer::whereIn('status', ['installing', 'active']);
         
         if (auth()->check() && auth()->user()->role === 'teknisi') {
             $baseQuery->whereHas('technicianSchedules', function ($q) {
@@ -211,8 +211,10 @@ class CustomerController extends Controller
                     $q->whereNotNull('rx_power');
                 })->count(),
             'selesai_instalasi' => (clone $baseQuery)
-                ->where('status', 'installing')
-                ->where('is_audited', true)
+                ->where(function($q) {
+                    $q->where('status', 'installing')->where('is_audited', true)
+                      ->orWhere('status', 'active');
+                })
                 ->count(),
         ];
 
@@ -232,7 +234,10 @@ class CustomerController extends Controller
                         $q->whereNotNull('rx_power');
                     });
             } elseif ($request->tab === 'selesai_instalasi') {
-                $customerQuery->where('status', 'installing')->where('is_audited', true);
+                $customerQuery->where(function($q) {
+                    $q->where('status', 'installing')->where('is_audited', true)
+                      ->orWhere('status', 'active');
+                });
             }
         }
 

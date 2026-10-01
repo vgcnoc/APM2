@@ -1318,6 +1318,8 @@ function submitOnt() {
             
             const photoFields = ['photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman'];
             photoFields.forEach(field => localStorage.removeItem(`apm_${field}_${props.customer.id}`));
+            
+            activeTab.value = 'audit';
         }
     });
 }
