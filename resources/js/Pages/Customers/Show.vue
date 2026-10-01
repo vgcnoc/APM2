@@ -342,17 +342,17 @@
                         </div>
 
                         <div v-if="customer.status === 'installing'" class="flex justify-end pt-4 border-t border-gray-200 mt-6 gap-3">
-                            <button v-if="!customer.is_audited" @click="showAuditModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border-0 text-white">
+                            <button v-if="!customer.is_audited && hasPermission('audit')" @click="showAuditModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border-0 text-white">
                                 Selesaikan Audit
                             </button>
-                            <button v-else-if="source !== 'instalasi'" @click="showActivationModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 border-0 text-white">
+                            <button v-else-if="customer.is_audited && source !== 'instalasi' && hasPermission('aktivasi')" @click="showActivationModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 border-0 text-white">
                                 Aktivasi Pelanggan
                             </button>
                         </div>
                     </div>
 
                 <!-- Instalasi Section (Form) -->
-                <div v-show="activeTab === 'installation' && isLaporanPasang" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
+                <div v-show="activeTab === 'installation' && isLaporanPasang && hasPermission('laporan_instalasi')" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
                     <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">🚀</span>
                         Form Laporan Selesai Instalasi
@@ -943,9 +943,12 @@
 
 <script setup>
 import { ref, h, computed, watch, onMounted } from 'vue';
-import { Link, useForm, router } from '@inertiajs/vue3';
+import { Link, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
+
+const page = usePage();
+const hasPermission = (permission) => page.props.auth.permissions?.includes(permission);
 
 const props = defineProps({ customer: Object, availableOdps: Array, availableOnts: Array, source: String });
 

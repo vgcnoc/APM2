@@ -70,8 +70,4 @@ class User extends Authenticatable
         return $this->role === 'noc';
     }
 
-    public function hasRole(string ...$roles): bool
-    {
-        return in_array($this->role, $roles);
-    }
 }

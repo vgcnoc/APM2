@@ -365,6 +365,10 @@ class CustomerController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        if (!auth()->user()->can('booking_create')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuat booking.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
@@ -394,7 +398,9 @@ class CustomerController extends Controller
 
         $validated['status'] = 'booking'; // Ensure it goes to booking
 
-        Customer::create($validated);
+        $customer = Customer::create($validated);
+
+        \App\Models\AuditLog::createLog('Create Booking', $customer, null, 'booking', 'Membuat booking baru');
 
         return redirect()->route('customers.booking')
             ->with('success', 'Data booking pelanggan berhasil ditambahkan.');
@@ -537,6 +543,10 @@ class CustomerController extends Controller
      */
     public function assignOnt(Request $request, Customer $customer): RedirectResponse
     {
+        if (!auth()->user()->can('laporan_instalasi')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengisi laporan instalasi.');
+        }
+
         $validated = $request->validate([
             'odp_id' => 'required|exists:odps,id',
             'port_number' => 'required|integer|min:1',
@@ -630,6 +640,9 @@ class CustomerController extends Controller
             }
         });
 
+        $ont = Ont::where('customer_id', $customer->id)->first();
+        \App\Models\AuditLog::createLog('Laporan Instalasi', $customer, 'installing', 'installing', 'Mengisi laporan instalasi ONT ' . ($ont ? $ont->serial_number : ''));
+
         return back()
             ->with('success', 'Laporan instalasi berhasil disimpan. Silakan lanjutkan dengan Audit.');
     }
@@ -639,6 +652,10 @@ class CustomerController extends Controller
      */
     public function audit(Request $request, Customer $customer): RedirectResponse
     {
+        if (!auth()->user()->can('audit')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melakukan audit.');
+        }
+
         $validated = $request->validate([
             'notes' => 'nullable|string',
         ]);
@@ -650,6 +667,8 @@ class CustomerController extends Controller
             ]);
         }
 
+        \App\Models\AuditLog::createLog('Audit Instalasi', $customer, 'installing', 'installing', 'Melakukan audit instalasi: ' . ($validated['notes'] ?? 'Disetujui'));
+
         return redirect()->back()
             ->with('success', 'Audit instalasi selesai. Pelanggan kini siap diaktivasi.');
     }
@@ -659,6 +678,14 @@ class CustomerController extends Controller
      */
     public function activate(Request $request, Customer $customer): RedirectResponse
     {
+        if (!auth()->user()->can('aktivasi')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melakukan aktivasi.');
+        }
+
+        if ($customer->status !== 'installing' || !$customer->is_audited) {
+            return redirect()->back()->withErrors(['error' => 'Pelanggan belum memenuhi syarat untuk aktivasi.']);
+        }
+
         $validated = $request->validate([
             'activation_date' => 'required|date',
             'pppoe_user' => 'nullable|string',
@@ -692,6 +719,8 @@ class CustomerController extends Controller
                 ]);
             });
 
+            \App\Models\AuditLog::createLog('Aktivasi Layanan', $customer, 'installing', 'active', 'Mengaktifkan layanan pelanggan');
+
             return redirect()->route('customers.installed')->with('success', 'Pelanggan berhasil diaktivasi!');
         }
         return redirect()->back()->with('error', 'Pelanggan belum siap diaktivasi.');
@@ -723,6 +752,10 @@ class CustomerController extends Controller
      */
     public function assignSurvey(Request $request, Customer $customer): RedirectResponse
     {
+        if (!auth()->user()->can('jadwal_survey')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menjadwalkan survey.');
+        }
+
         $validated = $request->validate([
             'technician_ids' => 'required|array',
             'technician_ids.*' => 'exists:users,id',
@@ -745,6 +778,8 @@ class CustomerController extends Controller
         
         $customer->update(['status' => 'survey']);
 
+        \App\Models\AuditLog::createLog('Jadwal Survey', $customer, 'booking', 'survey', 'Menjadwalkan survey');
+
         return redirect()->route('customers.survey')
             ->with('success', 'Jadwal survey berhasil ditugaskan kepada teknisi.');
     }
@@ -754,6 +789,10 @@ class CustomerController extends Controller
      */
     public function rescheduleSurvey(Request $request, Customer $customer): RedirectResponse
     {
+        if (!auth()->user()->can('jadwal_survey')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah jadwal survey.');
+        }
+
         $validated = $request->validate([
             'technician_ids' => 'required|array',
             'technician_ids.*' => 'exists:users,id',
@@ -787,6 +826,8 @@ class CustomerController extends Controller
             ]);
         }
 
+        \App\Models\AuditLog::createLog('Reschedule Survey', $customer, 'survey', 'survey', 'Menjadwalkan ulang survey');
+
         return redirect()->route('customers.survey')
             ->with('success', 'Jadwal survey berhasil di-reschedule.');
     }
@@ -796,6 +837,10 @@ class CustomerController extends Controller
      */
     public function assignInstall(Request $request, Customer $customer): RedirectResponse
     {
+        if (!auth()->user()->can('jadwal_pasang')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menjadwalkan instalasi.');
+        }
+
         \Log::info('assignInstall called', ['customer_id' => $customer->id, 'data' => $request->all()]);
 
         // Normalize scheduled_time - remove seconds if browser sends H:i:s
@@ -948,6 +993,8 @@ class CustomerController extends Controller
             ]);
         }
 
+        \App\Models\AuditLog::createLog('Jadwal Instalasi', $customer, 'installing', 'installing', 'Menjadwalkan pemasangan');
+
         return redirect()->route('customers.installed')
             ->with('success', 'Jadwal pemasangan berhasil ditugaskan kepada teknisi.');
     }
@@ -957,6 +1004,10 @@ class CustomerController extends Controller
      */
     public function storeSurvey(Request $request, Customer $customer): RedirectResponse
     {
+        if (!auth()->user()->can('laporan_survey')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengisi laporan survey.');
+        }
+
         $validated = $request->validate([
             'surveyor_id' => 'required|exists:users,id',
             'odp_id' => 'nullable|exists:odps,id',
@@ -1002,11 +1053,13 @@ class CustomerController extends Controller
         }
 
         if ($validated['feasibility'] === 'feasible') {
+            \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'survey', 'Mengisi laporan survey (feasible)');
             // Biarkan status tetap survey, agar tombol 'Ready Install' muncul
             return redirect()->route('customers.survey')
                 ->with('success', 'Hasil survey berhasil disimpan. Pelanggan kini siap untuk instalasi (Ready Install).');
         } else {
             $customer->update(['status' => 'terminated']);
+            \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'terminated', 'Mengisi laporan survey (not feasible)');
             return redirect()->route('customers.survey')
                 ->with('success', 'Hasil survey (not feasible) berhasil disimpan. Pelanggan dibatalkan.');
         }
@@ -1017,8 +1070,13 @@ class CustomerController extends Controller
      */
     public function markInstalling(Customer $customer): RedirectResponse
     {
+        if (!auth()->user()->can('ready_instalasi')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah status ke Ready Instalasi.');
+        }
+
         if ($customer->status === 'survey') {
             $customer->update(['status' => 'installing']);
+            \App\Models\AuditLog::createLog('Ready Instalasi', $customer, 'survey', 'installing', 'Memindahkan pelanggan ke tahap Ready Instalasi');
         }
         
         return redirect()->to('/customers/installed?search=' . $customer->customer_code)
