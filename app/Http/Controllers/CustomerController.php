@@ -619,8 +619,8 @@ class CustomerController extends Controller
             }
 
             // Update status jadwal teknisi ke done jika ada
-            $schedule = $customer->technicianSchedules()->where('type', 'installation')->where('status', 'scheduled')->first();
-            if ($schedule) {
+            $schedules = $customer->technicianSchedules()->where('type', 'installation')->where('status', 'scheduled')->get();
+            foreach ($schedules as $schedule) {
                 $schedule->update(['status' => 'done']);
             }
         });
