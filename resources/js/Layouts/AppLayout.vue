@@ -131,6 +131,7 @@ const menuItems = [
     { type: 'link', href: '/customers/activation', icon: 'key', label: 'Aktivasi', active: (url) => (url || '').startsWith('/customers/activation'), permission: 'menu_customers_activation' },
     { type: 'link', href: '/customers/active', icon: 'badge-check', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: 'menu_customers_active' },
     { type: 'link', href: '/customers', icon: 'users', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
+    { type: 'link', href: '/tickets', icon: 'alert-circle', label: 'Ticketing / Gangguan', active: (url) => (url || '').startsWith('/tickets'), permission: 'menu_customers_all' },
     { type: 'group', label: 'INFRASTRUKTUR' },
     { type: 'link', href: '/network-topology', icon: 'globe', label: 'Network Topology', active: (url) => (url || '').startsWith('/network-topology'), permission: 'menu_network_topology' },
     { type: 'link', href: '/network-data', icon: 'globe', label: 'Data Jaringan', active: (url) => (url || '').startsWith('/network-data'), permission: 'menu_network_data' },
