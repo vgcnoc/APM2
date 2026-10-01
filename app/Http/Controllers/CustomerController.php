@@ -844,7 +844,17 @@ class CustomerController extends Controller
                 // Update customer_id in onts table
                 DB::transaction(function () use ($onts, $customer) {
                     foreach ($onts as $ont) {
-                        $ont->update(['customer_id' => $customer->id]);
+                        $ont->update([
+                            'customer_id' => $customer->id,
+                            'rx_power' => null,
+                            'start_time' => null,
+                            'end_time' => null,
+                            'photo_odp' => null,
+                            'photo_installation' => null,
+                            'photo_ont' => null,
+                            'photo_customer' => null,
+                            'photo_redaman' => null,
+                        ]);
                     }
                 });
 

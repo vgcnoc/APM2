@@ -39,6 +39,7 @@ php sync_areas.php
 php sync_odp_ports.php
 
 php fix_frecon_unit.php
+php clear_ghost_rx_power.php
 
 echo "--- Deployment Script Part 2 Fixed Done ---"
 `;
