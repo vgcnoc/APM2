@@ -625,8 +625,8 @@ class CustomerController extends Controller
             }
         });
 
-        return redirect()->route('customers.installed')
-            ->with('success', 'Instalasi selesai. Menunggu audit dan aktivasi.');
+        return back()
+            ->with('success', 'Laporan instalasi berhasil disimpan. Silakan lanjutkan dengan Audit.');
     }
 
     /**
