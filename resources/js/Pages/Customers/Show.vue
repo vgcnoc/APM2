@@ -276,10 +276,10 @@
                 </div>
                 
                 <!-- Audit Data Pemasangan Section -->
-                <div v-show="activeTab === 'audit' && (isAudit || customer.status === 'active')" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
+                <div v-show="(activeTab === 'audit' || activeTab === 'installation') && (isAudit || customer.status === 'active')" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
                     <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">🛡️</span>
-                        Data Instalasi & Audit
+                        <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">{{ activeTab === 'audit' ? '🛡️' : '✅' }}</span>
+                        {{ activeTab === 'audit' ? 'Data Instalasi & Audit' : 'Hasil Laporan Instalasi' }}
                     </h3>
                         
                         <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 space-y-2">
@@ -350,18 +350,6 @@
                             </button>
                         </div>
                     </div>
-                <!-- Instalasi Section (Blank State) -->
-                <div v-show="activeTab === 'installation' && (isAudit || customer.status === 'active')" class="glass-card p-8 mt-6 animate-fade-in-up border border-gray-200 text-center space-y-4">
-                    <div class="text-5xl mb-2">✅</div>
-                    <h3 class="text-2xl font-bold text-gray-900">Instalasi Telah Selesai</h3>
-                    <p class="text-gray-500 max-w-lg mx-auto">Laporan pemasangan lapangan telah disubmit. Anda dapat melihat dokumentasi lapangan (foto ODP, pelanggan, redaman, dll) di tab <strong>Audit Instalasi</strong>.</p>
-                    <div class="pt-4">
-                        <button @click="activeTab = 'audit'" class="btn-primary inline-flex items-center gap-2 bg-purple-500 hover:bg-purple-600 border-none px-6 py-2 shadow-md">
-                            Lihat Audit Instalasi
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                        </button>
-                    </div>
-                </div>
 
                 <!-- Instalasi Section (Form) -->
                 <div v-show="activeTab === 'installation' && isLaporanPasang" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
