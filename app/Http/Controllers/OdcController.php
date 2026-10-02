@@ -14,8 +14,17 @@ class OdcController extends Controller
 {
     public function index(Request $request): Response
     {
-        $odcs = Odc::with(['olt', 'area'])
-            ->withCount('odps')
+        $query = Odc::with(['olt', 'area'])->withCount('odps');
+
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_odc_view_all')) {
+            if (auth()->user()->can('network_odc_view_area')) {
+                $query->where('area_id', auth()->user()->area_id);
+            } else {
+                $query->where('id', -1);
+            }
+        }
+
+        $odcs = $query
             ->when($request->search, fn ($q, $s) =>
                 $q->where('name', 'like', "%{$s}%")
                   ->orWhere('location', 'like', "%{$s}%"))

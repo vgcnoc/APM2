@@ -134,6 +134,8 @@ class RoleController extends Controller
                     ['name' => 'network_olt_create', 'type' => 'action', 'label' => 'Tambah OLT'],
                     ['name' => 'network_olt_edit', 'type' => 'action', 'label' => 'Edit OLT'],
                     ['name' => 'network_olt_delete', 'type' => 'action', 'label' => 'Hapus OLT'],
+                    ['name' => 'network_olt_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
+                    ['name' => 'network_olt_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
                 ],
             ],
             [
@@ -144,6 +146,8 @@ class RoleController extends Controller
                     ['name' => 'network_odc_create', 'type' => 'action', 'label' => 'Tambah ODC'],
                     ['name' => 'network_odc_edit', 'type' => 'action', 'label' => 'Edit ODC'],
                     ['name' => 'network_odc_delete', 'type' => 'action', 'label' => 'Hapus ODC'],
+                    ['name' => 'network_odc_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
+                    ['name' => 'network_odc_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
                 ],
             ],
             [
@@ -154,6 +158,8 @@ class RoleController extends Controller
                     ['name' => 'network_odp_create', 'type' => 'action', 'label' => 'Tambah ODP'],
                     ['name' => 'network_odp_edit', 'type' => 'action', 'label' => 'Edit ODP'],
                     ['name' => 'network_odp_delete', 'type' => 'action', 'label' => 'Hapus ODP'],
+                    ['name' => 'network_odp_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
+                    ['name' => 'network_odp_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
                 ],
             ],
             [
@@ -164,6 +170,8 @@ class RoleController extends Controller
                     ['name' => 'network_ont_create', 'type' => 'action', 'label' => 'Tambah ONT'],
                     ['name' => 'network_ont_edit', 'type' => 'action', 'label' => 'Edit ONT'],
                     ['name' => 'network_ont_delete', 'type' => 'action', 'label' => 'Hapus ONT'],
+                    ['name' => 'network_ont_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
+                    ['name' => 'network_ont_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
                 ],
             ],
             [
@@ -175,6 +183,8 @@ class RoleController extends Controller
                     ['name' => 'materials_edit', 'type' => 'action', 'label' => 'Edit Material'],
                     ['name' => 'materials_delete', 'type' => 'action', 'label' => 'Hapus Material'],
                     ['name' => 'materials_add_stock', 'type' => 'feature', 'label' => 'Tambah Stok'],
+                    ['name' => 'materials_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
+                    ['name' => 'materials_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
                 ],
             ],
             [
@@ -196,6 +206,8 @@ class RoleController extends Controller
                     ['name' => 'hr_employees_create', 'type' => 'action', 'label' => 'Tambah Karyawan'],
                     ['name' => 'hr_employees_edit', 'type' => 'action', 'label' => 'Edit Karyawan'],
                     ['name' => 'hr_employees_delete', 'type' => 'action', 'label' => 'Hapus Karyawan'],
+                    ['name' => 'hr_employees_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
+                    ['name' => 'hr_employees_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
                 ],
             ],
             [

@@ -13,8 +13,17 @@ class OdpController extends Controller
 {
     public function index(Request $request): Response
     {
-        $odps = Odp::with(['odc.olt', 'area'])
-            ->withCount('onts')
+        $query = Odp::with(['odc.olt', 'area'])->withCount('onts');
+
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_odp_view_all')) {
+            if (auth()->user()->can('network_odp_view_area')) {
+                $query->where('area_id', auth()->user()->area_id);
+            } else {
+                $query->where('id', -1);
+            }
+        }
+
+        $odps = $query
             ->when($request->search, fn ($q, $s) =>
                 $q->where('name', 'like', "%{$s}%"))
             ->when($request->odc_id, fn ($q, $id) => $q->where('odc_id', $id))

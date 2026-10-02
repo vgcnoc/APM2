@@ -12,7 +12,17 @@ class OltController extends Controller
 {
     public function index(Request $request): Response
     {
-        $olts = Olt::with(['area'])->withCount('odcs')
+        $query = Olt::with(['area'])->withCount('odcs');
+
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_olt_view_all')) {
+            if (auth()->user()->can('network_olt_view_area')) {
+                $query->where('area_id', auth()->user()->area_id);
+            } else {
+                $query->where('id', -1);
+            }
+        }
+
+        $olts = $query
             ->when($request->search, fn ($q, $s) =>
                 $q->where('name', 'like', "%{$s}%")
                   ->orWhere('ip_address', 'like', "%{$s}%")

@@ -14,7 +14,17 @@ class OntController extends Controller
 {
     public function index(Request $request): Response
     {
-        $onts = Ont::withFullTopology()
+        $query = Ont::withFullTopology();
+        
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_ont_view_all')) {
+            if (auth()->user()->can('network_ont_view_area')) {
+                $query->where('area_id', auth()->user()->area_id);
+            } else {
+                $query->where('id', -1); // empty result if they don't have view permissions
+            }
+        }
+
+        $onts = $query
             ->when($request->search, fn ($q, $s) =>
                 $q->where('serial_number', 'like', "%{$s}%")
                   ->orWhere('ont_id', 'like', "%{$s}%")
