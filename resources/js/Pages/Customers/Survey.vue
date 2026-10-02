@@ -157,20 +157,37 @@
             <template #rowActions="{ row }">
                 <div class="flex items-center justify-end gap-2">
                     <template v-if="row.status === 'survey'">
+                        <!-- Belum Dijadwalkan -->
                         <button v-if="!row.surveys?.length && !row.technician_schedules?.length && hasPermission('customers_survey_assign')" @click="openAssignModal(row)" class="btn-primary py-1.5 px-3 text-xs">
                             Jadwalkan
                         </button>
-                        <button v-else-if="!row.surveys?.length && row.technician_schedules?.length && hasPermission('customers_survey_report')" @click="openReportModal(row)" class="btn-success py-1.5 px-3 text-xs">
-                            Isi Laporan
-                        </button>
-                        <button v-if="!row.surveys?.length && row.technician_schedules?.length && hasPermission('customers_survey_reschedule')" @click="openRescheduleModal(row)" class="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 hover:text-amber-700 rounded-lg text-xs font-medium transition-colors" title="Reschedule: Ganti tanggal, waktu, atau petugas survey">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                            Reschedule
-                        </button>
+                        
+                        <!-- Sudah Dijadwalkan, tapi belum disurvey -->
+                        <template v-else-if="!row.surveys?.length && row.technician_schedules?.length">
+                            <!-- Jika punya akses Isi Laporan (Teknisi) -->
+                            <button v-if="hasPermission('customers_survey_report')" @click="openReportModal(row)" class="btn-success py-1.5 px-3 text-xs">
+                                Isi Laporan
+                            </button>
+                            <!-- Jika tidak punya akses Isi Laporan (CS/Admin tanpa akses) -->
+                            <span v-else class="px-3 py-1.5 bg-blue-50 text-blue-500 border border-blue-200 rounded-lg text-xs font-medium flex items-center gap-1 cursor-default" title="Menunggu teknisi mengisi laporan survey">
+                                <svg class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                Menunggu Survey
+                            </span>
+                            
+                            <!-- Tombol Reschedule (jika punya akses) -->
+                            <button v-if="hasPermission('customers_survey_reschedule')" @click="openRescheduleModal(row)" class="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 hover:text-amber-700 rounded-lg text-xs font-medium transition-colors" title="Reschedule: Ganti tanggal, waktu, atau petugas survey">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                Reschedule
+                            </button>
+                        </template>
+
+                        <!-- Sudah Disurvey & Feasible -->
                         <button v-else-if="row.surveys?.length && row.surveys[0]?.feasibility === 'feasible' && hasPermission('customers_survey_mark_ready')" @click="openInstallModal(row)" class="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 hover:text-emerald-300 rounded-lg text-xs font-bold shadow-[0_0_10px_rgba(16,185,129,0.2)] transition-colors" title="Laporan Selesai: Klik untuk menjadwalkan instalasi di menu Pasang/Aktif">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
                             Ready Install
                         </button>
+
+                        <!-- Sudah Disurvey & Not Feasible -->
                         <div v-else-if="row.surveys?.length && row.surveys[0]?.feasibility === 'not_feasible'" class="flex items-center gap-1 px-3 py-1.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-bold cursor-not-allowed" title="Pelanggan tidak layak/tidak tercover jaringan">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             Unfeasible

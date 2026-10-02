@@ -164,12 +164,18 @@
                     </button>
                     
                     <!-- 2. Menunggu Laporan Teknisi -->
-                    <Link v-if="getCustomerProgressStatus(row) === 'laporan_pasang' && hasPermission('customers_installed_report')" 
-                        :href="`/customers/${row.id}?source=instalasi`" 
-                        class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Input Laporan Instalasi">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                        Input Laporan
-                    </Link>
+                    <template v-if="getCustomerProgressStatus(row) === 'laporan_pasang'">
+                        <Link v-if="hasPermission('customers_installed_report')" 
+                            :href="`/customers/${row.id}?source=instalasi`" 
+                            class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Input Laporan Instalasi">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                            Input Laporan
+                        </Link>
+                        <span v-else class="px-3 py-1.5 bg-blue-50 text-blue-500 border border-blue-200 rounded-lg text-xs font-medium flex items-center gap-1 cursor-default" title="Menunggu teknisi mengisi laporan pemasangan">
+                            <svg class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            Menunggu Pemasangan
+                        </span>
+                    </template>
 
 
                     <!-- 3. Selesai Pasang, Menunggu Audit Admin -->
