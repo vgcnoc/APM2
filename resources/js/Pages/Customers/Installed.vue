@@ -31,23 +31,23 @@
 
         <!-- Tabs Menu -->
         <div class="flex flex-wrap gap-2 mb-6">
-            <Link :href="getTabUrl('')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', !filters.tab ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-indigo-600']">
+            <Link v-if="hasPermission('customers_installed_tab_semua')" :href="getTabUrl('')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', !filters.tab ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-indigo-600']">
                 <span>Semua</span>
                 <span :class="['px-2 py-0.5 rounded-full text-xs', !filters.tab ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.semua || 0 }}</span>
             </Link>
-            <Link v-if="!isTeknisi" :href="getTabUrl('jadwal_pasang')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'jadwal_pasang' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-blue-600']">
+            <Link v-if="!isTeknisi && hasPermission('customers_installed_tab_jadwal')" :href="getTabUrl('jadwal_pasang')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'jadwal_pasang' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-blue-600']">
                 <span>Jadwal Pasang</span>
                 <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'jadwal_pasang' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.jadwal_pasang || 0 }}</span>
             </Link>
-            <Link :href="getTabUrl('laporan_pasang')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'laporan_pasang' || isTeknisi ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-amber-500']">
+            <Link v-if="hasPermission('customers_installed_tab_laporan')" :href="getTabUrl('laporan_pasang')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'laporan_pasang' || isTeknisi ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-amber-500']">
                 <span>Laporan Pasang</span>
                 <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'laporan_pasang' || isTeknisi ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.laporan_pasang || 0 }}</span>
             </Link>
-            <Link v-if="!isTeknisi" :href="getTabUrl('audit')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'audit' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-purple-600']">
+            <Link v-if="!isTeknisi && hasPermission('customers_installed_tab_audit')" :href="getTabUrl('audit')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'audit' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-purple-600']">
                 <span>Audit</span>
                 <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'audit' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.audit || 0 }}</span>
             </Link>
-            <Link :href="getTabUrl('selesai_instalasi')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'selesai_instalasi' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-emerald-600']">
+            <Link v-if="hasPermission('customers_installed_tab_selesai')" :href="getTabUrl('selesai_instalasi')" :class="['px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2', filters.tab === 'selesai_instalasi' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-emerald-600']">
                 <span>Selesai Instalasi</span>
                 <span :class="['px-2 py-0.5 rounded-full text-xs', filters.tab === 'selesai_instalasi' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">{{ stats?.selesai_instalasi || 0 }}</span>
             </Link>

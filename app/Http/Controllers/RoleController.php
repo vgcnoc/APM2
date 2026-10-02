@@ -45,6 +45,11 @@ class RoleController extends Controller
                 'icon' => 'clipboard-check',
                 'permissions' => [
                     ['name' => 'menu_customers_survey', 'type' => 'menu', 'label' => 'Akses Menu Survey'],
+                    ['name' => 'customers_survey_tab_semua', 'type' => 'feature', 'label' => 'Tab: Semua Survey'],
+                    ['name' => 'customers_survey_tab_jadwalkan', 'type' => 'feature', 'label' => 'Tab: Jadwalkan Survey'],
+                    ['name' => 'customers_survey_tab_laporan', 'type' => 'feature', 'label' => 'Tab: Isi Laporan Survey'],
+                    ['name' => 'customers_survey_tab_ready', 'type' => 'feature', 'label' => 'Tab: Ready Install'],
+                    ['name' => 'customers_survey_tab_unfeasible', 'type' => 'feature', 'label' => 'Tab: Unfeasible'],
                     ['name' => 'customers_survey_assign', 'type' => 'action', 'label' => 'Jadwalkan Survey'],
                     ['name' => 'customers_survey_reschedule', 'type' => 'action', 'label' => 'Reschedule Survey'],
                     ['name' => 'customers_survey_report', 'type' => 'feature', 'label' => 'Laporan Hasil Survey'],
@@ -58,6 +63,11 @@ class RoleController extends Controller
                 'icon' => 'cog',
                 'permissions' => [
                     ['name' => 'menu_customers_installed', 'type' => 'menu', 'label' => 'Akses Menu Instalasi'],
+                    ['name' => 'customers_installed_tab_semua', 'type' => 'feature', 'label' => 'Tab: Semua Instalasi'],
+                    ['name' => 'customers_installed_tab_jadwal', 'type' => 'feature', 'label' => 'Tab: Jadwal Pasang'],
+                    ['name' => 'customers_installed_tab_laporan', 'type' => 'feature', 'label' => 'Tab: Laporan Pasang'],
+                    ['name' => 'customers_installed_tab_audit', 'type' => 'feature', 'label' => 'Tab: Audit'],
+                    ['name' => 'customers_installed_tab_selesai', 'type' => 'feature', 'label' => 'Tab: Selesai Instalasi'],
                     ['name' => 'customers_installed_assign', 'type' => 'action', 'label' => 'Jadwalkan Pasang'],
                     ['name' => 'customers_installed_report', 'type' => 'feature', 'label' => 'Laporan Instalasi'],
                     ['name' => 'customers_installed_audit', 'type' => 'feature', 'label' => 'Audit Instalasi'],
