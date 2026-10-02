@@ -120,7 +120,6 @@
                                     <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
                                         {{ emp.position || '-' }}
                                     </span>
-                                    <p v-if="emp.branch" class="text-xs text-gray-400 mt-1">{{ emp.branch }}</p>
                                 </td>
                                 <td class="py-4 px-6">
                                     <p v-if="emp.phone" class="text-sm text-gray-700">{{ emp.phone }}</p>
@@ -257,15 +256,8 @@
                             </div>
                         </div>
 
-                        <!-- Branch & Join Date -->
+                        <!-- Join Date -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Cabang</label>
-                                <select v-model="form.branch" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-                                    <option value="">Pilih cabang</option>
-                                    <option v-for="area in areas" :key="area.id" :value="area.name">{{ area.name }}</option>
-                                </select>
-                            </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">
                                     <span class="flex items-center gap-1.5">
@@ -360,7 +352,6 @@ const form = useForm({
     email: '',
     phone: '',
     area_id: '',
-    branch: '',
     join_date: '',
     employee_type: '',
     payment_method: '',
@@ -414,7 +405,6 @@ function openModal(emp = null) {
         form.email = emp.email || '';
         form.phone = emp.phone || '';
         form.area_id = emp.area_id || '';
-        form.branch = emp.branch || '';
         form.join_date = emp.join_date || '';
         form.employee_type = emp.employee_type || '';
         form.payment_method = emp.payment_method || '';
