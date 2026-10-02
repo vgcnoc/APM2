@@ -127,7 +127,7 @@
                                 <div class="flex items-center gap-3">
                                     <!-- Group Toggle All -->
                                     <label @click.stop class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" :checked="isGroupAllChecked(group)" @change="toggleGroupAll(group)" class="sr-only peer">
+                                        <input type="checkbox" :checked="selectedRole?.name === 'admin' || isGroupAllChecked(group)" @change="toggleGroupAll(group)" class="sr-only peer" :disabled="selectedRole?.name === 'admin'">
                                         <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
                                     </label>
                                     <!-- Collapse Arrow -->
@@ -160,8 +160,8 @@
 
                                         <!-- Toggle Switch -->
                                         <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
-                                            <input type="checkbox" :checked="selectedPermissions.includes(perm.name)"
-                                                @change="togglePermission(perm.name)" class="sr-only peer">
+                                            <input type="checkbox" :checked="selectedRole?.name === 'admin' || selectedPermissions.includes(perm.name)"
+                                                @change="togglePermission(perm.name)" class="sr-only peer" :disabled="selectedRole?.name === 'admin'">
                                             <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 shadow-inner"></div>
                                         </label>
                                     </div>

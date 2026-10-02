@@ -948,7 +948,24 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 
 const page = usePage();
-const hasPermission = (permission) => page.props.auth.permissions?.includes(permission);
+const hasPermission = (permission) => {
+    try {
+        const user = page.props.auth?.user;
+        if (!user) return true;
+        if (user.role === 'admin' || user.role === 'Super Admin') return true;
+        let roles = [];
+        if (Array.isArray(user.roles)) roles = user.roles;
+        else if (user.roles) roles = Object.values(user.roles);
+        if (roles.includes('admin') || roles.includes('Super Admin')) return true;
+        let perms = [];
+        if (Array.isArray(user.permissions)) perms = user.permissions;
+        else if (user.permissions) perms = Object.values(user.permissions);
+        if (perms.includes(permission)) return true;
+        return false;
+    } catch (e) {
+        return true;
+    }
+};
 
 const props = defineProps({ customer: Object, availableOdps: Array, availableOnts: Array, source: String });
 
