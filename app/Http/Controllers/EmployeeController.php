@@ -16,7 +16,7 @@ class EmployeeController extends Controller
                   ->orWhere('position', 'like', "%{$request->search}%");
         }
 
-        $employees = $query->latest()->paginate(10)->withQueryString();
+        $employees = $query->with('area')->latest()->paginate(10)->withQueryString();
         
         $areas = \App\Models\Area::orderBy('name')->get();
         $positions = \App\Models\Position::orderBy('name')->get();
@@ -35,9 +35,9 @@ class EmployeeController extends Controller
             'name' => 'required|string|max:255',
             'iak_number' => 'nullable|string|max:255|unique:employees,iak_number',
             'position' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:255|unique:employees,email',
+            'email' => 'required|email|max:255|unique:employees,email|unique:users,email',
             'phone' => 'nullable|string|max:20',
-            'base_salary' => 'nullable|numeric|min:0',
+            'area_id' => 'nullable|exists:areas,id',
             'branch' => 'nullable|string|max:255',
             'join_date' => 'nullable|date',
             'employee_type' => 'nullable|string|max:50',
@@ -53,6 +53,20 @@ class EmployeeController extends Controller
 
         \App\Models\Employee::create($validated);
 
+        // Auto-create user
+        $user = \App\Models\User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => bcrypt('password123'), // Default password
+            'area_id' => $validated['area_id'] ?? null,
+        ]);
+
+        if (!empty($validated['position'])) {
+            $roleName = strtolower($validated['position']);
+            \Spatie\Permission\Models\Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
+            $user->syncRoles([$roleName]);
+        }
+
         return redirect()->route('employees.index')->with('success', 'Data karyawan berhasil ditambahkan.');
     }
 
@@ -62,9 +76,9 @@ class EmployeeController extends Controller
             'name' => 'required|string|max:255',
             'iak_number' => 'nullable|string|max:255|unique:employees,iak_number,' . $employee->id,
             'position' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:255|unique:employees,email,' . $employee->id,
+            'email' => 'required|email|max:255|unique:employees,email,' . $employee->id,
             'phone' => 'nullable|string|max:20',
-            'base_salary' => 'nullable|numeric|min:0',
+            'area_id' => 'nullable|exists:areas,id',
             'branch' => 'nullable|string|max:255',
             'join_date' => 'nullable|date',
             'employee_type' => 'nullable|string|max:50',
@@ -72,6 +86,18 @@ class EmployeeController extends Controller
             'address' => 'nullable|string',
             'photo' => 'nullable|image|max:2048',
         ]);
+
+        // Validate uniqueness in users table except for the user that corresponds to this employee's old email
+        $existingUser = \App\Models\User::where('email', $employee->email)->first();
+        if ($existingUser) {
+            $request->validate([
+                'email' => 'unique:users,email,' . $existingUser->id,
+            ]);
+        } else {
+            $request->validate([
+                'email' => 'unique:users,email',
+            ]);
+        }
 
         if ($request->hasFile('photo')) {
             if ($employee->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($employee->photo)) {
@@ -81,7 +107,26 @@ class EmployeeController extends Controller
             $validated['photo'] = $path;
         }
 
+        $oldEmail = $employee->email;
         $employee->update($validated);
+
+        // Auto-update user
+        if ($oldEmail) {
+            $user = \App\Models\User::where('email', $oldEmail)->first();
+            if ($user) {
+                $user->update([
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'area_id' => $validated['area_id'] ?? null,
+                ]);
+                
+                if (!empty($validated['position'])) {
+                    $roleName = strtolower($validated['position']);
+                    \Spatie\Permission\Models\Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
+                    $user->syncRoles([$roleName]);
+                }
+            }
+        }
 
         return redirect()->route('employees.index')->with('success', 'Data karyawan berhasil diperbarui.');
     }

@@ -98,7 +98,7 @@
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Posisi</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Kontak</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Gaji Pokok</th>
+                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Area</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
                         </thead>
@@ -134,8 +134,7 @@
                                     <p v-if="emp.join_date" class="text-[10px] text-gray-400 mt-1">Gabung: {{ formatDate(emp.join_date) }}</p>
                                 </td>
                                 <td class="py-4 px-6 text-right">
-                                    <p class="text-sm font-semibold text-gray-900">Rp {{ formatNumber(emp.base_salary) }}</p>
-                                    <p v-if="emp.payment_method" class="text-xs text-gray-400 mt-0.5">{{ emp.payment_method }}</p>
+                                    <p class="text-sm font-semibold text-gray-900">{{ emp.area?.name || '-' }}</p>
                                 </td>
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex items-center justify-end gap-2">
@@ -238,20 +237,23 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                <input v-model="form.email" type="email" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="email@contoh.com">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                                <input v-model="form.email" type="email" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="email@contoh.com">
                             </div>
                         </div>
 
-                        <!-- Phone & Salary -->
+                        <!-- Phone & Area -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Telepon</label>
                                 <input v-model="form.phone" type="text" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="08xxxxxxxxxx">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Gaji Pokok (Rp)</label>
-                                <input v-model="form.base_salary" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="0">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Area</label>
+                                <select v-model="form.area_id" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                                    <option value="">Pilih Area</option>
+                                    <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                                </select>
                             </div>
                         </div>
 
@@ -357,7 +359,7 @@ const form = useForm({
     position: '',
     email: '',
     phone: '',
-    base_salary: 0,
+    area_id: '',
     branch: '',
     join_date: '',
     employee_type: '',
@@ -411,7 +413,7 @@ function openModal(emp = null) {
         form.position = emp.position || '';
         form.email = emp.email || '';
         form.phone = emp.phone || '';
-        form.base_salary = emp.base_salary || 0;
+        form.area_id = emp.area_id || '';
         form.branch = emp.branch || '';
         form.join_date = emp.join_date || '';
         form.employee_type = emp.employee_type || '';
