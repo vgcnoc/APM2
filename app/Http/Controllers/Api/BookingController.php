@@ -24,6 +24,8 @@ class BookingController extends Controller
             'longitude' => 'nullable|numeric',
             'area' => 'nullable|string|max:255',
             'registration_date' => 'nullable|date',
+            'sales_id' => 'nullable|exists:users,id',
+            'package_id' => 'nullable|exists:internet_packages,id',
         ]);
 
         if ($validator->fails()) {
@@ -44,6 +46,8 @@ class BookingController extends Controller
             'longitude' => $request->longitude,
             'area' => $request->area,
             'registration_date' => $request->registration_date,
+            'sales_id' => $request->sales_id,
+            'package_id' => $request->package_id,
             'status' => 'booking',
         ]);
 
