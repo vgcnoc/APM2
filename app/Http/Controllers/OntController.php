@@ -159,7 +159,31 @@ class OntController extends Controller
             }
         }
 
+
         return redirect()->route('onts.index')
             ->with('success', 'Data ONT berhasil dihapus.');
+    }
+
+    public function findOnu(Request $request): Response
+    {
+        $search = $request->query('search');
+        $ont = null;
+
+        if ($search) {
+            $ont = Ont::withFullTopology()
+                ->where('ont_id', $search)
+                ->orWhere('serial_number', $search)
+                ->orWhere('mac_address', $search)
+                ->first();
+
+            if ($ont) {
+                $ont->load(['odp.odc.olt', 'customer.package']);
+            }
+        }
+
+        return Inertia::render('Infrastructure/Ont/FindOnu', [
+            'searchQuery' => $search,
+            'ont' => $ont,
+        ]);
     }
 }

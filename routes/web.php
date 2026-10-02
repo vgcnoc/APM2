@@ -108,6 +108,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('onts', OntController::class);
     Route::post('onts/{ont}/update', [OntController::class, 'update'])->name('onts.update.post');
     Route::post('onts/{ont}/delete', [OntController::class, 'destroy'])->name('onts.destroy.post');
+    Route::get('find-onu', [OntController::class, 'findOnu'])->name('find-onu.index');
 
     Route::resource('materials', MaterialController::class);
     Route::resource('employees', \App\Http\Controllers\EmployeeController::class);
