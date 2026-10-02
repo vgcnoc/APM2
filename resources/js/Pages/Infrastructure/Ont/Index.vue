@@ -294,84 +294,30 @@
                 <!-- A4 Paper Preview -->
                 <div class="p-6 overflow-y-auto bg-gray-300 flex-1 flex justify-center">
                     <div class="bg-white shadow-2xl" style="width: 210mm; min-height: 297mm; padding: 10mm;" id="print-area">
-                        <div style="display: flex; flex-wrap: wrap; gap: 8mm; justify-content: center;">
-                            <!-- Template Card VIRUZS -->
-                            <div v-for="ont in getSelectedOntData()" :key="ont.id" class="print-card" style="width: 90mm; height: auto; border: 2px solid #4c1d95; border-radius: 10px; overflow: hidden; break-inside: avoid; font-family: 'Segoe UI', sans-serif;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 6mm; justify-content: center;">
+                            <!-- Template Card VIRUZS - Using Original Image -->
+                            <div v-for="ont in getSelectedOntData()" :key="ont.id" class="print-card" style="width: 90mm; position: relative; break-inside: avoid;">
+                                <!-- Background Template Image -->
+                                <img src="/images/card-template.jpg" alt="Card Template" style="width: 100%; display: block; border-radius: 6px;" />
                                 
-                                <!-- Header Card - Purple Gradient -->
-                                <div style="background: linear-gradient(135deg, #4c1d95 0%, #6d28d9 40%, #7c3aed 70%, #8b5cf6 100%); color: white; padding: 12px 16px; display: flex; align-items: center; gap: 12px; position: relative; overflow: hidden;">
-                                    <!-- Background circles decoration -->
-                                    <div style="position: absolute; right: -20px; top: -20px; width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.06);"></div>
-                                    <div style="position: absolute; right: 20px; bottom: -30px; width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.04);"></div>
-                                    
-                                    <!-- Logo Icon -->
-                                    <div style="position: relative; z-index: 1; flex-shrink: 0;">
-                                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                                            <circle cx="20" cy="20" r="18" stroke="white" stroke-width="2" fill="none"/>
-                                            <path d="M14 12 C14 12, 20 8, 26 12 C26 12, 30 16, 26 22 C26 22, 22 28, 14 24" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-                                            <circle cx="14" cy="24" r="3" fill="white"/>
-                                        </svg>
-                                    </div>
-                                    
-                                    <!-- Brand Text -->
-                                    <div style="position: relative; z-index: 1; flex: 1;">
-                                        <div style="font-size: 9px; font-weight: 600; letter-spacing: 1px; opacity: 0.9;">Property Of :</div>
-                                        <div style="font-size: 20px; font-weight: 900; letter-spacing: 2px; line-height: 1.1;">VIRUZS</div>
-                                        <div style="font-size: 7px; font-weight: 600; letter-spacing: 1.5px; opacity: 0.8;">VIRUZS GLOBAL CONNECTION</div>
-                                    </div>
-                                    
-                                    <!-- Divider & ISP Text -->
-                                    <div style="position: relative; z-index: 1; display: flex; align-items: center; gap: 8px;">
-                                        <div style="width: 2px; height: 40px; background: rgba(255,255,255,0.4);"></div>
-                                        <div style="text-align: right;">
-                                            <div style="font-size: 11px; font-weight: 800; line-height: 1.3;">Internet</div>
-                                            <div style="font-size: 11px; font-weight: 800; line-height: 1.3;">Service</div>
-                                            <div style="font-size: 11px; font-weight: 800; line-height: 1.3;">Provider</div>
-                                        </div>
-                                    </div>
+                                <!-- Overlay: Nama Pelanggan -->
+                                <div style="position: absolute; top: 43.5%; left: 38%; right: 3%; font-size: 10px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
+                                    {{ ont.customer ? ont.customer.name : '-' }}
                                 </div>
                                 
-                                <!-- Body Card - 4 Rows -->
-                                <div style="padding: 0;">
-                                    <!-- Row: Nama Pelanggan -->
-                                    <div style="display: flex; align-items: center; border-bottom: 1px solid #e5e7eb; padding: 8px 12px; gap: 10px;">
-                                        <div style="width: 28px; height: 28px; border-radius: 50%; background: #4c1d95; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                                        </div>
-                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; min-width: 120px;">Nama Pelanggan</div>
-                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; margin-right: 4px;">:</div>
-                                        <div style="font-size: 12px; font-weight: 600; color: #374151; flex: 1;">{{ ont.customer ? ont.customer.name : '-' }}</div>
-                                    </div>
-                                    
-                                    <!-- Row: Sales -->
-                                    <div style="display: flex; align-items: center; border-bottom: 1px solid #e5e7eb; padding: 8px 12px; gap: 10px;">
-                                        <div style="width: 28px; height: 28px; border-radius: 50%; background: #4c1d95; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/></svg>
-                                        </div>
-                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; min-width: 120px;">Sales</div>
-                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; margin-right: 4px;">:</div>
-                                        <div style="font-size: 12px; font-weight: 600; color: #374151; flex: 1;">{{ getOfficerName(ont) }}</div>
-                                    </div>
-                                    
-                                    <!-- Row: Tanggal Aktivasi -->
-                                    <div style="display: flex; align-items: center; border-bottom: 1px solid #e5e7eb; padding: 8px 12px; gap: 10px;">
-                                        <div style="width: 28px; height: 28px; border-radius: 50%; background: #4c1d95; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
-                                        </div>
-                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; min-width: 120px;">Tanggal Aktivasi</div>
-                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; margin-right: 4px;">:</div>
-                                        <div style="font-size: 12px; font-weight: 600; color: #374151; flex: 1;">{{ formatDate(ont.created_at) }}</div>
-                                    </div>
-                                    
-                                    <!-- Row: ID-O -->
-                                    <div style="display: flex; align-items: center; padding: 8px 12px; gap: 10px;">
-                                        <div style="width: 28px; height: 28px; border-radius: 50%; background: #4c1d95; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-                                        </div>
-                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; min-width: 120px;">ID-O</div>
-                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; margin-right: 4px;">:</div>
-                                        <div style="font-size: 12px; font-weight: 700; color: #4c1d95; flex: 1; font-family: monospace;">{{ ont.ont_id || '-' }}</div>
-                                    </div>
+                                <!-- Overlay: Sales -->
+                                <div style="position: absolute; top: 58.5%; left: 38%; right: 3%; font-size: 10px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
+                                    {{ getOfficerName(ont) }}
+                                </div>
+                                
+                                <!-- Overlay: Tanggal Aktivasi -->
+                                <div style="position: absolute; top: 73.5%; left: 38%; right: 3%; font-size: 10px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
+                                    {{ formatDate(ont.created_at) }}
+                                </div>
+                                
+                                <!-- Overlay: ID-O -->
+                                <div style="position: absolute; top: 88.5%; left: 38%; right: 3%; font-size: 10px; font-weight: 800; color: #4c1d95; font-family: 'Consolas', 'Courier New', monospace; line-height: 1;">
+                                    {{ ont.ont_id || '-' }}
                                 </div>
                             </div>
                         </div>
