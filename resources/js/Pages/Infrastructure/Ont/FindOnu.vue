@@ -6,29 +6,32 @@
                 <h2 class="text-2xl font-bold text-gray-900 mb-2">Find ONU / ONT</h2>
                 <p class="text-sm text-gray-500 mb-6">Cari data perangkat ONT berdasarkan ID ONT, Serial Number, atau MAC Address (Dapat menggunakan scanner barcode).</p>
                 
-                <form @submit.prevent="searchOnu" class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex gap-4">
-                    <div class="flex-1 relative">
+                <form @submit.prevent="searchOnu" class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4">
+                    <div class="flex-1 relative w-full">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                         </div>
                         <input 
-                            v-model="form.search" 
+                            :value="form.search"
+                            @input="e => form.search = e.target.value"
                             type="text" 
                             class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
-                            placeholder="Scan Barcode atau masukkan ID ONT / Serial Number / MAC Address..."
+                            placeholder="Scan Barcode atau ketik ID/SN..."
                             autofocus
                             ref="searchInput"
                         />
                     </div>
-                    <button type="submit" :disabled="form.processing" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-colors shadow-sm disabled:opacity-75 flex items-center gap-2">
-                        <span v-if="form.processing" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
-                        Cari Perangkat
-                    </button>
-                    <button type="button" @click="clearSearch" v-if="form.search || ont" class="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition-colors">
-                        Reset
-                    </button>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button type="submit" :disabled="form.processing" class="flex-1 sm:flex-none px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-colors shadow-sm disabled:opacity-75 flex items-center justify-center gap-2">
+                            <span v-if="form.processing" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+                            Cari
+                        </button>
+                        <button type="button" @click="clearSearch" v-if="form.search || ont" class="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition-colors flex-shrink-0">
+                            Reset
+                        </button>
+                    </div>
                 </form>
             </div>
 
