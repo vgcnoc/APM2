@@ -316,8 +316,9 @@
                                 </div>
                                 
                                 <!-- Overlay: ID-O -->
-                                <div style="position: absolute; top: 91%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 12px; font-weight: 800; color: #4c1d95; font-family: 'Consolas', 'Courier New', monospace; line-height: 1;">
-                                    {{ ont.ont_id || '-' }}
+                                <div style="position: absolute; top: 91%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 12px; font-weight: 800; color: #4c1d95; font-family: 'Consolas', 'Courier New', monospace; line-height: 1; display: flex; justify-content: space-between; align-items: center;">
+                                    <span>{{ ont.ont_id || '-' }}</span>
+                                    <svg v-if="ont.ont_id" :id="'barcode-' + ont.id"></svg>
                                 </div>
                             </div>
                         </div>
@@ -366,7 +367,8 @@
 </style>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
+import JsBarcode from 'jsbarcode';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -404,6 +406,24 @@ function openPrintModal() {
 function printCards() {
     window.print();
 }
+
+watch(isPrintModalOpen, async (newVal) => {
+    if (newVal) {
+        await nextTick();
+        getSelectedOntData().forEach(ont => {
+            if (ont.ont_id) {
+                JsBarcode('#barcode-' + ont.id, ont.ont_id, {
+                    width: 1,
+                    height: 16,
+                    displayValue: false,
+                    margin: 0,
+                    background: 'transparent',
+                    lineColor: '#000000'
+                });
+            }
+        });
+    }
+});
 
 function getOfficerName(ont) {
     if (ont.input_officers && ont.input_officers.length > 0) {
