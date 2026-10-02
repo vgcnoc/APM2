@@ -205,7 +205,7 @@
 </template>
 
 <script setup>
-import { Link, useForm } from '@inertiajs/vue3';
+import { Link, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { watch, ref, onMounted } from 'vue';
 
@@ -216,10 +216,17 @@ const props = defineProps({
 });
 
 const isNewArea = ref(false);
+const page = usePage();
 
 onMounted(() => {
     if (!props.areas || props.areas.length === 0) {
         isNewArea.value = true;
+    }
+    
+    // Auto-select sales if current user is in the sales list
+    const user = page.props.auth.user;
+    if (user && props.sales.some(s => s.id === user.id)) {
+        form.sales_id = user.id;
     }
 });
 
