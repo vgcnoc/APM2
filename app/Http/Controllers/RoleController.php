@@ -37,6 +37,7 @@ class RoleController extends Controller
                     ['name' => 'customers_booking_request_survey', 'type' => 'feature', 'label' => 'Request Survey'],
                     ['name' => 'customers_booking_whatsapp', 'type' => 'feature', 'label' => 'Kirim WhatsApp'],
                     ['name' => 'customers_booking_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
+                    ['name' => 'customers_booking_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
                 ],
             ],
             [
@@ -49,6 +50,7 @@ class RoleController extends Controller
                     ['name' => 'customers_survey_report', 'type' => 'feature', 'label' => 'Laporan Hasil Survey'],
                     ['name' => 'customers_survey_mark_ready', 'type' => 'feature', 'label' => 'Tandai Ready Install'],
                     ['name' => 'customers_survey_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
+                    ['name' => 'customers_survey_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
                 ],
             ],
             [
@@ -60,6 +62,7 @@ class RoleController extends Controller
                     ['name' => 'customers_installed_report', 'type' => 'feature', 'label' => 'Laporan Instalasi'],
                     ['name' => 'customers_installed_audit', 'type' => 'feature', 'label' => 'Audit Instalasi'],
                     ['name' => 'customers_installed_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
+                    ['name' => 'customers_installed_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
                 ],
             ],
             [
@@ -69,6 +72,7 @@ class RoleController extends Controller
                     ['name' => 'menu_customers_activation', 'type' => 'menu', 'label' => 'Akses Menu Aktivasi'],
                     ['name' => 'customers_activation_activate', 'type' => 'action', 'label' => 'Aktivasi Pelanggan'],
                     ['name' => 'customers_activation_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
+                    ['name' => 'customers_activation_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
                 ],
             ],
             [
@@ -80,6 +84,7 @@ class RoleController extends Controller
                     ['name' => 'customers_active_suspend', 'type' => 'action', 'label' => 'Suspend Pelanggan'],
                     ['name' => 'customers_active_terminate', 'type' => 'action', 'label' => 'Terminate Pelanggan'],
                     ['name' => 'customers_active_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
+                    ['name' => 'customers_active_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
                 ],
             ],
             [
@@ -90,6 +95,7 @@ class RoleController extends Controller
                     ['name' => 'customers_all_export', 'type' => 'feature', 'label' => 'Export Data'],
                     ['name' => 'customers_delete', 'type' => 'action', 'label' => 'Hapus Pelanggan'],
                     ['name' => 'customers_all_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
+                    ['name' => 'customers_all_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
                 ],
             ],
             [
@@ -103,6 +109,7 @@ class RoleController extends Controller
                     ['name' => 'tickets_assign', 'type' => 'feature', 'label' => 'Assign Teknisi'],
                     ['name' => 'tickets_close', 'type' => 'feature', 'label' => 'Tutup Tiket'],
                     ['name' => 'tickets_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
+                    ['name' => 'tickets_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
                 ],
             ],
             [
@@ -178,6 +185,7 @@ class RoleController extends Controller
                     ['name' => 'material_transactions_create', 'type' => 'action', 'label' => 'Buat Transaksi'],
                     ['name' => 'material_transactions_delete', 'type' => 'action', 'label' => 'Hapus Transaksi'],
                     ['name' => 'material_transactions_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
+                    ['name' => 'material_transactions_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
                 ],
             ],
             [

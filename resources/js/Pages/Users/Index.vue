@@ -40,6 +40,7 @@
                             <tr class="bg-gray-50/50 border-b border-gray-100">
                                 <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User</th>
                                 <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Area</th>
                                 <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                 <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Bergabung</th>
                                 <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
@@ -68,6 +69,10 @@
                                     }">
                                         {{ user.role }}
                                     </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-700">
+                                    <span v-if="user.area">{{ user.area.name }}</span>
+                                    <span v-else class="text-gray-400 italic">Semua Area</span>
                                 </td>
                                 <td class="px-6 py-4">
                                     <span class="flex items-center gap-1.5 text-xs font-medium" :class="user.is_active ? 'text-green-600' : 'text-red-500'">
@@ -147,6 +152,17 @@
                     </div>
 
                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Area (Opsional)</label>
+                        <select v-model="form.area_id" class="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option :value="null">Semua Area (Pusat)</option>
+                            <option v-for="area in areas" :key="area.id" :value="area.id">
+                                {{ area.name }}
+                            </option>
+                        </select>
+                        <p v-if="form.errors.area_id" class="mt-1 text-xs text-red-500">{{ form.errors.area_id }}</p>
+                    </div>
+
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Password <span v-if="!isEditing">*</span></label>
                         <input v-model="form.password" type="password" :required="!isEditing" class="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Minimal 8 karakter">
                         <p v-if="isEditing" class="text-xs text-gray-500 mt-1">Kosongkan jika tidak ingin merubah password.</p>
@@ -189,6 +205,7 @@ function debounce(func, timeout = 300) {
 
 const props = defineProps({
     users: Object,
+    areas: Array,
     filters: Object,
 });
 
@@ -203,6 +220,7 @@ const form = useForm({
     email: '',
     password: '',
     role: 'teknisi',
+    area_id: null,
     is_active: true,
 });
 
@@ -232,6 +250,7 @@ function openEditModal(user) {
     form.name = user.name;
     form.email = user.email;
     form.role = user.role;
+    form.area_id = user.area_id;
     form.password = '';
     form.is_active = !!user.is_active;
     isModalOpen.value = true;

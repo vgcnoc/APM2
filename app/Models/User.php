@@ -19,6 +19,7 @@ class User extends Authenticatable
         'password',
         'role',
         'phone',
+        'area_id',
         'is_active',
     ];
 
@@ -41,6 +42,11 @@ class User extends Authenticatable
     public function assignedTickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'assigned_to');
+    }
+
+    public function area(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Area::class, 'area_id');
     }
 
     public function technicianSchedules(): HasMany

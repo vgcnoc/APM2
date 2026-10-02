@@ -17,7 +17,11 @@ class MaterialTransactionController extends Controller
         $query = MaterialTransaction::with(['user', 'items.material', 'areaModel']);
 
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('material_transactions_view_all')) {
-            $query->where('user_id', auth()->id());
+            if (auth()->user()->can('material_transactions_view_area')) {
+                $query->where('area_id', auth()->user()->area_id);
+            } else {
+                $query->where('user_id', auth()->id());
+            }
         }
 
         if ($request->search) {
@@ -50,7 +54,11 @@ class MaterialTransactionController extends Controller
         $baseQuery = MaterialTransaction::query();
         
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('material_transactions_view_all')) {
-            $baseQuery->where('user_id', auth()->id());
+            if (auth()->user()->can('material_transactions_view_area')) {
+                $baseQuery->where('area_id', auth()->user()->area_id);
+            } else {
+                $baseQuery->where('user_id', auth()->id());
+            }
         }
 
         if ($request->start_date) {
@@ -69,7 +77,11 @@ class MaterialTransactionController extends Controller
         // Total Items
         $totalItems = MaterialTransactionItem::whereHas('transaction', function($q) use ($request) {
             if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('material_transactions_view_all')) {
-                $q->where('user_id', auth()->id());
+                if (auth()->user()->can('material_transactions_view_area')) {
+                    $q->where('area_id', auth()->user()->area_id);
+                } else {
+                    $q->where('user_id', auth()->id());
+                }
             }
             if ($request->start_date) {
                 $q->whereDate('date', '>=', $request->start_date);

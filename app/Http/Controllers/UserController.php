@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Area;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -18,6 +19,7 @@ class UserController extends Controller
     public function index(Request $request): Response
     {
         $users = User::query()
+            ->with('area')
             ->when($request->search, fn($q, $search) => 
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
@@ -31,6 +33,7 @@ class UserController extends Controller
 
         return Inertia::render('Users/Index', [
             'users' => $users,
+            'areas' => Area::orderBy('name')->get(),
             'filters' => $request->only(['search', 'role']),
         ]);
     }
@@ -45,6 +48,7 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             'role' => ['required', Rule::in(['admin', 'cs', 'teknisi', 'sales', 'noc'])],
+            'area_id' => 'nullable|exists:areas,id',
             'is_active' => 'boolean',
         ]);
 
@@ -69,6 +73,7 @@ class UserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:8',
             'role' => ['required', Rule::in(['admin', 'cs', 'teknisi', 'sales', 'noc'])],
+            'area_id' => 'nullable|exists:areas,id',
             'is_active' => 'boolean',
         ]);
 
