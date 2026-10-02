@@ -97,6 +97,12 @@
             
             <template #actions>
                 <div class="flex items-center gap-2">
+                    <button v-if="selectedIds.length > 0" 
+                        @click="openPrintModal" 
+                        class="px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium text-sm rounded-lg transition-colors border border-indigo-200 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        Print Card
+                    </button>
                     <button v-if="canDelete && selectedIds.length > 0" 
                         @click="bulkDelete" 
                         class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-medium text-sm rounded-lg transition-colors border border-red-200 flex items-center gap-2">
@@ -519,8 +525,95 @@
             </div>
         </Teleport>
 
+        <!-- Modal Print Card Preview -->
+        <div v-if="isPrintModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto no-print">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between no-print-header">
+                    <h3 class="text-lg font-bold text-gray-900">Preview Print Card ({{ selectedIds.length }} Item)</h3>
+                    <div class="flex gap-2">
+                        <button @click="printCards" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                            Print Sekarang
+                        </button>
+                        <button @click="isPrintModalOpen = false" class="text-gray-400 hover:text-gray-500 p-2">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- A4 Paper Preview -->
+                <div class="p-6 overflow-y-auto bg-gray-300 flex-1 flex justify-center">
+                    <div class="bg-white shadow-2xl" style="width: 210mm; min-height: 297mm; padding: 10mm;" id="print-area">
+                        <div style="display: flex; flex-wrap: wrap; gap: 6mm; justify-content: center;">
+                            <!-- Template Card VIRUZS -->
+                            <div v-for="customer in getSelectedCustomerData()" :key="customer.id" class="print-card" style="width: 90mm; position: relative; break-inside: avoid;">
+                                <!-- Background Template Image -->
+                                <img src="/images/card-template.jpg" alt="Card Template" style="width: 100%; display: block; border-radius: 6px;" />
+                                
+                                <!-- Overlay: Nama Pelanggan -->
+                                <div style="position: absolute; top: 46%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
+                                    {{ customer.name || '-' }}
+                                </div>
+                                
+                                <!-- Overlay: Sales -->
+                                <div style="position: absolute; top: 61%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
+                                    -
+                                </div>
+                                
+                                <!-- Overlay: Tanggal Aktivasi -->
+                                <div style="position: absolute; top: 76%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
+                                    {{ formatDate(customer.created_at) }}
+                                </div>
+                                
+                                <!-- Overlay: ID-O -->
+                                <div style="position: absolute; top: 91%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 12px; font-weight: 800; color: #4c1d95; font-family: 'Consolas', 'Courier New', monospace; line-height: 1; display: flex; justify-content: space-between; align-items: center;">
+                                    <span>{{ customer.ont ? customer.ont.ont_id : '-' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </AppLayout>
 </template>
+
+<style>
+@media print {
+    @page {
+        size: A4;
+        margin: 10mm;
+    }
+    body * {
+        visibility: hidden !important;
+    }
+    #print-area, #print-area * {
+        visibility: visible !important;
+    }
+    #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        background: white !important;
+    }
+    .no-print, .no-print * {
+        display: none !important;
+    }
+    .print-card {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        box-shadow: none !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+}
+</style>
 
 <script setup>
 import { ref, computed, watch } from 'vue';
@@ -896,4 +989,28 @@ function executeDelete() {
         }
     });
 }
+
+// Print Card Logic
+const isPrintModalOpen = ref(false);
+
+function openPrintModal() {
+    isPrintModalOpen.value = true;
+}
+
+function printCards() {
+    window.print();
+}
+
+function getSelectedCustomerData() {
+    return props.customers.data.filter(customer => selectedIds.value.includes(customer.id));
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 </script>
