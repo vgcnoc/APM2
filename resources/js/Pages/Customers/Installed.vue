@@ -791,13 +791,13 @@ const assignForm = useForm({
 });
 
 const filteredOnts = computed(() => {
-    if (!activeCustomer.value || !activeCustomer.value.area_id) return [];
-    return props.availableOnts.filter(ont => ont.area_id === activeCustomer.value.area_id);
+    if (!activeCustomer.value || !activeCustomer.value.area_id) return props.availableOnts;
+    return props.availableOnts.filter(ont => !ont.area_id || ont.area_id === activeCustomer.value.area_id);
 });
 
 const filteredMaterialTransactions = computed(() => {
-    if (!activeCustomer.value || !activeCustomer.value.area_id) return [];
-    return props.materialTransactions.filter(trx => trx.area_id === activeCustomer.value.area_id);
+    if (!activeCustomer.value || !activeCustomer.value.area_id) return props.materialTransactions;
+    return props.materialTransactions.filter(trx => !trx.area_id || trx.area_id === activeCustomer.value.area_id);
 });
 
 function openAssignModal(customer) {
