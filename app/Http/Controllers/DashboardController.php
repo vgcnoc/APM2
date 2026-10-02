@@ -201,7 +201,7 @@ class DashboardController extends Controller
                 ->whereHas('technicianSchedules', function($q) use ($userId) {
                     $q->where('type', 'installation')->where('technician_id', $userId)->where('status', 'scheduled');
                 })->count(),
-            'tickets_assigned' => Ticket::where('assignee_id', $userId)
+            'tickets_assigned' => Ticket::where('assigned_to', $userId)
                 ->where('status', '!=', 'closed')->count(),
         ];
 
@@ -240,7 +240,7 @@ class DashboardController extends Controller
             ]);
 
         // ── Daftar Tiket Gangguan ────────────────────────────
-        $ticketTasks = Ticket::where('assignee_id', $userId)
+        $ticketTasks = Ticket::where('assigned_to', $userId)
             ->where('status', '!=', 'closed')
             ->with('customer')
             ->orderBy('id', 'desc')
