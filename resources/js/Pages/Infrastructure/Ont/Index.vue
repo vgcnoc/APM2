@@ -6,6 +6,18 @@
                     <h2 class="text-2xl font-bold text-gray-900">Manajemen ONT / Modem</h2>
                     <p class="text-gray-500 text-sm mt-1">Kelola data inventaris perangkat ONT. (Data otomatis ditambahkan dari Surat Jalan Gudang)</p>
                 </div>
+                <div class="flex items-center gap-3">
+                    <!-- Tombol Print Card -->
+                    <button v-if="selectedOnts.length > 0" @click="openPrintModal" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        Print Card ({{ selectedOnts.length }})
+                    </button>
+                    <!-- Tombol Tambah ONT -->
+                    <button @click="openCreateModal" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Tambah ONT
+                    </button>
+                </div>
             </div>
 
             <!-- Table -->
@@ -14,6 +26,9 @@
                     <table class="w-full text-left border-collapse whitespace-nowrap">
                         <thead>
                             <tr class="bg-gray-50 border-b border-gray-100">
+                                <th class="px-6 py-4 text-left w-10">
+                                    <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
+                                </th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">ID ONT</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Perangkat</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Cabang</th>
@@ -24,7 +39,10 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
-                            <tr v-for="ont in onts.data" :key="ont.id" class="hover:bg-gray-50/50 transition-colors">
+                            <tr v-for="ont in onts.data" :key="ont.id" class="hover:bg-gray-50/50 transition-colors" :class="{'bg-indigo-50/30': selectedOnts.includes(ont.id)}">
+                                <td class="px-6 py-4">
+                                    <input type="checkbox" :value="ont.id" v-model="selectedOnts" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
+                                </td>
                                 <td class="px-6 py-4">
                                     <div class="text-sm font-bold text-indigo-700 font-mono">{{ ont.ont_id || '-' }}</div>
                                 </td>
@@ -64,7 +82,7 @@
                                 </td>
                             </tr>
                             <tr v-if="onts.data.length === 0">
-                                <td colspan="6" class="px-6 py-8 text-center text-gray-500 text-sm">
+                                <td colspan="7" class="px-6 py-8 text-center text-gray-500 text-sm">
                                     Belum ada data inventaris ONT.
                                 </td>
                             </tr>
@@ -257,11 +275,102 @@
             </div>
         </div>
 
+        <!-- Modal Print Card Preview -->
+        <div v-if="isPrintModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto print:hidden">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-gray-900">Preview Print Card ({{ selectedOnts.length }} Item)</h3>
+                    <div class="flex gap-2">
+                        <button @click="printCards" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                            Print Sekarang
+                        </button>
+                        <button @click="isPrintModalOpen = false" class="text-gray-400 hover:text-gray-500 p-2">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="p-6 overflow-y-auto bg-gray-100 flex-1">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-max" id="print-area">
+                        <!-- Template Card -->
+                        <div v-for="ont in getSelectedOntData()" :key="ont.id" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print-card relative w-[85.6mm] h-[53.98mm] mx-auto bg-cover bg-center" style="background-image: url('/images/card-bg.png'); border-radius: 8px;">
+                            <!-- Header Card -->
+                            <div class="bg-indigo-700 text-white px-4 py-2 flex justify-between items-center">
+                                <div class="font-bold text-sm tracking-wider">ONT / MODEM</div>
+                                <div class="text-[10px] opacity-80 uppercase">Property of ISP</div>
+                            </div>
+                            
+                            <!-- Body Card -->
+                            <div class="p-4 flex gap-4 h-[calc(100%-36px)]">
+                                <!-- QR Code -->
+                                <div class="flex-shrink-0 flex flex-col items-center justify-center bg-white p-1 rounded-lg border border-gray-100 h-[80px] w-[80px]">
+                                    <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${ont.ont_id || ont.serial_number}`" alt="QR" class="w-full h-full object-contain" />
+                                </div>
+                                
+                                <!-- Details -->
+                                <div class="flex-1 flex flex-col justify-center">
+                                    <div class="mb-2">
+                                        <div class="text-[10px] text-gray-500 uppercase font-semibold">ID ONT</div>
+                                        <div class="text-sm font-bold text-gray-900 font-mono">{{ ont.ont_id || '-' }}</div>
+                                    </div>
+                                    <div class="mb-1">
+                                        <div class="text-[9px] text-gray-500 uppercase">Serial Number</div>
+                                        <div class="text-xs font-semibold text-gray-800">{{ ont.serial_number }}</div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2 mt-1">
+                                        <div>
+                                            <div class="text-[9px] text-gray-500 uppercase">Brand</div>
+                                            <div class="text-[10px] font-semibold text-gray-700">{{ ont.brand || '-' }}</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-[9px] text-gray-500 uppercase">MAC</div>
+                                            <div class="text-[10px] font-semibold text-gray-700">{{ ont.mac_address || '-' }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </AppLayout>
 </template>
 
+<style>
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #print-area, #print-area * {
+        visibility: visible;
+    }
+    #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 0;
+        background: white;
+    }
+    .print-card {
+        page-break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+        margin: 5px;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+</style>
+
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -273,6 +382,32 @@ const props = defineProps({
 
 const isModalOpen = ref(false);
 const isEditing = ref(false);
+const isPrintModalOpen = ref(false);
+const selectedOnts = ref([]);
+
+const isAllSelected = computed(() => {
+    return props.onts.data.length > 0 && selectedOnts.value.length === props.onts.data.length;
+});
+
+function toggleSelectAll() {
+    if (isAllSelected.value) {
+        selectedOnts.value = [];
+    } else {
+        selectedOnts.value = props.onts.data.map(ont => ont.id);
+    }
+}
+
+function getSelectedOntData() {
+    return props.onts.data.filter(ont => selectedOnts.value.includes(ont.id));
+}
+
+function openPrintModal() {
+    isPrintModalOpen.value = true;
+}
+
+function printCards() {
+    window.print();
+}
 
 const form = useForm({
     ont_id: '',
