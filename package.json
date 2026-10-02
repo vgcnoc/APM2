@@ -20,8 +20,8 @@
     "dependencies": {
         "@heroicons/vue": "^2.1",
         "apexcharts": "^3.45",
-        "jsbarcode": "^3.12.3",
         "leaflet": "^1.9.4",
+        "qrcode": "^1.5.4",
         "vue3-apexcharts": "^1.5"
     }
 }

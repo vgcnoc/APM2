@@ -318,7 +318,7 @@
                                 <!-- Overlay: ID-O -->
                                 <div style="position: absolute; top: 91%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 12px; font-weight: 800; color: #4c1d95; font-family: 'Consolas', 'Courier New', monospace; line-height: 1; display: flex; justify-content: space-between; align-items: center;">
                                     <span>{{ ont.ont_id || '-' }}</span>
-                                    <svg v-if="ont.ont_id" :id="'barcode-' + ont.id"></svg>
+                                    <canvas v-if="ont.ont_id" :id="'qrcode-' + ont.id" style="height: 35px; width: 35px;"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -368,7 +368,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue';
-import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -412,13 +412,15 @@ watch(isPrintModalOpen, async (newVal) => {
         await nextTick();
         getSelectedOntData().forEach(ont => {
             if (ont.ont_id) {
-                JsBarcode('#barcode-' + ont.id, ont.ont_id, {
-                    width: 1,
-                    height: 16,
-                    displayValue: false,
+                QRCode.toCanvas(document.getElementById('qrcode-' + ont.id), ont.ont_id, {
+                    width: 150,
                     margin: 0,
-                    background: 'transparent',
-                    lineColor: '#000000'
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff'
+                    }
+                }, function (error) {
+                    if (error) console.error(error);
                 });
             }
         });
