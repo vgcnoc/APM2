@@ -286,6 +286,7 @@ class RoleController extends Controller
         return Inertia::render('Settings/Roles/Index', [
             'roles' => $roles,
             'permissionGroups' => $this->getPermissionRegistry(),
+            'positions' => \App\Models\Position::orderBy('name')->get(),
         ]);
     }
 

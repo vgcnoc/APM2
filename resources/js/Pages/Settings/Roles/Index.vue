@@ -197,10 +197,17 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-2">Nama Role</label>
-                                <input v-model="formName" type="text" required
-                                    class="w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                                    placeholder="Contoh: teknisi, sales, spv">
-                                <p class="mt-2 text-xs text-gray-500">Nama role akan otomatis diformat. Hak akses bisa diatur setelah role dibuat.</p>
+                                <select v-model="formName" required
+                                    class="w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                                    <option value="" disabled>-- Pilih Jabatan / Posisi --</option>
+                                    <option v-for="pos in positions" :key="pos.id" :value="pos.name.toLowerCase()">
+                                        {{ pos.name }}
+                                    </option>
+                                    <option v-if="isEditing && formName && !positions.find(p => p.name.toLowerCase() === formName)" :value="formName">
+                                        {{ formName }} (Lama)
+                                    </option>
+                                </select>
+                                <p class="mt-2 text-xs text-gray-500">Nama role diambil dari data Jabatan. Hak akses bisa diatur setelah role dibuat.</p>
                             </div>
                         </div>
                         <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
@@ -249,6 +256,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 const props = defineProps({
     roles: Array,
     permissionGroups: Array,
+    positions: Array,
 });
 
 // ── State ──────────────────────────────────────────
