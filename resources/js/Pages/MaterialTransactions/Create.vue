@@ -146,11 +146,8 @@ const filteredMaterials = computed(() => {
     if (!form.area_id) return [];
     return props.materials
         .map(m => {
-            const areaStock = m.stocks ? m.stocks.find(s => s.area_id === form.area_id) : null;
-            if (areaStock && areaStock.stock > 0) {
-                return { ...m, stock: areaStock.stock };
-            }
-            return null;
+            const areaStock = m.stocks ? m.stocks.find(s => s.area_id == form.area_id) : null;
+            return { ...m, stock: areaStock ? areaStock.stock : 0 };
         })
         .filter(m => m !== null);
 });
