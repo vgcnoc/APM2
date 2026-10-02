@@ -16,13 +16,9 @@
                         <svg class="w-4 h-4 absolute left-3.5 top-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     </div>
                     
-                    <select v-model="filterRole" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 font-medium">
+                    <select v-model="filterRole" class="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 font-medium capitalize">
                         <option value="">Semua Role</option>
-                        <option value="admin">Admin</option>
-                        <option value="cs">CS</option>
-                        <option value="teknisi">Teknisi</option>
-                        <option value="sales">Sales</option>
-                        <option value="noc">NOC</option>
+                        <option v-for="role in roles" :key="role" :value="role">{{ role }}</option>
                     </select>
 
                     <button @click="openCreateModal" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
@@ -60,13 +56,7 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <span class="px-2.5 py-1 rounded-full text-xs font-medium uppercase" :class="{
-                                        'bg-purple-100 text-purple-700': user.role === 'admin',
-                                        'bg-blue-100 text-blue-700': user.role === 'cs',
-                                        'bg-orange-100 text-orange-700': user.role === 'teknisi',
-                                        'bg-emerald-100 text-emerald-700': user.role === 'sales',
-                                        'bg-gray-100 text-gray-700': user.role === 'noc'
-                                    }">
+                                    <span class="px-2.5 py-1 rounded-full text-xs font-medium uppercase bg-blue-100 text-blue-700">
                                         {{ user.role }}
                                     </span>
                                 </td>
@@ -135,12 +125,9 @@
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Role *</label>
-                        <select v-model="form.role" required class="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="admin">Admin</option>
-                            <option value="cs">CS</option>
-                            <option value="teknisi">Teknisi</option>
-                            <option value="sales">Sales</option>
-                            <option value="noc">NOC</option>
+                        <select v-model="form.role" required class="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 capitalize">
+                            <option value="" disabled>Pilih Role</option>
+                            <option v-for="role in roles" :key="role" :value="role">{{ role }}</option>
                         </select>
                         <p v-if="form.errors.role" class="mt-1 text-xs text-red-500">{{ form.errors.role }}</p>
                     </div>
@@ -200,6 +187,7 @@ function debounce(func, timeout = 300) {
 const props = defineProps({
     users: Object,
     areas: Array,
+    roles: Array,
     filters: Object,
 });
 
@@ -213,7 +201,7 @@ const form = useForm({
     name: '',
     email: '',
     password: '',
-    role: 'teknisi',
+    role: '',
     area_id: null,
     is_active: true,
 });

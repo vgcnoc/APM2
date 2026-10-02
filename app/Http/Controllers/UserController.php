@@ -34,6 +34,7 @@ class UserController extends Controller
         return Inertia::render('Users/Index', [
             'users' => $users,
             'areas' => Area::orderBy('name')->get(),
+            'roles' => \Spatie\Permission\Models\Role::orderBy('name')->pluck('name'),
             'filters' => $request->only(['search', 'role']),
         ]);
     }
@@ -47,7 +48,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => ['required', Rule::in(['admin', 'cs', 'teknisi', 'sales', 'noc'])],
+            'role' => ['required', 'string', 'exists:roles,name'],
             'area_id' => 'nullable|exists:areas,id',
             'is_active' => 'boolean',
         ]);
@@ -72,7 +73,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:8',
-            'role' => ['required', Rule::in(['admin', 'cs', 'teknisi', 'sales', 'noc'])],
+            'role' => ['required', 'string', 'exists:roles,name'],
             'area_id' => 'nullable|exists:areas,id',
             'is_active' => 'boolean',
         ]);
