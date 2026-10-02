@@ -276,9 +276,9 @@
         </div>
 
         <!-- Modal Print Card Preview -->
-        <div v-if="isPrintModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto print:hidden">
+        <div v-if="isPrintModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto no-print">
             <div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-                <div class="bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div class="bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between no-print-header">
                     <h3 class="text-lg font-bold text-gray-900">Preview Print Card ({{ selectedOnts.length }} Item)</h3>
                     <div class="flex gap-2">
                         <button @click="printCards" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
@@ -291,42 +291,86 @@
                     </div>
                 </div>
                 
-                <div class="p-6 overflow-y-auto bg-gray-100 flex-1">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-max" id="print-area">
-                        <!-- Template Card -->
-                        <div v-for="ont in getSelectedOntData()" :key="ont.id" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print-card relative w-[85.6mm] h-[53.98mm] mx-auto bg-cover bg-center" style="background-image: url('/images/card-bg.png'); border-radius: 8px;">
-                            <!-- Header Card -->
-                            <div class="bg-indigo-700 text-white px-4 py-2 flex justify-between items-center">
-                                <div class="font-bold text-sm tracking-wider">ONT / MODEM</div>
-                                <div class="text-[10px] opacity-80 uppercase">Property of ISP</div>
-                            </div>
-                            
-                            <!-- Body Card -->
-                            <div class="p-4 flex gap-4 h-[calc(100%-36px)]">
-                                <!-- QR Code -->
-                                <div class="flex-shrink-0 flex flex-col items-center justify-center bg-white p-1 rounded-lg border border-gray-100 h-[80px] w-[80px]">
-                                    <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${ont.ont_id || ont.serial_number}`" alt="QR" class="w-full h-full object-contain" />
+                <!-- A4 Paper Preview -->
+                <div class="p-6 overflow-y-auto bg-gray-300 flex-1 flex justify-center">
+                    <div class="bg-white shadow-2xl" style="width: 210mm; min-height: 297mm; padding: 10mm;" id="print-area">
+                        <div style="display: flex; flex-wrap: wrap; gap: 8mm; justify-content: center;">
+                            <!-- Template Card VIRUZS -->
+                            <div v-for="ont in getSelectedOntData()" :key="ont.id" class="print-card" style="width: 90mm; height: auto; border: 2px solid #4c1d95; border-radius: 10px; overflow: hidden; break-inside: avoid; font-family: 'Segoe UI', sans-serif;">
+                                
+                                <!-- Header Card - Purple Gradient -->
+                                <div style="background: linear-gradient(135deg, #4c1d95 0%, #6d28d9 40%, #7c3aed 70%, #8b5cf6 100%); color: white; padding: 12px 16px; display: flex; align-items: center; gap: 12px; position: relative; overflow: hidden;">
+                                    <!-- Background circles decoration -->
+                                    <div style="position: absolute; right: -20px; top: -20px; width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.06);"></div>
+                                    <div style="position: absolute; right: 20px; bottom: -30px; width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.04);"></div>
+                                    
+                                    <!-- Logo Icon -->
+                                    <div style="position: relative; z-index: 1; flex-shrink: 0;">
+                                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                                            <circle cx="20" cy="20" r="18" stroke="white" stroke-width="2" fill="none"/>
+                                            <path d="M14 12 C14 12, 20 8, 26 12 C26 12, 30 16, 26 22 C26 22, 22 28, 14 24" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                                            <circle cx="14" cy="24" r="3" fill="white"/>
+                                        </svg>
+                                    </div>
+                                    
+                                    <!-- Brand Text -->
+                                    <div style="position: relative; z-index: 1; flex: 1;">
+                                        <div style="font-size: 9px; font-weight: 600; letter-spacing: 1px; opacity: 0.9;">Property Of :</div>
+                                        <div style="font-size: 20px; font-weight: 900; letter-spacing: 2px; line-height: 1.1;">VIRUZS</div>
+                                        <div style="font-size: 7px; font-weight: 600; letter-spacing: 1.5px; opacity: 0.8;">VIRUZS GLOBAL CONNECTION</div>
+                                    </div>
+                                    
+                                    <!-- Divider & ISP Text -->
+                                    <div style="position: relative; z-index: 1; display: flex; align-items: center; gap: 8px;">
+                                        <div style="width: 2px; height: 40px; background: rgba(255,255,255,0.4);"></div>
+                                        <div style="text-align: right;">
+                                            <div style="font-size: 11px; font-weight: 800; line-height: 1.3;">Internet</div>
+                                            <div style="font-size: 11px; font-weight: 800; line-height: 1.3;">Service</div>
+                                            <div style="font-size: 11px; font-weight: 800; line-height: 1.3;">Provider</div>
+                                        </div>
+                                    </div>
                                 </div>
                                 
-                                <!-- Details -->
-                                <div class="flex-1 flex flex-col justify-center">
-                                    <div class="mb-2">
-                                        <div class="text-[10px] text-gray-500 uppercase font-semibold">ID ONT</div>
-                                        <div class="text-sm font-bold text-gray-900 font-mono">{{ ont.ont_id || '-' }}</div>
-                                    </div>
-                                    <div class="mb-1">
-                                        <div class="text-[9px] text-gray-500 uppercase">Serial Number</div>
-                                        <div class="text-xs font-semibold text-gray-800">{{ ont.serial_number }}</div>
-                                    </div>
-                                    <div class="grid grid-cols-2 gap-2 mt-1">
-                                        <div>
-                                            <div class="text-[9px] text-gray-500 uppercase">Brand</div>
-                                            <div class="text-[10px] font-semibold text-gray-700">{{ ont.brand || '-' }}</div>
+                                <!-- Body Card - 4 Rows -->
+                                <div style="padding: 0;">
+                                    <!-- Row: Nama Pelanggan -->
+                                    <div style="display: flex; align-items: center; border-bottom: 1px solid #e5e7eb; padding: 8px 12px; gap: 10px;">
+                                        <div style="width: 28px; height: 28px; border-radius: 50%; background: #4c1d95; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                                         </div>
-                                        <div>
-                                            <div class="text-[9px] text-gray-500 uppercase">MAC</div>
-                                            <div class="text-[10px] font-semibold text-gray-700">{{ ont.mac_address || '-' }}</div>
+                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; min-width: 120px;">Nama Pelanggan</div>
+                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; margin-right: 4px;">:</div>
+                                        <div style="font-size: 12px; font-weight: 600; color: #374151; flex: 1;">{{ ont.customer ? ont.customer.name : '-' }}</div>
+                                    </div>
+                                    
+                                    <!-- Row: Sales -->
+                                    <div style="display: flex; align-items: center; border-bottom: 1px solid #e5e7eb; padding: 8px 12px; gap: 10px;">
+                                        <div style="width: 28px; height: 28px; border-radius: 50%; background: #4c1d95; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/></svg>
                                         </div>
+                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; min-width: 120px;">Sales</div>
+                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; margin-right: 4px;">:</div>
+                                        <div style="font-size: 12px; font-weight: 600; color: #374151; flex: 1;">{{ getOfficerName(ont) }}</div>
+                                    </div>
+                                    
+                                    <!-- Row: Tanggal Aktivasi -->
+                                    <div style="display: flex; align-items: center; border-bottom: 1px solid #e5e7eb; padding: 8px 12px; gap: 10px;">
+                                        <div style="width: 28px; height: 28px; border-radius: 50%; background: #4c1d95; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+                                        </div>
+                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; min-width: 120px;">Tanggal Aktivasi</div>
+                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; margin-right: 4px;">:</div>
+                                        <div style="font-size: 12px; font-weight: 600; color: #374151; flex: 1;">{{ formatDate(ont.created_at) }}</div>
+                                    </div>
+                                    
+                                    <!-- Row: ID-O -->
+                                    <div style="display: flex; align-items: center; padding: 8px 12px; gap: 10px;">
+                                        <div style="width: 28px; height: 28px; border-radius: 50%; background: #4c1d95; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                                        </div>
+                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; min-width: 120px;">ID-O</div>
+                                        <div style="font-size: 12px; font-weight: 700; color: #1e1b4b; margin-right: 4px;">:</div>
+                                        <div style="font-size: 12px; font-weight: 700; color: #4c1d95; flex: 1; font-family: monospace;">{{ ont.ont_id || '-' }}</div>
                                     </div>
                                 </div>
                             </div>
@@ -341,30 +385,36 @@
 
 <style>
 @media print {
+    @page {
+        size: A4;
+        margin: 10mm;
+    }
     body * {
-        visibility: hidden;
+        visibility: hidden !important;
     }
     #print-area, #print-area * {
-        visibility: visible;
+        visibility: visible !important;
     }
     #print-area {
         position: absolute;
         left: 0;
         top: 0;
         width: 100%;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        padding: 0;
-        background: white;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        background: white !important;
+    }
+    .no-print, .no-print * {
+        display: none !important;
     }
     .print-card {
         page-break-inside: avoid;
+        break-inside: avoid;
         box-shadow: none !important;
-        border: 1px solid #ddd !important;
-        margin: 5px;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
     }
 }
 </style>
@@ -407,6 +457,22 @@ function openPrintModal() {
 
 function printCards() {
     window.print();
+}
+
+function getOfficerName(ont) {
+    if (ont.input_officers && ont.input_officers.length > 0) {
+        const first = ont.input_officers[0];
+        return typeof first === 'object' ? (first.name || '-') : first;
+    }
+    return '-';
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 const form = useForm({
