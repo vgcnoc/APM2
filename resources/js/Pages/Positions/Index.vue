@@ -25,17 +25,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="glass-card p-5 border-2 border-amber-500/10 hover:border-amber-500/30 transition-all">
-                    <div class="flex items-center gap-4">
-                        <div class="p-3 bg-amber-100 text-amber-600 rounded-xl">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Rata-rata Gaji</p>
-                            <p class="text-xl font-bold text-gray-900">Rp {{ formatNumber(avgSalary) }}</p>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Filter Bar -->
@@ -74,7 +63,6 @@
                             <tr class="bg-gray-50/50 border-b border-gray-100">
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Posisi / Jabatan</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Departemen</th>
-                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Gaji Pokok</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Keterangan</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
@@ -95,9 +83,6 @@
                                     </span>
                                     <span v-else class="text-xs text-gray-300">-</span>
                                 </td>
-                                <td class="py-4 px-6 text-right">
-                                    <p class="text-sm font-semibold text-gray-900">Rp {{ formatNumber(pos.base_salary) }}</p>
-                                </td>
                                 <td class="py-4 px-6">
                                     <p class="text-xs text-gray-500 truncate max-w-[200px]">{{ pos.description || '-' }}</p>
                                 </td>
@@ -113,7 +98,7 @@
                                 </td>
                             </tr>
                             <tr v-if="positions.data.length === 0">
-                                <td colspan="5" class="py-12 text-center">
+                                <td colspan="4" class="py-12 text-center">
                                     <div class="flex flex-col items-center justify-center text-gray-400">
                                         <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                                         <p class="text-sm font-medium">Belum ada data posisi</p>
@@ -175,10 +160,6 @@
                             </datalist>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Gaji Pokok (Rp)</label>
-                            <input v-model="form.base_salary" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="0">
-                        </div>
-                        <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
                             <textarea v-model="form.description" rows="2" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 resize-none" placeholder="Deskripsi tugas dan tanggung jawab (opsional)"></textarea>
                         </div>
@@ -217,24 +198,12 @@ const editingId = ref(null);
 const form = useForm({
     name: '',
     department: '',
-    base_salary: 0,
     description: '',
 });
-
-const formatNumber = (num) => {
-    if (!num) return '0';
-    return Number(num).toLocaleString('id-ID');
-};
 
 const uniqueDepartments = computed(() => {
     const depts = new Set(props.positions.data?.filter(p => p.department).map(p => p.department));
     return depts.size;
-});
-
-const avgSalary = computed(() => {
-    const data = props.positions.data?.filter(p => p.base_salary > 0) || [];
-    if (data.length === 0) return 0;
-    return Math.round(data.reduce((sum, p) => sum + Number(p.base_salary), 0) / data.length);
 });
 
 const performSearch = () => {
@@ -247,7 +216,6 @@ function openModal(pos = null) {
         editingId.value = pos.id;
         form.name = pos.name || '';
         form.department = pos.department || '';
-        form.base_salary = pos.base_salary || 0;
         form.description = pos.description || '';
     } else {
         isEditing.value = false;

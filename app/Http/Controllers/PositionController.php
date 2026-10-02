@@ -28,7 +28,6 @@ class PositionController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:positions,name',
             'department' => 'nullable|string|max:255',
-            'base_salary' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
         ]);
 
@@ -42,7 +41,6 @@ class PositionController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:positions,name,' . $position->id,
             'department' => 'nullable|string|max:255',
-            'base_salary' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
         ]);
 
