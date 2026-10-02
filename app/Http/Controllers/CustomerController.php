@@ -260,20 +260,25 @@ class CustomerController extends Controller
 
         $customerQuery = clone $baseQuery;
         
-        if ($request->tab) {
-            if ($request->tab === 'jadwal_pasang') {
+        $currentTab = $request->tab;
+        if (auth()->check() && auth()->user()->hasRole('teknisi')) {
+            $currentTab = 'laporan_pasang';
+        }
+        
+        if ($currentTab) {
+            if ($currentTab === 'jadwal_pasang') {
                 $customerQuery->where('status', 'installing')->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation'));
-            } elseif ($request->tab === 'laporan_pasang') {
+            } elseif ($currentTab === 'laporan_pasang') {
                 $customerQuery->where('status', 'installing')->whereHas('technicianSchedules', function($q) {
                     $q->where('type', 'installation')->where('status', 'scheduled');
                 });
-            } elseif ($request->tab === 'audit') {
+            } elseif ($currentTab === 'audit') {
                 $customerQuery->where('status', 'installing')->where('is_audited', false)->whereDoesntHave('technicianSchedules', function($q) {
                     $q->where('type', 'installation')->where('status', 'scheduled');
                 })->whereHas('ont', function ($q) {
                         $q->whereNotNull('rx_power');
                     });
-            } elseif ($request->tab === 'selesai_instalasi') {
+            } elseif ($currentTab === 'selesai_instalasi') {
                 $customerQuery->where(function($q) {
                     $q->where('status', 'installing')->where('is_audited', true)
                       ->orWhere('status', 'active');
