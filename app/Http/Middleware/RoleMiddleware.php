@@ -17,10 +17,15 @@ class RoleMiddleware
     {
         $user = $request->user();
 
-        if (!$user || !in_array($user->role, $roles)) {
+        if (!$user) {
             abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
 
-        return $next($request);
+        // Cek custom role (string) ATAU Spatie roles
+        if (in_array($user->role, $roles) || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole($roles))) {
+            return $next($request);
+        }
+
+        abort(403, 'Anda tidak memiliki akses ke halaman ini.');
     }
 }

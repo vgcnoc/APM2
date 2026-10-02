@@ -142,8 +142,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/network-data', [\App\Http\Controllers\NetworkDataController::class, 'index'])->name('network-data.index');
 
     // ── Pengguna & Hak Akses ───────────────────────────────────
-    Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
-    Route::post('users/{user}/update', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update.post');
+    Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit'])->middleware('role:admin');
+    Route::post('users/{user}/update', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update.post')->middleware('role:admin');
     Route::post('users/{user}/delete', [\App\Http\Controllers\UserController::class, 'destroy'])->name('users.destroy.post');
 
     // ── Billing & Keuangan ─────────────────────────────────────
@@ -178,8 +178,6 @@ Route::middleware(['auth'])->group(function () {
         $token = $user->createToken('Integrasi-app-LK')->plainTextToken;
         return response()->json(['token' => $token]);
     })->name('settings.api.token');
-    // Route::resource('users', UserController::class)->middleware('role:admin');
-    
     Route::resource('internet-packages', \App\Http\Controllers\InternetPackageController::class)->except(['create', 'show', 'edit']);
     Route::post('internet-packages/{internet_package}/update', [\App\Http\Controllers\InternetPackageController::class, 'update'])->name('internet-packages.update.post');
     Route::post('internet-packages/{internet_package}/delete', [\App\Http\Controllers\InternetPackageController::class, 'destroy'])->name('internet-packages.destroy.post');
