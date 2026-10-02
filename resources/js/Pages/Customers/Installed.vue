@@ -557,7 +557,7 @@
                                 
                                 <!-- Overlay: Sales -->
                                 <div style="position: absolute; top: 61%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
-                                    -
+                                    {{ customer.sales ? customer.sales.name : '-' }}
                                 </div>
                                 
                                 <!-- Overlay: Tanggal Aktivasi -->

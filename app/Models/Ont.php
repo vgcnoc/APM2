@@ -130,6 +130,6 @@ class Ont extends Model
 
     public function scopeWithFullTopology($query)
     {
-        return $query->with(['odp.odc.olt', 'customer', 'area']);
+        return $query->with(['odp.odc.olt', 'customer.sales', 'area']);
     }
 }

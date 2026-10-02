@@ -299,7 +299,7 @@ class CustomerController extends Controller
                     })->orWhere('area', $area);
                 });
             })
-            ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
+            ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'sales', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'installation')->with('technician');
             }])
             ->search($request->search)
