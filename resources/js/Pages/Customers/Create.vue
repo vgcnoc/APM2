@@ -160,7 +160,7 @@
                             </div>
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Sales / Afiliator</label>
-                                <select v-model="form.sales_id" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                                <select v-model="form.sales_id" :disabled="!isAdmin" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:text-gray-500">
                                     <option value="">-- Tanpa Sales --</option>
                                     <option v-for="person in sales" :key="person.id" :value="person.id">
                                         {{ person.name }}
@@ -207,7 +207,7 @@
 <script setup>
 import { Link, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { watch, ref, onMounted } from 'vue';
+import { watch, ref, onMounted, computed } from 'vue';
 
 const props = defineProps({
     packages: Array,
@@ -217,6 +217,7 @@ const props = defineProps({
 
 const isNewArea = ref(false);
 const page = usePage();
+const isAdmin = computed(() => page.props.auth.user?.role === 'admin' || page.props.auth.user?.role === 'super-admin');
 
 onMounted(() => {
     if (!props.areas || props.areas.length === 0) {

@@ -421,9 +421,17 @@ class CustomerController extends Controller
     {
         $areas = \App\Models\Area::pluck('name');
         
+        $sales = User::where('role', 'sales')->get();
+        if (!auth()->user()->hasRole('admin')) {
+            $currentUser = auth()->user();
+            if (!$sales->contains('id', $currentUser->id)) {
+                $sales->push($currentUser);
+            }
+        }
+
         return Inertia::render('Customers/Create', [
             'packages' => InternetPackage::active()->get(),
-            'sales' => User::where('role', 'sales')->get(),
+            'sales' => $sales,
             'areas' => $areas,
         ]);
     }
@@ -453,6 +461,10 @@ class CustomerController extends Controller
             'installation_fee' => 'nullable|numeric|min:0',
             'sales_id' => 'nullable|exists:users,id',
         ]);
+
+        if (!auth()->user()->hasRole('admin')) {
+            $validated['sales_id'] = auth()->id();
+        }
 
         if ($request->hasFile('identity_photo')) {
             $validated['identity_photo'] = $request->file('identity_photo')->store('ktp', 'public');
@@ -509,11 +521,22 @@ class CustomerController extends Controller
         
         $areas = \App\Models\Area::pluck('name');
 
+        $sales = User::where('role', 'sales')->get();
+        if (!auth()->user()->hasRole('admin')) {
+            $currentUser = auth()->user();
+            if (!$sales->contains('id', $currentUser->id)) {
+                $sales->push($currentUser);
+            }
+            if ($customer->sales_id && !$sales->contains('id', $customer->sales_id)) {
+                $sales->push(User::find($customer->sales_id));
+            }
+        }
+
         return Inertia::render('Customers/Edit', [
             'customer' => $customer,
             'packages' => InternetPackage::active()->get(),
             'availableOdps' => Odp::active()->with('odc.olt')->get(),
-            'sales' => User::where('role', 'sales')->get(),
+            'sales' => $sales,
             'areas' => $areas,
         ]);
     }
@@ -539,6 +562,10 @@ class CustomerController extends Controller
             'installation_fee' => 'nullable|numeric|min:0',
             'sales_id' => 'nullable|exists:users,id',
         ]);
+
+        if (!auth()->user()->hasRole('admin')) {
+            unset($validated['sales_id']);
+        }
 
         if ($request->hasFile('identity_photo')) {
             $validated['identity_photo'] = $request->file('identity_photo')->store('ktp', 'public');
