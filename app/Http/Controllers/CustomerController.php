@@ -261,9 +261,6 @@ class CustomerController extends Controller
         $customerQuery = clone $baseQuery;
         
         $currentTab = $request->tab;
-        if (auth()->check() && auth()->user()->hasRole('teknisi')) {
-            $currentTab = 'laporan_pasang';
-        }
         
         if ($currentTab) {
             if ($currentTab === 'jadwal_pasang') {
