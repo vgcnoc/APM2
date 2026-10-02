@@ -11,6 +11,7 @@ class Ont extends Model
     use HasFactory;
 
     protected $fillable = [
+        'ont_id',
         'odp_id',
         'odp_port_id',
         'customer_id',

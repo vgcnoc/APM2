@@ -17,6 +17,7 @@ class OntController extends Controller
         $onts = Ont::withFullTopology()
             ->when($request->search, fn ($q, $s) =>
                 $q->where('serial_number', 'like', "%{$s}%")
+                  ->orWhere('ont_id', 'like', "%{$s}%")
                   ->orWhere('mac_address', 'like', "%{$s}%")
                   ->orWhereHas('customer', fn ($cq) =>
                       $cq->where('name', 'like', "%{$s}%")
@@ -39,6 +40,7 @@ class OntController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'ont_id' => 'nullable|string|max:100|unique:onts,ont_id',
             'area_id' => 'nullable|exists:areas,id',
             'brand' => 'nullable|string|max:100',
             'model' => 'nullable|string|max:100',
@@ -69,6 +71,11 @@ class OntController extends Controller
             $validated['port_number'] = null;
         }
 
+        if (empty($validated['ont_id'])) {
+            // Generate auto ont_id like ONT-YYYYMMDD-XXXX
+            $validated['ont_id'] = 'ONT-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
+        }
+
         Ont::create($validated);
 
         if (isset($validated['odp_id'])) {
@@ -91,6 +98,7 @@ class OntController extends Controller
     public function update(Request $request, Ont $ont): RedirectResponse
     {
         $validated = $request->validate([
+            'ont_id' => "nullable|string|max:100|unique:onts,ont_id,{$ont->id}",
             'area_id' => 'nullable|exists:areas,id',
             'brand' => 'nullable|string|max:100',
             'model' => 'nullable|string|max:100',
