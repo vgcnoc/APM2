@@ -342,17 +342,17 @@
                         </div>
 
                         <div v-if="customer.status === 'installing'" class="flex justify-end pt-4 border-t border-gray-200 mt-6 gap-3">
-                            <button v-if="!customer.is_audited && hasPermission('audit')" @click="showAuditModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border-0 text-white">
+                            <button v-if="!customer.is_audited && hasPermission('customers_installed_audit')" @click="showAuditModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border-0 text-white">
                                 Selesaikan Audit
                             </button>
-                            <button v-else-if="customer.is_audited && source !== 'instalasi' && hasPermission('aktivasi')" @click="showActivationModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 border-0 text-white">
+                            <button v-else-if="customer.is_audited && source !== 'instalasi' && hasPermission('customers_activation_activate')" @click="showActivationModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 border-0 text-white">
                                 Aktivasi Pelanggan
                             </button>
                         </div>
                     </div>
 
                 <!-- Instalasi Section (Form) -->
-                <div v-show="activeTab === 'installation' && isLaporanPasang && hasPermission('laporan_instalasi')" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
+                <div v-show="activeTab === 'installation' && isLaporanPasang && hasPermission('customers_installed_report')" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
                     <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">🚀</span>
                         Form Laporan Selesai Instalasi
@@ -951,7 +951,7 @@ const page = usePage();
 const hasPermission = (permission) => {
     try {
         const user = page.props.auth?.user;
-        if (!user) return true;
+        if (!user) return false;
         if (user.role === 'admin' || user.role === 'Super Admin') return true;
         let roles = [];
         if (Array.isArray(user.roles)) roles = user.roles;
@@ -963,7 +963,7 @@ const hasPermission = (permission) => {
         if (perms.includes(permission)) return true;
         return false;
     } catch (e) {
-        return true;
+        return false;
     }
 };
 

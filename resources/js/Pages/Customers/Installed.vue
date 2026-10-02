@@ -641,7 +641,7 @@ const isTeknisi = computed(() => {
 const hasPermission = (permission) => {
     try {
         const user = page.props.auth?.user;
-        if (!user) return true;
+        if (!user) return false;
         if (user.role === 'admin' || user.role === 'Super Admin') return true;
         let roles = [];
         if (Array.isArray(user.roles)) roles = user.roles;
@@ -653,7 +653,7 @@ const hasPermission = (permission) => {
         if (perms.includes(permission)) return true;
         return false;
     } catch (e) {
-        return true;
+        return false;
     }
 };
 

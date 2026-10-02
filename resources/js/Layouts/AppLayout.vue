@@ -139,7 +139,7 @@ const menuItems = [
     { type: 'link', href: '/odcs', icon: 'box', label: 'ODC', active: (url) => (url || '').startsWith('/odcs'), permission: 'menu_network_odc' },
     { type: 'link', href: '/odps', icon: 'git-branch', label: 'ODP', active: (url) => (url || '').startsWith('/odps'), permission: 'menu_network_odp' },
     { type: 'link', href: '/onts', icon: 'wifi', label: 'ONT', active: (url) => (url || '').startsWith('/onts'), permission: 'menu_network_ont' },
-    { type: 'link', href: '/find-onu', icon: 'search', label: 'Find ONU', active: (url) => (url || '').startsWith('/find-onu'), permission: 'menu_network_ont' },
+    { type: 'link', href: '/find-onu', icon: 'search', label: 'Find ONU', active: (url) => (url || '').startsWith('/find-onu'), permission: 'menu_network_find_onu' },
     { type: 'link', href: '/materials', icon: 'archive', label: 'Material/Barang', active: (url) => (url || '').startsWith('/materials'), permission: 'menu_materials' },
     { type: 'link', href: '/material-transactions', icon: 'shopping-cart', label: 'Order / Pengambilan', active: (url) => (url || '').startsWith('/material-transactions'), permission: 'menu_material_transactions' },
     { type: 'group', label: 'HR & PERSONALIA' },
@@ -192,7 +192,7 @@ const page = usePage();
 const hasPermission = (permission) => {
     try {
         const user = page.props.auth?.user;
-        if (!user) return true; // Fallback jika user blm ter-load
+        if (!user) return false; // Fallback jika user blm ter-load
         
         // Fallback legacy role column
         if (user.role === 'admin' || user.role === 'Super Admin') return true;
@@ -214,7 +214,7 @@ const hasPermission = (permission) => {
         return false;
     } catch (e) {
         console.error("Error in hasPermission:", e);
-        return true; // Tampilkan jika error agar tidak blank
+        return false; // JANGAN tampilkan jika error agar strict
     }
 };
 

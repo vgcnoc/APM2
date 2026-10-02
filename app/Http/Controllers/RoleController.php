@@ -185,6 +185,13 @@ class RoleController extends Controller
                 ],
             ],
             [
+                'group' => 'Find ONU',
+                'icon' => 'search',
+                'permissions' => [
+                    ['name' => 'menu_network_find_onu', 'type' => 'menu', 'label' => 'Akses Menu Find ONU'],
+                ],
+            ],
+            [
                 'group' => 'Material / Barang',
                 'icon' => 'archive',
                 'permissions' => [
