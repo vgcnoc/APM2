@@ -20,6 +20,10 @@ class DashboardController extends Controller
 {
     public function index(): Response
     {
+        if (auth()->check() && auth()->user()->hasRole('teknisi')) {
+            return $this->teknisiDashboard();
+        }
+
         // ── Statistik Pelanggan ──────────────────────────────
         $customerStats = [
             'total_active'     => Customer::where('status', 'active')->count(),
@@ -180,6 +184,81 @@ class DashboardController extends Controller
             'packageDistribution'  => $packageDistribution,
             'topAreas'             => $topAreas,
             'totalCustomersInAreas' => $totalCustomersInAreas,
+        ]);
+    }
+
+    private function teknisiDashboard(): Response
+    {
+        $userId = auth()->id();
+
+        // ── Statistik Tugas ─────────────────────────────────
+        $stats = [
+            'survey_assigned' => Customer::where('status', 'survey')
+                ->whereHas('technicianSchedules', function($q) use ($userId) {
+                    $q->where('type', 'survey')->where('technician_id', $userId)->where('status', 'scheduled');
+                })->count(),
+            'installation_assigned' => Customer::where('status', 'installing')
+                ->whereHas('technicianSchedules', function($q) use ($userId) {
+                    $q->where('type', 'installation')->where('technician_id', $userId)->where('status', 'scheduled');
+                })->count(),
+            'tickets_assigned' => Ticket::where('assignee_id', $userId)
+                ->where('status', '!=', 'closed')->count(),
+        ];
+
+        // ── Daftar Tugas Survey ──────────────────────────────
+        $surveyTasks = Customer::where('status', 'survey')
+            ->whereHas('technicianSchedules', function($q) use ($userId) {
+                $q->where('type', 'survey')->where('technician_id', $userId)->where('status', 'scheduled');
+            })
+            ->with(['technicianSchedules' => function($q) use ($userId) {
+                $q->where('type', 'survey')->where('technician_id', $userId)->where('status', 'scheduled');
+            }])
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(fn($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'address' => $c->address,
+                'schedule_date' => $c->technicianSchedules->first()?->scheduled_date,
+            ]);
+
+        // ── Daftar Tugas Instalasi ───────────────────────────
+        $installationTasks = Customer::where('status', 'installing')
+            ->whereHas('technicianSchedules', function($q) use ($userId) {
+                $q->where('type', 'installation')->where('technician_id', $userId)->where('status', 'scheduled');
+            })
+            ->with(['technicianSchedules' => function($q) use ($userId) {
+                $q->where('type', 'installation')->where('technician_id', $userId)->where('status', 'scheduled');
+            }])
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(fn($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'address' => $c->address,
+                'schedule_date' => $c->technicianSchedules->first()?->scheduled_date,
+            ]);
+
+        // ── Daftar Tiket Gangguan ────────────────────────────
+        $ticketTasks = Ticket::where('assignee_id', $userId)
+            ->where('status', '!=', 'closed')
+            ->with('customer')
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(fn($t) => [
+                'id' => $t->id,
+                'ticket_number' => $t->ticket_number,
+                'customer_name' => $t->customer?->name,
+                'priority' => $t->priority,
+                'status' => $t->status,
+                'category' => $t->category,
+            ]);
+
+        return Inertia::render('DashboardTeknisi', [
+            'stats' => $stats,
+            'surveyTasks' => $surveyTasks,
+            'installationTasks' => $installationTasks,
+            'ticketTasks' => $ticketTasks,
         ]);
     }
 }
