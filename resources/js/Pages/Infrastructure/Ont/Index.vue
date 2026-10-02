@@ -301,22 +301,22 @@
                                 <img src="/images/card-template.jpg" alt="Card Template" style="width: 100%; display: block; border-radius: 6px;" />
                                 
                                 <!-- Overlay: Nama Pelanggan -->
-                                <div style="position: absolute; top: 43.5%; left: 38%; right: 3%; font-size: 10px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
+                                <div style="position: absolute; top: 46%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
                                     {{ ont.customer ? ont.customer.name : '-' }}
                                 </div>
                                 
                                 <!-- Overlay: Sales -->
-                                <div style="position: absolute; top: 58.5%; left: 38%; right: 3%; font-size: 10px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
+                                <div style="position: absolute; top: 61%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
                                     {{ getOfficerName(ont) }}
                                 </div>
                                 
                                 <!-- Overlay: Tanggal Aktivasi -->
-                                <div style="position: absolute; top: 73.5%; left: 38%; right: 3%; font-size: 10px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
+                                <div style="position: absolute; top: 76%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
                                     {{ formatDate(ont.created_at) }}
                                 </div>
                                 
                                 <!-- Overlay: ID-O -->
-                                <div style="position: absolute; top: 88.5%; left: 38%; right: 3%; font-size: 10px; font-weight: 800; color: #4c1d95; font-family: 'Consolas', 'Courier New', monospace; line-height: 1;">
+                                <div style="position: absolute; top: 91%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 12px; font-weight: 800; color: #4c1d95; font-family: 'Consolas', 'Courier New', monospace; line-height: 1;">
                                     {{ ont.ont_id || '-' }}
                                 </div>
                             </div>
