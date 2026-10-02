@@ -45,13 +45,20 @@ class UserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => ['required', 'string', 'exists:roles,name'],
-            'area_id' => 'nullable|exists:areas,id',
             'is_active' => 'boolean',
         ]);
+
+        $employee = \App\Models\Employee::where('email', $validated['email'])->first();
+
+        if (!$employee) {
+            return back()->withErrors(['email' => 'Email tidak ditemukan di Data Karyawan.']);
+        }
+
+        $validated['name'] = $employee->name;
+        $validated['role'] = strtolower($employee->position ?? 'noc');
+        $validated['area_id'] = $employee->area_id;
 
         $validated['password'] = Hash::make($validated['password']);
         $validated['is_active'] = $request->boolean('is_active', true);
@@ -59,6 +66,7 @@ class UserController extends Controller
         $user = User::create($validated);
         
         // Assign Spatie role
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
         $user->assignRole($validated['role']);
 
         return redirect()->route('users.index')->with('success', 'User berhasil ditambahkan.');
@@ -70,13 +78,20 @@ class UserController extends Controller
     public function update(Request $request, User $user): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:8',
-            'role' => ['required', 'string', 'exists:roles,name'],
-            'area_id' => 'nullable|exists:areas,id',
             'is_active' => 'boolean',
         ]);
+
+        $employee = \App\Models\Employee::where('email', $validated['email'])->first();
+
+        if (!$employee) {
+            return back()->withErrors(['email' => 'Email tidak ditemukan di Data Karyawan.']);
+        }
+
+        $validated['name'] = $employee->name;
+        $validated['role'] = strtolower($employee->position ?? 'noc');
+        $validated['area_id'] = $employee->area_id;
 
         if (!empty($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
@@ -89,6 +104,7 @@ class UserController extends Controller
         $user->update($validated);
         
         // Sync Spatie role
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
         $user->syncRoles([$validated['role']]);
 
         return redirect()->route('users.index')->with('success', 'Data user berhasil diperbarui.');
