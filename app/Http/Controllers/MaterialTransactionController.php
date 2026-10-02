@@ -16,6 +16,10 @@ class MaterialTransactionController extends Controller
     {
         $query = MaterialTransaction::with(['user', 'items.material', 'areaModel']);
 
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('material_transactions_view_all')) {
+            $query->where('user_id', auth()->id());
+        }
+
         if ($request->search) {
             $query->where(function($q) use ($request) {
                 $q->where('transaction_number', 'like', '%' . $request->search . '%')
@@ -44,6 +48,11 @@ class MaterialTransactionController extends Controller
 
         // Calculations for cards
         $baseQuery = MaterialTransaction::query();
+        
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('material_transactions_view_all')) {
+            $baseQuery->where('user_id', auth()->id());
+        }
+
         if ($request->start_date) {
             $baseQuery->whereDate('date', '>=', $request->start_date);
         }
@@ -59,6 +68,9 @@ class MaterialTransactionController extends Controller
         
         // Total Items
         $totalItems = MaterialTransactionItem::whereHas('transaction', function($q) use ($request) {
+            if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('material_transactions_view_all')) {
+                $q->where('user_id', auth()->id());
+            }
             if ($request->start_date) {
                 $q->whereDate('date', '>=', $request->start_date);
             }

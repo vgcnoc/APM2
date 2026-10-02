@@ -24,6 +24,17 @@ class CustomerController extends Controller
     public function index(Request $request): Response
     {
         $customers = Customer::with(['package', 'ont.odp'])
+            ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
+                $q->where(function($sub) {
+                    $sub->where('sales_id', auth()->id())
+                        ->orWhereHas('technicianSchedules', function($sq) {
+                            $sq->where('technician_id', auth()->id());
+                        })
+                        ->orWhereHas('surveys', function($sq) {
+                            $sq->where('surveyor_id', auth()->id());
+                        });
+                });
+            })
             ->search($request->search)
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
@@ -52,6 +63,9 @@ class CustomerController extends Controller
     public function booking(Request $request): Response
     {
         $query = Customer::booking()
+            ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_booking_view_all'), function($q) {
+                $q->where('sales_id', auth()->id());
+            })
             ->when($request->date, function ($q, $date) {
                 $q->whereDate('created_at', $date);
             })
@@ -98,12 +112,19 @@ class CustomerController extends Controller
     {
         $tab = $request->tab ?? 'semua';
         
-        if (auth()->check() && auth()->user()->role === 'teknisi') {
-            $request->merge(['technician_id' => auth()->id()]);
-        }
-        
         $baseQuery = Customer::survey()
             ->with(['surveys.odp', 'surveys.surveyor', 'technicianSchedules.technician'])
+            ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_survey_view_all'), function($q) {
+                $q->where(function($sub) {
+                    $sub->where('sales_id', auth()->id())
+                        ->orWhereHas('technicianSchedules', function($sq) {
+                            $sq->where('technician_id', auth()->id());
+                        })
+                        ->orWhereHas('surveys', function($sq) {
+                            $sq->where('surveyor_id', auth()->id());
+                        });
+                });
+            })
             ->when($request->technician_id, function ($q, $techId) {
                 $q->where(function ($sub) use ($techId) {
                     $sub->whereHas('technicianSchedules', function ($sq) use ($techId) {
@@ -185,9 +206,12 @@ class CustomerController extends Controller
     {
         $baseQuery = Customer::whereIn('status', ['installing', 'active']);
         
-        if (auth()->check() && auth()->user()->role === 'teknisi') {
-            $baseQuery->whereHas('technicianSchedules', function ($q) {
-                $q->where('technician_id', auth()->id())->where('type', 'installation');
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_installed_view_all')) {
+            $baseQuery->where(function($q) {
+                $q->where('sales_id', auth()->id())
+                  ->orWhereHas('technicianSchedules', function ($sq) {
+                      $sq->where('technician_id', auth()->id())->where('type', 'installation');
+                  });
             });
         }
         
@@ -299,6 +323,15 @@ class CustomerController extends Controller
     {
         $baseQuery = Customer::installed()->where('status', 'installing')->where('is_audited', true);
         
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_activation_view_all')) {
+            $baseQuery->where(function($q) {
+                $q->where('sales_id', auth()->id())
+                  ->orWhereHas('technicianSchedules', function ($sq) {
+                      $sq->where('technician_id', auth()->id())->where('type', 'installation');
+                  });
+            });
+        }
+        
         $stats = [
             'aktivasi' => (clone $baseQuery)->count(),
         ];
@@ -325,6 +358,15 @@ class CustomerController extends Controller
     public function active(Request $request): Response
     {
         $baseQuery = Customer::where('status', 'active');
+        
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_active_view_all')) {
+            $baseQuery->where(function($q) {
+                $q->where('sales_id', auth()->id())
+                  ->orWhereHas('technicianSchedules', function ($sq) {
+                      $sq->where('technician_id', auth()->id());
+                  });
+            });
+        }
         
         $stats = [
             'aktif' => (clone $baseQuery)->count(),

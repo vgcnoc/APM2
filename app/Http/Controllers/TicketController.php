@@ -14,6 +14,10 @@ class TicketController extends Controller
     {
         $query = Ticket::with(['customer', 'assignee']);
 
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('tickets_view_all')) {
+            $query->where('assigned_to', auth()->id());
+        }
+
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
             $query->where(function($q) use ($search) {
