@@ -156,7 +156,7 @@
                 <div class="flex items-center justify-end gap-1.5">
                     
                     <!-- 1. Belum Dijadwalkan -->
-                    <button v-if="getCustomerProgressStatus(row) === 'jadwal_pasang' && hasPermission('jadwal_pasang')" 
+                    <button v-if="getCustomerProgressStatus(row) === 'jadwal_pasang' && hasPermission('customers_installed_assign')" 
                         @click="openAssignModal(row)" 
                         class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Jadwalkan Teknisi">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -164,7 +164,7 @@
                     </button>
                     
                     <!-- 2. Menunggu Laporan Teknisi -->
-                    <Link v-if="getCustomerProgressStatus(row) === 'laporan_pasang' && hasPermission('laporan_instalasi')" 
+                    <Link v-if="getCustomerProgressStatus(row) === 'laporan_pasang' && hasPermission('customers_installed_report')" 
                         :href="`/customers/${row.id}?source=instalasi`" 
                         class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Input Laporan Instalasi">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
@@ -173,7 +173,7 @@
 
 
                     <!-- 3. Selesai Pasang, Menunggu Audit Admin -->
-                    <div v-if="getCustomerProgressStatus(row) === 'audit'" class="flex gap-1.5">
+                    <div v-if="getCustomerProgressStatus(row) === 'audit' && hasPermission('customers_installed_audit')" class="flex gap-1.5">
                         <Link :href="`/customers/${row.id}?source=instalasi`" 
                             class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Review Hasil Pemasangan">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
