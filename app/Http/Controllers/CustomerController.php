@@ -458,7 +458,7 @@ class CustomerController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        if (!auth()->user()->can('booking_create')) {
+        if (!auth()->user()->can('customers_booking_create')) {
             abort(403, 'Anda tidak memiliki hak akses untuk membuat booking.');
         }
 
@@ -655,7 +655,7 @@ class CustomerController extends Controller
      */
     public function assignOnt(Request $request, Customer $customer): RedirectResponse
     {
-        if (!auth()->user()->can('laporan_instalasi')) {
+        if (!auth()->user()->can('customers_installed_report')) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengisi laporan instalasi.');
         }
 
@@ -764,7 +764,7 @@ class CustomerController extends Controller
      */
     public function audit(Request $request, Customer $customer): RedirectResponse
     {
-        if (!auth()->user()->can('audit')) {
+        if (!auth()->user()->can('customers_installed_audit')) {
             abort(403, 'Anda tidak memiliki hak akses untuk melakukan audit.');
         }
 
@@ -790,7 +790,7 @@ class CustomerController extends Controller
      */
     public function activate(Request $request, Customer $customer): RedirectResponse
     {
-        if (!auth()->user()->can('aktivasi')) {
+        if (!auth()->user()->can('customers_activation_activate')) {
             abort(403, 'Anda tidak memiliki hak akses untuk melakukan aktivasi.');
         }
 
@@ -864,7 +864,7 @@ class CustomerController extends Controller
      */
     public function assignSurvey(Request $request, Customer $customer): RedirectResponse
     {
-        if (!auth()->user()->can('jadwal_survey')) {
+        if (!auth()->user()->can('customers_survey_assign')) {
             abort(403, 'Anda tidak memiliki hak akses untuk menjadwalkan survey.');
         }
 
@@ -901,7 +901,7 @@ class CustomerController extends Controller
      */
     public function rescheduleSurvey(Request $request, Customer $customer): RedirectResponse
     {
-        if (!auth()->user()->can('jadwal_survey')) {
+        if (!auth()->user()->can('customers_survey_assign')) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengubah jadwal survey.');
         }
 
@@ -949,7 +949,7 @@ class CustomerController extends Controller
      */
     public function assignInstall(Request $request, Customer $customer): RedirectResponse
     {
-        if (!auth()->user()->can('jadwal_pasang')) {
+        if (!auth()->user()->can('customers_installed_assign')) {
             abort(403, 'Anda tidak memiliki hak akses untuk menjadwalkan instalasi.');
         }
 
@@ -1116,7 +1116,7 @@ class CustomerController extends Controller
      */
     public function storeSurvey(Request $request, Customer $customer): RedirectResponse
     {
-        if (!auth()->user()->can('laporan_survey')) {
+        if (!auth()->user()->can('customers_survey_report')) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengisi laporan survey.');
         }
 
@@ -1182,7 +1182,7 @@ class CustomerController extends Controller
      */
     public function markInstalling(Customer $customer): RedirectResponse
     {
-        if (!auth()->user()->can('ready_instalasi')) {
+        if (!auth()->user()->can('customers_survey_mark_ready')) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengubah status ke Ready Instalasi.');
         }
 
