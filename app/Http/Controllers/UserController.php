@@ -51,7 +51,10 @@ class UserController extends Controller
         $validated['password'] = Hash::make($validated['password']);
         $validated['is_active'] = $request->boolean('is_active', true);
 
-        User::create($validated);
+        $user = User::create($validated);
+        
+        // Assign Spatie role
+        $user->assignRole($validated['role']);
 
         return redirect()->route('users.index')->with('success', 'User berhasil ditambahkan.');
     }
@@ -78,6 +81,9 @@ class UserController extends Controller
         $validated['is_active'] = $request->boolean('is_active', true);
 
         $user->update($validated);
+        
+        // Sync Spatie role
+        $user->syncRoles([$validated['role']]);
 
         return redirect()->route('users.index')->with('success', 'Data user berhasil diperbarui.');
     }
