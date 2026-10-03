@@ -1184,6 +1184,22 @@ class CustomerController extends Controller
             if ($odp->area_id !== $customer->area_id) {
                 return back()->withErrors(['odp_id' => 'ODP tidak sesuai dengan Area/Wilayah pelanggan.']);
             }
+
+            // Cek ketersediaan port ODP termasuk antrean instalasi (pelanggan yang sudah disurvey tapi belum diinstal)
+            $pendingCount = \App\Models\Customer::whereIn('status', ['survey', 'installing'])
+                ->where('id', '!=', $customer->id) // kecualikan pelanggan ini sendiri
+                ->whereHas('surveys', function($q) use ($odp) {
+                    $q->where('odp_id', $odp->id);
+                })
+                ->whereDoesntHave('ont', function($q) use ($odp) {
+                    $q->where('odp_id', $odp->id);
+                })->count();
+
+            $availablePorts = $odp->total_ports - $odp->used_ports - $pendingCount;
+
+            if ($availablePorts <= 0) {
+                return back()->withErrors(['odp_id' => 'ODP ini sudah penuh (termasuk antrean pelanggan yang belum diinstalasi). Silakan pilih ODP lain.']);
+            }
         }
 
         $photoPaths = [];
