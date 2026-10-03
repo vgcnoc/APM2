@@ -236,47 +236,89 @@
                                             <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                                             Data Instalasi & Jaringan
                                         </h4>
-                                        <div v-if="detailCustomer.ont" class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div class="space-y-1">
-                                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Serial Number ONT</p>
-                                                    <p class="text-sm font-mono text-gray-900 font-medium">{{ detailCustomer.ont.serial_number || '-' }}</p>
+                                        <div v-if="detailCustomer.ont" class="space-y-6">
+                                            <!-- Info Penugasan Pasang -->
+                                            <div class="bg-indigo-50/70 p-4 rounded-xl border border-indigo-100">
+                                                <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
+                                                <div class="flex justify-between items-center py-2 border-b border-indigo-100/50 last:border-0">
+                                                    <span class="text-sm text-gray-500 font-medium">Teknisi</span>
+                                                    <span class="text-sm font-semibold text-gray-900 text-right">{{ getAssignedTechnicians(detailCustomer, 'installation') }}</span>
                                                 </div>
-                                                <div class="space-y-1">
-                                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Redaman (Rx Power)</p>
-                                                    <p class="text-sm text-gray-900 font-medium font-mono" :class="signalClass(detailCustomer.ont.rx_power)">
-                                                        {{ detailCustomer.ont.rx_power ? `${detailCustomer.ont.rx_power} dBm` : '-' }}
-                                                    </p>
+                                                <div class="flex justify-between items-center py-2 border-b border-indigo-100/50 last:border-0">
+                                                    <span class="text-sm text-gray-500 font-medium">Tanggal Pasang</span>
+                                                    <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.technician_schedules?.find(s => s.type === 'installation')?.scheduled_date || '-' }}</span>
                                                 </div>
-                                                <div class="space-y-1">
-                                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">ODP Terhubung</p>
-                                                    <p class="text-sm text-gray-900 font-medium">
-                                                        {{ detailCustomer.ont.odp?.name || '-' }}
-                                                    </p>
-                                                </div>
-                                                <div class="space-y-1">
-                                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Port ODP</p>
-                                                    <p class="text-sm text-gray-900 font-medium">
-                                                        {{ detailCustomer.ont.port_number ? `Port ${detailCustomer.ont.port_number}` : '-' }}
-                                                    </p>
-                                                </div>
-                                                <div class="space-y-1">
-                                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">PPPoE User</p>
-                                                    <p class="text-sm font-mono text-gray-900">{{ detailCustomer.ont.login_user || '-' }}</p>
-                                                </div>
-                                                <div class="space-y-1">
-                                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">PPPoE Password</p>
-                                                    <p class="text-sm font-mono text-gray-900">{{ detailCustomer.ont.login_password || '-' }}</p>
-                                                </div>
-                                                <div class="space-y-1">
-                                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Catatan Teknisi</p>
-                                                    <p class="text-sm text-gray-700 italic">{{ detailCustomer.ont.notes || '-' }}</p>
+                                            </div>
+                                            
+                                            <!-- Kebutuhan Material -->
+                                            <div v-if="hardwareItems.length > 0" class="bg-amber-50/70 p-4 rounded-xl border border-amber-100">
+                                                <p class="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-3">Kebutuhan Material (Telah Dipasang)</p>
+                                                <div class="space-y-2">
+                                                    <div v-for="item in hardwareItems" :key="item.id" class="text-sm text-gray-700 bg-white p-3 rounded-lg border border-amber-200 shadow-sm flex items-center justify-between">
+                                                        <div>
+                                                            <span class="text-xs text-gray-500 font-medium block mb-1">{{ item.type }}</span>
+                                                            <span class="font-bold text-gray-900">{{ item.name }}</span>
+                                                        </div>
+                                                        <div class="text-emerald-600 font-bold flex items-center gap-1 text-sm">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                            Dipasang
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            <!-- Dokumentasi Foto Instalasi -->
-                                            <div v-if="detailCustomer.ont.photos && detailCustomer.ont.photos.length > 0" class="mt-5 border-t border-gray-200 pt-4">
-                                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Dokumentasi Laporan</p>
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div class="space-y-2">
+                                                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                                        <span class="text-sm text-gray-500 font-medium">Waktu Mulai</span>
+                                                        <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.ont?.start_time || '-' }}</span>
+                                                    </div>
+                                                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                                        <span class="text-sm text-gray-500 font-medium">Waktu Selesai</span>
+                                                        <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.ont?.end_time || '-' }}</span>
+                                                    </div>
+                                                </div>
+                                                <div class="space-y-2">
+                                                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                                        <span class="text-sm text-gray-500 font-medium">Port ODP</span>
+                                                        <span class="text-sm font-semibold text-gray-900 text-right">Port {{ detailCustomer.ont?.port_number || '-' }}</span>
+                                                    </div>
+                                                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                                        <span class="text-sm text-gray-500 font-medium">Serial Number (Auto)</span>
+                                                        <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.ont?.serial_number || '-' }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="pt-4 border-t border-gray-200">
+                                                <p class="text-xs text-gray-500 mb-3 uppercase font-semibold">Hasil Dokumentasi Lapangan:</p>
+                                                <div class="flex gap-4 overflow-x-auto pb-2">
+                                                    <div v-if="detailCustomer.ont?.photo_odp" class="shrink-0 group relative">
+                                                        <img :src="`/storage/${detailCustomer.ont.photo_odp}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
+                                                        <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto ODP</div>
+                                                    </div>
+                                                    <div v-if="detailCustomer.ont?.photo_installation" class="shrink-0 group relative">
+                                                        <img :src="`/storage/${detailCustomer.ont.photo_installation}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
+                                                        <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Instalasi</div>
+                                                    </div>
+                                                    <div v-if="detailCustomer.ont?.photo_ont" class="shrink-0 group relative">
+                                                        <img :src="`/storage/${detailCustomer.ont.photo_ont}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
+                                                        <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto ONT</div>
+                                                    </div>
+                                                    <div v-if="detailCustomer.ont?.photo_customer" class="shrink-0 group relative">
+                                                        <img :src="`/storage/${detailCustomer.ont.photo_customer}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
+                                                        <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Selfie</div>
+                                                    </div>
+                                                    <div v-if="detailCustomer.ont?.photo_redaman" class="shrink-0 group relative">
+                                                        <img :src="`/storage/${detailCustomer.ont.photo_redaman}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
+                                                        <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Redaman</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Dokumentasi Foto Instalasi (Legacy) -->
+                                            <div v-if="detailCustomer.ont.photos && detailCustomer.ont.photos.length > 0 && !detailCustomer.ont.photo_odp" class="pt-4 border-t border-gray-200">
+                                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Dokumentasi Laporan (Lama)</p>
                                                 <div class="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-3 gap-3">
                                                     <div v-for="(photo, idx) in detailCustomer.ont.photos" :key="idx" class="relative group rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-gray-100 aspect-square">
                                                         <img :src="`/storage/${photo.path}`" :alt="photo.label" class="w-full h-full object-cover" />
@@ -1167,5 +1209,37 @@ function formatDate(dateStr) {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
+
+const hardwareItems = computed(() => {
+    if (!detailCustomer.value) return [];
+    const schedule = detailCustomer.value.technician_schedules?.find(s => s.type === 'installation');
+    if (!schedule || !schedule.notes) return [];
+    
+    const lines = schedule.notes.split('\n');
+    const items = [];
+    let idCounter = 0;
+    
+    lines.forEach(line => {
+        if (line.startsWith('ONT: ')) {
+            const onts = line.replace('ONT: ', '').split(', ');
+            onts.forEach(ont => {
+                if(ont.trim()) items.push({ id: idCounter++, type: 'ONT', name: ont.trim() });
+            });
+        } else if (line.startsWith('Material: ')) {
+            const mats = line.replace('Material: ', '').split(', ');
+            mats.forEach(mat => {
+                if(mat.trim()) items.push({ id: idCounter++, type: 'Material', name: mat.trim() });
+            });
+        }
+    });
+    return items;
+});
+
+const getAssignedTechnicians = (customer, type) => {
+    if (!customer?.technician_schedules) return '-';
+    const schedules = customer.technician_schedules.filter(s => s.type === type);
+    if (schedules.length === 0) return '-';
+    return schedules.map(s => s.technician?.name).filter(Boolean).join(', ') || '-';
+};
 
 </script>
