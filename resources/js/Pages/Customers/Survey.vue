@@ -29,7 +29,24 @@
             />
         </div>
 
-        <!-- Tabs removed (Moved to sidebar) -->
+        <!-- Tabs Status Filter -->
+        <div class="flex space-x-1 bg-gray-100/70 p-1.5 rounded-xl mb-6 overflow-x-auto shadow-inner border border-gray-200/60">
+            <button @click="selectedStatus = 'semua'; applyFilters()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', selectedStatus === 'semua' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
+                Semua Status
+            </button>
+            <button @click="selectedStatus = 'jadwalkan'; applyFilters()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', selectedStatus === 'jadwalkan' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
+                Belum Dijadwalkan
+            </button>
+            <button @click="selectedStatus = 'laporan'; applyFilters()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', selectedStatus === 'laporan' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
+                Menunggu Laporan
+            </button>
+            <button @click="selectedStatus = 'ready'; applyFilters()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', selectedStatus === 'ready' ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
+                Ready Install (Feasible)
+            </button>
+            <button @click="selectedStatus = 'unfeasible'; applyFilters()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', selectedStatus === 'unfeasible' ? 'bg-white text-rose-600 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
+                Unfeasible
+            </button>
+        </div>
 
         <DataTable
             :columns="columns"
@@ -56,14 +73,7 @@
                     <option v-for="area in areas" :key="area" :value="area">{{ area }}</option>
                 </select>
 
-                <!-- Filter Status -->
-                <select v-model="selectedStatus" class="form-select bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 w-full sm:w-auto">
-                    <option value="semua">Semua Status</option>
-                    <option value="jadwalkan">Belum Dijadwalkan</option>
-                    <option value="laporan">Menunggu Laporan</option>
-                    <option value="ready">Ready Install (Feasible)</option>
-                    <option value="unfeasible">Unfeasible</option>
-                </select>
+
 
                 <!-- Tombol Tampilkan & Reset -->
                 <div class="flex items-center gap-2">
