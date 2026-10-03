@@ -126,7 +126,7 @@ class CustomerController extends Controller
                 if (auth()->user()->hasRole('teknisi')) {
                     $q->where(function($sub) {
                         $sub->whereHas('technicianSchedules', function($sq) {
-                            $sq->where('technician_id', auth()->id());
+                            $sq->where('technician_id', auth()->id())->where('type', 'survey');
                         })
                         ->orWhereHas('surveys', function($sq) {
                             $sq->where('surveyor_id', auth()->id());
@@ -139,7 +139,7 @@ class CustomerController extends Controller
                         $q->where(function($sub) {
                             $sub->where('sales_id', auth()->id())
                                 ->orWhereHas('technicianSchedules', function($sq) {
-                                    $sq->where('technician_id', auth()->id());
+                                    $sq->where('technician_id', auth()->id())->where('type', 'survey');
                                 })
                                 ->orWhereHas('surveys', function($sq) {
                                     $sq->where('surveyor_id', auth()->id());
@@ -151,7 +151,7 @@ class CustomerController extends Controller
             ->when($request->technician_id, function ($q, $techId) {
                 $q->where(function ($sub) use ($techId) {
                     $sub->whereHas('technicianSchedules', function ($sq) use ($techId) {
-                        $sq->where('technician_id', $techId);
+                        $sq->where('technician_id', $techId)->where('type', 'survey');
                     })->orWhereHas('surveys', function ($sq) use ($techId) {
                         $sq->where('surveyor_id', $techId);
                     });
@@ -172,8 +172,8 @@ class CustomerController extends Controller
         // Calculate statistics based on the base query
         $stats = [
             'total' => (clone $baseQuery)->count(),
-            'jadwalkan' => (clone $baseQuery)->where('status', 'survey')->doesntHave('surveys')->doesntHave('technicianSchedules')->count(),
-            'laporan' => (clone $baseQuery)->where('status', 'survey')->doesntHave('surveys')->has('technicianSchedules')->count(),
+            'jadwalkan' => (clone $baseQuery)->where('status', 'survey')->doesntHave('surveys')->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'survey'))->count(),
+            'laporan' => (clone $baseQuery)->where('status', 'survey')->doesntHave('surveys')->whereHas('technicianSchedules', fn($q) => $q->where('type', 'survey'))->count(),
             'ready' => (clone $baseQuery)->where('status', 'survey')->whereHas('surveys', function ($sq) {
                 $sq->where('feasibility', 'feasible');
             })->count(),
@@ -184,10 +184,10 @@ class CustomerController extends Controller
 
         $customers = (clone $baseQuery)
             ->when($tab === 'jadwalkan', function ($q) {
-                $q->where('status', 'survey')->doesntHave('surveys')->doesntHave('technicianSchedules');
+                $q->where('status', 'survey')->doesntHave('surveys')->whereDoesntHave('technicianSchedules', fn($sq) => $sq->where('type', 'survey'));
             })
             ->when($tab === 'laporan', function ($q) {
-                $q->where('status', 'survey')->doesntHave('surveys')->has('technicianSchedules');
+                $q->where('status', 'survey')->doesntHave('surveys')->whereHas('technicianSchedules', fn($sq) => $sq->where('type', 'survey'));
             })
             ->when($tab === 'ready', function ($q) {
                 $q->where('status', 'survey')->whereHas('surveys', function ($sq) {
