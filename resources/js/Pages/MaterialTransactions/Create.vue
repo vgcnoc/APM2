@@ -10,8 +10,8 @@
                         <input v-model="form.date" type="date" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Teknisi / Peminjam *</label>
-                        <input v-model="form.technician_name" type="text" required placeholder="Contoh: Budi, Tim 1" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Petugas *</label>
+                        <input v-model="form.technician_name" type="text" readonly class="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed">
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -134,8 +134,10 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm, Link } from '@inertiajs/vue3';
+import { useForm, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+
+const authUser = usePage().props.auth.user;
 
 const props = defineProps({
     materials: Array,
@@ -158,7 +160,7 @@ const getTodayDate = () => {
 
 const form = useForm({
     date: getTodayDate(),
-    technician_name: '',
+    technician_name: authUser?.name || '',
     purpose: '',
     area_id: '',
     notes: '',

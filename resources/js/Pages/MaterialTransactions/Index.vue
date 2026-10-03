@@ -63,7 +63,7 @@
                                 <input 
                                     v-model="filterForm.search"
                                     type="text" 
-                                    placeholder="Cari No. Transaksi, Teknisi..." 
+                                    placeholder="Cari No. Transaksi, Petugas..." 
                                     class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm bg-white"
                                 >
                                 <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,12 +94,12 @@
 
                         <!-- Technician Filter -->
                         <div>
-                            <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Teknisi</label>
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Petugas</label>
                             <select 
                                 v-model="filterForm.technician"
                                 class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm bg-white"
                             >
-                                <option value="">Semua Teknisi</option>
+                                <option value="">Semua Petugas</option>
                                 <option v-for="tech in technicians" :key="tech" :value="tech">{{ tech }}</option>
                             </select>
                         </div>
@@ -150,7 +150,7 @@
                         <thead>
                             <tr class="bg-gray-50/50 border-b border-gray-100">
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">No. Transaksi / Tgl</th>
-                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tujuan / Teknisi</th>
+                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tujuan / Petugas</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Rincian Barang</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Total Tagihan (Jual)</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>

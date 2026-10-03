@@ -36,7 +36,7 @@
                     <!-- Info -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-12 mb-8">
                         <div>
-                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Diberikan Kepada (Teknisi)</h3>
+                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Diberikan Kepada (Petugas)</h3>
                             <p class="text-base font-bold text-gray-900">{{ transaction.technician_name }}</p>
                             <p class="text-sm text-gray-600 mt-1"><span class="font-medium text-gray-500">Tujuan:</span> {{ transaction.purpose }}</p>
                             <p v-if="transaction.area" class="text-sm text-gray-600 mt-1"><span class="font-medium text-gray-500">Area/Wilayah:</span> {{ transaction.area }}</p>
@@ -115,7 +115,7 @@
                         <div class="text-center">
                             <p class="text-sm font-medium text-gray-600 mb-20">Yang Menerima,</p>
                             <p class="text-sm font-bold text-gray-900 border-b border-gray-900 inline-block px-8 pb-1 uppercase">{{ transaction.technician_name }}</p>
-                            <p class="text-xs text-gray-500 mt-1">Teknisi / Lapangan</p>
+                            <p class="text-xs text-gray-500 mt-1">Petugas / Lapangan</p>
                         </div>
                         <div class="text-center">
                             <p class="text-sm font-medium text-gray-600 mb-20">Yang Menyerahkan,</p>
@@ -164,7 +164,7 @@
                         <div class="mb-5 bg-gray-50 border border-gray-200 rounded-xl p-4">
                             <p class="text-sm text-gray-700 font-medium mb-1">Pendaftaran Otomatis</p>
                             <p class="text-xs text-gray-500 leading-relaxed">
-                                Sistem akan membuatkan <strong>{{ selectedItem?.quantity }} unit</strong> ONT dengan Serial Number (SN) sementara secara otomatis. Anda dapat mengedit SN ini nanti saat teknisi memasang perangkat di rumah pelanggan.
+                                Sistem akan membuatkan <strong>{{ selectedItem?.quantity }} unit</strong> ONT dengan Serial Number (SN) sementara secara otomatis. Anda dapat mengedit SN ini nanti saat petugas memasang perangkat di rumah pelanggan.
                             </p>
                         </div>
 
