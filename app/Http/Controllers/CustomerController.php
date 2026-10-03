@@ -621,11 +621,21 @@ class CustomerController extends Controller
             // Lepaskan ONT jika ada
             if ($customer->ont) {
                 $odp = $customer->ont->odp;
+                $portNumber = $customer->ont->port_number;
+                
+                // Update ODP Port status back to available
+                if ($odp && $portNumber) {
+                    \App\Models\OdpPort::where('odp_id', $odp->id)
+                        ->where('port_number', $portNumber)
+                        ->update(['status' => 'available']);
+                }
+
                 $customer->ont->update([
                     'customer_id' => null, 
                     'status' => 'inactive',
                     'odp_id' => null,
-                    'port_number' => null
+                    'port_number' => null,
+                    'odp_port_id' => null
                 ]);
 
                 // Kurangi used_ports di ODP
@@ -693,7 +703,23 @@ class CustomerController extends Controller
             // Check if customer already has an ONT linked (e.g. from assignInstall)
             $ont = Ont::where('customer_id', $customer->id)->first();
             
+            // Update existing linked ONT or Create new
             if ($ont) {
+                // Free old port if exist
+                if ($ont->odp_id && $ont->port_number) {
+                    \App\Models\OdpPort::where('odp_id', $ont->odp_id)
+                        ->where('port_number', $ont->port_number)
+                        ->update(['status' => 'available']);
+                    
+                    $oldOdp = \App\Models\Odp::find($ont->odp_id);
+                    if ($oldOdp && $oldOdp->used_ports > 0) {
+                        $oldOdp->decrement('used_ports');
+                        if ($oldOdp->used_ports - 1 < $oldOdp->total_ports && $oldOdp->status === 'full') {
+                            $oldOdp->update(['status' => 'active']);
+                        }
+                    }
+                }
+
                 // Update existing linked ONT
                 $ont->update([
                     'odp_id' => $validated['odp_id'],
@@ -727,24 +753,23 @@ class CustomerController extends Controller
                 ]);
             }
 
-            // Update used_ports di ODP
-            $odp = Odp::find($validated['odp_id']);
-            $odp->increment('used_ports');
+            // Update used_ports di ODP baru
+            $newOdp = Odp::find($validated['odp_id']);
+            $newOdp->increment('used_ports');
 
             // Update odp_ports if exists
-            $odpPort = \App\Models\OdpPort::where('odp_id', $odp->id)
+            $newOdpPort = \App\Models\OdpPort::where('odp_id', $newOdp->id)
                 ->where('port_number', $validated['port_number'])
                 ->first();
-            if ($odpPort) {
-                $odpPort->update([
-                    'status' => 'used',
-                    'ont_id' => $ont->id
+            if ($newOdpPort) {
+                $newOdpPort->update([
+                    'status' => 'used'
                 ]);
             }
 
             // Jika ODP penuh, update statusnya
-            if ($odp->used_ports >= $odp->total_ports) {
-                $odp->update(['status' => 'full']);
+            if ($newOdp->used_ports >= $newOdp->total_ports) {
+                $newOdp->update(['status' => 'full']);
             }
 
             // Update status jadwal teknisi ke done jika ada

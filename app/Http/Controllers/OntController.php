@@ -88,8 +88,18 @@ class OntController extends Controller
 
         Ont::create($validated);
 
-        if (isset($validated['odp_id'])) {
-            Odp::find($validated['odp_id'])->increment('used_ports');
+        if (isset($validated['odp_id']) && isset($validated['port_number'])) {
+            $odp = Odp::find($validated['odp_id']);
+            if ($odp) {
+                $odp->increment('used_ports');
+                if ($odp->used_ports >= $odp->total_ports) {
+                    $odp->update(['status' => 'full']);
+                }
+            }
+
+            \App\Models\OdpPort::where('odp_id', $validated['odp_id'])
+                ->where('port_number', $validated['port_number'])
+                ->update(['status' => 'used']);
         }
 
         return redirect()->route('onts.index')
@@ -139,7 +149,42 @@ class OntController extends Controller
             $validated['port_number'] = null;
         }
 
+        $oldOdpId = $ont->odp_id;
+        $oldPortNumber = $ont->port_number;
+        $newOdpId = $validated['odp_id'] ?? null;
+        $newPortNumber = $validated['port_number'] ?? null;
+
+        if ($oldOdpId && $oldPortNumber && ($oldOdpId != $newOdpId || $oldPortNumber != $newPortNumber)) {
+            // Release old port
+            \App\Models\OdpPort::where('odp_id', $oldOdpId)
+                ->where('port_number', $oldPortNumber)
+                ->update(['status' => 'available']);
+                
+            $oldOdp = \App\Models\Odp::find($oldOdpId);
+            if ($oldOdp && $oldOdp->used_ports > 0) {
+                $oldOdp->decrement('used_ports');
+                if ($oldOdp->used_ports - 1 < $oldOdp->total_ports && $oldOdp->status === 'full') {
+                    $oldOdp->update(['status' => 'active']);
+                }
+            }
+        }
+
         $ont->update($validated);
+
+        if ($newOdpId && $newPortNumber && ($oldOdpId != $newOdpId || $oldPortNumber != $newPortNumber)) {
+            // Mark new port as used
+            \App\Models\OdpPort::where('odp_id', $newOdpId)
+                ->where('port_number', $newPortNumber)
+                ->update(['status' => 'used']);
+                
+            $newOdp = \App\Models\Odp::find($newOdpId);
+            if ($newOdp) {
+                $newOdp->increment('used_ports');
+                if ($newOdp->used_ports >= $newOdp->total_ports) {
+                    $newOdp->update(['status' => 'full']);
+                }
+            }
+        }
 
         return redirect()->route('onts.index')
             ->with('success', 'Data ONT berhasil diperbarui.');
@@ -148,8 +193,16 @@ class OntController extends Controller
     public function destroy(Ont $ont): RedirectResponse
     {
         $odp = $ont->odp;
+        $portNumber = $ont->port_number;
         $transactionItemId = $ont->material_transaction_item_id;
         
+        // Update ODP Port status back to available
+        if ($odp && $portNumber) {
+            \App\Models\OdpPort::where('odp_id', $odp->id)
+                ->where('port_number', $portNumber)
+                ->update(['status' => 'available']);
+        }
+
         $ont->delete();
 
         // Decrement port terpakai di ODP
