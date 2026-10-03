@@ -324,45 +324,29 @@
                             <div class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                                 <div class="flex items-center justify-between mb-3">
                                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Material (Surat Jalan)</label>
-                                    <button type="button" @click="assignForm.material_transaction_ids.push('')" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-md focus:outline-none transition-colors border border-transparent hover:border-blue-200 text-xs font-medium flex items-center gap-1" title="Tambah Surat Jalan">
+                                    <button type="button" @click="assignForm.material_items.push({id: '', name: '', qty: 1, unit: '', trx_number: ''})" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-md focus:outline-none transition-colors border border-transparent hover:border-blue-200 text-xs font-medium flex items-center gap-1" title="Tambah Material">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                        Tambah
+                                        Tambah Material
                                     </button>
                                 </div>
                                 <div class="space-y-3">
-                                    <div v-for="(trxId, index) in assignForm.material_transaction_ids" :key="'trx-'+index" class="flex gap-2 items-center group">
-                                        <select v-model="assignForm.material_transaction_ids[index]" @change="updateMaterialItems" class="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all hover:bg-white">
-                                            <option value="">-- Pilih Surat Jalan / Order --</option>
-                                            <option v-for="trx in filteredMaterialTransactions" :key="trx.id" :value="trx.transaction_number">
-                                                {{ getTransactionLabel(trx) }}
+                                    <div v-for="(mItem, index) in assignForm.material_items" :key="'mat-'+index" class="flex gap-2 items-center group">
+                                        <select v-model="assignForm.material_items[index].id" @change="updateMaterialItemDetails(index)" class="flex-1 bg-slate-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all hover:bg-white min-w-0">
+                                            <option value="">-- Pilih Material dari Surat Jalan --</option>
+                                            <option v-for="item in availableMaterialItems" :key="item.id" :value="item.id">
+                                                {{ item.material ? item.material.name : 'Unknown' }} (SJ: {{ item.trx_number }})
                                             </option>
                                         </select>
-                                        <button v-if="assignForm.material_transaction_ids.length > 1" type="button" @click="removeMaterialTransaction(index)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-all focus:outline-none" title="Hapus">
+                                        <div class="flex items-center gap-1.5 shrink-0" v-if="assignForm.material_items[index].id">
+                                            <input v-model="assignForm.material_items[index].qty" type="number" step="0.01" min="0" class="w-20 px-2 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 text-center font-semibold text-blue-700 bg-blue-50/50" placeholder="Qty">
+                                            <span class="text-xs font-medium text-gray-500 w-12 truncate">{{ assignForm.material_items[index].unit }}</span>
+                                        </div>
+                                        <button type="button" @click="assignForm.material_items.splice(index, 1)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-all focus:outline-none shrink-0" title="Hapus">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
                                         </button>
                                     </div>
-                                    
-                                    <!-- Kolom Rincian -->
-                                    <div v-if="assignForm.material_items.length > 0" class="mt-3 p-3.5 bg-slate-50 border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
-                                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-1">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                            Rincian Penggunaan Barang (Bisa disesuaikan):
-                                        </p>
-                                        <ul class="space-y-2">
-                                            <li v-for="(item, idx) in assignForm.material_items" :key="item.id" class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-gray-200 shadow-sm hover:border-blue-200 transition-colors">
-                                                <div class="flex-1 truncate mr-3">
-
-                                                    <span class="text-xs font-bold text-gray-800">{{ item.name || 'Barang' }}</span>
-                                                </div>
-                                                <div class="flex gap-1.5 items-center shrink-0">
-                                                    <input v-model="item.qty" type="number" step="0.01" min="0" class="w-16 px-1.5 py-1 text-xs border border-gray-300 rounded focus:ring-blue-500 text-center font-semibold text-blue-700 bg-blue-50/50" placeholder="Qty">
-                                                    <span class="text-[10px] font-medium text-gray-500 w-8 truncate">{{ item.unit }}</span>
-                                                    <button type="button" @click="assignForm.material_items.splice(idx, 1)" class="text-gray-400 hover:text-red-500 p-1" title="Hapus">
-                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                                    </button>
-                                                </div>
-                                            </li>
-                                        </ul>
+                                    <div v-if="assignForm.material_items.length === 0" class="text-xs text-gray-400 italic text-center py-2">
+                                        Belum ada material yang ditambahkan
                                     </div>
                                 </div>
                             </div>
@@ -731,71 +715,63 @@ const columns = [
     { key: 'signal', label: 'Redaman' },
 ];
 
-function updateMaterialItems() {
-    const validTransactionItemIds = new Set();
-    const newItemsToAdd = [];
-    
-    assignForm.material_transaction_ids.forEach(trxId => {
-        if (!trxId) return;
-        const trx = props.materialTransactions.find(t => t.transaction_number === trxId);
-        if (trx && trx.items) {
-            trx.items.forEach(item => {
-                const name = item.material && item.material.name ? item.material.name.toLowerCase() : '';
-                const category = item.material && item.material.category ? item.material.category.toLowerCase() : '';
-                const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
-                
-                if (!name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem') && !isRegistered) {
-                    validTransactionItemIds.add(item.id);
+const availableMaterialItems = computed(() => {
+    let items = [];
+    if (props.materialTransactions) {
+        props.materialTransactions.forEach(trx => {
+            if (trx.items) {
+                trx.items.forEach(item => {
+                    const name = item.material && item.material.name ? item.material.name.toLowerCase() : '';
+                    const category = item.material && item.material.category ? item.material.category.toLowerCase() : '';
+                    const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
                     
-                    const exists = assignForm.material_items.find(mi => mi.id === item.id);
-                    if (!exists) {
-                        let qty = parseFloat(item.quantity) || 0;
-                        let unit = item.unit || (item.material ? item.material.unit : 'pcs');
-                        
-                        if (item.material && item.material.category === 'Isolasi') {
-                            if (unit === 'pcs' || unit === 'pcs (utuh)') {
-                                qty = qty * (parseFloat(item.material.cm_per_pcs) || 50);
-                                unit = 'cm';
-                            }
-                        } else if (item.material && item.material.category === 'Paku Klem') {
-                            if (unit === 'bungkus' || unit === 'pack') {
-                                qty = qty * (parseFloat(item.material.pcs_per_pack) || 100);
-                                unit = 'pcs';
-                            }
-                        } else if (item.material && (item.material.category === 'Kabel Drop' || item.material.category === 'Kabel Drop / Frecon' || item.material.category === 'Kabel Frecon')) {
-                            if (unit === 'roll' || unit === 'pcs') {
-                                let mpr = parseFloat(item.material.meter_per_roll);
-                                if (mpr && mpr > 0) {
-                                    qty = qty * mpr;
-                                    unit = 'meter';
-                                }
-                            }
-                        }
-                        
-                        newItemsToAdd.push({
-                            id: item.id,
-                            name: item.material ? item.material.name : 'Unknown',
-                            qty: qty,
-                            unit: unit
+                    if (!name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem') && !isRegistered) {
+                        items.push({
+                            ...item,
+                            trx_number: trx.transaction_number,
                         });
                     }
+                });
+            }
+        });
+    }
+    return items;
+});
+
+function updateMaterialItemDetails(index) {
+    const selectedId = assignForm.material_items[index].id;
+    if (!selectedId) return;
+    
+    const item = availableMaterialItems.value.find(i => i.id === selectedId);
+    if (item) {
+        let qty = parseFloat(item.quantity) || 0;
+        let unit = item.unit || (item.material ? item.material.unit : 'pcs');
+        
+        if (item.material && item.material.category === 'Isolasi') {
+            if (unit === 'pcs' || unit === 'pcs (utuh)') {
+                qty = qty * (parseFloat(item.material.cm_per_pcs) || 50);
+                unit = 'cm';
+            }
+        } else if (item.material && item.material.category === 'Paku Klem') {
+            if (unit === 'bungkus' || unit === 'pack') {
+                qty = qty * (parseFloat(item.material.pcs_per_pack) || 100);
+                unit = 'pcs';
+            }
+        } else if (item.material && (item.material.category === 'Kabel Drop' || item.material.category === 'Kabel Drop / Frecon' || item.material.category === 'Kabel Frecon')) {
+            if (unit === 'roll' || unit === 'pcs') {
+                let mpr = parseFloat(item.material.meter_per_roll);
+                if (mpr && mpr > 0) {
+                    qty = qty * mpr;
+                    unit = 'meter';
                 }
-            });
+            }
         }
-    });
-
-    // Filter existing items to keep manual items and valid transaction items
-    assignForm.material_items = assignForm.material_items.filter(mi => 
-        String(mi.id).startsWith('manual-') || validTransactionItemIds.has(mi.id)
-    );
-
-    // Append new items
-    assignForm.material_items.push(...newItemsToAdd);
-}
-
-function removeMaterialTransaction(index) {
-    assignForm.material_transaction_ids.splice(index, 1);
-    updateMaterialItems();
+        
+        assignForm.material_items[index].name = item.material ? item.material.name : 'Unknown';
+        assignForm.material_items[index].qty = qty;
+        assignForm.material_items[index].unit = unit;
+        assignForm.material_items[index].trx_number = item.trx_number;
+    }
 }
 
 function addManualMaterial() {
@@ -927,6 +903,15 @@ function submitAssign() {
         alert('ERROR: Customer tidak ditemukan! activeCustomer.value = ' + JSON.stringify(activeCustomer.value));
         return;
     }
+    
+    // Auto-populate material_transaction_ids based on material_items
+    const trxSet = new Set();
+    assignForm.material_items.forEach(item => {
+        if (item.trx_number) {
+            trxSet.add(item.trx_number);
+        }
+    });
+    assignForm.material_transaction_ids = Array.from(trxSet);
     
     const url = `/customers/${activeCustomer.value.id}/assign-install`;
     console.log('submitAssign URL:', url);
