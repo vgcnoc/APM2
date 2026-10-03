@@ -176,7 +176,20 @@ const menuItems = [
             { href: '/customers/survey?tab=unfeasible', label: 'Unfeasible', active: (url) => (url || '').includes('tab=unfeasible'), permission: 'customers_survey_tab_unfeasible' },
         ]
     },
-    { type: 'link', href: '/customers/installed', icon: 'cog', label: 'Instalasi', active: (url) => (url || '').startsWith('/customers/installed'), permission: 'menu_customers_installed' },
+    { 
+        type: 'dropdown', 
+        icon: 'cog', 
+        label: 'Instalasi', 
+        active: (url) => (url || '').startsWith('/customers/installed'), 
+        permission: 'menu_customers_installed',
+        children: [
+            { href: '/customers/installed', label: 'Semua Instalasi', active: (url) => (url || '').startsWith('/customers/installed') && !(url || '').includes('tab='), permission: 'customers_installed_tab_semua' },
+            { href: '/customers/installed?tab=jadwal_pasang', label: 'Jadwal Pasang', active: (url) => (url || '').includes('tab=jadwal_pasang'), permission: 'customers_installed_tab_jadwal' },
+            { href: '/customers/installed?tab=laporan_pasang', label: 'Laporan Pasang', active: (url) => (url || '').includes('tab=laporan_pasang'), permission: 'customers_installed_tab_laporan' },
+            { href: '/customers/installed?tab=audit', label: 'Audit', active: (url) => (url || '').includes('tab=audit'), permission: 'customers_installed_tab_audit' },
+            { href: '/customers/installed?tab=selesai_instalasi', label: 'Selesai Instalasi', active: (url) => (url || '').includes('tab=selesai_instalasi'), permission: 'customers_installed_tab_selesai' },
+        ]
+    },
     { type: 'link', href: '/customers/activation', icon: 'key', label: 'Aktivasi', active: (url) => (url || '').startsWith('/customers/activation'), permission: 'menu_customers_activation' },
     { type: 'link', href: '/customers/active', icon: 'badge-check', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: 'menu_customers_active' },
     { type: 'link', href: '/customers', icon: 'users', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
