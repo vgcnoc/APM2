@@ -856,6 +856,9 @@ class CustomerController extends Controller
             'login_user' => 'nullable|string',
             'login_password' => 'nullable|string',
             'notes' => 'nullable|string',
+            'free_hotspot' => 'boolean',
+            'hotspot_user' => 'nullable|string',
+            'hotspot_password' => 'nullable|string',
         ]);
 
         if ($customer->status === 'installing' && $customer->is_audited && $customer->ont) {
@@ -875,6 +878,9 @@ class CustomerController extends Controller
                     'ip_login' => $validated['ip_login'],
                     'login_user' => $validated['login_user'],
                     'login_password' => $validated['login_password'],
+                    'free_hotspot' => $validated['free_hotspot'] ?? false,
+                    'hotspot_user' => $validated['hotspot_user'],
+                    'hotspot_password' => $validated['hotspot_password'],
                 ]);
             });
 

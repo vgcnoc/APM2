@@ -356,6 +356,25 @@
                             </div>
                         </div>
                         
+                        <!-- Hotspot Gratis -->
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" v-model="activationForm.free_hotspot" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 w-4 h-4">
+                                <span class="text-sm font-semibold text-gray-700">Berikan Gratis 1 User Hotspot</span>
+                            </label>
+
+                            <div v-if="activationForm.free_hotspot" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">User Hotspot</label>
+                                    <input v-model="activationForm.hotspot_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="user_hotspot" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Password Hotspot</label>
+                                    <input v-model="activationForm.hotspot_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="***" />
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Catatan Tambahan (Opsional)</label>
                             <textarea v-model="activationForm.notes" rows="2" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="Catatan internal setelah aktivasi..."></textarea>
@@ -620,7 +639,10 @@ const activationForm = useForm({
     ip_login: '192.168.1.1',
     login_user: 'admin',
     login_password: 'admin',
-    notes: ''
+    notes: '',
+    free_hotspot: false,
+    hotspot_user: '',
+    hotspot_password: ''
 });
 
 function openActivationModal(customer) {
@@ -636,6 +658,9 @@ function openActivationModal(customer) {
     activationForm.login_user = customer.ont?.login_user || 'admin';
     activationForm.login_password = customer.ont?.login_password || 'admin';
     activationForm.notes = '';
+    activationForm.free_hotspot = !!customer.ont?.free_hotspot;
+    activationForm.hotspot_user = customer.ont?.hotspot_user || '';
+    activationForm.hotspot_password = customer.ont?.hotspot_password || '';
     showActivationModal.value = true;
 }
 
