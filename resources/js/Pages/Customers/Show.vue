@@ -34,7 +34,7 @@
                         </div>
 
                         <div class="flex gap-2 pt-2">
-                            <Link :href="`/customers/${customer.id}/edit`" class="btn-primary flex-1 justify-center py-2.5 text-sm shadow-md hover:shadow-lg transition-all">
+                            <Link v-if="canEditProfile" :href="`/customers/${customer.id}/edit`" class="btn-primary flex-1 justify-center py-2.5 text-sm shadow-md hover:shadow-lg transition-all">
                                 Edit Profil
                             </Link>
                             <Link href="/customers" class="btn-ghost flex-1 justify-center py-2.5 text-sm transition-all hover:bg-slate-100">
@@ -977,6 +977,17 @@ const hasPermission = (permission) => {
 };
 
 const props = defineProps({ customer: Object, availableOdps: Array, availableOnts: Array, source: String });
+
+const canEditProfile = computed(() => {
+    if (hasPermission('customers_all_edit')) return true;
+    switch (props.customer.status) {
+        case 'booking': return hasPermission('customers_booking_edit');
+        case 'survey': return hasPermission('customers_survey_edit');
+        case 'installing': return hasPermission('customers_installed_edit');
+        case 'active': return hasPermission('customers_active_edit');
+        default: return false;
+    }
+});
 
 const isInstallationScheduled = computed(() => {
     return props.customer.technician_schedules && props.customer.technician_schedules.some(s => s.type === 'installation' && s.status === 'scheduled');
