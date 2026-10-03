@@ -275,7 +275,7 @@
                     </div>
                 </div>
                 
-                <div v-show="source === 'instalasi' || ((activeTab === 'audit' || activeTab === 'installation') && (isAudit || customer.status === 'active'))" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
+                <div v-show="(!isEditingInstallation && !isLaporanPasang) && (source === 'instalasi' || ((activeTab === 'audit' || activeTab === 'installation') && (isAudit || customer.status === 'active')))" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
                     <div v-if="source !== 'instalasi'" class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
                             <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">{{ activeTab === 'audit' ? '🛡️' : '✅' }}</span>
@@ -356,7 +356,7 @@
                     </div>
 
                 <!-- Instalasi Section (Form) -->
-                <div v-show="source !== 'instalasi' && activeTab === 'installation' && (isLaporanPasang || isEditingInstallation) && (hasPermission('customers_installed_report') || hasPermission('customers_installed_edit'))" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
+                <div v-show="(source === 'instalasi' || activeTab === 'installation') && (isLaporanPasang || isEditingInstallation) && (hasPermission('customers_installed_report') || hasPermission('customers_installed_edit'))" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
                             <span class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">🚀</span>
