@@ -129,7 +129,7 @@ const menuItems = [
     { type: 'link', href: '/', icon: 'dashboard', label: 'Dashboard', active: (url) => (url || '').length > 0 && url === '/', permission: 'menu_dashboard' },
     { type: 'group', label: 'DATA CUSTOMERS' },
     { type: 'link', href: '/customers/booking', icon: 'document-add', label: 'Data Booking', active: (url) => (url || '').startsWith('/customers/booking'), permission: 'menu_customers_booking' },
-    { type: 'link', href: '/customers/survey', icon: 'clipboard-check', label: 'Survey ODP', active: (url) => (url || '').startsWith('/customers/survey') && !(url || '').includes('tab='), permission: 'menu_customers_survey' },
+    { type: 'link', href: '/customers/survey', icon: 'clipboard-check', label: 'Survey', active: (url) => (url || '').startsWith('/customers/survey') && !(url || '').includes('tab='), permission: 'menu_customers_survey' },
     { type: 'link', href: '/customers/survey?tab=jadwalkan', icon: 'submenu-dot', label: 'Jadwalkan', indent: true, active: (url) => (url || '').includes('tab=jadwalkan'), permission: 'customers_survey_tab_jadwalkan' },
     { type: 'link', href: '/customers/survey?tab=laporan', icon: 'submenu-dot', label: 'Isi Laporan', indent: true, active: (url) => (url || '').includes('tab=laporan'), permission: 'customers_survey_tab_laporan' },
     { type: 'link', href: '/customers/survey?tab=ready', icon: 'submenu-dot', label: 'Ready Install', indent: true, active: (url) => (url || '').includes('tab=ready'), permission: 'customers_survey_tab_ready' },
