@@ -203,7 +203,8 @@
                                                 <span v-else class="font-medium text-gray-400 italic">ONT Inventori</span>
                                             </template>
                                             <template v-else>
-                                                <div class="w-2 h-2 rounded-full shrink-0 bg-red-400"></div>
+                                                <div class="w-2 h-2 rounded-full shrink-0 bg-gray-300"></div>
+                                                <span class="font-medium text-emerald-600/70 italic">Kosong / Available</span>
                                             </template>
                                         </div>
                                     </div>
