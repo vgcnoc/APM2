@@ -357,4 +357,66 @@ class MaterialTransactionController extends Controller
                 ->with('error', 'Gagal menghapus riwayat order: ' . $e->getMessage());
         }
     }
+
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:material_transactions,id',
+        ]);
+
+        try {
+            DB::transaction(function () use ($request) {
+                $transactions = MaterialTransaction::with('items.material')->whereIn('id', $request->ids)->get();
+                
+                foreach ($transactions as $transaction) {
+                    // Restore stock
+                    foreach ($transaction->items as $item) {
+                        $material = $item->material;
+                        if ($material) {
+                            $addition = $item->quantity;
+                            if ($material->category === 'Kabel' && ($item->unit === 'roll' || $item->unit === 'rol')) {
+                                $addition = $item->quantity * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
+                            }
+                            if ($material->category === 'Paku Klem' && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
+                                $addition = $item->quantity * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
+                            }
+                            if ($material->category === 'Isolasi' && ($item->unit === 'pcs')) {
+                                $addition = $item->quantity * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                            }
+                            $materialStock = \App\Models\MaterialStock::firstOrCreate(
+                                ['material_id' => $material->id, 'area_id' => $transaction->area_id],
+                                ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                            );
+
+                            $material->stock += $addition;
+                            $materialStock->stock += $addition;
+                            
+                            if ($material->category === 'Kabel' && $material->meter_per_roll > 0) {
+                                $material->total_rolls = $material->stock / $material->meter_per_roll;
+                                $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
+                            }
+                            if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
+                                $material->total_packs = $material->stock / $material->pcs_per_pack;
+                                $materialStock->total_packs = $materialStock->stock / $material->pcs_per_pack;
+                            }
+                            if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
+                                $material->total_pieces = $material->stock / $material->cm_per_pcs;
+                                $materialStock->total_pieces = $materialStock->stock / $material->cm_per_pcs;
+                            }
+                            $material->save();
+                            $materialStock->save();
+                        }
+                    }
+                    
+                    // Delete the transaction
+                    $transaction->delete();
+                }
+            });
+
+            return redirect()->back()->with('success', 'Berhasil menghapus ' . count($request->ids) . ' transaksi dan stok telah dikembalikan.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
 }

@@ -207,7 +207,7 @@
                                         <div class="flex gap-2 items-center">
                                             <select v-model="assignForm.ont_models[index]" class="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all truncate hover:bg-white">
                                                 <option value="">-- Pilih ONT --</option>
-                                                <option v-for="ontOption in availableOnts" :key="ontOption.id" :value="ontOption.id">
+                                                <option v-for="ontOption in filteredOnts" :key="ontOption.id" :value="ontOption.id">
                                                     {{ ontOption.brand }} {{ ontOption.model || '' }} - SN: {{ ontOption.serial_number }}
                                                 </option>
                                             </select>
@@ -243,7 +243,7 @@
                                     <div v-for="(trxId, index) in assignForm.material_transaction_ids" :key="'trx-'+index" class="flex gap-2 items-center group">
                                         <select v-model="assignForm.material_transaction_ids[index]" @change="updateMaterialItems" class="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all hover:bg-white">
                                             <option value="">-- Pilih Surat Jalan / Order --</option>
-                                            <option v-for="trx in materialTransactions" :key="trx.id" :value="trx.transaction_number">
+                                            <option v-for="trx in filteredMaterialTransactions" :key="trx.id" :value="trx.transaction_number">
                                                 {{ getTransactionLabel(trx) }}
                                             </option>
                                         </select>
@@ -502,6 +502,17 @@ function bulkDelete() {
         });
     }
 }
+
+const filteredOnts = computed(() => {
+    let onts = props.availableOnts.filter(ont => ont.status === 'Sudah Set');
+    if (!activeCustomer.value || !activeCustomer.value.area_id) return onts;
+    return onts.filter(ont => ont.area_id == activeCustomer.value.area_id);
+});
+
+const filteredMaterialTransactions = computed(() => {
+    if (!activeCustomer.value || !activeCustomer.value.area_id) return props.materialTransactions;
+    return props.materialTransactions.filter(trx => trx.area_id == activeCustomer.value.area_id);
+});
 
 const columns = [
     { key: 'name', label: 'Pelanggan' },

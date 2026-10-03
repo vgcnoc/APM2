@@ -119,6 +119,14 @@
 
                     <div class="flex items-end gap-3 shrink-0">
                         <button 
+                            v-if="selectedItems.length > 0"
+                            @click="deleteSelected"
+                            class="px-4 py-2.5 rounded-xl border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-medium text-sm transition-all flex items-center gap-2"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            Hapus ({{ selectedItems.length }})
+                        </button>
+                        <button 
                             @click="resetFilters" 
                             class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 font-medium text-sm transition-all flex items-center gap-2"
                         >
@@ -149,6 +157,9 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50/50 border-b border-gray-100">
+                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 w-12">
+                                    <input type="checkbox" @change="toggleAll" :checked="isAllSelected" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 transition-all">
+                                </th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">No. Transaksi / Tgl</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tujuan / Petugas</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Rincian Barang</th>
@@ -158,6 +169,9 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="item in transactions.data" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
+                                <td class="py-4 px-6 align-top">
+                                    <input type="checkbox" v-model="selectedItems" :value="item.id" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 mt-1 transition-all">
+                                </td>
                                 <td class="py-4 px-6 align-top">
                                     <p class="text-sm font-bold text-gray-900">{{ item.transaction_number }}</p>
                                     <p class="text-xs text-gray-500 mt-0.5">{{ item.date }}</p>
@@ -200,11 +214,17 @@
                                             </svg>
                                             Detail
                                         </Link>
+                                        <button @click="deleteItem(item)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                            Hapus
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
                             <tr v-if="transactions.data.length === 0">
-                                <td colspan="4" class="py-12 text-center">
+                                <td colspan="6" class="py-12 text-center">
                                     <div class="flex flex-col items-center justify-center text-gray-400">
                                         <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -245,7 +265,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -311,5 +331,43 @@ const resetFilters = () => {
         technician: '',
         area_id: '',
     };
+};
+
+const selectedItems = ref([]);
+
+const isAllSelected = computed(() => {
+    return props.transactions.data.length > 0 && selectedItems.value.length === props.transactions.data.length;
+});
+
+const toggleAll = (e) => {
+    if (e.target.checked) {
+        selectedItems.value = props.transactions.data.map(item => item.id);
+    } else {
+        selectedItems.value = [];
+    }
+};
+
+const deleteItem = (item) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus transaksi ${item.transaction_number}? Stok barang akan dikembalikan ke gudang.`)) {
+        router.post(`/material-transactions/${item.id}/delete`, {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                selectedItems.value = selectedItems.value.filter(id => id !== item.id);
+            }
+        });
+    }
+};
+
+const deleteSelected = () => {
+    if (confirm(`Apakah Anda yakin ingin menghapus ${selectedItems.value.length} transaksi yang dipilih? Stok barang akan dikembalikan ke gudang.`)) {
+        router.post('/material-transactions/bulk-destroy', {
+            ids: selectedItems.value
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                selectedItems.value = [];
+            }
+        });
+    }
 };
 </script>
