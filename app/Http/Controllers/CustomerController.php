@@ -207,7 +207,8 @@ class CustomerController extends Controller
             ->with('odc.olt')
             ->get();
             
-        $technicians = User::where('role', 'teknisi')->where('is_active', true)->get();
+        // Ambil semua user yang memiliki hak akses untuk mengisi laporan survey/instalasi
+        $technicians = User::permission(['customers_survey_report', 'customers_installed_report'])->where('is_active', true)->get();
 
         // Get all areas for dropdown
         $areas = \App\Models\Area::orderBy('name')->pluck('name')->toArray();
@@ -326,7 +327,8 @@ class CustomerController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $technicians = User::where('role', 'teknisi')->where('is_active', true)->get();
+        // Ambil semua user yang memiliki hak akses untuk mengisi laporan
+        $technicians = User::permission(['customers_survey_report', 'customers_installed_report'])->where('is_active', true)->get();
         $availableOnts = \App\Models\Ont::whereIn('status', ['Sudah Set', 'Belum Set/Baru Input', 'inactive'])
             ->whereNull('customer_id')
             ->get();
@@ -438,7 +440,7 @@ class CustomerController extends Controller
     {
         $areas = \App\Models\Area::pluck('name');
         
-        $sales = User::where('role', 'sales')->get();
+        $sales = User::permission('customers_booking_create')->where('is_active', true)->get();
         if (!auth()->user()->hasRole('admin')) {
             $currentUser = auth()->user();
             if (!$sales->contains('id', $currentUser->id)) {
@@ -538,7 +540,7 @@ class CustomerController extends Controller
         
         $areas = \App\Models\Area::pluck('name');
 
-        $sales = User::where('role', 'sales')->get();
+        $sales = User::permission('customers_booking_create')->where('is_active', true)->get();
         if (!auth()->user()->hasRole('admin')) {
             $currentUser = auth()->user();
             if (!$sales->contains('id', $currentUser->id)) {
