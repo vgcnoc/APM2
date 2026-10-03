@@ -28,11 +28,14 @@
                     </div>
 
                     <!-- Link -->
-                    <Link v-if="item.type === 'link'" :href="item.href" @click="mobileMenuOpen = false" :class="['sidebar-link', { active: item.active($page.url) }]">
-                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <Link v-if="item.type === 'link'" :href="item.href" @click="mobileMenuOpen = false" :class="['sidebar-link', { active: item.active($page.url), 'pl-11': item.indent }]">
+                        <svg v-if="!item.indent" class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
                         </svg>
-                        <span v-if="sidebarOpen" class="truncate">{{ item.label }}</span>
+                        <svg v-else class="w-3.5 h-3.5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" :d="iconPaths['submenu-dot']"/>
+                        </svg>
+                        <span v-if="sidebarOpen" :class="['truncate', item.indent ? 'text-[13px] font-medium' : '']">{{ item.label }}</span>
                     </Link>
                 </template>
             </nav>
@@ -126,7 +129,11 @@ const menuItems = [
     { type: 'link', href: '/', icon: 'dashboard', label: 'Dashboard', active: (url) => (url || '').length > 0 && url === '/', permission: 'menu_dashboard' },
     { type: 'group', label: 'DATA CUSTOMERS' },
     { type: 'link', href: '/customers/booking', icon: 'document-add', label: 'Data Booking', active: (url) => (url || '').startsWith('/customers/booking'), permission: 'menu_customers_booking' },
-    { type: 'link', href: '/customers/survey', icon: 'clipboard-check', label: 'Survey', active: (url) => (url || '').startsWith('/customers/survey'), permission: 'menu_customers_survey' },
+    { type: 'link', href: '/customers/survey', icon: 'clipboard-check', label: 'Survey ODP', active: (url) => (url || '').startsWith('/customers/survey') && !(url || '').includes('tab='), permission: 'menu_customers_survey' },
+    { type: 'link', href: '/customers/survey?tab=jadwalkan', icon: 'submenu-dot', label: 'Jadwalkan', indent: true, active: (url) => (url || '').includes('tab=jadwalkan'), permission: 'customers_survey_tab_jadwalkan' },
+    { type: 'link', href: '/customers/survey?tab=laporan', icon: 'submenu-dot', label: 'Isi Laporan', indent: true, active: (url) => (url || '').includes('tab=laporan'), permission: 'customers_survey_tab_laporan' },
+    { type: 'link', href: '/customers/survey?tab=ready', icon: 'submenu-dot', label: 'Ready Install', indent: true, active: (url) => (url || '').includes('tab=ready'), permission: 'customers_survey_tab_ready' },
+    { type: 'link', href: '/customers/survey?tab=unfeasible', icon: 'submenu-dot', label: 'Unfeasible', indent: true, active: (url) => (url || '').includes('tab=unfeasible'), permission: 'customers_survey_tab_unfeasible' },
     { type: 'link', href: '/customers/installed', icon: 'cog', label: 'Instalasi', active: (url) => (url || '').startsWith('/customers/installed'), permission: 'menu_customers_installed' },
     { type: 'link', href: '/customers/activation', icon: 'key', label: 'Aktivasi', active: (url) => (url || '').startsWith('/customers/activation'), permission: 'menu_customers_activation' },
     { type: 'link', href: '/customers/active', icon: 'badge-check', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: 'menu_customers_active' },
@@ -182,6 +189,7 @@ const iconPaths = {
     briefcase: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
     code: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4',
     'lock-closed': 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
+    'submenu-dot': 'M9 5l7 7-7 7',
 };
 
 import { computed } from 'vue';

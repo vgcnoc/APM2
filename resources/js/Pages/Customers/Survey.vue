@@ -29,26 +29,7 @@
             />
         </div>
 
-        <!-- Tabs -->
-        <div class="mb-6 border-b border-gray-200">
-            <nav class="flex gap-6" aria-label="Tabs">
-                <Link v-if="hasPermission('customers_survey_tab_semua')" :href="getTabUrl('semua')" :class="[filters.tab === 'semua' || !filters.tab ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-200 hover:border-gray-400', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors']">
-                    Semua
-                </Link>
-                <Link v-if="hasPermission('customers_survey_tab_jadwalkan')" :href="getTabUrl('jadwalkan')" :class="[filters.tab === 'jadwalkan' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-200 hover:border-gray-400', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors']">
-                    Jadwalkan
-                </Link>
-                <Link v-if="hasPermission('customers_survey_tab_laporan')" :href="getTabUrl('laporan')" :class="[filters.tab === 'laporan' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-200 hover:border-gray-400', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors']">
-                    Isi Laporan
-                </Link>
-                <Link v-if="hasPermission('customers_survey_tab_ready')" :href="getTabUrl('ready')" :class="[filters.tab === 'ready' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-gray-500 hover:text-gray-200 hover:border-gray-400', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors']">
-                    Ready Install
-                </Link>
-                <Link v-if="hasPermission('customers_survey_tab_unfeasible')" :href="getTabUrl('unfeasible')" :class="[filters.tab === 'unfeasible' ? 'border-rose-500 text-rose-400' : 'border-transparent text-gray-500 hover:text-gray-200 hover:border-gray-400', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors']">
-                    Unfeasible
-                </Link>
-            </nav>
-        </div>
+        <!-- Tabs removed (Moved to sidebar) -->
 
         <DataTable
             :columns="columns"
