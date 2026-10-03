@@ -162,7 +162,6 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                         Jadwal Pasang
                     </button>
-                    
                     <!-- 2. Menunggu Laporan Teknisi -->
                     <template v-if="getCustomerProgressStatus(row) === 'laporan_pasang'">
                         <Link v-if="hasPermission('customers_installed_report')" 
@@ -187,12 +186,171 @@
                         </Link>
                     </div>
 
-                    <Link :href="`/customers/${row.id}?source=instalasi`" class="p-1.5 rounded-lg text-gray-400 hover:bg-white hover:text-blue-500 border border-transparent hover:border-gray-200 transition-all shadow-sm hover:shadow" title="Detail Lengkap">
+                    <button @click="openDetailModal(row)" class="p-1.5 rounded-lg text-gray-400 hover:bg-white hover:text-blue-500 border border-transparent hover:border-gray-200 transition-all shadow-sm hover:shadow" title="Detail Lengkap">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                         </svg>
-                    </Link>
+                    </button>
+                    <!-- Modal Detail Pelanggan (Instalasi) -->
+                    <Teleport to="body">
+                        <div v-if="showDetailModal && detailCustomer" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer" @click="closeDetailModal"></div>
+                            <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in-up">
+                                <div class="sticky top-0 bg-white/90 backdrop-blur-xl border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+                                    <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                        <span class="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-500">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                        </span>
+                                        Detail Instalasi Pelanggan
+                                    </h3>
+                                    <button @click="closeDetailModal" class="text-gray-500 hover:text-gray-900 transition-colors bg-gray-50 hover:bg-white p-2 rounded-xl">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </div>
+                                
+                                <div class="p-6 space-y-6">
+                                    <!-- Info Utama -->
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div class="space-y-1">
+                                            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Nama Lengkap</p>
+                                            <p class="text-sm text-gray-900 font-medium">{{ detailCustomer.name }}</p>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Telepon / WhatsApp</p>
+                                            <p class="text-sm text-gray-900">{{ detailCustomer.phone }}</p>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Area / Wilayah</p>
+                                            <p class="text-sm text-gray-900 font-medium">
+                                                <span class="inline-flex px-2 py-1 bg-blue-500/20 text-blue-500 rounded-md border border-blue-500/30">
+                                                    {{ detailCustomer.area || '-' }}
+                                                </span>
+                                            </p>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Paket Langganan</p>
+                                            <p class="text-sm text-gray-900 font-medium">
+                                                <span class="inline-flex px-2 py-1 bg-purple-500/20 text-purple-500 rounded-md border border-purple-500/30">
+                                                    {{ detailCustomer.package?.name || 'Belum dipilih' }}
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Alamat -->
+                                    <div class="space-y-1">
+                                        <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Alamat Lengkap</p>
+                                        <p class="text-sm text-gray-600 leading-relaxed">{{ detailCustomer.address }}</p>
+                                        <div v-if="detailCustomer.latitude && detailCustomer.longitude" class="mt-2">
+                                            <a :href="`https://www.google.com/maps?q=${detailCustomer.latitude},${detailCustomer.longitude}`" target="_blank" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-900 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                                Buka Lokasi di Maps
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <hr class="border-gray-100">
+
+                                    <!-- Data Instalasi -->
+                                    <div class="space-y-4">
+                                        <h4 class="text-sm font-bold text-gray-900 flex items-center gap-2">
+                                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                            Data Instalasi & Jaringan
+                                        </h4>
+                                        <div v-if="detailCustomer.ont" class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div class="space-y-1">
+                                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Serial Number ONT</p>
+                                                    <p class="text-sm font-mono text-gray-900 font-medium">{{ detailCustomer.ont.serial_number || '-' }}</p>
+                                                </div>
+                                                <div class="space-y-1">
+                                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Redaman (Rx Power)</p>
+                                                    <p class="text-sm text-gray-900 font-medium font-mono" :class="signalClass(detailCustomer.ont.rx_power)">
+                                                        {{ detailCustomer.ont.rx_power ? `${detailCustomer.ont.rx_power} dBm` : '-' }}
+                                                    </p>
+                                                </div>
+                                                <div class="space-y-1">
+                                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">ODP Terhubung</p>
+                                                    <p class="text-sm text-gray-900 font-medium">
+                                                        {{ detailCustomer.ont.odp?.name || '-' }}
+                                                    </p>
+                                                </div>
+                                                <div class="space-y-1">
+                                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Port ODP</p>
+                                                    <p class="text-sm text-gray-900 font-medium">
+                                                        {{ detailCustomer.ont.port_number ? `Port ${detailCustomer.ont.port_number}` : '-' }}
+                                                    </p>
+                                                </div>
+                                                <div class="space-y-1">
+                                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">PPPoE User</p>
+                                                    <p class="text-sm font-mono text-gray-900">{{ detailCustomer.ont.login_user || '-' }}</p>
+                                                </div>
+                                                <div class="space-y-1">
+                                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">PPPoE Password</p>
+                                                    <p class="text-sm font-mono text-gray-900">{{ detailCustomer.ont.login_password || '-' }}</p>
+                                                </div>
+                                                <div class="space-y-1">
+                                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Catatan Teknisi</p>
+                                                    <p class="text-sm text-gray-700 italic">{{ detailCustomer.ont.notes || '-' }}</p>
+                                                </div>
+                                            </div>
+
+                                            <!-- Dokumentasi Foto Instalasi -->
+                                            <div v-if="detailCustomer.ont.photos && detailCustomer.ont.photos.length > 0" class="mt-5 border-t border-gray-200 pt-4">
+                                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Dokumentasi Laporan</p>
+                                                <div class="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-3 gap-3">
+                                                    <div v-for="(photo, idx) in detailCustomer.ont.photos" :key="idx" class="relative group rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-gray-100 aspect-square">
+                                                        <img :src="`/storage/${photo.path}`" :alt="photo.label" class="w-full h-full object-cover" />
+                                                        
+                                                        <!-- Overlay -->
+                                                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
+                                                            <p class="text-xs text-white font-medium truncate drop-shadow-md">{{ photo.label }}</p>
+                                                            <div class="flex gap-2">
+                                                                <a :href="`/storage/${photo.path}`" target="_blank" class="flex-1 bg-white/20 hover:bg-white/40 text-white rounded p-1.5 flex justify-center items-center backdrop-blur-sm transition-colors" title="Lihat Penuh">
+                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                                                </a>
+                                                                <a :href="`/storage/${photo.path}`" download class="flex-1 bg-blue-600/80 hover:bg-blue-600 text-white rounded p-1.5 flex justify-center items-center backdrop-blur-sm transition-colors" title="Download">
+                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div v-else-if="detailCustomer.technician_schedules?.length" class="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
+                                            <div class="flex gap-3 items-start">
+                                                <div class="p-2 bg-blue-100 text-blue-600 rounded-lg shrink-0">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <h5 class="text-sm font-semibold text-gray-900 mb-1">Telah Dijadwalkan (Belum Ada Laporan)</h5>
+                                                    <p class="text-sm text-gray-600">Teknisi: <strong class="text-gray-900">{{ detailCustomer.technician_schedules[0].technician?.name || '-' }}</strong></p>
+                                                    <p class="text-sm text-gray-600">Waktu: <strong class="text-gray-900">{{ detailCustomer.technician_schedules[0].scheduled_date }} {{ detailCustomer.technician_schedules[0].scheduled_time }}</strong></p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div v-else class="text-sm text-gray-500 italic p-4 bg-gray-50 border border-gray-200 rounded-xl text-center">
+                                            Belum ada data instalasi.
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="sticky bottom-0 bg-white/90 backdrop-blur-xl border-t border-gray-200 px-6 py-4 flex justify-between items-center">
+                                    <Link :href="`/customers/${detailCustomer.id}?source=instalasi`" class="text-blue-600 hover:text-blue-800 text-sm font-semibold transition-colors flex items-center gap-1.5">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                        Buka Halaman Detail
+                                    </Link>
+                                    <button @click="closeDetailModal" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl text-sm font-medium transition-colors">
+                                        Tutup
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </Teleport>
                     <button @click="confirmDelete(row)" class="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 border border-transparent hover:border-red-200 transition-all shadow-sm hover:shadow" title="Hapus Pelanggan">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
@@ -896,6 +1054,19 @@ function openAssignModal(customer) {
     assignForm.scheduled_date = new Date().toISOString().split('T')[0];
     assignForm.scheduled_time = '10:00';
     showAssignModal.value = true;
+}
+
+const showDetailModal = ref(false);
+const detailCustomer = ref(null);
+
+function openDetailModal(customer) {
+    detailCustomer.value = customer;
+    showDetailModal.value = true;
+}
+
+function closeDetailModal() {
+    showDetailModal.value = false;
+    setTimeout(() => detailCustomer.value = null, 300);
 }
 
 function submitAssign() {
