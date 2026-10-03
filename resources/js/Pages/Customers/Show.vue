@@ -311,6 +311,7 @@
                                 <InfoRow label="Waktu Selesai" :value="customer.ont?.end_time || '-'" />
                             </div>
                             <div class="space-y-2">
+                                <InfoRow label="Nama ODP" :value="customer.ont?.odp?.name || '-'" />
                                 <InfoRow label="Port ODP" :value="`Port ${customer.ont?.port_number}`" />
                                 <InfoRow label="Serial Number (Auto)" :value="customer.ont?.serial_number" />
                             </div>
