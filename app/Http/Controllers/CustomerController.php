@@ -667,22 +667,29 @@ class CustomerController extends Controller
      */
     public function assignOnt(Request $request, Customer $customer): RedirectResponse
     {
-        if (!auth()->user()->can('customers_installed_report')) {
-            abort(403, 'Anda tidak memiliki hak akses untuk mengisi laporan instalasi.');
+        if (!auth()->user()->can('customers_installed_report') && !auth()->user()->can('customers_installed_edit')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengisi/mengedit laporan instalasi.');
         }
 
-        $validated = $request->validate([
+        $ont = Ont::where('customer_id', $customer->id)->first();
+        $isEdit = $ont && $ont->start_time; // If start_time exists, it's already installed, so it's an edit
+
+        $rules = [
             'odp_id' => 'required|exists:odps,id',
             'port_number' => 'required|integer|min:1',
             'rx_power' => 'required|string',
             'start_time' => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i',
-            'photo_odp' => 'required|image|max:5120',
-            'photo_installation' => 'required|image|max:5120',
-            'photo_ont' => 'required|image|max:5120',
-            'photo_customer' => 'required|image|max:5120',
-            'photo_redaman' => 'required|image|max:5120',
-        ]);
+        ];
+
+        // Photos are required for new installation, nullable for edits
+        $rules['photo_odp'] = ($isEdit && $ont->photo_odp) ? 'nullable|image|max:5120' : 'required|image|max:5120';
+        $rules['photo_installation'] = ($isEdit && $ont->photo_installation) ? 'nullable|image|max:5120' : 'required|image|max:5120';
+        $rules['photo_ont'] = ($isEdit && $ont->photo_ont) ? 'nullable|image|max:5120' : 'required|image|max:5120';
+        $rules['photo_customer'] = ($isEdit && $ont->photo_customer) ? 'nullable|image|max:5120' : 'required|image|max:5120';
+        $rules['photo_redaman'] = ($isEdit && $ont->photo_redaman) ? 'nullable|image|max:5120' : 'required|image|max:5120';
+
+        $validated = $request->validate($rules);
 
         if ($request->hasFile('photo_odp')) $validated['photo_odp'] = $request->file('photo_odp')->store('installations', 'public');
         if ($request->hasFile('photo_installation')) $validated['photo_installation'] = $request->file('photo_installation')->store('installations', 'public');
@@ -699,14 +706,11 @@ class CustomerController extends Controller
             return back()->withErrors(['end_time' => 'Jam selesai tidak boleh lebih awal dari jam mulai.']);
         }
 
-        DB::transaction(function () use ($validated, $customer, $odp, $request) {
-            // Check if customer already has an ONT linked (e.g. from assignInstall)
-            $ont = Ont::where('customer_id', $customer->id)->first();
-            
+        DB::transaction(function () use ($validated, $customer, $odp, $request, $ont) {
             // Update existing linked ONT or Create new
             if ($ont) {
-                // Free old port if exist
-                if ($ont->odp_id && $ont->port_number) {
+                // Free old port if exist and changed
+                if ($ont->odp_id && $ont->port_number && ($ont->odp_id != $validated['odp_id'] || $ont->port_number != $validated['port_number'])) {
                     \App\Models\OdpPort::where('odp_id', $ont->odp_id)
                         ->where('port_number', $ont->port_number)
                         ->update(['status' => 'available']);
@@ -727,11 +731,11 @@ class CustomerController extends Controller
                     'rx_power' => $validated['rx_power'] ?? null,
                     'start_time' => $validated['start_time'] ?? null,
                     'end_time' => $validated['end_time'] ?? null,
-                    'photo_odp' => $validated['photo_odp'] ?? null,
-                    'photo_installation' => $validated['photo_installation'] ?? null,
-                    'photo_ont' => $validated['photo_ont'] ?? null,
-                    'photo_customer' => $validated['photo_customer'] ?? null,
-                    'photo_redaman' => $validated['photo_redaman'] ?? null,
+                    'photo_odp' => $validated['photo_odp'] ?? $ont->photo_odp,
+                    'photo_installation' => $validated['photo_installation'] ?? $ont->photo_installation,
+                    'photo_ont' => $validated['photo_ont'] ?? $ont->photo_ont,
+                    'photo_customer' => $validated['photo_customer'] ?? $ont->photo_customer,
+                    'photo_redaman' => $validated['photo_redaman'] ?? $ont->photo_redaman,
                     'status' => 'active',
                 ]);
             } else {

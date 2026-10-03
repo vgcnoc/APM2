@@ -275,12 +275,16 @@
                     </div>
                 </div>
                 
-                <!-- Audit Data Pemasangan Section -->
                 <div v-show="(activeTab === 'audit' || activeTab === 'installation') && (isAudit || customer.status === 'active')" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">{{ activeTab === 'audit' ? '🛡️' : '✅' }}</span>
-                        {{ activeTab === 'audit' ? 'Data Instalasi & Audit' : 'Hasil Laporan Instalasi' }}
-                    </h3>
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">{{ activeTab === 'audit' ? '🛡️' : '✅' }}</span>
+                            {{ activeTab === 'audit' ? 'Data Instalasi & Audit' : 'Hasil Laporan Instalasi' }}
+                        </h3>
+                        <button v-if="hasPermission('customers_installed_edit')" @click="editInstallation" class="btn-primary text-xs px-3 py-1.5 shadow-sm bg-blue-100 text-blue-700 border-none hover:bg-blue-200">
+                            Edit Laporan
+                        </button>
+                    </div>
                         
                         <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 space-y-2">
                             <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
@@ -352,11 +356,16 @@
                     </div>
 
                 <!-- Instalasi Section (Form) -->
-                <div v-show="activeTab === 'installation' && isLaporanPasang && hasPermission('customers_installed_report')" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <span class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">🚀</span>
-                        Form Laporan Selesai Instalasi
-                    </h3>
+                <div v-show="activeTab === 'installation' && (isLaporanPasang || isEditingInstallation) && (hasPermission('customers_installed_report') || hasPermission('customers_installed_edit'))" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-emerald-500/20">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <span class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">🚀</span>
+                            Form Laporan Selesai Instalasi
+                        </h3>
+                        <button v-if="isEditingInstallation" @click="isEditingInstallation = false" class="btn-ghost text-xs px-3 py-1.5 hover:bg-gray-100 rounded-lg">
+                            Batal Edit
+                        </button>
+                    </div>
                         <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 space-y-2">
                             <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
                             <InfoRow label="Teknisi" :value="getAssignedTechnicians('installation')" />
@@ -466,7 +475,7 @@
                                     <div class="space-y-1">
                                         <label class="block text-xs font-medium text-gray-500">1. Foto ODP / Port (Wajib)</label>
                                         <div class="flex items-start gap-3">
-                                            <input type="file" @change="e => handleFileUpload('photo_odp', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !ontForm.photo_odp" />
+                                            <input type="file" @change="e => handleFileUpload('photo_odp', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !isEditingInstallation && !ontForm.photo_odp" />
                                             <div v-if="previewUrls.photo_odp" class="flex flex-col gap-1 shrink-0">
                                                 <img :src="previewUrls.photo_odp" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_odp, '1. Foto ODP / Port')" />
                                                 <a :href="previewUrls.photo_odp" download="Foto_ODP.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
@@ -476,7 +485,7 @@
                                     <div class="space-y-1">
                                         <label class="block text-xs font-medium text-gray-500">2. Foto Instalasi di Rumah (Wajib)</label>
                                         <div class="flex items-start gap-3">
-                                            <input type="file" @change="e => handleFileUpload('photo_installation', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !ontForm.photo_installation" />
+                                            <input type="file" @change="e => handleFileUpload('photo_installation', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !isEditingInstallation && !ontForm.photo_installation" />
                                             <div v-if="previewUrls.photo_installation" class="flex flex-col gap-1 shrink-0">
                                                 <img :src="previewUrls.photo_installation" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_installation, '2. Foto Instalasi di Rumah')" />
                                                 <a :href="previewUrls.photo_installation" download="Foto_Instalasi.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
@@ -486,7 +495,7 @@
                                     <div class="space-y-1">
                                         <label class="block text-xs font-medium text-gray-500">3. Foto Posisi ONT (Wajib)</label>
                                         <div class="flex items-start gap-3">
-                                            <input type="file" @change="e => handleFileUpload('photo_ont', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !ontForm.photo_ont" />
+                                            <input type="file" @change="e => handleFileUpload('photo_ont', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !isEditingInstallation && !ontForm.photo_ont" />
                                             <div v-if="previewUrls.photo_ont" class="flex flex-col gap-1 shrink-0">
                                                 <img :src="previewUrls.photo_ont" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_ont, '3. Foto Posisi ONT')" />
                                                 <a :href="previewUrls.photo_ont" download="Foto_ONT.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
@@ -496,7 +505,7 @@
                                     <div class="space-y-1">
                                         <label class="block text-xs font-medium text-gray-500">4. Foto Selfie Pelanggan (Wajib)</label>
                                         <div class="flex items-start gap-3">
-                                            <input type="file" @change="e => handleFileUpload('photo_customer', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !ontForm.photo_customer" />
+                                            <input type="file" @change="e => handleFileUpload('photo_customer', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !isEditingInstallation && !ontForm.photo_customer" />
                                             <div v-if="previewUrls.photo_customer" class="flex flex-col gap-1 shrink-0">
                                                 <img :src="previewUrls.photo_customer" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_customer, '4. Foto Selfie Pelanggan')" />
                                                 <a :href="previewUrls.photo_customer" download="Foto_Selfie.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
@@ -506,7 +515,7 @@
                                     <div class="space-y-1">
                                         <label class="block text-xs font-medium text-gray-500">5. Foto Redaman (Wajib)</label>
                                         <div class="flex items-start gap-3">
-                                            <input type="file" @change="e => handleFileUpload('photo_redaman', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !ontForm.photo_redaman" />
+                                            <input type="file" @change="e => handleFileUpload('photo_redaman', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !isEditingInstallation && !ontForm.photo_redaman" />
                                             <div v-if="previewUrls.photo_redaman" class="flex flex-col gap-1 shrink-0">
                                                 <img :src="previewUrls.photo_redaman" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_redaman, '5. Foto Redaman')" />
                                                 <a :href="previewUrls.photo_redaman" download="Foto_Redaman.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
@@ -1080,6 +1089,21 @@ function openImage(src, label) {
 }
 
 const isEditingOnt = ref(false);
+const isEditingInstallation = ref(false);
+
+function editInstallation() {
+    isEditingInstallation.value = true;
+    activeTab.value = 'installation';
+    
+    // Populate form with existing data
+    if (props.customer.ont) {
+        ontForm.odp_id = props.customer.ont.odp_id;
+        ontForm.port_number = props.customer.ont.port_number;
+        ontForm.rx_power = props.customer.ont.rx_power;
+        ontForm.start_time = props.customer.ont.start_time;
+        ontForm.end_time = props.customer.ont.end_time;
+    }
+}
 
 // Functional component for InfoRow so it works without template compiler
 const InfoRow = (props, context) => {
@@ -1174,7 +1198,7 @@ const isMaterialValid = computed(() => hardwareItems.value.length === 0 || hardw
 const isOdpValid = computed(() => !!ontForm.odp_id && selectedOdp.value && selectedOdp.value.area_id === props.customer.area_id);
 const isPortValid = computed(() => !!ontForm.port_number && !isPortUsed(selectedOdp.value, ontForm.port_number));
 const isRedamanValid = computed(() => !!ontForm.rx_power && !isNaN(parseFloat(ontForm.rx_power)));
-const isFotoValid = computed(() => !!ontForm.photo_odp && !!ontForm.photo_installation && !!ontForm.photo_ont && !!ontForm.photo_customer && !!ontForm.photo_redaman);
+const isFotoValid = computed(() => isEditingInstallation.value || (!!ontForm.photo_odp && !!ontForm.photo_installation && !!ontForm.photo_ont && !!ontForm.photo_customer && !!ontForm.photo_redaman));
 
 const validationErrors = computed(() => {
     const errors = [];
@@ -1339,6 +1363,7 @@ function submitOnt() {
             const photoFields = ['photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman'];
             photoFields.forEach(field => localStorage.removeItem(`apm_${field}_${props.customer.id}`));
             
+            isEditingInstallation.value = false;
             activeTab.value = 'audit';
         }
     });

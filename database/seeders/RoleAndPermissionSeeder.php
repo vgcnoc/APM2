@@ -21,8 +21,8 @@ class RoleAndPermissionSeeder extends Seeder
             
             // Menu Customers
             'menu_customers_booking', 'customers_booking_create', 'customers_booking_edit', 'customers_booking_delete',
-            'menu_customers_survey', 'customers_survey_create', 'customers_survey_edit', 'customers_survey_delete',
-            'menu_customers_installed', 'customers_installed_create', 'customers_installed_edit', 'customers_installed_delete',
+            'menu_customers_survey', 'customers_survey_create', 'customers_survey_edit', 'customers_survey_delete', 'customers_survey_report',
+            'menu_customers_installed', 'customers_installed_create', 'customers_installed_edit', 'customers_installed_delete', 'customers_installed_report',
             'menu_customers_activation', 'customers_activation_create', 'customers_activation_edit', 'customers_activation_delete',
             'menu_customers_active', 'customers_active_create', 'customers_active_edit', 'customers_active_delete',
             'menu_customers_all', 'customers_all_create', 'customers_all_edit', 'customers_all_delete',
@@ -69,7 +69,7 @@ class RoleAndPermissionSeeder extends Seeder
         $roleTeknisi = Role::firstOrCreate(['name' => 'teknisi']);
         $roleTeknisi->givePermissionTo([
             'menu_dashboard', 'menu_ftth', 'menu_materials', 'menu_material_transactions',
-            'menu_customers_installed'
+            'menu_customers_installed', 'customers_installed_report', 'customers_installed_edit'
         ]);
 
         $roleCs = Role::firstOrCreate(['name' => 'cs']);
