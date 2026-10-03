@@ -1100,8 +1100,8 @@ function editInstallation() {
         ontForm.odp_id = props.customer.ont.odp_id;
         ontForm.port_number = props.customer.ont.port_number;
         ontForm.rx_power = props.customer.ont.rx_power;
-        ontForm.start_time = props.customer.ont.start_time;
-        ontForm.end_time = props.customer.ont.end_time;
+        ontForm.start_time = props.customer.ont.start_time ? props.customer.ont.start_time.substring(0, 5) : '';
+        ontForm.end_time = props.customer.ont.end_time ? props.customer.ont.end_time.substring(0, 5) : '';
     }
 }
 

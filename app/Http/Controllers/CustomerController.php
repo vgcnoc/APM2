@@ -674,6 +674,14 @@ class CustomerController extends Controller
         $ont = Ont::where('customer_id', $customer->id)->first();
         $isEdit = $ont && $ont->start_time; // If start_time exists, it's already installed, so it's an edit
 
+        // Ensure times only have H:i format if they come with seconds
+        if ($request->has('start_time') && strlen($request->start_time) > 5) {
+            $request->merge(['start_time' => substr($request->start_time, 0, 5)]);
+        }
+        if ($request->has('end_time') && strlen($request->end_time) > 5) {
+            $request->merge(['end_time' => substr($request->end_time, 0, 5)]);
+        }
+
         $rules = [
             'odp_id' => 'required|exists:odps,id',
             'port_number' => 'required|integer|min:1',
