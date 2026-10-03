@@ -29,6 +29,7 @@ class OdcController extends Controller
                 $q->where('name', 'like', "%{$s}%")
                   ->orWhere('location', 'like', "%{$s}%"))
             ->when($request->olt_id, fn ($q, $id) => $q->where('olt_id', $id))
+            ->when($request->area_id, fn ($q, $id) => $q->where('area_id', $id))
             ->when($request->status, fn ($q, $s) => $q->where('status', $s))
             ->orderByDesc('created_at')
             ->paginate(15)
@@ -38,7 +39,7 @@ class OdcController extends Controller
             'odcs' => $odcs,
             'olts' => Olt::where('status', 'active')->get(['id', 'name', 'total_pon_ports', 'area_id']),
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
-            'filters' => $request->only(['search', 'olt_id', 'status']),
+            'filters' => $request->only(['search', 'olt_id', 'area_id', 'status']),
         ]);
     }
 

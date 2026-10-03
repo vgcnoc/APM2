@@ -23,6 +23,12 @@
                     </div>
                 </div>
                 <div class="sm:w-48">
+                    <select v-model="filterArea" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Semua Area</option>
+                        <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                    </select>
+                </div>
+                <div class="sm:w-48">
                     <select v-model="filterOlt" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">Semua OLT</option>
                         <option v-for="olt in olts" :key="olt.id" :value="olt.id">{{ olt.name }}</option>
@@ -335,14 +341,15 @@ const props = defineProps({
 });
 
 const filterSearch = ref(props.filters?.search || '');
+const filterArea = ref(props.filters?.area_id || '');
 const filterOlt = ref(props.filters?.olt_id || '');
 const filterStatus = ref(props.filters?.status || '');
 
 let filterTimeout = null;
-watch([filterSearch, filterOlt, filterStatus], ([search, olt, status]) => {
+watch([filterSearch, filterArea, filterOlt, filterStatus], ([search, area, olt, status]) => {
     if (filterTimeout) clearTimeout(filterTimeout);
     filterTimeout = setTimeout(() => {
-        router.get('/odcs', { search, olt_id: olt, status }, {
+        router.get('/odcs', { search, area_id: area, olt_id: olt, status }, {
             preserveState: true,
             replace: true
         });

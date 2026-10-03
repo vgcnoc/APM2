@@ -27,6 +27,7 @@ class OdpController extends Controller
             ->when($request->search, fn ($q, $s) =>
                 $q->where('name', 'like', "%{$s}%"))
             ->when($request->odc_id, fn ($q, $id) => $q->where('odc_id', $id))
+            ->when($request->area_id, fn ($q, $id) => $q->where('area_id', $id))
             ->when($request->status, fn ($q, $s) => $q->where('status', $s))
             ->when($request->available_only, fn ($q) => $q->hasAvailablePort())
             ->orderByDesc('created_at')
@@ -37,7 +38,7 @@ class OdpController extends Controller
             'odps' => $odps,
             'odcs' => Odc::with('olt')->where('status', 'active')->get(['id', 'name', 'area_id', 'capacity']),
             'areas' => \App\Models\Area::orderBy('name')->get(),
-            'filters' => $request->only(['search', 'odc_id', 'status', 'available_only']),
+            'filters' => $request->only(['search', 'odc_id', 'area_id', 'status', 'available_only']),
         ]);
     }
 

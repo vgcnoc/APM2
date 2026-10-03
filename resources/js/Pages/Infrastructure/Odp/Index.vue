@@ -23,6 +23,12 @@
                     </div>
                 </div>
                 <div class="sm:w-48">
+                    <select v-model="filterArea" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Semua Area</option>
+                        <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                    </select>
+                </div>
+                <div class="sm:w-48">
                     <select v-model="filterOdc" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">Semua ODC</option>
                         <option v-for="odc in odcs" :key="odc.id" :value="odc.id">{{ odc.name }}</option>
@@ -346,15 +352,16 @@ const props = defineProps({
 });
 
 const filterSearch = ref(props.filters?.search || '');
+const filterArea = ref(props.filters?.area_id || '');
 const filterOdc = ref(props.filters?.odc_id || '');
 const filterStatus = ref(props.filters?.status || '');
 const filterAvailableOnly = ref(props.filters?.available_only === 'true' || props.filters?.available_only === true);
 
 let filterTimeout = null;
-watch([filterSearch, filterOdc, filterStatus, filterAvailableOnly], ([search, odc, status, availableOnly]) => {
+watch([filterSearch, filterArea, filterOdc, filterStatus, filterAvailableOnly], ([search, area, odc, status, availableOnly]) => {
     if (filterTimeout) clearTimeout(filterTimeout);
     filterTimeout = setTimeout(() => {
-        router.get('/odps', { search, odc_id: odc, status, available_only: availableOnly || undefined }, {
+        router.get('/odps', { search, area_id: area, odc_id: odc, status, available_only: availableOnly || undefined }, {
             preserveState: true,
             replace: true
         });
