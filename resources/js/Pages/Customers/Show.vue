@@ -33,12 +33,9 @@
                             </div>
                         </div>
 
-                        <div class="flex gap-2 pt-2">
-                            <Link v-if="canEditProfile" :href="`/customers/${customer.id}/edit`" class="btn-primary flex-1 justify-center py-2.5 text-sm shadow-md hover:shadow-lg transition-all">
+                        <div v-if="canEditProfile" class="flex gap-2 pt-2">
+                            <Link :href="`/customers/${customer.id}/edit`" class="btn-primary flex-1 justify-center py-2.5 text-sm shadow-md hover:shadow-lg transition-all">
                                 Edit Profil
-                            </Link>
-                            <Link href="/customers" class="btn-ghost flex-1 justify-center py-2.5 text-sm transition-all hover:bg-slate-100">
-                                Kembali
                             </Link>
                         </div>
                     </div>
