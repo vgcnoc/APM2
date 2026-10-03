@@ -37,6 +37,39 @@
                         </svg>
                         <span v-if="sidebarOpen" :class="['truncate', item.indent ? 'text-[13px] font-medium' : '']">{{ item.label }}</span>
                     </Link>
+
+                    <!-- Dropdown -->
+                    <div v-else-if="item.type === 'dropdown'">
+                        <button 
+                            @click="toggleDropdown(index)" 
+                            :class="['sidebar-link w-full text-left', { active: item.active($page.url) }]"
+                        >
+                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
+                            </svg>
+                            <span v-if="sidebarOpen" class="truncate flex-1">{{ item.label }}</span>
+                            <svg v-if="sidebarOpen" :class="['w-4 h-4 shrink-0 transition-transform duration-200', openDropdowns.includes(index) ? 'rotate-90' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                        
+                        <!-- Dropdown Items -->
+                        <div v-show="sidebarOpen && openDropdowns.includes(index)" class="mt-1 space-y-1">
+                            <template v-for="(child, childIndex) in item.children" :key="childIndex">
+                                <Link 
+                                    v-if="!child.permission || hasPermission(child.permission)"
+                                    :href="child.href" 
+                                    @click="mobileMenuOpen = false" 
+                                    :class="['sidebar-link pl-11', { active: child.active($page.url) }]"
+                                >
+                                    <svg class="w-3.5 h-3.5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" :d="iconPaths['submenu-dot']"/>
+                                    </svg>
+                                    <span class="truncate text-[13px] font-medium">{{ child.label }}</span>
+                                </Link>
+                            </template>
+                        </div>
+                    </div>
                 </template>
             </nav>
 
@@ -113,7 +146,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import AppLogo from '@/Components/AppLogo.vue';
 
@@ -129,11 +162,20 @@ const menuItems = [
     { type: 'link', href: '/', icon: 'dashboard', label: 'Dashboard', active: (url) => (url || '').length > 0 && url === '/', permission: 'menu_dashboard' },
     { type: 'group', label: 'DATA CUSTOMERS' },
     { type: 'link', href: '/customers/booking', icon: 'document-add', label: 'Data Booking', active: (url) => (url || '').startsWith('/customers/booking'), permission: 'menu_customers_booking' },
-    { type: 'link', href: '/customers/survey', icon: 'clipboard-check', label: 'Survey', active: (url) => (url || '').startsWith('/customers/survey') && !(url || '').includes('tab='), permission: 'menu_customers_survey' },
-    { type: 'link', href: '/customers/survey?tab=jadwalkan', icon: 'submenu-dot', label: 'Jadwalkan', indent: true, active: (url) => (url || '').includes('tab=jadwalkan'), permission: 'customers_survey_tab_jadwalkan' },
-    { type: 'link', href: '/customers/survey?tab=laporan', icon: 'submenu-dot', label: 'Isi Laporan', indent: true, active: (url) => (url || '').includes('tab=laporan'), permission: 'customers_survey_tab_laporan' },
-    { type: 'link', href: '/customers/survey?tab=ready', icon: 'submenu-dot', label: 'Ready Install', indent: true, active: (url) => (url || '').includes('tab=ready'), permission: 'customers_survey_tab_ready' },
-    { type: 'link', href: '/customers/survey?tab=unfeasible', icon: 'submenu-dot', label: 'Unfeasible', indent: true, active: (url) => (url || '').includes('tab=unfeasible'), permission: 'customers_survey_tab_unfeasible' },
+    { 
+        type: 'dropdown', 
+        icon: 'clipboard-check', 
+        label: 'Survey', 
+        active: (url) => (url || '').startsWith('/customers/survey'), 
+        permission: 'menu_customers_survey',
+        children: [
+            { href: '/customers/survey', label: 'Semua Survey', active: (url) => (url || '').startsWith('/customers/survey') && !(url || '').includes('tab='), permission: 'customers_survey_tab_semua' },
+            { href: '/customers/survey?tab=jadwalkan', label: 'Jadwalkan', active: (url) => (url || '').includes('tab=jadwalkan'), permission: 'customers_survey_tab_jadwalkan' },
+            { href: '/customers/survey?tab=laporan', label: 'Isi Laporan', active: (url) => (url || '').includes('tab=laporan'), permission: 'customers_survey_tab_laporan' },
+            { href: '/customers/survey?tab=ready', label: 'Ready Install', active: (url) => (url || '').includes('tab=ready'), permission: 'customers_survey_tab_ready' },
+            { href: '/customers/survey?tab=unfeasible', label: 'Unfeasible', active: (url) => (url || '').includes('tab=unfeasible'), permission: 'customers_survey_tab_unfeasible' },
+        ]
+    },
     { type: 'link', href: '/customers/installed', icon: 'cog', label: 'Instalasi', active: (url) => (url || '').startsWith('/customers/installed'), permission: 'menu_customers_installed' },
     { type: 'link', href: '/customers/activation', icon: 'key', label: 'Aktivasi', active: (url) => (url || '').startsWith('/customers/activation'), permission: 'menu_customers_activation' },
     { type: 'link', href: '/customers/active', icon: 'badge-check', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: 'menu_customers_active' },
@@ -250,5 +292,23 @@ const filteredMenuItems = computed(() => {
         console.error("Error in filteredMenuItems:", e);
         return menuItems; // Tampilkan semua jika error
     }
+});
+
+const openDropdowns = ref([]);
+const toggleDropdown = (index) => {
+    if (openDropdowns.value.includes(index)) {
+        openDropdowns.value = openDropdowns.value.filter(i => i !== index);
+    } else {
+        openDropdowns.value.push(index);
+    }
+};
+
+onMounted(() => {
+    // Buka dropdown yang sedang aktif secara otomatis
+    filteredMenuItems.value.forEach((item, index) => {
+        if (item.type === 'dropdown' && item.active(page.url)) {
+            openDropdowns.value.push(index);
+        }
+    });
 });
 </script>
