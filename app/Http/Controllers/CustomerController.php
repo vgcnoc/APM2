@@ -207,8 +207,8 @@ class CustomerController extends Controller
             ->with('odc.olt')
             ->get();
             
-        // Ambil semua user yang memiliki hak akses untuk mengisi laporan survey/instalasi
-        $technicians = User::permission(['customers_survey_report', 'customers_installed_report'])->where('is_active', true)->get();
+        // Ambil semua user yang aktif (sesuai request untuk menampilkan semua karyawan)
+        $technicians = User::where('is_active', true)->get();
 
         // Get all areas for dropdown
         $areas = \App\Models\Area::orderBy('name')->pluck('name')->toArray();
@@ -327,8 +327,8 @@ class CustomerController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Ambil semua user yang memiliki hak akses untuk mengisi laporan
-        $technicians = User::permission(['customers_survey_report', 'customers_installed_report'])->where('is_active', true)->get();
+        // Ambil semua user yang aktif (sesuai request untuk menampilkan semua karyawan)
+        $technicians = User::where('is_active', true)->get();
         $availableOnts = \App\Models\Ont::whereIn('status', ['Sudah Set', 'Belum Set/Baru Input', 'inactive'])
             ->whereNull('customer_id')
             ->get();
