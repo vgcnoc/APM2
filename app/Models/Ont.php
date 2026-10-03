@@ -59,6 +59,27 @@ class Ont extends Model
         ];
     }
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($ont) {
+            if (empty($ont->ont_id)) {
+                $lastOnt = static::whereNotNull('ont_id')
+                                 ->where('ont_id', 'like', 'V%')
+                                 ->orderByRaw('CAST(SUBSTRING(ont_id, 2) AS UNSIGNED) DESC')
+                                 ->first();
+                
+                if ($lastOnt) {
+                    $lastNumber = (int) substr($lastOnt->ont_id, 1);
+                    $ont->ont_id = 'V' . str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+                } else {
+                    $ont->ont_id = 'V1001';
+                }
+            }
+        });
+    }
+
     // ── Relationships ──────────────────────────────────────────
 
     /**
