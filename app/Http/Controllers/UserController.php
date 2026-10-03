@@ -48,6 +48,7 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             'is_active' => 'boolean',
+            'accessible_areas' => 'nullable|array',
         ]);
 
         $employee = \App\Models\Employee::where('email', $validated['email'])->first();
@@ -62,6 +63,7 @@ class UserController extends Controller
 
         $validated['password'] = Hash::make($validated['password']);
         $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['accessible_areas'] = $request->input('accessible_areas', []);
 
         $user = User::create($validated);
         
@@ -81,6 +83,7 @@ class UserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:8',
             'is_active' => 'boolean',
+            'accessible_areas' => 'nullable|array',
         ]);
 
         $employee = \App\Models\Employee::where('email', $validated['email'])->first();
@@ -100,6 +103,7 @@ class UserController extends Controller
         }
 
         $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['accessible_areas'] = $request->input('accessible_areas', []);
 
         $user->update($validated);
         

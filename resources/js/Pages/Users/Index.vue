@@ -124,6 +124,17 @@
                     </div>
 
                     <!-- Role and Area removed as they are synced from Employees -->
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Akses Multi-Area (Opsional)</label>
+                        <p class="text-xs text-gray-500 mb-3">Pilih area tambahan yang bisa dilihat oleh user ini. Jika kosong, user hanya bisa melihat area utamanya saja.</p>
+                        <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border border-gray-200 rounded-xl bg-gray-50">
+                            <label v-for="area in areas" :key="area.id" class="flex items-center gap-2 cursor-pointer p-1.5 hover:bg-white rounded">
+                                <input type="checkbox" :value="area.id" v-model="form.accessible_areas" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                                <span class="text-sm text-gray-700">{{ area.name }}</span>
+                            </label>
+                        </div>
+                    </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Password <span v-if="!isEditing">*</span></label>
@@ -185,6 +196,7 @@ const form = useForm({
     password: '',
     role: '',
     area_id: null,
+    accessible_areas: [],
     is_active: true,
 });
 
@@ -215,6 +227,7 @@ function openEditModal(user) {
     form.email = user.email;
     form.role = user.role;
     form.area_id = user.area_id;
+    form.accessible_areas = user.accessible_areas || [];
     form.password = '';
     form.is_active = !!user.is_active;
     isModalOpen.value = true;

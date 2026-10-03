@@ -20,6 +20,7 @@ class User extends Authenticatable
         'role',
         'phone',
         'area_id',
+        'accessible_areas',
         'is_active',
     ];
 
@@ -34,6 +35,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'accessible_areas' => 'array',
         ];
     }
 
@@ -47,6 +49,15 @@ class User extends Authenticatable
     public function area(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Area::class, 'area_id');
+    }
+
+    public function getAccessibleAreaIds(): array
+    {
+        $areas = (array) ($this->accessible_areas ?? []);
+        if ($this->area_id && !in_array($this->area_id, $areas)) {
+            $areas[] = $this->area_id;
+        }
+        return $areas;
     }
 
     public function technicianSchedules(): HasMany

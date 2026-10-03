@@ -18,7 +18,7 @@ class MaterialTransactionController extends Controller
 
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('material_transactions_view_all')) {
             if (auth()->user()->can('material_transactions_view_area')) {
-                $query->where('area_id', auth()->user()->area_id);
+                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
             } else {
                 $query->where('user_id', auth()->id());
             }
@@ -55,7 +55,7 @@ class MaterialTransactionController extends Controller
         
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('material_transactions_view_all')) {
             if (auth()->user()->can('material_transactions_view_area')) {
-                $baseQuery->where('area_id', auth()->user()->area_id);
+                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
             } else {
                 $baseQuery->where('user_id', auth()->id());
             }
@@ -78,7 +78,7 @@ class MaterialTransactionController extends Controller
         $totalItems = MaterialTransactionItem::whereHas('transaction', function($q) use ($request) {
             if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('material_transactions_view_all')) {
                 if (auth()->user()->can('material_transactions_view_area')) {
-                    $q->where('area_id', auth()->user()->area_id);
+                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
                 } else {
                     $q->where('user_id', auth()->id());
                 }

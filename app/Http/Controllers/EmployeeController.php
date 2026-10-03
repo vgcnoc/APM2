@@ -18,7 +18,7 @@ class EmployeeController extends Controller
 
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_view_all')) {
             if (auth()->user()->can('hr_employees_view_area')) {
-                $query->where('area_id', auth()->user()->area_id);
+                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
             } else {
                 // If they don't have view_all or view_area, they only see themselves (or nothing, depending on logic)
                 // Let's just limit to their area anyway, or their own employee record. Let's do their own email.

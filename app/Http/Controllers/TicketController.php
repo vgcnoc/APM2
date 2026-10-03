@@ -17,7 +17,7 @@ class TicketController extends Controller
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('tickets_view_all')) {
             if (auth()->user()->can('tickets_view_area')) {
                 $query->whereHas('customer', function($q) {
-                    $q->where('area_id', auth()->user()->area_id);
+                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
                 });
             } else {
                 $query->where('assigned_to', auth()->id());

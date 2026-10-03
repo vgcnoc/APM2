@@ -17,7 +17,7 @@ class OdpController extends Controller
 
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_odp_view_all')) {
             if (auth()->user()->can('network_odp_view_area')) {
-                $query->where('area_id', auth()->user()->area_id);
+                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
             } else {
                 $query->where('id', -1);
             }

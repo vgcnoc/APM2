@@ -26,7 +26,7 @@ class CustomerController extends Controller
         $customers = Customer::with(['package', 'ont.odp'])
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
-                    $q->where('area_id', auth()->user()->area_id);
+                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
                 } else {
                     $q->where(function($sub) {
                         $sub->where('sales_id', auth()->id())
@@ -69,7 +69,7 @@ class CustomerController extends Controller
         $query = Customer::booking()
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_booking_view_all'), function($q) {
                 if (auth()->user()->can('customers_booking_view_area')) {
-                    $q->where('area_id', auth()->user()->area_id);
+                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
                 } else {
                     $q->where('sales_id', auth()->id());
                 }
@@ -134,7 +134,7 @@ class CustomerController extends Controller
                     });
                 } else {
                     if (auth()->user()->can('customers_survey_view_area')) {
-                        $q->where('area_id', auth()->user()->area_id);
+                        $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
                     } else {
                         $q->where(function($sub) {
                             $sub->where('sales_id', auth()->id())
@@ -237,7 +237,7 @@ class CustomerController extends Controller
                 });
             } else {
                 if (auth()->user()->can('customers_installed_view_area')) {
-                    $baseQuery->where('area_id', auth()->user()->area_id);
+                    $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
                 } else {
                     $baseQuery->where(function($q) {
                         $q->where('sales_id', auth()->id())
@@ -362,7 +362,7 @@ class CustomerController extends Controller
         
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_activation_view_all')) {
             if (auth()->user()->can('customers_activation_view_area')) {
-                $baseQuery->where('area_id', auth()->user()->area_id);
+                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
             } else {
                 $baseQuery->where(function($q) {
                     $q->where('sales_id', auth()->id())
@@ -402,7 +402,7 @@ class CustomerController extends Controller
         
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_active_view_all')) {
             if (auth()->user()->can('customers_active_view_area')) {
-                $baseQuery->where('area_id', auth()->user()->area_id);
+                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
             } else {
                 $baseQuery->where(function($q) {
                     $q->where('sales_id', auth()->id())
