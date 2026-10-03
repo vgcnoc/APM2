@@ -516,9 +516,9 @@
         </Teleport>
 
         <!-- Modal Print Card Preview -->
-        <div v-if="isPrintModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto no-print">
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-                <div class="bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between no-print-header">
+        <div v-if="isPrintModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto print:!bg-transparent print:!backdrop-blur-none print:!p-0">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col print:!shadow-none print:!max-h-none print:!rounded-none">
+                <div class="bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between no-print">
                     <h3 class="text-lg font-bold text-gray-900">Preview Print Card ({{ selectedIds.length }} Item)</h3>
                     <div class="flex gap-2">
                         <button @click="printCards" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
