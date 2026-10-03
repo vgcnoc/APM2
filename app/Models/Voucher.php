@@ -1,0 +1,26 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Voucher extends Model
+{
+    protected $fillable = [
+        'voucher_profile_id',
+        'code',
+        'username',
+        'password',
+        'status',
+        'used_at',
+    ];
+
+    protected $casts = [
+        'used_at' => 'datetime',
+    ];
+
+    public function profile()
+    {
+        return $this->belongsTo(VoucherProfile::class, 'voucher_profile_id');
+    }
+}

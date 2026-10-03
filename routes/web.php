@@ -143,6 +143,17 @@ Route::middleware(['auth'])->group(function () {
     // ── Data Jaringan (Dashboard Topology) ─────────────────────
     Route::get('/network-data', [\App\Http\Controllers\NetworkDataController::class, 'index'])->name('network-data.index');
 
+    // ── Vouchers & Profil Voucher ─────────────────────────────
+    Route::get('/vouchers/profiles', [\App\Http\Controllers\VoucherProfileController::class, 'index'])->name('vouchers.profiles.index');
+    Route::post('/vouchers/profiles', [\App\Http\Controllers\VoucherProfileController::class, 'store'])->name('vouchers.profiles.store');
+    Route::post('/vouchers/profiles/{voucherProfile}/update', [\App\Http\Controllers\VoucherProfileController::class, 'update'])->name('vouchers.profiles.update.post');
+    Route::post('/vouchers/profiles/{voucherProfile}/delete', [\App\Http\Controllers\VoucherProfileController::class, 'destroy'])->name('vouchers.profiles.destroy.post');
+
+    Route::get('/vouchers', [\App\Http\Controllers\VoucherController::class, 'index'])->name('vouchers.index');
+    Route::post('/vouchers', [\App\Http\Controllers\VoucherController::class, 'store'])->name('vouchers.store');
+    Route::post('/vouchers/bulk-destroy', [\App\Http\Controllers\VoucherController::class, 'bulkDestroy'])->name('vouchers.bulk-destroy');
+    Route::post('/vouchers/{voucher}/delete', [\App\Http\Controllers\VoucherController::class, 'destroy'])->name('vouchers.destroy.post');
+
     // ── Pengguna & Hak Akses ───────────────────────────────────
     Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit'])->middleware('role:admin');
     Route::post('users/{user}/update', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update.post')->middleware('role:admin');
