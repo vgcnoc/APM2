@@ -715,6 +715,8 @@ class CustomerController extends Controller
         }
 
         DB::transaction(function () use ($validated, $customer, $odp, $request, $ont) {
+            $isNewAssignment = false;
+            
             // Update existing linked ONT or Create new
             if ($ont) {
                 // Free old port if exist and changed
@@ -730,6 +732,9 @@ class CustomerController extends Controller
                             $oldOdp->update(['status' => 'active']);
                         }
                     }
+                    $isNewAssignment = true;
+                } elseif (!$ont->odp_id || !$ont->port_number) {
+                    $isNewAssignment = true;
                 }
 
                 // Update existing linked ONT
@@ -747,6 +752,7 @@ class CustomerController extends Controller
                     'status' => 'active',
                 ]);
             } else {
+                $isNewAssignment = true;
                 // Create new ONT if none is linked
                 $ont = Ont::create([
                     'odp_id' => $validated['odp_id'],
@@ -765,9 +771,11 @@ class CustomerController extends Controller
                 ]);
             }
 
-            // Update used_ports di ODP baru
-            $newOdp = Odp::find($validated['odp_id']);
-            $newOdp->increment('used_ports');
+            // Update used_ports di ODP baru ONLY if it is a new assignment or port changed
+            if ($isNewAssignment) {
+                $newOdp = Odp::find($validated['odp_id']);
+                $newOdp->increment('used_ports');
+            }
 
             // Update odp_ports if exists
             $newOdpPort = \App\Models\OdpPort::where('odp_id', $newOdp->id)
@@ -1264,11 +1272,21 @@ class CustomerController extends Controller
                 // Lepaskan ONT jika ada
                 if ($customer->ont) {
                     $odp = $customer->ont->odp;
+                    $portNumber = $customer->ont->port_number;
+
+                    // Update ODP Port status back to available
+                    if ($odp && $portNumber) {
+                        \App\Models\OdpPort::where('odp_id', $odp->id)
+                            ->where('port_number', $portNumber)
+                            ->update(['status' => 'available']);
+                    }
+
                     $customer->ont->update([
                         'customer_id' => null, 
                         'status' => 'inactive',
                         'odp_id' => null,
-                        'port_number' => null
+                        'port_number' => null,
+                        'odp_port_id' => null
                     ]);
 
                     if ($odp && $odp->used_ports > 0) {
