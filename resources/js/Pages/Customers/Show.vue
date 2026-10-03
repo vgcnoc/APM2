@@ -1,9 +1,9 @@
 <template>
     <AppLayout :title="source === 'instalasi' ? 'Detail Instalasi' : 'Detail Pelanggan'" :subtitle="customer.customer_code">
-        <div :class="source === 'instalasi' ? 'max-w-4xl mx-auto' : 'grid grid-cols-1 lg:grid-cols-3 gap-6'">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             <!-- Left Column -->
-            <div v-if="source !== 'instalasi'" class="space-y-6">
+            <div class="space-y-6">
                 <!-- Profile Card -->
                 <div class="glass-card overflow-hidden animate-fade-in-up">
                     <div class="h-28 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 relative">
@@ -113,7 +113,7 @@
             </div>
 
         <!-- Right Column -->
-            <div :class="source === 'instalasi' ? 'w-full space-y-6' : 'lg:col-span-2 space-y-6'">
+            <div class="lg:col-span-2 space-y-6">
                 <!-- Tabs Navigation -->
                 <div v-if="source !== 'instalasi' && !isLaporanPasang" class="flex flex-wrap gap-1 bg-white p-1 rounded-xl shadow-sm border border-gray-100">
                     <button @click="activeTab = 'booking'" :class="activeTab === 'booking' ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
