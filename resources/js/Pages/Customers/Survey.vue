@@ -61,7 +61,7 @@
                     <option value="semua">Semua Status</option>
                     <option value="jadwalkan">Belum Dijadwalkan</option>
                     <option value="laporan">Menunggu Laporan</option>
-                    <option value="ready">Ready Install</option>
+                    <option value="ready">Ready Install (Feasible)</option>
                     <option value="unfeasible">Unfeasible</option>
                 </select>
 
