@@ -220,7 +220,7 @@
                                         <select v-model="assignForm.material_items[index].id" @change="updateMaterialItemDetails(index)" class="flex-1 bg-slate-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all hover:bg-white min-w-0">
                                             <option value="">-- Pilih Material dari Surat Jalan --</option>
                                             <option v-for="item in availableMaterialItems" :key="item.id" :value="item.id">
-                                                {{ item.material ? item.material.name : 'Unknown' }} (SJ: {{ item.trx_number }})
+                                                {{ item.material ? item.material.name : 'Unknown' }} (SJ: {{ item.trx_number }}) - Stok Area: {{ item.area_stock }} {{ item.unit }}
                                             </option>
                                         </select>
                                         <div class="flex items-center gap-1.5 shrink-0" v-if="assignForm.material_items[index].id">
@@ -503,10 +503,22 @@ const availableMaterialItems = computed(() => {
                     const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
                     
                     if (!name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem') && !isRegistered) {
-                        items.push({
-                            ...item,
-                            trx_number: trx.transaction_number,
-                        });
+                        let areaStock = 0;
+                        if (item.material && item.material.stocks && activeCustomer.value) {
+                            const stockObj = item.material.stocks.find(s => s.area_id == activeCustomer.value.area_id);
+                            if (stockObj) {
+                                areaStock = parseFloat(stockObj.stock) || 0;
+                            }
+                        }
+
+                        if (areaStock > 0) {
+                            items.push({
+                                ...item,
+                                trx_number: trx.transaction_number,
+                                area_stock: areaStock,
+                                unit: item.material ? item.material.unit : item.unit
+                            });
+                        }
                     }
                 });
             }
