@@ -53,11 +53,36 @@
             margin-bottom: 10px;
         }
 
-        .voucher-title {
+        .app-logo {
+            max-height: 40px;
+            max-width: 100%;
+            object-fit: contain;
+            margin-bottom: 5px;
+        }
+        
+        .app-name-fallback {
             font-size: 16px;
-            font-weight: bold;
+            font-weight: 800;
             color: #111827;
+            margin: 0 0 5px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .app-name-fallback svg {
+            width: 20px;
+            height: 20px;
+            color: #2563eb;
+        }
+
+        .voucher-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #4b5563;
             margin: 0;
+            text-transform: uppercase;
         }
 
         .voucher-price {
@@ -147,9 +172,26 @@
     </div>
 
     <div class="page">
+        @php
+            $logoPath = \App\Models\Setting::get('app_logo');
+            $logoUrl = $logoPath ? asset('storage/' . $logoPath) : null;
+            $appName = \App\Models\Setting::get('app_name', 'ISP Manager');
+        @endphp
+        
         @foreach($vouchers as $voucher)
             <div class="voucher-card">
                 <div class="voucher-header">
+                    @if($logoUrl)
+                        <img src="{{ $logoUrl }}" alt="{{ $appName }}" class="app-logo">
+                    @else
+                        <div class="app-name-fallback">
+                            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="40" height="40" rx="10" fill="currentColor"/>
+                                <path d="M22 10V3L13 14H20V21L29 10H22Z" fill="white" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            {{ $appName }}
+                        </div>
+                    @endif
                     <h3 class="voucher-title">{{ $voucher->profile->name }}</h3>
                     <p class="voucher-price">Rp {{ number_format($voucher->profile->price, 0, ',', '.') }}</p>
                 </div>
