@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('resellers', function (Blueprint $table) {
+            $table->dropForeign(['area_id']);
             $table->dropColumn(['name', 'phone', 'address', 'area_id', 'latitude', 'longitude', 'ktp_photo', 'installation_fee']);
             $table->foreignId('customer_id')->nullable()->after('id')->constrained('customers')->cascadeOnDelete();
         });
