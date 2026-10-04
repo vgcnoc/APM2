@@ -13,7 +13,10 @@ class ResellerController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Reseller::with(['customer.areaModel', 'customer.package']);
+        $query = Reseller::with(['customer.areaModel', 'customer.package'])
+            ->whereHas('customer', function($q) {
+                $q->where('status', 'active');
+            });
 
         if ($request->has('search')) {
             $query->whereHas('customer', function($q) use ($request) {

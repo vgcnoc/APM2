@@ -398,7 +398,8 @@ class CustomerController extends Controller
      */
     public function active(Request $request): Response
     {
-        $baseQuery = Customer::where('status', 'active');
+        // Exclude pure resellers (customers without a monthly package)
+        $baseQuery = Customer::where('status', 'active')->whereNotNull('package_id');
         
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_active_view_all')) {
             if (auth()->user()->can('customers_active_view_area')) {

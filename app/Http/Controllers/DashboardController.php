@@ -26,7 +26,7 @@ class DashboardController extends Controller
 
         // ── Statistik Pelanggan ──────────────────────────────
         $customerStats = [
-            'total_active'     => Customer::where('status', 'active')->count(),
+            'total_active'     => Customer::where('status', 'active')->whereNotNull('package_id')->count(),
             'total_booking'    => Customer::where('status', 'booking')->count(),
             'total_survey'     => Customer::whereIn('status', ['survey'])->count(),
             'total_installing' => Customer::where('status', 'installing')->count(),
