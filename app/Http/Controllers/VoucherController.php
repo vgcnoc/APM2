@@ -32,10 +32,12 @@ class VoucherController extends Controller
 
         $vouchers = $query->latest()->paginate(20)->withQueryString();
         $profiles = VoucherProfile::all();
+        $resellers = \App\Models\Reseller::with('customer')->get();
 
         return Inertia::render('Vouchers/Index', [
             'vouchers' => $vouchers,
             'profiles' => $profiles,
+            'resellers' => $resellers,
             'filters' => $request->only(['search', 'profile_id', 'status'])
         ]);
     }
@@ -48,9 +50,24 @@ class VoucherController extends Controller
             'length' => 'required|integer|min:4|max:12',
             'prefix' => 'nullable|string|max:4',
             'type' => 'required|in:up,vc', // up = user & password, vc = code only (user=pass=code)
+            'reseller_id' => 'nullable|exists:resellers,id',
         ]);
 
         $profile = VoucherProfile::find($validated['voucher_profile_id']);
+        
+        $reseller = null;
+        if (!empty($validated['reseller_id'])) {
+            $reseller = \App\Models\Reseller::find($validated['reseller_id']);
+            $totalPrice = $profile->price * $validated['amount'];
+            
+            if ($reseller->balance < $totalPrice) {
+                return redirect()->back()->withErrors(['reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($totalPrice, 0, ',', '.') . ').'])->withInput();
+            }
+            
+            // Potong saldo reseller
+            $reseller->balance -= $totalPrice;
+            $reseller->save();
+        }
         
         $vouchers = [];
         $now = now();
@@ -73,6 +90,7 @@ class VoucherController extends Controller
 
             $vouchers[] = [
                 'voucher_profile_id' => $profile->id,
+                'reseller_id' => $reseller ? $reseller->id : null,
                 'code' => $code,
                 'username' => $username,
                 'password' => $password,

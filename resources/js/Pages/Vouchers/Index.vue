@@ -139,6 +139,17 @@
                             </select>
                         </div>
                         
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Generate Untuk Reseller (Opsional)</label>
+                            <select v-model="form.reseller_id" class="w-full border-gray-300 rounded-lg">
+                                <option value="">-- System (Tanpa Potong Saldo) --</option>
+                                <option v-for="reseller in resellers" :key="reseller.id" :value="reseller.id">
+                                    {{ reseller.customer.name }} (Saldo: Rp{{ reseller.balance.toLocaleString('id-ID') }})
+                                </option>
+                            </select>
+                            <div v-if="form.errors.reseller_id" class="text-red-500 text-xs mt-1">{{ form.errors.reseller_id }}</div>
+                        </div>
+                        
                         <button type="submit" class="hidden" id="submitBtn"></button>
                     </form>
                 </div>
@@ -164,6 +175,7 @@ import Swal from 'sweetalert2';
 const props = defineProps({
     vouchers: Object,
     profiles: Array,
+    resellers: Array,
     filters: Object,
 });
 
@@ -178,6 +190,7 @@ const form = useForm({
     length: 6,
     prefix: '',
     type: 'vc',
+    reseller_id: '',
 });
 
 const doFilter = () => {
@@ -186,6 +199,7 @@ const doFilter = () => {
 
 const openGenerateModal = () => {
     form.reset();
+    form.clearErrors();
     showModal.value = true;
 };
 
