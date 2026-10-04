@@ -104,4 +104,16 @@ class VoucherController extends Controller
         
         return redirect()->back()->with('success', count($validated['ids']) . ' Voucher berhasil dihapus.');
     }
+
+    public function print(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:vouchers,id',
+        ]);
+        
+        $vouchers = Voucher::with('profile')->whereIn('id', $validated['ids'])->get();
+        
+        return view('vouchers.print', compact('vouchers'));
+    }
 }
