@@ -205,6 +205,7 @@ const menuItems = [
     { type: 'group', label: 'INFRASTRUKTUR & JARINGAN' },
     { type: 'link', href: '/network-topology', icon: 'globe', label: 'Network Topology', active: (url) => (url || '').startsWith('/network-topology'), permission: 'menu_network_topology' },
     { type: 'link', href: '/network-data', icon: 'globe', label: 'Data Jaringan', active: (url) => (url || '').startsWith('/network-data'), permission: 'menu_network_data' },
+    { type: 'link', href: '/routers', icon: 'server', label: 'Data Router', active: (url) => (url || '').startsWith('/routers'), permission: 'menu_network_routers' },
     { type: 'link', href: '/radius/online-users', icon: 'users', label: 'Pengguna Online (RADIUS)', active: (url) => (url || '').startsWith('/radius/online-users'), permission: 'menu_network_online_users' },
     { type: 'link', href: '/radius/auth-logs', icon: 'clipboard-list', label: 'Log Autentikasi (RADIUS)', active: (url) => (url || '').startsWith('/radius/auth-logs'), permission: 'menu_network_auth_logs' },
     { type: 'link', href: '/radius/nas', icon: 'server', label: 'NAS / Router (RADIUS)', active: (url) => (url || '').startsWith('/radius/nas'), permission: 'menu_network_nas' },

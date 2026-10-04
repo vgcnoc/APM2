@@ -209,6 +209,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('internet-packages/{internet_package}/update', [\App\Http\Controllers\InternetPackageController::class, 'update'])->name('internet-packages.update.post');
     Route::post('internet-packages/{internet_package}/delete', [\App\Http\Controllers\InternetPackageController::class, 'destroy'])->name('internet-packages.destroy.post');
 
+    // ── Data Router ────────────────────────────────────────────
+    Route::resource('routers', \App\Http\Controllers\RouterController::class)->except(['create', 'show', 'edit']);
+    Route::post('routers/{router}/update', [\App\Http\Controllers\RouterController::class, 'update'])->name('routers.update.post');
+    Route::post('routers/{router}/delete', [\App\Http\Controllers\RouterController::class, 'destroy'])->name('routers.destroy.post');
+
     // ── RADIUS Billing System ──────────────────────────────────
     Route::prefix('radius')->name('radius.')->group(function () {
         Route::resource('nas', \App\Http\Controllers\Radius\NasController::class)->except(['create', 'show', 'edit']);
