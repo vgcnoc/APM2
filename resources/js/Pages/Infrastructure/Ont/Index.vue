@@ -167,6 +167,7 @@
                                         <option value="Static">Static</option>
                                         <option value="DHCP">DHCP</option>
                                         <option value="Bridge">Bridge</option>
+                                        <option value="Hotspot">Hotspot</option>
                                     </select>
                                 </div>
                             </div>

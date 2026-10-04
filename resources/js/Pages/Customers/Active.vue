@@ -348,6 +348,7 @@
                                     <option value="PPPOE">PPPoE</option>
                                     <option value="STATIC">Static IP</option>
                                     <option value="DHCP">DHCP / Dynamic</option>
+                                    <option value="Hotspot">Hotspot</option>
                                 </select>
                             </div>
                             
