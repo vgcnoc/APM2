@@ -218,29 +218,46 @@ function generateScript() {
     const ip = props.serverIp || '157.66.140.17'; // default to VPS IP
     const secret = router.secret;
     const name = router.shortname || 'RADIUS_VPS';
+    
+    // Generate unique API user for this Mikrotik
+    const apiUser = 'APM2_' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    const apiPass = Math.random().toString(36).substring(2, 14);
 
     let script = `# Script Konfigurasi RADIUS APM2 untuk Mikrotik ${selectedOs.value.toUpperCase()}\n`;
-    script += `# Mohon paste keseluruhan script di bawah ini ke terminal Mikrotik Anda:\n\n`;
+    script += `# Mohon paste keseluruhan script di bawah ini ke New Terminal Mikrotik Anda:\n`;
+    script += `#############################################################\n\n`;
 
-    // Script for RouterOS v7 or v6 (RADIUS Client)
-    script += `/radius\n`;
-    script += `add address=${ip} secret="${secret}" service=ppp,hotspot timeout=3000ms\n\n`;
-
-    // Enable CoA (Radius Incoming)
-    script += `/radius incoming\n`;
-    script += `set accept=yes port=3799\n\n`;
-
-    // Configure PPP AAA
-    script += `/ppp aaa\n`;
-    script += `set use-radius=yes accounting=yes interim-update=5m\n\n`;
-
-    // Force default hotspot profile to use radius
-    script += `/ip hotspot profile\n`;
-    script += `set [ find default=yes ] use-radius=yes radius-interim-update=5m\n\n`;
+    script += `/system identity set name="${name}";\n`;
+    script += `/ip dns set allow-remote-requests=yes;\n\n`;
     
-    // Add simple firewall rule to allow CoA
-    script += `/ip firewall filter\n`;
-    script += `add action=accept chain=input dst-port=3799 protocol=udp src-address=${ip} comment="Allow RADIUS CoA from APM2"\n`;
+    script += `# 1. BUAT USER API UNTUK KONEKSI BILLING APM2\n`;
+    script += `/user rem [find comment~"APM2"];\n`;
+    script += `/user add name="${apiUser}" password="${apiPass}" group=write comment="USER FOR APM2 BILLING API";\n\n`;
+
+    script += `# 2. KONFIGURASI RADIUS\n`;
+    script += `/radius incoming set accept=yes port=3799;\n`;
+    script += `/radius rem [find comment~"APM2RADIUS"];\n`;
+    script += `/radius add address=${ip} comment="APM2RADIUS" authentication-port=1812 accounting-port=1813 secret="${secret}" service=ppp,hotspot timeout=3s;\n\n`;
+
+    script += `# 3. INTEGRASI PPP & HOTSPOT KE RADIUS\n`;
+    script += `/ppp aaa set use-radius=yes accounting=yes interim-update=5m;\n`;
+    script += `/ip hotspot profile set login-by=http-chap,http-pap,cookie,mac-cookie http-cookie-lifetime=4w2d use-radius=yes radius-accounting=yes [find]\n\n`;
+
+    script += `# 4. SISTEM ISOLIR (SUSPEND)\n`;
+    script += `/ip firewall address-list add address=${ip} comment="DEFAULT BY APM2 (DONT CHANGE IT)" list=APM2BYPASS\n`;
+    script += `/ip proxy set enabled=yes port=8097;\n`;
+    script += `### Konfigurasi Redirect Isolir ###\n`;
+    script += `/ip proxy access rem [find comment~"APM2"]\n`;
+    script += `/ip proxy access add action=redirect action-data="isolir.apm2.com" comment="DENY OTHER THAN THE ISOLIR IP THAT GOES TO THE WEB PROXY BY APM2" dst-address=!${ip} local-port=8097 ;\n`;
+    script += `/ip firewall nat remove [find src-address-list~"APM2ISOLIR"]\n`;
+    script += `/ip firewall nat add action=redirect chain=dstnat comment=APM2ISOLIR dst-address-list=!APM2BYPASS dst-port=80,443 protocol=tcp src-address-list=APM2ISOLIR to-ports=8097;\n`;
+    script += `/ip firewall filter remove [find src-address-list~"APM2ISOLIR"]\n`;
+    script += `/ip firewall filter add action=drop chain=forward comment=APM2ISOLIR dst-address=!${ip} dst-port=!53,5353 protocol=udp src-address-list=APM2ISOLIR;\n`;
+    script += `/ip firewall filter add action=drop chain=forward comment=APM2ISOLIR dst-address=!${ip} protocol=tcp src-address-list=APM2ISOLIR;\n\n`;
+    
+    script += `# PERHATIAN: Simpan Data API Mikrotik ini ke dalam Data Router APM2 Anda!\n`;
+    script += `# Username API: ${apiUser}\n`;
+    script += `# Password API: ${apiPass}\n`;
 
     generatedScript.value = script;
 }
