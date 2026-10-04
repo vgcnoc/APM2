@@ -49,6 +49,39 @@ const openEditModal = (reseller) => {
     showModal.value = true;
 };
 
+const createAccount = (reseller) => {
+    Swal.fire({
+        title: 'Buat Akun Login?',
+        text: `Akun akan dibuat menggunakan email ${reseller.customer.email || '(email kosong)'}`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Ya, Buat!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.post(route('resellers.create-account', reseller.id), {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire(
+                        'Berhasil!',
+                        'Akun berhasil dibuat.',
+                        'success'
+                    );
+                },
+                onError: (errors) => {
+                    Swal.fire(
+                        'Gagal!',
+                        errors.error || 'Terjadi kesalahan saat membuat akun.',
+                        'error'
+                    );
+                }
+            });
+        }
+    });
+};
+
 const closeModal = () => {
     showModal.value = false;
     form.reset();
@@ -154,7 +187,10 @@ const deleteReseller = (reseller) => {
                                     <span v-else class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Nonaktif</span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button @click="openEditModal(reseller)" class="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition-colors" title="Edit Dompet">
+                                    <button v-if="reseller.customer && !reseller.customer.user" @click="createAccount(reseller)" class="text-emerald-600 hover:text-emerald-900 p-2 rounded-lg hover:bg-emerald-50 transition-colors" title="Buat Akun Login">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                                    </button>
+                                    <button @click="openEditModal(reseller)" class="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition-colors ml-1" title="Edit Dompet">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                     </button>
                                     <button @click="deleteReseller(reseller)" class="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50 transition-colors ml-1" title="Cabut Akses">

@@ -6,6 +6,11 @@ use App\Models\Reseller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Role;
+
 class ResellerController extends Controller
 {
     /**
@@ -13,7 +18,7 @@ class ResellerController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Reseller::with(['customer.areaModel', 'customer.package'])
+        $query = Reseller::with(['customer.areaModel', 'customer.package', 'customer.user'])
             ->whereHas('customer', function($q) {
                 $q->where('status', 'active');
             });
@@ -71,5 +76,55 @@ class ResellerController extends Controller
         }
 
         return redirect()->back()->with('success', 'Akses Reseller berhasil dicabut.');
+    }
+
+    /**
+     * Create login account for reseller
+     */
+    public function createAccount(Request $request, Reseller $reseller)
+    {
+        $customer = $reseller->customer;
+
+        if (!$customer) {
+            return redirect()->back()->with('error', 'Data pelanggan tidak ditemukan.');
+        }
+
+        if ($customer->user_id) {
+            return redirect()->back()->with('error', 'Reseller ini sudah memiliki akun.');
+        }
+
+        if (!$customer->email) {
+            return redirect()->back()->with('error', 'Email pelanggan belum diisi. Silakan edit pelanggan dan lengkapi email terlebih dahulu.');
+        }
+
+        try {
+            DB::transaction(function () use ($customer) {
+                // Ensure reseller role exists
+                $role = Role::firstOrCreate(['name' => 'reseller']);
+
+                // Generate default password (e.g. reseller + phone number or just fixed for now)
+                $defaultPassword = 'reseller' . substr(preg_replace('/[^0-9]/', '', $customer->phone), -4);
+                if (strlen($defaultPassword) < 8) {
+                    $defaultPassword = 'reseller123';
+                }
+
+                $user = User::create([
+                    'name' => $customer->name,
+                    'email' => $customer->email,
+                    'password' => Hash::make($defaultPassword),
+                    'phone' => $customer->phone,
+                    'role' => 'reseller',
+                    'is_active' => true,
+                ]);
+
+                $user->assignRole($role);
+
+                $customer->update(['user_id' => $user->id]);
+            });
+
+            return redirect()->back()->with('success', 'Akun berhasil dibuat. Password default adalah: reseller + 4 digit terakhir nomor HP (atau reseller123).');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal membuat akun: ' . $e->getMessage());
+        }
     }
 }

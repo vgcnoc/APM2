@@ -159,6 +159,8 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('resellers', \App\Http\Controllers\ResellerController::class)->except(['create', 'show', 'edit']);
     Route::post('/resellers/{reseller}/update', [\App\Http\Controllers\ResellerController::class, 'update'])->name('resellers.update.post');
     Route::post('/resellers/{reseller}/delete', [\App\Http\Controllers\ResellerController::class, 'destroy'])->name('resellers.destroy.post');
+    Route::post('/resellers/{reseller}/create-account', [\App\Http\Controllers\ResellerController::class, 'createAccount'])->name('resellers.create-account');
+
 
     // ── Pengguna & Hak Akses ───────────────────────────────────
     Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit'])->middleware('role:admin');

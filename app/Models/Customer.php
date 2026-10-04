@@ -18,6 +18,7 @@ class Customer extends Model
         'email',
         'phone',
         'address',
+        'user_id',
         'area',
         'identity_photo',
         'latitude',
@@ -47,6 +48,11 @@ class Customer extends Model
     }
 
     // ── Relationships ──────────────────────────────────────────
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     /**
      * Area tempat pelanggan berada
