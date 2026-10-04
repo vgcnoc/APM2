@@ -112,4 +112,27 @@ class NasController extends Controller
         return redirect()->route('radius.nas.index')
             ->with('success', 'Kredensial VPN & API router berhasil di-generate ulang. Paste ulang script ke Mikrotik.');
     }
+
+    public function ping(Nas $nas)
+    {
+        $ip = $nas->vpn_ip;
+        if (!$ip && $nas->nasname !== '0.0.0.0/0') {
+            $ip = $nas->nasname;
+        }
+
+        if (!$ip) {
+            return response()->json(['status' => 'offline']);
+        }
+
+        $router = \App\Models\Router::where('nas_id', $nas->id)->first();
+        $port = $router ? ($router->api_port ?: 8728) : 8728;
+        
+        $fp = @fsockopen($ip, $port, $errno, $errstr, 2);
+        if ($fp) {
+            fclose($fp);
+            return response()->json(['status' => 'online']);
+        }
+
+        return response()->json(['status' => 'offline']);
+    }
 }

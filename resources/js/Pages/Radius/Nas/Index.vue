@@ -84,7 +84,8 @@
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Nama</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Tipe</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Secret</th>
-                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Koneksi</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -98,13 +99,25 @@
                                 <td class="px-6 py-4 text-sm text-gray-600 font-mono text-xs">
                                     <span class="bg-gray-100 px-2 py-1 rounded select-all">{{ n.secret }}</span>
                                 </td>
+                                <td class="px-6 py-4 text-sm font-medium">
+                                    <span v-if="connectionStatuses[n.id] === 'online'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Online
+                                    </span>
+                                    <span v-else-if="connectionStatuses[n.id] === 'offline'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Offline
+                                    </span>
+                                    <span v-else class="inline-flex items-center gap-1.5 text-xs text-gray-500">
+                                        <svg class="animate-spin h-3 w-3 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        Memeriksa...
+                                    </span>
+                                </td>
                                 <td class="px-6 py-4 text-sm text-right flex gap-3 justify-end">
                                     <button @click="openEditModal(n)" class="text-indigo-600 hover:text-indigo-900 font-medium">Edit</button>
                                     <button @click="deleteNas(n.id)" class="text-red-600 hover:text-red-900 font-medium">Hapus</button>
                                 </td>
                             </tr>
                             <tr v-if="nas.data.length === 0">
-                                <td colspan="5" class="px-6 py-8 text-center text-gray-500 text-sm">
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500 text-sm">
                                     Belum ada data NAS.
                                 </td>
                             </tr>
@@ -178,6 +191,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
+import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
@@ -454,5 +468,22 @@ onMounted(() => {
         selectedNasId.value = props.nas.data[0].id;
         generateScript();
     }
+    checkConnections();
 });
+
+const connectionStatuses = ref({});
+
+function checkConnections() {
+    if (!props.nas || !props.nas.data) return;
+    props.nas.data.forEach(n => {
+        connectionStatuses.value[n.id] = 'loading';
+        axios.get(`/radius/nas/${n.id}/ping`)
+            .then(res => {
+                connectionStatuses.value[n.id] = res.data.status;
+            })
+            .catch(() => {
+                connectionStatuses.value[n.id] = 'offline';
+            });
+    });
+}
 </script>
