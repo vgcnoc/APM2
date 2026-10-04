@@ -14,7 +14,16 @@ class Reseller extends Model
         'name',
         'phone',
         'address',
+        'area_id',
+        'latitude',
+        'longitude',
+        'ktp_photo',
         'balance',
         'is_active',
     ];
+
+    public function area()
+    {
+        return $this->belongsTo(Area::class);
+    }
 }

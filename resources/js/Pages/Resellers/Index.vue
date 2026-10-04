@@ -21,6 +21,10 @@ const props = defineProps({
     filters: {
         type: Object,
         default: () => ({})
+    },
+    areas: {
+        type: Array,
+        default: () => []
     }
 });
 
@@ -41,7 +45,11 @@ const form = useForm({
     name: '',
     phone: '',
     address: '',
+    area_id: '',
+    latitude: '',
+    longitude: '',
     balance: 0,
+    ktp_photo: null,
     is_active: true
 });
 
@@ -56,7 +64,11 @@ const openEditModal = (reseller) => {
     form.name = reseller.name;
     form.phone = reseller.phone || '';
     form.address = reseller.address || '';
+    form.area_id = reseller.area_id || '';
+    form.latitude = reseller.latitude || '';
+    form.longitude = reseller.longitude || '';
     form.balance = reseller.balance || 0;
+    form.ktp_photo = null; // Don't bind existing photo to file input
     form.is_active = reseller.is_active;
     showModal.value = true;
 };
@@ -144,6 +156,7 @@ const deleteReseller = (reseller) => {
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Reseller</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">No HP</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Alamat</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Saldo</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                                 <th class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
@@ -158,6 +171,10 @@ const deleteReseller = (reseller) => {
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                                     {{ reseller.address || '-' }}
+                                    <div v-if="reseller.area" class="text-xs text-blue-600 mt-1">{{ reseller.area.name }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span v-if="reseller.is_active" class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Aktif</span>
@@ -227,6 +244,46 @@ const deleteReseller = (reseller) => {
                             <label class="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
                             <textarea v-model="form.address" rows="3" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Masukkan alamat lengkap"></textarea>
                             <div v-if="form.errors.address" class="mt-1 text-sm text-red-600">{{ form.errors.address }}</div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Area / Wilayah</label>
+                                <select v-model="form.area_id" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm">
+                                    <option value="">-- Pilih Area --</option>
+                                    <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                                </select>
+                                <div v-if="form.errors.area_id" class="mt-1 text-sm text-red-600">{{ form.errors.area_id }}</div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Deposit / Saldo</label>
+                                <input v-model="form.balance" type="number" min="0" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="0" />
+                                <div v-if="form.errors.balance" class="mt-1 text-sm text-red-600">{{ form.errors.balance }}</div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Titik Koordinat (Latitude)</label>
+                                <input v-model="form.latitude" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="-6.200000" />
+                                <div v-if="form.errors.latitude" class="mt-1 text-sm text-red-600">{{ form.errors.latitude }}</div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Titik Koordinat (Longitude)</label>
+                                <input v-model="form.longitude" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="106.816666" />
+                                <div v-if="form.errors.longitude" class="mt-1 text-sm text-red-600">{{ form.errors.longitude }}</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Upload Foto KTP</label>
+                            <input type="file" @input="form.ktp_photo = $event.target.files[0]" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                            <div v-if="form.errors.ktp_photo" class="mt-1 text-sm text-red-600">{{ form.errors.ktp_photo }}</div>
+                            <div v-if="editingReseller && editingReseller.ktp_photo && !form.ktp_photo" class="mt-2">
+                                <span class="text-xs text-green-600 font-medium">Foto KTP sudah tersimpan. Upload baru untuk mengganti.</span>
+                            </div>
                         </div>
 
                         <div class="flex items-center mt-2">
