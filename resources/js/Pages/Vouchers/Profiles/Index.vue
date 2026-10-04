@@ -82,7 +82,13 @@
 
                         <div>
                             <label class="block text-xs font-bold text-gray-700 mb-1">Durasi (MikroTik Format) <span class="text-red-500">*</span></label>
-                            <input v-model="form.duration" type="text" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required placeholder="Contoh: 1h, 1d, 30d">
+                            <select v-model="durationChoice" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+                                <option value="" disabled>-- Pilih Durasi --</option>
+                                <option v-for="d in durationOptions" :key="d.value" :value="d.value">{{ d.label }} ({{ d.value }})</option>
+                                <option value="__custom">Lainnya (isi manual)</option>
+                            </select>
+                            <input v-if="durationChoice === '__custom'" v-model="form.duration" type="text" class="mt-2 w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm" required placeholder="Contoh: 2h, 5d, 1w, 1d12h">
+                            <p v-if="form.errors.duration" class="text-xs text-red-500 mt-1">{{ form.errors.duration }}</p>
                         </div>
 
                         <div>
@@ -132,7 +138,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
@@ -144,6 +150,39 @@ const props = defineProps({
 const formatPrice = (price) => {
     return parseFloat(price || 0).toLocaleString('id-ID');
 };
+
+const durationOptions = [
+    { value: '30m', label: '30 Menit' },
+    { value: '1h', label: '1 Jam' },
+    { value: '2h', label: '2 Jam' },
+    { value: '3h', label: '3 Jam' },
+    { value: '6h', label: '6 Jam' },
+    { value: '12h', label: '12 Jam' },
+    { value: '1d', label: '1 Hari' },
+    { value: '2d', label: '2 Hari' },
+    { value: '3d', label: '3 Hari' },
+    { value: '7d', label: '7 Hari' },
+    { value: '15d', label: '15 Hari' },
+    { value: '30d', label: '30 Hari' },
+];
+
+const customDuration = ref(false);
+const durationChoice = computed({
+    get: () => {
+        if (customDuration.value) return '__custom';
+        if (!form.duration) return '';
+        return durationOptions.some(d => d.value === form.duration) ? form.duration : '__custom';
+    },
+    set: (val) => {
+        if (val === '__custom') {
+            customDuration.value = true;
+            if (durationOptions.some(d => d.value === form.duration)) form.duration = '';
+        } else {
+            customDuration.value = false;
+            form.duration = val;
+        }
+    },
+});
 
 const feeFields = [
     { key: 'fee_admin', label: '1. Fee Admin/Modal' },
@@ -170,6 +209,7 @@ const form = useForm({
 const openCreateModal = () => {
     editMode.value = false;
     editId.value = null;
+    customDuration.value = false;
     form.reset();
     showModal.value = true;
 };
@@ -177,6 +217,7 @@ const openCreateModal = () => {
 const openEditModal = (profile) => {
     editMode.value = true;
     editId.value = profile.id;
+    customDuration.value = false;
     form.name = profile.name;
     form.price = profile.price;
     form.fee_admin = profile.fee_admin ?? 0;
