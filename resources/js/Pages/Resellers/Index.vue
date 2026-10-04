@@ -121,6 +121,22 @@ const deleteReseller = (reseller) => {
         }
     });
 };
+
+const getLocation = () => {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                form.latitude = position.coords.latitude.toFixed(6);
+                form.longitude = position.coords.longitude.toFixed(6);
+            },
+            (error) => {
+                alert('Gagal mendapatkan lokasi: ' + error.message);
+            }
+        );
+    } else {
+        alert('Geolocation tidak didukung oleh browser Anda.');
+    }
+};
 </script>
 
 <template>
@@ -271,17 +287,24 @@ const deleteReseller = (reseller) => {
                             <div v-if="form.errors.installation_fee" class="mt-1 text-sm text-red-600">{{ form.errors.installation_fee }}</div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Titik Koordinat (Latitude)</label>
-                                <input v-model="form.latitude" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="-6.200000" />
-                                <div v-if="form.errors.latitude" class="mt-1 text-sm text-red-600">{{ form.errors.latitude }}</div>
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-sm font-medium text-gray-700">Titik Koordinat</label>
+                                <button type="button" @click="getLocation" class="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 bg-blue-50 px-2 py-1 rounded border border-blue-200 transition-colors">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    Auto GPS
+                                </button>
                             </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Titik Koordinat (Longitude)</label>
-                                <input v-model="form.longitude" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="106.816666" />
-                                <div v-if="form.errors.longitude" class="mt-1 text-sm text-red-600">{{ form.errors.longitude }}</div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <input v-model="form.latitude" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Latitude (-6.200000)" />
+                                    <div v-if="form.errors.latitude" class="mt-1 text-sm text-red-600">{{ form.errors.latitude }}</div>
+                                </div>
+                                
+                                <div>
+                                    <input v-model="form.longitude" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Longitude (106.816666)" />
+                                    <div v-if="form.errors.longitude" class="mt-1 text-sm text-red-600">{{ form.errors.longitude }}</div>
+                                </div>
                             </div>
                         </div>
 
