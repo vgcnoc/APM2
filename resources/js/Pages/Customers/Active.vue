@@ -81,10 +81,13 @@
                     <span v-else class="text-xs text-gray-600">-</span>
                 </td>
                 <td>
-                    <template v-if="row.ont?.odp?.odc?.olt">
+                    <template v-if="row.ont?.odp">
                         <div class="text-xs space-y-0.5">
-                            <p class="text-gray-500">{{ row.ont.odp.odc.olt.name }}</p>
-                            <p class="text-gray-500">→ {{ row.ont.odp.odc.name }} → {{ row.ont.odp.name }}</p>
+                            <p v-if="row.ont.odp.odc?.olt" class="text-gray-500">{{ row.ont.odp.odc.olt.name }}</p>
+                            <p class="text-gray-500">
+                                <span v-if="row.ont.odp.odc">→ {{ row.ont.odp.odc.name }}</span>
+                                → {{ row.ont.odp.name }}
+                            </p>
                         </div>
                     </template>
                     <span v-else class="text-xs text-gray-600">-</span>

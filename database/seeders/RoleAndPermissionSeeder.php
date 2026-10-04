@@ -48,7 +48,11 @@ class RoleAndPermissionSeeder extends Seeder
             'menu_settings_branding', 'settings_branding_create', 'settings_branding_edit', 'settings_branding_delete',
             'menu_settings_api', 'settings_api_create', 'settings_api_edit', 'settings_api_delete',
             'menu_users', 'users_create', 'users_edit', 'users_delete',
-            'menu_internet_packages', 'internet_packages_create', 'internet_packages_edit', 'internet_packages_delete'
+            'menu_internet_packages', 'internet_packages_create', 'internet_packages_edit', 'internet_packages_delete',
+            
+            // Menu Vouchers & Resellers
+            'menu_vouchers', 'vouchers_create', 'vouchers_edit', 'vouchers_delete', 'vouchers_print',
+            'menu_resellers', 'resellers_create', 'resellers_edit', 'resellers_delete'
         ];
 
         foreach ($permissions as $permission) {

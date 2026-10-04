@@ -213,9 +213,9 @@ const menuItems = [
     { type: 'link', href: '/settings/api', icon: 'code', label: 'API & Integrasi', active: (url) => (url || '').startsWith('/settings/api'), permission: 'menu_settings_api' },
     { type: 'link', href: '/users', icon: 'users', label: 'Manajemen User', active: (url) => (url || '').startsWith('/users'), permission: 'menu_users' },
     { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
-    { type: 'link', href: '/vouchers/profiles', icon: 'document-text', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_internet_packages' },
-    { type: 'link', href: '/vouchers', icon: 'ticket', label: 'Data Voucher', active: (url) => (url || '').length > 0 && url === '/vouchers', permission: 'menu_internet_packages' },
-    { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_internet_packages' },
+    { type: 'link', href: '/vouchers/profiles', icon: 'document-text', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers' },
+    { type: 'link', href: '/vouchers', icon: 'ticket', label: 'Data Voucher', active: (url) => (url || '').length > 0 && url === '/vouchers', permission: 'menu_vouchers' },
+    { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
     { type: 'link', href: '/settings/roles', icon: 'lock-closed', label: 'Manajemen Role & Akses', active: (url) => (url || '').startsWith('/settings/roles'), permission: 'menu_settings_roles' },
 ];
 

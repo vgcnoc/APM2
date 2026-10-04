@@ -56,6 +56,7 @@ class RoleController extends Controller
                     ['name' => 'customers_survey_mark_ready', 'type' => 'feature', 'label' => 'Tandai Ready Install'],
                     ['name' => 'customers_survey_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
                     ['name' => 'customers_survey_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
+                    ['name' => 'customers_survey_edit', 'type' => 'action', 'label' => 'Edit Data Survey'],
                 ],
             ],
             [
@@ -73,6 +74,7 @@ class RoleController extends Controller
                     ['name' => 'customers_installed_audit', 'type' => 'feature', 'label' => 'Audit Instalasi'],
                     ['name' => 'customers_installed_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
                     ['name' => 'customers_installed_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
+                    ['name' => 'customers_installed_edit', 'type' => 'action', 'label' => 'Edit Data Instalasi'],
                 ],
             ],
             [
@@ -106,6 +108,7 @@ class RoleController extends Controller
                     ['name' => 'customers_delete', 'type' => 'action', 'label' => 'Hapus Pelanggan'],
                     ['name' => 'customers_all_view_all', 'type' => 'feature', 'label' => 'Tampilkan All Data'],
                     ['name' => 'customers_all_view_area', 'type' => 'feature', 'label' => 'Tampilkan Data Area'],
+                    ['name' => 'customers_all_edit', 'type' => 'action', 'label' => 'Edit Semua Data Pelanggan'],
                 ],
             ],
             [
@@ -293,6 +296,27 @@ class RoleController extends Controller
                     ['name' => 'internet_packages_create', 'type' => 'action', 'label' => 'Tambah Paket'],
                     ['name' => 'internet_packages_edit', 'type' => 'action', 'label' => 'Edit Paket'],
                     ['name' => 'internet_packages_delete', 'type' => 'action', 'label' => 'Hapus Paket'],
+                ],
+            ],
+            [
+                'group' => 'Manajemen Voucher',
+                'icon' => 'ticket',
+                'permissions' => [
+                    ['name' => 'menu_vouchers', 'type' => 'menu', 'label' => 'Akses Menu Voucher'],
+                    ['name' => 'vouchers_create', 'type' => 'action', 'label' => 'Tambah Voucher'],
+                    ['name' => 'vouchers_edit', 'type' => 'action', 'label' => 'Edit Voucher'],
+                    ['name' => 'vouchers_delete', 'type' => 'action', 'label' => 'Hapus Voucher'],
+                    ['name' => 'vouchers_print', 'type' => 'feature', 'label' => 'Cetak Voucher'],
+                ],
+            ],
+            [
+                'group' => 'Data Reseller',
+                'icon' => 'users',
+                'permissions' => [
+                    ['name' => 'menu_resellers', 'type' => 'menu', 'label' => 'Akses Menu Reseller'],
+                    ['name' => 'resellers_create', 'type' => 'action', 'label' => 'Tambah Reseller'],
+                    ['name' => 'resellers_edit', 'type' => 'action', 'label' => 'Edit Reseller'],
+                    ['name' => 'resellers_delete', 'type' => 'action', 'label' => 'Hapus Reseller'],
                 ],
             ],
         ];
