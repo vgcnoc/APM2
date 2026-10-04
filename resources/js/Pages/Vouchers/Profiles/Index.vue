@@ -59,7 +59,7 @@
 
         <!-- MODAL FORM -->
         <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
-            <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col">
                 <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
                     <h2 class="text-lg font-bold text-gray-900">{{ editMode ? 'Edit Profil' : 'Tambah Profil Baru' }}</h2>
                     <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
@@ -92,6 +92,21 @@
                         <div>
                             <label class="block text-xs font-bold text-gray-700 mb-1">Shared Users <span class="text-red-500">*</span></label>
                             <input v-model="form.shared_users" type="number" min="1" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-cyan-50/40 p-4 rounded-xl border border-cyan-100">
+                            <div v-for="fee in feeFields" :key="fee.key">
+                                <label class="flex items-center gap-1.5 text-[13px] font-bold text-slate-700 mb-2 whitespace-nowrap">
+                                    {{ fee.label }}
+                                    <svg class="w-4 h-4 text-slate-700" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path></svg>
+                                    <span class="text-red-500 font-bold">*Req</span>
+                                </label>
+                                <div class="flex shadow-sm">
+                                    <span class="inline-flex items-center px-3 text-sm text-gray-700 bg-gray-50 border border-r-0 border-gray-300 rounded-l-lg font-medium">Rp</span>
+                                    <input v-model="form[fee.key]" type="number" min="0" placeholder="min : 0" class="w-full border-gray-300 rounded-r-lg focus:border-indigo-500 focus:ring-indigo-500" required>
+                                </div>
+                                <p v-if="form.errors[fee.key]" class="text-xs text-red-500 mt-1">{{ form.errors[fee.key] }}</p>
+                            </div>
                         </div>
 
                         <div>
@@ -129,6 +144,12 @@ const formatPrice = (price) => {
     return parseFloat(price || 0).toLocaleString('id-ID');
 };
 
+const feeFields = [
+    { key: 'fee_admin', label: '1. Fee Admin/Modal' },
+    { key: 'fee_reseller', label: '2. Fee Reseller/Mitra' },
+    { key: 'fee_partner', label: '3. Fee Partner/Kurir' },
+];
+
 const showModal = ref(false);
 const editMode = ref(false);
 const editId = ref(null);
@@ -136,6 +157,9 @@ const editId = ref(null);
 const form = useForm({
     name: '',
     price: 0,
+    fee_admin: 0,
+    fee_reseller: 0,
+    fee_partner: 0,
     duration: '',
     limit_rate: '',
     shared_users: 1,
@@ -154,6 +178,9 @@ const openEditModal = (profile) => {
     editId.value = profile.id;
     form.name = profile.name;
     form.price = profile.price;
+    form.fee_admin = profile.fee_admin ?? 0;
+    form.fee_reseller = profile.fee_reseller ?? 0;
+    form.fee_partner = profile.fee_partner ?? 0;
     form.duration = profile.duration;
     form.limit_rate = profile.limit_rate;
     form.shared_users = profile.shared_users;

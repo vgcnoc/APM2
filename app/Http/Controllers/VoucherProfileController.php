@@ -21,6 +21,9 @@ class VoucherProfileController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
+            'fee_admin' => 'required|numeric|min:0',
+            'fee_reseller' => 'required|numeric|min:0',
+            'fee_partner' => 'required|numeric|min:0',
             'duration' => 'required|string|max:255',
             'limit_rate' => 'nullable|string|max:255',
             'shared_users' => 'required|integer|min:1',
@@ -37,6 +40,9 @@ class VoucherProfileController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
+            'fee_admin' => 'required|numeric|min:0',
+            'fee_reseller' => 'required|numeric|min:0',
+            'fee_partner' => 'required|numeric|min:0',
             'duration' => 'required|string|max:255',
             'limit_rate' => 'nullable|string|max:255',
             'shared_users' => 'required|integer|min:1',
