@@ -20,6 +20,7 @@
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Port API</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Port Winbox</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">PIC / Penanggung Jawab</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Koneksi</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
                         </thead>
@@ -31,13 +32,25 @@
                                 <td class="px-6 py-4 text-sm text-gray-600">
                                     {{ router.pic ? router.pic.name : '-' }}
                                 </td>
+                                <td class="px-6 py-4 text-sm font-medium">
+                                    <span v-if="connectionStatuses[router.id] === 'online'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Online
+                                    </span>
+                                    <span v-else-if="connectionStatuses[router.id] === 'offline'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Offline
+                                    </span>
+                                    <span v-else class="inline-flex items-center gap-1.5 text-xs text-gray-500">
+                                        <svg class="animate-spin h-3 w-3 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        Memeriksa...
+                                    </span>
+                                </td>
                                 <td class="px-6 py-4 text-sm text-right">
                                     <button @click="openEditModal(router)" class="text-indigo-600 hover:text-indigo-900 font-medium mr-3">Edit</button>
                                     <button @click="deleteRouter(router.id)" class="text-red-600 hover:text-red-900 font-medium">Hapus</button>
                                 </td>
                             </tr>
                             <tr v-if="routers.data.length === 0">
-                                <td colspan="5" class="px-6 py-8 text-center text-gray-500 text-sm">
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500 text-sm">
                                     Belum ada data Router.
                                 </td>
                             </tr>
@@ -133,8 +146,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
+import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
@@ -197,4 +211,23 @@ function deleteRouter(id) {
         router.post(`/routers/${id}/delete`);
     }
 }
+
+const connectionStatuses = ref({});
+
+function checkConnections() {
+    props.routers.data.forEach(r => {
+        connectionStatuses.value[r.id] = 'loading';
+        axios.get(`/routers/${r.id}/ping`)
+            .then(res => {
+                connectionStatuses.value[r.id] = res.data.status;
+            })
+            .catch(() => {
+                connectionStatuses.value[r.id] = 'offline';
+            });
+    });
+}
+
+onMounted(() => {
+    checkConnections();
+});
 </script>

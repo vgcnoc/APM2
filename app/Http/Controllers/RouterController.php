@@ -83,4 +83,26 @@ class RouterController extends Controller
         $router->delete();
         return redirect()->route('routers.index')->with('success', 'Router & NAS berhasil dihapus.');
     }
+
+    public function ping(Router $router)
+    {
+        $ip = $router->nas ? $router->nas->vpn_ip : null;
+        if (!$ip) {
+            $ip = $router->nas && $router->nas->nasname !== '0.0.0.0/0' ? $router->nas->nasname : null;
+        }
+
+        if (!$ip) {
+            return response()->json(['status' => 'offline']);
+        }
+
+        $port = $router->api_port ?: 8728;
+        
+        $fp = @fsockopen($ip, $port, $errno, $errstr, 2);
+        if ($fp) {
+            fclose($fp);
+            return response()->json(['status' => 'online']);
+        }
+
+        return response()->json(['status' => 'offline']);
+    }
 }

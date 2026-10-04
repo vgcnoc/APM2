@@ -213,6 +213,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('routers', \App\Http\Controllers\RouterController::class)->except(['create', 'show', 'edit']);
     Route::post('routers/{router}/update', [\App\Http\Controllers\RouterController::class, 'update'])->name('routers.update.post');
     Route::post('routers/{router}/delete', [\App\Http\Controllers\RouterController::class, 'destroy'])->name('routers.destroy.post');
+    Route::get('routers/{router}/ping', [\App\Http\Controllers\RouterController::class, 'ping'])->name('routers.ping');
 
     // ── RADIUS Billing System ──────────────────────────────────
     Route::prefix('radius')->name('radius.')->group(function () {
