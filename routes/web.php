@@ -214,5 +214,10 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('nas', \App\Http\Controllers\Radius\NasController::class)->except(['create', 'show', 'edit']);
         Route::post('nas/{nas}/update', [\App\Http\Controllers\Radius\NasController::class, 'update'])->name('nas.update.post');
         Route::post('nas/{nas}/delete', [\App\Http\Controllers\Radius\NasController::class, 'destroy'])->name('nas.destroy.post');
+
+        Route::get('online-users', [\App\Http\Controllers\Radius\OnlineUserController::class, 'index'])->name('online-users.index');
+        Route::post('online-users/disconnect', [\App\Http\Controllers\Radius\OnlineUserController::class, 'disconnect'])->name('online-users.disconnect');
+
+        Route::get('auth-logs', [\App\Http\Controllers\Radius\AuthLogController::class, 'index'])->name('auth-logs.index');
     });
 });
