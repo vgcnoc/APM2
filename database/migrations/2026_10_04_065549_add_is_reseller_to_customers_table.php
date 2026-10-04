@@ -12,10 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('customers', function (Blueprint $table) {
-            $table->boolean('is_reseller')->default(false)->after('package_id');
-            $table->string('identity_photo')->nullable()->after('address');
-            $table->decimal('latitude', 10, 8)->nullable()->after('identity_photo');
-            $table->decimal('longitude', 11, 8)->nullable()->after('latitude');
+            if (!Schema::hasColumn('customers', 'is_reseller')) {
+                $table->boolean('is_reseller')->default(false)->after('package_id');
+            }
+            if (!Schema::hasColumn('customers', 'identity_photo')) {
+                $table->string('identity_photo')->nullable()->after('address');
+            }
+            if (!Schema::hasColumn('customers', 'latitude')) {
+                $table->decimal('latitude', 10, 8)->nullable()->after('identity_photo');
+            }
+            if (!Schema::hasColumn('customers', 'longitude')) {
+                $table->decimal('longitude', 11, 8)->nullable()->after('latitude');
+            }
         });
     }
 
