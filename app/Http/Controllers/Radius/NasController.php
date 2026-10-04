@@ -27,6 +27,7 @@ class NasController extends Controller
         return Inertia::render('Radius/Nas/Index', [
             'nas' => $nas,
             'filters' => $request->only(['search']),
+            'serverIp' => $request->getHost(),
         ]);
     }
 
