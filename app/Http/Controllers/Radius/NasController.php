@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Radius;
 
 use App\Http\Controllers\Controller;
 use App\Models\Radius\Nas;
+use App\Services\VpnAccountService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -24,10 +25,25 @@ class NasController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        // Router lama (sebelum fitur VPN) otomatis dibuatkan akun VPN/API
+        if (config('radius.vpn.enabled')) {
+            $vpn = app(VpnAccountService::class);
+            $nas->getCollection()
+                ->filter(fn (Nas $n) => !$n->vpn_user || !$n->vpn_ip || !$n->api_user)
+                ->each(fn (Nas $n) => $vpn->ensureAccount($n));
+        }
+
         return Inertia::render('Radius/Nas/Index', [
             'nas' => $nas,
             'filters' => $request->only(['search']),
-            'serverIp' => $request->getHost(),
+            'serverIp' => config('radius.server_ip') !== '127.0.0.1' ? config('radius.server_ip') : $request->getHost(),
+            'vpn' => [
+                'enabled' => (bool) config('radius.vpn.enabled'),
+                'gateway' => config('radius.vpn.gateway'),
+                'endpoints' => config('radius.vpn.endpoints'),
+            ],
+            'clientPool' => config('radius.client_pool'),
+            'isolirUrl' => config('radius.isolir_url'),
         ]);
     }
 
@@ -44,7 +60,11 @@ class NasController extends Controller
             'description' => 'nullable|string|max:200',
         ]);
 
-        Nas::create($validated);
+        $nas = Nas::create($validated);
+
+        if (config('radius.vpn.enabled')) {
+            app(VpnAccountService::class)->ensureAccount($nas);
+        }
 
         return redirect()->route('radius.nas.index')
             ->with('success', 'Data NAS (Router) berhasil ditambahkan.');
@@ -73,7 +93,23 @@ class NasController extends Controller
     {
         $nas->delete();
 
+        if (config('radius.vpn.enabled')) {
+            app(VpnAccountService::class)->sync();
+        }
+
         return redirect()->route('radius.nas.index')
             ->with('success', 'Data NAS (Router) berhasil dihapus.');
+    }
+
+    /**
+     * Generate ulang password VPN & API (script lama di router harus diganti).
+     */
+    public function regenerate(Nas $nas, VpnAccountService $vpn): RedirectResponse
+    {
+        $vpn->ensureAccount($nas);
+        $vpn->regenerate($nas);
+
+        return redirect()->route('radius.nas.index')
+            ->with('success', 'Kredensial VPN & API router berhasil di-generate ulang. Paste ulang script ke Mikrotik.');
     }
 }

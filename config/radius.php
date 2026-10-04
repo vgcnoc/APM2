@@ -33,10 +33,38 @@ return [
     */
     'isolir' => [
         'group' => env('RADIUS_ISOLIR_GROUP', 'isolir'),
-        'address_list' => env('RADIUS_ISOLIR_ADDRESS_LIST', 'isolir'),
+        'address_list' => env('RADIUS_ISOLIR_ADDRESS_LIST', 'APM2ISOLIR'),
         'rate_limit' => env('RADIUS_ISOLIR_RATE_LIMIT', '512k/512k'),
         'pool' => env('RADIUS_ISOLIR_POOL'), // opsional: Framed-Pool khusus isolir
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | VPN Tunnel (L2TP) Router -> Server
+    |--------------------------------------------------------------------------
+    | Router client terhubung ke VPS via L2TP. RADIUS & API diakses lewat IP
+    | tunnel, sehingga router tanpa IP publik tetap bisa dikelola (CoA/API).
+    */
+    'vpn' => [
+        'enabled' => env('RADIUS_VPN_ENABLED', env('RADIUS_ENABLED', false)),
+        'gateway' => env('RADIUS_VPN_GATEWAY', '10.9.0.1'),      // local ip xl2tpd
+        'pool_start' => env('RADIUS_VPN_POOL_START', '10.9.0.10'),
+        'pool_end' => env('RADIUS_VPN_POOL_END', '10.9.0.250'),
+        // Endpoint VPN publik (bisa lebih dari satu, pisahkan koma) untuk failover
+        'endpoints' => array_values(array_filter(array_map('trim', explode(',', (string) env('RADIUS_VPN_ENDPOINTS', env('RADIUS_SERVER_IP', '127.0.0.1')))))),
+        'chap_secrets' => env('RADIUS_VPN_CHAP_SECRETS', '/etc/ppp/chap-secrets'),
+    ],
+
+    // Pool IP pelanggan default yang dibuat oleh script di router
+    'client_pool' => [
+        'name' => 'APM2POOL',
+        'network' => env('RADIUS_CLIENT_POOL_NETWORK', '10.200.192.0/20'),
+        'local_address' => env('RADIUS_CLIENT_POOL_LOCAL', '10.200.192.1'),
+        'ranges' => env('RADIUS_CLIENT_POOL_RANGES', '10.200.192.2-10.200.207.254'),
+    ],
+
+    // Domain halaman isolir (redirect web-proxy)
+    'isolir_url' => env('RADIUS_ISOLIR_URL', 'isolir.apm2.com'),
 
     // Prefix nama group di tabel radusergroup
     'group_prefix' => [

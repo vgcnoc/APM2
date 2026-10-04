@@ -54,7 +54,7 @@
                         <textarea 
                             v-model="generatedScript" 
                             readonly 
-                            rows="8" 
+                            rows="16" 
                             class="w-full bg-gray-900 font-mono text-green-400 text-sm border border-gray-800 rounded-lg p-4 focus:ring-2 focus:ring-indigo-500"
                             placeholder="Silakan pilih router untuk memunculkan script..."></textarea>
                     </div>
@@ -64,7 +64,7 @@
                         <button @click="openCreateModal" class="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
                             Generate Script Mikrotik Baru
                         </button>
-                        <button v-if="selectedNasId" @click="generateScript" class="px-5 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm">
+                        <button v-if="selectedNasId" @click="forceRegenerate" class="px-5 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm">
                             Generate Ulang Script Mikrotik (Force)
                         </button>
                     </div>
@@ -89,7 +89,10 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="n in nas.data" :key="n.id" class="hover:bg-gray-50/50 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ n.nasname }}</td>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">
+                                    {{ n.nasname }}
+                                    <div v-if="n.vpn_ip" class="text-xs text-indigo-600 font-mono mt-0.5">VPN: {{ n.vpn_ip }}</div>
+                                </td>
                                 <td class="px-6 py-4 text-sm text-gray-600">{{ n.shortname || '-' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-600">{{ n.type || '-' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-600 font-mono text-xs">
@@ -181,6 +184,9 @@ const props = defineProps({
     nas: Object,
     filters: Object,
     serverIp: String,
+    vpn: Object,
+    clientPool: Object,
+    isolirUrl: String,
 });
 
 const isModalOpen = ref(false);
@@ -206,64 +212,161 @@ function generateRandomSecret() {
     form.secret = Math.random().toString(36).substring(2, 12);
 }
 
+// Escape teks script RouterOS agar aman dimasukkan ke dalam string "..." (on-event scheduler)
+function rosEscape(src) {
+    return src
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\$/g, '\\$')
+        .replace(/\r?\n/g, '\\r\\n');
+}
+
 function generateScript() {
     if (!selectedNasId.value) {
         generatedScript.value = '';
         return;
     }
 
-    const router = props.nas.data.find(n => n.id === selectedNasId.value);
-    if (!router) return;
+    const nasItem = props.nas.data.find(n => n.id === selectedNasId.value);
+    if (!nasItem) return;
 
-    const ip = props.serverIp || '157.66.140.17'; // default to VPS IP
-    const secret = router.secret;
-    const name = router.shortname || 'RADIUS_VPS';
-    
-    // Generate unique API user for this Mikrotik
-    const apiUser = 'APM2_' + Math.random().toString(36).substring(2, 8).toUpperCase();
-    const apiPass = Math.random().toString(36).substring(2, 14);
+    const v6 = selectedOs.value === 'v6';
+    const publicIp = props.serverIp || '157.66.140.17';
+    const vpnOn = props.vpn?.enabled && nasItem.vpn_user && nasItem.vpn_ip;
+    // RADIUS & isolir diakses lewat IP tunnel jika VPN aktif, jika tidak lewat IP publik
+    const radiusIp = vpnOn ? props.vpn.gateway : publicIp;
+    const endpoints = (props.vpn?.endpoints?.length ? props.vpn.endpoints : [publicIp]);
+    const pool = props.clientPool || { name: 'APM2POOL', network: '10.200.192.0/20', local_address: '10.200.192.1', ranges: '10.200.192.2-10.200.207.254' };
+    const isolirUrl = props.isolirUrl || 'isolir.apm2.com';
+    const secret = nasItem.secret;
+    const name = (nasItem.shortname || 'APM2-ROUTER').replace(/"/g, '');
+    const apiUser = nasItem.api_user || 'APM2API';
+    const apiPass = nasItem.api_password || '';
+    const profiles = [
+        { name: 'APM2RADIUS', cookie: '1w', refresh: '1m', keepalive: '2m' },
+        { name: 'APM2RADIUS-Short', cookie: '1w', refresh: '1m', keepalive: '2m' },
+        { name: 'APM2RADIUS-Long', cookie: '4w2d', refresh: '6d10m', keepalive: '6d' },
+    ];
 
-    let script = `# Script Konfigurasi RADIUS APM2 untuk Mikrotik ${selectedOs.value.toUpperCase()}\n`;
-    script += `# Mohon paste keseluruhan script di bawah ini ke New Terminal Mikrotik Anda:\n`;
-    script += `#############################################################\n\n`;
+    const L = [];
+    L.push(`# COPY PASTE ALL SCRIPTS TO THE NEW MIKROTIK TERMINAL`);
+    L.push(`# APM2 RADIUS - RouterOS ${v6 ? 'v6' : 'v7'} - Router: ${name}`);
+    L.push(`#############################################################`);
+    L.push(`/system identity set name="${name}";`);
+    L.push(`/ip dns set allow-remote-requests=yes;`);
+    L.push(``);
 
-    script += `/system identity set name="${name}";\n`;
-    script += `/ip dns set allow-remote-requests=yes;\n\n`;
-    
-    script += `# 1. BUAT USER API UNTUK KONEKSI BILLING APM2\n`;
-    script += `/user rem [find comment~"APM2"];\n`;
-    script += `/user add name="${apiUser}" password="${apiPass}" group=write comment="USER FOR APM2 BILLING API";\n\n`;
+    L.push(`### 1. USER API (UNTUK BILLING APM2: CEK PING, ONLINE USER, TROUBLESHOOT) ###`);
+    L.push(`/user rem [find comment~"APM2"];`);
+    L.push(`/user add name="${apiUser}" password="${apiPass}" group=write comment="USER FOR APM2 BILLING API (DON'T CHANGE IT)";`);
+    L.push(`/ip service set api disabled=no port=8728;`);
+    L.push(``);
 
-    script += `# 2. KONFIGURASI RADIUS\n`;
-    script += `/radius incoming set accept=yes port=3799;\n`;
-    script += `/radius rem [find comment~"APM2RADIUS"];\n`;
-    script += `/radius add address=${ip} comment="APM2RADIUS" authentication-port=1812 accounting-port=1813 secret="${secret}" service=ppp,hotspot timeout=3s;\n\n`;
+    L.push(`### 2. RADIUS ###`);
+    L.push(`/ppp aaa set use-radius=yes accounting=yes interim-update=5m;`);
+    L.push(`/radius incoming set accept=yes port=3799;`);
+    L.push(`/radius rem [find comment~"APM2RADIUS"];`);
+    L.push(`/radius add address=${radiusIp}${vpnOn ? ` src-address=${nasItem.vpn_ip}` : ''} comment="APM2RADIUS" authentication-port=1812 accounting-port=1813 secret="${secret}" service=ppp,hotspot timeout=3s;`);
+    L.push(``);
 
-    script += `# 3. INTEGRASI PPP & HOTSPOT KE RADIUS\n`;
-    script += `/ppp aaa set use-radius=yes accounting=yes interim-update=5m;\n`;
-    script += `/ip hotspot profile set login-by=http-chap,http-pap,cookie,mac-cookie http-cookie-lifetime=4w2d use-radius=yes radius-accounting=yes [find]\n\n`;
+    L.push(`### 3. IP POOL PELANGGAN ###`);
+    L.push(`:if ([:len [/ip pool find name="${pool.name}"]] = 0) do={ /ip pool add name=${pool.name} ranges=${pool.ranges} comment="Network : ${pool.network}" } else={ /ip pool set [find name="${pool.name}"] ranges=${pool.ranges} comment="Network : ${pool.network}" };`);
+    L.push(``);
 
-    script += `# 4. SISTEM ISOLIR (SUSPEND)\n`;
-    script += `/ip firewall address-list add address=${ip} comment="DEFAULT BY APM2 (DONT CHANGE IT)" list=APM2BYPASS\n`;
-    script += `/ip proxy set enabled=yes port=8097;\n`;
-    script += `### Konfigurasi Redirect Isolir ###\n`;
-    script += `/ip proxy access rem [find comment~"APM2"]\n`;
-    script += `/ip proxy access add action=redirect action-data="isolir.apm2.com" comment="DENY OTHER THAN THE ISOLIR IP THAT GOES TO THE WEB PROXY BY APM2" dst-address=!${ip} local-port=8097 ;\n`;
-    script += `/ip firewall nat remove [find src-address-list~"APM2ISOLIR"]\n`;
-    script += `/ip firewall nat add action=redirect chain=dstnat comment=APM2ISOLIR dst-address-list=!APM2BYPASS dst-port=80,443 protocol=tcp src-address-list=APM2ISOLIR to-ports=8097;\n`;
-    script += `/ip firewall filter remove [find src-address-list~"APM2ISOLIR"]\n`;
-    script += `/ip firewall filter add action=drop chain=forward comment=APM2ISOLIR dst-address=!${ip} dst-port=!53,5353 protocol=udp src-address-list=APM2ISOLIR;\n`;
-    script += `/ip firewall filter add action=drop chain=forward comment=APM2ISOLIR dst-address=!${ip} protocol=tcp src-address-list=APM2ISOLIR;\n\n`;
-    
-    script += `# 5. L2TP VPN CONNECTION TO SERVER\n`;
-    script += `/interface l2tp-client remove [find name="APM2-VPN"];\n`;
-    script += `/interface l2tp-client add connect-to="${ip}" disabled=no name="APM2-VPN" user="${apiUser}" password="${apiPass}" profile="default" comment="VPN APM2 RADIUS";\n\n`;
+    L.push(`### 4. HOTSPOT PROFILE & USER PROFILE ###`);
+    L.push(`/ip hotspot profile set login-by=http-chap,http-pap,cookie,mac-cookie http-cookie-lifetime=4w2d use-radius=yes radius-accounting=yes [find];`);
+    profiles.forEach(p => L.push(`/ip hotspot user profile remove [find name="${p.name}"];`));
+    profiles.forEach(p => L.push(`/ip hotspot user profile add name=${p.name} mac-cookie-timeout=${p.cookie} status-autorefresh=${p.refresh} keepalive-timeout=${p.keepalive} shared-users=unlimited;`));
+    L.push(`/ip hotspot user profile set [find default=yes] keepalive-timeout=2m mac-cookie-timeout=1w shared-users=unlimited status-autorefresh=1m;`);
+    L.push(``);
 
-    script += `# PERHATIAN: Simpan Data API Mikrotik ini ke dalam Data Router APM2 Anda!\n`;
-    script += `# Username API/VPN: ${apiUser}\n`;
-    script += `# Password API/VPN: ${apiPass}\n`;
+    L.push(`### 5. PPP PROFILE ###`);
+    profiles.forEach(p => L.push(`/ppp profile remove [find name="${p.name}"];`));
+    profiles.forEach(p => L.push(`/ppp profile add name=${p.name} insert-queue-before=first local-address=${pool.local_address} remote-address=${pool.name} only-one=default;`));
+    L.push(``);
 
-    generatedScript.value = script;
+    L.push(`### 6. SISTEM ISOLIR (WEB PROXY REDIRECT) ###`);
+    L.push(`/ip firewall address-list rem [find list=APM2BYPASS];`);
+    L.push(`/ip firewall address-list add address=${publicIp} comment="DEFAULT BY APM2 (DONT CHANGE IT)" list=APM2BYPASS;`);
+    L.push(`/ip proxy set enabled=yes port=8097;`);
+    L.push(`/ip proxy access rem [find comment~"APM2"];`);
+    if (v6) {
+        L.push(`/ip proxy access add action=deny redirect-to="${isolirUrl}" comment="DENY OTHER THAN THE ISOLIR IP THAT GOES TO THE WEB PROXY BY APM2" dst-address=!${publicIp} local-port=8097;`);
+    } else {
+        L.push(`/ip proxy access add action=redirect action-data="${isolirUrl}" comment="DENY OTHER THAN THE ISOLIR IP THAT GOES TO THE WEB PROXY BY APM2" dst-address=!${publicIp} local-port=8097;`);
+    }
+    L.push(`/ip firewall nat remove [find comment="APM2ISOLIR"];`);
+    L.push(`/ip firewall nat add action=redirect chain=dstnat comment=APM2ISOLIR dst-address-list=!APM2BYPASS dst-port=80,443 protocol=tcp src-address-list=APM2ISOLIR to-ports=8097;`);
+    L.push(`/ip firewall filter remove [find comment="APM2ISOLIR"];`);
+    L.push(`/ip firewall filter add action=drop chain=forward comment=APM2ISOLIR dst-address=!${publicIp} dst-port=!53,5353 protocol=udp src-address-list=APM2ISOLIR;`);
+    L.push(`/ip firewall filter add action=drop chain=forward comment=APM2ISOLIR dst-address=!${publicIp} protocol=tcp src-address-list=APM2ISOLIR;`);
+    L.push(``);
+
+    if (vpnOn) {
+        L.push(`### 7. VPN KE SERVER APM2 (CUKUP 1 YANG AKTIF, SISANYA CADANGAN FAILOVER) ###`);
+        L.push(`/system scheduler rem [find name~"apm2failovervpn"];`);
+        L.push(`/interface l2tp-client remove [find name~"APM2-VPN"];`);
+        L.push(`/interface sstp-client remove [find name~"APM2-VPN"];`);
+        L.push(`/interface ovpn-client remove [find name~"APM2-VPN"];`);
+        L.push(`/ppp profile remove [find name="APM2VPN"];`);
+        L.push(`/ppp profile add name=APM2VPN change-tcp-mss=yes only-one=default use-encryption=yes comment="DEFAULT BY APM2 (DON'T CHANGE IT)";`);
+        endpoints.forEach((ep, i) => {
+            L.push(`/interface l2tp-client add disabled=${i === 0 ? 'no' : 'yes'} connect-to=${ep} name="APM2-VPN-${i + 1}" profile=APM2VPN user="${nasItem.vpn_user}" password="${nasItem.vpn_password}" add-default-route=no allow=chap,mschap2 comment="CUKUP AKTIFKAN 1 SAJA IPADDR : ${nasItem.vpn_ip}";`);
+        });
+        L.push(``);
+
+        L.push(`### 8. STATIC ROUTE RADIUS LEWAT VPN ###`);
+        L.push(`/ip route remove [find comment="STATIC ROUTE BY APM2"];`);
+        L.push(`/ip route add dst-address=${radiusIp}/32 gateway=APM2-VPN-1 comment="STATIC ROUTE BY APM2";`);
+        L.push(``);
+
+        // Scheduler failover: ping RADIUS via tunnel, jika gagal pindah ke VPN berikutnya
+        const failover = [
+            `{`,
+            `:global apm2VpnIndex`,
+            `:local targetIP "${radiusIp}"`,
+            `:local srcIP "${nasItem.vpn_ip}"`,
+            `:local vpnIfaces [/interface find name~"^APM2-VPN-"]`,
+            `:local vpnCount [:len $vpnIfaces]`,
+            `:if ($vpnCount > 0) do={`,
+            `  :if ([:typeof $apm2VpnIndex] != "num") do={ :set apm2VpnIndex 0 }`,
+            `  :local pingResult 0`,
+            `  :do { :set pingResult [/ping $targetIP count=5 src-address=$srcIP] } on-error={ :set pingResult 0 }`,
+            `  :if ($pingResult = 0) do={`,
+            `    :set apm2VpnIndex (($apm2VpnIndex + 1) % $vpnCount)`,
+            `    :local selectedIface ($vpnIfaces->$apm2VpnIndex)`,
+            `    :local selectedName [/interface get $selectedIface name]`,
+            `    :foreach i in=$vpnIfaces do={ /interface set $i disabled=yes }`,
+            `    /interface set $selectedIface disabled=no`,
+            `    /ip route set [find comment="STATIC ROUTE BY APM2"] gateway=$selectedName`,
+            `    :log warning ("APM2 VPN FAILOVER -> " . $selectedName)`,
+            `  }`,
+            `} else={ :log error "NO APM2-VPN INTERFACE FOUND" }`,
+            `}`,
+        ].join('\n');
+
+        L.push(`### 9. SCHEDULER FAILOVER VPN (CEK TIAP 10 DETIK) ###`);
+        L.push(`/system scheduler add interval=10s name=apm2failovervpn start-time=startup policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon on-event="${rosEscape(failover)}";`);
+        L.push(``);
+    }
+
+    L.push(`#############################################################`);
+    L.push(`# DATA UNTUK MENU "DATA ROUTER" APM2:`);
+    L.push(`#   Host API      : ${vpnOn ? nasItem.vpn_ip + ' (IP VPN)' : '(IP publik router)'}`);
+    L.push(`#   Port API      : 8728`);
+    L.push(`#   Username API  : ${apiUser}`);
+    L.push(`#   Password API  : ${apiPass}`);
+
+    generatedScript.value = L.join('\n');
+}
+
+function forceRegenerate() {
+    if (!selectedNasId.value) return;
+    if (!confirm('Password VPN & API router ini akan diganti. Script lama di Mikrotik tidak akan bisa konek lagi sampai Anda paste script baru. Lanjutkan?')) return;
+    router.post(`/radius/nas/${selectedNasId.value}/regenerate`, {}, {
+        preserveScroll: true,
+        onSuccess: () => generateScript(),
+    });
 }
 
 async function copyScript() {
@@ -320,7 +423,8 @@ function submit() {
                 // Select the newly added router (assuming it's the latest in list)
                 // Need to reload slightly delayed to catch the new ID, or just rely on reactivity
                 setTimeout(() => {
-                    const newNas = page.props.nas.data[page.props.nas.data.length - 1];
+                    const list = page.props.nas.data || [];
+                    const newNas = list.reduce((a, b) => (!a || b.id > a.id ? b : a), null);
                     if (newNas) {
                         selectedNasId.value = newNas.id;
                         generateScript();
