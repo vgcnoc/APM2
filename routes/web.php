@@ -27,6 +27,12 @@ Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Client Area (Reseller)
+    Route::middleware(['role:reseller'])->prefix('client-area')->name('client-area.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\ResellerClientController::class, 'dashboard'])->name('dashboard');
+        Route::post('/generate-vouchers', [\App\Http\Controllers\ResellerClientController::class, 'generateVouchers'])->name('generate-vouchers');
+    });
+
     // ── Data Customers ─────────────────────────────────────────
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/booking', [CustomerController::class, 'booking'])->name('booking');

@@ -18,10 +18,14 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(): Response
+    public function index()
     {
         if (auth()->check() && auth()->user()->hasRole('teknisi')) {
             return $this->teknisiDashboard();
+        }
+
+        if (auth()->check() && auth()->user()->hasRole('reseller')) {
+            return redirect()->route('client-area.dashboard');
         }
 
         // ── Statistik Pelanggan ──────────────────────────────
