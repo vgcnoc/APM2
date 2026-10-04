@@ -205,6 +205,7 @@ const menuItems = [
     { type: 'group', label: 'INFRASTRUKTUR & JARINGAN' },
     { type: 'link', href: '/network-topology', icon: 'globe', label: 'Network Topology', active: (url) => (url || '').startsWith('/network-topology'), permission: 'menu_network_topology' },
     { type: 'link', href: '/network-data', icon: 'globe', label: 'Data Jaringan', active: (url) => (url || '').startsWith('/network-data'), permission: 'menu_network_data' },
+    { type: 'link', href: '/radius/nas', icon: 'server', label: 'NAS / Router (RADIUS)', active: (url) => (url || '').startsWith('/radius/nas'), permission: 'menu_network_nas' },
     { type: 'link', href: '/olts', icon: 'server', label: 'OLT', active: (url) => (url || '').startsWith('/olts'), permission: 'menu_network_olt' },
     { type: 'link', href: '/odcs', icon: 'box', label: 'ODC', active: (url) => (url || '').startsWith('/odcs'), permission: 'menu_network_odc' },
     { type: 'link', href: '/odps', icon: 'git-branch', label: 'ODP', active: (url) => (url || '').startsWith('/odps'), permission: 'menu_network_odp' },

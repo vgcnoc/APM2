@@ -59,6 +59,24 @@ return [
             ]) : [],
         ],
 
+        // Koneksi ke tabel FreeRADIUS (radcheck, radacct, nas, dst).
+        // Default memakai database yang sama dengan aplikasi.
+        'radius' => [
+            'driver' => 'mysql',
+            'host' => env('RADIUS_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('RADIUS_DB_PORT', env('DB_PORT', '3306')),
+            'database' => env('RADIUS_DB_DATABASE', env('DB_DATABASE', 'laravel')),
+            'username' => env('RADIUS_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('RADIUS_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'unix_socket' => env('DB_SOCKET', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => false,
+            'engine' => null,
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
