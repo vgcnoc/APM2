@@ -155,6 +155,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/vouchers/bulk-destroy', [\App\Http\Controllers\VoucherController::class, 'bulkDestroy'])->name('vouchers.bulk-destroy');
     Route::post('/vouchers/{voucher}/delete', [\App\Http\Controllers\VoucherController::class, 'destroy'])->name('vouchers.destroy.post');
 
+    // ── Reseller Voucher ───────────────────────────────────────
+    Route::resource('resellers', \App\Http\Controllers\ResellerController::class)->except(['create', 'show', 'edit']);
+    Route::post('/resellers/{reseller}/update', [\App\Http\Controllers\ResellerController::class, 'update'])->name('resellers.update.post');
+    Route::post('/resellers/{reseller}/delete', [\App\Http\Controllers\ResellerController::class, 'destroy'])->name('resellers.destroy.post');
+
     // ── Pengguna & Hak Akses ───────────────────────────────────
     Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit'])->middleware('role:admin');
     Route::post('users/{user}/update', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update.post')->middleware('role:admin');
