@@ -190,7 +190,7 @@
                                 </div>
                             </div>
 
-                            <div class="px-4 pb-4 border-t border-gray-100 pt-4">
+                            <div v-if="form.access_mode === 'PPPOE'" class="px-4 pb-4 border-t border-gray-100 pt-4">
                                 <div class="flex items-center gap-3 mb-2">
                                     <h4 class="text-xs font-bold text-gray-700">Akun PPPoE</h4>
                                     <button type="button" @click="generatePppoe" class="text-xs font-medium bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md border border-gray-300 flex items-center gap-1">
