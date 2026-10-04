@@ -42,16 +42,16 @@ class RouterController extends Controller
 
         $router = Router::create($validated);
 
-        // Optionally, create NAS entry automatically here if needed
-        // $nas = \App\Models\Radius\Nas::create([
-        //     'nasname' => '0.0.0.0/0',
-        //     'shortname' => $router->name,
-        //     'type' => 'mikrotik',
-        //     'secret' => substr(str_shuffle('0123456789abcdefghijklmnopqrstuvwxyz'), 0, 10),
-        // ]);
-        // $router->update(['nas_id' => $nas->id]);
+        // Auto-create NAS entry
+        $nas = \App\Models\Radius\Nas::create([
+            'nasname' => '0.0.0.0/0',
+            'shortname' => $router->name,
+            'type' => 'mikrotik',
+            'secret' => substr(str_shuffle('0123456789abcdefghijklmnopqrstuvwxyz'), 0, 10),
+        ]);
+        $router->update(['nas_id' => $nas->id]);
 
-        return redirect()->route('routers.index')->with('success', 'Router berhasil ditambahkan.');
+        return redirect()->route('routers.index')->with('success', 'Router & NAS berhasil ditambahkan.');
     }
 
     public function update(Request $request, Router $router)
@@ -67,13 +67,20 @@ class RouterController extends Controller
         $validated['winbox_port'] = $validated['winbox_port'] ?? 8291;
 
         $router->update($validated);
+        
+        if ($router->nas_id) {
+            \App\Models\Radius\Nas::where('id', $router->nas_id)->update(['shortname' => $router->name]);
+        }
 
         return redirect()->route('routers.index')->with('success', 'Router berhasil diupdate.');
     }
 
     public function destroy(Router $router)
     {
+        if ($router->nas_id) {
+            \App\Models\Radius\Nas::where('id', $router->nas_id)->delete();
+        }
         $router->delete();
-        return redirect()->route('routers.index')->with('success', 'Router berhasil dihapus.');
+        return redirect()->route('routers.index')->with('success', 'Router & NAS berhasil dihapus.');
     }
 }
