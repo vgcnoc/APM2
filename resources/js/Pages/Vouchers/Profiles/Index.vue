@@ -71,11 +71,7 @@
                     <form @submit.prevent="submitForm" class="space-y-4">
                         <div>
                             <label class="block text-xs font-bold text-gray-700 mb-1">Nama Profil <span class="text-red-500">*</span></label>
-                            <select v-model="form.name" @change="onProfileNameChange" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
-                                <option value="" disabled>-- Pilih Profil --</option>
-                                <option v-if="form.name && !profilePresets.some(p => p.name === form.name)" :value="form.name">{{ form.name }}</option>
-                                <option v-for="preset in profilePresets" :key="preset.name" :value="preset.name">{{ preset.name }}</option>
-                            </select>
+                            <input v-model="form.name" type="text" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required placeholder="Contoh: 1 Jam 2000">
                             <p v-if="form.errors.name" class="text-xs text-red-500 mt-1">{{ form.errors.name }}</p>
                         </div>
 
@@ -147,23 +143,6 @@ const props = defineProps({
 
 const formatPrice = (price) => {
     return parseFloat(price || 0).toLocaleString('id-ID');
-};
-
-const profilePresets = [
-    { name: '1 Jam', duration: '1h' },
-    { name: '3 Jam', duration: '3h' },
-    { name: '6 Jam', duration: '6h' },
-    { name: '12 Jam', duration: '12h' },
-    { name: '1 Hari', duration: '1d' },
-    { name: '3 Hari', duration: '3d' },
-    { name: '7 Hari', duration: '7d' },
-    { name: '15 Hari', duration: '15d' },
-    { name: '30 Hari', duration: '30d' },
-];
-
-const onProfileNameChange = () => {
-    const preset = profilePresets.find(p => p.name === form.name);
-    if (preset) form.duration = preset.duration;
 };
 
 const feeFields = [
