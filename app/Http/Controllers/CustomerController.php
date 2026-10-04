@@ -479,6 +479,7 @@ class CustomerController extends Controller
             'registration_date' => 'required|date',
             'installation_fee' => 'nullable|numeric|min:0',
             'sales_id' => 'nullable|exists:users,id',
+            'is_reseller' => 'boolean',
         ]);
 
         if (!auth()->user()->hasRole('admin')) {
@@ -497,9 +498,18 @@ class CustomerController extends Controller
 
         $validated['status'] = 'booking'; // Ensure it goes to booking
 
-        $customer = Customer::create($validated);
+        DB::transaction(function () use ($validated, &$customer) {
+            $customer = Customer::create($validated);
 
-        \App\Models\AuditLog::createLog('Create Booking', $customer, null, 'booking', 'Membuat booking baru');
+            if (!empty($validated['is_reseller']) && $validated['is_reseller']) {
+                $customer->reseller()->create([
+                    'balance' => 0,
+                    'is_active' => true, // Default to true, or handle differently based on status? Let's true for now.
+                ]);
+            }
+            
+            \App\Models\AuditLog::createLog('Create Booking', $customer, null, 'booking', 'Membuat booking baru');
+        });
 
         return redirect()->route('customers.booking')
             ->with('success', 'Data booking pelanggan berhasil ditambahkan.');
@@ -580,6 +590,7 @@ class CustomerController extends Controller
             'registration_date' => 'nullable|date',
             'installation_fee' => 'nullable|numeric|min:0',
             'sales_id' => 'nullable|exists:users,id',
+            'is_reseller' => 'boolean',
         ]);
 
         if (!auth()->user()->hasRole('admin')) {
@@ -601,7 +612,20 @@ class CustomerController extends Controller
             $validated['activation_date'] = now()->toDateString();
         }
 
-        $customer->update($validated);
+        DB::transaction(function () use ($customer, $validated) {
+            $customer->update($validated);
+            
+            if (!empty($validated['is_reseller']) && $validated['is_reseller']) {
+                $customer->reseller()->firstOrCreate([
+                    'balance' => 0,
+                    'is_active' => true,
+                ]);
+            } else {
+                if ($customer->reseller) {
+                    $customer->reseller()->delete();
+                }
+            }
+        });
 
         return redirect()->route('customers.show', $customer)
             ->with('success', 'Data pelanggan berhasil diperbarui.');

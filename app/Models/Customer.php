@@ -23,6 +23,7 @@ class Customer extends Model
         'latitude',
         'longitude',
         'package_id',
+        'is_reseller',
         'status',
         'registration_date',
         'activation_date',
@@ -117,6 +118,14 @@ class Customer extends Model
     public function technicianSchedules(): HasMany
     {
         return $this->hasMany(TechnicianSchedule::class);
+    }
+
+    /**
+     * Data reseller (jika is_reseller = true)
+     */
+    public function reseller(): HasOne
+    {
+        return $this->hasOne(Reseller::class);
     }
 
     // ── Computed ───────────────────────────────────────────────

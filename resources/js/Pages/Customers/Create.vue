@@ -169,6 +169,19 @@
                             </div>
                         </div>
 
+                        <!-- Row 11: Reseller Options -->
+                        <div class="mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <div class="relative flex items-center">
+                                    <input v-model="form.is_reseller" type="checkbox" class="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer" />
+                                </div>
+                                <div>
+                                    <span class="block text-sm font-bold text-indigo-900">Jadikan sebagai Reseller Voucher</span>
+                                    <span class="block text-xs text-indigo-600 mt-0.5">Pilih ini jika pelanggan juga akan menjual voucher hotspot. Sistem akan otomatis membuatkan dompet saldo reseller.</span>
+                                </div>
+                            </label>
+                        </div>
+
                     </div>
                     
                     <!-- Footer Actions -->
@@ -272,6 +285,7 @@ const form = useForm({
     registration_date: new Date().toISOString().split('T')[0],
     installation_fee: 0,
     sales_id: '',
+    is_reseller: false,
 });
 
 watch(() => form.package_id, (newId) => {

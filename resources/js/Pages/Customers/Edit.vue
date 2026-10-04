@@ -187,6 +187,19 @@
                             </div>
                         </div>
 
+                        <!-- Row 12: Reseller Options -->
+                        <div class="mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <div class="relative flex items-center">
+                                    <input v-model="form.is_reseller" type="checkbox" class="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer" />
+                                </div>
+                                <div>
+                                    <span class="block text-sm font-bold text-indigo-900">Jadikan sebagai Reseller Voucher</span>
+                                    <span class="block text-xs text-indigo-600 mt-0.5">Pilih ini jika pelanggan juga akan menjual voucher hotspot. Sistem akan otomatis membuat/menghapus dompet saldo reseller.</span>
+                                </div>
+                            </label>
+                        </div>
+
                         <!-- ONT Info (read-only) -->
                         <div v-if="customer.ont" class="mt-4 bg-gray-50 rounded-xl p-4 border border-gray-200">
                             <h4 class="text-sm font-bold text-gray-700 mb-3">Perangkat Terhubung (ONT)</h4>
@@ -337,6 +350,7 @@ const form = useForm({
     sales_id: props.customer.sales_id || '',
     status: props.customer.status || 'booking',
     notes: props.customer.notes || '',
+    is_reseller: props.customer.is_reseller == 1 ? true : false,
 });
 
 watch(() => form.package_id, (newId) => {

@@ -13,49 +13,30 @@ class ResellerController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Reseller::with('area');
+        $query = Reseller::with(['customer.areaModel', 'customer.package']);
 
         if ($request->has('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('phone', 'like', '%' . $request->search . '%');
+            $query->whereHas('customer', function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%')
+                  ->orWhere('phone', 'like', '%' . $request->search . '%')
+                  ->orWhere('customer_code', 'like', '%' . $request->search . '%');
+            });
         }
 
         $resellers = $query->latest()->paginate(10)->withQueryString();
 
-        $areas = \App\Models\Area::orderBy('name')->get();
-
         return Inertia::render('Resellers/Index', [
             'resellers' => $resellers,
-            'areas' => $areas,
             'filters' => $request->only(['search'])
         ]);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store is no longer used directly because resellers are created via Customer Booking
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string',
-            'area_id' => 'nullable|exists:areas,id',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
-            'balance' => 'numeric|min:0',
-            'installation_fee' => 'nullable|numeric|min:0',
-            'is_active' => 'boolean',
-            'ktp_photo' => 'nullable|image|max:2048' // max 2MB
-        ]);
-
-        if ($request->hasFile('ktp_photo')) {
-            $validated['ktp_photo'] = $request->file('ktp_photo')->store('resellers/ktp', 'public');
-        }
-
-        Reseller::create($validated);
-
-        return redirect()->back()->with('success', 'Data Reseller berhasil ditambahkan.');
+        return redirect()->route('customers.booking')->with('info', 'Silakan tambah Reseller dari menu Booking Pelanggan.');
     }
 
     /**
@@ -64,28 +45,13 @@ class ResellerController extends Controller
     public function update(Request $request, Reseller $reseller)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string',
-            'area_id' => 'nullable|exists:areas,id',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
             'balance' => 'numeric|min:0',
-            'installation_fee' => 'nullable|numeric|min:0',
             'is_active' => 'boolean',
-            'ktp_photo' => 'nullable|image|max:2048'
         ]);
-
-        if ($request->hasFile('ktp_photo')) {
-            if ($reseller->ktp_photo) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($reseller->ktp_photo);
-            }
-            $validated['ktp_photo'] = $request->file('ktp_photo')->store('resellers/ktp', 'public');
-        }
 
         $reseller->update($validated);
 
-        return redirect()->back()->with('success', 'Data Reseller berhasil diperbarui.');
+        return redirect()->back()->with('success', 'Data dompet Reseller berhasil diperbarui.');
     }
 
     /**
@@ -93,10 +59,14 @@ class ResellerController extends Controller
      */
     public function destroy(Reseller $reseller)
     {
-        if ($reseller->ktp_photo) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($reseller->ktp_photo);
-        }
+        // Only removes the reseller profile, not the customer
+        $customer = $reseller->customer;
         $reseller->delete();
-        return redirect()->back()->with('success', 'Data Reseller berhasil dihapus.');
+        
+        if ($customer) {
+            $customer->update(['is_reseller' => false]);
+        }
+
+        return redirect()->back()->with('success', 'Akses Reseller berhasil dicabut.');
     }
 }

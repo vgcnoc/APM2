@@ -11,20 +11,13 @@ class Reseller extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name',
-        'phone',
-        'address',
-        'area_id',
-        'latitude',
-        'longitude',
-        'ktp_photo',
+        'customer_id',
         'balance',
-        'installation_fee',
         'is_active',
     ];
 
-    public function area()
+    public function customer()
     {
-        return $this->belongsTo(Area::class);
+        return $this->belongsTo(Customer::class);
     }
 }

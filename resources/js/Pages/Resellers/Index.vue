@@ -1,6 +1,6 @@
 <script setup>
-import { ref, watch, computed } from 'vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
+import { Head, router, useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
 
@@ -21,10 +21,6 @@ const props = defineProps({
     filters: {
         type: Object,
         default: () => ({})
-    },
-    areas: {
-        type: Array,
-        default: () => []
     }
 });
 
@@ -42,35 +38,13 @@ const showModal = ref(false);
 const editingReseller = ref(null);
 
 const form = useForm({
-    name: '',
-    phone: '',
-    address: '',
-    area_id: '',
-    latitude: '',
-    longitude: '',
     balance: 0,
-    installation_fee: 0,
-    ktp_photo: null,
     is_active: true
 });
 
-const openCreateModal = () => {
-    editingReseller.value = null;
-    form.reset();
-    showModal.value = true;
-};
-
 const openEditModal = (reseller) => {
     editingReseller.value = reseller;
-    form.name = reseller.name;
-    form.phone = reseller.phone || '';
-    form.address = reseller.address || '';
-    form.area_id = reseller.area_id || '';
-    form.latitude = reseller.latitude || '';
-    form.longitude = reseller.longitude || '';
     form.balance = reseller.balance || 0;
-    form.installation_fee = reseller.installation_fee || 0;
-    form.ktp_photo = null; // Don't bind existing photo to file input
     form.is_active = reseller.is_active;
     showModal.value = true;
 };
@@ -83,19 +57,11 @@ const closeModal = () => {
 
 const saveReseller = () => {
     if (editingReseller.value) {
-        form.post(route('resellers.update.post', editingReseller.value.id), {
+        form.put(route('resellers.update', editingReseller.value.id), {
             preserveScroll: true,
             onSuccess: () => {
                 closeModal();
-                Swal.fire('Berhasil!', 'Data Reseller berhasil diperbarui.', 'success');
-            },
-        });
-    } else {
-        form.post(route('resellers.store'), {
-            preserveScroll: true,
-            onSuccess: () => {
-                closeModal();
-                Swal.fire('Berhasil!', 'Reseller baru berhasil ditambahkan.', 'success');
+                Swal.fire('Berhasil!', 'Data dompet Reseller berhasil diperbarui.', 'success');
             },
         });
     }
@@ -103,39 +69,23 @@ const saveReseller = () => {
 
 const deleteReseller = (reseller) => {
     Swal.fire({
-        title: 'Hapus Reseller?',
-        text: `Anda yakin ingin menghapus reseller ${reseller.name}?`,
+        title: 'Cabut Akses Reseller?',
+        text: `Pelanggan ini tidak akan lagi memiliki dompet reseller. Data master pelanggan tidak dihapus.`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Ya, Hapus!'
+        confirmButtonText: 'Ya, Cabut!'
     }).then((result) => {
         if (result.isConfirmed) {
-            router.post(route('resellers.destroy.post', reseller.id), {}, {
+            router.delete(route('resellers.destroy', reseller.id), {
                 preserveScroll: true,
                 onSuccess: () => {
-                    Swal.fire('Terhapus!', 'Reseller berhasil dihapus.', 'success');
+                    Swal.fire('Berhasil!', 'Akses Reseller berhasil dicabut.', 'success');
                 }
             });
         }
     });
-};
-
-const getLocation = () => {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                form.latitude = position.coords.latitude.toFixed(6);
-                form.longitude = position.coords.longitude.toFixed(6);
-            },
-            (error) => {
-                alert('Gagal mendapatkan lokasi: ' + error.message);
-            }
-        );
-    } else {
-        alert('Geolocation tidak didukung oleh browser Anda.');
-    }
 };
 </script>
 
@@ -144,15 +94,15 @@ const getLocation = () => {
 
     <AppLayout>
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 py-8">
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-900">Data Reseller Voucher</h2>
-                    <p class="mt-1 text-sm text-gray-600">Kelola daftar reseller atau mitra penjualan voucher.</p>
+                    <h2 class="text-2xl font-bold text-gray-900">Data Dompet Reseller</h2>
+                    <p class="mt-1 text-sm text-gray-600">Kelola dompet dan saldo pelanggan yang menjadi mitra penjualan voucher.</p>
                 </div>
-                <button @click="openCreateModal" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 shadow-sm flex items-center gap-2">
+                <Link href="/customers/booking" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 shadow-sm flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    Tambah Reseller
-                </button>
+                    Tambah Reseller dari Booking
+                </Link>
             </div>
 
             <!-- Search Bar -->
@@ -171,25 +121,30 @@ const getLocation = () => {
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50/50">
                             <tr>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Reseller</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">No HP</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Alamat</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Saldo</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Data Pelanggan</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Alamat & Area</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Saldo Dompet</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status Akses</th>
                                 <th class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             <tr v-for="reseller in resellers.data" :key="reseller.id" class="hover:bg-gray-50/50 transition-colors">
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-gray-900">{{ reseller.name }}</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ reseller.phone || '-' }}
+                                    <div v-if="reseller.customer">
+                                        <Link :href="`/customers/${reseller.customer.id}`" class="text-sm font-medium text-blue-600 hover:underline">
+                                            {{ reseller.customer.name }}
+                                        </Link>
+                                        <div class="text-xs text-gray-500 mt-1">{{ reseller.customer.phone || '-' }}</div>
+                                        <div class="text-[10px] text-gray-400">{{ reseller.customer.customer_code }}</div>
+                                    </div>
+                                    <div v-else class="text-sm text-red-500 font-bold">Error: No Customer</div>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                                    {{ reseller.address || '-' }}
-                                    <div v-if="reseller.area" class="text-xs text-blue-600 mt-1">{{ reseller.area.name }}</div>
+                                    <span v-if="reseller.customer">
+                                        {{ reseller.customer.address || '-' }}
+                                        <div v-if="reseller.customer.area_model" class="text-xs text-indigo-600 mt-1">{{ reseller.customer.area_model.name }}</div>
+                                    </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                     Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}
@@ -199,11 +154,11 @@ const getLocation = () => {
                                     <span v-else class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Nonaktif</span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button @click="openEditModal(reseller)" class="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition-colors" title="Edit">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    <button @click="openEditModal(reseller)" class="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition-colors" title="Edit Dompet">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                     </button>
-                                    <button @click="deleteReseller(reseller)" class="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50 transition-colors ml-1" title="Hapus">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    <button @click="deleteReseller(reseller)" class="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50 transition-colors ml-1" title="Cabut Akses">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6"/></svg>
                                     </button>
                                 </td>
                             </tr>
@@ -214,7 +169,7 @@ const getLocation = () => {
                                             <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/></svg>
                                         </div>
                                         <h3 class="text-sm font-medium text-gray-900">Belum ada reseller</h3>
-                                        <p class="mt-1 text-sm text-gray-500">Mulai dengan menambahkan reseller baru.</p>
+                                        <p class="mt-1 text-sm text-gray-500">Mulai dengan menambahkan pelanggan sebagai reseller dari menu Booking.</p>
                                     </div>
                                 </td>
                             </tr>
@@ -235,91 +190,32 @@ const getLocation = () => {
         </div>
 
         <!-- Native Modal -->
-        <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+        <div v-if="showModal" class="fixed inset-0 z-[110] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
             <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
                 <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-                    <h3 class="text-lg font-bold text-gray-900">{{ editingReseller ? 'Edit Reseller' : 'Tambah Reseller Baru' }}</h3>
+                    <h3 class="text-lg font-bold text-gray-900">Atur Dompet Reseller</h3>
                     <button @click="closeModal" class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-200 transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
 
                 <div class="p-6 overflow-y-auto max-h-[70vh]">
+                    <div v-if="editingReseller && editingReseller.customer" class="mb-4 pb-4 border-b border-gray-100">
+                        <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Nama Pelanggan</p>
+                        <p class="text-sm text-gray-900 font-medium">{{ editingReseller.customer.name }}</p>
+                    </div>
+
                     <form @submit.prevent="saveReseller" class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Reseller <span class="text-red-500">*</span></label>
-                            <input v-model="form.name" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" required placeholder="Masukkan nama reseller" />
-                            <div v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Saldo Dompet (Rp)</label>
+                            <input v-model="form.balance" type="number" min="0" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="0" />
+                            <div v-if="form.errors.balance" class="mt-1 text-sm text-red-600">{{ form.errors.balance }}</div>
+                            <p class="text-xs text-gray-500 mt-1">Gunakan untuk top-up manual atau koreksi saldo.</p>
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">No HP / WhatsApp</label>
-                            <input v-model="form.phone" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Contoh: 08123456789" />
-                            <div v-if="form.errors.phone" class="mt-1 text-sm text-red-600">{{ form.errors.phone }}</div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
-                            <textarea v-model="form.address" rows="3" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Masukkan alamat lengkap"></textarea>
-                            <div v-if="form.errors.address" class="mt-1 text-sm text-red-600">{{ form.errors.address }}</div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Area / Wilayah</label>
-                                <select v-model="form.area_id" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm">
-                                    <option value="">-- Pilih Area --</option>
-                                    <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
-                                </select>
-                                <div v-if="form.errors.area_id" class="mt-1 text-sm text-red-600">{{ form.errors.area_id }}</div>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Deposit / Saldo Awal</label>
-                                <input v-model="form.balance" type="number" min="0" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="0" />
-                                <div v-if="form.errors.balance" class="mt-1 text-sm text-red-600">{{ form.errors.balance }}</div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Biaya Pasang (Rp)</label>
-                            <input v-model="form.installation_fee" type="number" min="0" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="0" />
-                            <div v-if="form.errors.installation_fee" class="mt-1 text-sm text-red-600">{{ form.errors.installation_fee }}</div>
-                        </div>
-
-                        <div>
-                            <div class="flex items-center justify-between mb-1">
-                                <label class="block text-sm font-medium text-gray-700">Titik Koordinat</label>
-                                <button type="button" @click="getLocation" class="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 bg-blue-50 px-2 py-1 rounded border border-blue-200 transition-colors">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                    Auto GPS
-                                </button>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <input v-model="form.latitude" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Latitude (-6.200000)" />
-                                    <div v-if="form.errors.latitude" class="mt-1 text-sm text-red-600">{{ form.errors.latitude }}</div>
-                                </div>
-                                
-                                <div>
-                                    <input v-model="form.longitude" type="text" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Longitude (106.816666)" />
-                                    <div v-if="form.errors.longitude" class="mt-1 text-sm text-red-600">{{ form.errors.longitude }}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Upload Foto KTP</label>
-                            <input type="file" @input="form.ktp_photo = $event.target.files[0]" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                            <div v-if="form.errors.ktp_photo" class="mt-1 text-sm text-red-600">{{ form.errors.ktp_photo }}</div>
-                            <div v-if="editingReseller && editingReseller.ktp_photo && !form.ktp_photo" class="mt-2">
-                                <span class="text-xs text-green-600 font-medium">Foto KTP sudah tersimpan. Upload baru untuk mengganti.</span>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center mt-2">
+                        <div class="flex items-center mt-4">
                             <input type="checkbox" id="is_active" v-model="form.is_active" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4" />
-                            <label for="is_active" class="ml-2 block text-sm text-gray-700">Status Reseller Aktif</label>
+                            <label for="is_active" class="ml-2 block text-sm text-gray-700">Akses Reseller Aktif</label>
                         </div>
                         
                         <button type="submit" class="hidden" id="submitBtn"></button>
@@ -329,10 +225,11 @@ const getLocation = () => {
                 <div class="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
                     <button type="button" @click="closeModal" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-100">Batal</button>
                     <button type="button" @click="$el.querySelector('#submitBtn').click()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50" :disabled="form.processing">
-                        {{ form.processing ? 'Menyimpan...' : 'Simpan' }}
+                        {{ form.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}
                     </button>
                 </div>
             </div>
         </div>
     </AppLayout>
 </template>
+
