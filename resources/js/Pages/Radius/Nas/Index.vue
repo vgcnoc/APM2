@@ -3,37 +3,37 @@
         <div class="p-6 max-w-6xl mx-auto space-y-6">
             
             <!-- Warning Header -->
-            <div class="bg-gray-800 rounded-xl shadow-lg border border-gray-700 overflow-hidden text-gray-100">
-                <div class="p-6 border-b border-gray-700">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden text-gray-900">
+                <div class="p-6 border-b border-gray-100">
                     <h2 class="text-2xl font-bold">Mikrotik (Nas)</h2>
-                    <p class="text-red-500 font-bold mt-1 uppercase text-lg">
+                    <p class="text-red-600 font-bold mt-1 uppercase text-lg">
                         JANGAN MERUBAH SCRIPT YANG SUDAH KAMI SIAPKAN DISINI, PROSES CUKUP SATU KALI PASTE SAJA
                     </p>
-                    <p class="text-sm text-gray-400 mt-2">Generate Script</p>
+                    <p class="text-sm text-gray-500 mt-2">Generate Script</p>
                 </div>
 
                 <div class="p-6 space-y-6">
                     <!-- Catatan -->
                     <div class="text-sm space-y-1">
-                        <p class="text-gray-400 mb-2 uppercase font-semibold">Catatan :</p>
-                        <p class="text-red-400">- Pastikan APM2 ada di urutan teratas pada menu Mikrotik-Radius</p>
-                        <p class="text-red-400">- Jika kamu menggunakan <span class="font-bold">Loadbalancing</span>, silahkan routing IP VPS kami ke satu sumber internet saja</p>
-                        <p class="text-red-400">- Langsung copy dan Paste Script kami ke terminal mikrotik</p>
-                        <p class="text-red-400 font-bold">- JANGAN PASTE SCRIPT YANG SAMA KE LEBIH DARI 1 MIKROTIK</p>
+                        <p class="text-gray-700 mb-2 uppercase font-semibold">Catatan :</p>
+                        <p class="text-red-500">- Pastikan APM2 ada di urutan teratas pada menu Mikrotik-Radius</p>
+                        <p class="text-red-500">- Jika kamu menggunakan <span class="font-bold">Loadbalancing</span>, silahkan routing IP VPS kami ke satu sumber internet saja</p>
+                        <p class="text-red-500">- Langsung copy dan Paste Script kami ke terminal mikrotik</p>
+                        <p class="text-red-500 font-bold">- JANGAN PASTE SCRIPT YANG SAMA KE LEBIH DARI 1 MIKROTIK</p>
                     </div>
 
                     <!-- Dropdowns -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">RouterOS</label>
-                            <select v-model="selectedOs" @change="generateScript" class="w-full bg-gray-900 border border-gray-700 text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500 px-4 py-2.5">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">RouterOS</label>
+                            <select v-model="selectedOs" @change="generateScript" class="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 px-4 py-2.5">
                                 <option value="v7">RouterOS v7 (Rekomendasi)</option>
                                 <option value="v6">RouterOS v6</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Nama Router</label>
-                            <select v-model="selectedNasId" @change="generateScript" class="w-full bg-gray-900 border border-gray-700 text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500 px-4 py-2.5">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nama Router</label>
+                            <select v-model="selectedNasId" @change="generateScript" class="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 px-4 py-2.5">
                                 <option value="">-- Pilih Router (Atau Buat Baru) --</option>
                                 <option v-for="n in nas.data" :key="n.id" :value="n.id">
                                     {{ n.shortname || n.nasname }} ({{ n.nasname }})
@@ -44,9 +44,9 @@
 
                     <!-- Script Box -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2 flex justify-between">
+                        <label class="block text-sm font-medium text-gray-700 mb-2 flex justify-between">
                             <span>Generated Script</span>
-                            <button @click="copyScript" v-if="generatedScript" class="text-indigo-400 hover:text-indigo-300 text-xs font-semibold flex items-center gap-1">
+                            <button @click="copyScript" v-if="generatedScript" class="text-indigo-600 hover:text-indigo-500 text-xs font-semibold flex items-center gap-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                                 Copy Script
                             </button>
@@ -55,16 +55,16 @@
                             v-model="generatedScript" 
                             readonly 
                             rows="8" 
-                            class="w-full bg-[#1e1e24] font-mono text-green-400 text-sm border-0 rounded-lg p-4 focus:ring-2 focus:ring-indigo-500"
+                            class="w-full bg-gray-900 font-mono text-green-400 text-sm border border-gray-800 rounded-lg p-4 focus:ring-2 focus:ring-indigo-500"
                             placeholder="Silakan pilih router untuk memunculkan script..."></textarea>
                     </div>
 
                     <!-- Action Buttons -->
                     <div class="flex flex-wrap gap-3 pt-2">
-                        <button @click="openCreateModal" class="px-5 py-2.5 bg-[#2d3748] text-white text-sm font-medium rounded hover:bg-gray-700 transition-colors">
+                        <button @click="openCreateModal" class="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
                             Generate Script Mikrotik Baru
                         </button>
-                        <button v-if="selectedNasId" @click="generateScript" class="px-5 py-2.5 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition-colors shadow-lg shadow-red-600/30">
+                        <button v-if="selectedNasId" @click="generateScript" class="px-5 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm">
                             Generate Ulang Script Mikrotik (Force)
                         </button>
                     </div>
