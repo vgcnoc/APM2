@@ -160,7 +160,8 @@ const mobileMenuOpen = ref(false);
 
 const menuItems = [
     { type: 'link', href: '/', icon: 'dashboard', label: 'Dashboard', active: (url) => (url || '').length > 0 && url === '/', permission: 'menu_dashboard' },
-    { type: 'group', label: 'DATA CUSTOMERS' },
+    
+    { type: 'group', label: 'MANAJEMEN PELANGGAN' },
     { type: 'link', href: '/customers/booking', icon: 'document-add', label: 'Data Booking', active: (url) => (url || '').startsWith('/customers/booking'), permission: 'menu_customers_booking' },
     { 
         type: 'dropdown', 
@@ -194,7 +195,14 @@ const menuItems = [
     { type: 'link', href: '/customers/active', icon: 'badge-check', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: 'menu_customers_active' },
     { type: 'link', href: '/customers', icon: 'users', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
     { type: 'link', href: '/tickets', icon: 'alert-circle', label: 'Ticketing / Gangguan', active: (url) => (url || '').startsWith('/tickets'), permission: 'menu_customers_all' },
-    { type: 'group', label: 'INFRASTRUKTUR' },
+    
+    { type: 'group', label: 'BILLING & PRODUK' },
+    { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
+    { type: 'link', href: '/vouchers/profiles', icon: 'document-text', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers' },
+    { type: 'link', href: '/vouchers', icon: 'ticket', label: 'Data Voucher', active: (url) => (url || '').length > 0 && url === '/vouchers', permission: 'menu_vouchers' },
+    { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
+
+    { type: 'group', label: 'INFRASTRUKTUR & JARINGAN' },
     { type: 'link', href: '/network-topology', icon: 'globe', label: 'Network Topology', active: (url) => (url || '').startsWith('/network-topology'), permission: 'menu_network_topology' },
     { type: 'link', href: '/network-data', icon: 'globe', label: 'Data Jaringan', active: (url) => (url || '').startsWith('/network-data'), permission: 'menu_network_data' },
     { type: 'link', href: '/olts', icon: 'server', label: 'OLT', active: (url) => (url || '').startsWith('/olts'), permission: 'menu_network_olt' },
@@ -202,21 +210,21 @@ const menuItems = [
     { type: 'link', href: '/odps', icon: 'git-branch', label: 'ODP', active: (url) => (url || '').startsWith('/odps'), permission: 'menu_network_odp' },
     { type: 'link', href: '/onts', icon: 'wifi', label: 'ONT', active: (url) => (url || '').startsWith('/onts'), permission: 'menu_network_ont' },
     { type: 'link', href: '/find-onu', icon: 'search', label: 'Find ONU', active: (url) => (url || '').startsWith('/find-onu'), permission: 'menu_network_find_onu' },
-    { type: 'link', href: '/materials', icon: 'archive', label: 'Material/Barang', active: (url) => (url || '').startsWith('/materials'), permission: 'menu_materials' },
+
+    { type: 'group', label: 'INVENTARIS & LOGISTIK' },
+    { type: 'link', href: '/materials', icon: 'archive', label: 'Material / Barang', active: (url) => (url || '').startsWith('/materials'), permission: 'menu_materials' },
     { type: 'link', href: '/material-transactions', icon: 'shopping-cart', label: 'Order / Pengambilan', active: (url) => (url || '').startsWith('/material-transactions'), permission: 'menu_material_transactions' },
+
     { type: 'group', label: 'HR & PERSONALIA' },
     { type: 'link', href: '/employees', icon: 'users', label: 'Data Karyawan', active: (url) => (url || '').startsWith('/employees'), permission: 'menu_hr_employees' },
     { type: 'link', href: '/positions', icon: 'briefcase', label: 'Posisi / Jabatan', active: (url) => (url || '').startsWith('/positions'), permission: 'menu_hr_positions' },
+    
     { type: 'group', label: 'PENGATURAN' },
     { type: 'link', href: '/settings/areas', icon: 'map', label: 'Master Area', active: (url) => (url || '').startsWith('/settings/areas'), permission: 'menu_settings_areas' },
-    { type: 'link', href: '/settings/branding', icon: 'color-swatch', label: 'Branding Aplikasi', active: (url) => (url || '').startsWith('/settings/branding'), permission: 'menu_settings_branding' },
-    { type: 'link', href: '/settings/api', icon: 'code', label: 'API & Integrasi', active: (url) => (url || '').startsWith('/settings/api'), permission: 'menu_settings_api' },
     { type: 'link', href: '/users', icon: 'users', label: 'Manajemen User', active: (url) => (url || '').startsWith('/users'), permission: 'menu_users' },
-    { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
-    { type: 'link', href: '/vouchers/profiles', icon: 'document-text', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers' },
-    { type: 'link', href: '/vouchers', icon: 'ticket', label: 'Data Voucher', active: (url) => (url || '').length > 0 && url === '/vouchers', permission: 'menu_vouchers' },
-    { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
-    { type: 'link', href: '/settings/roles', icon: 'lock-closed', label: 'Manajemen Role & Akses', active: (url) => (url || '').startsWith('/settings/roles'), permission: 'menu_settings_roles' },
+    { type: 'link', href: '/settings/roles', icon: 'lock-closed', label: 'Role & Akses', active: (url) => (url || '').startsWith('/settings/roles'), permission: 'menu_settings_roles' },
+    { type: 'link', href: '/settings/api', icon: 'code', label: 'API & Integrasi', active: (url) => (url || '').startsWith('/settings/api'), permission: 'menu_settings_api' },
+    { type: 'link', href: '/settings/branding', icon: 'color-swatch', label: 'Branding', active: (url) => (url || '').startsWith('/settings/branding'), permission: 'menu_settings_branding' },
 ];
 
 const iconPaths = {
