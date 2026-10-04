@@ -255,9 +255,13 @@ function generateScript() {
     script += `/ip firewall filter add action=drop chain=forward comment=APM2ISOLIR dst-address=!${ip} dst-port=!53,5353 protocol=udp src-address-list=APM2ISOLIR;\n`;
     script += `/ip firewall filter add action=drop chain=forward comment=APM2ISOLIR dst-address=!${ip} protocol=tcp src-address-list=APM2ISOLIR;\n\n`;
     
+    script += `# 5. L2TP VPN CONNECTION TO SERVER\n`;
+    script += `/interface l2tp-client remove [find name="APM2-VPN"];\n`;
+    script += `/interface l2tp-client add connect-to="${ip}" disabled=no name="APM2-VPN" user="${apiUser}" password="${apiPass}" profile="default" comment="VPN APM2 RADIUS";\n\n`;
+
     script += `# PERHATIAN: Simpan Data API Mikrotik ini ke dalam Data Router APM2 Anda!\n`;
-    script += `# Username API: ${apiUser}\n`;
-    script += `# Password API: ${apiPass}\n`;
+    script += `# Username API/VPN: ${apiUser}\n`;
+    script += `# Password API/VPN: ${apiPass}\n`;
 
     generatedScript.value = script;
 }
