@@ -58,6 +58,11 @@ class DashboardController extends Controller
         $currentMonth = now()->month;
         $currentYear  = now()->year;
 
+        $invoiceStats = [
+            'paid_this_month'   => Invoice::where('period_month', $currentMonth)->where('period_year', $currentYear)->where('status', 'paid')->count(),
+            'unpaid_this_month' => Invoice::where('period_month', $currentMonth)->where('period_year', $currentYear)->whereIn('status', ['unpaid', 'overdue'])->count(),
+        ];
+
         $monthlyRevenue = Invoice::where('period_month', $currentMonth)
             ->where('period_year', $currentYear)
             ->where('status', 'paid')
@@ -172,6 +177,7 @@ class DashboardController extends Controller
             'customerStats'        => $customerStats,
             'infraStats'           => $infraStats,
             'ticketStats'          => $ticketStats,
+            'invoiceStats'         => $invoiceStats,
             'monthlyRevenue'       => (float) $monthlyRevenue,
             'totalRevenue'         => (float) $totalRevenue,
             'avgMonthlyRevenue'    => (float) $avgMonthly,

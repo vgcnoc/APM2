@@ -28,30 +28,30 @@
                 </div>
             </div>
 
-            <!-- ODP Tersedia -->
+            <!-- Pelanggan Sudah Bayar -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <div class="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center">
-                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                             </div>
-                            <p class="text-sm font-medium text-gray-500">ODP Tersedia</p>
+                            <p class="text-sm font-medium text-gray-500">Pelanggan Sudah Bayar</p>
                         </div>
-                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ infraStats.odp_active }}</p>
-                        <p class="text-xs text-gray-500 mt-1">Dari {{ infraStats.odp_total }} ODP</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ invoiceStats?.paid_this_month || 0 }}</p>
+                        <p class="text-xs text-gray-500 mt-1">Bulan Ini</p>
                     </div>
                     <span class="inline-flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
-                        {{ infraStats.odp_total > 0 ? Math.round(infraStats.odp_active / infraStats.odp_total * 100) : 100 }}%
+                        {{ ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) > 0 ? Math.round((invoiceStats?.paid_this_month || 0) / ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) * 100) : 0 }}%
                     </span>
                 </div>
                 <div class="mt-3 w-full bg-gray-100 rounded-full h-2">
                     <div class="bg-gradient-to-r from-emerald-400 to-emerald-600 h-2 rounded-full transition-all"
-                        :style="{ width: (infraStats.odp_total > 0 ? infraStats.odp_active / infraStats.odp_total * 100 : 100) + '%' }"></div>
+                        :style="{ width: (((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) > 0 ? (invoiceStats?.paid_this_month || 0) / ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) * 100 : 0) + '%' }"></div>
                 </div>
             </div>
 
-            <!-- Tiket Gangguan -->
+            <!-- Pelanggan Belum Bayar -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
                 <div class="flex items-start justify-between">
                     <div>
@@ -59,21 +59,18 @@
                             <div class="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center">
                                 <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </div>
-                            <p class="text-sm font-medium text-gray-500">Tiket Gangguan</p>
+                            <p class="text-sm font-medium text-gray-500">Pelanggan Belum Bayar</p>
                         </div>
-                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ ticketStats.open }}</p>
-                        <p class="text-xs text-gray-500 mt-1">{{ ticketStats.in_progress }} sedang dikerjakan</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ invoiceStats?.unpaid_this_month || 0 }}</p>
+                        <p class="text-xs text-gray-500 mt-1">Bulan Ini</p>
                     </div>
-                    <span class="inline-flex items-center text-xs font-bold px-2 py-1 rounded-lg"
-                        :class="ticketStats.open > 0 ? 'text-red-600 bg-red-50' : 'text-emerald-600 bg-emerald-50'">
-                        {{ ticketStats.open > 0 ? ticketStats.open + ' open' : '0%' }}
+                    <span class="inline-flex items-center text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded-lg">
+                        {{ ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) > 0 ? Math.round((invoiceStats?.unpaid_this_month || 0) / ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) * 100) : 0 }}%
                     </span>
                 </div>
-                <div class="mt-3 h-8">
-                    <svg class="w-full h-full text-red-200" viewBox="0 0 120 30" preserveAspectRatio="none">
-                        <path d="M0 20 Q30 25 60 15 T120 20 V30 H0Z" fill="currentColor" opacity="0.5"/>
-                        <path d="M0 20 Q30 25 60 15 T120 20" fill="none" stroke="rgb(239,68,68)" stroke-width="1.5"/>
-                    </svg>
+                <div class="mt-3 w-full bg-gray-100 rounded-full h-2">
+                    <div class="bg-gradient-to-r from-red-400 to-red-600 h-2 rounded-full transition-all"
+                        :style="{ width: (((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) > 0 ? (invoiceStats?.unpaid_this_month || 0) / ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) * 100 : 0) + '%' }"></div>
                 </div>
             </div>
 
@@ -552,6 +549,7 @@ const props = defineProps({
     customerStats: Object,
     infraStats: Object,
     ticketStats: Object,
+    invoiceStats: Object,
     monthlyRevenue: Number,
     totalRevenue: Number,
     avgMonthlyRevenue: Number,
