@@ -44,6 +44,7 @@ class ResellerController extends Controller
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'balance' => 'numeric|min:0',
+            'installation_fee' => 'nullable|numeric|min:0',
             'is_active' => 'boolean',
             'ktp_photo' => 'nullable|image|max:2048' // max 2MB
         ]);
@@ -70,6 +71,7 @@ class ResellerController extends Controller
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'balance' => 'numeric|min:0',
+            'installation_fee' => 'nullable|numeric|min:0',
             'is_active' => 'boolean',
             'ktp_photo' => 'nullable|image|max:2048'
         ]);

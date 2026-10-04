@@ -49,6 +49,7 @@ const form = useForm({
     latitude: '',
     longitude: '',
     balance: 0,
+    installation_fee: 0,
     ktp_photo: null,
     is_active: true
 });
@@ -68,6 +69,7 @@ const openEditModal = (reseller) => {
     form.latitude = reseller.latitude || '';
     form.longitude = reseller.longitude || '';
     form.balance = reseller.balance || 0;
+    form.installation_fee = reseller.installation_fee || 0;
     form.ktp_photo = null; // Don't bind existing photo to file input
     form.is_active = reseller.is_active;
     showModal.value = true;
@@ -257,10 +259,16 @@ const deleteReseller = (reseller) => {
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Deposit / Saldo</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Deposit / Saldo Awal</label>
                                 <input v-model="form.balance" type="number" min="0" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="0" />
                                 <div v-if="form.errors.balance" class="mt-1 text-sm text-red-600">{{ form.errors.balance }}</div>
                             </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Biaya Pasang (Rp)</label>
+                            <input v-model="form.installation_fee" type="number" min="0" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="0" />
+                            <div v-if="form.errors.installation_fee" class="mt-1 text-sm text-red-600">{{ form.errors.installation_fee }}</div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">

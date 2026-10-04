@@ -19,6 +19,7 @@ class Reseller extends Model
         'longitude',
         'ktp_photo',
         'balance',
+        'installation_fee',
         'is_active',
     ];
 
