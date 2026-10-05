@@ -75,13 +75,6 @@ const createAccount = () => {
                 'Akun berhasil dibuat.',
                 'success'
             );
-        },
-        onError: (errors) => {
-            Swal.fire(
-                'Gagal!',
-                errors.error || 'Terjadi kesalahan saat membuat akun. Pastikan form diisi dengan benar.',
-                'error'
-            );
         }
     });
 };
