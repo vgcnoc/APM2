@@ -67,7 +67,19 @@
                     </span>
                     <span v-else class="text-xs text-gray-600">-</span>
                 </td>
-                <td><StatusBadge :status="row.status" /></td>
+                <td>
+                    <div class="flex flex-col gap-1.5 items-start">
+                        <StatusBadge :status="row.status" />
+                        <div v-if="row.status === 'active' && row.ont?.pppoe_user">
+                            <span v-if="onlineUsernames?.includes(row.ont.pppoe_user)" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">
+                                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Online
+                            </span>
+                            <span v-else class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700">
+                                <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Offline
+                            </span>
+                        </div>
+                    </div>
+                </td>
                 <td>
                     <span v-if="row.ont" class="text-xs font-mono text-emerald-400">
                         {{ row.ont.odp?.name || '-' }}
@@ -145,6 +157,10 @@ const props = defineProps({
     packages: Array,
     filters: Object,
     statusOptions: Object,
+    onlineUsernames: {
+        type: Array,
+        default: () => [],
+    }
 });
 
 

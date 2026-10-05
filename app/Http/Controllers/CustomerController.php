@@ -58,6 +58,13 @@ class CustomerController extends Controller
                 'suspended' => 'Suspended',
                 'terminated' => 'Terminated',
             ],
+            'onlineUsernames' => (function() {
+                try {
+                    return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
+                } catch (\Exception $e) {
+                    return [];
+                }
+            })(),
         ]);
     }
 
@@ -431,6 +438,13 @@ class CustomerController extends Controller
             'customers' => $customers,
             'stats' => $stats,
             'filters' => $request->only(['search', 'tab', 'date', 'area']),
+            'onlineUsernames' => (function() {
+                try {
+                    return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
+                } catch (\Exception $e) {
+                    return [];
+                }
+            })(),
         ]);
     }
 

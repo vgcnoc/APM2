@@ -75,7 +75,19 @@
                 <td>
                     <span class="text-xs text-cyan-400 font-medium">{{ row.package?.name || '-' }}</span>
                 </td>
-                <td><StatusBadge :status="row.status" /></td>
+                <td>
+                    <div class="flex flex-col gap-1.5 items-start">
+                        <StatusBadge :status="row.status" />
+                        <div v-if="row.status === 'active' && row.ont?.pppoe_user">
+                            <span v-if="onlineUsernames?.includes(row.ont.pppoe_user)" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">
+                                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Online
+                            </span>
+                            <span v-else class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700">
+                                <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Offline
+                            </span>
+                        </div>
+                    </div>
+                </td>
                 <td>
                     <span v-if="row.ont" class="text-xs font-mono text-gray-600">{{ row.ont.serial_number }}</span>
                     <span v-else class="text-xs text-gray-600">-</span>
@@ -448,7 +460,8 @@ const props = defineProps({
     availableOnts: { type: Array, default: () => [] }, 
     materialTransactions: { type: Array, default: () => [] },
     stats: Object,
-    filters: Object 
+    filters: Object,
+    onlineUsernames: { type: Array, default: () => [] },
 });
 
 
