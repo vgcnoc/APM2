@@ -218,18 +218,18 @@
                     <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                             <div>
-                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">PPPoE Username</label>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">PPPoE/Member Username</label>
                                 <input v-model="activationForm.pppoe_user" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed font-medium' : 'bg-white border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium'" placeholder="user@isp" :readonly="!isEditingOnt" />
                             </div>
                             <div>
-                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">PPPoE Password</label>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">PPPoE/Member Password</label>
                                 <input v-model="activationForm.pppoe_password" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed font-medium' : 'bg-white border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium'" placeholder="***" :readonly="!isEditingOnt" />
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                             <div>
-                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Mode Akses</label>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Mode Akses (Catatan)</label>
                                 <select v-model="activationForm.access_mode" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed font-medium' : 'bg-white border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium'" :disabled="!isEditingOnt">
                                     <option value="PPPOE">PPPoE</option>
                                     <option value="STATIC">Static IP</option>
@@ -726,18 +726,18 @@
                         
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ activationForm.access_mode === 'HOTSPOT' ? 'Username Hotspot' : 'PPPoE Username' }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Username</label>
                                 <input v-model="activationForm.pppoe_user" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500'" placeholder="user@isp" :readonly="!isEditingOnt" />
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ activationForm.access_mode === 'HOTSPOT' ? 'Password Hotspot' : 'PPPoE Password' }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Password</label>
                                 <input v-model="activationForm.pppoe_password" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500'" placeholder="***" :readonly="!isEditingOnt" />
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Mode Akses</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Mode Akses (Catatan)</label>
                                 <select v-model="activationForm.access_mode" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500'" :disabled="!isEditingOnt">
                                     <option value="PPPOE">PPPoE</option>
                                     <option value="STATIC">Static IP</option>
@@ -880,18 +880,18 @@
                         
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ activeConfigForm.access_mode === 'HOTSPOT' ? 'Username Hotspot' : 'PPPoE Username' }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Username</label>
                                 <input v-model="activeConfigForm.pppoe_user" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all" placeholder="user@isp" />
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ activeConfigForm.access_mode === 'HOTSPOT' ? 'Password Hotspot' : 'PPPoE Password' }}</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Password</label>
                                 <input v-model="activeConfigForm.pppoe_password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all" placeholder="***" />
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Mode Akses</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Mode Akses (Catatan)</label>
                                 <select v-model="activeConfigForm.access_mode" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all">
                                     <option value="PPPOE">PPPoE</option>
                                     <option value="STATIC">Static IP</option>

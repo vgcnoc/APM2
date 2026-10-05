@@ -40,6 +40,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/installed', [CustomerController::class, 'installed'])->name('installed');
         Route::get('/activation', [CustomerController::class, 'activation'])->name('activation');
         Route::get('/active', [CustomerController::class, 'active'])->name('active');
+        Route::get('/online', [CustomerController::class, 'online'])->name('online');
 
         // Assign ONT ke pelanggan
         Route::post('/{customer}/assign-ont', [CustomerController::class, 'assignOnt'])

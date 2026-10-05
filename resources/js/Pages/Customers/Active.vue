@@ -114,7 +114,13 @@
 
             <template #rowActions="{ row }">
                 <div class="flex items-center justify-end gap-1.5">
-                    
+                    <!-- Kick Button -->
+                    <button v-if="row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" @click="kickSession(row.ont.pppoe_user)" class="p-1.5 rounded-lg text-gray-400 hover:bg-orange-50 hover:text-orange-500 border border-transparent hover:border-orange-200 transition-all shadow-sm hover:shadow" title="Kick Sesi Online">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </button>
+
                     <!-- 4. Sudah Aktif -->
                     <span v-if="row.status === 'active'" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg text-xs font-bold shadow-sm cursor-default">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -342,20 +348,20 @@
                             <input v-model="activationForm.activation_date" type="date" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" required />
                         </div>
 
-                        <div v-if="activationForm.access_mode === 'PPPOE'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE Username</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Username</label>
                                 <input v-model="activationForm.pppoe_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="user@isp" />
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE Password</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Password</label>
                                 <input v-model="activationForm.pppoe_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="***" />
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Mode Akses</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Mode Akses (Catatan)</label>
                                 <select v-model="activationForm.access_mode" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all">
                                     <option value="PPPOE">PPPoE</option>
                                     <option value="STATIC">Static IP</option>
@@ -741,5 +747,13 @@ function executeDelete() {
             isDeleting.value = false;
         }
     });
+}
+
+function kickSession(username) {
+    if (confirm(`Kick sesi untuk user ${username}?`)) {
+        router.post('/radius/online-users/disconnect', { username }, {
+            preserveScroll: true
+        });
+    }
 }
 </script>

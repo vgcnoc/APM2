@@ -161,7 +161,7 @@
                                     <input v-model="form.vlan_id" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Contoh: 100" />
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-1">Mode Akses</label>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Mode Akses (Catatan)</label>
                                     <select v-model="form.access_mode" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                                         <option value="PPPOE">PPPOE</option>
                                         <option value="Static">Static</option>
@@ -190,9 +190,9 @@
                                 </div>
                             </div>
 
-                            <div v-if="form.access_mode === 'PPPOE'" class="px-4 pb-4 border-t border-gray-100 pt-4">
+                            <div class="px-4 pb-4 border-t border-gray-100 pt-4">
                                 <div class="flex items-center gap-3 mb-2">
-                                    <h4 class="text-xs font-bold text-gray-700">Akun PPPoE</h4>
+                                    <h4 class="text-xs font-bold text-gray-700">Akun Member / PPPoE</h4>
                                     <button type="button" @click="generatePppoe" class="text-xs font-medium bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md border border-gray-300 flex items-center gap-1">
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                                         Generate
@@ -201,11 +201,11 @@
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-xs text-gray-500 mb-1">User</label>
-                                        <input v-model="form.pppoe_user" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="User PPPoE" />
+                                        <input v-model="form.pppoe_user" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="User PPPoE/Member" />
                                     </div>
                                     <div>
                                         <label class="block text-xs text-gray-500 mb-1">Password</label>
-                                        <input v-model="form.pppoe_password" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Password PPPoE" />
+                                        <input v-model="form.pppoe_password" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Password PPPoE/Member" />
                                     </div>
                                 </div>
                             </div>

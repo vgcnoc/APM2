@@ -61,6 +61,7 @@
                 </td>
                 <td class="text-gray-500">{{ row.phone }}</td>
                 <td class="max-w-[200px] truncate text-gray-500 text-xs">{{ row.address }}</td>
+                <td class="text-gray-700 text-xs font-medium">{{ row.area_model?.name || row.area || '-' }}</td>
                 <td>
                     <span v-if="row.package" class="text-xs text-cyan-400 font-medium">
                         {{ row.package.name }}
@@ -91,6 +92,11 @@
             <!-- Row Actions -->
             <template #rowActions="{ row }">
                 <div class="flex items-center justify-end gap-1">
+                    <button v-if="row.status === 'active' && row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" @click="kickSession(row.ont.pppoe_user)" class="p-2 rounded-lg text-gray-500 hover:bg-orange-50 hover:text-orange-500 transition-all border border-transparent hover:border-orange-200 shadow-sm hover:shadow" title="Kick Sesi Online">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </button>
                     <Link :href="`/customers/${row.id}`" class="p-2 rounded-lg text-gray-500 hover:bg-white hover:text-blue-400 transition-all" title="Lihat Detail">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -207,6 +213,7 @@ const columns = [
     { key: 'name', label: 'Pelanggan' },
     { key: 'phone', label: 'Telepon' },
     { key: 'address', label: 'Alamat' },
+    { key: 'area', label: 'Area' },
     { key: 'package', label: 'Paket' },
     { key: 'status', label: 'Status' },
     { key: 'odp', label: 'ODP' },
@@ -238,5 +245,13 @@ function deleteCustomer() {
             deletingCustomer.value = null;
         },
     });
+}
+
+function kickSession(username) {
+    if (confirm(`Kick sesi untuk user ${username}?`)) {
+        router.post('/radius/online-users/disconnect', { username }, {
+            preserveScroll: true
+        });
+    }
 }
 </script>

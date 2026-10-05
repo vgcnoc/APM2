@@ -173,16 +173,18 @@ class RadiusService
     public function customerAccounts(Customer $customer): array
     {
         $ont = $customer->ont;
-        if (!$ont) {
+        $package = $customer->package;
+        if (!$ont || !$package) {
             return [];
         }
 
         $accounts = [];
+        // Kita tidak memakai $ont->access_mode lagi untuk nge-cek mode RADIUS, tapi dari tipe paketnya
+        $accessMode = strtolower($package->access_mode ?? 'pppoe');
+        
+        // Baik Hotspot maupun PPPoE/Lainnya menggunakan kolom pppoe_user dan pppoe_password di DB
         if ($ont->pppoe_user && $ont->pppoe_password) {
             $accounts[$ont->pppoe_user] = $ont->pppoe_password;
-        }
-        if ($ont->free_hotspot && $ont->hotspot_user && $ont->hotspot_password) {
-            $accounts[$ont->hotspot_user] = $ont->hotspot_password;
         }
 
         return $accounts;
@@ -260,6 +262,9 @@ class RadiusService
 
         foreach ($sessions as $session) {
             if ($this->disconnectSession($session)) {
+                $session->acctstoptime = now();
+                $session->acctterminatecause = 'Admin-Reset';
+                $session->save();
                 $count++;
             }
         }

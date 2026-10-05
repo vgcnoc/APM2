@@ -23,7 +23,7 @@ class CustomerController extends Controller
      */
     public function index(Request $request): Response
     {
-        $customers = Customer::with(['package', 'ont.odp'])
+        $customers = Customer::with(['package', 'ont.odp', 'areaModel'])
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
                     $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
@@ -65,6 +65,95 @@ class CustomerController extends Controller
                     return [];
                 }
             })(),
+        ]);
+    }
+
+    /**
+     * Daftar pelanggan yang sedang online (RADIUS), tanpa voucher.
+     */
+    public function online(Request $request): Response
+    {
+        // 1. Ambil semua sesi online dari RADIUS
+        try {
+            $sessions = \App\Models\Radius\RadAcct::online()
+                ->orderByDesc('acctstarttime')
+                ->get(['radacctid', 'username', 'framedipaddress', 'callingstationid', 'nasipaddress', 'acctstarttime', 'acctsessiontime', 'acctinputoctets', 'acctoutputoctets'])
+                ->unique('username')
+                ->keyBy('username');
+        } catch (\Exception $e) {
+            $sessions = collect();
+        }
+
+        // 2. Cocokkan dengan ONT pelanggan (voucher tidak punya ONT → otomatis terfilter)
+        $customers = collect();
+        if ($sessions->isNotEmpty()) {
+            $customers = Customer::with(['package', 'areaModel', 'ont'])
+                ->whereHas('ont', fn ($q) => $q->whereIn('pppoe_user', $sessions->keys()->all()))
+                ->whereDoesntHave('package', fn ($q) => $q->where('access_mode', 'voucher'))
+                ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function ($q) {
+                    if (auth()->user()->can('customers_all_view_area')) {
+                        $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                    } else {
+                        $q->where('sales_id', auth()->id());
+                    }
+                })
+                ->when($request->area_id, fn ($q, $area) => $q->where('area_id', $area))
+                ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
+                ->get();
+        }
+
+        // 3. Gabungkan data pelanggan + sesi
+        $rows = $customers->map(function (Customer $c) use ($sessions) {
+            $username = $c->ont?->pppoe_user;
+            $s = $sessions->get($username);
+            return [
+                'id' => $c->id,
+                'customer_code' => $c->customer_code,
+                'name' => $c->name,
+                'area' => $c->areaModel?->name ?? $c->area,
+                'package' => $c->package?->name,
+                'username' => $username,
+                'access_mode' => $c->package?->access_mode ?? $c->ont?->access_mode,
+                'ip_address' => $s?->framedipaddress,
+                'mac_address' => $s?->callingstationid,
+                'nas_ip' => $s?->nasipaddress,
+                'start_time' => $s?->acctstarttime ? (string) $s->acctstarttime : null,
+                'session_time' => (int) ($s?->acctsessiontime ?? 0),
+                'upload' => (int) ($s?->acctinputoctets ?? 0),
+                'download' => (int) ($s?->acctoutputoctets ?? 0),
+            ];
+        });
+
+        // 4. Pencarian
+        if ($search = trim((string) $request->search)) {
+            $needle = mb_strtolower($search);
+            $rows = $rows->filter(function ($r) use ($needle) {
+                foreach (['name', 'customer_code', 'area', 'package', 'username', 'ip_address', 'mac_address'] as $f) {
+                    if ($r[$f] && str_contains(mb_strtolower($r[$f]), $needle)) return true;
+                }
+                return false;
+            });
+        }
+
+        $rows = $rows->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
+
+        // 5. Paginasi manual
+        $perPage = (int) ($request->per_page ?? 20);
+        $page = \Illuminate\Pagination\Paginator::resolveCurrentPage();
+        $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $rows->forPage($page, $perPage)->values(),
+            $rows->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return Inertia::render('Customers/Online', [
+            'customers' => $paginated,
+            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'packages' => InternetPackage::where('access_mode', '!=', 'voucher')->orderBy('name')->get(['id', 'name']),
+            'filters' => $request->only(['search', 'area_id', 'package_id']),
+            'totalOnline' => $rows->count(),
         ]);
     }
 
@@ -895,9 +984,6 @@ class CustomerController extends Controller
             'login_user' => 'nullable|string',
             'login_password' => 'nullable|string',
             'notes' => 'nullable|string',
-            'free_hotspot' => 'boolean',
-            'hotspot_user' => 'nullable|string',
-            'hotspot_password' => 'nullable|string',
         ]);
 
         if ($customer->status === 'installing' && $customer->is_audited && $customer->ont) {
@@ -917,9 +1003,6 @@ class CustomerController extends Controller
                     'ip_login' => $validated['ip_login'],
                     'login_user' => $validated['login_user'],
                     'login_password' => $validated['login_password'],
-                    'free_hotspot' => $validated['free_hotspot'] ?? false,
-                    'hotspot_user' => $validated['hotspot_user'],
-                    'hotspot_password' => $validated['hotspot_password'],
                 ]);
             });
 

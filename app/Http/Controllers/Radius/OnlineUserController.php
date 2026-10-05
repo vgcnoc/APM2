@@ -48,11 +48,11 @@ class OnlineUserController extends Controller
         $count = $radiusService->disconnect($validated['username']);
 
         if ($count > 0) {
-            return redirect()->route('radius.online-users.index')
+            return redirect()->back()
                 ->with('success', "Berhasil mengirim perintah disconnect untuk user {$validated['username']}.");
         }
 
-        return redirect()->route('radius.online-users.index')
+        return redirect()->back()
             ->with('error', "Gagal melakukan disconnect. Pastikan NAS terhubung dan CoA port dikonfigurasi dengan benar.");
     }
 }
