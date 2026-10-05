@@ -168,7 +168,14 @@ class CustomerController extends Controller
             ];
         });
 
-        // 4. Pencarian
+        // 4. Pencarian dan Filter Tab
+        $tab = $request->query('tab', '');
+        if ($tab) {
+            $rows = $rows->filter(function ($r) use ($tab) {
+                return mb_strtolower($r['access_mode']) === mb_strtolower($tab);
+            });
+        }
+
         if ($search = trim((string) $request->search)) {
             $needle = mb_strtolower($search);
             $rows = $rows->filter(function ($r) use ($needle) {
@@ -196,7 +203,7 @@ class CustomerController extends Controller
             'customers' => $paginated,
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'packages' => InternetPackage::where('access_mode', '!=', 'voucher')->orderBy('name')->get(['id', 'name']),
-            'filters' => $request->only(['search', 'area_id', 'package_id']),
+            'filters' => $request->only(['search', 'area_id', 'package_id', 'tab']),
             'totalOnline' => $rows->count(),
         ]);
     }
@@ -262,6 +269,13 @@ class CustomerController extends Controller
             ];
         });
 
+        $tab = $request->query('tab', '');
+        if ($tab) {
+            $rows = $rows->filter(function ($r) use ($tab) {
+                return mb_strtolower($r['access_mode']) === mb_strtolower($tab);
+            });
+        }
+
         if ($search = trim((string) $request->search)) {
             $needle = mb_strtolower($search);
             $rows = $rows->filter(function ($r) use ($needle) {
@@ -288,7 +302,7 @@ class CustomerController extends Controller
             'customers' => $paginated,
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'packages' => \App\Models\InternetPackage::where('access_mode', '!=', 'voucher')->orderBy('name')->get(['id', 'name']),
-            'filters' => $request->only(['search', 'area_id', 'package_id']),
+            'filters' => $request->only(['search', 'area_id', 'package_id', 'tab']),
             'totalOffline' => $rows->count(),
         ]);
     }

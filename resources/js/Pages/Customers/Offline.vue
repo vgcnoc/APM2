@@ -13,11 +13,18 @@
             </div>
         </div>
 
+        <div class="mb-4 bg-white border border-gray-200 rounded-lg p-1 inline-flex shadow-sm">
+            <button @click="filterTab('')" :class="['px-4 py-1.5 text-sm font-semibold rounded-md transition-colors', !filterMode ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50']">Semua</button>
+            <button @click="filterTab('pppoe')" :class="['px-4 py-1.5 text-sm font-semibold rounded-md transition-colors', filterMode === 'pppoe' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50']">PPPoE</button>
+            <button @click="filterTab('hotspot')" :class="['px-4 py-1.5 text-sm font-semibold rounded-md transition-colors', filterMode === 'hotspot' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50']">Hotspot</button>
+        </div>
+
         <DataTable
             :columns="columns"
             :data="customers.data"
             :pagination="customers"
             searchPlaceholder="Cari nama, area, username..."
+            searchRoute="/customers/offline"
             :filters="filters"
         >
             <template #filters>
@@ -132,6 +139,7 @@ function getAvatarColor(name) {
 
 const filterArea = ref(props.filters?.area_id || '');
 const filterPackage = ref(props.filters?.package_id || '');
+const filterMode = ref(props.filters?.tab || '');
 const refreshing = ref(false);
 
 function applyFilters() {
@@ -139,7 +147,13 @@ function applyFilters() {
         search: props.filters?.search || undefined,
         area_id: filterArea.value || undefined,
         package_id: filterPackage.value || undefined,
+        tab: filterMode.value || undefined,
     }, { preserveState: true, preserveScroll: true });
+}
+
+function filterTab(tab) {
+    filterMode.value = tab;
+    applyFilters();
 }
 
 function refresh() {
