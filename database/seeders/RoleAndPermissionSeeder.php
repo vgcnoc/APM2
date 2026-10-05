@@ -25,6 +25,7 @@ class RoleAndPermissionSeeder extends Seeder
             'menu_customers_installed', 'customers_installed_create', 'customers_installed_edit', 'customers_installed_delete', 'customers_installed_report',
             'menu_customers_activation', 'customers_activation_create', 'customers_activation_edit', 'customers_activation_delete',
             'menu_customers_active', 'customers_active_create', 'customers_active_edit', 'customers_active_delete',
+            'menu_customers_online',
             'menu_customers_all', 'customers_all_create', 'customers_all_edit', 'customers_all_delete',
             
             // Menu Network
@@ -40,6 +41,26 @@ class RoleAndPermissionSeeder extends Seeder
             'menu_materials', 'materials_create', 'materials_edit', 'materials_delete',
             'menu_material_transactions', 'material_transactions_create', 'material_transactions_edit', 'material_transactions_delete',
             
+            // Menu Routers
+            'menu_routers', 'routers_create', 'routers_edit', 'routers_delete',
+
+            // Menu RADIUS
+            'menu_radius_nas', 'radius_nas_create', 'radius_nas_edit', 'radius_nas_delete',
+            'menu_radius_online_users', 'radius_online_users_disconnect',
+            'menu_radius_auth_logs',
+            
+            // Menu Tickets
+            'menu_tickets', 'tickets_create', 'tickets_edit', 'tickets_delete',
+            
+            // Menu Billing (Invoices & Payments)
+            'menu_invoices', 'invoices_create', 'invoices_edit', 'invoices_delete',
+            'menu_payments', 'payments_create', 'payments_edit', 'payments_delete',
+
+            // Menu Vouchers & Resellers
+            'menu_vouchers', 'vouchers_create', 'vouchers_edit', 'vouchers_delete', 'vouchers_print',
+            'menu_vouchers_profiles', 'vouchers_profiles_create', 'vouchers_profiles_edit', 'vouchers_profiles_delete',
+            'menu_resellers', 'resellers_create', 'resellers_edit', 'resellers_delete',
+            
             // Menu Settings / HR
             'menu_hr_employees', 'hr_employees_create', 'hr_employees_edit', 'hr_employees_delete',
             'menu_hr_positions', 'hr_positions_create', 'hr_positions_edit', 'hr_positions_delete',
@@ -49,10 +70,6 @@ class RoleAndPermissionSeeder extends Seeder
             'menu_settings_api', 'settings_api_create', 'settings_api_edit', 'settings_api_delete',
             'menu_users', 'users_create', 'users_edit', 'users_delete',
             'menu_internet_packages', 'internet_packages_create', 'internet_packages_edit', 'internet_packages_delete',
-            
-            // Menu Vouchers & Resellers
-            'menu_vouchers', 'vouchers_create', 'vouchers_edit', 'vouchers_delete', 'vouchers_print',
-            'menu_resellers', 'resellers_create', 'resellers_edit', 'resellers_delete'
         ];
 
         foreach ($permissions as $permission) {
@@ -67,29 +84,39 @@ class RoleAndPermissionSeeder extends Seeder
         $roleNoc->givePermissionTo([
             'menu_dashboard', 'menu_ftth', 'menu_network_topology', 'menu_network_data',
             'menu_network_olt', 'menu_network_odc', 'menu_network_odp', 'menu_network_ont',
-            'menu_customers_installed', 'menu_customers_activation'
+            'menu_customers_installed', 'menu_customers_activation', 'menu_customers_online',
+            'menu_routers', 'routers_create', 'routers_edit', 'routers_delete',
+            'menu_radius_nas', 'radius_nas_create', 'radius_nas_edit', 'radius_nas_delete',
+            'menu_radius_online_users', 'radius_online_users_disconnect',
+            'menu_radius_auth_logs',
+            'menu_tickets', 'tickets_create', 'tickets_edit', 'tickets_delete',
         ]);
 
         $roleTeknisi = Role::firstOrCreate(['name' => 'teknisi']);
         $roleTeknisi->givePermissionTo([
             'menu_dashboard', 'menu_ftth', 'menu_materials', 'menu_material_transactions',
-            'menu_customers_installed', 'customers_installed_report', 'customers_installed_edit'
+            'menu_customers_installed', 'customers_installed_report', 'customers_installed_edit',
+            'menu_tickets', 'tickets_edit',
         ]);
 
         $roleCs = Role::firstOrCreate(['name' => 'cs']);
         $roleCs->givePermissionTo([
             'menu_dashboard', 'menu_customers_booking', 'menu_customers_survey', 
-            'menu_customers_active', 'menu_customers_all',
+            'menu_customers_active', 'menu_customers_all', 'menu_customers_online',
             'customers_booking_create', 'customers_booking_edit',
             'customers_survey_create', 'customers_survey_edit',
             'customers_active_create', 'customers_active_edit',
-            'customers_all_create', 'customers_all_edit'
+            'customers_all_create', 'customers_all_edit',
+            'menu_tickets', 'tickets_create', 'tickets_edit', 'tickets_delete',
+            'menu_invoices', 'invoices_create', 'invoices_edit', 'invoices_delete',
+            'menu_payments', 'payments_create', 'payments_edit', 'payments_delete',
         ]);
 
         $roleSales = Role::firstOrCreate(['name' => 'sales']);
         $roleSales->givePermissionTo([
             'menu_dashboard', 'menu_customers_booking', 'menu_customers_active',
-            'customers_booking_create'
+            'customers_booking_create',
+            'menu_tickets', 'tickets_create'
         ]);
 
         // assign role to existing users based on their 'role' column
