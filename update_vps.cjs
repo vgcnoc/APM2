@@ -17,6 +17,9 @@ php artisan app:fix-corrupted-onts
 echo "Creating storage symlink if missing..."
 php artisan storage:link
 
+echo "Installing npm dependencies..."
+npm install --no-audit --no-fund --legacy-peer-deps
+
 echo "Rebuilding assets..."
 npm run build
 
