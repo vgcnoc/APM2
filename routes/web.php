@@ -194,6 +194,9 @@ Route::middleware(['auth'])->group(function () {
         return inertia('Settings/Api');
     })->name('settings.api');
 
+    Route::get('/settings/resellers', [\App\Http\Controllers\ResellerSettingController::class, 'index'])->name('settings.resellers.index');
+    Route::post('/settings/resellers/{user}/update', [\App\Http\Controllers\ResellerSettingController::class, 'update'])->name('settings.resellers.update.post');
+
     Route::resource('settings/roles', \App\Http\Controllers\RoleController::class)->except(['create', 'show', 'edit']);
     Route::post('settings/roles/{role}/update', [\App\Http\Controllers\RoleController::class, 'update'])->name('roles.update.post');
     Route::post('settings/roles/{role}/delete', [\App\Http\Controllers\RoleController::class, 'destroy'])->name('roles.destroy.post');

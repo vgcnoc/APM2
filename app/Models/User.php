@@ -70,6 +70,11 @@ class User extends Authenticatable
         return $this->hasMany(Survey::class, 'surveyor_id');
     }
 
+    public function voucherProfiles()
+    {
+        return $this->belongsToMany(VoucherProfile::class, 'reseller_voucher_profiles', 'user_id', 'voucher_profile_id');
+    }
+
     // ── Helpers ────────────────────────────────────────────────
 
     public function isAdmin(): bool
