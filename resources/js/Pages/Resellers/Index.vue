@@ -94,11 +94,13 @@ const closeCreateModal = () => {
 const showResetModal = ref(false);
 const resetReseller = ref(null);
 const resetForm = useForm({
+    email: '',
     password: '',
 });
 
 const openResetModal = (reseller) => {
     resetReseller.value = reseller;
+    resetForm.email = reseller.customer.email || '';
     resetForm.password = '';
     showResetModal.value = true;
 };
@@ -366,8 +368,14 @@ const deleteReseller = (reseller) => {
 
                     <form @submit.prevent="resetPassword" class="space-y-4">
                         <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Username (Email)</label>
+                            <input v-model="resetForm.email" type="email" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="email@contoh.com" />
+                            <div v-if="resetForm.errors.email" class="mt-1 text-sm text-red-600">{{ resetForm.errors.email }}</div>
+                        </div>
+
+                        <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru <span class="text-red-500">*</span></label>
-                            <input v-model="resetForm.password" type="password" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Minimal 8 karakter" required minlength="8" />
+                            <input v-model="resetForm.password" type="password" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Kosongkan jika tidak ingin mengubah password" minlength="8" />
                             <div v-if="resetForm.errors.password" class="mt-1 text-sm text-red-600">{{ resetForm.errors.password }}</div>
                         </div>
                         

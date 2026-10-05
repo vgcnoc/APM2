@@ -48,7 +48,7 @@
                                     </div>
                                     <span class="text-[10px] font-normal text-green-600 block mt-1 break-all" v-if="customer.user">Email Login: {{ customer.user.email }}</span>
                                 </div>
-                                <button @click="showResetPasswordModal = true" class="text-xs w-full py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold shadow-sm transition-all">
+                                <button @click="openResetPasswordModal()" class="text-xs w-full py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold shadow-sm transition-all">
                                     🔑 Ubah Password Akun
                                 </button>
                             </div>
@@ -1018,12 +1018,18 @@
                 <div class="p-6 space-y-4">
                     <div class="bg-red-50 text-red-800 p-4 rounded-xl text-sm mb-4 border border-red-200 shadow-sm flex gap-3">
                         <svg class="w-6 h-6 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                        <p>Aksi ini akan mereset password akun login pelanggan saat ini. Pastikan Anda memberikan password baru kepada pelanggan.</p>
+                        <p>Aksi ini akan merubah detail akun login pelanggan saat ini. Pastikan Anda memberikan username/password baru kepada pelanggan.</p>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>
-                        <input v-model="resetPasswordForm.password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all" required minlength="8" placeholder="Masukkan password baru" />
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Username (Email)</label>
+                        <input v-model="resetPasswordForm.email" type="email" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all" placeholder="email@contoh.com" />
+                        <div v-if="resetPasswordForm.errors.email" class="text-xs text-red-500 mt-1">{{ resetPasswordForm.errors.email }}</div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru <span class="text-red-500">*</span></label>
+                        <input v-model="resetPasswordForm.password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all" minlength="8" placeholder="Kosongkan jika tidak ingin mengubah password" />
                         <div v-if="resetPasswordForm.errors.password" class="text-xs text-red-500 mt-1">{{ resetPasswordForm.errors.password }}</div>
                     </div>
                 </div>
@@ -1580,6 +1586,7 @@ function submitAccount() {
 // ── Ubah Password ───────────────────────────────────────────
 const showResetPasswordModal = ref(false);
 const resetPasswordForm = useForm({
+    email: '',
     password: ''
 });
 
@@ -1591,5 +1598,11 @@ function submitResetPassword() {
             resetPasswordForm.reset();
         }
     });
+}
+
+function openResetPasswordModal() {
+    resetPasswordForm.email = props.customer.user ? props.customer.user.email : props.customer.email || '';
+    resetPasswordForm.password = '';
+    showResetPasswordModal.value = true;
 }
 </script>
