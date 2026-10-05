@@ -52,6 +52,8 @@
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Password</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Profil</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Terpakai Sejak</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Penggunaan</th>
                             <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
@@ -85,6 +87,21 @@
                                         Offline
                                     </span>
                                 </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                <div v-if="usageStats[voucher.username]?.first_login">
+                                    {{ new Date(usageStats[voucher.username].first_login).toLocaleString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+                                </div>
+                                <div v-else class="text-gray-400">-</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                <div v-if="usageStats[voucher.username]?.total_time !== undefined">
+                                    {{ formatSeconds(usageStats[voucher.username].total_time) }} 
+                                    <span class="text-gray-400 text-xs ml-1" v-if="voucher.profile?.duration">
+                                        / {{ voucher.profile.duration }}
+                                    </span>
+                                </div>
+                                <div v-else class="text-gray-400">-</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <button @click="deleteVoucher(voucher.id)" class="text-red-600 hover:text-red-900 font-semibold">Hapus</button>
@@ -189,7 +206,16 @@ const props = defineProps({
     resellers: Array,
     filters: Object,
     onlineUsernames: Array,
+    usageStats: Object,
 });
+
+const formatSeconds = (seconds) => {
+    if (!seconds) return '0 mnt';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (h > 0) return `${h} jam ${m} mnt`;
+    return `${m} mnt`;
+};
 
 const search = ref(props.filters.search || '');
 const statusFilter = ref(props.filters.status || '');

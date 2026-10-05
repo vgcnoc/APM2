@@ -47,6 +47,22 @@ class VoucherController extends Controller
                     return [];
                 }
             })(),
+            'usageStats' => (function() use ($vouchers) {
+                try {
+                    $usernames = $vouchers->pluck('username')->filter()->toArray();
+                    if (empty($usernames)) return (object)[];
+                    
+                    $stats = \App\Models\Radius\RadAcct::whereIn('username', $usernames)
+                        ->selectRaw('username, min(acctstarttime) as first_login, sum(acctsessiontime) as total_time')
+                        ->groupBy('username')
+                        ->get()
+                        ->keyBy('username');
+                        
+                    return $stats;
+                } catch (\Exception $e) {
+                    return (object)[];
+                }
+            })(),
         ]);
     }
 
