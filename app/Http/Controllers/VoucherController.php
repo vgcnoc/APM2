@@ -39,7 +39,14 @@ class VoucherController extends Controller
             'vouchers' => $vouchers,
             'profiles' => $profiles,
             'resellers' => $resellers,
-            'filters' => $request->only(['search', 'profile_id', 'status'])
+            'filters' => $request->only(['search', 'profile_id', 'status']),
+            'onlineUsernames' => (function() {
+                try {
+                    return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
+                } catch (\Exception $e) {
+                    return [];
+                }
+            })(),
         ]);
     }
 

@@ -74,6 +74,17 @@
                                 <span v-if="voucher.status === 'available'" class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded">TERSEDIA</span>
                                 <span v-else-if="voucher.status === 'used'" class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">DIGUNAKAN</span>
                                 <span v-else class="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded">EXPIRED</span>
+
+                                <div class="mt-2">
+                                    <span v-if="onlineUsernames.includes(voucher.username)" class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-700">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        Aktif
+                                    </span>
+                                    <span v-else class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                        Offline
+                                    </span>
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <button @click="deleteVoucher(voucher.id)" class="text-red-600 hover:text-red-900 font-semibold">Hapus</button>
@@ -177,6 +188,7 @@ const props = defineProps({
     profiles: Array,
     resellers: Array,
     filters: Object,
+    onlineUsernames: Array,
 });
 
 const search = ref(props.filters.search || '');
