@@ -6,7 +6,7 @@
             <!-- Header Section -->
             <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Selamat datang, {{ reseller.customer.name }}</h1>
+                    <h1 class="text-2xl font-bold text-gray-900">Selamat datang, {{ reseller.customer?.name || $page.props.auth.user.name }}</h1>
                     <p class="text-gray-500 mt-1">Kelola penjualan voucher dan pantau sisa saldo Anda.</p>
                 </div>
                 <div class="bg-blue-50 text-blue-700 px-6 py-4 rounded-xl flex items-center gap-4">
