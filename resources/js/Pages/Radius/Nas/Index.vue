@@ -325,7 +325,7 @@ function generateScript() {
         L.push(`/ppp profile remove [find name="APM2VPN"];`);
         L.push(`/ppp profile add name=APM2VPN change-tcp-mss=yes only-one=default use-encryption=yes comment="DEFAULT BY APM2 (DON'T CHANGE IT)";`);
         endpoints.forEach((ep, i) => {
-            L.push(`/interface l2tp-client add disabled=${i === 0 ? 'no' : 'yes'} connect-to=${ep} name="APM2-VPN-${i + 1}" profile=APM2VPN user="${nasItem.vpn_user}" password="${nasItem.vpn_password}" add-default-route=no allow=chap,mschap2 comment="CUKUP AKTIFKAN 1 SAJA IPADDR : ${nasItem.vpn_ip}";`);
+            L.push(`/interface ovpn-client add disabled=${i === 0 ? 'no' : 'yes'} connect-to=${ep} port=1195 name="APM2-VPN-${i + 1}" profile=APM2VPN user="${nasItem.vpn_user}" password="${nasItem.vpn_password}" add-default-route=no cipher=aes256 auth=sha1 certificate=none comment="CUKUP AKTIFKAN 1 SAJA IPADDR : ${nasItem.vpn_ip}";`);
         });
         L.push(``);
 
