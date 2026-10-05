@@ -182,6 +182,29 @@ class VoucherController extends Controller
         ]);
     }
 
+    public function expired(Request $request)
+    {
+        $vouchers = Voucher::with(['profile', 'reseller.customer'])
+            ->where('status', 'expired')
+            ->get();
+
+        $rows = $vouchers->map(function ($v) {
+            return [
+                'id' => $v->id,
+                'code' => $v->code,
+                'username' => $v->username,
+                'profile' => $v->profile?->name,
+                'reseller' => $v->reseller?->customer?->name ?? 'Admin',
+                'used_at' => $v->used_at ? $v->used_at->toIso8601String() : null,
+                'is_active' => $v->is_active,
+            ];
+        });
+
+        return Inertia::render('Vouchers/Expired', [
+            'expiredUsers' => $rows->values()
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
