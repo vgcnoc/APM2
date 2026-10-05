@@ -29,16 +29,32 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            'auth' => [
-                'user' => $request->user() ? [
-                    'id' => $request->user()->id,
-                    'name' => $request->user()->name,
-                    'email' => $request->user()->email,
-                    'role' => $request->user()->role,
-                    'roles' => $request->user()->getRoleNames()->values()->toArray(),
-                    'permissions' => $request->user()->getAllPermissions()->pluck('name')->values()->toArray(),
-                ] : null,
-            ],
+            'auth' => function () use ($request) {
+                return [
+                    'user' => $request->user() ? (function () use ($request) {
+                        $customerData = null;
+                        if (in_array($request->user()->role, ['customer', 'reseller'])) {
+                            $customer = \App\Models\Customer::where('user_id', $request->user()->id)->first();
+                            if ($customer) {
+                                $customerData = [
+                                    'is_reseller' => (bool) $customer->is_reseller,
+                                    'has_package' => !empty($customer->package_id),
+                                ];
+                            }
+                        }
+
+                        return [
+                            'id' => $request->user()->id,
+                            'name' => $request->user()->name,
+                            'email' => $request->user()->email,
+                            'role' => $request->user()->role,
+                            'roles' => $request->user()->getRoleNames()->values()->toArray(),
+                            'permissions' => $request->user()->getAllPermissions()->pluck('name')->values()->toArray(),
+                            'customer' => $customerData,
+                        ];
+                    })() : null,
+                ];
+            },
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

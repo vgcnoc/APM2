@@ -28,6 +28,15 @@
                                     <p class="text-sm font-medium text-gray-900 truncate">{{ $page.props.auth.user.name }}</p>
                                     <p class="text-xs text-gray-500 truncate mt-0.5">{{ $page.props.auth.user.email }}</p>
                                 </div>
+
+                                <!-- Switch to Customer Area (If Applicable) -->
+                                <div v-if="$page.props.auth.user.customer?.has_package" class="py-1 border-b border-gray-100">
+                                    <Link href="/my/dashboard" class="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-indigo-700 hover:bg-indigo-50 transition-colors font-medium">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                                        Beralih ke Area Pelanggan
+                                    </Link>
+                                </div>
+
                                 <Link href="/logout" method="post" as="button" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors">
                                     Logout
                                 </Link>

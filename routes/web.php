@@ -28,13 +28,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
     // Client Area (Reseller)
-    Route::middleware(['role:reseller'])->prefix('client-area')->name('client-area.')->group(function () {
+    Route::middleware(['role:reseller|customer'])->prefix('client-area')->name('client-area.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\ResellerClientController::class, 'dashboard'])->name('dashboard');
         Route::post('/generate-vouchers', [\App\Http\Controllers\ResellerClientController::class, 'generateVouchers'])->name('generate-vouchers');
     });
 
     // Customer Area (Pelanggan)
-    Route::middleware(['role:customer'])->prefix('my')->name('customer-area.')->group(function () {
+    Route::middleware(['role:customer|reseller'])->prefix('my')->name('customer-area.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\CustomerAreaController::class, 'dashboard'])->name('dashboard');
         Route::get('/billing', [\App\Http\Controllers\CustomerAreaController::class, 'billing'])->name('billing');
         Route::get('/tickets', [\App\Http\Controllers\CustomerAreaController::class, 'tickets'])->name('tickets');
