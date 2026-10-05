@@ -193,14 +193,14 @@ const menuItems = [
     },
     { type: 'link', href: '/customers/activation', icon: 'key', label: 'Aktivasi', active: (url) => (url || '').startsWith('/customers/activation'), permission: 'menu_customers_activation' },
     { type: 'link', href: '/customers/active', icon: 'badge-check', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: 'menu_customers_active' },
-    { type: 'link', href: '/tickets', icon: 'alert-circle', label: 'Ticketing / Gangguan', active: (url) => (url || '').startsWith('/tickets'), permission: 'menu_customers_all' },
+    { type: 'link', href: '/tickets', icon: 'alert-circle', label: 'Ticketing / Gangguan', active: (url) => (url || '').startsWith('/tickets'), permission: 'menu_tickets' },
     { type: 'group', label: 'BILLING & PRODUK' },
     { type: 'link', href: '/customers', icon: 'users', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
-    { type: 'link', href: '/customers/online', icon: 'signal', label: 'Online', active: (url) => (url || '').startsWith('/customers/online'), permission: 'menu_customers_all' },
+    { type: 'link', href: '/customers/online', icon: 'signal', label: 'Online', active: (url) => (url || '').startsWith('/customers/online'), permission: 'menu_customers_online' },
     { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
 
     { type: 'group', label: 'VOUCHER' },
-    { type: 'link', href: '/vouchers/profiles', icon: 'document-text', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers' },
+    { type: 'link', href: '/vouchers/profiles', icon: 'document-text', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers_profiles' },
     { type: 'link', href: '/vouchers', icon: 'ticket', label: 'Data Voucher', active: (url) => (url || '').length > 0 && url === '/vouchers', permission: 'menu_vouchers' },
     { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
 
@@ -214,10 +214,10 @@ const menuItems = [
     { type: 'link', href: '/find-onu', icon: 'search', label: 'Find ONU', active: (url) => (url || '').startsWith('/find-onu'), permission: 'menu_network_find_onu' },
 
     { type: 'group', label: 'MIKROTIK NAS' },
-    { type: 'link', href: '/routers', icon: 'server', label: 'Data Router', active: (url) => (url || '').startsWith('/routers'), permission: 'menu_network_routers' },
-    { type: 'link', href: '/radius/nas', icon: 'server', label: 'NAS / Router (RADIUS)', active: (url) => (url || '').startsWith('/radius/nas'), permission: 'menu_network_nas' },
-    { type: 'link', href: '/radius/online-users', icon: 'users', label: 'Pengguna Online (RADIUS)', active: (url) => (url || '').startsWith('/radius/online-users'), permission: 'menu_network_online_users' },
-    { type: 'link', href: '/radius/auth-logs', icon: 'clipboard-list', label: 'Log Autentikasi (RADIUS)', active: (url) => (url || '').startsWith('/radius/auth-logs'), permission: 'menu_network_auth_logs' },
+    { type: 'link', href: '/routers', icon: 'server', label: 'Data Router', active: (url) => (url || '').startsWith('/routers'), permission: 'menu_routers' },
+    { type: 'link', href: '/radius/nas', icon: 'server', label: 'NAS / Router (RADIUS)', active: (url) => (url || '').startsWith('/radius/nas'), permission: 'menu_radius_nas' },
+    { type: 'link', href: '/radius/online-users', icon: 'users', label: 'Pengguna Online (RADIUS)', active: (url) => (url || '').startsWith('/radius/online-users'), permission: 'menu_radius_online_users' },
+    { type: 'link', href: '/radius/auth-logs', icon: 'clipboard-list', label: 'Log Autentikasi (RADIUS)', active: (url) => (url || '').startsWith('/radius/auth-logs'), permission: 'menu_radius_auth_logs' },
 
     { type: 'group', label: 'INVENTARIS & LOGISTIK' },
     { type: 'link', href: '/materials', icon: 'archive', label: 'Material / Barang', active: (url) => (url || '').startsWith('/materials'), permission: 'menu_materials' },
