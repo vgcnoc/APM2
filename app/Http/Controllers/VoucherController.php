@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Voucher;
 use App\Models\VoucherProfile;
+use App\Services\RadiusService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
@@ -101,6 +102,12 @@ class VoucherController extends Controller
         }
 
         Voucher::insert($vouchers);
+        
+        // Sync ke RADIUS secara eksplisit karena insert() tidak memicu event
+        if (!empty($vouchers)) {
+            $createdVouchers = Voucher::whereIn('code', array_column($vouchers, 'code'))->get();
+            app(RadiusService::class)->syncVouchers($createdVouchers);
+        }
 
         return redirect()->back()->with('success', $validated['amount'] . ' Voucher berhasil di-generate.');
     }
@@ -118,7 +125,15 @@ class VoucherController extends Controller
             'ids.*' => 'exists:vouchers,id',
         ]);
         
+        $vouchersToDelete = Voucher::whereIn('id', $validated['ids'])->get();
+        
         Voucher::whereIn('id', $validated['ids'])->delete();
+        
+        // Hapus dari RADIUS secara eksplisit
+        $radius = app(RadiusService::class);
+        foreach ($vouchersToDelete as $v) {
+            $radius->removeUser($v->username);
+        }
         
         return redirect()->back()->with('success', count($validated['ids']) . ' Voucher berhasil dihapus.');
     }
