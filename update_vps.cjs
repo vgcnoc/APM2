@@ -17,6 +17,9 @@ php artisan app:fix-corrupted-onts
 echo "Creating storage symlink if missing..."
 php artisan storage:link
 
+echo "Generating missing invoices..."
+php artisan app:generate-missing-invoices
+
 echo "Installing npm dependencies..."
 npm install --no-audit --no-fund --legacy-peer-deps
 
