@@ -781,7 +781,21 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
-            'email' => 'nullable|email|max:255',
+            'email' => [
+                'nullable',
+                'email',
+                'max:255',
+                function ($attribute, $value, $fail) use ($customer) {
+                    if ($customer->user_id) {
+                        $exists = \App\Models\User::where('email', $value)
+                            ->where('id', '!=', $customer->user_id)
+                            ->exists();
+                        if ($exists) {
+                            $fail('Email ini sudah digunakan oleh akun login lain.');
+                        }
+                    }
+                }
+            ],
             'address' => 'required|string',
             'area' => 'nullable|string',
             'identity_photo' => 'nullable|image|max:5120',
@@ -818,6 +832,18 @@ class CustomerController extends Controller
 
         DB::transaction(function () use ($customer, $validated) {
             $customer->update($validated);
+            
+            // Sync email login if account exists and email changed
+            if ($customer->user_id && isset($validated['email'])) {
+                // Pastikan email baru tidak dipakai oleh user lain
+                $emailExists = \App\Models\User::where('email', $validated['email'])
+                    ->where('id', '!=', $customer->user_id)
+                    ->exists();
+                
+                if (!$emailExists) {
+                    $customer->user->update(['email' => $validated['email']]);
+                }
+            }
             
             if (!empty($validated['is_reseller']) && $validated['is_reseller']) {
                 $customer->reseller()->firstOrCreate([
