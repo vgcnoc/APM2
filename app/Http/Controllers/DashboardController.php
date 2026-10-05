@@ -20,15 +20,15 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        if (auth()->check() && auth()->user()->hasRole('teknisi')) {
+        if (auth()->check() && auth()->user()->role === 'teknisi') {
             return $this->teknisiDashboard();
         }
 
-        if (auth()->check() && auth()->user()->hasRole('reseller')) {
+        if (auth()->check() && auth()->user()->role === 'reseller') {
             return redirect()->route('client-area.dashboard');
         }
 
-        if (auth()->check() && auth()->user()->hasRole('customer')) {
+        if (auth()->check() && auth()->user()->role === 'customer') {
             return redirect()->route('customer-area.dashboard');
         }
 
