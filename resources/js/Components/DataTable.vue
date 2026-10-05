@@ -13,7 +13,7 @@
                         v-model="searchQuery"
                         @input="onSearch"
                         :placeholder="searchPlaceholder"
-                        class="form-input pl-10"
+                        class="form-input !pl-9 w-full rounded-lg border-gray-200 text-sm focus:ring-blue-500 focus:border-blue-500 shadow-sm"
                     />
                 </div>
 
