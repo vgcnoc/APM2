@@ -34,7 +34,7 @@
                     <div class="p-6 space-y-5">
                         
                         <!-- Row 1 -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Nama Pelanggan <span class="text-red-500">*</span></label>
                                 <input v-model="form.name" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: Budi Santoso" required />
@@ -44,6 +44,11 @@
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">No WA <span class="text-red-500">*</span></label>
                                 <input v-model="form.phone" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: 08123456789" required />
                                 <p v-if="form.errors.phone" class="text-red-400 text-xs mt-1">{{ form.errors.phone }}</p>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Email (Opsional)</label>
+                                <input v-model="form.email" type="email" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: budi@gmail.com" />
+                                <p v-if="form.errors.email" class="text-red-400 text-xs mt-1">{{ form.errors.email }}</p>
                             </div>
                         </div>
 
@@ -64,13 +69,28 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Paket Langganan</label>
-                                <select v-model="form.package_id" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
-                                    <option value="">-- Pilih Paket Langganan --</option>
-                                    <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
-                                        {{ pkg.name }} - Rp {{ Number(pkg.price).toLocaleString('id-ID') }}
-                                    </option>
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">Tipe Pendaftaran / Layanan <span class="text-red-500">*</span></label>
+                                </div>
+                                <select v-model="registration_type" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all mb-3">
+                                    <option value="customer">🌐 Pelanggan Internet Biasa</option>
+                                    <option value="both">🌐+🎟️ Pelanggan Internet + Reseller Voucher</option>
+                                    <option value="reseller">🎟️ Khusus Reseller Voucher (Tanpa Internet)</option>
                                 </select>
+                                
+                                <div v-if="registration_type === 'reseller'" class="w-full px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-lg text-sm text-indigo-700 font-bold flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                    Pendaftaran Khusus Reseller Voucher
+                                </div>
+                                <div v-else>
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Pilih Paket Langganan Internet <span class="text-red-500">*</span></label>
+                                    <select v-model="form.package_id" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" required>
+                                        <option value="">-- Pilih Paket Langganan --</option>
+                                        <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
+                                            {{ pkg.name }} - Rp {{ Number(pkg.price).toLocaleString('id-ID') }}
+                                        </option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -187,18 +207,6 @@
                             </div>
                         </div>
 
-                        <!-- Row 12: Reseller Options -->
-                        <div class="mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
-                            <label class="flex items-center gap-3 cursor-pointer">
-                                <div class="relative flex items-center">
-                                    <input v-model="form.is_reseller" type="checkbox" class="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer" />
-                                </div>
-                                <div>
-                                    <span class="block text-sm font-bold text-indigo-900">Jadikan sebagai Reseller Voucher</span>
-                                    <span class="block text-xs text-indigo-600 mt-0.5">Pilih ini jika pelanggan juga akan menjual voucher hotspot. Sistem akan otomatis membuat/menghapus dompet saldo reseller.</span>
-                                </div>
-                            </label>
-                        </div>
 
                         <!-- ONT Info (read-only) -->
                         <div v-if="customer.ont" class="mt-4 bg-gray-50 rounded-xl p-4 border border-gray-200">
@@ -336,6 +344,7 @@ function cancelNewArea() {
 const form = useForm({
     name: props.customer.name || '',
     phone: props.customer.phone || '',
+    email: props.customer.email || '',
     area: props.customer.area || '',
     package_id: props.customer.package_id || '',
     district: initialDistrict,
@@ -353,8 +362,33 @@ const form = useForm({
     is_reseller: props.customer.is_reseller == 1 ? true : false,
 });
 
+const registration_type = ref('customer');
+if (form.is_reseller && !form.package_id) {
+    registration_type.value = 'reseller';
+} else if (form.is_reseller && form.package_id) {
+    registration_type.value = 'both';
+} else {
+    registration_type.value = 'customer';
+}
+
+watch(registration_type, (type) => {
+    if (type === 'reseller') {
+        form.is_reseller = true;
+        form.package_id = '';
+        form.base_amount = 0;
+    } else if (type === 'both') {
+        form.is_reseller = true;
+    } else {
+        form.is_reseller = false;
+    }
+});
+
 watch(() => form.package_id, (newId) => {
-    // Only auto-update base_amount if package changed manually (not on mount)
+    if (registration_type.value === 'reseller') return;
+    const pkg = props.packages.find(p => p.id === newId);
+    if (pkg) {
+        form.base_amount = pkg.price;
+    }
 });
 
 function getLocation() {
