@@ -12,11 +12,13 @@ class Voucher extends Model
         'username',
         'password',
         'status',
+        'is_active',
         'used_at',
     ];
 
     protected $casts = [
         'used_at' => 'datetime',
+        'is_active' => 'boolean',
     ];
 
     public function profile()

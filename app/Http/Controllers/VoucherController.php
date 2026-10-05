@@ -130,6 +130,7 @@ class VoucherController extends Controller
                 'download' => $s->acctoutputoctets,
                 'upload' => $s->acctinputoctets,
                 'login_time' => $s->acctstarttime ? $s->acctstarttime->toIso8601String() : null,
+                'is_active' => $v->is_active,
             ];
         });
 
@@ -172,6 +173,7 @@ class VoucherController extends Controller
                 'mac_address' => $s?->callingstationid,
                 'last_logout' => $s?->acctstoptime ? $s->acctstoptime->toIso8601String() : null,
                 'total_time' => $s?->acctsessiontime,
+                'is_active' => $v->is_active,
             ];
         });
 
@@ -253,6 +255,20 @@ class VoucherController extends Controller
     {
         $voucher->delete();
         return redirect()->back()->with('success', 'Voucher berhasil dihapus.');
+    }
+
+    public function toggleStatus(Voucher $voucher)
+    {
+        $voucher->is_active = !$voucher->is_active;
+        $voucher->save(); // This triggers Radius sync via VoucherObserver
+
+        if (!$voucher->is_active) {
+            // Kick user if they are currently online
+            app(\App\Services\RadiusService::class)->disconnectUser($voucher->username);
+        }
+
+        $status = $voucher->is_active ? 'diaktifkan' : 'dinonaktifkan';
+        return redirect()->back()->with('success', "Voucher {$voucher->code} berhasil {$status}.");
     }
     
     public function bulkDestroy(Request $request)

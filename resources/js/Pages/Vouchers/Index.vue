@@ -78,8 +78,11 @@
                                 <span v-else-if="voucher.status === 'used'" class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">DIGUNAKAN</span>
                                 <span v-else class="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded">EXPIRED</span>
 
-                                <div class="mt-2">
-                                    <span v-if="onlineUsernames.includes(voucher.username)" class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-700">
+                                <div class="mt-2 flex flex-col gap-1 items-start">
+                                    <span v-if="!voucher.is_active" class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold bg-rose-100 text-rose-700 uppercase tracking-widest">
+                                        Nonaktif
+                                    </span>
+                                    <span v-else-if="onlineUsernames.includes(voucher.username)" class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-700">
                                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                                         Aktif
                                     </span>
@@ -113,7 +116,17 @@
                                 <div v-else class="text-gray-400">-</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <button @click="deleteVoucher(voucher.id)" class="text-red-600 hover:text-red-900 font-semibold">Hapus</button>
+                                <div class="flex items-center justify-end gap-3">
+                                    <button 
+                                        @click="toggleStatus(voucher)" 
+                                        :disabled="toggling === voucher.id"
+                                        :class="voucher.is_active ? 'text-orange-600 hover:text-orange-900' : 'text-emerald-600 hover:text-emerald-900'"
+                                        class="font-semibold transition-colors disabled:opacity-50"
+                                    >
+                                        {{ voucher.is_active ? 'Disable' : 'Enable' }}
+                                    </button>
+                                    <button @click="deleteVoucher(voucher.id)" class="text-red-600 hover:text-red-900 font-semibold">Hapus</button>
+                                </div>
                             </td>
                         </tr>
                         <tr v-if="vouchers.data.length === 0">
@@ -257,6 +270,17 @@ const search = ref(props.filters.search || '');
 const statusFilter = ref(props.filters.status || '');
 const showModal = ref(false);
 const selectedVouchers = ref([]);
+const toggling = ref(null);
+
+const toggleStatus = (voucher) => {
+    const action = voucher.is_active ? 'Nonaktifkan' : 'Aktifkan';
+    if (!confirm(`${action} voucher ${voucher.code}?`)) return;
+    toggling.value = voucher.id;
+    router.post(`/vouchers/${voucher.id}/toggle-status`, {}, {
+        preserveScroll: true,
+        onFinish: () => (toggling.value = null),
+    });
+};
 
 const form = useForm({
     voucher_profile_id: '',

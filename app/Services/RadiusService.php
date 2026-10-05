@@ -237,7 +237,7 @@ class RadiusService
             if (!$voucher->username) {
                 continue;
             }
-            if ($voucher->status === 'expired') {
+            if ($voucher->status === 'expired' || !$voucher->is_active) {
                 $this->removeUser($voucher->username);
                 continue;
             }
