@@ -2,9 +2,7 @@ import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
 import '../css/app.css';
 
-window.addEventListener('error', (e) => {
-    alert('JS Error: ' + e.message);
-});
+
 
 createInertiaApp({
     title: (title) => `${title} - ISP Management`,
@@ -14,10 +12,7 @@ createInertiaApp({
     },
     setup({ el, App, props, plugin }) {
         const app = createApp({ render: () => h(App, props) });
-        app.config.errorHandler = (err, instance, info) => {
-            alert('Vue Error: ' + err.message + '\nInfo: ' + info);
-            console.error(err);
-        };
+        app.config.globalProperties.route = window.route;
         app.use(plugin)
             .mount(el);
     },

@@ -12,14 +12,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
     @routes
-    <script>
-        window.addEventListener('error', function(event) {
-            alert("Terjadi Error Javascript: " + event.message + "\nFile: " + event.filename + "\nBaris: " + event.lineno);
-        });
-        window.addEventListener('unhandledrejection', function(event) {
-            alert("Terjadi Promise Error: " + event.reason);
-        });
-    </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @inertiaHead
 </head>
