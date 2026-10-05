@@ -70,13 +70,23 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Paket Langganan</label>
-                                <select v-model="form.package_id" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">Paket Langganan</label>
+                                    <label class="flex items-center gap-2 cursor-pointer bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 hover:bg-indigo-100 transition-colors">
+                                        <input v-model="form.is_reseller" type="checkbox" class="w-3.5 h-3.5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer" />
+                                        <span class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Khusus Reseller Voucher</span>
+                                    </label>
+                                </div>
+                                <select v-if="!form.is_reseller" v-model="form.package_id" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                                     <option value="">-- Pilih Paket Langganan --</option>
                                     <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
                                         {{ pkg.name }}
                                     </option>
                                 </select>
+                                <div v-else class="w-full px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-lg text-sm text-indigo-700 font-bold flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                    Pendaftaran Khusus Reseller Voucher
+                                </div>
                             </div>
                         </div>
 
@@ -174,18 +184,6 @@
                             </div>
                         </div>
 
-                        <!-- Row 11: Reseller Options -->
-                        <div class="mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
-                            <label class="flex items-center gap-3 cursor-pointer">
-                                <div class="relative flex items-center">
-                                    <input v-model="form.is_reseller" type="checkbox" class="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer" />
-                                </div>
-                                <div>
-                                    <span class="block text-sm font-bold text-indigo-900">Jadikan sebagai Reseller Voucher</span>
-                                    <span class="block text-xs text-indigo-600 mt-0.5">Pilih ini jika pelanggan juga akan menjual voucher hotspot. Sistem akan otomatis membuatkan dompet saldo reseller.</span>
-                                </div>
-                            </label>
-                        </div>
 
                     </div>
                     
@@ -295,9 +293,17 @@ const form = useForm({
 });
 
 watch(() => form.package_id, (newId) => {
+    if (form.is_reseller) return;
     const pkg = props.packages.find(p => p.id === newId);
     if (pkg) {
         form.base_amount = pkg.price;
+    }
+});
+
+watch(() => form.is_reseller, (isReseller) => {
+    if (isReseller) {
+        form.package_id = '';
+        form.base_amount = 0;
     }
 });
 
