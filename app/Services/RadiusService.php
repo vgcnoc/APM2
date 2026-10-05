@@ -128,8 +128,8 @@ class RadiusService
             'Mikrotik-Rate-Limit' => $profile->limit_rate,
         ], [
             'Simultaneous-Use' => $profile->shared_users > 0 ? $profile->shared_users : null,
-            // Masa berlaku dihitung sejak login pertama (sqlcounter "accessperiod")
-            'Access-Period' => self::parseDuration($profile->duration),
+            // Menggunakan sqlcounter 'noresetcounter' (Max-All-Session-Time) untuk total durasi
+            'Max-All-Session' => self::parseDuration($profile->duration),
         ]);
     }
 
