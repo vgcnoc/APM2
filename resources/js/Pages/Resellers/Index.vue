@@ -42,6 +42,13 @@ const form = useForm({
     is_active: true
 });
 
+const showCreateModal = ref(false);
+const accountReseller = ref(null);
+const createForm = useForm({
+    email: '',
+    password: ''
+});
+
 const openEditModal = (reseller) => {
     editingReseller.value = reseller;
     form.balance = reseller.balance || 0;
@@ -49,35 +56,32 @@ const openEditModal = (reseller) => {
     showModal.value = true;
 };
 
-const createAccount = (reseller) => {
-    Swal.fire({
-        title: 'Buat Akun Login?',
-        text: `Akun akan dibuat menggunakan email ${reseller.customer.email || '(email kosong)'}`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Ya, Buat!',
-        cancelButtonText: 'Batal'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            router.post(route('resellers.create-account', reseller.id), {}, {
-                preserveScroll: true,
-                onSuccess: () => {
-                    Swal.fire(
-                        'Berhasil!',
-                        'Akun berhasil dibuat.',
-                        'success'
-                    );
-                },
-                onError: (errors) => {
-                    Swal.fire(
-                        'Gagal!',
-                        errors.error || 'Terjadi kesalahan saat membuat akun.',
-                        'error'
-                    );
-                }
-            });
+const openCreateAccountModal = (reseller) => {
+    accountReseller.value = reseller;
+    createForm.email = reseller.customer.email || '';
+    createForm.password = '';
+    showCreateModal.value = true;
+};
+
+const createAccount = () => {
+    if (!accountReseller.value) return;
+    
+    createForm.post(route('resellers.create-account', accountReseller.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeCreateModal();
+            Swal.fire(
+                'Berhasil!',
+                'Akun berhasil dibuat.',
+                'success'
+            );
+        },
+        onError: (errors) => {
+            Swal.fire(
+                'Gagal!',
+                errors.error || 'Terjadi kesalahan saat membuat akun. Pastikan form diisi dengan benar.',
+                'error'
+            );
         }
     });
 };
@@ -86,6 +90,12 @@ const closeModal = () => {
     showModal.value = false;
     form.reset();
     form.clearErrors();
+};
+
+const closeCreateModal = () => {
+    showCreateModal.value = false;
+    createForm.reset();
+    createForm.clearErrors();
 };
 
 const saveReseller = () => {
@@ -187,7 +197,7 @@ const deleteReseller = (reseller) => {
                                     <span v-else class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Nonaktif</span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button v-if="reseller.customer && !reseller.customer.user" @click="createAccount(reseller)" class="text-emerald-600 hover:text-emerald-900 p-2 rounded-lg hover:bg-emerald-50 transition-colors" title="Buat Akun Login">
+                                    <button v-if="reseller.customer && !reseller.customer.user" @click="openCreateAccountModal(reseller)" class="text-emerald-600 hover:text-emerald-900 p-2 rounded-lg hover:bg-emerald-50 transition-colors" title="Buat Akun Login">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                                     </button>
                                     <button @click="openEditModal(reseller)" class="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition-colors ml-1" title="Edit Dompet">
@@ -262,6 +272,48 @@ const deleteReseller = (reseller) => {
                     <button type="button" @click="closeModal" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-100">Batal</button>
                     <button type="button" @click="$el.querySelector('#submitBtn').click()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50" :disabled="form.processing">
                         {{ form.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Create Account Modal -->
+        <div v-if="showCreateModal" class="fixed inset-0 z-[110] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+                <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+                    <h3 class="text-lg font-bold text-gray-900">Buat Akun Login Reseller</h3>
+                    <button @click="closeCreateModal" class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-200 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <div class="p-6 overflow-y-auto max-h-[70vh]">
+                    <div v-if="accountReseller && accountReseller.customer" class="mb-4 pb-4 border-b border-gray-100">
+                        <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Nama Pelanggan</p>
+                        <p class="text-sm text-gray-900 font-medium">{{ accountReseller.customer.name }}</p>
+                    </div>
+
+                    <form @submit.prevent="createAccount" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Username (Email) <span class="text-red-500">*</span></label>
+                            <input v-model="createForm.email" type="email" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="email@contoh.com" required />
+                            <div v-if="createForm.errors.email" class="mt-1 text-sm text-red-600">{{ createForm.errors.email }}</div>
+                            <p class="text-xs text-gray-500 mt-1">Digunakan untuk login reseller.</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                            <input v-model="createForm.password" type="password" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Minimal 8 karakter" required minlength="8" />
+                            <div v-if="createForm.errors.password" class="mt-1 text-sm text-red-600">{{ createForm.errors.password }}</div>
+                        </div>
+
+                        <button type="submit" class="hidden" id="submitCreateBtn"></button>
+                    </form>
+                </div>
+                
+                <div class="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
+                    <button type="button" @click="closeCreateModal" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-100">Batal</button>
+                    <button type="button" @click="$el.querySelector('#submitCreateBtn').click()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50" :disabled="createForm.processing">
+                        {{ createForm.processing ? 'Menyimpan...' : 'Buat Akun' }}
                     </button>
                 </div>
             </div>

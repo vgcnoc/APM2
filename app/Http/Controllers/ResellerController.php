@@ -83,6 +83,11 @@ class ResellerController extends Controller
      */
     public function createAccount(Request $request, Reseller $reseller)
     {
+        $validated = $request->validate([
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|min:8'
+        ]);
+
         $customer = $reseller->customer;
 
         if (!$customer) {
@@ -93,25 +98,20 @@ class ResellerController extends Controller
             return redirect()->back()->with('error', 'Reseller ini sudah memiliki akun.');
         }
 
-        if (!$customer->email) {
-            return redirect()->back()->with('error', 'Email pelanggan belum diisi. Silakan edit pelanggan dan lengkapi email terlebih dahulu.');
-        }
-
         try {
-            DB::transaction(function () use ($customer) {
+            DB::transaction(function () use ($customer, $validated) {
+                // Update customer email if different
+                if ($customer->email !== $validated['email']) {
+                    $customer->update(['email' => $validated['email']]);
+                }
+
                 // Ensure reseller role exists
                 $role = Role::firstOrCreate(['name' => 'reseller']);
 
-                // Generate default password (e.g. reseller + phone number or just fixed for now)
-                $defaultPassword = 'reseller' . substr(preg_replace('/[^0-9]/', '', $customer->phone), -4);
-                if (strlen($defaultPassword) < 8) {
-                    $defaultPassword = 'reseller123';
-                }
-
                 $user = User::create([
                     'name' => $customer->name,
-                    'email' => $customer->email,
-                    'password' => Hash::make($defaultPassword),
+                    'email' => $validated['email'],
+                    'password' => Hash::make($validated['password']),
                     'phone' => $customer->phone,
                     'role' => 'reseller',
                     'is_active' => true,
@@ -122,7 +122,7 @@ class ResellerController extends Controller
                 $customer->update(['user_id' => $user->id]);
             });
 
-            return redirect()->back()->with('success', 'Akun berhasil dibuat. Password default adalah: reseller + 4 digit terakhir nomor HP (atau reseller123).');
+            return redirect()->back()->with('success', 'Akun reseller berhasil dibuat.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Gagal membuat akun: ' . $e->getMessage());
         }
