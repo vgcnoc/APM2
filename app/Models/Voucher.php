@@ -23,4 +23,9 @@ class Voucher extends Model
     {
         return $this->belongsTo(VoucherProfile::class, 'voucher_profile_id');
     }
+
+    public function reseller()
+    {
+        return $this->belongsTo(Reseller::class, 'reseller_id');
+    }
 }
