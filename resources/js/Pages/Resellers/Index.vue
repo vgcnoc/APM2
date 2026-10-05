@@ -232,8 +232,8 @@ const deleteReseller = (reseller) => {
                                     <button v-if="reseller.customer && !reseller.user" @click="openCreateAccountModal(reseller)" class="text-emerald-600 hover:text-emerald-900 p-2 rounded-lg hover:bg-emerald-50 transition-colors ml-1" title="Buat Akun Login">
                                         <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                                     </button>
-                                    <button v-if="reseller.customer && reseller.user" @click="openResetModal(reseller)" class="text-amber-600 hover:text-amber-900 p-2 rounded-lg hover:bg-amber-50 transition-colors ml-1" title="Ubah Password Akun">
-                                        <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                                    <button v-if="reseller.customer && reseller.user" @click="openResetModal(reseller)" class="text-amber-600 hover:text-amber-900 p-2 rounded-lg hover:bg-amber-50 transition-colors ml-1" title="Edit Akun Login">
+                                        <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                     </button>
                                     <button @click="openEditModal(reseller)" class="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition-colors ml-1" title="Edit Dompet">
                                         <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -354,7 +354,7 @@ const deleteReseller = (reseller) => {
         <div v-if="showResetModal" class="fixed inset-0 z-[110] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
             <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
                 <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-                    <h3 class="text-lg font-bold text-gray-900">Ubah Password Akun</h3>
+                    <h3 class="text-lg font-bold text-gray-900">Edit Akun Login Reseller</h3>
                     <button @click="closeResetModal" class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-200 transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
