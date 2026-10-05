@@ -145,8 +145,21 @@ class ResellerController extends Controller
             $userUpdates['email'] = $validated['email'];
         }
 
+        $changed = false;
         if (!empty($userUpdates)) {
             $reseller->user->update($userUpdates);
+            $changed = true;
+        }
+        
+        // Ensure the user has the reseller role
+        if ($reseller->user->role !== 'reseller') {
+            $reseller->user->update(['role' => 'reseller']);
+            $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'reseller']);
+            $reseller->user->syncRoles([$role]);
+            $changed = true;
+        }
+
+        if ($changed) {
             return redirect()->back()->with('success', 'Data akun login reseller berhasil diubah.');
         }
 

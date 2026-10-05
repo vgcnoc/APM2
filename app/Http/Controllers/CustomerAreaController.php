@@ -22,6 +22,9 @@ class CustomerAreaController extends Controller
         $customer = $this->getCustomer();
 
         if (!$customer) {
+            if (auth()->user()->reseller) {
+                return redirect()->route('client-area.dashboard');
+            }
             abort(403, 'Akun pelanggan tidak ditemukan.');
         }
 
@@ -52,6 +55,9 @@ class CustomerAreaController extends Controller
         $customer = $this->getCustomer();
 
         if (!$customer) {
+            if (auth()->user()->reseller) {
+                return redirect()->route('client-area.dashboard');
+            }
             abort(403, 'Akun pelanggan tidak ditemukan.');
         }
 
@@ -69,6 +75,9 @@ class CustomerAreaController extends Controller
         $customer = $this->getCustomer();
 
         if (!$customer) {
+            if (auth()->user()->reseller) {
+                return redirect()->route('client-area.dashboard');
+            }
             abort(403, 'Akun pelanggan tidak ditemukan.');
         }
 

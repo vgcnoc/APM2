@@ -279,7 +279,13 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                         </svg>
                     </Link>
-                    <button @click="confirmDelete(row)" class="p-1.5 rounded-md border border-gray-200 text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm bg-white" title="Hapus">
+                    <button v-if="!row.user_id" @click="openCreateAccountModal(row)" class="p-1.5 rounded-md border border-gray-200 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 transition-colors shadow-sm bg-white" title="Buat Akun Login">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                    </button>
+                    <button v-if="row.user_id" @click="openResetModal(row)" class="p-1.5 rounded-md border border-gray-200 text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-colors shadow-sm bg-white" title="Ubah Password Akun">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                    </button>
+                    <button @click="confirmDelete(row)" class="p-1.5 rounded-md border border-gray-200 text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm bg-white ml-1" title="Hapus">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                         </svg>
@@ -322,6 +328,95 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- Buat Akun Modal -->
+        <Teleport to="body">
+            <div v-if="showCreateAccountModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showCreateAccountModal = false"></div>
+                <div class="relative glass-card w-full max-w-md overflow-hidden animate-fade-in-up">
+                    <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+                        <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <span class="text-2xl">👤</span> Buat Akun Client Area
+                        </h3>
+                        <button @click="showCreateAccountModal = false" class="text-gray-500 hover:text-gray-900">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    <form @submit.prevent="submitCreateAccount">
+                        <div class="p-6 space-y-4">
+                            <div class="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm mb-4 border border-blue-200 shadow-sm flex gap-3">
+                                <svg class="w-6 h-6 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <p>Buat akun ini agar pelanggan dapat login ke Client Area untuk mengecek tagihan dan laporan gangguan secara mandiri.</p>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Username (Email) <span class="text-red-500">*</span></label>
+                                <input v-model="accountForm.email" type="email" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" required placeholder="email@contoh.com" />
+                                <div v-if="accountForm.errors.email" class="text-xs text-red-500 mt-1">{{ accountForm.errors.email }}</div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                                <input v-model="accountForm.password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" required minlength="8" placeholder="Minimal 8 karakter" />
+                                <div v-if="accountForm.errors.password" class="text-xs text-red-500 mt-1">{{ accountForm.errors.password }}</div>
+                            </div>
+                        </div>
+                        <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
+                            <button type="button" @click="showCreateAccountModal = false" class="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">Batal</button>
+                            <button type="submit" :disabled="accountForm.processing" class="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                                <svg v-if="accountForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                {{ accountForm.processing ? 'Menyimpan...' : 'Buat Akun' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Ubah Password Modal -->
+        <Teleport to="body">
+            <div v-if="showResetPasswordModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showResetPasswordModal = false"></div>
+                <div class="relative glass-card w-full max-w-md overflow-hidden animate-fade-in-up">
+                    <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+                        <h3 class="text-lg font-bold text-red-900 flex items-center gap-2">
+                            <span class="text-2xl">🔑</span> Ubah Password Akun
+                        </h3>
+                        <button @click="showResetPasswordModal = false" class="text-gray-500 hover:text-gray-900">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    <form @submit.prevent="submitResetPassword">
+                        <div class="p-6 space-y-4">
+                            <div class="bg-red-50 text-red-800 p-4 rounded-xl text-sm mb-4 border border-red-200 shadow-sm flex gap-3">
+                                <svg class="w-6 h-6 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                <p>Aksi ini akan merubah detail akun login pelanggan saat ini. Pastikan Anda memberikan username/password baru kepada pelanggan.</p>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Username (Email)</label>
+                                <input v-model="resetPasswordForm.email" type="email" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all" placeholder="email@contoh.com" />
+                                <div v-if="resetPasswordForm.errors.email" class="text-xs text-red-500 mt-1">{{ resetPasswordForm.errors.email }}</div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru <span class="text-red-500">*</span></label>
+                                <input v-model="resetPasswordForm.password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all" minlength="8" placeholder="Kosongkan jika tidak ingin mengubah password" />
+                                <div v-if="resetPasswordForm.errors.password" class="text-xs text-red-500 mt-1">{{ resetPasswordForm.errors.password }}</div>
+                            </div>
+                        </div>
+                        <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
+                            <button type="button" @click="showResetPasswordModal = false" class="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">Batal</button>
+                            <button type="submit" :disabled="resetPasswordForm.processing" class="px-6 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                                <svg v-if="resetPasswordForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                {{ resetPasswordForm.processing ? 'Menyimpan...' : 'Ubah Password' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
     </AppLayout>
 </template>
 
@@ -453,5 +548,53 @@ function kickSession(username) {
             preserveScroll: true
         });
     }
+}
+
+// ── Buat Akun Modal ───────────────────────────────────────────
+const showCreateAccountModal = ref(false);
+const accountCustomer = ref(null);
+const accountForm = useForm({
+    email: '',
+    password: ''
+});
+
+function openCreateAccountModal(customer) {
+    accountCustomer.value = customer;
+    accountForm.email = customer.email || '';
+    accountForm.password = '';
+    showCreateAccountModal.value = true;
+}
+
+function submitCreateAccount() {
+    accountForm.post(`/customers/${accountCustomer.value.id}/create-account`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showCreateAccountModal.value = false;
+        }
+    });
+}
+
+// ── Ubah Password Modal ───────────────────────────────────────────
+const showResetPasswordModal = ref(false);
+const resetPasswordForm = useForm({
+    email: '',
+    password: ''
+});
+const resetCustomer = ref(null);
+
+function openResetModal(customer) {
+    resetCustomer.value = customer;
+    resetPasswordForm.email = customer.user ? customer.user.email : '';
+    resetPasswordForm.password = '';
+    showResetPasswordModal.value = true;
+}
+
+function submitResetPassword() {
+    resetPasswordForm.post(`/customers/${resetCustomer.value.id}/reset-password`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showResetPasswordModal.value = false;
+        }
+    });
 }
 </script>

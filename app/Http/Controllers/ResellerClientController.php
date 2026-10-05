@@ -21,6 +21,9 @@ class ResellerClientController extends Controller
         // Find reseller by matching user_id
         $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
         if (!$reseller) {
+            if ($user->customer) {
+                return redirect()->route('customer-area.dashboard');
+            }
             abort(403, 'Anda tidak memiliki akses sebagai reseller.');
         }
 

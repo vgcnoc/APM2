@@ -65,7 +65,7 @@ class CustomerController extends Controller
 
         // 2. Fetch Data
         $customers = (clone $baseQuery)
-            ->with(['package', 'ont.odp', 'areaModel'])
+            ->with(['package', 'ont.odp', 'areaModel', 'user'])
             ->search($request->search)
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))

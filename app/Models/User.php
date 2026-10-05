@@ -96,4 +96,9 @@ class User extends Authenticatable
     {
         return $this->hasOne(Customer::class, 'user_id');
     }
+
+    public function reseller(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Reseller::class, 'user_id');
+    }
 }

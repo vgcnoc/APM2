@@ -26,6 +26,10 @@ npm run build
 echo "Clearing cache..."
 php artisan optimize:clear
 
+echo "Fixing permissions..."
+chown -R www-data:www-data /var/www/APM2/public/build
+chown -R www-data:www-data /var/www/APM2/storage
+
 echo "--- Update Complete ---"
 `;
 

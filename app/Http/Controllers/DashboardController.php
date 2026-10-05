@@ -25,25 +25,27 @@ class DashboardController extends Controller
         }
 
         if (auth()->check() && (auth()->user()->role === 'reseller' || auth()->user()->role === 'customer')) {
-            $customer = Customer::where('user_id', auth()->id())->first();
+            $user = auth()->user();
+            $customer = $user->customer;
+            $reseller = $user->reseller;
             
-            if ($customer) {
-                // If they have both, or just a package, prioritize customer-area
-                if ($customer->package_id) {
-                    return redirect()->route('customer-area.dashboard');
-                }
-                
-                // If they ONLY have reseller
-                if ($customer->is_reseller) {
-                    return redirect()->route('client-area.dashboard');
-                }
+            if ($customer && $customer->package_id) {
+                return redirect()->route('customer-area.dashboard');
             }
             
-            // Fallback to role-based routing if no customer record found
-            if (auth()->user()->role === 'reseller') {
+            if ($reseller) {
                 return redirect()->route('client-area.dashboard');
             }
-            if (auth()->user()->role === 'customer') {
+            
+            if ($customer) {
+                return redirect()->route('customer-area.dashboard');
+            }
+
+            // Fallback to role-based routing if no record found
+            if ($user->role === 'reseller') {
+                return redirect()->route('client-area.dashboard');
+            }
+            if ($user->role === 'customer') {
                 return redirect()->route('customer-area.dashboard');
             }
         }
