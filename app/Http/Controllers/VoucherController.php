@@ -95,6 +95,49 @@ class VoucherController extends Controller
         ]);
     }
 
+    public function online(Request $request)
+    {
+        try {
+            $sessions = \App\Models\Radius\RadAcct::online()
+                ->orderByDesc('acctstarttime')
+                ->get(['radacctid', 'username', 'framedipaddress', 'callingstationid', 'nasipaddress', 'acctstarttime', 'acctsessiontime', 'acctinputoctets', 'acctoutputoctets'])
+                ->unique('username')
+                ->keyBy('username');
+        } catch (\Exception $e) {
+            $sessions = collect();
+        }
+
+        $vouchers = collect();
+        if ($sessions->isNotEmpty()) {
+            $vouchers = Voucher::with('profile', 'reseller.customer')
+                ->whereIn('username', $sessions->keys()->all())
+                ->get();
+        }
+
+        // Map data
+        $rows = $vouchers->map(function ($v) use ($sessions) {
+            $s = $sessions->get($v->username);
+            return [
+                'id' => $v->id,
+                'code' => $v->code,
+                'username' => $v->username,
+                'profile' => $v->profile?->name,
+                'reseller' => $v->reseller?->customer?->name ?? 'Admin',
+                'ip_address' => $s->framedipaddress,
+                'mac_address' => $s->callingstationid,
+                'nas_ip' => $s->nasipaddress,
+                'uptime' => $s->acctsessiontime ?? ($s->acctstarttime ? now()->diffInSeconds($s->acctstarttime) : 0),
+                'download' => $s->acctoutputoctets,
+                'upload' => $s->acctinputoctets,
+                'login_time' => $s->acctstarttime ? $s->acctstarttime->toIso8601String() : null,
+            ];
+        });
+
+        return Inertia::render('Vouchers/Online', [
+            'onlineUsers' => $rows->values()
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
