@@ -264,7 +264,7 @@ class VoucherController extends Controller
 
         if (!$voucher->is_active) {
             // Kick user if they are currently online
-            app(\App\Services\RadiusService::class)->disconnectUser($voucher->username);
+            app(\App\Services\RadiusService::class)->disconnect($voucher->username);
         }
 
         $status = $voucher->is_active ? 'diaktifkan' : 'dinonaktifkan';
