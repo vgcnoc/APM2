@@ -22,18 +22,37 @@
             searchRoute="/customers/online"
         >
             <template #filters>
-                <select v-model="filterArea" @change="applyFilters" class="form-select w-44">
-                    <option value="">Semua Area</option>
-                    <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
-                </select>
-                <select v-model="filterPackage" @change="applyFilters" class="form-select w-44">
-                    <option value="">Semua Paket</option>
-                    <option v-for="p in packages" :key="p.id" :value="p.id">{{ p.name }}</option>
-                </select>
+                <!-- Area -->
+                <div class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
+                    <div class="shrink-0 mr-2 text-gray-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                    <div class="flex flex-col flex-1">
+                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Area</span>
+                        <select v-model="filterArea" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                            <option value="">Semua Area</option>
+                            <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Paket -->
+                <div class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
+                    <div class="shrink-0 mr-2 text-gray-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                    </div>
+                    <div class="flex flex-col flex-1">
+                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Paket</span>
+                        <select v-model="filterPackage" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                            <option value="">Semua Paket</option>
+                            <option v-for="p in packages" :key="p.id" :value="p.id">{{ p.name }}</option>
+                        </select>
+                    </div>
+                </div>
             </template>
 
             <template #actions>
-                <button id="btn-refresh-online" @click="refresh" class="btn-ghost flex items-center gap-2">
+                <button id="btn-refresh-online" @click="refresh" class="btn-secondary bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium text-sm py-2 px-4 rounded-lg shadow-sm flex items-center gap-2">
                     <svg class="w-4 h-4" :class="{ 'animate-spin': refreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                     </svg>
@@ -41,29 +60,39 @@
                 </button>
             </template>
 
-            <template #row="{ row }">
+            <template #row="{ row, index }">
+                <td class="text-gray-500 text-xs text-center">
+                    {{ (customers.current_page - 1) * customers.per_page + index + 1 }}
+                </td>
                 <td>
                     <div class="flex items-center gap-3">
-                        <div class="relative w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-sm font-bold text-white shrink-0">
-                            {{ row.name?.charAt(0) }}
-                            <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-white"></span>
+                        <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0', getAvatarColor(row.name)]">
+                            {{ row.name?.charAt(0).toUpperCase() }}
                         </div>
                         <div>
-                            <Link :href="`/customers/${row.id}`" class="text-gray-900 font-medium hover:text-blue-500 transition-colors">
+                            <Link :href="`/customers/${row.id}`" class="text-gray-900 font-semibold text-sm hover:text-blue-500 transition-colors">
                                 {{ row.name }}
                             </Link>
-                            <p class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</p>
+                            <p class="text-[10px] text-gray-500 font-mono">{{ row.customer_code }}</p>
                         </div>
                     </div>
                 </td>
-                <td class="text-gray-700 text-xs font-medium">{{ row.area || '-' }}</td>
                 <td>
-                    <span v-if="row.package" class="text-xs text-cyan-600 font-medium">{{ row.package }}</span>
+                    <span v-if="row.area" class="px-2 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded text-[10px] font-bold whitespace-nowrap uppercase">{{ row.area }}</span>
+                    <span v-else class="px-2 py-1 bg-gray-50 text-gray-500 border border-gray-100 rounded text-[10px] font-bold whitespace-nowrap uppercase">-</span>
+                </td>
+                <td>
+                    <div v-if="row.package" class="flex items-center gap-1.5 text-blue-500 text-xs font-bold whitespace-nowrap">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+                        {{ row.package }}
+                    </div>
                     <span v-else class="text-xs text-gray-400">-</span>
                 </td>
-                <td class="font-mono text-xs text-gray-800">{{ row.username || '-' }}</td>
                 <td>
-                    <span v-if="row.access_mode" :class="['inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase', modeClass(row.access_mode)]">
+                    <span class="inline-flex px-2 py-1 bg-gray-50 text-gray-700 border border-gray-200 rounded text-xs font-mono font-medium">{{ row.username || '-' }}</span>
+                </td>
+                <td>
+                    <span v-if="row.access_mode" :class="['inline-flex px-2 py-1 border rounded text-[10px] font-bold uppercase whitespace-nowrap', modeClass(row.access_mode)]">
                         {{ modeLabel(row.access_mode) }}
                     </span>
                     <span v-else class="text-xs text-gray-400">-</span>
@@ -78,13 +107,12 @@
                         :id="`btn-kick-${row.id}`"
                         @click="kickSession(row)"
                         :disabled="kicking === row.username"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 hover:bg-orange-100 hover:shadow transition-all disabled:opacity-50"
+                        class="p-1.5 rounded-md text-gray-400 hover:bg-orange-50 hover:text-orange-500 transition-colors disabled:opacity-50"
                         title="Kick Sesi Online"
                     >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4" :class="{'animate-pulse': kicking === row.username}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
-                        {{ kicking === row.username ? 'Proses...' : 'Kick' }}
                     </button>
                 </div>
             </template>
@@ -107,14 +135,23 @@ const props = defineProps({
 });
 
 const columns = [
-    { key: 'name', label: 'Nama Pelanggan' },
-    { key: 'area', label: 'Area' },
-    { key: 'package', label: 'Paket' },
-    { key: 'username', label: 'Username PPP/Member' },
-    { key: 'access_mode', label: 'Mode Koneksi' },
-    { key: 'ip_address', label: 'IP Address' },
-    { key: 'mac_address', label: 'MAC Address' },
+    { key: 'index', label: '#' },
+    { key: 'name', label: 'PELANGGAN' },
+    { key: 'area', label: 'AREA' },
+    { key: 'package', label: 'PAKET' },
+    { key: 'username', label: 'USERNAME PPP' },
+    { key: 'access_mode', label: 'MODE' },
+    { key: 'ip_address', label: 'IP ADDRESS' },
+    { key: 'mac_address', label: 'MAC ADDRESS' },
 ];
+
+function getAvatarColor(name) {
+    if (!name) return 'bg-gray-500';
+    const colors = ['bg-indigo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-pink-500', 'bg-orange-500'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+}
 
 const filterArea = ref(props.filters?.area_id || '');
 const filterPackage = ref(props.filters?.package_id || '');
@@ -161,10 +198,10 @@ function modeLabel(mode) {
 
 function modeClass(mode) {
     switch (mode) {
-        case 'pppoe': return 'bg-indigo-100 text-indigo-700';
-        case 'hotspot': return 'bg-amber-100 text-amber-700';
-        case 'static_ip': return 'bg-sky-100 text-sky-700';
-        default: return 'bg-gray-100 text-gray-700';
+        case 'pppoe': return 'bg-indigo-50 text-indigo-600 border-indigo-200';
+        case 'hotspot': return 'bg-amber-50 text-amber-600 border-amber-200';
+        case 'static_ip': return 'bg-sky-50 text-sky-600 border-sky-200';
+        default: return 'bg-gray-50 text-gray-600 border-gray-200';
     }
 }
 </script>
