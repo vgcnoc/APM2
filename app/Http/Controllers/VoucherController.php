@@ -138,6 +138,48 @@ class VoucherController extends Controller
         ]);
     }
 
+    public function offline(Request $request)
+    {
+        try {
+            $onlineUsernames = \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
+            
+            // Get latest offline session for each voucher
+            $latestSessions = \App\Models\Radius\RadAcct::whereNotIn('username', $onlineUsernames)
+                ->whereNotNull('acctstoptime')
+                ->orderByDesc('acctstoptime')
+                ->get()
+                ->unique('username')
+                ->keyBy('username');
+        } catch (\Exception $e) {
+            $onlineUsernames = [];
+            $latestSessions = collect();
+        }
+
+        $vouchers = Voucher::with('profile', 'reseller.customer')
+            ->whereNotIn('username', $onlineUsernames)
+            ->get();
+
+        // Map data
+        $rows = $vouchers->map(function ($v) use ($latestSessions) {
+            $s = $latestSessions->get($v->username);
+            return [
+                'id' => $v->id,
+                'code' => $v->code,
+                'username' => $v->username,
+                'profile' => $v->profile?->name,
+                'reseller' => $v->reseller?->customer?->name ?? 'Admin',
+                'ip_address' => $s?->framedipaddress,
+                'mac_address' => $s?->callingstationid,
+                'last_logout' => $s?->acctstoptime ? $s->acctstoptime->toIso8601String() : null,
+                'total_time' => $s?->acctsessiontime,
+            ];
+        });
+
+        return Inertia::render('Vouchers/Offline', [
+            'offlineUsers' => $rows->values()
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

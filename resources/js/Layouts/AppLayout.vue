@@ -203,6 +203,7 @@ const menuItems = [
     { type: 'link', href: '/vouchers/profiles', icon: 'document-text', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers_profiles' },
     { type: 'link', href: '/vouchers', icon: 'ticket', label: 'Data Voucher', active: (url) => (url || '').length > 0 && url === '/vouchers', permission: 'menu_vouchers' },
     { type: 'link', href: '/vouchers/online', icon: 'status-online', label: 'Voucher Online', active: (url) => (url || '').startsWith('/vouchers/online'), permission: 'menu_vouchers' },
+    { type: 'link', href: '/vouchers/offline', icon: 'status-offline', label: 'Voucher Offline', active: (url) => (url || '').startsWith('/vouchers/offline'), permission: 'menu_vouchers' },
     { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
 
     { type: 'group', label: 'INFRASTRUKTUR & JARINGAN' },

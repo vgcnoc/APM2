@@ -173,6 +173,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/vouchers', [\App\Http\Controllers\VoucherController::class, 'index'])->name('vouchers.index');
     Route::get('/vouchers/online', [\App\Http\Controllers\VoucherController::class, 'online'])->name('vouchers.online');
+    Route::get('/vouchers/offline', [\App\Http\Controllers\VoucherController::class, 'offline'])->name('vouchers.offline');
     Route::get('/vouchers/print', [\App\Http\Controllers\VoucherController::class, 'print'])->name('vouchers.print');
     Route::post('/vouchers', [\App\Http\Controllers\VoucherController::class, 'store'])->name('vouchers.store');
     Route::post('/vouchers/bulk-destroy', [\App\Http\Controllers\VoucherController::class, 'bulkDestroy'])->name('vouchers.bulk-destroy');
