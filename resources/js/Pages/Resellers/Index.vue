@@ -91,6 +91,40 @@ const closeCreateModal = () => {
     createForm.clearErrors();
 };
 
+const showResetModal = ref(false);
+const resetReseller = ref(null);
+const resetForm = useForm({
+    password: '',
+});
+
+const openResetModal = (reseller) => {
+    resetReseller.value = reseller;
+    resetForm.password = '';
+    showResetModal.value = true;
+};
+
+const closeResetModal = () => {
+    showResetModal.value = false;
+    resetForm.reset();
+    resetForm.clearErrors();
+};
+
+const resetPassword = () => {
+    if (!resetReseller.value || !resetReseller.value.customer) return;
+    
+    resetForm.post(route('customers.reset-password', resetReseller.value.customer.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeResetModal();
+            Swal.fire(
+                'Berhasil!',
+                'Password akun berhasil diubah.',
+                'success'
+            );
+        }
+    });
+};
+
 const saveReseller = () => {
     if (editingReseller.value) {
         form.put(route('resellers.update', editingReseller.value.id), {
@@ -195,6 +229,9 @@ const deleteReseller = (reseller) => {
                                     </Link>
                                     <button v-if="reseller.customer && !reseller.customer.user" @click="openCreateAccountModal(reseller)" class="text-emerald-600 hover:text-emerald-900 p-2 rounded-lg hover:bg-emerald-50 transition-colors ml-1" title="Buat Akun Login">
                                         <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                                    </button>
+                                    <button v-if="reseller.customer && reseller.customer.user" @click="openResetModal(reseller)" class="text-amber-600 hover:text-amber-900 p-2 rounded-lg hover:bg-amber-50 transition-colors ml-1" title="Ubah Password Akun">
+                                        <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
                                     </button>
                                     <button @click="openEditModal(reseller)" class="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition-colors ml-1" title="Edit Dompet">
                                         <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -304,6 +341,41 @@ const deleteReseller = (reseller) => {
                             <button type="button" @click="closeCreateModal" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-100">Batal</button>
                             <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50" :disabled="createForm.processing">
                                 {{ createForm.processing ? 'Menyimpan...' : 'Buat Akun' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reset Password Modal -->
+        <div v-if="showResetModal" class="fixed inset-0 z-[110] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+                <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+                    <h3 class="text-lg font-bold text-gray-900">Ubah Password Akun</h3>
+                    <button @click="closeResetModal" class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-200 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <div class="p-6 overflow-y-auto max-h-[70vh]">
+                    <div v-if="resetReseller && resetReseller.customer" class="mb-4 pb-4 border-b border-gray-100">
+                        <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Nama Pelanggan</p>
+                        <p class="text-sm text-gray-900 font-medium">{{ resetReseller.customer.name }}</p>
+                    </div>
+
+                    <form @submit.prevent="resetPassword" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru <span class="text-red-500">*</span></label>
+                            <input v-model="resetForm.password" type="password" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Minimal 8 karakter" required minlength="8" />
+                            <div v-if="resetForm.errors.password" class="mt-1 text-sm text-red-600">{{ resetForm.errors.password }}</div>
+                        </div>
+                        
+                        <div class="pt-4 mt-4 border-t border-gray-100 flex justify-end gap-3">
+                            <button type="button" @click="closeResetModal" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-100">Batal</button>
+                            <button type="submit" class="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 disabled:opacity-50 flex items-center gap-2" :disabled="resetForm.processing">
+                                <svg v-if="resetForm.processing" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                {{ resetForm.processing ? 'Menyimpan...' : 'Ubah Password' }}
                             </button>
                         </div>
                     </form>
