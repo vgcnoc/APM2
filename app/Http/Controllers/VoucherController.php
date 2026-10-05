@@ -52,13 +52,37 @@ class VoucherController extends Controller
                     $usernames = $vouchers->pluck('username')->filter()->toArray();
                     if (empty($usernames)) return (object)[];
                     
-                    $stats = \App\Models\Radius\RadAcct::whereIn('username', $usernames)
-                        ->selectRaw('username, min(acctstarttime) as first_login, sum(acctsessiontime) as total_time')
-                        ->groupBy('username')
-                        ->get()
-                        ->keyBy('username');
+                    $stats = [];
+                    $records = \App\Models\Radius\RadAcct::whereIn('username', $usernames)->get();
+                    
+                    foreach ($records as $record) {
+                        $user = $record->username;
+                        if (!isset($stats[$user])) {
+                            $stats[$user] = (object)[
+                                'first_login' => null,
+                                'total_time' => 0,
+                            ];
+                        }
                         
-                    return $stats;
+                        // Cari first login
+                        if (!$stats[$user]->first_login || $record->acctstarttime < $stats[$user]->first_login) {
+                            $stats[$user]->first_login = $record->acctstarttime;
+                        }
+                        
+                        // Hitung total time (tambahkan durasi sesi aktif jika belum ditutup)
+                        if (is_null($record->acctstoptime) && $record->acctstarttime) {
+                            $stats[$user]->total_time += now()->diffInSeconds($record->acctstarttime);
+                        } else {
+                            $stats[$user]->total_time += $record->acctsessiontime;
+                        }
+                    }
+                    
+                    // Format dates for JS
+                    foreach ($stats as $user => $s) {
+                        $s->first_login = $s->first_login ? $s->first_login->toIso8601String() : null;
+                    }
+                    
+                    return collect($stats);
                 } catch (\Exception $e) {
                     return (object)[];
                 }

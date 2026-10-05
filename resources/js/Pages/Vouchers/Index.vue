@@ -53,6 +53,7 @@
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Profil</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Terpakai Sejak</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Aktif Sampai</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Penggunaan</th>
                             <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
@@ -95,8 +96,16 @@
                                 <div v-else class="text-gray-400">-</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                <div v-if="usageStats[voucher.username]?.first_login && voucher.profile?.duration">
+                                    {{ calculateExpiration(usageStats[voucher.username].first_login, voucher.profile.duration) }}
+                                </div>
+                                <div v-else class="text-gray-400">-</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                 <div v-if="usageStats[voucher.username]?.total_time !== undefined">
-                                    {{ formatSeconds(usageStats[voucher.username].total_time) }} 
+                                    <span :class="usageStats[voucher.username].total_time > 0 ? 'text-indigo-600 font-bold' : ''">
+                                        {{ formatSeconds(usageStats[voucher.username].total_time) }} 
+                                    </span>
                                     <span class="text-gray-400 text-xs ml-1" v-if="voucher.profile?.duration">
                                         / {{ voucher.profile.duration }}
                                     </span>
@@ -215,6 +224,33 @@ const formatSeconds = (seconds) => {
     const m = Math.floor((seconds % 3600) / 60);
     if (h > 0) return `${h} jam ${m} mnt`;
     return `${m} mnt`;
+};
+
+const parseDurationToSeconds = (duration) => {
+    if (!duration) return 0;
+    const str = duration.toString().toLowerCase().trim();
+    if (/^\d+$/.test(str)) return parseInt(str);
+    
+    let seconds = 0;
+    const regex = /(\d+)\s*([wdhms])/g;
+    let match;
+    const units = { w: 604800, d: 86400, h: 3600, m: 60, s: 1 };
+    
+    while ((match = regex.exec(str)) !== null) {
+        seconds += parseInt(match[1]) * units[match[2]];
+    }
+    return seconds;
+};
+
+const calculateExpiration = (firstLoginIso, durationStr) => {
+    if (!firstLoginIso || !durationStr) return '-';
+    const seconds = parseDurationToSeconds(durationStr);
+    if (!seconds) return '-';
+    
+    const date = new Date(firstLoginIso);
+    date.setSeconds(date.getSeconds() + seconds);
+    
+    return date.toLocaleString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
 const search = ref(props.filters.search || '');
