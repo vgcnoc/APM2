@@ -33,6 +33,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/generate-vouchers', [\App\Http\Controllers\ResellerClientController::class, 'generateVouchers'])->name('generate-vouchers');
     });
 
+    // Customer Area (Pelanggan)
+    Route::middleware(['role:customer'])->prefix('my')->name('customer-area.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\CustomerAreaController::class, 'dashboard'])->name('dashboard');
+        Route::get('/billing', [\App\Http\Controllers\CustomerAreaController::class, 'billing'])->name('billing');
+        Route::get('/tickets', [\App\Http\Controllers\CustomerAreaController::class, 'tickets'])->name('tickets');
+    });
+
     // ── Data Customers ─────────────────────────────────────────
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/booking', [CustomerController::class, 'booking'])->name('booking');

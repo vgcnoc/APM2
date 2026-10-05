@@ -28,6 +28,10 @@ class DashboardController extends Controller
             return redirect()->route('client-area.dashboard');
         }
 
+        if (auth()->check() && auth()->user()->hasRole('customer')) {
+            return redirect()->route('customer-area.dashboard');
+        }
+
         // ── Statistik Pelanggan ──────────────────────────────
         $customerStats = [
             'total_active'     => Customer::where('status', 'active')->whereNotNull('package_id')->count(),
