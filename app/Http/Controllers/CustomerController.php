@@ -725,6 +725,26 @@ class CustomerController extends Controller
     }
 
     /**
+     * Reset password akun login pelanggan
+     */
+    public function resetPassword(Request $request, Customer $customer): RedirectResponse
+    {
+        $validated = $request->validate([
+            'password' => 'required|string|min:8',
+        ]);
+
+        if (!$customer->user_id || !$customer->user) {
+            return back()->with('error', 'Pelanggan ini belum memiliki akun.');
+        }
+
+        $customer->user->update([
+            'password' => bcrypt($validated['password'])
+        ]);
+
+        return back()->with('success', 'Password login pelanggan berhasil diubah.');
+    }
+
+    /**
      * Form edit pelanggan
      */
     public function edit(Customer $customer): Response

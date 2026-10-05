@@ -40,9 +40,14 @@
                             <button v-if="!customer.user_id" @click="showAccountModal = true" class="btn-primary w-full justify-center py-2.5 text-sm shadow-md hover:shadow-lg transition-all bg-indigo-600 hover:bg-indigo-700 text-white">
                                 + Buat Akun Client Area
                             </button>
-                            <div v-else class="text-center py-2 px-3 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-bold flex items-center justify-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                Memiliki Akun Login (Client Area)
+                            <div v-else class="flex flex-col gap-2">
+                                <div class="text-center py-2 px-3 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-bold flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    Memiliki Akun Login
+                                </div>
+                                <button @click="showResetPasswordModal = true" class="text-xs w-full py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold shadow-sm transition-all">
+                                    🔑 Ubah Password Akun
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -994,6 +999,41 @@
             </form>
         </div>
     </div>
+
+    <!-- Ubah Password Modal -->
+    <div v-if="showResetPasswordModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-up">
+            <div class="p-5 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-red-50 to-red-100/50">
+                <h3 class="text-lg font-bold text-red-900 flex items-center gap-2">
+                    <span class="text-2xl">🔑</span> Ubah Password Akun
+                </h3>
+                <button @click="showResetPasswordModal = false" class="text-gray-500 hover:text-gray-900">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <form @submit.prevent="submitResetPassword">
+                <div class="p-6 space-y-4">
+                    <div class="bg-red-50 text-red-800 p-4 rounded-xl text-sm mb-4 border border-red-200 shadow-sm flex gap-3">
+                        <svg class="w-6 h-6 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <p>Aksi ini akan mereset password akun login pelanggan saat ini. Pastikan Anda memberikan password baru kepada pelanggan.</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>
+                        <input v-model="resetPasswordForm.password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all" required minlength="8" placeholder="Masukkan password baru" />
+                        <div v-if="resetPasswordForm.errors.password" class="text-xs text-red-500 mt-1">{{ resetPasswordForm.errors.password }}</div>
+                    </div>
+                </div>
+                <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
+                    <button type="button" @click="showResetPasswordModal = false" class="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">Batal</button>
+                    <button type="submit" :disabled="resetPasswordForm.processing" class="px-6 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                        <svg v-if="resetPasswordForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        {{ resetPasswordForm.processing ? 'Menyimpan...' : 'Ubah Password' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </template>
 
 <script setup>
@@ -1530,6 +1570,22 @@ function submitAccount() {
         onSuccess: () => {
             showAccountModal.value = false;
             accountForm.reset();
+        }
+    });
+}
+
+// ── Ubah Password ───────────────────────────────────────────
+const showResetPasswordModal = ref(false);
+const resetPasswordForm = useForm({
+    password: ''
+});
+
+function submitResetPassword() {
+    resetPasswordForm.post(`/customers/${props.customer.id}/reset-password`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showResetPasswordModal.value = false;
+            resetPasswordForm.reset();
         }
     });
 }

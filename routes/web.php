@@ -56,6 +56,10 @@ Route::middleware(['auth'])->group(function () {
         // Buat Akun Pelanggan (Login)
         Route::post('/{customer}/create-account', [CustomerController::class, 'createAccount'])
             ->name('create-account');
+
+        // Reset Password Akun Pelanggan
+        Route::post('/{customer}/reset-password', [CustomerController::class, 'resetPassword'])
+            ->name('reset-password');
             
         // Jadwalkan Pasang
         Route::post('/{customer}/assign-install', [CustomerController::class, 'assignInstall'])
