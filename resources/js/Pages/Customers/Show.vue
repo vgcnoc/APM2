@@ -41,9 +41,12 @@
                                 + Buat Akun Client Area
                             </button>
                             <div v-else class="flex flex-col gap-2">
-                                <div class="text-center py-2 px-3 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-bold flex items-center justify-center gap-2">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                    Memiliki Akun Login
+                                <div class="text-center py-2 px-3 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-bold flex flex-col items-center justify-center gap-1">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        Memiliki Akun Login
+                                    </div>
+                                    <span class="text-[10px] font-normal text-green-600 block mt-1 break-all" v-if="customer.user">Email Login: {{ customer.user.email }}</span>
                                 </div>
                                 <button @click="showResetPasswordModal = true" class="text-xs w-full py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold shadow-sm transition-all">
                                     🔑 Ubah Password Akun
