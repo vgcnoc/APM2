@@ -239,6 +239,7 @@ const menuItems = [
     { type: 'link', href: '/settings/roles', icon: 'lock-closed', label: 'Role & Akses', active: (url) => (url || '').startsWith('/settings/roles'), permission: 'menu_settings_roles' },
     { type: 'link', href: '/settings/api', icon: 'code', label: 'API & Integrasi', active: (url) => (url || '').startsWith('/settings/api'), permission: 'menu_settings_api' },
     { type: 'link', href: '/settings/branding', icon: 'color-swatch', label: 'Branding', active: (url) => (url || '').startsWith('/settings/branding'), permission: 'menu_settings_branding' },
+    { type: 'link', href: '/settings/billing', icon: 'credit-card', label: 'Billing / Invoice', active: (url) => (url || '').startsWith('/settings/billing'), permission: 'menu_settings_branding' },
 ];
 
 const iconPaths = {

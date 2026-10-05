@@ -16,6 +16,31 @@ class SettingController extends Controller
             'current_logo' => $logo ? asset('storage/' . $logo) : null,
             'current_app_name' => Setting::get('app_name', ''),
         ]);
+    public function billing()
+    {
+        return Inertia::render('Settings/Billing', [
+            'billing_type' => Setting::get('billing_type', 'prabayar'),
+            'invoice_issue_date' => Setting::get('invoice_issue_date', '1'),
+            'due_date_days' => Setting::get('due_date_days', '7'),
+            'isolate_days' => Setting::get('isolate_days', '3'),
+        ]);
+    }
+
+    public function updateBilling(Request $request)
+    {
+        $request->validate([
+            'billing_type' => 'required|in:prabayar,pascabayar,prorata',
+            'invoice_issue_date' => 'required|integer|min:1|max:28',
+            'due_date_days' => 'required|integer|min:0',
+            'isolate_days' => 'required|integer|min:0',
+        ]);
+
+        Setting::set('billing_type', $request->billing_type);
+        Setting::set('invoice_issue_date', $request->invoice_issue_date);
+        Setting::set('due_date_days', $request->due_date_days);
+        Setting::set('isolate_days', $request->isolate_days);
+
+        return redirect()->back()->with('success', 'Pengaturan billing berhasil diperbarui.');
     }
 
     public function updateBranding(Request $request)
