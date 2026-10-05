@@ -1248,6 +1248,20 @@ class CustomerController extends Controller
                     'login_user' => $validated['login_user'],
                     'login_password' => $validated['login_password'],
                 ]);
+
+                // Create initial invoice
+                $activationDate = \Carbon\Carbon::parse($validated['activation_date']);
+                $amount = $customer->package ? $customer->package->price : 0;
+                
+                \App\Models\Invoice::create([
+                    'customer_id' => $customer->id,
+                    'period_month' => $activationDate->month,
+                    'period_year' => $activationDate->year,
+                    'amount' => $amount,
+                    'due_date' => $activationDate->copy()->addDays(7), // Example: 7 days due
+                    'issued_date' => $activationDate,
+                    'status' => 'unpaid',
+                ]);
             });
 
             \App\Models\AuditLog::createLog('Aktivasi Layanan', $customer, 'installing', 'active', 'Mengaktifkan layanan pelanggan');
