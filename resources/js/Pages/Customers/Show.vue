@@ -1515,7 +1515,6 @@ function submitEditActive() {
             // router.reload doesn't automatically close toast so we rely on global flash
         }
     });
-    });
 }
 
 // ── Buat Akun ───────────────────────────────────────────────
