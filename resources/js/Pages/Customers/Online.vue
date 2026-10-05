@@ -107,12 +107,13 @@
                         :id="`btn-kick-${row.id}`"
                         @click="kickSession(row)"
                         :disabled="kicking === row.username"
-                        class="p-1.5 rounded-md text-gray-400 hover:bg-orange-50 hover:text-orange-500 transition-colors disabled:opacity-50"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-red-500 bg-red-50 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-50"
                         title="Kick Sesi Online"
                     >
-                        <svg class="w-4 h-4" :class="{'animate-pulse': kicking === row.username}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-3.5 h-3.5" :class="{'animate-pulse': kicking === row.username}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
+                        {{ kicking === row.username ? 'PROSES' : 'KICK' }}
                     </button>
                 </div>
             </template>

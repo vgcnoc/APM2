@@ -263,10 +263,11 @@
             <!-- Row Actions -->
             <template #rowActions="{ row }">
                 <div class="flex items-center justify-end gap-1">
-                    <button v-if="row.status === 'active' && row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" @click="kickSession(row.ont.pppoe_user)" class="p-1.5 rounded-md text-gray-400 hover:bg-orange-50 hover:text-orange-500 transition-colors" title="Kick Sesi Online">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button v-if="row.status === 'active' && row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" @click="kickSession(row.ont.pppoe_user)" class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold text-red-500 bg-red-50 hover:bg-red-500 hover:text-white transition-colors" title="Kick Sesi Online">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
+                        KICK
                     </button>
                     <Link :href="`/customers/${row.id}`" class="p-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-blue-500 transition-colors shadow-sm bg-white" title="Lihat">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
