@@ -16,6 +16,8 @@ class SettingController extends Controller
             'current_logo' => $logo ? asset('storage/' . $logo) : null,
             'current_app_name' => Setting::get('app_name', ''),
         ]);
+    }
+
     public function billing()
     {
         return Inertia::render('Settings/Billing', [
