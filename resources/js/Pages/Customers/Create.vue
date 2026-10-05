@@ -71,21 +71,26 @@
                             </div>
                             <div>
                                 <div class="flex items-center justify-between mb-2">
-                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">Paket Langganan</label>
-                                    <label class="flex items-center gap-2 cursor-pointer bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 hover:bg-indigo-100 transition-colors">
-                                        <input v-model="form.is_reseller" type="checkbox" class="w-3.5 h-3.5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer" />
-                                        <span class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Khusus Reseller Voucher</span>
-                                    </label>
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">Tipe Pendaftaran / Layanan <span class="text-red-500">*</span></label>
                                 </div>
-                                <select v-if="!form.is_reseller" v-model="form.package_id" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
-                                    <option value="">-- Pilih Paket Langganan --</option>
-                                    <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
-                                        {{ pkg.name }}
-                                    </option>
+                                <select v-model="registration_type" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all mb-3">
+                                    <option value="customer">🌐 Pelanggan Internet Biasa</option>
+                                    <option value="both">🌐+🎟️ Pelanggan Internet + Reseller Voucher</option>
+                                    <option value="reseller">🎟️ Khusus Reseller Voucher (Tanpa Internet)</option>
                                 </select>
-                                <div v-else class="w-full px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-lg text-sm text-indigo-700 font-bold flex items-center justify-center gap-2">
+                                
+                                <div v-if="registration_type === 'reseller'" class="w-full px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-lg text-sm text-indigo-700 font-bold flex items-center justify-center gap-2">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                     Pendaftaran Khusus Reseller Voucher
+                                </div>
+                                <div v-else>
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Pilih Paket Langganan Internet <span class="text-red-500">*</span></label>
+                                    <select v-model="form.package_id" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" required>
+                                        <option value="">-- Pilih Paket Langganan --</option>
+                                        <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
+                                            {{ pkg.name }}
+                                        </option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -234,6 +239,7 @@ const props = defineProps({
 const isNewArea = ref(false);
 const page = usePage();
 const isAdmin = computed(() => page.props.auth.user?.role === 'admin' || page.props.auth.user?.role === 'super-admin');
+const registration_type = ref('customer');
 
 onMounted(() => {
     if (!props.areas || props.areas.length === 0) {
@@ -293,17 +299,22 @@ const form = useForm({
 });
 
 watch(() => form.package_id, (newId) => {
-    if (form.is_reseller) return;
+    if (registration_type.value === 'reseller') return;
     const pkg = props.packages.find(p => p.id === newId);
     if (pkg) {
         form.base_amount = pkg.price;
     }
 });
 
-watch(() => form.is_reseller, (isReseller) => {
-    if (isReseller) {
+watch(registration_type, (type) => {
+    if (type === 'reseller') {
+        form.is_reseller = true;
         form.package_id = '';
         form.base_amount = 0;
+    } else if (type === 'both') {
+        form.is_reseller = true;
+    } else {
+        form.is_reseller = false;
     }
 });
 
