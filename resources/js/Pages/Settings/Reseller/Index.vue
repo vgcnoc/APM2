@@ -54,8 +54,11 @@
                 </table>
             </div>
             
-            <div v-if="users.links && users.links.length > 3" class="px-6 py-4 border-t bg-gray-50">
-                <Pagination :links="users.links" />
+            <div v-if="users.links && users.links.length > 3" class="px-6 py-4 border-t bg-gray-50 flex items-center justify-center gap-2">
+                <template v-for="link in users.links" :key="link.label">
+                    <Link v-if="link.url" :href="link.url" v-html="link.label" class="px-3 py-1 border rounded text-sm" :class="link.active ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'"></Link>
+                    <span v-else v-html="link.label" class="px-3 py-1 border rounded text-sm text-gray-400 bg-gray-50"></span>
+                </template>
             </div>
         </div>
 
@@ -102,9 +105,8 @@
 
 <script setup>
 import { ref, watch } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import Pagination from '@/Components/Pagination.vue';
 import Swal from 'sweetalert2';
 
 function debounce(func, wait) {
