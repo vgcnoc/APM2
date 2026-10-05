@@ -33,10 +33,17 @@
                             </div>
                         </div>
 
-                        <div v-if="canEditProfile" class="flex gap-2 pt-2">
-                            <Link :href="`/customers/${customer.id}/edit`" class="btn-primary flex-1 justify-center py-2.5 text-sm shadow-md hover:shadow-lg transition-all">
+                        <div v-if="canEditProfile" class="flex flex-col gap-2 pt-2">
+                            <Link :href="`/customers/${customer.id}/edit`" class="btn-primary w-full justify-center py-2.5 text-sm shadow-md hover:shadow-lg transition-all">
                                 Edit Profil
                             </Link>
+                            <button v-if="!customer.user_id" @click="showAccountModal = true" class="btn-primary w-full justify-center py-2.5 text-sm shadow-md hover:shadow-lg transition-all bg-indigo-600 hover:bg-indigo-700 text-white">
+                                + Buat Akun Client Area
+                            </button>
+                            <div v-else class="text-center py-2 px-3 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-bold flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                Memiliki Akun Login (Client Area)
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -946,6 +953,47 @@
             </div>
         </div>
     </AppLayout>
+
+    <!-- Buat Akun Modal -->
+    <div v-if="showAccountModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-up">
+            <div class="p-5 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-indigo-100/50">
+                <h3 class="text-lg font-bold text-indigo-900 flex items-center gap-2">
+                    <span class="text-2xl">👤</span> Buat Akun Client Area
+                </h3>
+                <button @click="showAccountModal = false" class="text-gray-500 hover:text-gray-900">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <form @submit.prevent="submitAccount">
+                <div class="p-6 space-y-4">
+                    <div class="bg-indigo-50 text-indigo-800 p-4 rounded-xl text-sm mb-4 border border-indigo-200 shadow-sm flex gap-3">
+                        <svg class="w-6 h-6 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <p>Buat akun ini agar pelanggan dapat login ke Client Area untuk mengecek tagihan dan laporan gangguan secara mandiri.</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email (Sebagai Username)</label>
+                        <input v-model="accountForm.email" type="email" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" required />
+                        <div v-if="accountForm.errors.email" class="text-xs text-red-500 mt-1">{{ accountForm.errors.email }}</div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input v-model="accountForm.password" type="password" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" required minlength="8" />
+                        <div v-if="accountForm.errors.password" class="text-xs text-red-500 mt-1">{{ accountForm.errors.password }}</div>
+                    </div>
+                </div>
+                <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
+                    <button type="button" @click="showAccountModal = false" class="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">Batal</button>
+                    <button type="submit" :disabled="accountForm.processing" class="px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                        <svg v-if="accountForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        {{ accountForm.processing ? 'Menyimpan...' : 'Buat Akun' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </template>
 
 <script setup>
@@ -1465,6 +1513,24 @@ function submitEditActive() {
         onSuccess: () => {
             showEditActiveModal.value = false;
             // router.reload doesn't automatically close toast so we rely on global flash
+        }
+    });
+    });
+}
+
+// ── Buat Akun ───────────────────────────────────────────────
+const showAccountModal = ref(false);
+const accountForm = useForm({
+    email: '',
+    password: ''
+});
+
+function submitAccount() {
+    accountForm.post(`/customers/${props.customer.id}/create-account`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showAccountModal.value = false;
+            accountForm.reset();
         }
     });
 }

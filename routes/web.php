@@ -52,6 +52,10 @@ Route::middleware(['auth'])->group(function () {
         // Assign ONT ke pelanggan
         Route::post('/{customer}/assign-ont', [CustomerController::class, 'assignOnt'])
             ->name('assign-ont');
+
+        // Buat Akun Pelanggan (Login)
+        Route::post('/{customer}/create-account', [CustomerController::class, 'createAccount'])
+            ->name('create-account');
             
         // Jadwalkan Pasang
         Route::post('/{customer}/assign-install', [CustomerController::class, 'assignInstall'])

@@ -679,6 +679,7 @@ class CustomerController extends Controller
             'surveys.odp',
             'surveys.surveyor',
             'technicianSchedules.technician',
+            'user',
         ]);
 
         return Inertia::render('Customers/Show', [
@@ -687,6 +688,40 @@ class CustomerController extends Controller
             'availableOdps' => Odp::active()->with(['odc.olt', 'onts.customer'])->get(),
             'availableOnts' => Ont::where('status', 'Sudah Set')->whereNull('customer_id')->get(),
         ]);
+    }
+
+    /**
+     * Buat akun login untuk pelanggan
+     */
+    public function createAccount(Request $request, Customer $customer): RedirectResponse
+    {
+        $validated = $request->validate([
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:8',
+        ]);
+
+        if ($customer->user_id) {
+            return back()->with('error', 'Pelanggan ini sudah memiliki akun.');
+        }
+
+        DB::transaction(function () use ($customer, $validated) {
+            $user = User::create([
+                'name' => $customer->name,
+                'email' => $validated['email'],
+                'password' => bcrypt($validated['password']),
+                'role' => 'customer',
+                'is_active' => true,
+            ]);
+
+            // Assign Spatie role (buat jika belum ada)
+            $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'customer']);
+            $user->assignRole($role);
+
+            // Update customer dengan user_id yang baru
+            $customer->update(['user_id' => $user->id]);
+        });
+
+        return back()->with('success', 'Akun login pelanggan berhasil dibuat.');
     }
 
     /**
