@@ -202,6 +202,98 @@ class CustomerController extends Controller
     }
 
     /**
+     * Daftar pelanggan yang sedang offline (RADIUS), tanpa voucher.
+     */
+    public function offline(Request $request): Response
+    {
+        try {
+            $onlineUsernames = \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
+        } catch (\Exception $e) {
+            $onlineUsernames = [];
+        }
+
+        $customers = Customer::with(['package', 'areaModel', 'ont'])
+            ->whereIn('status', ['active', 'suspended'])
+            ->whereDoesntHave('package', fn ($q) => $q->where('access_mode', 'voucher'))
+            ->whereHas('ont', function ($q) use ($onlineUsernames) {
+                if (!empty($onlineUsernames)) {
+                    $q->whereNotIn('pppoe_user', $onlineUsernames);
+                }
+            })
+            ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function ($q) {
+                if (auth()->user()->can('customers_all_view_area')) {
+                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                } else {
+                    $q->where('sales_id', auth()->id());
+                }
+            })
+            ->when($request->area_id, fn ($q, $area) => $q->where('area_id', $area))
+            ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
+            ->get();
+
+        $offlineUsernames = $customers->pluck('ont.pppoe_user')->filter()->toArray();
+        $offlineSessions = collect();
+        if (!empty($offlineUsernames)) {
+            try {
+                $offlineSessions = \App\Models\Radius\RadAcct::whereIn('username', $offlineUsernames)
+                    ->orderByDesc('acctstoptime')
+                    ->get()
+                    ->unique('username')
+                    ->keyBy('username');
+            } catch (\Exception $e) {
+                // ignore
+            }
+        }
+
+        $rows = $customers->map(function (Customer $c) use ($offlineSessions) {
+            $username = $c->ont?->pppoe_user;
+            $s = $offlineSessions->get($username);
+            return [
+                'id' => $c->id,
+                'customer_code' => $c->customer_code,
+                'name' => $c->name,
+                'area' => $c->areaModel?->name ?? $c->area,
+                'package' => $c->package?->name,
+                'username' => $username,
+                'access_mode' => $c->package?->access_mode ?? $c->ont?->access_mode,
+                'mac_address' => $s?->callingstationid,
+                'last_logout' => $s?->acctstoptime ? (string) $s->acctstoptime : null,
+                'status' => $c->status,
+            ];
+        });
+
+        if ($search = trim((string) $request->search)) {
+            $needle = mb_strtolower($search);
+            $rows = $rows->filter(function ($r) use ($needle) {
+                foreach (['name', 'customer_code', 'area', 'package', 'username', 'mac_address'] as $f) {
+                    if ($r[$f] && str_contains(mb_strtolower($r[$f]), $needle)) return true;
+                }
+                return false;
+            });
+        }
+
+        $rows = $rows->sortByDesc('last_logout')->values();
+
+        $perPage = (int) ($request->per_page ?? 20);
+        $page = \Illuminate\Pagination\Paginator::resolveCurrentPage();
+        $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $rows->forPage($page, $perPage)->values(),
+            $rows->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return Inertia::render('Customers/Offline', [
+            'customers' => $paginated,
+            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'packages' => \App\Models\InternetPackage::where('access_mode', '!=', 'voucher')->orderBy('name')->get(['id', 'name']),
+            'filters' => $request->only(['search', 'area_id', 'package_id']),
+            'totalOffline' => $rows->count(),
+        ]);
+    }
+
+    /**
      * Halaman Data Booking (status = booking)
      */
     public function booking(Request $request): Response

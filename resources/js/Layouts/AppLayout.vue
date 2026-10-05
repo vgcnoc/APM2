@@ -197,6 +197,7 @@ const menuItems = [
     { type: 'group', label: 'BILLING & PRODUK' },
     { type: 'link', href: '/customers', icon: 'users', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
     { type: 'link', href: '/customers/online', icon: 'signal', label: 'Online', active: (url) => (url || '').startsWith('/customers/online'), permission: 'menu_customers_online' },
+    { type: 'link', href: '/customers/offline', icon: 'status-offline', label: 'Offline', active: (url) => (url || '').startsWith('/customers/offline'), permission: 'menu_customers_online' },
     { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
 
     { type: 'group', label: 'VOUCHER' },

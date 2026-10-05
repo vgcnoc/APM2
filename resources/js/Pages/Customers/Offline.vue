@@ -1,0 +1,181 @@
+<template>
+    <AppLayout title="Pelanggan Offline" subtitle="Daftar pelanggan aktif/suspend yang sedang tidak terhubung">
+        <!-- Summary -->
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+            <div class="glass-card px-4 py-3 flex items-center gap-3">
+                <span class="relative flex h-3 w-3">
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-gray-400"></span>
+                </span>
+                <div>
+                    <p class="text-[11px] uppercase tracking-wider text-gray-500 font-semibold">Pelanggan Offline</p>
+                    <p class="text-xl font-bold text-gray-900 leading-tight">{{ totalOffline }}</p>
+                </div>
+            </div>
+        </div>
+
+        <DataTable
+            :columns="columns"
+            :data="customers.data"
+            :pagination="customers"
+            searchPlaceholder="Cari nama, area, username..."
+            :filters="filters"
+        >
+            <template #filters>
+                <div class="flex flex-wrap items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto">
+                    <div class="flex flex-col flex-1">
+                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Area</span>
+                        <select v-model="filterArea" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                            <option value="">Semua Area</option>
+                            <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col flex-1">
+                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Paket</span>
+                        <select v-model="filterPackage" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                            <option value="">Semua Paket</option>
+                            <option v-for="p in packages" :key="p.id" :value="p.id">{{ p.name }}</option>
+                        </select>
+                    </div>
+                </div>
+            </template>
+
+            <template #actions>
+                <button id="btn-refresh-offline" @click="refresh" class="btn-secondary bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium text-sm py-2 px-4 rounded-lg shadow-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" :class="{ 'animate-spin': refreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    Refresh
+                </button>
+            </template>
+
+            <template #row="{ row, index }">
+                <td class="text-gray-500 text-xs text-center">
+                    {{ (customers.current_page - 1) * customers.per_page + index + 1 }}
+                </td>
+                <td>
+                    <div class="flex items-center gap-3">
+                        <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0', getAvatarColor(row.name)]">
+                            {{ row.name?.charAt(0).toUpperCase() }}
+                        </div>
+                        <div>
+                            <Link :href="`/customers/${row.id}`" class="text-gray-900 font-semibold text-sm hover:text-blue-500 transition-colors">
+                                {{ row.name }}
+                            </Link>
+                            <p class="text-[10px] text-gray-500 font-mono">{{ row.customer_code }}</p>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span v-if="row.area" class="px-2 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded text-[10px] font-bold whitespace-nowrap uppercase">{{ row.area }}</span>
+                    <span v-else class="px-2 py-1 bg-gray-50 text-gray-500 border border-gray-100 rounded text-[10px] font-bold whitespace-nowrap uppercase">-</span>
+                </td>
+                <td>
+                    <div v-if="row.package" class="flex items-center gap-1.5 text-blue-500 text-xs font-bold whitespace-nowrap">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+                        {{ row.package }}
+                    </div>
+                    <span v-else class="text-xs text-gray-400">-</span>
+                </td>
+                <td>
+                    <span class="inline-flex px-2 py-1 bg-gray-50 text-gray-700 border border-gray-200 rounded text-xs font-mono font-medium">{{ row.username || '-' }}</span>
+                </td>
+                <td>
+                    <span v-if="row.access_mode" :class="['inline-flex px-2 py-1 border rounded text-[10px] font-bold uppercase whitespace-nowrap', modeClass(row.access_mode)]">
+                        {{ modeLabel(row.access_mode) }}
+                    </span>
+                    <span v-else class="text-xs text-gray-400">-</span>
+                </td>
+                <td class="font-mono text-xs text-gray-700">{{ row.mac_address || '-' }}</td>
+                <td>
+                    <div class="flex flex-col">
+                        <span class="text-xs text-red-500 font-medium whitespace-nowrap">Last Logout:</span>
+                        <span class="text-[10px] text-gray-600">{{ formatDate(row.last_logout) || 'Belum Login' }}</span>
+                    </div>
+                </td>
+            </template>
+        </DataTable>
+    </AppLayout>
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import { Link, router } from '@inertiajs/vue3';
+import AppLayout from '@/Layouts/AppLayout.vue';
+import DataTable from '@/Components/DataTable.vue';
+
+const props = defineProps({
+    customers: Object,
+    areas: { type: Array, default: () => [] },
+    packages: { type: Array, default: () => [] },
+    filters: { type: Object, default: () => ({}) },
+    totalOffline: { type: Number, default: 0 },
+});
+
+const columns = [
+    { key: 'index', label: '#' },
+    { key: 'name', label: 'PELANGGAN' },
+    { key: 'area', label: 'AREA' },
+    { key: 'package', label: 'PAKET' },
+    { key: 'username', label: 'USERNAME PPP' },
+    { key: 'access_mode', label: 'MODE' },
+    { key: 'mac_address', label: 'MAC ADDRESS' },
+    { key: 'last_logout', label: 'STATUS' },
+];
+
+function getAvatarColor(name) {
+    if (!name) return 'bg-gray-500';
+    const colors = ['bg-indigo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-pink-500', 'bg-orange-500'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+}
+
+const filterArea = ref(props.filters?.area_id || '');
+const filterPackage = ref(props.filters?.package_id || '');
+const refreshing = ref(false);
+
+function applyFilters() {
+    router.get('/customers/offline', {
+        search: props.filters?.search || undefined,
+        area_id: filterArea.value || undefined,
+        package_id: filterPackage.value || undefined,
+    }, { preserveState: true, preserveScroll: true });
+}
+
+function refresh() {
+    refreshing.value = true;
+    router.reload({
+        only: ['customers', 'totalOffline'],
+        onFinish: () => (refreshing.value = false),
+    });
+}
+
+function formatDate(isoString) {
+    if (!isoString) return '-';
+    const date = new Date(isoString);
+    return date.toLocaleString('id-ID', {
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+    });
+}
+
+const modeLabels = {
+    pppoe: 'PPPoE',
+    hotspot: 'Hotspot',
+    static_ip: 'Static IP',
+    voucher: 'Voucher',
+    lainnya: 'Lainnya',
+};
+
+function modeLabel(mode) {
+    return modeLabels[mode] || mode;
+}
+
+function modeClass(mode) {
+    switch (mode) {
+        case 'pppoe': return 'bg-indigo-50 text-indigo-600 border-indigo-200';
+        case 'hotspot': return 'bg-amber-50 text-amber-600 border-amber-200';
+        case 'static_ip': return 'bg-sky-50 text-sky-600 border-sky-200';
+        default: return 'bg-gray-50 text-gray-600 border-gray-200';
+    }
+}
+</script>
