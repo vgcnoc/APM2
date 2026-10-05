@@ -100,7 +100,7 @@ const resetForm = useForm({
 
 const openResetModal = (reseller) => {
     resetReseller.value = reseller;
-    resetForm.email = reseller.customer.email || '';
+    resetForm.email = reseller.user ? reseller.user.email : '';
     resetForm.password = '';
     showResetModal.value = true;
 };
@@ -112,15 +112,15 @@ const closeResetModal = () => {
 };
 
 const resetPassword = () => {
-    if (!resetReseller.value || !resetReseller.value.customer) return;
+    if (!resetReseller.value) return;
     
-    resetForm.post(route('customers.reset-password', resetReseller.value.customer.id), {
+    resetForm.post(route('resellers.reset-password', resetReseller.value.id), {
         preserveScroll: true,
         onSuccess: () => {
             closeResetModal();
             Swal.fire(
                 'Berhasil!',
-                'Password akun berhasil diubah.',
+                'Data akun login berhasil diubah.',
                 'success'
             );
         }
@@ -229,10 +229,10 @@ const deleteReseller = (reseller) => {
                                     <Link v-if="reseller.customer" :href="`/customers/${reseller.customer.id}/edit`" class="text-indigo-600 hover:text-indigo-900 p-2 rounded-lg hover:bg-indigo-50 transition-colors ml-1" title="Edit Profil Pelanggan">
                                         <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                     </Link>
-                                    <button v-if="reseller.customer && !reseller.customer.user" @click="openCreateAccountModal(reseller)" class="text-emerald-600 hover:text-emerald-900 p-2 rounded-lg hover:bg-emerald-50 transition-colors ml-1" title="Buat Akun Login">
+                                    <button v-if="reseller.customer && !reseller.user" @click="openCreateAccountModal(reseller)" class="text-emerald-600 hover:text-emerald-900 p-2 rounded-lg hover:bg-emerald-50 transition-colors ml-1" title="Buat Akun Login">
                                         <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                                     </button>
-                                    <button v-if="reseller.customer && reseller.customer.user" @click="openResetModal(reseller)" class="text-amber-600 hover:text-amber-900 p-2 rounded-lg hover:bg-amber-50 transition-colors ml-1" title="Ubah Password Akun">
+                                    <button v-if="reseller.customer && reseller.user" @click="openResetModal(reseller)" class="text-amber-600 hover:text-amber-900 p-2 rounded-lg hover:bg-amber-50 transition-colors ml-1" title="Ubah Password Akun">
                                         <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
                                     </button>
                                     <button @click="openEditModal(reseller)" class="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition-colors ml-1" title="Edit Dompet">

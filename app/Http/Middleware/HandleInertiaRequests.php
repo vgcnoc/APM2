@@ -33,12 +33,20 @@ class HandleInertiaRequests extends Middleware
                 return [
                     'user' => $request->user() ? (function () use ($request) {
                         $customerData = null;
-                        if (in_array($request->user()->role, ['customer', 'reseller'])) {
+                        if ($request->user()->role === 'customer') {
                             $customer = \App\Models\Customer::where('user_id', $request->user()->id)->first();
                             if ($customer) {
                                 $customerData = [
-                                    'is_reseller' => (bool) $customer->is_reseller,
+                                    'is_reseller' => (bool) $customer->is_reseller, // Although not used for auth anymore
                                     'has_package' => !empty($customer->package_id),
+                                ];
+                            }
+                        } elseif ($request->user()->role === 'reseller') {
+                            $reseller = \App\Models\Reseller::where('user_id', $request->user()->id)->first();
+                            if ($reseller) {
+                                $customerData = [
+                                    'is_reseller' => true,
+                                    'has_package' => false,
                                 ];
                             }
                         }

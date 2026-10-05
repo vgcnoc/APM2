@@ -12,6 +12,7 @@ class Reseller extends Model
 
     protected $fillable = [
         'customer_id',
+        'user_id',
         'balance',
         'is_active',
     ];
@@ -19,5 +20,10 @@ class Reseller extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

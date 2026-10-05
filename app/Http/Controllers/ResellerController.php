@@ -18,7 +18,7 @@ class ResellerController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Reseller::with(['customer.areaModel', 'customer.package', 'customer.user'])
+        $query = Reseller::with(['customer.areaModel', 'customer.package', 'customer.user', 'user'])
             ->whereHas('customer', function($q) {
                 $q->where('status', 'active');
             });
@@ -94,17 +94,12 @@ class ResellerController extends Controller
             return redirect()->back()->with('error', 'Data pelanggan tidak ditemukan.');
         }
 
-        if ($customer->user_id) {
+        if ($reseller->user_id) {
             return redirect()->back()->with('error', 'Reseller ini sudah memiliki akun.');
         }
 
         try {
-            DB::transaction(function () use ($customer, $validated) {
-                // Update customer email if different
-                if ($customer->email !== $validated['email']) {
-                    $customer->update(['email' => $validated['email']]);
-                }
-
+            DB::transaction(function () use ($customer, $reseller, $validated) {
                 // Ensure reseller role exists
                 $role = Role::firstOrCreate(['name' => 'reseller']);
 
@@ -119,12 +114,42 @@ class ResellerController extends Controller
 
                 $user->assignRole($role);
 
-                $customer->update(['user_id' => $user->id]);
+                $reseller->update(['user_id' => $user->id]);
             });
 
             return redirect()->back()->with('success', 'Akun reseller berhasil dibuat.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Gagal membuat akun: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Update akun login reseller (password dan email)
+     */
+    public function resetPassword(Request $request, Reseller $reseller)
+    {
+        $validated = $request->validate([
+            'email' => 'nullable|email|unique:users,email,' . $reseller->user_id,
+            'password' => 'nullable|string|min:8',
+        ]);
+
+        if (!$reseller->user_id || !$reseller->user) {
+            return redirect()->back()->with('error', 'Reseller ini belum memiliki akun.');
+        }
+
+        $userUpdates = [];
+        if (!empty($validated['password'])) {
+            $userUpdates['password'] = bcrypt($validated['password']);
+        }
+        if (!empty($validated['email'])) {
+            $userUpdates['email'] = $validated['email'];
+        }
+
+        if (!empty($userUpdates)) {
+            $reseller->user->update($userUpdates);
+            return redirect()->back()->with('success', 'Data akun login reseller berhasil diubah.');
+        }
+
+        return redirect()->back()->with('info', 'Tidak ada perubahan pada akun login.');
     }
 }

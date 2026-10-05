@@ -18,13 +18,11 @@ class ResellerClientController extends Controller
     {
         $user = auth()->user();
         
-        // Find reseller by matching customer's user_id
-        $customer = \App\Models\Customer::where('user_id', $user->id)->first();
-        if (!$customer || !$customer->reseller) {
+        // Find reseller by matching user_id
+        $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+        if (!$reseller) {
             abort(403, 'Anda tidak memiliki akses sebagai reseller.');
         }
-
-        $reseller = $customer->reseller;
 
         $vouchers = Voucher::where('reseller_id', $reseller->id)
             ->latest()
@@ -45,13 +43,11 @@ class ResellerClientController extends Controller
     public function generateVouchers(Request $request)
     {
         $user = auth()->user();
-        $customer = \App\Models\Customer::where('user_id', $user->id)->first();
+        $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
         
-        if (!$customer || !$customer->reseller) {
+        if (!$reseller) {
             abort(403, 'Akses ditolak.');
         }
-
-        $reseller = $customer->reseller;
 
         $validated = $request->validate([
             'profile_id' => 'required|exists:voucher_profiles,id',
