@@ -22,6 +22,8 @@ class InvoiceController extends Controller
             $query->where('due_date', '<', now())->where('status', '!=', 'paid');
         } elseif ($tab === 'piutang') {
             $query->where('status', 'partial');
+        } elseif ($tab === 'lunas') {
+            $query->where('status', 'paid');
         }
 
         if ($request->filled('search')) {
@@ -56,6 +58,7 @@ class InvoiceController extends Controller
             'semua' => Invoice::count(),
             'jatuh_tempo' => Invoice::where('due_date', '<', now())->where('status', '!=', 'paid')->count(),
             'piutang' => Invoice::where('status', 'partial')->count(),
+            'lunas' => Invoice::where('status', 'paid')->count(),
         ];
 
         $invoices = $query->latest('id')
