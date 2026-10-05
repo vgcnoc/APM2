@@ -1563,7 +1563,7 @@ function submitEditActive() {
 // ── Buat Akun ───────────────────────────────────────────────
 const showAccountModal = ref(false);
 const accountForm = useForm({
-    email: '',
+    email: props.customer.email || '',
     password: ''
 });
 

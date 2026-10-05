@@ -35,7 +35,7 @@
                     <div class="p-4 sm:p-6 space-y-4 sm:space-y-5">
                         
                         <!-- Row 1 -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Nama Pelanggan <span class="text-red-500">*</span></label>
                                 <input v-model="form.name" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: Budi Santoso" required />
@@ -45,6 +45,11 @@
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">No WA</label>
                                 <input v-model="form.phone" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: 08123456789" />
                                 <p v-if="form.errors.phone" class="text-red-400 text-xs mt-1">{{ form.errors.phone }}</p>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Email (Opsional)</label>
+                                <input v-model="form.email" type="email" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: budi@gmail.com" />
+                                <p v-if="form.errors.email" class="text-red-400 text-xs mt-1">{{ form.errors.email }}</p>
                             </div>
                         </div>
 
@@ -272,6 +277,7 @@ function handleKtpUpload(e) {
 
 const form = useForm({
     name: '',
+    email: '',
     phone: '',
     area: '',
     package_id: '',
