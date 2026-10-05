@@ -23,7 +23,7 @@ class CustomerController extends Controller
      */
     public function index(Request $request): Response
     {
-        $customers = Customer::with(['package', 'ont.odp', 'areaModel'])
+        $baseQuery = Customer::query()
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
                     $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
@@ -38,18 +38,62 @@ class CustomerController extends Controller
                             });
                     });
                 }
-            })
+            });
+
+        // 1. Calculate Stats
+        $now = now();
+        $lastMonth = now()->subMonth();
+
+        $totalCustomers = (clone $baseQuery)->count();
+        $lastMonthTotal = (clone $baseQuery)->where('created_at', '<', $now->copy()->startOfMonth())->count();
+        $totalGrowth = $lastMonthTotal > 0 ? round((($totalCustomers - $lastMonthTotal) / $lastMonthTotal) * 100, 1) : ($totalCustomers > 0 ? 100 : 0);
+
+        $activeCustomers = (clone $baseQuery)->where('status', 'active')->count();
+        $lastMonthActive = (clone $baseQuery)->where('status', 'active')->where('created_at', '<', $now->copy()->startOfMonth())->count();
+        $activeGrowth = $lastMonthActive > 0 ? round((($activeCustomers - $lastMonthActive) / $lastMonthActive) * 100, 1) : ($activeCustomers > 0 ? 100 : 0);
+        $activePercentage = $totalCustomers > 0 ? round(($activeCustomers / $totalCustomers) * 100, 1) : 0;
+
+        $pendingCustomers = (clone $baseQuery)->whereIn('status', ['booking', 'survey', 'installing'])->count();
+        $lastMonthPending = (clone $baseQuery)->whereIn('status', ['booking', 'survey', 'installing'])->where('created_at', '<', $now->copy()->startOfMonth())->count();
+        $pendingGrowth = $lastMonthPending > 0 ? round((($pendingCustomers - $lastMonthPending) / $lastMonthPending) * 100, 1) : ($pendingCustomers > 0 ? 100 : 0);
+        $pendingPercentage = $totalCustomers > 0 ? round(($pendingCustomers / $totalCustomers) * 100, 1) : 0;
+
+        $inactiveCustomers = (clone $baseQuery)->whereIn('status', ['suspended', 'terminated'])->count();
+        $lastMonthInactive = (clone $baseQuery)->whereIn('status', ['suspended', 'terminated'])->where('created_at', '<', $now->copy()->startOfMonth())->count();
+        $inactiveGrowth = $lastMonthInactive > 0 ? round((($inactiveCustomers - $lastMonthInactive) / $lastMonthInactive) * 100, 1) : ($inactiveCustomers > 0 ? 100 : 0);
+        $inactivePercentage = $totalCustomers > 0 ? round(($inactiveCustomers / $totalCustomers) * 100, 1) : 0;
+
+        // 2. Fetch Data
+        $customers = (clone $baseQuery)
+            ->with(['package', 'ont.odp', 'areaModel'])
             ->search($request->search)
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
-            ->orderByDesc('created_at')
-            ->paginate($request->per_page ?? 15)
+            ->when($request->area_id, fn ($q, $area) => $q->where('area_id', $area))
+            ->when($request->odp_id, fn ($q, $odp) => $q->whereHas('ont', fn ($oq) => $oq->where('odp_id', $odp)))
+            ->when($request->sort_by, function ($q, $sort) {
+                return match($sort) {
+                    'terlama' => $q->orderBy('created_at', 'asc'),
+                    'nama_asc' => $q->orderBy('name', 'asc'),
+                    'nama_desc' => $q->orderBy('name', 'desc'),
+                    default => $q->orderByDesc('created_at'),
+                };
+            }, fn ($q) => $q->orderByDesc('created_at'))
+            ->paginate($request->per_page ?? 10)
             ->withQueryString();
 
         return Inertia::render('Customers/Index', [
             'customers' => $customers,
             'packages' => InternetPackage::active()->get(),
-            'filters' => $request->only(['search', 'status', 'package_id']),
+            'areas' => \App\Models\Area::orderBy('name')->get(),
+            'odps' => class_exists('\App\Models\Odp') ? \App\Models\Odp::orderBy('name')->get() : [],
+            'filters' => $request->only(['search', 'status', 'package_id', 'area_id', 'odp_id', 'sort_by']),
+            'stats' => [
+                'total' => ['value' => $totalCustomers, 'growth' => $totalGrowth],
+                'active' => ['value' => $activeCustomers, 'percentage' => $activePercentage, 'growth' => $activeGrowth],
+                'pending' => ['value' => $pendingCustomers, 'percentage' => $pendingPercentage, 'growth' => $pendingGrowth],
+                'inactive' => ['value' => $inactiveCustomers, 'percentage' => $inactivePercentage, 'growth' => $inactiveGrowth],
+            ],
             'statusOptions' => [
                 'booking' => 'Booking',
                 'survey' => 'Survey',

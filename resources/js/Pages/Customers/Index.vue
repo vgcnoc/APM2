@@ -1,37 +1,191 @@
 <template>
     <AppLayout title="Data Pelanggan" subtitle="Kelola semua data pelanggan ISP">
+        <!-- STATS SECTION -->
+        <div v-if="stats" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <!-- Total Pelanggan -->
+            <div class="glass-card p-5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Total Pelanggan</p>
+                        <h3 class="text-2xl font-bold text-gray-900">{{ stats.total.value }}</h3>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end">
+                    <span :class="['text-sm font-semibold', stats.total.growth >= 0 ? 'text-green-500' : 'text-red-500']">
+                        <span v-if="stats.total.growth > 0">↗</span>
+                        <span v-else-if="stats.total.growth < 0">↘</span>
+                        {{ Math.abs(stats.total.growth) }}%
+                    </span>
+                    <span class="text-[10px] text-gray-400">Dari bulan lalu</span>
+                </div>
+            </div>
+
+            <!-- Pelanggan Aktif -->
+            <div class="glass-card p-5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-400 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Pelanggan Aktif</p>
+                        <h3 class="text-2xl font-bold text-gray-900">{{ stats.active.value }}</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ stats.active.percentage }}%</p>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end justify-start h-full">
+                    <span :class="['text-sm font-semibold mt-1', stats.active.growth >= 0 ? 'text-green-500' : 'text-red-500']">
+                        <span v-if="stats.active.growth > 0">↗</span>
+                        <span v-else-if="stats.active.growth < 0">↘</span>
+                        {{ Math.abs(stats.active.growth) }}%
+                    </span>
+                </div>
+            </div>
+
+            <!-- Pelanggan Pending -->
+            <div class="glass-card p-5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-yellow-400 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Pelanggan Pending</p>
+                        <h3 class="text-2xl font-bold text-gray-900">{{ stats.pending.value }}</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ stats.pending.percentage }}%</p>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end justify-start h-full">
+                    <span :class="['text-sm font-semibold mt-1', stats.pending.growth >= 0 ? 'text-green-500' : 'text-red-500']">
+                        <span v-if="stats.pending.growth > 0">↗</span>
+                        <span v-else-if="stats.pending.growth < 0">↘</span>
+                        {{ Math.abs(stats.pending.growth) }}%
+                    </span>
+                </div>
+            </div>
+
+            <!-- Pelanggan Nonaktif -->
+            <div class="glass-card p-5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-red-400 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Pelanggan Nonaktif</p>
+                        <h3 class="text-2xl font-bold text-gray-900">{{ stats.inactive.value }}</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ stats.inactive.percentage }}%</p>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end justify-start h-full">
+                    <span :class="['text-sm font-semibold mt-1', stats.inactive.growth >= 0 ? 'text-green-500' : 'text-red-500']">
+                        <span v-if="stats.inactive.growth > 0">↗</span>
+                        <span v-else-if="stats.inactive.growth < 0">↘</span>
+                        {{ Math.abs(stats.inactive.growth) }}%
+                    </span>
+                </div>
+            </div>
+        </div>
+
         <DataTable
             :columns="columns"
             :data="customers.data"
             :pagination="customers"
-            searchPlaceholder="Cari nama, kode, telepon..."
+            searchPlaceholder="Cari nama, kode pelanggan, telepon, atau alamat..."
             searchRoute="/customers"
             selectable
             v-model:selected="selectedIds"
         >
             <!-- Filter Slot -->
             <template #filters>
-                <select
-                    v-model="filterStatus"
-                    @change="applyFilters"
-                    class="form-select w-40"
-                >
-                    <option value="">Semua Status</option>
-                    <option v-for="(label, key) in statusOptions" :key="key" :value="key">
-                        {{ label }}
-                    </option>
-                </select>
+                <!-- Status -->
+                <div class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
+                    <div class="shrink-0 mr-2 text-gray-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    </div>
+                    <div class="flex flex-col flex-1">
+                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Status</span>
+                        <select v-model="filterStatus" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                            <option value="">Semua Status</option>
+                            <option v-for="(label, key) in statusOptions" :key="key" :value="key">{{ label }}</option>
+                        </select>
+                    </div>
+                </div>
 
-                <select
-                    v-model="filterPackage"
-                    @change="applyFilters"
-                    class="form-select w-44"
-                >
-                    <option value="">Semua Paket</option>
-                    <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
-                        {{ pkg.name }}
-                    </option>
-                </select>
+                <!-- Paket -->
+                <div class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
+                    <div class="shrink-0 mr-2 text-gray-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    </div>
+                    <div class="flex flex-col flex-1">
+                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Paket</span>
+                        <select v-model="filterPackage" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                            <option value="">Semua Paket</option>
+                            <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">{{ pkg.name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Area -->
+                <div class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
+                    <div class="shrink-0 mr-2 text-gray-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                    <div class="flex flex-col flex-1">
+                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Area</span>
+                        <select v-model="filterArea" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                            <option value="">Semua Area</option>
+                            <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- ODP -->
+                <div class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
+                    <div class="shrink-0 mr-2 text-gray-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    </div>
+                    <div class="flex flex-col flex-1">
+                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">ODP</span>
+                        <select v-model="filterOdp" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                            <option value="">Semua ODP</option>
+                            <option v-for="odp in odps" :key="odp.id" :value="odp.id">{{ odp.name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Urutkan -->
+                <div class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
+                    <div class="shrink-0 mr-2 text-gray-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
+                    </div>
+                    <div class="flex flex-col flex-1">
+                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Urutkan</span>
+                        <select v-model="filterSort" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                            <option value="">Terbaru</option>
+                            <option value="terlama">Terlama</option>
+                            <option value="nama_asc">Nama (A-Z)</option>
+                            <option value="nama_desc">Nama (Z-A)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Spacer to push reset to right -->
+                <div class="hidden xl:block flex-1"></div>
+
+                <!-- Reset Button -->
+                <button @click="resetFilters" class="btn-secondary bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium text-sm py-2 px-4 rounded-lg shadow-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    Reset
+                </button>
             </template>
 
             <!-- Action Button -->
@@ -46,72 +200,91 @@
 
             <!-- Table Rows -->
             <template #row="{ row, index }">
+                <td class="text-gray-500 text-xs text-center">
+                    {{ (customers.current_page - 1) * customers.per_page + index + 1 }}
+                </td>
                 <td>
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold text-gray-900 shrink-0">
-                            {{ row.name.charAt(0) }}
+                        <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0', getAvatarColor(row.name)]">
+                            {{ row.name.charAt(0).toUpperCase() }}
                         </div>
                         <div>
-                            <Link :href="`/customers/${row.id}`" class="text-gray-900 font-medium hover:text-blue-400 transition-colors">
+                            <Link :href="`/customers/${row.id}`" class="text-gray-900 font-semibold text-sm hover:text-blue-500 transition-colors">
                                 {{ row.name }}
                             </Link>
-                            <p class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</p>
+                            <p class="text-[10px] text-gray-500 font-mono">{{ row.customer_code }}</p>
                         </div>
                     </div>
                 </td>
-                <td class="text-gray-500">{{ row.phone }}</td>
-                <td class="max-w-[200px] truncate text-gray-500 text-xs">{{ row.address }}</td>
-                <td class="text-gray-700 text-xs font-medium">{{ row.area_model?.name || row.area || '-' }}</td>
                 <td>
-                    <span v-if="row.package" class="text-xs text-cyan-400 font-medium">
-                        {{ row.package.name }}
-                    </span>
-                    <span v-else class="text-xs text-gray-600">-</span>
+                    <div class="flex items-center gap-1.5 text-gray-600 text-xs whitespace-nowrap">
+                        <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                        {{ row.phone }}
+                    </div>
                 </td>
                 <td>
-                    <div class="flex flex-col gap-1.5 items-start">
+                    <div class="flex items-start gap-1.5 text-gray-500 text-xs max-w-[200px]">
+                        <svg class="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span class="truncate" :title="row.address">{{ row.address }}</span>
+                    </div>
+                </td>
+                <td>
+                    <span v-if="row.area_model" class="px-2 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded text-[10px] font-bold whitespace-nowrap uppercase">{{ row.area_model.name }}</span>
+                    <span v-else class="px-2 py-1 bg-gray-50 text-gray-500 border border-gray-100 rounded text-[10px] font-bold whitespace-nowrap uppercase">{{ row.area || '-' }}</span>
+                </td>
+                <td>
+                    <div v-if="row.package" class="flex items-center gap-1.5 text-blue-500 text-xs font-bold whitespace-nowrap">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+                        {{ row.package.name }}
+                    </div>
+                    <span v-else class="text-xs text-gray-400">-</span>
+                </td>
+                <td>
+                    <div class="flex flex-col gap-1 items-start">
                         <StatusBadge :status="row.status" />
                         <div v-if="row.status === 'active' && row.ont?.pppoe_user">
-                            <span v-if="onlineUsernames?.includes(row.ont.pppoe_user)" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">
-                                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Online
+                            <span v-if="onlineUsernames?.includes(row.ont.pppoe_user)" class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
                             </span>
-                            <span v-else class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700">
+                            <span v-else class="inline-flex items-center gap-1 text-[10px] font-semibold text-red-500">
                                 <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Offline
                             </span>
                         </div>
                     </div>
                 </td>
                 <td>
-                    <span v-if="row.ont" class="text-xs font-mono text-emerald-400">
+                    <span v-if="row.ont" class="px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded text-[10px] font-bold whitespace-nowrap uppercase">
                         {{ row.ont.odp?.name || '-' }}
                     </span>
-                    <span v-else class="text-xs text-gray-600">Belum terpasang</span>
+                    <span v-else class="text-xs text-gray-400">-</span>
                 </td>
             </template>
 
             <!-- Row Actions -->
             <template #rowActions="{ row }">
                 <div class="flex items-center justify-end gap-1">
-                    <button v-if="row.status === 'active' && row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" @click="kickSession(row.ont.pppoe_user)" class="p-2 rounded-lg text-gray-500 hover:bg-orange-50 hover:text-orange-500 transition-all border border-transparent hover:border-orange-200 shadow-sm hover:shadow" title="Kick Sesi Online">
+                    <button v-if="row.status === 'active' && row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" @click="kickSession(row.ont.pppoe_user)" class="p-1.5 rounded-md text-gray-400 hover:bg-orange-50 hover:text-orange-500 transition-colors" title="Kick Sesi Online">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                     </button>
-                    <Link :href="`/customers/${row.id}`" class="p-2 rounded-lg text-gray-500 hover:bg-white hover:text-blue-400 transition-all" title="Lihat Detail">
+                    <Link :href="`/customers/${row.id}`" class="p-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-blue-500 transition-colors shadow-sm bg-white" title="Lihat">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                         </svg>
                     </Link>
-                    <Link :href="`/customers/${row.id}/edit`" class="p-2 rounded-lg text-gray-500 hover:bg-white hover:text-yellow-400 transition-all" title="Edit">
+                    <Link :href="`/customers/${row.id}/edit`" class="p-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors shadow-sm bg-white" title="Edit">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                         </svg>
                     </Link>
-                    <button @click="confirmDelete(row)" class="p-2 rounded-lg text-gray-500 hover:bg-red-500/10 hover:text-red-400 transition-all" title="Hapus">
+                    <button @click="confirmDelete(row)" class="p-1.5 rounded-md border border-gray-200 text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm bg-white" title="Hapus">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                         </svg>
+                    </button>
+                    <button class="p-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors shadow-sm bg-white ml-1" title="Lainnya">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
                     </button>
                 </div>
             </template>
@@ -161,6 +334,9 @@ import StatusBadge from '@/Components/StatusBadge.vue';
 const props = defineProps({
     customers: Object,
     packages: Array,
+    areas: Array,
+    odps: Array,
+    stats: Object,
     filters: Object,
     statusOptions: Object,
     onlineUsernames: {
@@ -210,23 +386,46 @@ function bulkDelete() {
 }
 
 const columns = [
-    { key: 'name', label: 'Pelanggan' },
-    { key: 'phone', label: 'Telepon' },
-    { key: 'address', label: 'Alamat' },
-    { key: 'area', label: 'Area' },
-    { key: 'package', label: 'Paket' },
-    { key: 'status', label: 'Status' },
+    { key: 'index', label: '#' },
+    { key: 'name', label: 'PELANGGAN' },
+    { key: 'phone', label: 'KONTAK' },
+    { key: 'address', label: 'ALAMAT' },
+    { key: 'area', label: 'AREA' },
+    { key: 'package', label: 'PAKET' },
+    { key: 'status', label: 'STATUS' },
     { key: 'odp', label: 'ODP' },
 ];
 
+function getAvatarColor(name) {
+    const colors = ['bg-indigo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-pink-500', 'bg-orange-500'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+}
+
 const filterStatus = ref(props.filters?.status || '');
 const filterPackage = ref(props.filters?.package_id || '');
+const filterArea = ref(props.filters?.area_id || '');
+const filterOdp = ref(props.filters?.odp_id || '');
+const filterSort = ref(props.filters?.sort_by || '');
 
 function applyFilters() {
     router.get('/customers', {
         status: filterStatus.value || undefined,
         package_id: filterPackage.value || undefined,
+        area_id: filterArea.value || undefined,
+        odp_id: filterOdp.value || undefined,
+        sort_by: filterSort.value || undefined,
     }, { preserveState: true, preserveScroll: true });
+}
+
+function resetFilters() {
+    filterStatus.value = '';
+    filterPackage.value = '';
+    filterArea.value = '';
+    filterOdp.value = '';
+    filterSort.value = '';
+    applyFilters();
 }
 
 // ── Delete Modal ───────────────────────────────────────────
