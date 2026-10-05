@@ -32,7 +32,12 @@ class VoucherController extends Controller
         }
 
         $vouchers = $query->latest()->paginate(20)->withQueryString();
-        $profiles = VoucherProfile::all();
+        $user = auth()->user();
+        if ($user->isAdmin()) {
+            $profiles = VoucherProfile::all();
+        } else {
+            $profiles = $user->voucherProfiles()->get();
+        }
         $resellers = \App\Models\Reseller::with('customer')->get();
 
         return Inertia::render('Vouchers/Index', [
