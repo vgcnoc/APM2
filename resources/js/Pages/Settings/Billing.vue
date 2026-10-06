@@ -165,6 +165,7 @@
                                         <span class="text-xs font-medium text-red-500 mt-2 block" v-if="form.isolate_days == 0">Peringatan: Jika di set 0, internet langsung terisolir di hari tagihan terbit.</span>
                                     </div>
                                 </div>
+                            </div>
                         </div>
                         
                         <hr class="border-gray-100 border-dashed">
