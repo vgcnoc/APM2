@@ -1,5 +1,9 @@
 <template>
-    <AppLayout title="Voucher Offline" subtitle="Daftar voucher yang sedang tidak terhubung / offline">
+    <component :is="layoutComponent" title="Voucher Offline" subtitle="Daftar voucher yang sedang tidak terhubung / offline">
+        <div v-if="layoutComponent === ClientAreaLayout" class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-900">Voucher Offline</h1>
+            <p class="text-sm text-gray-500">Daftar voucher yang sedang tidak terhubung / offline</p>
+        </div>
         <!-- Summary -->
         <div class="flex flex-wrap items-center gap-3 mb-4">
             <div class="glass-card px-4 py-3 flex items-center gap-3">
@@ -74,13 +78,22 @@
                 </div>
             </template>
         </DataTable>
-    </AppLayout>
+    </component>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import ClientAreaLayout from '@/Layouts/ClientAreaLayout.vue';
+import { usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+const layoutComponent = computed(() => {
+    return page.props.auth?.user?.role === 'reseller' || page.props.auth?.user?.role === 'customer' 
+        ? ClientAreaLayout 
+        : AppLayout;
+});
 import DataTable from '@/Components/DataTable.vue';
 
 const props = defineProps({

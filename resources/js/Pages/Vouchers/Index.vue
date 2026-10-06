@@ -1,5 +1,9 @@
 <template>
-    <AppLayout title="Data Voucher" subtitle="Kelola dan generate voucher hotspot">
+    <component :is="layoutComponent" title="Data Voucher" subtitle="Kelola dan generate voucher hotspot">
+        <div v-if="layoutComponent === ClientAreaLayout" class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-900">Data Voucher</h1>
+            <p class="text-sm text-gray-500">Kelola dan lihat semua voucher Anda</p>
+        </div>
         <!-- HEADER -->
         <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div class="flex gap-2 w-full sm:w-auto">
@@ -213,14 +217,22 @@
             </div>
         </div>
 
-    </AppLayout>
+    </component>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm, router, Link } from '@inertiajs/vue3';
+import { useForm, router, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import ClientAreaLayout from '@/Layouts/ClientAreaLayout.vue';
 import Swal from 'sweetalert2';
+
+const page = usePage();
+const layoutComponent = computed(() => {
+    return page.props.auth?.user?.role === 'reseller' || page.props.auth?.user?.role === 'customer' 
+        ? ClientAreaLayout 
+        : AppLayout;
+});
 
 const props = defineProps({
     vouchers: Object,

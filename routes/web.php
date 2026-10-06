@@ -47,6 +47,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/installed', [CustomerController::class, 'installed'])->name('installed');
         Route::get('/activation', [CustomerController::class, 'activation'])->name('activation');
         Route::get('/active', [CustomerController::class, 'active'])->name('active');
+        Route::get('/isolir', [CustomerController::class, 'isolir'])->name('isolir');
         Route::get('/online', [CustomerController::class, 'online'])->name('online');
         Route::get('/offline', [CustomerController::class, 'offline'])->name('offline');
 

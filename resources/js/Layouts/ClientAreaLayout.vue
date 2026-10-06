@@ -5,12 +5,20 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
-                        <Link href="/" class="flex-shrink-0 flex items-center gap-2 group">
+                        <Link href="/client-area/dashboard" class="flex-shrink-0 flex items-center gap-2 group">
                             <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/50 transition-all duration-300">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                             </div>
                             <span class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700">Reseller Area</span>
                         </Link>
+                    </div>
+                    
+                    <div class="hidden md:flex items-center gap-8 flex-1 ml-10">
+                        <Link href="/client-area/dashboard" class="text-sm font-medium text-gray-600 hover:text-blue-600">Dashboard</Link>
+                        <Link href="/vouchers" class="text-sm font-medium text-gray-600 hover:text-blue-600">Semua Voucher</Link>
+                        <Link href="/vouchers/online" class="text-sm font-medium text-gray-600 hover:text-blue-600">Online</Link>
+                        <Link href="/vouchers/offline" class="text-sm font-medium text-gray-600 hover:text-blue-600">Offline</Link>
+                        <Link href="/vouchers/expired" class="text-sm font-medium text-gray-600 hover:text-blue-600">Expired</Link>
                     </div>
 
                     <!-- User Menu -->

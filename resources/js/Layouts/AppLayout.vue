@@ -196,11 +196,12 @@ const menuItems = [
         type: 'dropdown',
         icon: 'users',
         label: 'Data Pelanggan',
-        active: (url) => ['/customers', '/customers/active', '/customers/online', '/customers/offline'].some(path => (url || '') === path || (url || '').startsWith(path + '?')),
+        active: (url) => ['/customers', '/customers/active', '/customers/isolir', '/customers/online', '/customers/offline'].some(path => (url || '') === path || (url || '').startsWith(path + '?')),
         permission: 'menu_customers_all',
         children: [
             { href: '/customers', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
             { href: '/customers/active', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: 'menu_customers_active' },
+            { href: '/customers/isolir', label: 'Pelanggan Isolir', active: (url) => (url || '').startsWith('/customers/isolir'), permission: 'menu_customers_active' },
             { href: '/customers/online', label: 'Online', active: (url) => (url || '').startsWith('/customers/online'), permission: 'menu_customers_online' },
             { href: '/customers/offline', label: 'Offline', active: (url) => (url || '').startsWith('/customers/offline'), permission: 'menu_customers_online' },
         ]

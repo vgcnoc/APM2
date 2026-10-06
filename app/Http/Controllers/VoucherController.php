@@ -30,6 +30,8 @@ class VoucherController extends Controller
                   ->orWhere('username', 'like', "%{$search}%");
             });
         }
+        
+        $this->applyResellerFilter($query);
 
         $vouchers = $query->latest()->paginate(20)->withQueryString();
         $user = auth()->user();
@@ -109,9 +111,10 @@ class VoucherController extends Controller
 
         $vouchers = collect();
         if ($sessions->isNotEmpty()) {
-            $vouchers = Voucher::with('profile', 'reseller.customer.areaModel')
-                ->whereIn('username', $sessions->keys()->all())
-                ->get();
+            $vQuery = Voucher::with('profile', 'reseller.customer.areaModel')
+                ->whereIn('username', $sessions->keys()->all());
+            $this->applyResellerFilter($vQuery);
+            $vouchers = $vQuery->get();
         }
 
         // Map data
@@ -158,9 +161,10 @@ class VoucherController extends Controller
             $latestSessions = collect();
         }
 
-        $vouchers = Voucher::with('profile', 'reseller.customer')
-            ->whereNotIn('username', $onlineUsernames)
-            ->get();
+        $vQuery = Voucher::with('profile', 'reseller.customer')
+            ->whereNotIn('username', $onlineUsernames);
+        $this->applyResellerFilter($vQuery);
+        $vouchers = $vQuery->get();
 
         // Map data
         $rows = $vouchers->map(function ($v) use ($latestSessions) {
@@ -186,9 +190,10 @@ class VoucherController extends Controller
 
     public function expired(Request $request)
     {
-        $vouchers = Voucher::with(['profile', 'reseller.customer'])
-            ->where('status', 'expired')
-            ->get();
+        $vQuery = Voucher::with(['profile', 'reseller.customer'])
+            ->where('status', 'expired');
+        $this->applyResellerFilter($vQuery);
+        $vouchers = $vQuery->get();
 
         $rows = $vouchers->map(function ($v) {
             return [
@@ -205,6 +210,19 @@ class VoucherController extends Controller
         return Inertia::render('Vouchers/Expired', [
             'expiredUsers' => $rows->values()
         ]);
+    }
+
+    private function applyResellerFilter($query)
+    {
+        $user = auth()->user();
+        if ($user && !$user->isAdmin()) {
+            $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+            if ($reseller) {
+                $query->where('reseller_id', $reseller->id);
+            } else {
+                $query->where('id', -1);
+            }
+        }
     }
 
     public function store(Request $request)

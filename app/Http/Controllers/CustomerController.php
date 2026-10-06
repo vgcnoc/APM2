@@ -698,6 +698,54 @@ class CustomerController extends Controller
     }
 
     /**
+     * Halaman Pelanggan Isolir
+     */
+    public function isolir(Request $request): Response
+    {
+        // Exclude pure resellers (customers without a monthly package)
+        $baseQuery = Customer::where('status', 'suspended')->whereNotNull('package_id');
+        
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_active_view_all')) {
+            if (auth()->user()->can('customers_active_view_area')) {
+                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+            } else {
+                $baseQuery->where(function($q) {
+                    $q->where('sales_id', auth()->id())
+                      ->orWhereHas('technicianSchedules', function ($sq) {
+                          $sq->where('technician_id', auth()->id());
+                      });
+                });
+            }
+        }
+        
+        $stats = [
+            'isolir' => (clone $baseQuery)->count(),
+        ];
+
+        $customers = (clone $baseQuery)
+            ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
+                $q->where('type', 'installation')->with('technician');
+            }])
+            ->search($request->search)
+            ->orderByDesc('created_at')
+            ->paginate(15)
+            ->withQueryString();
+
+        return Inertia::render('Customers/Isolir', [
+            'customers' => $customers,
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'tab', 'date', 'area']),
+            'onlineUsernames' => (function() {
+                try {
+                    return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
+                } catch (\Exception $e) {
+                    return [];
+                }
+            })(),
+        ]);
+    }
+
+    /**
      * Form tambah pelanggan baru (booking)
      */
     public function create(): Response
