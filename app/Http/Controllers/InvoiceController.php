@@ -74,6 +74,12 @@ class InvoiceController extends Controller
             'prorata' => Invoice::where('is_prorata', true)->count(),
             'upgrade' => 0, // Placeholder
             'janji_bayar' => Invoice::whereNotNull('promise_date')->where('status', '!=', 'paid')->count(),
+
+            // Amounts for cards
+            'total_unpaid_amount' => Invoice::where('status', 'unpaid')->sum('amount'),
+            'total_paid_amount' => Invoice::where('status', 'paid')->whereMonth('updated_at', now()->month)->sum('amount'),
+            'total_piutang_amount' => Invoice::where('status', 'partial')->sum(\Illuminate\Support\Facades\DB::raw('amount - total_paid')),
+            'total_jatuh_tempo_amount' => Invoice::where('due_date', '<', now())->where('status', '!=', 'paid')->sum(\Illuminate\Support\Facades\DB::raw('amount - total_paid')),
         ];
 
         $invoices = $query->latest('id')
