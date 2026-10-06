@@ -26,6 +26,7 @@ class SettingController extends Controller
             'invoice_issue_date' => Setting::get('invoice_issue_date', '1'),
             'isolate_days' => Setting::get('isolate_days', '3'),
             'isolate_time' => Setting::get('isolate_time', '00:00'),
+            'payment_banks' => json_decode(Setting::get('payment_banks', '[]'), true),
         ]);
     }
 
@@ -37,6 +38,10 @@ class SettingController extends Controller
             'invoice_issue_date' => 'required|integer|min:1|max:28',
             'isolate_days' => 'required|integer|min:0',
             'isolate_time' => 'required|date_format:H:i',
+            'payment_banks' => 'nullable|array',
+            'payment_banks.*.bank_name' => 'required|string',
+            'payment_banks.*.account_name' => 'required|string',
+            'payment_banks.*.account_number' => 'required|string',
         ]);
 
         Setting::set('billing_type', $request->billing_type);
@@ -46,6 +51,7 @@ class SettingController extends Controller
         Setting::set('invoice_issue_date', $request->invoice_issue_date);
         Setting::set('isolate_days', $request->isolate_days);
         Setting::set('isolate_time', $request->isolate_time);
+        Setting::set('payment_banks', json_encode($request->payment_banks ?? []));
 
         return redirect()->back()->with('success', 'Pengaturan billing berhasil diperbarui.');
     }

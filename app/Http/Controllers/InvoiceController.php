@@ -101,6 +101,7 @@ class InvoiceController extends Controller
             'stats' => $stats,
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['search', 'status', 'start_date', 'end_date', 'area_id', 'tab']),
+            'payment_banks' => json_decode(\App\Models\Setting::get('payment_banks', '[]'), true),
         ]);
     }
 

@@ -209,6 +209,25 @@
                                 </div>
                             </div>
 
+                            <!-- List Rekening (Jika Transfer) -->
+                            <div v-if="paymentForm.method === 'transfer' && payment_banks && payment_banks.length > 0" class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-3">Tujuan Transfer</label>
+                                <div class="space-y-2">
+                                    <div v-for="(bank, i) in payment_banks" :key="i" class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                        <div>
+                                            <p class="text-sm font-bold text-gray-900">{{ bank.bank_name }}</p>
+                                            <p class="text-xs text-gray-500 mt-0.5">a.n. {{ bank.account_name }}</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-sm font-bold font-mono text-indigo-600 tracking-wider">{{ bank.account_number }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else-if="paymentForm.method === 'transfer'" class="bg-amber-50 text-amber-700 p-3 rounded-xl border border-amber-200 text-xs text-center">
+                                Belum ada data rekening yang diatur. Silakan atur di Pengaturan Billing.
+                            </div>
+
                             <!-- Notes -->
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Catatan Tambahan (Opsional)</label>
@@ -248,6 +267,7 @@ const props = defineProps({
     stats: Object,
     areas: Array,
     filters: Object,
+    payment_banks: Array,
 });
 
 const columns = [

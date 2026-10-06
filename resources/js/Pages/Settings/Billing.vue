@@ -165,6 +165,52 @@
                                         <span class="text-xs font-medium text-red-500 mt-2 block" v-if="form.isolate_days == 0">Peringatan: Jika di set 0, internet langsung terisolir di hari tagihan terbit.</span>
                                     </div>
                                 </div>
+                        </div>
+                        
+                        <hr class="border-gray-100 border-dashed">
+
+                        <!-- Pengaturan Bank -->
+                        <div>
+                            <div class="flex items-center justify-between mb-6">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                                    </div>
+                                    <h3 class="text-lg font-bold text-gray-900">Rekening Pembayaran</h3>
+                                </div>
+                                <button type="button" @click="addBank" class="px-3 py-1.5 text-xs font-bold bg-blue-50 text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    Tambah Rekening
+                                </button>
+                            </div>
+                            
+                            <div class="space-y-4">
+                                <div v-if="form.payment_banks.length === 0" class="text-center py-8 bg-gray-50 border border-dashed border-gray-200 rounded-xl">
+                                    <p class="text-sm text-gray-500">Belum ada rekening bank yang ditambahkan.</p>
+                                </div>
+                                
+                                <TransitionGroup name="fade" tag="div" class="space-y-4">
+                                    <div v-for="(bank, index) in form.payment_banks" :key="index" class="p-4 bg-white border border-gray-200 shadow-sm rounded-xl flex flex-col md:flex-row gap-4 md:items-start relative">
+                                        <button type="button" @click="removeBank(index)" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors" title="Hapus Rekening">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
+                                        
+                                        <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 mr-6">
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Nama Bank</label>
+                                                <input type="text" v-model="bank.bank_name" placeholder="BCA / Mandiri / BRI" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
+                                            </div>
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Atas Nama</label>
+                                                <input type="text" v-model="bank.account_name" placeholder="PT Contoh Indo" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
+                                            </div>
+                                            <div>
+                                                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Nomor Rekening</label>
+                                                <input type="text" v-model="bank.account_number" placeholder="123456789" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </TransitionGroup>
                             </div>
                         </div>
 
@@ -281,6 +327,7 @@ const props = defineProps({
     invoice_issue_date: String,
     isolate_days: String,
     isolate_time: String,
+    payment_banks: Array,
 });
 
 const form = useForm({
@@ -289,7 +336,20 @@ const form = useForm({
     invoice_issue_date: props.invoice_issue_date || '1',
     isolate_days: props.isolate_days || '3',
     isolate_time: props.isolate_time || '00:00',
+    payment_banks: props.payment_banks || [],
 });
+
+function addBank() {
+    form.payment_banks.push({
+        bank_name: '',
+        account_name: '',
+        account_number: '',
+    });
+}
+
+function removeBank(index) {
+    form.payment_banks.splice(index, 1);
+}
 
 // Simulation Logic
 const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
