@@ -378,6 +378,24 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Pengaturan Pajak -->
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Pengaturan Pajak Pelanggan</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">PPN (%)</label>
+                                    <input v-model="activationForm.tax_ppn" type="number" step="0.01" min="0" max="100" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">BHP (%)</label>
+                                    <input v-model="activationForm.tax_bhp" type="number" step="0.01" min="0" max="100" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">USO (%)</label>
+                                    <input v-model="activationForm.tax_uso" type="number" step="0.01" min="0" max="100" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" />
+                                </div>
+                            </div>
+                        </div>
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Catatan Tambahan (Opsional)</label>
@@ -658,7 +676,10 @@ const activationForm = useForm({
     notes: '',
     free_hotspot: false,
     hotspot_user: '',
-    hotspot_password: ''
+    hotspot_password: '',
+    tax_ppn: 0,
+    tax_bhp: 0,
+    tax_uso: 0,
 });
 
 function openActivationModal(customer) {
@@ -677,6 +698,12 @@ function openActivationModal(customer) {
     activationForm.free_hotspot = !!customer.ont?.free_hotspot;
     activationForm.hotspot_user = customer.ont?.hotspot_user || '';
     activationForm.hotspot_password = customer.ont?.hotspot_password || '';
+    
+    // Default to customer's saved tax or global tax settings
+    activationForm.tax_ppn = customer.tax_ppn !== null ? customer.tax_ppn : (usePage().props.taxSettings?.tax_ppn || 0);
+    activationForm.tax_bhp = customer.tax_bhp !== null ? customer.tax_bhp : (usePage().props.taxSettings?.tax_bhp || 0);
+    activationForm.tax_uso = customer.tax_uso !== null ? customer.tax_uso : (usePage().props.taxSettings?.tax_uso || 0);
+
     showActivationModal.value = true;
 }
 

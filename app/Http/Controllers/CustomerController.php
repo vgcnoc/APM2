@@ -596,6 +596,11 @@ class CustomerController extends Controller
             'areas' => $areas,
             'stats' => $stats,
             'filters' => $request->only(['search', 'tab', 'date_from', 'date_to', 'area']),
+            'taxSettings' => [
+                'tax_ppn' => \App\Models\Setting::get('tax_ppn', '0'),
+                'tax_bhp' => \App\Models\Setting::get('tax_bhp', '0'),
+                'tax_uso' => \App\Models\Setting::get('tax_uso', '0'),
+            ],
         ]);
     }
 
@@ -636,6 +641,11 @@ class CustomerController extends Controller
             'customers' => $customers,
             'stats' => $stats,
             'filters' => $request->only(['search', 'tab', 'date', 'area']),
+            'taxSettings' => [
+                'tax_ppn' => \App\Models\Setting::get('tax_ppn', '0'),
+                'tax_bhp' => \App\Models\Setting::get('tax_bhp', '0'),
+                'tax_uso' => \App\Models\Setting::get('tax_uso', '0'),
+            ],
         ]);
     }
 
@@ -1230,6 +1240,9 @@ class CustomerController extends Controller
             'login_user' => 'nullable|string',
             'login_password' => 'nullable|string',
             'notes' => 'nullable|string',
+            'tax_ppn' => 'nullable|numeric|min:0|max:100',
+            'tax_bhp' => 'nullable|numeric|min:0|max:100',
+            'tax_uso' => 'nullable|numeric|min:0|max:100',
         ]);
 
         if ($customer->status === 'installing' && $customer->is_audited && $customer->ont) {
@@ -1238,6 +1251,9 @@ class CustomerController extends Controller
                     'status' => 'active',
                     'activation_date' => $validated['activation_date'],
                     'notes' => $validated['notes'] ? $customer->notes . "\n[Aktivasi]: " . $validated['notes'] : $customer->notes,
+                    'tax_ppn' => $validated['tax_ppn'] ?? null,
+                    'tax_bhp' => $validated['tax_bhp'] ?? null,
+                    'tax_uso' => $validated['tax_uso'] ?? null,
                 ]);
 
                 $customer->ont->update([
@@ -1305,9 +1321,9 @@ class CustomerController extends Controller
                     $amount = 0;
                     $status = 'paid';
                 } else {
-                    $taxPpn = (float) \App\Models\Setting::get('tax_ppn', '0');
-                    $taxBhp = (float) \App\Models\Setting::get('tax_bhp', '0');
-                    $taxUso = (float) \App\Models\Setting::get('tax_uso', '0');
+                    $taxPpn = (float) ($validated['tax_ppn'] ?? \App\Models\Setting::get('tax_ppn', '0'));
+                    $taxBhp = (float) ($validated['tax_bhp'] ?? \App\Models\Setting::get('tax_bhp', '0'));
+                    $taxUso = (float) ($validated['tax_uso'] ?? \App\Models\Setting::get('tax_uso', '0'));
                     
                     $totalTaxPercent = $taxPpn + $taxBhp + $taxUso;
                     if ($totalTaxPercent > 0) {

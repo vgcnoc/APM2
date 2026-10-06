@@ -55,9 +55,9 @@ class GenerateInvoices extends Command
                     $amount = 0;
                     $status = 'paid';
                 } else {
-                    $taxPpn = (float) Setting::get('tax_ppn', '0');
-                    $taxBhp = (float) Setting::get('tax_bhp', '0');
-                    $taxUso = (float) Setting::get('tax_uso', '0');
+                    $taxPpn = (float) ($customer->tax_ppn ?? Setting::get('tax_ppn', '0'));
+                    $taxBhp = (float) ($customer->tax_bhp ?? Setting::get('tax_bhp', '0'));
+                    $taxUso = (float) ($customer->tax_uso ?? Setting::get('tax_uso', '0'));
                     
                     $totalTaxPercent = $taxPpn + $taxBhp + $taxUso;
                     if ($totalTaxPercent > 0) {

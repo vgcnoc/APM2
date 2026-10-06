@@ -35,6 +35,9 @@ class Customer extends Model
         'sales_id',
         'is_audited',
         'area_id',
+        'tax_ppn',
+        'tax_bhp',
+        'tax_uso',
     ];
 
     protected function casts(): array
