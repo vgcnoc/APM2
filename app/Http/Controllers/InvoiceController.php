@@ -77,9 +77,9 @@ class InvoiceController extends Controller
 
             // Amounts for cards
             'total_unpaid_amount' => Invoice::where('status', 'unpaid')->sum('amount'),
-            'total_paid_amount' => Invoice::where('status', 'paid')->whereMonth('updated_at', now()->month)->sum('amount'),
-            'total_piutang_amount' => Invoice::where('status', 'partial')->sum(\Illuminate\Support\Facades\DB::raw('amount - total_paid')),
-            'total_jatuh_tempo_amount' => Invoice::where('due_date', '<', now())->where('status', '!=', 'paid')->sum(\Illuminate\Support\Facades\DB::raw('amount - total_paid')),
+            'total_paid_amount' => \App\Models\Payment::whereMonth('payment_date', now()->month)->whereYear('payment_date', now()->year)->sum('amount'),
+            'total_piutang_amount' => Invoice::where('status', 'partial')->sum('amount') - \App\Models\Payment::whereHas('invoice', fn($q) => $q->where('status', 'partial'))->sum('amount'),
+            'total_jatuh_tempo_amount' => Invoice::where('due_date', '<', now())->where('status', 'unpaid')->sum('amount') + (Invoice::where('due_date', '<', now())->where('status', 'partial')->sum('amount') - \App\Models\Payment::whereHas('invoice', fn($q) => $q->where('due_date', '<', now())->where('status', 'partial'))->sum('amount')),
         ];
 
         $invoices = $query->latest('id')
