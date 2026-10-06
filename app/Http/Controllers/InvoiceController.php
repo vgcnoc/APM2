@@ -34,6 +34,8 @@ class InvoiceController extends Controller
             $query->where('is_prorata', true);
         } elseif ($tab === 'upgrade') {
             $query->where('id', '<', 0); // Placeholder
+        } elseif ($tab === 'janji_bayar') {
+            $query->whereNotNull('promise_date')->where('status', '!=', 'paid');
         }
 
         if ($request->filled('search')) {
@@ -71,6 +73,7 @@ class InvoiceController extends Controller
             'lunas' => Invoice::where('status', 'paid')->count(),
             'prorata' => Invoice::where('is_prorata', true)->count(),
             'upgrade' => 0, // Placeholder
+            'janji_bayar' => Invoice::whereNotNull('promise_date')->where('status', '!=', 'paid')->count(),
         ];
 
         $invoices = $query->latest('id')
@@ -101,7 +104,7 @@ class InvoiceController extends Controller
                     'last_payment_method' => $lastPayment ? $lastPayment->payment_method : null,
                     'due_date' => $invoice->due_date ? $invoice->due_date->format('Y-m-d') : null,
                     'issued_date' => $invoice->issued_date ? $invoice->issued_date->format('Y-m-d') : null,
-                    'promise_date' => null, // Placeholder
+                    'promise_date' => $invoice->promise_date ? $invoice->promise_date->format('Y-m-d') : null,
                 ];
             });
 
@@ -196,5 +199,18 @@ class InvoiceController extends Controller
         ]);
 
         return back()->with('success', 'Pembayaran berhasil dibatalkan. Tagihan kembali belum lunas.');
+    }
+
+    public function promise(Request $request, Invoice $invoice)
+    {
+        $request->validate([
+            'promise_date' => 'required|date|after_or_equal:today',
+        ]);
+
+        $invoice->update([
+            'promise_date' => $request->promise_date
+        ]);
+
+        return back()->with('success', 'Janji bayar berhasil disimpan.');
     }
 }

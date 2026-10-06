@@ -137,7 +137,13 @@
                         {{ formatStatus(row.status) }}
                     </span>
                 </td>
-                <td><span class="text-gray-400 text-xs">-</span></td>
+                <td>
+                    <span v-if="row.promise_date" class="px-2 py-1 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 w-max">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        {{ row.promise_date }}
+                    </span>
+                    <span v-else class="text-gray-400 text-xs">-</span>
+                </td>
             </template>
 
             <template #rowActions="{ row }">
@@ -145,6 +151,9 @@
                     <button v-if="row.status === 'unpaid'" @click="openPaymentModal(row)" class="px-3 py-1.5 border border-amber-300 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-colors">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                         Bayar Lunas
+                    </button>
+                    <button v-if="row.status === 'unpaid'" @click="openPromiseModal(row)" class="p-1.5 text-gray-400 hover:text-yellow-600 transition-colors" title="Set Janji Bayar">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     </button>
                     <button v-else-if="row.status === 'paid' || row.status === 'partial'" @click="rollbackInvoice(row)" class="px-3 py-1.5 border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-colors">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
@@ -285,6 +294,44 @@
                                 </svg>
                                 <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 {{ paymentForm.processing ? 'Memproses...' : 'Konfirmasi Pembayaran' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Promise Modal -->
+        <Teleport to="body">
+            <div v-if="showPromiseModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closePromiseModal"></div>
+
+                <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-sm relative z-10 animate-fade-in-up">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-yellow-50/50">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">Atur Janji Bayar</h3>
+                            <p class="text-[11px] font-medium text-gray-500 mt-0.5">{{ selectedInvoice?.customer?.name }}</p>
+                        </div>
+                        <button @click="closePromiseModal" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitPromise">
+                        <div class="p-6 space-y-4">
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tanggal Janji Bayar</label>
+                                <input type="date" v-model="promiseForm.promise_date" required :min="new Date().toISOString().split('T')[0]" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all">
+                            </div>
+                            <p class="text-[10px] text-gray-500 leading-snug">Tagihan ini akan ditandai dengan tanggal janji bayar. Jika melewati tanggal tersebut, tagihan akan segera ditindaklanjuti.</p>
+                        </div>
+
+                        <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-end gap-3">
+                            <button type="button" @click="closePromiseModal" class="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-200 bg-gray-100 rounded-xl transition-colors">
+                                Batal
+                            </button>
+                            <button type="submit" :disabled="promiseForm.processing" class="px-6 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-yellow-200 flex items-center gap-2">
+                                {{ promiseForm.processing ? 'Menyimpan...' : 'Simpan Janji Bayar' }}
                             </button>
                         </div>
                     </form>
@@ -437,5 +484,34 @@ function rollbackInvoice(row) {
             preserveScroll: true,
         });
     }
+}
+
+// Promise Modal Logic
+const showPromiseModal = ref(false);
+const promiseForm = useForm({
+    promise_date: '',
+});
+
+function openPromiseModal(invoice) {
+    selectedInvoice.value = invoice;
+    promiseForm.promise_date = invoice.promise_date || '';
+    showPromiseModal.value = true;
+}
+
+function closePromiseModal() {
+    showPromiseModal.value = false;
+    setTimeout(() => {
+        if (!showPaymentModal.value) selectedInvoice.value = null;
+        promiseForm.reset();
+    }, 200);
+}
+
+function submitPromise() {
+    promiseForm.post(`/invoices/${selectedInvoice.value.id}/promise`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closePromiseModal();
+        },
+    });
 }
 </script>
