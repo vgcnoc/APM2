@@ -31,8 +31,6 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:reseller|customer'])->prefix('client-area')->name('client-area.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\ResellerClientController::class, 'dashboard'])->name('dashboard');
         Route::post('/generate-vouchers', [\App\Http\Controllers\ResellerClientController::class, 'generateVouchers'])->name('generate-vouchers');
-        Route::get('/topup', [\App\Http\Controllers\ResellerClientController::class, 'topup'])->name('topup');
-        Route::post('/topup-request', [\App\Http\Controllers\ResellerClientController::class, 'requestTopup'])->name('topup-request');
     });
 
     // Customer Area (Pelanggan)
@@ -194,6 +192,7 @@ Route::middleware(['auth'])->group(function () {
     
     // ── Reseller Requests (Admin) ───────────────────────────────────────
     Route::get('/reseller-requests', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'index'])->name('reseller-requests.index');
+    Route::post('/reseller-requests', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'store'])->name('reseller-requests.store');
     Route::post('/reseller-requests/{balanceRequest}/approve', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'approve'])->name('reseller-requests.approve');
     Route::post('/reseller-requests/{balanceRequest}/reject', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'reject'])->name('reseller-requests.reject');
 

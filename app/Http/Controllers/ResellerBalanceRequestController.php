@@ -17,9 +17,60 @@ class ResellerBalanceRequestController extends Controller
             ->latest()
             ->paginate(10);
 
+        $resellers = \App\Models\Reseller::with('customer')->get();
+
         return Inertia::render('ResellerRequests/Index', [
-            'requests' => $requests
+            'requests' => $requests,
+            'resellers' => $resellers
         ]);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'reseller_id' => 'required|exists:resellers,id',
+            'amount' => 'required|numeric|min:1000',
+            'payment_method' => 'required|in:transfer,kasbon,cash',
+            'notes' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $balanceRequest = ResellerBalanceRequest::create([
+                'reseller_id' => $validated['reseller_id'],
+                'amount' => $validated['amount'],
+                'payment_method' => $validated['payment_method'],
+                'notes' => $validated['notes'],
+                'status' => 'approved',
+                'approved_by' => auth()->id(),
+            ]);
+
+            $reseller = \App\Models\Reseller::find($validated['reseller_id']);
+            $reseller->balance += $validated['amount'];
+            $reseller->save();
+
+            if ($validated['payment_method'] === 'kasbon') {
+                $customer = $reseller->customer;
+                if ($customer) {
+                    Invoice::create([
+                        'invoice_number' => 'INV-' . date('Ym') . '-' . str_pad(Invoice::count() + 1, 4, '0', STR_PAD_LEFT),
+                        'customer_id' => $customer->id,
+                        'amount' => $validated['amount'],
+                        'status' => 'unpaid',
+                        'issued_date' => Carbon::now(),
+                        'due_date' => Carbon::tomorrow(),
+                        'period_label' => 'Kasbon Saldo (' . date('d M Y') . ')',
+                        'notes' => 'Kasbon Penambahan Saldo Reseller via Admin. Ref: REQ-' . $balanceRequest->id,
+                    ]);
+                }
+            }
+
+            DB::commit();
+            return back()->with('success', 'Saldo reseller berhasil ditambahkan' . ($validated['payment_method'] === 'kasbon' ? ' dan invoice kasbon telah dibuat.' : '.'));
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal menambah saldo: ' . $e->getMessage());
+        }
     }
 
     public function approve(Request $request, ResellerBalanceRequest $balanceRequest)
