@@ -69,6 +69,11 @@ class HandleInertiaRequests extends Middleware
             ],
             'app_logo' => \App\Models\Setting::get('app_logo') ? asset('storage/' . \App\Models\Setting::get('app_logo')) : null,
             'app_name' => \App\Models\Setting::get('app_name', 'ISP Manager'),
+            'company_name' => \App\Models\Setting::get('company_name'),
+            'company_address' => \App\Models\Setting::get('company_address'),
+            'company_phone' => \App\Models\Setting::get('company_phone'),
+            'company_email' => \App\Models\Setting::get('company_email'),
+            'company_website' => \App\Models\Setting::get('company_website'),
         ];
     }
 }

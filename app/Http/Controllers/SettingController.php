@@ -15,6 +15,11 @@ class SettingController extends Controller
         return Inertia::render('Settings/Branding', [
             'current_logo' => $logo ? asset('storage/' . $logo) : null,
             'current_app_name' => Setting::get('app_name', ''),
+            'company_name' => Setting::get('company_name', ''),
+            'company_address' => Setting::get('company_address', ''),
+            'company_phone' => Setting::get('company_phone', ''),
+            'company_email' => Setting::get('company_email', ''),
+            'company_website' => Setting::get('company_website', ''),
         ]);
     }
 
@@ -93,12 +98,20 @@ class SettingController extends Controller
         $request->validate([
             'app_name' => 'nullable|string|max:255',
             'app_logo' => 'nullable|image|max:2048',
-            'remove_logo' => 'nullable|boolean'
+            'remove_logo' => 'nullable|boolean',
+            'company_name' => 'nullable|string|max:255',
+            'company_address' => 'nullable|string',
+            'company_phone' => 'nullable|string|max:50',
+            'company_email' => 'nullable|email|max:255',
+            'company_website' => 'nullable|string|max:255',
         ]);
 
-        if ($request->has('app_name')) {
-            Setting::set('app_name', $request->app_name ?? '');
-        }
+        if ($request->has('app_name')) Setting::set('app_name', $request->app_name ?? '');
+        if ($request->has('company_name')) Setting::set('company_name', $request->company_name ?? '');
+        if ($request->has('company_address')) Setting::set('company_address', $request->company_address ?? '');
+        if ($request->has('company_phone')) Setting::set('company_phone', $request->company_phone ?? '');
+        if ($request->has('company_email')) Setting::set('company_email', $request->company_email ?? '');
+        if ($request->has('company_website')) Setting::set('company_website', $request->company_website ?? '');
 
         if ($request->boolean('remove_logo')) {
             $oldLogo = Setting::get('app_logo');
