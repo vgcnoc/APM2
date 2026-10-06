@@ -182,22 +182,24 @@ onMounted(() => {
         });
     }
 
-    // Restore sidebar scroll position
-    nextTick(() => {
-        if (sidebarNav.value) {
-            const scrollPos = localStorage.getItem('sidebarScrollPos');
-            if (scrollPos) {
-                // Set directly, no setTimeout to prevent flickering
-                sidebarNav.value.scrollTop = parseInt(scrollPos, 10);
+    // Restore sidebar scroll position aggressively to ensure it sticks after DOM mutations
+    const scrollPos = parseInt(localStorage.getItem('sidebarScrollPos'), 10);
+    if (!isNaN(scrollPos)) {
+        let attempts = 0;
+        // Run every 10ms for 150ms to ensure it overrides any browser scroll resets
+        const interval = setInterval(() => {
+            if (sidebarNav.value) {
+                sidebarNav.value.scrollTop = scrollPos;
             }
-        }
-        
-        // Show sidebar after scroll is restored
-        // Small timeout ensures browser has applied scrollTop before rendering opacity
-        setTimeout(() => {
-            isRestored.value = true;
+            attempts++;
+            if (attempts > 15) {
+                clearInterval(interval);
+                isRestored.value = true;
+            }
         }, 10);
-    });
+    } else {
+        isRestored.value = true;
+    }
 });
 
 const menuItems = [
