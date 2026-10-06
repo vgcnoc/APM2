@@ -67,8 +67,23 @@
                 <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
                 <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
                     <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg leading-6 font-bold text-gray-900 mb-4">Penerimaan Uang - {{ selectedInvoice.invoice_number }}</h3>
+                        <h3 class="text-lg leading-6 font-bold text-gray-900 mb-2">Penerimaan Uang - {{ selectedInvoice.invoice_number }}</h3>
                         <p class="text-sm text-gray-500 mb-4">Sisa Tagihan: <span class="font-bold text-indigo-600">Rp {{ formatRupiah(selectedInvoice.remaining) }}</span></p>
+                        
+                        <!-- History Area -->
+                        <div v-if="selectedInvoice.payments && selectedInvoice.payments.length > 0" class="mb-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                            <p class="text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">Riwayat Cicilan/Pembayaran</p>
+                            <ul class="space-y-2">
+                                <li v-for="pay in selectedInvoice.payments" :key="pay.id" class="flex justify-between items-center text-sm border-b border-gray-200 pb-1 last:border-0 last:pb-0">
+                                    <div>
+                                        <span class="font-semibold text-gray-800">Rp {{ formatRupiah(pay.amount) }}</span>
+                                        <span class="text-xs text-gray-500 ml-2">({{ new Date(pay.payment_date).toLocaleDateString('id-ID') }})</span>
+                                    </div>
+                                    <span v-if="pay.status === 'verified'" class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">Lunas</span>
+                                    <span v-else-if="pay.status === 'pending'" class="text-xs font-bold text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded">Menunggu Val.</span>
+                                </li>
+                            </ul>
+                        </div>
                         
                         <form @submit.prevent="submitCollection" class="space-y-4">
                             <div>
@@ -90,6 +105,15 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Catatan</label>
                                 <textarea v-model="form.notes" rows="2" class="mt-1 block w-full border-gray-300 rounded-xl"></textarea>
+                            </div>
+                            <div class="flex items-start bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+                                <div class="flex items-center h-5">
+                                    <input id="direct" v-model="form.is_direct_payment" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="direct" class="font-medium text-indigo-900">Pembayaran Langsung di Kantor</label>
+                                    <p class="text-indigo-700 text-xs mt-0.5">Mencentang ini akan langsung melunaskan tagihan (bypass verifikasi admin). Gunakan jika uang sudah ada di kasir.</p>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -127,7 +151,8 @@ const form = useForm({
     amount: '',
     payment_date: new Date().toISOString().split('T')[0],
     payment_method: 'cash',
-    notes: ''
+    notes: '',
+    is_direct_payment: false
 });
 
 const openModal = (inv) => {

@@ -38,25 +38,48 @@ class ResellerBillingController extends Controller
             'amount' => 'required|numeric|min:1',
             'payment_date' => 'required|date',
             'payment_method' => 'required|string',
-            'notes' => 'nullable|string'
+            'notes' => 'nullable|string',
+            'is_direct_payment' => 'nullable|boolean'
         ]);
 
         if ($validated['amount'] > $invoice->remaining) {
             return back()->with('error', 'Nominal melebihi sisa tagihan.');
         }
 
-        Payment::create([
-            'invoice_id' => $invoice->id,
-            'customer_id' => $invoice->customer_id,
-            'amount' => $validated['amount'],
-            'payment_method' => $validated['payment_method'],
-            'payment_date' => $validated['payment_date'],
-            'notes' => $validated['notes'],
-            'status' => 'pending', // IMPORTANT: Status is pending, wait for admin
-            'collected_by' => auth()->id()
-        ]);
+        $isDirect = !empty($validated['is_direct_payment']);
 
-        return back()->with('success', 'Penerimaan pembayaran berhasil dicatat. Menunggu pelunasan dari perusahaan.');
+        DB::beginTransaction();
+        try {
+            $payment = Payment::create([
+                'invoice_id' => $invoice->id,
+                'customer_id' => $invoice->customer_id,
+                'amount' => $validated['amount'],
+                'payment_method' => $validated['payment_method'],
+                'payment_date' => $validated['payment_date'],
+                'notes' => $validated['notes'],
+                'status' => $isDirect ? 'verified' : 'pending',
+                'collected_by' => auth()->id()
+            ]);
+
+            if ($isDirect) {
+                // If it's a direct payment at the office, settle immediately
+                $totalPaid = $invoice->payments()->where('status', 'verified')->sum('amount');
+                if ($totalPaid >= $invoice->amount) {
+                    $invoice->update(['status' => 'paid']);
+                } elseif ($totalPaid > 0) {
+                    $invoice->update(['status' => 'partial']);
+                }
+                
+                DB::commit();
+                return back()->with('success', 'Pembayaran langsung dikantor berhasil diproses dan invoice diupdate.');
+            }
+
+            DB::commit();
+            return back()->with('success', 'Penerimaan pembayaran berhasil dicatat. Menunggu pelunasan dari perusahaan.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal memproses pembayaran: ' . $e->getMessage());
+        }
     }
 
     /**
