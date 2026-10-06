@@ -31,6 +31,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:reseller|customer'])->prefix('client-area')->name('client-area.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\ResellerClientController::class, 'dashboard'])->name('dashboard');
         Route::post('/generate-vouchers', [\App\Http\Controllers\ResellerClientController::class, 'generateVouchers'])->name('generate-vouchers');
+        Route::get('/topup', [\App\Http\Controllers\ResellerClientController::class, 'topup'])->name('topup');
+        Route::post('/topup-request', [\App\Http\Controllers\ResellerClientController::class, 'requestTopup'])->name('topup-request');
     });
 
     // Customer Area (Pelanggan)
@@ -189,6 +191,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/resellers/{reseller}/delete', [\App\Http\Controllers\ResellerController::class, 'destroy'])->name('resellers.destroy.post');
     Route::post('/resellers/{reseller}/create-account', [\App\Http\Controllers\ResellerController::class, 'createAccount'])->name('resellers.create-account');
     Route::post('/resellers/{reseller}/reset-password', [\App\Http\Controllers\ResellerController::class, 'resetPassword'])->name('resellers.reset-password');
+    
+    // ── Reseller Requests (Admin) ───────────────────────────────────────
+    Route::get('/reseller-requests', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'index'])->name('reseller-requests.index');
+    Route::post('/reseller-requests/{balanceRequest}/approve', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'approve'])->name('reseller-requests.approve');
+    Route::post('/reseller-requests/{balanceRequest}/reject', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'reject'])->name('reseller-requests.reject');
 
 
     // ── Pengguna & Hak Akses ───────────────────────────────────

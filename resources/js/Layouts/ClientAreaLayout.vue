@@ -29,6 +29,7 @@
                     
                     <div class="hidden md:flex items-center gap-8 flex-1 ml-10">
                         <Link href="/client-area/dashboard" class="text-sm font-medium text-gray-600 hover:text-blue-600">Dashboard</Link>
+                        <Link href="/client-area/topup" class="text-sm font-bold text-indigo-600 hover:text-indigo-800">Isi Saldo</Link>
                         <Link href="/vouchers" class="text-sm font-medium text-gray-600 hover:text-blue-600">Semua Voucher</Link>
                         <Link href="/vouchers/online" class="text-sm font-medium text-gray-600 hover:text-blue-600">Online</Link>
                         <Link href="/vouchers/offline" class="text-sm font-medium text-gray-600 hover:text-blue-600">Offline</Link>
@@ -63,6 +64,7 @@
             <div v-if="showMobileMenu" class="md:hidden border-t border-gray-100 bg-white">
                 <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
                     <Link href="/client-area/dashboard" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Dashboard</Link>
+                    <Link href="/client-area/topup" class="block px-3 py-2 rounded-md text-base font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100">Isi Saldo (Kasbon)</Link>
                     <Link href="/vouchers" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Semua Voucher</Link>
                     <Link href="/vouchers/online" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Online</Link>
                     <Link href="/vouchers/offline" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Offline</Link>

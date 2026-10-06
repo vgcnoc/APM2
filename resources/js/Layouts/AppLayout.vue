@@ -229,6 +229,7 @@ const menuItems = [
     },
     { type: 'link', href: '/vouchers/profiles', icon: 'document-text', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers_profiles' },
     { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
+    { type: 'link', href: '/reseller-requests', icon: 'credit-card', label: 'Permintaan Saldo', active: (url) => (url || '').startsWith('/reseller-requests'), permission: 'menu_resellers' },
 
     { type: 'group', label: 'INFRASTRUKTUR & JARINGAN' },
     { type: 'link', href: '/network-topology', icon: 'globe', label: 'Network Topology', active: (url) => (url || '').startsWith('/network-topology'), permission: 'menu_network_topology' },
