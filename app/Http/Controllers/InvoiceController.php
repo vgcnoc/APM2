@@ -136,4 +136,19 @@ class InvoiceController extends Controller
 
         return back()->with('success', 'Pembayaran berhasil diproses.');
     }
+
+    public function rollback(Invoice $invoice)
+    {
+        // Hapus semua record pembayaran terkait invoice ini
+        $invoice->payments()->delete();
+
+        // Kembalikan status invoice menjadi belum lunas
+        $invoice->update([
+            'status' => 'unpaid',
+            'total_paid' => 0,
+            'remaining' => $invoice->amount
+        ]);
+
+        return back()->with('success', 'Pembayaran berhasil dibatalkan. Tagihan kembali belum lunas.');
+    }
 }

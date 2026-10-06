@@ -142,6 +142,10 @@
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                         Bayar Lunas
                     </button>
+                    <button v-else-if="row.status === 'paid' || row.status === 'partial'" @click="rollbackInvoice(row)" class="px-3 py-1.5 border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                        Rollback
+                    </button>
                     <button class="p-1.5 text-gray-400 hover:text-blue-600 transition-colors" title="Edit">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     </button>
@@ -400,5 +404,13 @@ function submitPayment() {
             closePaymentModal();
         },
     });
+}
+
+function rollbackInvoice(row) {
+    if (confirm(`Apakah Anda yakin ingin membatalkan pembayaran untuk pelanggan ${row.customer.name}? Status tagihan akan kembali menjadi Belum Lunas.`)) {
+        router.post(`/invoices/${row.id}/rollback`, {}, {
+            preserveScroll: true,
+        });
+    }
 }
 </script>

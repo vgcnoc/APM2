@@ -197,6 +197,7 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Billing & Keuangan ─────────────────────────────────────
     Route::post('invoices/{invoice}/pay', [\App\Http\Controllers\InvoiceController::class, 'pay'])->name('invoices.pay');
+    Route::post('invoices/{invoice}/rollback', [\App\Http\Controllers\InvoiceController::class, 'rollback'])->name('invoices.rollback');
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
     // Route::resource('payments', PaymentController::class);
 
