@@ -39,9 +39,24 @@
 
     <div class="invoice-box">
         <div class="header">
-            <div class="company-info">
-                <h1>{{ config('app.name', 'ISP Management') }}</h1>
-                <p>Layanan Internet Cepat & Stabil</p>
+            <div class="company-info" style="display: flex; align-items: center; gap: 20px;">
+                @if($company['logo'])
+                    <img src="{{ asset('storage/' . $company['logo']) }}" alt="Logo" style="max-height: 80px; max-width: 150px; object-fit: contain;">
+                @endif
+                <div>
+                    <h1>{{ $company['name'] }}</h1>
+                    <p style="white-space: pre-line;">{{ $company['address'] }}</p>
+                    @if($company['phone'] || $company['email'])
+                    <p style="font-size: 12px; margin-top: 5px;">
+                        @if($company['phone']) Telp: {{ $company['phone'] }} @endif
+                        @if($company['phone'] && $company['email']) | @endif
+                        @if($company['email']) Email: {{ $company['email'] }} @endif
+                    </p>
+                    @endif
+                    @if($company['website'])
+                    <p style="font-size: 12px;">Web: {{ $company['website'] }}</p>
+                    @endif
+                </div>
             </div>
             <div class="invoice-details">
                 <h2>INVOICE</h2>

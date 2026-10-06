@@ -256,6 +256,16 @@ class InvoiceController extends Controller
     public function print(Invoice $invoice)
     {
         $invoice->load('customer', 'payments');
-        return view('print.invoice', compact('invoice'));
+        
+        $company = [
+            'name' => \App\Models\Setting::get('company_name', config('app.name', 'ISP Management')),
+            'address' => \App\Models\Setting::get('company_address', 'Layanan Internet Cepat & Stabil'),
+            'phone' => \App\Models\Setting::get('company_phone', ''),
+            'email' => \App\Models\Setting::get('company_email', ''),
+            'website' => \App\Models\Setting::get('company_website', ''),
+            'logo' => \App\Models\Setting::get('company_logo', null),
+        ];
+
+        return view('print.invoice', compact('invoice', 'company'));
     }
 }
