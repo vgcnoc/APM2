@@ -114,7 +114,13 @@
                 <td><span class="text-xs text-gray-600 truncate max-w-[150px] inline-block">{{ row.customer?.address || '-' }}</span></td>
                 <td><span class="text-[11px] font-bold text-gray-700 uppercase">{{ row.customer?.package || '-' }}</span></td>
                 <td><span class="text-[11px] text-gray-600">{{ row.customer?.register_date || '-' }}</span></td>
-                <td><span class="text-[11px] text-gray-600">{{ row.last_payment_date || '-' }}</span></td>
+                <td>
+                    <span v-if="row.last_payment_date" class="flex flex-col">
+                        <span class="text-[11px] text-gray-600">{{ row.last_payment_date }}</span>
+                        <span class="text-[9px] font-bold text-indigo-500 uppercase mt-0.5">{{ formatPaymentMethod(row.last_payment_method) }}</span>
+                    </span>
+                    <span v-else class="text-[11px] text-gray-600">-</span>
+                </td>
                 <td><span class="text-xs font-bold text-gray-900">{{ formatCurrency(row.amount) }}</span></td>
                 <td>
                     <span v-if="row.customer" :class="['px-2 py-1 text-[10px] font-medium rounded-md text-white whitespace-nowrap', row.customer.status === 'aktif' ? 'bg-blue-500' : 'bg-gray-500']">
@@ -320,6 +326,15 @@ function formatStatus(status) {
     if (status === 'unpaid') return 'Belum Lunas';
     if (status === 'partial') return 'Bayar Sebagian';
     return status;
+}
+
+function formatPaymentMethod(method) {
+    if (!method) return '';
+    if (method === 'cash') return 'Tunai / Cash';
+    if (method === 'transfer') return 'Transfer Bank';
+    if (method === 'qris') return 'QRIS';
+    if (method === 'payment_gateway') return 'Payment Gateway';
+    return method;
 }
 
 function statusClass(status) {

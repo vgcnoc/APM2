@@ -90,6 +90,7 @@ class InvoiceController extends Controller
                     'remaining' => $invoice->remaining,
                     'status' => $invoice->status,
                     'last_payment_date' => $lastPayment ? \Carbon\Carbon::parse($lastPayment->payment_date)->format('d M Y') : null,
+                    'last_payment_method' => $lastPayment ? $lastPayment->payment_method : null,
                     'due_date' => $invoice->due_date ? $invoice->due_date->format('Y-m-d') : null,
                     'issued_date' => $invoice->issued_date ? $invoice->issued_date->format('Y-m-d') : null,
                     'promise_date' => null, // Placeholder
