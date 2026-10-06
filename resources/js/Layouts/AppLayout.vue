@@ -20,7 +20,7 @@
             </div>
 
             <!-- Navigation -->
-            <nav scroll-region class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+            <nav ref="sidebarNav" scroll-region class="flex-1 overflow-y-auto px-3 py-4 space-y-1" @scroll="saveScrollPosition">
                 <template v-for="(item, index) in filteredMenuItems" :key="index">
                     <!-- Group Label -->
                     <div v-if="item.type === 'group' && sidebarOpen" class="pt-5 pb-2 px-4">
@@ -157,6 +157,41 @@ defineProps({
 
 const sidebarOpen = ref(true);
 const mobileMenuOpen = ref(false);
+const sidebarNav = ref(null);
+
+const saveScrollPosition = () => {
+    if (sidebarNav.value) {
+        localStorage.setItem('sidebarScrollPos', sidebarNav.value.scrollTop);
+    }
+};
+
+onMounted(() => {
+    // Restore sidebar scroll position
+    if (sidebarNav.value) {
+        const scrollPos = localStorage.getItem('sidebarScrollPos');
+        if (scrollPos) {
+            setTimeout(() => {
+                if (sidebarNav.value) sidebarNav.value.scrollTop = parseInt(scrollPos, 10);
+            }, 50);
+        }
+    }
+    
+    // Restore open dropdowns
+    const savedDropdowns = localStorage.getItem('sidebarOpenDropdowns');
+    if (savedDropdowns) {
+        openDropdowns.value = JSON.parse(savedDropdowns);
+    } else {
+        // Default to active parent if no saved state
+        const currentUrl = page.url;
+        filteredMenuItems.value.forEach((item, index) => {
+            if (item.type === 'dropdown' && item.active(currentUrl)) {
+                if (!openDropdowns.value.includes(index)) {
+                    openDropdowns.value.push(index);
+                }
+            }
+        });
+    }
+});
 
 const menuItems = [
     { type: 'link', href: '/', icon: 'dashboard', label: 'Dashboard', active: (url) => (url || '').length > 0 && url === '/', permission: 'menu_dashboard' },
@@ -419,6 +454,7 @@ const toggleDropdown = (index) => {
     } else {
         openDropdowns.value.push(index);
     }
+    localStorage.setItem('sidebarOpenDropdowns', JSON.stringify(openDropdowns.value));
 };
 
 onMounted(() => {
