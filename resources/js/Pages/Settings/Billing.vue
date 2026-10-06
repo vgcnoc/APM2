@@ -200,9 +200,37 @@
                         </div>
                     </div>
 
+                        <div v-if="form.billing_type === 'prorata'" class="bg-indigo-800/50 border border-indigo-500/50 rounded-xl p-4 mt-2">
+                            <div class="flex items-center gap-2 mb-3">
+                                <svg class="w-4 h-4 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                <h4 class="text-xs font-bold text-indigo-200 uppercase tracking-wide">Kalkulator Prorata Aktif</h4>
+                            </div>
+                            
+                            <div class="space-y-2 text-xs text-indigo-100">
+                                <div class="flex justify-between items-end border-b border-indigo-700/50 pb-1">
+                                    <span>Simulasi Harga Paket</span>
+                                    <span class="font-medium text-white">{{ formatCurrency(300000) }} / bln</span>
+                                </div>
+                                <div class="flex justify-between items-end border-b border-indigo-700/50 pb-1">
+                                    <span>Asumsi Aktivasi Hari Ini</span>
+                                    <span class="font-medium text-white">{{ todayFormatted }}</span>
+                                </div>
+                                <div class="flex justify-between items-end border-b border-indigo-700/50 pb-1">
+                                    <span>Siklus Penagihan ({{ totalDaysInCycle }} Hari)</span>
+                                    <span class="font-medium text-white">s/d {{ prevIssueDateFormatted }}</span>
+                                </div>
+                                <div class="flex justify-between items-end pt-1">
+                                    <span class="text-indigo-300">Tagihan Pertama (<span class="font-bold text-white">{{ daysUsed }}</span> hari pemakaian)</span>
+                                    <span class="font-bold text-lg text-emerald-400">{{ formatCurrency(prorataAmount) }}</span>
+                                </div>
+                            </div>
+                            <p class="text-[9px] text-indigo-400 mt-3 leading-tight italic">Rumus: (Harga Paket ÷ Total Hari Siklus) × Jumlah Hari Pemakaian Aktual.</p>
+                        </div>
+                    </div>
+
                     <div class="mt-6 pt-5 border-t border-indigo-700/50">
                         <p class="text-[10px] text-indigo-300 leading-relaxed">
-                            <span class="font-semibold text-white">Catatan:</span> Simulasi ini mengasumsikan siklus penagihan bulan depan. Sistem cron akan berjalan otomatis setiap harinya pada pukul 00:01 waktu server.
+                            <span class="font-semibold text-white">Catatan:</span> Simulasi ini menggunakan patokan kalender bulan berjalan. Perhitungan sistem sesungguhnya akan selalu sangat akurat menyesuaikan tanggal aktivasi sebenarnya.
                         </p>
                     </div>
                 </div>
@@ -265,6 +293,57 @@ const isolateDateObj = computed(() => {
 const isolateDateFormatted = computed(() => {
     return `${isolateDateObj.value.getDate()} ${monthNames[isolateDateObj.value.getMonth()]} ${isolateDateObj.value.getFullYear()}`;
 });
+
+// Prorata Variables
+const todayFormatted = computed(() => {
+    return `${today.getDate()} ${monthNames[today.getMonth()]} ${today.getFullYear()}`;
+});
+
+const prevIssueDateObj = computed(() => {
+    const d = new Date(issueDateObj.value);
+    d.setMonth(d.getMonth() - 1);
+    return d;
+});
+
+const prevIssueDateFormatted = computed(() => {
+    // We want the day before the issue date, e.g. if issue is 1st, then previous end of month.
+    const d = new Date(issueDateObj.value);
+    d.setDate(d.getDate() - 1);
+    return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+});
+
+const totalDaysInCycle = computed(() => {
+    const diffTime = Math.abs(issueDateObj.value - prevIssueDateObj.value);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+});
+
+const daysUsed = computed(() => {
+    // From today until the next issue date
+    let start = today;
+    let end = issueDateObj.value;
+    // If today is past the issue date, the "next" issue date is actually next month.
+    if (today.getDate() >= (parseInt(form.invoice_issue_date) || 1)) {
+        end = new Date(today.getFullYear(), today.getMonth() + 1, parseInt(form.invoice_issue_date) || 1);
+    } else {
+        end = new Date(today.getFullYear(), today.getMonth(), parseInt(form.invoice_issue_date) || 1);
+    }
+    const diffTime = Math.abs(end - start);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+});
+
+const prorataAmount = computed(() => {
+    const dailyRate = 300000 / totalDaysInCycle.value;
+    return Math.round(dailyRate * daysUsed.value);
+});
+
+function formatCurrency(value) {
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(value);
+}
 
 function submit() {
     form.post('/settings/billing', {
