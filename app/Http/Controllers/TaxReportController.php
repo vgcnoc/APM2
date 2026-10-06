@@ -11,7 +11,7 @@ class TaxReportController extends Controller
     public function index(Request $request)
     {
         $query = Customer::with(['package'])
-            ->where('status', 'Aktif')
+            ->where('status', 'active')
             ->orderBy('name');
 
         if ($request->has('search') && $request->search != '') {
@@ -54,7 +54,7 @@ class TaxReportController extends Controller
         });
         
         // Aggregate totals for active customers
-        $activeCustomers = Customer::with(['package'])->where('status', 'Aktif')->get();
+        $activeCustomers = Customer::with(['package'])->where('status', 'active')->get();
         $total_base_price = 0;
         $total_ppn = 0;
         $total_bhp = 0;
