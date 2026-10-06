@@ -121,13 +121,15 @@
                                         <label class="block text-sm font-bold text-gray-900 mb-1">Tanggal Terbit Invoice</label>
                                         <p class="text-[11px] text-gray-500 mb-3 leading-relaxed">Tanggal rutin di setiap bulannya dimana sistem akan men-generate invoice baru untuk seluruh pelanggan aktif.</p>
                                     </div>
-                                    <div class="w-full md:w-48 relative">
-                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                        </div>
-                                        <input type="number" v-model="form.invoice_issue_date" min="1" max="28" class="form-input block w-full rounded-lg border-gray-300 pl-10 pr-12 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-medium" />
-                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                            <span class="text-gray-500 text-xs font-medium">Tiap bln</span>
+                                    <div class="w-full md:w-56">
+                                        <div class="flex items-center rounded-lg border border-gray-300 shadow-sm focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 overflow-hidden bg-white">
+                                            <div class="pl-3 pr-2 py-2.5 flex items-center justify-center text-gray-400 bg-gray-50 border-r border-gray-200">
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                            </div>
+                                            <input type="number" v-model="form.invoice_issue_date" min="1" max="28" class="form-input flex-1 border-0 focus:ring-0 sm:text-sm font-medium py-2.5 px-3 min-w-0" />
+                                            <div class="pr-3 pl-2 py-2.5 flex items-center justify-center bg-gray-50 text-gray-500 text-xs font-medium border-l border-gray-200">
+                                                Tiap bln
+                                            </div>
                                         </div>
                                         <div v-if="form.errors.invoice_issue_date" class="mt-1 text-sm text-red-600">{{ form.errors.invoice_issue_date }}</div>
                                     </div>
@@ -145,10 +147,12 @@
                                         </p>
                                         
                                         <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                                            <div class="relative w-full sm:w-40">
-                                                <input type="number" v-model="form.isolate_days" min="0" class="form-input block w-full rounded-lg border-red-200 pl-4 pr-16 focus:border-red-500 focus:ring-red-500 sm:text-sm font-medium bg-white shadow-sm" />
-                                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                                    <span class="text-red-500 text-xs font-medium">Hari</span>
+                                            <div class="w-full sm:w-48">
+                                                <div class="flex items-center rounded-lg border border-red-200 shadow-sm focus-within:ring-1 focus-within:ring-red-500 focus-within:border-red-500 overflow-hidden bg-white">
+                                                    <input type="number" v-model="form.isolate_days" min="0" class="form-input flex-1 border-0 focus:ring-0 sm:text-sm font-medium py-2 px-3 min-w-0" />
+                                                    <div class="pr-3 pl-2 py-2 flex items-center justify-center bg-red-50 text-red-500 text-xs font-medium border-l border-red-200">
+                                                        Hari
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div class="text-sm font-bold text-gray-400 uppercase tracking-widest hidden sm:block">Pukul</div>
