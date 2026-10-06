@@ -183,6 +183,15 @@ class InvoiceController extends Controller
             $invoice->update(['status' => 'paid', 'total_paid' => $totalPaid, 'remaining' => 0]);
         }
 
+        // Aktifkan kembali internet jika pelanggan sedang di-isolir
+        $customer = $invoice->customer;
+        if ($customer && $customer->status === 'suspended') {
+            // Cek apakah masih ada tunggakan yang jatuh tempo (tanpa janji bayar aktif)
+            // Jika smart allocation sudah melunasi tagihan jatuh tempo, kita aktifkan lagi.
+            // Biar aman, otomatis aktifkan saja setelah ada pembayaran. Jika besoknya masih nunggak, cron job akan isolir lagi.
+            $customer->update(['status' => 'active']);
+        }
+
         return back()->with('success', 'Pembayaran berhasil diproses dengan sistem alokasi cerdas.');
     }
 
@@ -211,6 +220,12 @@ class InvoiceController extends Controller
             'promise_date' => $request->promise_date
         ]);
 
-        return back()->with('success', 'Janji bayar berhasil disimpan.');
+        // Aktifkan kembali internet jika pelanggan sedang di-isolir
+        $customer = $invoice->customer;
+        if ($customer && $customer->status === 'suspended') {
+            $customer->update(['status' => 'active']);
+        }
+
+        return back()->with('success', 'Janji bayar berhasil disimpan. Layanan internet pelanggan telah diaktifkan kembali.');
     }
 }

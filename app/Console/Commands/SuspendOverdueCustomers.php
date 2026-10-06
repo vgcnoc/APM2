@@ -33,10 +33,15 @@ class SuspendOverdueCustomers extends Command
         $now = now();
 
         // Cari pelanggan aktif yang memiliki invoice status "unpaid" dan jatuh temponya sudah lewat
+        // TETAPI kecualikan jika pelanggan memiliki janji bayar (promise_date) yang masih berlaku.
         $overdueCustomers = Customer::where('status', 'active')
             ->whereHas('invoices', function ($query) use ($now) {
-                $query->where('status', 'unpaid')
-                      ->where('due_date', '<', $now);
+                $query->whereIn('status', ['unpaid', 'partial'])
+                      ->where('due_date', '<', $now->format('Y-m-d'))
+                      ->where(function($q) use ($now) {
+                          $q->whereNull('promise_date')
+                            ->orWhere('promise_date', '<', $now->format('Y-m-d'));
+                      });
             })
             ->get();
 
