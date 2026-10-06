@@ -9,23 +9,23 @@
                     <h1 class="text-2xl font-bold text-gray-900">Selamat datang, {{ reseller.customer?.name || $page.props.auth.user.name }}</h1>
                     <p class="text-gray-500 mt-1">Kelola penjualan voucher dan pantau sisa saldo Anda.</p>
                 </div>
-                <div class="flex gap-4">
-                    <div class="bg-green-50 text-green-700 px-6 py-4 rounded-xl flex items-center gap-4">
-                        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600">
+                <div class="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+                    <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white px-6 py-5 rounded-2xl flex items-center gap-4 shadow-lg shadow-emerald-500/30 flex-1 sm:flex-none transform transition-transform hover:scale-105">
+                        <div class="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white shadow-inner">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                         </div>
                         <div>
-                            <p class="text-sm font-medium text-green-600/80">Total Pemasukan</p>
-                            <p class="text-2xl font-bold">Rp {{ Number(income || 0).toLocaleString('id-ID') }}</p>
+                            <p class="text-sm font-medium text-emerald-100">Total Pemasukan</p>
+                            <p class="text-2xl font-black tracking-tight">Rp {{ Number(income || 0).toLocaleString('id-ID') }}</p>
                         </div>
                     </div>
-                    <div class="bg-blue-50 text-blue-700 px-6 py-4 rounded-xl flex items-center gap-4">
-                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                    <div class="bg-gradient-to-br from-blue-600 to-indigo-700 text-white px-6 py-5 rounded-2xl flex items-center gap-4 shadow-lg shadow-blue-500/30 flex-1 sm:flex-none transform transition-transform hover:scale-105">
+                        <div class="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white shadow-inner">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </div>
                         <div>
-                            <p class="text-sm font-medium text-blue-600/80">Sisa Saldo</p>
-                            <p class="text-2xl font-bold">Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}</p>
+                            <p class="text-sm font-medium text-blue-100">Sisa Saldo</p>
+                            <p class="text-2xl font-black tracking-tight">Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}</p>
                         </div>
                     </div>
                 </div>
@@ -34,43 +34,43 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Generate Voucher Form -->
                 <div class="lg:col-span-1">
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                        <div class="flex items-center gap-3 mb-6">
-                            <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+                    <div class="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 p-6 sm:p-8 transition-shadow hover:shadow-2xl">
+                        <div class="flex items-center gap-4 mb-8">
+                            <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
                             </div>
                             <h2 class="text-lg font-bold text-gray-900">Generate Voucher</h2>
                         </div>
 
                         <form @submit.prevent="generateVoucher" class="space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Paket Voucher</label>
-                                <select v-model="form.profile_id" class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm">
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Pilih Paket Voucher</label>
+                                <select v-model="form.profile_id" class="w-full border-gray-200 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 rounded-xl shadow-sm transition-all py-3">
                                     <option value="" disabled>-- Pilih Paket --</option>
                                     <option v-for="profile in profiles" :key="profile.id" :value="profile.id">
                                         {{ profile.name }} (Rp {{ Number(profile.price).toLocaleString('id-ID') }})
                                     </option>
                                 </select>
-                                <div v-if="form.errors.profile_id" class="text-red-500 text-xs mt-1">{{ form.errors.profile_id }}</div>
+                                <div v-if="form.errors.profile_id" class="text-red-500 text-xs font-medium mt-1.5">{{ form.errors.profile_id }}</div>
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Voucher</label>
-                                <input v-model="form.qty" type="number" min="1" max="100" class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm" placeholder="Contoh: 10" />
-                                <div v-if="form.errors.qty" class="text-red-500 text-xs mt-1">{{ form.errors.qty }}</div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Jumlah Voucher</label>
+                                <input v-model="form.qty" type="number" min="1" max="100" class="w-full border-gray-200 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 rounded-xl shadow-sm transition-all py-3" placeholder="Contoh: 10" />
+                                <div v-if="form.errors.qty" class="text-red-500 text-xs font-medium mt-1.5">{{ form.errors.qty }}</div>
                             </div>
 
                             <!-- Preview Total -->
-                            <div v-if="selectedProfile" class="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
+                            <div v-if="selectedProfile" class="p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border border-gray-200/60 space-y-3 shadow-inner">
                                 <div class="flex justify-between text-sm">
-                                    <span class="text-gray-600">Harga Satuan:</span>
-                                    <span class="font-semibold">Rp {{ Number(selectedProfile.price).toLocaleString('id-ID') }}</span>
+                                    <span class="text-gray-500 font-medium">Harga Satuan:</span>
+                                    <span class="font-bold text-gray-800">Rp {{ Number(selectedProfile.price).toLocaleString('id-ID') }}</span>
                                 </div>
                                 <div class="flex justify-between text-sm">
-                                    <span class="text-gray-600">Jumlah:</span>
-                                    <span class="font-semibold">{{ form.qty }} x</span>
+                                    <span class="text-gray-500 font-medium">Jumlah:</span>
+                                    <span class="font-bold text-gray-800">{{ form.qty }} x</span>
                                 </div>
-                                <div class="pt-2 border-t border-gray-200 flex justify-between font-bold text-gray-900">
+                                <div class="pt-3 border-t border-gray-200/80 flex justify-between font-black text-gray-900 text-lg">
                                     <span>Total Biaya:</span>
                                     <span>Rp {{ Number(selectedProfile.price * (form.qty || 0)).toLocaleString('id-ID') }}</span>
                                 </div>
@@ -82,7 +82,7 @@
 
                             <button 
                                 type="submit" 
-                                class="w-full py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
+                                class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-bold text-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl transform hover:-translate-y-0.5"
                                 :disabled="form.processing || !form.profile_id || !form.qty || ((selectedProfile?.price * form.qty) > reseller.balance)"
                             >
                                 {{ form.processing ? 'Memproses...' : 'Generate Sekarang' }}
@@ -93,10 +93,10 @@
 
                 <!-- History / Table -->
                 <div class="lg:col-span-2">
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
-                        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <div class="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden flex flex-col h-full transition-shadow hover:shadow-2xl">
+                        <div class="p-6 sm:p-8 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/30">
                             <h2 class="text-lg font-bold text-gray-900">Riwayat Voucher Anda</h2>
-                            <button @click="printAll" class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                            <button @click="printAll" class="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm text-indigo-600 hover:text-indigo-800 hover:border-indigo-300 hover:bg-indigo-50 font-bold flex items-center gap-2 transition-all shadow-sm">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                                 Print Voucher
                             </button>
