@@ -131,42 +131,31 @@
                                     <div v-if="form.errors.invoice_issue_date" class="mt-1 text-sm text-red-600">{{ form.errors.invoice_issue_date }}</div>
                                 </div>
 
-                                <!-- Jatuh Tempo -->
-                                <div class="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                                    <label class="block text-sm font-bold text-gray-900 mb-1">Batas Jatuh Tempo</label>
-                                    <p class="text-[11px] text-gray-500 mb-3 leading-relaxed">Lama waktu (hari) yang diberikan kepada pelanggan untuk melunasi sejak terbit.</p>
-                                    <div class="relative">
-                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        </div>
-                                        <input type="number" v-model="form.due_date_days" min="0" class="form-input block w-full rounded-lg border-gray-300 pl-10 pr-16 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-medium" />
-                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                            <span class="text-gray-500 text-xs font-medium">Hari</span>
-                                        </div>
-                                    </div>
-                                    <div v-if="form.errors.due_date_days" class="mt-1 text-sm text-red-600">{{ form.errors.due_date_days }}</div>
-                                </div>
-
                                 <!-- Isolir -->
-                                <div class="bg-red-50/30 p-4 rounded-xl border border-red-100 md:col-span-2">
+                                <div class="bg-red-50/30 p-4 rounded-xl border border-red-100">
                                     <div class="flex items-start gap-4">
                                         <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                                         </div>
                                         <div class="flex-1">
-                                            <label class="block text-sm font-bold text-gray-900 mb-1">Masa Tenggang & Isolir Otomatis</label>
-                                            <p class="text-[11px] text-gray-500 mb-3 leading-relaxed max-w-xl">Layanan internet pelanggan akan di-suspend / isolir secara otomatis apabila menunggak sekian hari setelah melewati batas jatuh tempo.</p>
+                                            <label class="block text-sm font-bold text-gray-900 mb-1">Batas Masa Tenggang & Jam Isolir</label>
+                                            <p class="text-[11px] text-gray-500 mb-3 leading-relaxed max-w-xl">Layanan akan di-suspend secara otomatis apabila menunggak sekian hari sejak invoice terbit, pada jam yang ditentukan.</p>
                                             
-                                            <div class="flex items-center gap-3">
-                                                <div class="relative w-40">
+                                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                                                <div class="relative w-full sm:w-40">
                                                     <input type="number" v-model="form.isolate_days" min="0" class="form-input block w-full rounded-lg border-red-200 pl-4 pr-16 focus:border-red-500 focus:ring-red-500 sm:text-sm font-medium bg-white" />
                                                     <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                                        <span class="text-red-500 text-xs font-medium">Hari lewat</span>
+                                                        <span class="text-red-500 text-xs font-medium">Hari</span>
                                                     </div>
                                                 </div>
-                                                <span class="text-xs text-gray-500 italic" v-if="form.isolate_days == 0">Langsung isolir di hari H jatuh tempo</span>
+                                                <div class="text-sm font-bold text-gray-400">Pukul</div>
+                                                <div class="relative w-full sm:w-32">
+                                                    <input type="time" v-model="form.isolate_time" class="form-input block w-full rounded-lg border-red-200 pl-3 pr-2 focus:border-red-500 focus:ring-red-500 sm:text-sm font-medium bg-white" />
+                                                </div>
                                             </div>
                                             <div v-if="form.errors.isolate_days" class="mt-1 text-sm text-red-600">{{ form.errors.isolate_days }}</div>
+                                            <div v-if="form.errors.isolate_time" class="mt-1 text-sm text-red-600">{{ form.errors.isolate_time }}</div>
+                                            <span class="text-xs text-gray-500 italic mt-2 block" v-if="form.isolate_days == 0">Langsung isolir di hari H terbit invoice</span>
                                         </div>
                                     </div>
                                 </div>
@@ -219,14 +208,7 @@
                             <p class="text-[10px] text-indigo-300 pl-5 mt-0.5">Sistem men-generate invoice pelanggan</p>
                         </div>
 
-                        <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-xl p-4">
-                            <div class="flex items-center gap-3 mb-1">
-                                <div class="w-2 h-2 rounded-full bg-amber-400"></div>
-                                <span class="text-xs font-medium text-indigo-100 uppercase tracking-wider">Jatuh Tempo</span>
-                            </div>
-                            <p class="text-sm font-semibold pl-5">Tgl {{ dueDateFormatted }}</p>
-                            <p class="text-[10px] text-indigo-300 pl-5 mt-0.5">Batas akhir pembayaran tanpa denda/suspend</p>
-                        </div>
+                        <!-- Removed Jatuh Tempo Simulation -->
 
                         <div class="bg-white/10 backdrop-blur-md border border-red-500/30 rounded-xl p-4 relative overflow-hidden">
                             <div class="absolute right-0 top-0 w-16 h-16 bg-red-500/10 rounded-bl-full"></div>
@@ -291,16 +273,16 @@ const props = defineProps({
     billing_type: String,
     prorata_formula: String,
     invoice_issue_date: String,
-    due_date_days: String,
     isolate_days: String,
+    isolate_time: String,
 });
 
 const form = useForm({
     billing_type: props.billing_type || 'prabayar',
     prorata_formula: props.prorata_formula || 'exact_days',
     invoice_issue_date: props.invoice_issue_date || '1',
-    due_date_days: props.due_date_days || '7',
     isolate_days: props.isolate_days || '3',
+    isolate_time: props.isolate_time || '00:00',
 });
 
 // Simulation Logic
@@ -319,24 +301,14 @@ const issueDateObj = computed(() => {
     return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), day);
 });
 
-const dueDateObj = computed(() => {
-    const d = new Date(issueDateObj.value);
-    d.setDate(d.getDate() + (parseInt(form.due_date_days) || 0));
-    return d;
-});
-
-const dueDateFormatted = computed(() => {
-    return `${dueDateObj.value.getDate()} ${monthNames[dueDateObj.value.getMonth()]} ${dueDateObj.value.getFullYear()}`;
-});
-
 const isolateDateObj = computed(() => {
-    const d = new Date(dueDateObj.value);
+    const d = new Date(issueDateObj.value);
     d.setDate(d.getDate() + (parseInt(form.isolate_days) || 0));
     return d;
 });
 
 const isolateDateFormatted = computed(() => {
-    return `${isolateDateObj.value.getDate()} ${monthNames[isolateDateObj.value.getMonth()]} ${isolateDateObj.value.getFullYear()}`;
+    return `${isolateDateObj.value.getDate()} ${monthNames[isolateDateObj.value.getMonth()]} ${isolateDateObj.value.getFullYear()} ${form.isolate_time || '00:00'}`;
 });
 
 // Prorata Variables

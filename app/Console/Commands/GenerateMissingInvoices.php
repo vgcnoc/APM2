@@ -38,12 +38,21 @@ class GenerateMissingInvoices extends Command
                 $activationDate = $customer->activation_date ? Carbon::parse($customer->activation_date) : Carbon::parse($customer->created_at);
                 $amount = $customer->package ? $customer->package->price : 0;
                 
+                $isolateDays = (int) \App\Models\Setting::get('isolate_days', '3');
+                $isolateTime = \App\Models\Setting::get('isolate_time', '00:00');
+                
+                $dueDateTime = $activationDate->copy()->addDays($isolateDays);
+                $timeParts = explode(':', $isolateTime);
+                if (count($timeParts) == 2) {
+                    $dueDateTime->setTime((int)$timeParts[0], (int)$timeParts[1], 0);
+                }
+
                 Invoice::create([
                     'customer_id' => $customer->id,
                     'period_month' => $activationDate->month,
                     'period_year' => $activationDate->year,
                     'amount' => $amount,
-                    'due_date' => $activationDate->copy()->addDays(7),
+                    'due_date' => $dueDateTime,
                     'issued_date' => $activationDate,
                     'status' => 'unpaid',
                 ]);

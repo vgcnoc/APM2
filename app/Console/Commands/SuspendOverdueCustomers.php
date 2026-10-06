@@ -30,13 +30,13 @@ class SuspendOverdueCustomers extends Command
     {
         $this->info('Mengecek pelanggan yang telat bayar (Isolir)...');
         
-        $today = now()->startOfDay();
+        $now = now();
 
         // Cari pelanggan aktif yang memiliki invoice status "unpaid" dan jatuh temponya sudah lewat
         $overdueCustomers = Customer::where('status', 'active')
-            ->whereHas('invoices', function ($query) use ($today) {
+            ->whereHas('invoices', function ($query) use ($now) {
                 $query->where('status', 'unpaid')
-                      ->where('due_date', '<', $today);
+                      ->where('due_date', '<', $now);
             })
             ->get();
 

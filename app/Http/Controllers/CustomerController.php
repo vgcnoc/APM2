@@ -1257,7 +1257,8 @@ class CustomerController extends Controller
                 $billingType = \App\Models\Setting::get('billing_type', 'prabayar');
                 $prorataFormula = \App\Models\Setting::get('prorata_formula', 'exact_days');
                 $issueDateSetting = (int) \App\Models\Setting::get('invoice_issue_date', '1');
-                $dueDateDays = (int) \App\Models\Setting::get('due_date_days', '7');
+                $isolateDays = (int) \App\Models\Setting::get('isolate_days', '3');
+                $isolateTime = \App\Models\Setting::get('isolate_time', '00:00');
 
                 if ($billingType === 'prorata' && $amount > 0) {
                     $nextBillingDate = $activationDate->copy();
@@ -1291,12 +1292,18 @@ class CustomerController extends Controller
                     }
                 }
                 
+                $dueDateTime = $activationDate->copy()->addDays($isolateDays);
+                $timeParts = explode(':', $isolateTime);
+                if (count($timeParts) == 2) {
+                    $dueDateTime->setTime((int)$timeParts[0], (int)$timeParts[1], 0);
+                }
+
                 \App\Models\Invoice::create([
                     'customer_id' => $customer->id,
                     'period_month' => $activationDate->month,
                     'period_year' => $activationDate->year,
                     'amount' => $amount,
-                    'due_date' => $activationDate->copy()->addDays($dueDateDays),
+                    'due_date' => $dueDateTime,
                     'issued_date' => $activationDate,
                     'status' => 'unpaid',
                     'is_prorata' => $isProrata,
