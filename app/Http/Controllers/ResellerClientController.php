@@ -67,8 +67,8 @@ class ResellerClientController extends Controller
         $profile = VoucherProfile::find($validated['profile_id']);
         
         // Price for reseller calculation
-        // For simplicity, we just deduct profile->price * qty for now
-        $totalCost = $profile->price * $validated['qty'];
+        // Deduct fee_reseller * qty from reseller's balance
+        $totalCost = $profile->fee_reseller * $validated['qty'];
         
         if ($reseller->balance < $totalCost) {
             return redirect()->back()->withErrors(['error' => 'Saldo tidak mencukupi untuk generate ' . $validated['qty'] . ' voucher.']);

@@ -73,18 +73,22 @@
                             <!-- Preview Total -->
                             <div v-if="selectedProfile" class="p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border border-gray-200/60 space-y-3 shadow-inner">
                                 <div class="flex justify-between text-sm">
-                                    <span class="text-gray-500 font-medium">Harga Satuan:</span>
+                                    <span class="text-gray-500 font-medium">Harga Jual (User):</span>
                                     <span class="font-bold text-gray-800">Rp {{ Number(selectedProfile.price).toLocaleString('id-ID') }}</span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-500 font-medium">Harga Modal (Reseller):</span>
+                                    <span class="font-bold text-indigo-600">Rp {{ Number(selectedProfile.fee_reseller).toLocaleString('id-ID') }}</span>
                                 </div>
                                 <div class="flex justify-between text-sm">
                                     <span class="text-gray-500 font-medium">Jumlah:</span>
                                     <span class="font-bold text-gray-800">{{ form.qty }} x</span>
                                 </div>
                                 <div class="pt-3 border-t border-gray-200/80 flex justify-between font-black text-gray-900 text-lg">
-                                    <span>Total Biaya:</span>
-                                    <span>Rp {{ Number(selectedProfile.price * (form.qty || 0)).toLocaleString('id-ID') }}</span>
+                                    <span>Total Potongan Saldo:</span>
+                                    <span class="text-indigo-600">Rp {{ Number(selectedProfile.fee_reseller * (form.qty || 0)).toLocaleString('id-ID') }}</span>
                                 </div>
-                                <div v-if="(selectedProfile.price * (form.qty || 0)) > reseller.balance" class="text-xs text-red-600 mt-2 flex gap-1 items-start">
+                                <div v-if="(selectedProfile.fee_reseller * (form.qty || 0)) > reseller.balance" class="text-xs text-red-600 mt-2 flex gap-1 items-start">
                                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                                     Saldo tidak mencukupi
                                 </div>
@@ -93,7 +97,7 @@
                             <button 
                                 type="submit" 
                                 class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-bold text-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl transform hover:-translate-y-0.5"
-                                :disabled="form.processing || !form.profile_id || !form.qty || ((selectedProfile?.price * form.qty) > reseller.balance)"
+                                :disabled="form.processing || !form.profile_id || !form.qty || ((selectedProfile?.fee_reseller * form.qty) > reseller.balance)"
                             >
                                 {{ form.processing ? 'Memproses...' : 'Generate Sekarang' }}
                             </button>
