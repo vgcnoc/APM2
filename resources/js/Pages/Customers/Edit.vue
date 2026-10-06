@@ -200,6 +200,33 @@
                                         <input v-model="form.installation_fee" type="number" class="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all font-mono font-medium" />
                                     </div>
                                 </div>
+                                
+                                <div class="md:col-span-2 pt-2 border-t border-gray-100">
+                                    <h5 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Pengaturan Pajak / Pungutan</h5>
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-gray-500 mb-1">PPN (%)</label>
+                                            <div class="relative">
+                                                <input v-model="form.tax_ppn" type="number" step="0.01" class="w-full pr-8 pl-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all" placeholder="11" />
+                                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-gray-500 mb-1">BHP (%)</label>
+                                            <div class="relative">
+                                                <input v-model="form.tax_bhp" type="number" step="0.01" class="w-full pr-8 pl-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all" placeholder="0" />
+                                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-gray-500 mb-1">USO (%)</label>
+                                            <div class="relative">
+                                                <input v-model="form.tax_uso" type="number" step="0.01" class="w-full pr-8 pl-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all" placeholder="0" />
+                                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <div>
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tanggal Registrasi</label>
@@ -400,6 +427,9 @@ const form = useForm({
     notes: props.customer.notes || '',
     is_reseller: props.customer.is_reseller == 1 ? true : false,
     service_status: props.customer.service_status || 'berbayar',
+    tax_ppn: props.customer.tax_ppn,
+    tax_bhp: props.customer.tax_bhp,
+    tax_uso: props.customer.tax_uso,
 });
 
 const registration_type = ref('customer');
