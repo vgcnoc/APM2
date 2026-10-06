@@ -237,6 +237,7 @@
                                             <option value="none">Tidak Menggunakan (Manual)</option>
                                             <option value="tripay">Tripay</option>
                                             <option value="midtrans">Midtrans</option>
+                                            <option value="duitku">Duitku</option>
                                         </select>
                                     </div>
                                     <div v-if="form.pg_provider !== 'none'">
