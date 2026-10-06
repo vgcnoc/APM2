@@ -20,7 +20,7 @@
             </div>
 
             <!-- Navigation -->
-            <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+            <nav scroll-region class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
                 <template v-for="(item, index) in filteredMenuItems" :key="index">
                     <!-- Group Label -->
                     <div v-if="item.type === 'group' && sidebarOpen" class="pt-5 pb-2 px-4">
