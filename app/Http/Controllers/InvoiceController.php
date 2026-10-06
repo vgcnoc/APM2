@@ -118,6 +118,7 @@ class InvoiceController extends Controller
         
         // Buat record pembayaran
         $invoice->payments()->create([
+            'customer_id' => $invoice->customer_id,
             'payment_date' => now(),
             'amount' => $paymentAmount,
             'payment_method' => $request->method,
