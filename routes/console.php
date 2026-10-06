@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Jalankan pengecekan isolir setiap hari pada jam 00:01
 Schedule::command('billing:suspend-overdue')->dailyAt('00:01');
+
+// Generate invoice otomatis setiap hari pada jam 00:05 (akan dijalankan berdasarkan invoice_issue_date di pengaturan)
+Schedule::command('app:generate-invoices')->dailyAt('00:05');
