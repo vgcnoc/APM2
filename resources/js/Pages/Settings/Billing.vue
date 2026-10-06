@@ -226,7 +226,6 @@
                             </div>
                             <p class="text-[9px] text-indigo-400 mt-3 leading-tight italic">Rumus: (Harga Paket ÷ Total Hari Siklus) × Jumlah Hari Pemakaian Aktual.</p>
                         </div>
-                    </div>
 
                     <div class="mt-6 pt-5 border-t border-indigo-700/50">
                         <p class="text-[10px] text-indigo-300 leading-relaxed">
