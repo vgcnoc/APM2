@@ -12,7 +12,13 @@ class InvoiceController extends Controller
     public function index(Request $request): Response
     {
         $query = Invoice::with(['customer' => function($q) {
-            $q->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id', 'created_at', 'status');
+            $q->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id', 'created_at', 'status')
+              ->withCount(['invoices as unpaid_invoices_count' => function ($query) {
+                  $query->whereIn('status', ['unpaid', 'partial']);
+              }])
+              ->withSum(['invoices as total_unpaid_amount' => function ($query) {
+                  $query->whereIn('status', ['unpaid', 'partial']);
+              }], 'amount');
         }, 'customer.areaModel', 'customer.package', 'payments' => function($q) {
             $q->latest('payment_date');
         }]);
@@ -83,6 +89,8 @@ class InvoiceController extends Controller
                         'package' => $invoice->customer->package?->name,
                         'register_date' => $invoice->customer->created_at ? $invoice->customer->created_at->format('d M Y') : null,
                         'status' => $invoice->customer->status,
+                        'unpaid_count' => $invoice->customer->unpaid_invoices_count ?? 0,
+                        'total_unpaid' => $invoice->customer->total_unpaid_amount ?? 0,
                     ] : null,
                     'period_label' => $invoice->period_label,
                     'amount' => $invoice->amount,
@@ -115,26 +123,64 @@ class InvoiceController extends Controller
         ]);
 
         $paymentAmount = $request->amount;
+        $customerId = $invoice->customer_id;
         
-        // Buat record pembayaran
-        $invoice->payments()->create([
-            'customer_id' => $invoice->customer_id,
-            'payment_date' => now(),
-            'amount' => $paymentAmount,
-            'payment_method' => $request->method,
-            'notes' => $request->notes,
-            'processed_by' => auth()->id(),
-        ]);
+        // Cari semua tagihan unpaid/partial milik pelanggan ini, urutkan dari yang tertua
+        $unpaidInvoices = Invoice::where('customer_id', $customerId)
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->orderBy('due_date', 'asc')
+            ->get();
+            
+        // Pindahkan tagihan yang sedang diklik ke urutan pertama, agar diprioritaskan
+        $unpaidInvoices = $unpaidInvoices->sortByDesc(function ($inv) use ($invoice) {
+            return $inv->id == $invoice->id ? 1 : 0;
+        });
 
-        // Update status invoice
-        $totalPaid = $invoice->payments()->sum('amount');
-        if ($totalPaid >= $invoice->amount) {
-            $invoice->update(['status' => 'paid', 'total_paid' => $totalPaid, 'remaining' => 0]);
-        } else {
-            $invoice->update(['status' => 'partial', 'total_paid' => $totalPaid, 'remaining' => $invoice->amount - $totalPaid]);
+        $remainingPayment = $paymentAmount;
+
+        foreach ($unpaidInvoices as $inv) {
+            if ($remainingPayment <= 0) break;
+
+            $invRemaining = $inv->amount - $inv->payments()->sum('amount');
+            if ($invRemaining <= 0) continue;
+
+            $payForThis = min($invRemaining, $remainingPayment);
+
+            $inv->payments()->create([
+                'customer_id' => $customerId,
+                'payment_date' => now(),
+                'amount' => $payForThis,
+                'payment_method' => $request->method,
+                'notes' => $request->notes,
+                'processed_by' => auth()->id(),
+            ]);
+
+            $totalPaid = $inv->payments()->sum('amount');
+            if ($totalPaid >= $inv->amount) {
+                $inv->update(['status' => 'paid', 'total_paid' => $totalPaid, 'remaining' => 0]);
+            } else {
+                $inv->update(['status' => 'partial', 'total_paid' => $totalPaid, 'remaining' => $inv->amount - $totalPaid]);
+            }
+
+            $remainingPayment -= $payForThis;
         }
 
-        return back()->with('success', 'Pembayaran berhasil diproses.');
+        // Jika masih ada sisa pembayaran yang tidak teralokasi, 
+        // kita bisa menaruhnya di tagihan yang sedang aktif/dipilih, menjadikannya overpaid.
+        if ($remainingPayment > 0) {
+            $invoice->payments()->create([
+                'customer_id' => $customerId,
+                'payment_date' => now(),
+                'amount' => $remainingPayment,
+                'payment_method' => $request->method,
+                'notes' => ($request->notes ? $request->notes . ' | ' : '') . 'Kelebihan Pembayaran (Overpaid)',
+                'processed_by' => auth()->id(),
+            ]);
+            $totalPaid = $invoice->payments()->sum('amount');
+            $invoice->update(['status' => 'paid', 'total_paid' => $totalPaid, 'remaining' => 0]);
+        }
+
+        return back()->with('success', 'Pembayaran berhasil diproses dengan sistem alokasi cerdas.');
     }
 
     public function rollback(Invoice $invoice)
