@@ -27,6 +27,12 @@ class SettingController extends Controller
             'isolate_days' => Setting::get('isolate_days', '3'),
             'isolate_time' => Setting::get('isolate_time', '00:00'),
             'payment_banks' => json_decode(Setting::get('payment_banks', '[]'), true),
+            'pg_provider' => Setting::get('pg_provider', 'none'),
+            'pg_environment' => Setting::get('pg_environment', 'sandbox'),
+            'pg_merchant_id' => Setting::get('pg_merchant_id', ''),
+            'pg_api_key' => Setting::get('pg_api_key', ''),
+            'pg_private_key' => Setting::get('pg_private_key', ''),
+            'pg_callback_token' => Setting::get('pg_callback_token', ''),
         ]);
     }
 
@@ -42,6 +48,12 @@ class SettingController extends Controller
             'payment_banks.*.bank_name' => 'required|string',
             'payment_banks.*.account_name' => 'required|string',
             'payment_banks.*.account_number' => 'required|string',
+            'pg_provider' => 'nullable|string',
+            'pg_environment' => 'nullable|string',
+            'pg_merchant_id' => 'nullable|string',
+            'pg_api_key' => 'nullable|string',
+            'pg_private_key' => 'nullable|string',
+            'pg_callback_token' => 'nullable|string',
         ]);
 
         Setting::set('billing_type', $request->billing_type);
@@ -52,6 +64,12 @@ class SettingController extends Controller
         Setting::set('isolate_days', $request->isolate_days);
         Setting::set('isolate_time', $request->isolate_time);
         Setting::set('payment_banks', json_encode($request->payment_banks ?? []));
+        Setting::set('pg_provider', $request->pg_provider ?? 'none');
+        Setting::set('pg_environment', $request->pg_environment ?? 'sandbox');
+        Setting::set('pg_merchant_id', $request->pg_merchant_id ?? '');
+        Setting::set('pg_api_key', $request->pg_api_key ?? '');
+        Setting::set('pg_private_key', $request->pg_private_key ?? '');
+        Setting::set('pg_callback_token', $request->pg_callback_token ?? '');
 
         return redirect()->back()->with('success', 'Pengaturan billing berhasil diperbarui.');
     }

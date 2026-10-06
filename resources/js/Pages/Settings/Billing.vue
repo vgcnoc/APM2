@@ -215,6 +215,62 @@
                             </div>
                         </div>
 
+                        <hr class="border-gray-100 border-dashed">
+
+                        <!-- Pengaturan Payment Gateway -->
+                        <div>
+                            <div class="flex items-center gap-2 mb-6">
+                                <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-900">Payment Gateway (Otomatis)</h3>
+                                    <p class="text-xs text-gray-500">Konfigurasi pihak ketiga untuk pembayaran otomatis.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-5">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Provider Gateway</label>
+                                        <select v-model="form.pg_provider" class="form-select block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                            <option value="none">Tidak Menggunakan (Manual)</option>
+                                            <option value="tripay">Tripay</option>
+                                            <option value="midtrans">Midtrans</option>
+                                        </select>
+                                    </div>
+                                    <div v-if="form.pg_provider !== 'none'">
+                                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Environment</label>
+                                        <select v-model="form.pg_environment" class="form-select block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                            <option value="sandbox">Sandbox (Testing)</option>
+                                            <option value="production">Production (Live)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <Transition name="fade">
+                                    <div v-if="form.pg_provider !== 'none'" class="grid grid-cols-1 md:grid-cols-2 gap-5 bg-gray-50 p-5 rounded-xl border border-gray-200">
+                                        <div>
+                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Merchant Code / ID</label>
+                                            <input type="text" v-model="form.pg_merchant_id" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g. TXXXX">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">API Key</label>
+                                            <input type="text" v-model="form.pg_api_key" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g. dev-xxx...">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Private Key</label>
+                                            <input type="password" v-model="form.pg_private_key" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g. xxxx-xxxx-xxxx">
+                                        </div>
+                                        <div v-if="form.pg_provider === 'tripay'">
+                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Callback Token</label>
+                                            <input type="password" v-model="form.pg_callback_token" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Token dari webhook (optional)">
+                                        </div>
+                                    </div>
+                                </Transition>
+                            </div>
+                        </div>
+
                         <!-- Action Buttons -->
                         <div class="pt-6 border-t border-gray-100 flex items-center justify-between">
                             <Transition name="fade">
@@ -329,6 +385,12 @@ const props = defineProps({
     isolate_days: String,
     isolate_time: String,
     payment_banks: Array,
+    pg_provider: String,
+    pg_environment: String,
+    pg_merchant_id: String,
+    pg_api_key: String,
+    pg_private_key: String,
+    pg_callback_token: String,
 });
 
 const form = useForm({
@@ -338,6 +400,12 @@ const form = useForm({
     isolate_days: props.isolate_days || '3',
     isolate_time: props.isolate_time || '00:00',
     payment_banks: props.payment_banks || [],
+    pg_provider: props.pg_provider || 'none',
+    pg_environment: props.pg_environment || 'sandbox',
+    pg_merchant_id: props.pg_merchant_id || '',
+    pg_api_key: props.pg_api_key || '',
+    pg_private_key: props.pg_private_key || '',
+    pg_callback_token: props.pg_callback_token || '',
 });
 
 function addBank() {
