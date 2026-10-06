@@ -939,6 +939,9 @@ class CustomerController extends Controller
             'sales_id' => 'nullable|exists:users,id',
             'is_reseller' => 'boolean',
             'service_status' => 'nullable|in:berbayar,gratis',
+            'tax_ppn' => 'nullable|numeric|min:0|max:100',
+            'tax_bhp' => 'nullable|numeric|min:0|max:100',
+            'tax_uso' => 'nullable|numeric|min:0|max:100',
         ]);
 
         if (!auth()->user()->hasRole('admin')) {
