@@ -146,7 +146,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import AppLogo from '@/Components/AppLogo.vue';
 
@@ -166,22 +166,11 @@ const saveScrollPosition = () => {
 };
 
 onMounted(() => {
-    // Restore sidebar scroll position
-    if (sidebarNav.value) {
-        const scrollPos = localStorage.getItem('sidebarScrollPos');
-        if (scrollPos) {
-            setTimeout(() => {
-                if (sidebarNav.value) sidebarNav.value.scrollTop = parseInt(scrollPos, 10);
-            }, 50);
-        }
-    }
-    
-    // Restore open dropdowns
+    // Restore open dropdowns first so the DOM height is correct BEFORE restoring scroll
     const savedDropdowns = localStorage.getItem('sidebarOpenDropdowns');
     if (savedDropdowns) {
         openDropdowns.value = JSON.parse(savedDropdowns);
     } else {
-        // Default to active parent if no saved state
         const currentUrl = page.url;
         filteredMenuItems.value.forEach((item, index) => {
             if (item.type === 'dropdown' && item.active(currentUrl)) {
@@ -191,6 +180,17 @@ onMounted(() => {
             }
         });
     }
+
+    // Restore sidebar scroll position
+    nextTick(() => {
+        if (sidebarNav.value) {
+            const scrollPos = localStorage.getItem('sidebarScrollPos');
+            if (scrollPos) {
+                // Set directly, no setTimeout to prevent flickering
+                sidebarNav.value.scrollTop = parseInt(scrollPos, 10);
+            }
+        }
+    });
 });
 
 const menuItems = [
