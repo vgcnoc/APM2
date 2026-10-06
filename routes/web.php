@@ -196,6 +196,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/reseller-requests/{balanceRequest}/approve', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'approve'])->name('reseller-requests.approve');
     Route::post('/reseller-requests/{balanceRequest}/reject', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'reject'])->name('reseller-requests.reject');
 
+    // ── Reseller Billing (Penagihan & Pelunasan) ────────────────────────
+    Route::get('/reseller-billing', [\App\Http\Controllers\ResellerBillingController::class, 'index'])->name('reseller-billing.index');
+    Route::post('/reseller-billing/{invoice}/collect', [\App\Http\Controllers\ResellerBillingController::class, 'collect'])->name('reseller-billing.collect');
+    
+    Route::get('/reseller-settlements', [\App\Http\Controllers\ResellerBillingController::class, 'settlements'])->name('reseller-settlements.index');
+    Route::post('/reseller-settlements/{payment}/approve', [\App\Http\Controllers\ResellerBillingController::class, 'approve'])->name('reseller-settlements.approve');
+
 
     // ── Pengguna & Hak Akses ───────────────────────────────────
     Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit'])->middleware('role:admin');

@@ -210,6 +210,8 @@ const menuItems = [
     
     { type: 'group', label: 'BILLING & PRODUK' },
     { type: 'link', href: '/invoices', icon: 'document-text', label: 'Invoice Pelanggan', active: (url) => (url || '').startsWith('/invoices'), permission: 'menu_customers_all' },
+    { type: 'link', href: '/reseller-billing', icon: 'cash', label: 'Penagihan Reseller', active: (url) => (url || '').startsWith('/reseller-billing'), permission: 'menu_customers_all' },
+    { type: 'link', href: '/reseller-settlements', icon: 'check-circle', label: 'Pelunasan Reseller', active: (url) => (url || '').startsWith('/reseller-settlements'), permission: 'menu_customers_all' },
     { type: 'link', href: '/tax-reports', icon: 'calculator', label: 'Laporan Pajak', active: (url) => (url || '').startsWith('/tax-reports'), permission: 'menu_customers_all' },
     { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
 

@@ -13,6 +13,7 @@ class Payment extends Model
     protected $fillable = [
         'invoice_id', 'customer_id', 'amount', 'payment_method',
         'payment_date', 'reference_number', 'notes',
+        'status', 'collected_by'
     ];
 
     protected function casts(): array
@@ -31,5 +32,10 @@ class Payment extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function collector(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'collected_by');
     }
 }
