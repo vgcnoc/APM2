@@ -114,12 +114,14 @@
                                 <h3 class="text-lg font-bold text-gray-900">Timeline & Penjadwalan</h3>
                             </div>
                             
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                            <div class="grid grid-cols-1 gap-y-6">
                                 <!-- Tanggal Terbit -->
-                                <div class="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                                    <label class="block text-sm font-bold text-gray-900 mb-1">Tanggal Terbit Invoice</label>
-                                    <p class="text-[11px] text-gray-500 mb-3 leading-relaxed">Tanggal rutin di setiap bulannya dimana sistem akan membuat invoice baru.</p>
-                                    <div class="relative">
+                                <div class="bg-gray-50/50 p-5 rounded-xl border border-gray-100 flex flex-col md:flex-row md:items-start gap-4">
+                                    <div class="flex-1">
+                                        <label class="block text-sm font-bold text-gray-900 mb-1">Tanggal Terbit Invoice</label>
+                                        <p class="text-[11px] text-gray-500 mb-3 leading-relaxed">Tanggal rutin di setiap bulannya dimana sistem akan men-generate invoice baru untuk seluruh pelanggan aktif.</p>
+                                    </div>
+                                    <div class="w-full md:w-48 relative">
                                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                             <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                         </div>
@@ -127,36 +129,36 @@
                                         <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                                             <span class="text-gray-500 text-xs font-medium">Tiap bln</span>
                                         </div>
+                                        <div v-if="form.errors.invoice_issue_date" class="mt-1 text-sm text-red-600">{{ form.errors.invoice_issue_date }}</div>
                                     </div>
-                                    <div v-if="form.errors.invoice_issue_date" class="mt-1 text-sm text-red-600">{{ form.errors.invoice_issue_date }}</div>
                                 </div>
 
                                 <!-- Isolir -->
-                                <div class="bg-red-50/30 p-4 rounded-xl border border-red-100">
-                                    <div class="flex items-start gap-4">
-                                        <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
-                                        </div>
-                                        <div class="flex-1">
-                                            <label class="block text-sm font-bold text-gray-900 mb-1">Batas Masa Tenggang & Jam Isolir</label>
-                                            <p class="text-[11px] text-gray-500 mb-3 leading-relaxed max-w-xl">Layanan akan di-suspend secara otomatis apabila menunggak sekian hari sejak invoice terbit, pada jam yang ditentukan.</p>
-                                            
-                                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                                                <div class="relative w-full sm:w-40">
-                                                    <input type="number" v-model="form.isolate_days" min="0" class="form-input block w-full rounded-lg border-red-200 pl-4 pr-16 focus:border-red-500 focus:ring-red-500 sm:text-sm font-medium bg-white" />
-                                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                                        <span class="text-red-500 text-xs font-medium">Hari</span>
-                                                    </div>
-                                                </div>
-                                                <div class="text-sm font-bold text-gray-400">Pukul</div>
-                                                <div class="relative w-full sm:w-32">
-                                                    <input type="time" v-model="form.isolate_time" class="form-input block w-full rounded-lg border-red-200 pl-3 pr-2 focus:border-red-500 focus:ring-red-500 sm:text-sm font-medium bg-white" />
+                                <div class="bg-red-50/30 p-5 rounded-xl border border-red-100 flex flex-col md:flex-row md:items-start gap-4">
+                                    <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                    </div>
+                                    <div class="flex-1">
+                                        <label class="block text-sm font-bold text-gray-900 mb-1">Batas Masa Tenggang & Jam Isolir</label>
+                                        <p class="text-[11px] text-gray-500 mb-4 leading-relaxed">
+                                            Layanan akan di-suspend secara otomatis apabila menunggak sekian hari sejak invoice terbit, persis pada jam yang Anda tentukan di bawah ini.
+                                        </p>
+                                        
+                                        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                                            <div class="relative w-full sm:w-40">
+                                                <input type="number" v-model="form.isolate_days" min="0" class="form-input block w-full rounded-lg border-red-200 pl-4 pr-16 focus:border-red-500 focus:ring-red-500 sm:text-sm font-medium bg-white shadow-sm" />
+                                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                                    <span class="text-red-500 text-xs font-medium">Hari</span>
                                                 </div>
                                             </div>
-                                            <div v-if="form.errors.isolate_days" class="mt-1 text-sm text-red-600">{{ form.errors.isolate_days }}</div>
-                                            <div v-if="form.errors.isolate_time" class="mt-1 text-sm text-red-600">{{ form.errors.isolate_time }}</div>
-                                            <span class="text-xs text-gray-500 italic mt-2 block" v-if="form.isolate_days == 0">Langsung isolir di hari H terbit invoice</span>
+                                            <div class="text-sm font-bold text-gray-400 uppercase tracking-widest hidden sm:block">Pukul</div>
+                                            <div class="relative w-full sm:w-32">
+                                                <input type="time" v-model="form.isolate_time" class="form-input block w-full rounded-lg border-red-200 px-3 focus:border-red-500 focus:ring-red-500 sm:text-sm font-medium bg-white shadow-sm" />
+                                            </div>
                                         </div>
+                                        <div v-if="form.errors.isolate_days" class="mt-1 text-sm text-red-600">{{ form.errors.isolate_days }}</div>
+                                        <div v-if="form.errors.isolate_time" class="mt-1 text-sm text-red-600">{{ form.errors.isolate_time }}</div>
+                                        <span class="text-xs font-medium text-red-500 mt-2 block" v-if="form.isolate_days == 0">Peringatan: Jika di set 0, internet langsung terisolir di hari tagihan terbit.</span>
                                     </div>
                                 </div>
                             </div>
