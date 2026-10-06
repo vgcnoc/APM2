@@ -120,6 +120,12 @@
                 </td>
                 <td class="font-mono text-xs text-gray-700">{{ row.ip_address || '-' }}</td>
                 <td class="font-mono text-xs text-gray-700">{{ row.mac_address || '-' }}</td>
+                <td>
+                    <div class="flex flex-col">
+                        <span class="text-xs text-emerald-600 font-medium whitespace-nowrap">Up: {{ formatUptime(row.session_time) }}</span>
+                        <span class="text-[10px] text-gray-400 whitespace-nowrap">{{ formatDate(row.start_time) }}</span>
+                    </div>
+                </td>
             </template>
         </DataTable>
     </AppLayout>
@@ -148,6 +154,7 @@ const columns = [
     { key: 'access_mode', label: 'MODE' },
     { key: 'ip_address', label: 'IP ADDRESS' },
     { key: 'mac_address', label: 'MAC ADDRESS' },
+    { key: 'uptime', label: 'UPTIME / LOGIN' },
 ];
 
 function getAvatarColor(name) {
@@ -215,5 +222,29 @@ function modeClass(mode) {
         case 'static_ip': return 'bg-sky-50 text-sky-600 border-sky-200';
         default: return 'bg-gray-50 text-gray-600 border-gray-200';
     }
+}
+
+function formatUptime(seconds) {
+    if (!seconds) return '0s';
+    const d = Math.floor(seconds / (3600*24));
+    const h = Math.floor(seconds % (3600*24) / 3600);
+    const m = Math.floor(seconds % 3600 / 60);
+    const s = Math.floor(seconds % 60);
+    
+    let parts = [];
+    if (d > 0) parts.push(`${d}d`);
+    if (h > 0) parts.push(`${h}h`);
+    if (m > 0) parts.push(`${m}m`);
+    if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+    
+    return parts.join(' ');
+}
+
+function formatDate(isoString) {
+    if (!isoString) return '-';
+    const date = new Date(isoString);
+    return date.toLocaleString('id-ID', {
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+    });
 }
 </script>
