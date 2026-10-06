@@ -61,6 +61,7 @@ class ResellerClientController extends Controller
         $validated = $request->validate([
             'profile_id' => 'required|exists:voucher_profiles,id',
             'qty' => 'required|integer|min:1|max:100',
+            'combination' => 'nullable|string|in:alphanumeric,numeric,alpha',
         ]);
 
         $profile = VoucherProfile::find($validated['profile_id']);
@@ -83,10 +84,17 @@ class ResellerClientController extends Controller
             return redirect()->back()->withErrors(['error' => 'Router aktif tidak ditemukan.']);
         }
 
+        $combination = $validated['combination'] ?? 'alphanumeric';
+        
         $vouchers = [];
         for ($i = 0; $i < $validated['qty']; $i++) {
-            // Basic random generator
-            $code = strtoupper(Str::random(6));
+            if ($combination === 'numeric') {
+                $code = substr(str_shuffle(str_repeat('0123456789', 5)), 0, 6);
+            } elseif ($combination === 'alpha') {
+                $code = substr(str_shuffle(str_repeat('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 5)), 0, 6);
+            } else {
+                $code = strtoupper(Str::random(6));
+            }
             
             $vouchers[] = [
                 'code' => $code,

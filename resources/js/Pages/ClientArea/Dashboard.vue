@@ -60,6 +60,16 @@
                                 <div v-if="form.errors.qty" class="text-red-500 text-xs font-medium mt-1.5">{{ form.errors.qty }}</div>
                             </div>
 
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Kombinasi Username</label>
+                                <select v-model="form.combination" class="w-full border-gray-200 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 rounded-xl shadow-sm transition-all py-3">
+                                    <option value="alphanumeric">Huruf & Angka (Contoh: A1B2C)</option>
+                                    <option value="numeric">Hanya Angka (Contoh: 12345)</option>
+                                    <option value="alpha">Hanya Huruf (Contoh: ABCDE)</option>
+                                </select>
+                                <div v-if="form.errors.combination" class="text-red-500 text-xs font-medium mt-1.5">{{ form.errors.combination }}</div>
+                            </div>
+
                             <!-- Preview Total -->
                             <div v-if="selectedProfile" class="p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border border-gray-200/60 space-y-3 shadow-inner">
                                 <div class="flex justify-between text-sm">
@@ -167,7 +177,8 @@ const props = defineProps({
 
 const form = useForm({
     profile_id: '',
-    qty: 1
+    qty: 1,
+    combination: 'alphanumeric'
 });
 
 const selectedProfile = computed(() => {
