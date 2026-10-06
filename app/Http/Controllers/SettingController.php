@@ -22,6 +22,7 @@ class SettingController extends Controller
     {
         return Inertia::render('Settings/Billing', [
             'billing_type' => Setting::get('billing_type', 'prabayar'),
+            'prorata_formula' => Setting::get('prorata_formula', 'exact_days'),
             'invoice_issue_date' => Setting::get('invoice_issue_date', '1'),
             'due_date_days' => Setting::get('due_date_days', '7'),
             'isolate_days' => Setting::get('isolate_days', '3'),
@@ -32,12 +33,16 @@ class SettingController extends Controller
     {
         $request->validate([
             'billing_type' => 'required|in:prabayar,pascabayar,prorata',
+            'prorata_formula' => 'nullable|in:exact_days,fixed_30,mid_month',
             'invoice_issue_date' => 'required|integer|min:1|max:28',
             'due_date_days' => 'required|integer|min:0',
             'isolate_days' => 'required|integer|min:0',
         ]);
 
         Setting::set('billing_type', $request->billing_type);
+        if ($request->has('prorata_formula')) {
+            Setting::set('prorata_formula', $request->prorata_formula);
+        }
         Setting::set('invoice_issue_date', $request->invoice_issue_date);
         Setting::set('due_date_days', $request->due_date_days);
         Setting::set('isolate_days', $request->isolate_days);

@@ -63,6 +63,45 @@
                             </div>
                             <div v-if="form.errors.billing_type" class="mt-1 text-sm text-red-600">{{ form.errors.billing_type }}</div>
                         </div>
+
+                        <!-- Opsi Rumus Prorata -->
+                        <div v-if="form.billing_type === 'prorata'" class="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100">
+                            <h4 class="text-sm font-bold text-indigo-900 mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                                Rumusan Prorata
+                            </h4>
+                            <div class="space-y-3">
+                                <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'exact_days' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
+                                    <div class="flex items-center h-5">
+                                        <input type="radio" v-model="form.prorata_formula" value="exact_days" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <span class="font-bold text-gray-900 block">Sangat Akurat (Bulan Berjalan) <span class="ml-2 text-[10px] font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Disarankan</span></span>
+                                        <span class="text-gray-500 text-xs mt-1 block">Harga / Total Hari di Bulan Ini x Hari Pemakaian (Sangat adil untuk pelanggan)</span>
+                                    </div>
+                                </label>
+                                
+                                <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'fixed_30' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
+                                    <div class="flex items-center h-5">
+                                        <input type="radio" v-model="form.prorata_formula" value="fixed_30" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <span class="font-bold text-gray-900 block">Konstan 30 Hari</span>
+                                        <span class="text-gray-500 text-xs mt-1 block">Harga / 30 x Hari Pemakaian (Bulan apapun dianggap rata 30 hari)</span>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'mid_month' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
+                                    <div class="flex items-center h-5">
+                                        <input type="radio" v-model="form.prorata_formula" value="mid_month" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <span class="font-bold text-gray-900 block">Paruh Bulan (Cut-Off Tengah)</span>
+                                        <span class="text-gray-500 text-xs mt-1 block">Aktivasi sebelum pertengahan siklus = Bayar Penuh. Lewat pertengahan = Diskon 50%</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
                         
                         <hr class="border-gray-100 border-dashed">
 
@@ -224,7 +263,12 @@
                                     <span class="font-bold text-lg text-emerald-400">{{ formatCurrency(prorataAmount) }}</span>
                                 </div>
                             </div>
-                            <p class="text-[9px] text-indigo-400 mt-3 leading-tight italic">Rumus: (Harga Paket ÷ Total Hari Siklus) × Jumlah Hari Pemakaian Aktual.</p>
+                            <p class="text-[9px] text-indigo-400 mt-3 leading-tight italic">
+                                Rumus: 
+                                <span v-if="form.prorata_formula === 'fixed_30'">(Harga Paket ÷ 30) × Jumlah Hari Pemakaian</span>
+                                <span v-else-if="form.prorata_formula === 'mid_month'">Jika aktivasi lewat pertengahan bulan, diskon 50%. Jika tidak, bayar penuh.</span>
+                                <span v-else>(Harga Paket ÷ Total Hari Siklus Berjalan) × Jumlah Hari Pemakaian</span>
+                            </p>
                         </div>
 
                     <div class="mt-6 pt-5 border-t border-indigo-700/50">
@@ -245,6 +289,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     billing_type: String,
+    prorata_formula: String,
     invoice_issue_date: String,
     due_date_days: String,
     isolate_days: String,
@@ -252,6 +297,7 @@ const props = defineProps({
 
 const form = useForm({
     billing_type: props.billing_type || 'prabayar',
+    prorata_formula: props.prorata_formula || 'exact_days',
     invoice_issue_date: props.invoice_issue_date || '1',
     due_date_days: props.due_date_days || '7',
     isolate_days: props.isolate_days || '3',
@@ -331,7 +377,20 @@ const daysUsed = computed(() => {
 });
 
 const prorataAmount = computed(() => {
-    const dailyRate = 300000 / totalDaysInCycle.value;
+    let amount = 300000;
+    if (form.prorata_formula === 'fixed_30') {
+        return Math.round((amount / 30) * daysUsed.value);
+    } else if (form.prorata_formula === 'mid_month') {
+        const midPointDays = Math.floor(totalDaysInCycle.value / 2);
+        const daysPassed = totalDaysInCycle.value - daysUsed.value; // Hari dari prevIssueDate ke today
+        if (daysPassed > midPointDays) {
+            return amount / 2;
+        } else {
+            return amount;
+        }
+    }
+    // default: exact_days
+    const dailyRate = amount / totalDaysInCycle.value;
     return Math.round(dailyRate * daysUsed.value);
 });
 

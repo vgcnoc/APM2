@@ -1255,6 +1255,7 @@ class CustomerController extends Controller
                 $isProrata = false;
 
                 $billingType = \App\Models\Setting::get('billing_type', 'prabayar');
+                $prorataFormula = \App\Models\Setting::get('prorata_formula', 'exact_days');
                 $issueDateSetting = (int) \App\Models\Setting::get('invoice_issue_date', '1');
                 $dueDateDays = (int) \App\Models\Setting::get('due_date_days', '7');
 
@@ -1271,7 +1272,20 @@ class CustomerController extends Controller
                     $daysUsed = $nextBillingDate->diffInDays($activationDate);
                     
                     if ($daysUsed > 0 && $totalDaysInCycle > 0 && $daysUsed < $totalDaysInCycle) {
-                        $amount = ($amount / $totalDaysInCycle) * $daysUsed;
+                        if ($prorataFormula === 'fixed_30') {
+                            $amount = ($amount / 30) * $daysUsed;
+                        } elseif ($prorataFormula === 'mid_month') {
+                            $midPoint = $prevBillingDate->copy()->addDays(floor($totalDaysInCycle / 2));
+                            if ($activationDate->gt($midPoint)) {
+                                $amount = $amount / 2;
+                            } else {
+                                $amount = $amount; // Full price
+                            }
+                        } else {
+                            // default: exact_days
+                            $amount = ($amount / $totalDaysInCycle) * $daysUsed;
+                        }
+                        
                         $amount = round($amount);
                         $isProrata = true;
                     }
