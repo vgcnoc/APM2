@@ -93,7 +93,7 @@
 
                         <div>
                             <label class="block text-xs font-bold text-gray-700 mb-1">Limit Rate</label>
-                            <input v-model="form.limit_rate" type="text" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm" placeholder="Contoh: 1M/1M">
+                            <LimitRateCalculator v-model="form.limit_rate" />
                         </div>
 
                         <div>
@@ -142,6 +142,7 @@ import { ref, computed } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
+import LimitRateCalculator from '@/Components/LimitRateCalculator.vue';
 
 const props = defineProps({
     profiles: Array,
