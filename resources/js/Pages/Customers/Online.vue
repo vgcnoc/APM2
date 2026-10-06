@@ -76,10 +76,24 @@
                         <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0', getAvatarColor(row.name)]">
                             {{ row.name?.charAt(0).toUpperCase() }}
                         </div>
-                        <div>
-                            <Link :href="`/customers/${row.id}`" class="text-gray-900 font-semibold text-sm hover:text-blue-500 transition-colors">
-                                {{ row.name }}
-                            </Link>
+                        <div class="flex flex-col">
+                            <div class="flex items-center gap-2">
+                                <Link :href="`/customers/${row.id}`" class="text-gray-900 font-semibold text-sm hover:text-blue-500 transition-colors">
+                                    {{ row.name }}
+                                </Link>
+                                <button
+                                    :id="`btn-kick-${row.id}`"
+                                    @click="kickSession(row)"
+                                    :disabled="kicking === row.username"
+                                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold text-red-500 bg-red-50 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-50 border border-red-100"
+                                    title="Kick Sesi Online"
+                                >
+                                    <svg class="w-3 h-3" :class="{'animate-pulse': kicking === row.username}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                    {{ kicking === row.username ? 'PROSES' : 'KICK' }}
+                                </button>
+                            </div>
                             <p class="text-[10px] text-gray-500 font-mono">{{ row.customer_code }}</p>
                         </div>
                     </div>
@@ -106,23 +120,6 @@
                 </td>
                 <td class="font-mono text-xs text-gray-700">{{ row.ip_address || '-' }}</td>
                 <td class="font-mono text-xs text-gray-700">{{ row.mac_address || '-' }}</td>
-            </template>
-
-            <template #rowActions="{ row }">
-                <div class="flex items-center justify-end">
-                    <button
-                        :id="`btn-kick-${row.id}`"
-                        @click="kickSession(row)"
-                        :disabled="kicking === row.username"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-red-500 bg-red-50 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-50"
-                        title="Kick Sesi Online"
-                    >
-                        <svg class="w-3.5 h-3.5" :class="{'animate-pulse': kicking === row.username}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        {{ kicking === row.username ? 'PROSES' : 'KICK' }}
-                    </button>
-                </div>
             </template>
         </DataTable>
     </AppLayout>
