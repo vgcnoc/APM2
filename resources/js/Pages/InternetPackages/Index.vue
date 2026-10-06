@@ -330,38 +330,16 @@
 
                                     <hr class="border-gray-100">
 
-                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-cyan-50/40 p-4 rounded-xl border border-cyan-100">
+                                    <div class="grid grid-cols-1 gap-4 bg-cyan-50/40 p-4 rounded-xl border border-cyan-100">
                                         <div>
                                             <label class="flex items-center gap-1.5 text-[13px] font-bold text-slate-700 mb-2">
-                                                1. Fee Admin/Modal 
-                                                <svg class="w-4 h-4 text-slate-700" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path></svg>
-                                                <span class="text-red-500 font-bold">*Req</span>
-                                            </label>
-                                            <div class="flex shadow-sm">
-                                                <span class="inline-flex items-center px-3 text-sm text-gray-700 bg-gray-50 border border-r-0 border-gray-200 rounded-l-md font-medium">Rp</span>
-                                                <input v-model="form.fee_admin" type="number" min="0" placeholder="min : 0" class="input-text rounded-l-none flex-1 border-gray-200" required>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="flex items-center gap-1.5 text-[13px] font-bold text-slate-700 mb-2">
-                                                2. Fee Reseller/Mitra 
+                                                Fee Reseller/Mitra 
                                                 <svg class="w-4 h-4 text-slate-700" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path></svg>
                                                 <span class="text-red-500 font-bold">*Req</span>
                                             </label>
                                             <div class="flex shadow-sm">
                                                 <span class="inline-flex items-center px-3 text-sm text-gray-700 bg-gray-50 border border-r-0 border-gray-200 rounded-l-md font-medium">Rp</span>
                                                 <input v-model="form.fee_reseller" type="number" min="0" placeholder="min : 0" class="input-text rounded-l-none flex-1 border-gray-200" required>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="flex items-center gap-1.5 text-[13px] font-bold text-slate-700 mb-2">
-                                                3. Fee Partner/Kurir 
-                                                <svg class="w-4 h-4 text-slate-700" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path></svg>
-                                                <span class="text-red-500 font-bold">*Req</span>
-                                            </label>
-                                            <div class="flex shadow-sm">
-                                                <span class="inline-flex items-center px-3 text-sm text-gray-700 bg-gray-50 border border-r-0 border-gray-200 rounded-l-md font-medium">Rp</span>
-                                                <input v-model="form.fee_partner" type="number" min="0" placeholder="min : 0" class="input-text rounded-l-none flex-1 border-gray-200" required>
                                             </div>
                                         </div>
                                     </div>

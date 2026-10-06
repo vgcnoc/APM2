@@ -101,7 +101,7 @@
                             <input v-model="form.shared_users" type="number" min="1" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-cyan-50/40 p-4 rounded-xl border border-cyan-100">
+                        <div class="grid grid-cols-1 gap-4 bg-cyan-50/40 p-4 rounded-xl border border-cyan-100">
                             <div v-for="fee in feeFields" :key="fee.key">
                                 <label class="flex items-center gap-1.5 text-[13px] font-bold text-slate-700 mb-2 whitespace-nowrap">
                                     {{ fee.label }}
@@ -185,9 +185,7 @@ const durationChoice = computed({
 });
 
 const feeFields = [
-    { key: 'fee_admin', label: '1. Fee Admin/Modal' },
-    { key: 'fee_reseller', label: '2. Fee Reseller/Mitra' },
-    { key: 'fee_partner', label: '3. Fee Partner/Kurir' },
+    { key: 'fee_reseller', label: 'Fee Reseller/Mitra' },
 ];
 
 const showModal = ref(false);
