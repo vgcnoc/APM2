@@ -13,7 +13,7 @@ class Invoice extends Model
 
     protected $fillable = [
         'customer_id', 'invoice_number', 'period_month', 'period_year',
-        'amount', 'due_date', 'issued_date', 'status',
+        'amount', 'due_date', 'issued_date', 'status', 'is_prorata',
     ];
 
     protected function casts(): array

@@ -25,7 +25,7 @@ class InvoiceController extends Controller
         } elseif ($tab === 'lunas') {
             $query->where('status', 'paid');
         } elseif ($tab === 'prorata') {
-            $query->where('id', '<', 0); // Placeholder
+            $query->where('is_prorata', true);
         } elseif ($tab === 'upgrade') {
             $query->where('id', '<', 0); // Placeholder
         }
@@ -63,7 +63,7 @@ class InvoiceController extends Controller
             'jatuh_tempo' => Invoice::where('due_date', '<', now())->where('status', '!=', 'paid')->count(),
             'piutang' => Invoice::where('status', 'partial')->count(),
             'lunas' => Invoice::where('status', 'paid')->count(),
-            'prorata' => 0, // Placeholder
+            'prorata' => Invoice::where('is_prorata', true)->count(),
             'upgrade' => 0, // Placeholder
         ];
 

@@ -1252,15 +1252,40 @@ class CustomerController extends Controller
                 // Create initial invoice
                 $activationDate = \Carbon\Carbon::parse($validated['activation_date']);
                 $amount = $customer->package ? $customer->package->price : 0;
+                $isProrata = false;
+
+                $billingType = \App\Models\Setting::get('billing_type', 'prabayar');
+                $issueDateSetting = (int) \App\Models\Setting::get('invoice_issue_date', '1');
+                $dueDateDays = (int) \App\Models\Setting::get('due_date_days', '7');
+
+                if ($billingType === 'prorata' && $amount > 0) {
+                    $nextBillingDate = $activationDate->copy();
+                    if ($activationDate->day >= $issueDateSetting) {
+                        $nextBillingDate->addMonth()->day($issueDateSetting);
+                    } else {
+                        $nextBillingDate->day($issueDateSetting);
+                    }
+                    
+                    $prevBillingDate = $nextBillingDate->copy()->subMonth();
+                    $totalDaysInCycle = $nextBillingDate->diffInDays($prevBillingDate);
+                    $daysUsed = $nextBillingDate->diffInDays($activationDate);
+                    
+                    if ($daysUsed > 0 && $totalDaysInCycle > 0 && $daysUsed < $totalDaysInCycle) {
+                        $amount = ($amount / $totalDaysInCycle) * $daysUsed;
+                        $amount = round($amount);
+                        $isProrata = true;
+                    }
+                }
                 
                 \App\Models\Invoice::create([
                     'customer_id' => $customer->id,
                     'period_month' => $activationDate->month,
                     'period_year' => $activationDate->year,
                     'amount' => $amount,
-                    'due_date' => $activationDate->copy()->addDays(7), // Example: 7 days due
+                    'due_date' => $activationDate->copy()->addDays($dueDateDays),
                     'issued_date' => $activationDate,
                     'status' => 'unpaid',
+                    'is_prorata' => $isProrata,
                 ]);
             });
 
