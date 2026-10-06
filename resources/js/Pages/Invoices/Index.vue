@@ -213,15 +213,18 @@
                             <div v-if="paymentForm.method === 'transfer' && payment_banks && payment_banks.length > 0" class="bg-gray-50 rounded-xl p-4 border border-gray-200">
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-3">Tujuan Transfer</label>
                                 <div class="space-y-2">
-                                    <div v-for="(bank, i) in payment_banks" :key="i" class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
-                                        <div>
-                                            <p class="text-sm font-bold text-gray-900">{{ bank.bank_name }}</p>
-                                            <p class="text-xs text-gray-500 mt-0.5">a.n. {{ bank.account_name }}</p>
+                                    <label v-for="(bank, i) in payment_banks" :key="i" class="flex items-center justify-between p-3 bg-white rounded-lg border shadow-sm cursor-pointer transition-all" :class="paymentForm.selected_bank === bank ? 'border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50/50' : 'border-gray-200 hover:border-gray-300'">
+                                        <div class="flex items-center gap-3">
+                                            <input type="radio" v-model="paymentForm.selected_bank" :value="bank" class="text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-full" />
+                                            <div>
+                                                <p class="text-sm font-bold" :class="paymentForm.selected_bank === bank ? 'text-indigo-900' : 'text-gray-900'">{{ bank.bank_name }}</p>
+                                                <p class="text-xs mt-0.5" :class="paymentForm.selected_bank === bank ? 'text-indigo-700' : 'text-gray-500'">a.n. {{ bank.account_name }}</p>
+                                            </div>
                                         </div>
                                         <div class="text-right">
-                                            <p class="text-sm font-bold font-mono text-indigo-600 tracking-wider">{{ bank.account_number }}</p>
+                                            <p class="text-sm font-bold font-mono tracking-wider" :class="paymentForm.selected_bank === bank ? 'text-indigo-700' : 'text-indigo-600'">{{ bank.account_number }}</p>
                                         </div>
-                                    </div>
+                                    </label>
                                 </div>
                             </div>
                             <div v-else-if="paymentForm.method === 'transfer'" class="bg-amber-50 text-amber-700 p-3 rounded-xl border border-amber-200 text-xs text-center">
@@ -345,6 +348,7 @@ const paymentForm = useForm({
     method: 'cash',
     amount: 0,
     notes: '',
+    selected_bank: null,
 });
 
 function openPaymentModal(invoice) {
@@ -352,6 +356,7 @@ function openPaymentModal(invoice) {
     paymentForm.amount = invoice.remaining;
     paymentForm.method = 'cash';
     paymentForm.notes = '';
+    paymentForm.selected_bank = null;
     showPaymentModal.value = true;
 }
 
@@ -364,7 +369,17 @@ function closePaymentModal() {
 }
 
 function submitPayment() {
-    paymentForm.post(`/invoices/${selectedInvoice.value.id}/pay`, {
+    paymentForm.transform((data) => {
+        let notes = data.notes;
+        if (data.method === 'transfer' && data.selected_bank) {
+            const prefix = `[Transfer ke: ${data.selected_bank.bank_name} - ${data.selected_bank.account_number}]`;
+            notes = notes ? prefix + ' \n' + notes : prefix;
+        }
+        return {
+            ...data,
+            notes: notes
+        };
+    }).post(`/invoices/${selectedInvoice.value.id}/pay`, {
         preserveScroll: true,
         onSuccess: () => {
             closePaymentModal();
