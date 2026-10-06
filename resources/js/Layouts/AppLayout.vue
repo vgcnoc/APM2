@@ -20,7 +20,7 @@
             </div>
 
             <!-- Navigation -->
-            <nav ref="sidebarNav" scroll-region class="flex-1 overflow-y-auto px-3 py-4 space-y-1" @scroll="saveScrollPosition">
+            <nav ref="sidebarNav" scroll-region class="flex-1 overflow-y-auto px-3 py-4 space-y-1 transition-opacity duration-100" :class="{ 'opacity-0': !isRestored, 'opacity-100': isRestored }" @scroll="saveScrollPosition">
                 <template v-for="(item, index) in filteredMenuItems" :key="index">
                     <!-- Group Label -->
                     <div v-if="item.type === 'group' && sidebarOpen" class="pt-5 pb-2 px-4">
@@ -158,6 +158,7 @@ defineProps({
 const sidebarOpen = ref(true);
 const mobileMenuOpen = ref(false);
 const sidebarNav = ref(null);
+const isRestored = ref(false);
 
 const saveScrollPosition = () => {
     if (sidebarNav.value) {
@@ -190,6 +191,12 @@ onMounted(() => {
                 sidebarNav.value.scrollTop = parseInt(scrollPos, 10);
             }
         }
+        
+        // Show sidebar after scroll is restored
+        // Small timeout ensures browser has applied scrollTop before rendering opacity
+        setTimeout(() => {
+            isRestored.value = true;
+        }, 10);
     });
 });
 
