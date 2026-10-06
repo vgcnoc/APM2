@@ -27,6 +27,7 @@
                             <InfoRow icon="📧" label="Email" :value="customer.email || '-'" />
                             <InfoRow icon="📍" label="Alamat" :value="customer.address" />
                             <InfoRow icon="📦" label="Paket" :value="customer.package?.name || 'Belum pilih'" />
+                            <InfoRow icon="💳" label="Layanan" :value="customer.service_status === 'gratis' ? 'Gratis' : 'Berbayar'" />
                             <div class="pt-3 mt-3 border-t border-slate-200 space-y-3">
                                 <InfoRow icon="📅" label="Registrasi" :value="customer.registration_date" />
                                 <InfoRow icon="✅" label="Aktivasi" :value="customer.activation_date || '-'" />

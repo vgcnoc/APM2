@@ -26,6 +26,7 @@ class Customer extends Model
         'package_id',
         'is_reseller',
         'status',
+        'service_status',
         'registration_date',
         'activation_date',
         'notes',

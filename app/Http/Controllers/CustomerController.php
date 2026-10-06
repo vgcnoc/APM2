@@ -734,6 +734,7 @@ class CustomerController extends Controller
             'installation_fee' => 'nullable|numeric|min:0',
             'sales_id' => 'nullable|exists:users,id',
             'is_reseller' => 'boolean',
+            'service_status' => 'nullable|in:berbayar,gratis',
         ]);
 
         if (!auth()->user()->hasRole('admin')) {
@@ -927,6 +928,7 @@ class CustomerController extends Controller
             'installation_fee' => 'nullable|numeric|min:0',
             'sales_id' => 'nullable|exists:users,id',
             'is_reseller' => 'boolean',
+            'service_status' => 'nullable|in:berbayar,gratis',
         ]);
 
         if (!auth()->user()->hasRole('admin')) {
@@ -1298,6 +1300,12 @@ class CustomerController extends Controller
                     $dueDateTime->setTime((int)$timeParts[0], (int)$timeParts[1], 0);
                 }
 
+                $status = 'unpaid';
+                if ($customer->service_status === 'gratis') {
+                    $amount = 0;
+                    $status = 'paid';
+                }
+
                 \App\Models\Invoice::create([
                     'customer_id' => $customer->id,
                     'period_month' => $activationDate->month,
@@ -1305,7 +1313,7 @@ class CustomerController extends Controller
                     'amount' => $amount,
                     'due_date' => $dueDateTime,
                     'issued_date' => $activationDate,
-                    'status' => 'unpaid',
+                    'status' => $status,
                     'is_prorata' => $isProrata,
                 ]);
             });

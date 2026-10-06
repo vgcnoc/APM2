@@ -84,11 +84,17 @@
                                 </div>
                                 <div v-else>
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Pilih Paket Langganan Internet <span class="text-red-500">*</span></label>
-                                    <select v-model="form.package_id" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" required>
+                                    <select v-model="form.package_id" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all mb-3" required>
                                         <option value="">-- Pilih Paket Langganan --</option>
                                         <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
                                             {{ pkg.name }} - Rp {{ Number(pkg.price).toLocaleString('id-ID') }}
                                         </option>
+                                    </select>
+                                    
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Status Layanan <span class="text-red-500">*</span></label>
+                                    <select v-model="form.service_status" class="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" required>
+                                        <option value="berbayar">Berbayar</option>
+                                        <option value="gratis">Gratis</option>
                                     </select>
                                 </div>
                             </div>
@@ -360,6 +366,7 @@ const form = useForm({
     status: props.customer.status || 'booking',
     notes: props.customer.notes || '',
     is_reseller: props.customer.is_reseller == 1 ? true : false,
+    service_status: props.customer.service_status || 'berbayar',
 });
 
 const registration_type = ref('customer');

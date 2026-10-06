@@ -37,6 +37,12 @@ class GenerateMissingInvoices extends Command
             if (!$exists) {
                 $activationDate = $customer->activation_date ? Carbon::parse($customer->activation_date) : Carbon::parse($customer->created_at);
                 $amount = $customer->package ? $customer->package->price : 0;
+                $status = 'unpaid';
+                
+                if ($customer->service_status === 'gratis') {
+                    $amount = 0;
+                    $status = 'paid';
+                }
                 
                 $isolateDays = (int) \App\Models\Setting::get('isolate_days', '3');
                 $isolateTime = \App\Models\Setting::get('isolate_time', '00:00');
@@ -54,7 +60,7 @@ class GenerateMissingInvoices extends Command
                     'amount' => $amount,
                     'due_date' => $dueDateTime,
                     'issued_date' => $activationDate,
-                    'status' => 'unpaid',
+                    'status' => $status,
                 ]);
                 $count++;
             }
