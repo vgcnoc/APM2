@@ -33,10 +33,16 @@ class ResellerClientController extends Controller
 
         $profiles = VoucherProfile::all();
 
+        // Calculate Total Income
+        $income = Voucher::where('reseller_id', $reseller->id)
+            ->join('voucher_profiles', 'vouchers.voucher_profile_id', '=', 'voucher_profiles.id')
+            ->sum('voucher_profiles.price');
+
         return Inertia::render('ClientArea/Dashboard', [
             'reseller' => $reseller->load('customer'),
             'vouchers' => $vouchers,
             'profiles' => $profiles,
+            'income' => $income,
         ]);
     }
 
@@ -84,8 +90,10 @@ class ResellerClientController extends Controller
             
             $vouchers[] = [
                 'code' => $code,
+                'username' => $code,
+                'password' => $code,
                 'router_id' => $router->id,
-                'profile_id' => $profile->id,
+                'voucher_profile_id' => $profile->id,
                 'reseller_id' => $reseller->id,
                 'status' => 'available',
                 'created_at' => now(),
