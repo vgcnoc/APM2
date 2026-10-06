@@ -192,54 +192,114 @@ const menuItems = [
         ]
     },
     { type: 'link', href: '/customers/activation', icon: 'key', label: 'Aktivasi', active: (url) => (url || '').startsWith('/customers/activation'), permission: 'menu_customers_activation' },
-    { type: 'link', href: '/customers/active', icon: 'badge-check', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: 'menu_customers_active' },
+    {
+        type: 'dropdown',
+        icon: 'users',
+        label: 'Data Pelanggan',
+        active: (url) => ['/customers', '/customers/active', '/customers/online', '/customers/offline'].some(path => (url || '') === path || (url || '').startsWith(path + '?')),
+        permission: 'menu_customers_all',
+        children: [
+            { href: '/customers', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
+            { href: '/customers/active', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: 'menu_customers_active' },
+            { href: '/customers/online', label: 'Online', active: (url) => (url || '').startsWith('/customers/online'), permission: 'menu_customers_online' },
+            { href: '/customers/offline', label: 'Offline', active: (url) => (url || '').startsWith('/customers/offline'), permission: 'menu_customers_online' },
+        ]
+    },
     { type: 'link', href: '/tickets', icon: 'alert-circle', label: 'Ticketing / Gangguan', active: (url) => (url || '').startsWith('/tickets'), permission: 'menu_tickets' },
+    
     { type: 'group', label: 'BILLING & PRODUK' },
-    { type: 'link', href: '/customers', icon: 'users', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
-    { type: 'link', href: '/customers/online', icon: 'signal', label: 'Online', active: (url) => (url || '').startsWith('/customers/online'), permission: 'menu_customers_online' },
-    { type: 'link', href: '/customers/offline', icon: 'status-offline', label: 'Offline', active: (url) => (url || '').startsWith('/customers/offline'), permission: 'menu_customers_online' },
     { type: 'link', href: '/invoices', icon: 'document-text', label: 'Invoice Pelanggan', active: (url) => (url || '').startsWith('/invoices'), permission: 'menu_customers_all' },
     { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
 
-    { type: 'group', label: 'VOUCHER' },
+    { type: 'group', label: 'VOUCHER & RESELLER' },
+    { 
+        type: 'dropdown',
+        icon: 'ticket',
+        label: 'Data Voucher',
+        active: (url) => ['/vouchers', '/vouchers/online', '/vouchers/offline', '/vouchers/expired'].some(path => (url || '') === path || (url || '').startsWith(path + '?')),
+        permission: 'menu_vouchers',
+        children: [
+            { href: '/vouchers', label: 'Semua Voucher', active: (url) => (url || '').length > 0 && url === '/vouchers', permission: 'menu_vouchers' },
+            { href: '/vouchers/online', label: 'Voucher Online', active: (url) => (url || '').startsWith('/vouchers/online'), permission: 'menu_vouchers' },
+            { href: '/vouchers/offline', label: 'Voucher Offline', active: (url) => (url || '').startsWith('/vouchers/offline'), permission: 'menu_vouchers' },
+            { href: '/vouchers/expired', label: 'Voucher Expired', active: (url) => (url || '').startsWith('/vouchers/expired'), permission: 'menu_vouchers' },
+        ]
+    },
     { type: 'link', href: '/vouchers/profiles', icon: 'document-text', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers_profiles' },
-    { type: 'link', href: '/vouchers', icon: 'ticket', label: 'Data Voucher', active: (url) => (url || '').length > 0 && url === '/vouchers', permission: 'menu_vouchers' },
-    { type: 'link', href: '/vouchers/online', icon: 'status-online', label: 'Voucher Online', active: (url) => (url || '').startsWith('/vouchers/online'), permission: 'menu_vouchers' },
-    { type: 'link', href: '/vouchers/offline', icon: 'status-offline', label: 'Voucher Offline', active: (url) => (url || '').startsWith('/vouchers/offline'), permission: 'menu_vouchers' },
-    { type: 'link', href: '/vouchers/expired', icon: 'x-circle', label: 'Voucher Expired', active: (url) => (url || '').startsWith('/vouchers/expired'), permission: 'menu_vouchers' },
     { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
 
     { type: 'group', label: 'INFRASTRUKTUR & JARINGAN' },
     { type: 'link', href: '/network-topology', icon: 'globe', label: 'Network Topology', active: (url) => (url || '').startsWith('/network-topology'), permission: 'menu_network_topology' },
     { type: 'link', href: '/network-data', icon: 'globe', label: 'Data Jaringan', active: (url) => (url || '').startsWith('/network-data'), permission: 'menu_network_data' },
-    { type: 'link', href: '/olts', icon: 'server', label: 'OLT', active: (url) => (url || '').startsWith('/olts'), permission: 'menu_network_olt' },
-    { type: 'link', href: '/odcs', icon: 'box', label: 'ODC', active: (url) => (url || '').startsWith('/odcs'), permission: 'menu_network_odc' },
-    { type: 'link', href: '/odps', icon: 'git-branch', label: 'ODP', active: (url) => (url || '').startsWith('/odps'), permission: 'menu_network_odp' },
-    { type: 'link', href: '/onts', icon: 'wifi', label: 'ONT', active: (url) => (url || '').startsWith('/onts'), permission: 'menu_network_ont' },
-    { type: 'link', href: '/find-onu', icon: 'search', label: 'Find ONU', active: (url) => (url || '').startsWith('/find-onu'), permission: 'menu_network_find_onu' },
+    {
+        type: 'dropdown',
+        icon: 'server',
+        label: 'Perangkat OSP',
+        active: (url) => ['/olts', '/odcs', '/odps', '/onts', '/find-onu'].some(path => (url || '').startsWith(path)),
+        permission: 'menu_network_olt',
+        children: [
+            { href: '/olts', label: 'Data OLT', active: (url) => (url || '').startsWith('/olts'), permission: 'menu_network_olt' },
+            { href: '/odcs', label: 'Data ODC', active: (url) => (url || '').startsWith('/odcs'), permission: 'menu_network_odc' },
+            { href: '/odps', label: 'Data ODP', active: (url) => (url || '').startsWith('/odps'), permission: 'menu_network_odp' },
+            { href: '/onts', label: 'Data ONT', active: (url) => (url || '').startsWith('/onts'), permission: 'menu_network_ont' },
+            { href: '/find-onu', label: 'Find ONU', active: (url) => (url || '').startsWith('/find-onu'), permission: 'menu_network_find_onu' },
+        ]
+    },
+    {
+        type: 'dropdown',
+        icon: 'server',
+        label: 'Mikrotik / RADIUS',
+        active: (url) => (url || '').startsWith('/routers') || (url || '').startsWith('/radius'),
+        permission: 'menu_routers',
+        children: [
+            { href: '/routers', label: 'Data Router', active: (url) => (url || '').startsWith('/routers'), permission: 'menu_routers' },
+            { href: '/radius/nas', label: 'NAS / Router', active: (url) => (url || '').startsWith('/radius/nas'), permission: 'menu_radius_nas' },
+            { href: '/radius/online-users', label: 'Pengguna Online', active: (url) => (url || '').startsWith('/radius/online-users'), permission: 'menu_radius_online_users' },
+            { href: '/radius/auth-logs', label: 'Log Autentikasi', active: (url) => (url || '').startsWith('/radius/auth-logs'), permission: 'menu_radius_auth_logs' },
+        ]
+    },
 
-    { type: 'group', label: 'MIKROTIK NAS' },
-    { type: 'link', href: '/routers', icon: 'server', label: 'Data Router', active: (url) => (url || '').startsWith('/routers'), permission: 'menu_routers' },
-    { type: 'link', href: '/radius/nas', icon: 'server', label: 'NAS / Router (RADIUS)', active: (url) => (url || '').startsWith('/radius/nas'), permission: 'menu_radius_nas' },
-    { type: 'link', href: '/radius/online-users', icon: 'users', label: 'Pengguna Online (RADIUS)', active: (url) => (url || '').startsWith('/radius/online-users'), permission: 'menu_radius_online_users' },
-    { type: 'link', href: '/radius/auth-logs', icon: 'clipboard-list', label: 'Log Autentikasi (RADIUS)', active: (url) => (url || '').startsWith('/radius/auth-logs'), permission: 'menu_radius_auth_logs' },
-
-    { type: 'group', label: 'INVENTARIS & LOGISTIK' },
-    { type: 'link', href: '/materials', icon: 'archive', label: 'Material / Barang', active: (url) => (url || '').startsWith('/materials'), permission: 'menu_materials' },
-    { type: 'link', href: '/material-transactions', icon: 'shopping-cart', label: 'Order / Pengambilan', active: (url) => (url || '').startsWith('/material-transactions'), permission: 'menu_material_transactions' },
-
-    { type: 'group', label: 'HR & PERSONALIA' },
-    { type: 'link', href: '/employees', icon: 'users', label: 'Data Karyawan', active: (url) => (url || '').startsWith('/employees'), permission: 'menu_hr_employees' },
-    { type: 'link', href: '/positions', icon: 'briefcase', label: 'Posisi / Jabatan', active: (url) => (url || '').startsWith('/positions'), permission: 'menu_hr_positions' },
+    { type: 'group', label: 'INVENTARIS & HR' },
+    {
+        type: 'dropdown',
+        icon: 'archive',
+        label: 'Inventaris & Logistik',
+        active: (url) => (url || '').startsWith('/materials') || (url || '').startsWith('/material-transactions'),
+        permission: 'menu_materials',
+        children: [
+            { href: '/materials', label: 'Material / Barang', active: (url) => (url || '').startsWith('/materials'), permission: 'menu_materials' },
+            { href: '/material-transactions', label: 'Order / Pengambilan', active: (url) => (url || '').startsWith('/material-transactions'), permission: 'menu_material_transactions' },
+        ]
+    },
+    {
+        type: 'dropdown',
+        icon: 'users',
+        label: 'HR & Personalia',
+        active: (url) => (url || '').startsWith('/employees') || (url || '').startsWith('/positions'),
+        permission: 'menu_hr_employees',
+        children: [
+            { href: '/employees', label: 'Data Karyawan', active: (url) => (url || '').startsWith('/employees'), permission: 'menu_hr_employees' },
+            { href: '/positions', label: 'Posisi / Jabatan', active: (url) => (url || '').startsWith('/positions'), permission: 'menu_hr_positions' },
+        ]
+    },
     
     { type: 'group', label: 'PENGATURAN' },
     { type: 'link', href: '/settings/areas', icon: 'map', label: 'Master Area', active: (url) => (url || '').startsWith('/settings/areas'), permission: 'menu_settings_areas' },
     { type: 'link', href: '/users', icon: 'users', label: 'Manajemen User', active: (url) => (url || '').startsWith('/users'), permission: 'menu_users' },
-    { type: 'link', href: '/settings/resellers', icon: 'credit-card', label: 'Pengaturan Reseller', active: (url) => (url || '').startsWith('/settings/resellers'), permission: 'menu_settings_roles' },
     { type: 'link', href: '/settings/roles', icon: 'lock-closed', label: 'Role & Akses', active: (url) => (url || '').startsWith('/settings/roles'), permission: 'menu_settings_roles' },
-    { type: 'link', href: '/settings/api', icon: 'code', label: 'API & Integrasi', active: (url) => (url || '').startsWith('/settings/api'), permission: 'menu_settings_api' },
-    { type: 'link', href: '/settings/branding', icon: 'color-swatch', label: 'Branding', active: (url) => (url || '').startsWith('/settings/branding'), permission: 'menu_settings_branding' },
-    { type: 'link', href: '/settings/billing', icon: 'credit-card', label: 'Billing / Invoice', active: (url) => (url || '').startsWith('/settings/billing'), permission: 'menu_settings_branding' },
+    {
+        type: 'dropdown',
+        icon: 'cog',
+        label: 'Konfigurasi Sistem',
+        active: (url) => ['/settings/resellers', '/settings/api', '/settings/branding', '/settings/billing'].some(path => (url || '').startsWith(path)),
+        permission: 'menu_settings_roles',
+        children: [
+            { href: '/settings/resellers', label: 'Pengaturan Reseller', active: (url) => (url || '').startsWith('/settings/resellers'), permission: 'menu_settings_roles' },
+            { href: '/settings/api', label: 'API & Integrasi', active: (url) => (url || '').startsWith('/settings/api'), permission: 'menu_settings_api' },
+            { href: '/settings/branding', label: 'Branding', active: (url) => (url || '').startsWith('/settings/branding'), permission: 'menu_settings_branding' },
+            { href: '/settings/billing', label: 'Billing / Invoice', active: (url) => (url || '').startsWith('/settings/billing'), permission: 'menu_settings_branding' },
+        ]
+    }
 ];
 
 const iconPaths = {
