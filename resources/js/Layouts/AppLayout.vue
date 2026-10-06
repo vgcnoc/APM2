@@ -210,8 +210,6 @@ const menuItems = [
     
     { type: 'group', label: 'BILLING & PRODUK' },
     { type: 'link', href: '/invoices', icon: 'document-text', label: 'Invoice Pelanggan', active: (url) => (url || '').startsWith('/invoices'), permission: 'menu_customers_all' },
-    { type: 'link', href: '/reseller-billing', icon: 'cash', label: 'Penagihan Reseller', active: (url) => (url || '').startsWith('/reseller-billing'), permission: 'menu_customers_all' },
-    { type: 'link', href: '/reseller-settlements', icon: 'check-circle', label: 'Pelunasan Reseller', active: (url) => (url || '').startsWith('/reseller-settlements'), permission: 'menu_customers_all' },
     { type: 'link', href: '/tax-reports', icon: 'calculator', label: 'Laporan Pajak', active: (url) => (url || '').startsWith('/tax-reports'), permission: 'menu_customers_all' },
     { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
 
@@ -231,7 +229,18 @@ const menuItems = [
     },
     { type: 'link', href: '/vouchers/profiles', icon: 'document-text', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers_profiles' },
     { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
-    { type: 'link', href: '/reseller-requests', icon: 'credit-card', label: 'Permintaan Saldo', active: (url) => (url || '').startsWith('/reseller-requests'), permission: 'menu_resellers' },
+    {
+        type: 'dropdown',
+        icon: 'cash',
+        label: 'Keuangan Reseller',
+        active: (url) => ['/reseller-requests', '/reseller-billing', '/reseller-settlements'].some(path => (url || '').startsWith(path)),
+        permission: 'menu_resellers',
+        children: [
+            { href: '/reseller-requests', label: 'Riwayat Saldo', active: (url) => (url || '').startsWith('/reseller-requests'), permission: 'menu_resellers' },
+            { href: '/reseller-billing', label: 'Penagihan Kasbon', active: (url) => (url || '').startsWith('/reseller-billing'), permission: 'menu_customers_all' },
+            { href: '/reseller-settlements', label: 'Pelunasan Kasbon', active: (url) => (url || '').startsWith('/reseller-settlements'), permission: 'menu_customers_all' },
+        ]
+    },
 
     { type: 'group', label: 'INFRASTRUKTUR & JARINGAN' },
     { type: 'link', href: '/network-topology', icon: 'globe', label: 'Network Topology', active: (url) => (url || '').startsWith('/network-topology'), permission: 'menu_network_topology' },
