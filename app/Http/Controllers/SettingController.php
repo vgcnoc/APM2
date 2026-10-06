@@ -11,9 +11,11 @@ class SettingController extends Controller
 {
     public function branding()
     {
-        $logo = Setting::get('app_logo');
+        $appLogo = Setting::get('app_logo');
+        $companyLogo = Setting::get('company_logo');
         return Inertia::render('Settings/Branding', [
-            'current_logo' => $logo ? asset('storage/' . $logo) : null,
+            'current_app_logo' => $appLogo ? asset('storage/' . $appLogo) : null,
+            'current_company_logo' => $companyLogo ? asset('storage/' . $companyLogo) : null,
             'current_app_name' => Setting::get('app_name', ''),
             'company_name' => Setting::get('company_name', ''),
             'company_address' => Setting::get('company_address', ''),
@@ -98,7 +100,9 @@ class SettingController extends Controller
         $request->validate([
             'app_name' => 'nullable|string|max:255',
             'app_logo' => 'nullable|image|max:2048',
-            'remove_logo' => 'nullable|boolean',
+            'remove_app_logo' => 'nullable|boolean',
+            'company_logo' => 'nullable|image|max:2048',
+            'remove_company_logo' => 'nullable|boolean',
             'company_name' => 'nullable|string|max:255',
             'company_address' => 'nullable|string',
             'company_phone' => 'nullable|string|max:50',
@@ -113,7 +117,8 @@ class SettingController extends Controller
         if ($request->has('company_email')) Setting::set('company_email', $request->company_email ?? '');
         if ($request->has('company_website')) Setting::set('company_website', $request->company_website ?? '');
 
-        if ($request->boolean('remove_logo')) {
+        // Handle App Logo
+        if ($request->boolean('remove_app_logo')) {
             $oldLogo = Setting::get('app_logo');
             if ($oldLogo && Storage::disk('public')->exists($oldLogo)) {
                 Storage::disk('public')->delete($oldLogo);
@@ -124,17 +129,34 @@ class SettingController extends Controller
             if ($oldLogo && Storage::disk('public')->exists($oldLogo)) {
                 Storage::disk('public')->delete($oldLogo);
             }
-            
             $path = $request->file('app_logo')->store('logos', 'public');
             Setting::set('app_logo', $path);
         }
 
+        // Handle Company Logo
+        if ($request->boolean('remove_company_logo')) {
+            $oldCompLogo = Setting::get('company_logo');
+            if ($oldCompLogo && Storage::disk('public')->exists($oldCompLogo)) {
+                Storage::disk('public')->delete($oldCompLogo);
+            }
+            Setting::set('company_logo', null);
+        } elseif ($request->hasFile('company_logo')) {
+            $oldCompLogo = Setting::get('company_logo');
+            if ($oldCompLogo && Storage::disk('public')->exists($oldCompLogo)) {
+                Storage::disk('public')->delete($oldCompLogo);
+            }
+            $compPath = $request->file('company_logo')->store('logos', 'public');
+            Setting::set('company_logo', $compPath);
+        }
+
         if ($request->ajax() || $request->wantsJson()) {
-            $logo = Setting::get('app_logo');
+            $appLogo = Setting::get('app_logo');
+            $compLogo = Setting::get('company_logo');
             return response()->json([
                 'success' => true,
                 'message' => 'Branding berhasil diperbarui.',
-                'app_logo' => $logo ? asset('storage/' . $logo) : null,
+                'app_logo' => $appLogo ? asset('storage/' . $appLogo) : null,
+                'company_logo' => $compLogo ? asset('storage/' . $compLogo) : null,
             ]);
         }
 
