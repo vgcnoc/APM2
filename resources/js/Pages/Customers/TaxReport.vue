@@ -1,6 +1,6 @@
 <template>
     <AppLayout title="Laporan Pajak Pelanggan" subtitle="Kalkulasi PPN, BHP, dan USO Pelanggan">
-        <div class="max-w-7xl mx-auto space-y-6">
+        <div id="print-section" class="max-w-7xl mx-auto space-y-6">
             <!-- Header section & Aggregates -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <!-- Base Price -->
@@ -228,16 +228,16 @@ function printReport() {
     body * {
         visibility: hidden;
     }
-    .max-w-7xl, .max-w-7xl * {
+    #print-section, #print-section * {
         visibility: visible;
     }
-    .max-w-7xl {
+    #print-section {
         position: absolute;
         left: 0;
         top: 0;
         width: 100%;
     }
-    button, input, .pagination, .sidebar {
+    .no-print, button, input, .pagination, .sidebar {
         display: none !important;
     }
     .bg-indigo-600 {
