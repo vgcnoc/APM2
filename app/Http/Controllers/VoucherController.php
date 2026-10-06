@@ -109,7 +109,7 @@ class VoucherController extends Controller
 
         $vouchers = collect();
         if ($sessions->isNotEmpty()) {
-            $vouchers = Voucher::with('profile', 'reseller.customer')
+            $vouchers = Voucher::with('profile', 'reseller.customer.areaModel')
                 ->whereIn('username', $sessions->keys()->all())
                 ->get();
         }
@@ -117,12 +117,14 @@ class VoucherController extends Controller
         // Map data
         $rows = $vouchers->map(function ($v) use ($sessions) {
             $s = $sessions->get($v->username);
+            $resellerCustomer = $v->reseller?->customer;
             return [
                 'id' => $v->id,
                 'code' => $v->code,
                 'username' => $v->username,
                 'profile' => $v->profile?->name,
-                'reseller' => $v->reseller?->customer?->name ?? 'Admin',
+                'reseller' => $resellerCustomer?->name ?? 'Admin',
+                'area' => $resellerCustomer?->areaModel?->name ?? ($resellerCustomer?->area ?: null),
                 'ip_address' => $s->framedipaddress,
                 'mac_address' => $s->callingstationid,
                 'nas_ip' => $s->nasipaddress,

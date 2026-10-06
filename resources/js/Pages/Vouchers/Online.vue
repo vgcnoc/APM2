@@ -18,7 +18,7 @@
             :columns="columns"
             :data="paginatedData.data"
             :pagination="paginatedData"
-            searchPlaceholder="Cari kode, profile, reseller..."
+            searchPlaceholder="Cari kode, profile, reseller, area..."
             @search="handleSearch"
             :clientSidePagination="true"
         >
@@ -36,13 +36,33 @@
                     {{ (paginatedData.current_page - 1) * paginatedData.per_page + index + 1 }}
                 </td>
                 <td>
-                    <span class="inline-flex px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded text-xs font-mono font-bold tracking-widest">{{ row.code }}</span>
+                    <div class="flex items-center gap-2">
+                        <button
+                            :id="`btn-kick-${row.id}`"
+                            @click="kickSession(row)"
+                            :disabled="kicking === row.username || !row.is_active"
+                            class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold text-red-500 bg-red-50 border border-red-100 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-50"
+                            title="Kick Sesi Online"
+                        >
+                            <svg class="w-3 h-3" :class="{'animate-pulse': kicking === row.username}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            {{ kicking === row.username ? 'PROSES' : 'KICK' }}
+                        </button>
+                        <span class="inline-flex px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded text-xs font-mono font-bold tracking-widest">{{ row.code }}</span>
+                    </div>
                 </td>
                 <td>
                     <span class="inline-flex px-2 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded text-[10px] font-bold uppercase whitespace-nowrap">{{ row.profile || '-' }}</span>
                 </td>
                 <td>
-                    <span class="text-sm font-semibold text-gray-900">{{ row.reseller }}</span>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-semibold text-gray-900">{{ row.reseller }}</span>
+                        <span class="inline-flex items-center gap-1 text-[11px] text-gray-500 mt-0.5">
+                            <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            {{ row.area || '-' }}
+                        </span>
+                    </div>
                 </td>
                 <td>
                     <div class="flex flex-col">
@@ -79,18 +99,6 @@
                         <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         {{ row.is_active ? 'DISABLE' : 'ENABLE' }}
                     </button>
-                    <button
-                        :id="`btn-kick-${row.id}`"
-                        @click="kickSession(row)"
-                        :disabled="kicking === row.username || !row.is_active"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-red-500 bg-red-50 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-50"
-                        title="Kick Sesi Online"
-                    >
-                        <svg class="w-3.5 h-3.5" :class="{'animate-pulse': kicking === row.username}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        {{ kicking === row.username ? 'PROSES' : 'KICK' }}
-                    </button>
                 </div>
             </template>
         </DataTable>
@@ -111,7 +119,7 @@ const columns = [
     { key: 'index', label: '#' },
     { key: 'code', label: 'KODE VOUCHER' },
     { key: 'profile', label: 'PROFIL' },
-    { key: 'reseller', label: 'RESELLER' },
+    { key: 'reseller', label: 'RESELLER / AREA' },
     { key: 'ip_mac', label: 'IP / MAC ADDRESS' },
     { key: 'uptime', label: 'UPTIME' },
     { key: 'traffic', label: 'TRAFFIC' },
@@ -132,6 +140,7 @@ const filteredData = computed(() => {
             (v.code && v.code.toLowerCase().includes(query)) ||
             (v.profile && v.profile.toLowerCase().includes(query)) ||
             (v.reseller && v.reseller.toLowerCase().includes(query)) ||
+            (v.area && v.area.toLowerCase().includes(query)) ||
             (v.ip_address && v.ip_address.toLowerCase().includes(query)) ||
             (v.mac_address && v.mac_address.toLowerCase().includes(query))
         );
