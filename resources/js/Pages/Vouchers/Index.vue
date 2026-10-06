@@ -186,6 +186,15 @@
                         </div>
 
                         <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Kombinasi Username <span class="text-red-500">*</span></label>
+                            <select v-model="form.combination" class="w-full border-gray-300 rounded-lg" required>
+                                <option value="alphanumeric">Huruf & Angka (Contoh: A1B2C)</option>
+                                <option value="numeric">Hanya Angka (Contoh: 12345)</option>
+                                <option value="alpha">Hanya Huruf (Contoh: ABCDE)</option>
+                            </select>
+                        </div>
+
+                        <div>
                             <label class="block text-xs font-bold text-gray-700 mb-1">Tipe Login <span class="text-red-500">*</span></label>
                             <select v-model="form.type" class="w-full border-gray-300 rounded-lg" required>
                                 <option value="up">Username & Password Berbeda</option>
@@ -301,6 +310,7 @@ const form = useForm({
     prefix: '',
     type: 'vc',
     reseller_id: '',
+    combination: 'alphanumeric'
 });
 
 const doFilter = () => {

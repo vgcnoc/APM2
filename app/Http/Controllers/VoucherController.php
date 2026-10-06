@@ -234,6 +234,7 @@ class VoucherController extends Controller
             'prefix' => 'nullable|string|max:4',
             'type' => 'required|in:up,vc', // up = user & password, vc = code only (user=pass=code)
             'reseller_id' => 'nullable|exists:resellers,id',
+            'combination' => 'nullable|string|in:alphanumeric,numeric,alpha',
         ]);
 
         $profile = VoucherProfile::find($validated['voucher_profile_id']);
@@ -241,7 +242,7 @@ class VoucherController extends Controller
         $reseller = null;
         if (!empty($validated['reseller_id'])) {
             $reseller = \App\Models\Reseller::find($validated['reseller_id']);
-            $totalPrice = $profile->price * $validated['amount'];
+            $totalPrice = $profile->fee_reseller * $validated['amount'];
             
             if ($reseller->balance < $totalPrice) {
                 return redirect()->back()->withErrors(['reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($totalPrice, 0, ',', '.') . ').'])->withInput();
@@ -255,12 +256,27 @@ class VoucherController extends Controller
         $vouchers = [];
         $now = now();
         
+        $combination = $validated['combination'] ?? 'alphanumeric';
+        
+        $generateString = function($len, $comb) {
+            if ($comb === 'numeric') {
+                return substr(str_shuffle(str_repeat('0123456789', $len)), 0, $len);
+            } elseif ($comb === 'alpha') {
+                return substr(str_shuffle(str_repeat('ABCDEFGHIJKLMNOPQRSTUVWXYZ', $len)), 0, $len);
+            } else {
+                return strtoupper(Str::random($len));
+            }
+        };
+
         for ($i = 0; $i < $validated['amount']; $i++) {
-            $code = strtoupper($validated['prefix'] . Str::random($validated['length']));
+            $prefix = $validated['prefix'] ?? '';
+            $len = $validated['length'];
+            
+            $code = strtoupper($prefix . $generateString($len, $combination));
             
             // Ensure unique code
             while(Voucher::where('code', $code)->exists()) {
-                $code = strtoupper($validated['prefix'] . Str::random($validated['length']));
+                $code = strtoupper($prefix . $generateString($len, $combination));
             }
             
             if ($validated['type'] === 'vc') {
@@ -268,7 +284,7 @@ class VoucherController extends Controller
                 $password = $code;
             } else {
                 $username = $code;
-                $password = Str::random($validated['length']);
+                $password = $generateString($len, $combination);
             }
 
             $vouchers[] = [
