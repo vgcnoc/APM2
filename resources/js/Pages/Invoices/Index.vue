@@ -132,7 +132,7 @@
 
             <template #rowActions="{ row }">
                 <div class="flex items-center justify-end gap-2">
-                    <button v-if="row.status === 'unpaid'" class="px-3 py-1.5 border border-amber-300 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-colors">
+                    <button v-if="row.status === 'unpaid'" @click="openPaymentModal(row)" class="px-3 py-1.5 border border-amber-300 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-colors">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                         Bayar Lunas
                     </button>
@@ -145,12 +145,101 @@
                 </div>
             </template>
         </DataTable>
+
+        <!-- Payment Modal -->
+        <Teleport to="body">
+            <div v-if="showPaymentModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closePaymentModal"></div>
+
+                <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-md relative z-10 animate-fade-in-up">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">Pembayaran Tagihan</h3>
+                            <p class="text-[11px] font-medium text-gray-500 mt-0.5">{{ selectedInvoice?.invoice_number }} &bull; {{ selectedInvoice?.customer?.name }}</p>
+                        </div>
+                        <button @click="closePaymentModal" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitPayment">
+                        <div class="p-6 space-y-5">
+                            
+                            <!-- Total Tagihan Display -->
+                            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-center">
+                                <p class="text-xs font-bold text-indigo-500 uppercase tracking-wider mb-1">Total Tagihan</p>
+                                <p class="text-2xl font-black text-indigo-700">{{ formatCurrency(selectedInvoice?.remaining || 0) }}</p>
+                            </div>
+
+                            <!-- Payment Method Selection -->
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-3">Pilih Metode Pembayaran</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <label class="cursor-pointer relative">
+                                        <input type="radio" v-model="paymentForm.method" value="cash" class="peer sr-only" />
+                                        <div class="rounded-xl border-2 border-gray-100 bg-white p-3 flex flex-col items-center justify-center gap-2 transition-all hover:border-gray-200 peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:text-indigo-600">
+                                            <svg class="w-6 h-6 text-gray-400 peer-checked:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zM7 15h2m1 0h6"/></svg>
+                                            <span class="text-xs font-bold text-gray-600 peer-checked:text-indigo-700">Tunai / Cash</span>
+                                        </div>
+                                    </label>
+                                    
+                                    <label class="cursor-pointer relative">
+                                        <input type="radio" v-model="paymentForm.method" value="transfer" class="peer sr-only" />
+                                        <div class="rounded-xl border-2 border-gray-100 bg-white p-3 flex flex-col items-center justify-center gap-2 transition-all hover:border-gray-200 peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:text-indigo-600">
+                                            <svg class="w-6 h-6 text-gray-400 peer-checked:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                                            <span class="text-xs font-bold text-gray-600 peer-checked:text-indigo-700">Transfer Bank</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="cursor-pointer relative">
+                                        <input type="radio" v-model="paymentForm.method" value="qris" class="peer sr-only" />
+                                        <div class="rounded-xl border-2 border-gray-100 bg-white p-3 flex flex-col items-center justify-center gap-2 transition-all hover:border-gray-200 peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:text-indigo-600">
+                                            <svg class="w-6 h-6 text-gray-400 peer-checked:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+                                            <span class="text-xs font-bold text-gray-600 peer-checked:text-indigo-700">Scan QRIS</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="cursor-pointer relative">
+                                        <input type="radio" v-model="paymentForm.method" value="payment_gateway" class="peer sr-only" />
+                                        <div class="rounded-xl border-2 border-gray-100 bg-white p-3 flex flex-col items-center justify-center gap-2 transition-all hover:border-gray-200 peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:text-indigo-600">
+                                            <svg class="w-6 h-6 text-gray-400 peer-checked:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+                                            <span class="text-xs font-bold text-gray-600 peer-checked:text-indigo-700">Payment Gateway</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Notes -->
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Catatan Tambahan (Opsional)</label>
+                                <textarea v-model="paymentForm.notes" rows="2" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none" placeholder="Cth: Titip di satpam / Pembayaran bulan ini dan depan..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-end gap-3">
+                            <button type="button" @click="closePaymentModal" class="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-200 bg-gray-100 rounded-xl transition-colors">
+                                Batal
+                            </button>
+                            <button type="submit" :disabled="paymentForm.processing" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-indigo-200 flex items-center gap-2">
+                                <svg v-if="paymentForm.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                </svg>
+                                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                {{ paymentForm.processing ? 'Memproses...' : 'Konfirmasi Pembayaran' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
 
 <script setup>
 import { ref } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 
@@ -226,5 +315,40 @@ function statusDotClass(status) {
         case 'partial': return 'bg-amber-500';
         default: return 'bg-gray-500';
     }
+}
+
+// Payment Modal Logic
+const showPaymentModal = ref(false);
+const selectedInvoice = ref(null);
+
+const paymentForm = useForm({
+    method: 'cash',
+    amount: 0,
+    notes: '',
+});
+
+function openPaymentModal(invoice) {
+    selectedInvoice.value = invoice;
+    paymentForm.amount = invoice.remaining;
+    paymentForm.method = 'cash';
+    paymentForm.notes = '';
+    showPaymentModal.value = true;
+}
+
+function closePaymentModal() {
+    showPaymentModal.value = false;
+    setTimeout(() => {
+        selectedInvoice.value = null;
+        paymentForm.reset();
+    }, 200);
+}
+
+function submitPayment() {
+    paymentForm.post(`/invoices/${selectedInvoice.value.id}/pay`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closePaymentModal();
+        },
+    });
 }
 </script>

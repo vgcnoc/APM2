@@ -103,4 +103,34 @@ class InvoiceController extends Controller
             'filters' => $request->only(['search', 'status', 'start_date', 'end_date', 'area_id', 'tab']),
         ]);
     }
+
+    public function pay(Request $request, Invoice $invoice)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:1',
+            'method' => 'required|string',
+            'notes' => 'nullable|string',
+        ]);
+
+        $paymentAmount = $request->amount;
+        
+        // Buat record pembayaran
+        $invoice->payments()->create([
+            'payment_date' => now(),
+            'amount' => $paymentAmount,
+            'payment_method' => $request->method,
+            'notes' => $request->notes,
+            'processed_by' => auth()->id(),
+        ]);
+
+        // Update status invoice
+        $totalPaid = $invoice->payments()->sum('amount');
+        if ($totalPaid >= $invoice->amount) {
+            $invoice->update(['status' => 'paid', 'total_paid' => $totalPaid, 'remaining' => 0]);
+        } else {
+            $invoice->update(['status' => 'partial', 'total_paid' => $totalPaid, 'remaining' => $invoice->amount - $totalPaid]);
+        }
+
+        return back()->with('success', 'Pembayaran berhasil diproses.');
+    }
 }

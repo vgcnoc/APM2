@@ -196,6 +196,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('users/{user}/delete', [\App\Http\Controllers\UserController::class, 'destroy'])->name('users.destroy.post');
 
     // ── Billing & Keuangan ─────────────────────────────────────
+    Route::post('invoices/{invoice}/pay', [\App\Http\Controllers\InvoiceController::class, 'pay'])->name('invoices.pay');
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
     // Route::resource('payments', PaymentController::class);
 
