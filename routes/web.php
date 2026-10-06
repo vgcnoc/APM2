@@ -202,6 +202,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('invoices/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->name('invoices.print');
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
     
+    Route::get('tax-reports/print', [\App\Http\Controllers\TaxReportController::class, 'print'])->name('tax.reports.print');
     Route::get('tax-reports', [\App\Http\Controllers\TaxReportController::class, 'index'])->name('tax.reports.index');
     // Route::resource('payments', PaymentController::class);
 

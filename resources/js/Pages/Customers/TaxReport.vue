@@ -219,34 +219,10 @@ function formatCurrency(value) {
 }
 
 function printReport() {
-    window.print();
+    const params = new URLSearchParams();
+    if (search.value) params.set('search', search.value);
+    const qs = params.toString();
+    window.open('/tax-reports/print' + (qs ? '?' + qs : ''), '_blank');
 }
 </script>
 
-<style scoped>
-@media print {
-    body * {
-        visibility: hidden;
-    }
-    #print-section, #print-section * {
-        visibility: visible;
-    }
-    #print-section {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-    }
-    .no-print, button, input, .pagination, .sidebar {
-        display: none !important;
-    }
-    .bg-indigo-600 {
-        background-color: transparent !important;
-        color: black !important;
-        border: 1px solid #ccc;
-    }
-    .text-indigo-200, .text-white {
-        color: black !important;
-    }
-}
-</style>
