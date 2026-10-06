@@ -206,10 +206,13 @@
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
                         Rollback
                     </button>
-                    <button class="p-1.5 text-gray-400 hover:text-blue-600 transition-colors" title="Edit">
+                    <a :href="'/invoices/' + row.id + '/print'" target="_blank" class="p-1.5 text-gray-400 hover:text-indigo-600 transition-colors" title="Cetak Invoice">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    </a>
+                    <button @click="openEditModal(row)" class="p-1.5 text-gray-400 hover:text-blue-600 transition-colors" title="Edit Tagihan">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     </button>
-                    <button class="p-1.5 text-gray-400 hover:text-red-600 transition-colors" title="Hapus">
+                    <button @click="deleteInvoice(row)" class="p-1.5 text-gray-400 hover:text-red-600 transition-colors" title="Hapus Tagihan">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
                 </div>
@@ -379,6 +382,60 @@
                             </button>
                             <button type="submit" :disabled="promiseForm.processing" class="px-6 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-yellow-200 flex items-center gap-2">
                                 {{ promiseForm.processing ? 'Menyimpan...' : 'Simpan Janji Bayar' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Edit Invoice Modal -->
+        <Teleport to="body">
+            <div v-if="showEditModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closeEditModal"></div>
+
+                <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-md relative z-10 animate-fade-in-up">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">Edit Tagihan</h3>
+                            <p class="text-[11px] font-medium text-gray-500 mt-0.5">{{ selectedInvoice?.invoice_number }} &bull; {{ selectedInvoice?.customer?.name }}</p>
+                        </div>
+                        <button @click="closeEditModal" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitEdit">
+                        <div class="p-6 space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Nominal Tagihan</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <span class="text-gray-500">Rp</span>
+                                    </div>
+                                    <input type="number" v-model="editForm.amount" class="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500" required>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Terbit</label>
+                                    <input type="date" v-model="editForm.issued_date" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500" required>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Jatuh Tempo</label>
+                                    <input type="date" v-model="editForm.due_date" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2">
+                            <button type="button" @click="closeEditModal" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900 bg-white border border-gray-200 hover:border-gray-300 rounded-xl transition-colors">
+                                Batal
+                            </button>
+                            <button type="submit" :disabled="editForm.processing" class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                                <svg v-if="editForm.processing" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                Simpan Perubahan
                             </button>
                         </div>
                     </form>
@@ -560,5 +617,55 @@ function submitPromise() {
             closePromiseModal();
         },
     });
+}
+
+// Edit Modal Logic
+const showEditModal = ref(false);
+const editForm = useForm({
+    amount: 0,
+    issued_date: '',
+    due_date: '',
+});
+
+function openEditModal(invoice) {
+    selectedInvoice.value = invoice;
+    editForm.amount = invoice.amount;
+    
+    // Convert DD/MM/YYYY or YYYY-MM-DD to YYYY-MM-DD for input type="date"
+    let idate = invoice.issued_date;
+    if (idate && idate.includes('/')) idate = idate.split('/').reverse().join('-');
+    
+    let ddate = invoice.due_date;
+    if (ddate && ddate.includes('/')) ddate = ddate.split('/').reverse().join('-');
+
+    editForm.issued_date = idate || '';
+    editForm.due_date = ddate || '';
+    showEditModal.value = true;
+}
+
+function closeEditModal() {
+    showEditModal.value = false;
+    setTimeout(() => {
+        selectedInvoice.value = null;
+        editForm.reset();
+    }, 200);
+}
+
+function submitEdit() {
+    editForm.put(`/invoices/${selectedInvoice.value.id}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeEditModal();
+        }
+    });
+}
+
+// Delete Logic
+function deleteInvoice(invoice) {
+    if (confirm(`Apakah Anda yakin ingin menghapus tagihan ${invoice.invoice_number} secara permanen? Semua data pembayaran terkait tagihan ini juga akan ikut terhapus.`)) {
+        router.delete(`/invoices/${invoice.id}`, {
+            preserveScroll: true
+        });
+    }
 }
 </script>

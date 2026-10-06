@@ -234,4 +234,28 @@ class InvoiceController extends Controller
 
         return back()->with('success', 'Janji bayar berhasil disimpan. Layanan internet pelanggan telah diaktifkan kembali.');
     }
+
+    public function update(Request $request, Invoice $invoice)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:0',
+            'due_date' => 'required|date',
+            'issued_date' => 'required|date',
+        ]);
+
+        $invoice->update($request->only('amount', 'due_date', 'issued_date'));
+        return back()->with('success', 'Tagihan berhasil diperbarui.');
+    }
+
+    public function destroy(Invoice $invoice)
+    {
+        $invoice->delete();
+        return back()->with('success', 'Tagihan berhasil dihapus.');
+    }
+
+    public function print(Invoice $invoice)
+    {
+        $invoice->load('customer', 'payments');
+        return view('print.invoice', compact('invoice'));
+    }
 }
