@@ -27,4 +27,21 @@ class RadAcct extends RadiusModel
     {
         return $query->whereNull('acctstoptime');
     }
+
+    /**
+     * Durasi sesi "real-time".
+     * acctsessiontime hanya diperbarui saat NAS mengirim Interim-Update,
+     * sehingga untuk sesi aktif dihitung juga dari acctstarttime.
+     */
+    public function liveSessionTime(): int
+    {
+        $recorded = (int) ($this->acctsessiontime ?? 0);
+
+        if ($this->acctstarttime && empty($this->acctstoptime)) {
+            $elapsed = (int) abs(now()->getTimestamp() - $this->acctstarttime->getTimestamp());
+            return max($recorded, $elapsed);
+        }
+
+        return $recorded;
+    }
 }

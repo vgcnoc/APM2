@@ -25,6 +25,9 @@ return [
     // Perintah untuk restart FreeRADIUS setelah NAS berubah (butuh sudoers untuk www-data)
     'restart_command' => env('RADIUS_RESTART_COMMAND', 'sudo /usr/bin/systemctl restart freeradius'),
 
+    // Interval (detik) NAS mengirim Accounting Interim-Update (traffic & uptime real-time)
+    'interim_interval' => (int) env('RADIUS_INTERIM_INTERVAL', 60),
+
     /*
     |--------------------------------------------------------------------------
     | Group Isolir

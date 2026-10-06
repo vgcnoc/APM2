@@ -162,7 +162,7 @@ class CustomerController extends Controller
                 'mac_address' => $s?->callingstationid,
                 'nas_ip' => $s?->nasipaddress,
                 'start_time' => $s?->acctstarttime ? (string) $s->acctstarttime : null,
-                'session_time' => (int) ($s?->acctsessiontime ?? 0),
+                'session_time' => $s ? $s->liveSessionTime() : 0,
                 'upload' => (int) ($s?->acctinputoctets ?? 0),
                 'download' => (int) ($s?->acctoutputoctets ?? 0),
             ];

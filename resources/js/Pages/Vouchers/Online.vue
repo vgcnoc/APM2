@@ -106,7 +106,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
@@ -173,6 +173,17 @@ function refresh() {
         onFinish: () => (refreshing.value = false),
     });
 }
+
+// Auto-refresh tiap 30 detik (dilewati jika tab tidak aktif / sedang proses)
+const AUTO_REFRESH_MS = 30000;
+let autoTimer = null;
+onMounted(() => {
+    autoTimer = setInterval(() => {
+        if (document.hidden || refreshing.value || kicking.value || toggling.value) return;
+        router.reload({ only: ['onlineUsers'], preserveScroll: true, preserveState: true });
+    }, AUTO_REFRESH_MS);
+});
+onUnmounted(() => clearInterval(autoTimer));
 
 function toggleStatus(row) {
     const action = row.is_active ? 'Nonaktifkan' : 'Aktifkan';

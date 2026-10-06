@@ -128,7 +128,7 @@ class VoucherController extends Controller
                 'ip_address' => $s->framedipaddress,
                 'mac_address' => $s->callingstationid,
                 'nas_ip' => $s->nasipaddress,
-                'uptime' => $s->acctsessiontime ?? ($s->acctstarttime ? now()->diffInSeconds($s->acctstarttime) : 0),
+                'uptime' => $s->liveSessionTime(),
                 'download' => $s->acctoutputoctets,
                 'upload' => $s->acctinputoctets,
                 'login_time' => $s->acctstarttime ? $s->acctstarttime->toIso8601String() : null,

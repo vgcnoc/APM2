@@ -117,6 +117,7 @@ class RadiusService
             'Mikrotik-Rate-Limit' => $rateLimit,
             'Mikrotik-Group' => $package->is_mikrotik_group_custom ? $package->mikrotik_group : null,
             'Mikrotik-Address-List' => $package->is_mikrotik_address_list_custom ? $package->mikrotik_address_list : null,
+            'Acct-Interim-Interval' => config('radius.interim_interval'),
         ], [
             'Simultaneous-Use' => $package->shared_device > 0 ? $package->shared_device : null,
         ]);
@@ -126,6 +127,7 @@ class RadiusService
     {
         $this->writeGroup($this->voucherGroup($profile->id), [
             'Mikrotik-Rate-Limit' => $profile->limit_rate,
+            'Acct-Interim-Interval' => config('radius.interim_interval'),
         ], [
             'Simultaneous-Use' => $profile->shared_users > 0 ? $profile->shared_users : null,
             // Menggunakan sqlcounter 'noresetcounter' (Max-All-Session-Time) untuk total durasi
