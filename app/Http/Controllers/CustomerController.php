@@ -1304,6 +1304,15 @@ class CustomerController extends Controller
                 if ($customer->service_status === 'gratis') {
                     $amount = 0;
                     $status = 'paid';
+                } else {
+                    $taxPpn = (float) \App\Models\Setting::get('tax_ppn', '0');
+                    $taxBhp = (float) \App\Models\Setting::get('tax_bhp', '0');
+                    $taxUso = (float) \App\Models\Setting::get('tax_uso', '0');
+                    
+                    $totalTaxPercent = $taxPpn + $taxBhp + $taxUso;
+                    if ($totalTaxPercent > 0) {
+                        $amount = $amount + ($amount * ($totalTaxPercent / 100));
+                    }
                 }
 
                 \App\Models\Invoice::create([

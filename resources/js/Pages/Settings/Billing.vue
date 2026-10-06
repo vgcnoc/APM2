@@ -170,6 +170,56 @@
                         
                         <hr class="border-gray-100 border-dashed">
 
+                        <!-- Pengaturan Pajak -->
+                        <div>
+                            <div class="flex items-center gap-2 mb-6">
+                                <div class="w-8 h-8 rounded-lg bg-yellow-50 text-yellow-600 flex items-center justify-center">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-900">Pajak & Regulasi</h3>
+                                    <p class="text-[11px] text-gray-500 mt-0.5">Persentase (%) ini akan ditambahkan ke total tagihan pelanggan secara otomatis.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <!-- PPN -->
+                                <div class="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                                    <label class="block text-sm font-bold text-gray-900 mb-1">PPN</label>
+                                    <p class="text-[10px] text-gray-500 mb-3">Pajak Pertambahan Nilai</p>
+                                    <div class="flex items-center rounded-lg border border-gray-300 shadow-sm focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 overflow-hidden bg-white">
+                                        <input type="number" step="0.01" min="0" max="100" v-model="form.tax_ppn" class="form-input flex-1 border-0 focus:ring-0 sm:text-sm font-medium py-2 px-3 min-w-0" placeholder="0" />
+                                        <div class="pr-3 pl-2 py-2 flex items-center justify-center bg-gray-50 text-gray-500 text-xs font-medium border-l border-gray-200">%</div>
+                                    </div>
+                                    <div v-if="form.errors.tax_ppn" class="mt-1 text-sm text-red-600">{{ form.errors.tax_ppn }}</div>
+                                </div>
+
+                                <!-- BHP -->
+                                <div class="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                                    <label class="block text-sm font-bold text-gray-900 mb-1">BHP</label>
+                                    <p class="text-[10px] text-gray-500 mb-3">Biaya Hak Penggunaan</p>
+                                    <div class="flex items-center rounded-lg border border-gray-300 shadow-sm focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 overflow-hidden bg-white">
+                                        <input type="number" step="0.01" min="0" max="100" v-model="form.tax_bhp" class="form-input flex-1 border-0 focus:ring-0 sm:text-sm font-medium py-2 px-3 min-w-0" placeholder="0" />
+                                        <div class="pr-3 pl-2 py-2 flex items-center justify-center bg-gray-50 text-gray-500 text-xs font-medium border-l border-gray-200">%</div>
+                                    </div>
+                                    <div v-if="form.errors.tax_bhp" class="mt-1 text-sm text-red-600">{{ form.errors.tax_bhp }}</div>
+                                </div>
+
+                                <!-- USO -->
+                                <div class="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                                    <label class="block text-sm font-bold text-gray-900 mb-1">USO</label>
+                                    <p class="text-[10px] text-gray-500 mb-3">Universal Service Obligation</p>
+                                    <div class="flex items-center rounded-lg border border-gray-300 shadow-sm focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 overflow-hidden bg-white">
+                                        <input type="number" step="0.01" min="0" max="100" v-model="form.tax_uso" class="form-input flex-1 border-0 focus:ring-0 sm:text-sm font-medium py-2 px-3 min-w-0" placeholder="0" />
+                                        <div class="pr-3 pl-2 py-2 flex items-center justify-center bg-gray-50 text-gray-500 text-xs font-medium border-l border-gray-200">%</div>
+                                    </div>
+                                    <div v-if="form.errors.tax_uso" class="mt-1 text-sm text-red-600">{{ form.errors.tax_uso }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="border-gray-100 border-dashed">
+
                         <!-- Pengaturan Bank -->
                         <div>
                             <div class="flex items-center justify-between mb-6">
@@ -392,6 +442,9 @@ const props = defineProps({
     pg_api_key: String,
     pg_private_key: String,
     pg_callback_token: String,
+    tax_ppn: [String, Number],
+    tax_bhp: [String, Number],
+    tax_uso: [String, Number],
 });
 
 const form = useForm({
@@ -407,8 +460,10 @@ const form = useForm({
     pg_api_key: props.pg_api_key || '',
     pg_private_key: props.pg_private_key || '',
     pg_callback_token: props.pg_callback_token || '',
+    tax_ppn: props.tax_ppn || 0,
+    tax_bhp: props.tax_bhp || 0,
+    tax_uso: props.tax_uso || 0,
 });
-
 function addBank() {
     form.payment_banks.push({
         bank_name: '',

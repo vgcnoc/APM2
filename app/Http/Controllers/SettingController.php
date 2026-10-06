@@ -33,6 +33,9 @@ class SettingController extends Controller
             'pg_api_key' => Setting::get('pg_api_key', ''),
             'pg_private_key' => Setting::get('pg_private_key', ''),
             'pg_callback_token' => Setting::get('pg_callback_token', ''),
+            'tax_ppn' => Setting::get('tax_ppn', '0'),
+            'tax_bhp' => Setting::get('tax_bhp', '0'),
+            'tax_uso' => Setting::get('tax_uso', '0'),
         ]);
     }
 
@@ -54,6 +57,9 @@ class SettingController extends Controller
             'pg_api_key' => 'nullable|string',
             'pg_private_key' => 'nullable|string',
             'pg_callback_token' => 'nullable|string',
+            'tax_ppn' => 'nullable|numeric|min:0|max:100',
+            'tax_bhp' => 'nullable|numeric|min:0|max:100',
+            'tax_uso' => 'nullable|numeric|min:0|max:100',
         ]);
 
         Setting::set('billing_type', $request->billing_type);
@@ -63,6 +69,11 @@ class SettingController extends Controller
         Setting::set('invoice_issue_date', $request->invoice_issue_date);
         Setting::set('isolate_days', $request->isolate_days);
         Setting::set('isolate_time', $request->isolate_time);
+        
+        Setting::set('tax_ppn', $request->tax_ppn ?? 0);
+        Setting::set('tax_bhp', $request->tax_bhp ?? 0);
+        Setting::set('tax_uso', $request->tax_uso ?? 0);
+
         Setting::set('payment_banks', json_encode($request->payment_banks ?? []));
         Setting::set('pg_provider', $request->pg_provider ?? 'none');
         Setting::set('pg_environment', $request->pg_environment ?? 'sandbox');

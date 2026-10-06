@@ -54,6 +54,15 @@ class GenerateInvoices extends Command
                 if ($customer->service_status === 'gratis') {
                     $amount = 0;
                     $status = 'paid';
+                } else {
+                    $taxPpn = (float) Setting::get('tax_ppn', '0');
+                    $taxBhp = (float) Setting::get('tax_bhp', '0');
+                    $taxUso = (float) Setting::get('tax_uso', '0');
+                    
+                    $totalTaxPercent = $taxPpn + $taxBhp + $taxUso;
+                    if ($totalTaxPercent > 0) {
+                        $amount = $amount + ($amount * ($totalTaxPercent / 100));
+                    }
                 }
 
                 $isolateDays = (int) Setting::get('isolate_days', '3');
