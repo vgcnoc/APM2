@@ -39,7 +39,7 @@
 
     <div class="invoice-box">
         <div class="header">
-            <div class="company-info" style="display: flex; align-items: center; gap: 20px;">
+            <div class="company-info" style="display: flex; flex-direction: column; align-items: flex-start; gap: 15px;">
                 @if($company['logo'])
                     <img src="{{ asset('storage/' . $company['logo']) }}" alt="Logo" style="max-height: 80px; max-width: 150px; object-fit: contain;">
                 @endif
