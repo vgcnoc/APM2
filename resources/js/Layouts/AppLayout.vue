@@ -265,9 +265,18 @@ const menuItems = [
             { href: '/customer-settlements', label: 'Validasi Setoran', active: (url) => (url || '').startsWith('/customer-settlements'), permission: 'menu_customers_all' },
         ]
     },
-    { type: 'link', href: '/customer-reports', icon: 'document-report', label: 'Laporan Pelanggan', active: (url) => (url || '').startsWith('/customer-reports'), permission: 'menu_customers_all' },
-    { type: 'link', href: '/financial-reports', icon: 'chart-pie', label: 'Laporan Keseluruhan', active: (url) => (url || '').startsWith('/financial-reports'), permission: 'menu_customers_all' },
-    { type: 'link', href: '/tax-reports', icon: 'calculator', label: 'Laporan Pajak', active: (url) => (url || '').startsWith('/tax-reports'), permission: 'menu_customers_all' },
+    {
+        type: 'dropdown',
+        icon: 'chart-pie',
+        label: 'Laporan Keuangan',
+        active: (url) => ['/financial-reports', '/customer-reports', '/tax-reports'].some(path => (url || '').startsWith(path)),
+        permission: 'menu_customers_all',
+        children: [
+            { href: '/financial-reports', label: 'Buku Kas Global', active: (url) => (url || '').startsWith('/financial-reports'), permission: 'menu_customers_all' },
+            { href: '/customer-reports', label: 'Laporan Pelanggan', active: (url) => (url || '').startsWith('/customer-reports'), permission: 'menu_customers_all' },
+            { href: '/tax-reports', label: 'Laporan Pajak', active: (url) => (url || '').startsWith('/tax-reports'), permission: 'menu_customers_all' },
+        ]
+    },
     { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
 
     { type: 'group', label: 'VOUCHER & RESELLER' },
@@ -296,7 +305,7 @@ const menuItems = [
             { href: '/reseller-requests', label: 'Riwayat Saldo', active: (url) => (url || '').startsWith('/reseller-requests'), permission: 'menu_resellers' },
             { href: '/reseller-billing', label: 'Penagihan Kasbon', active: (url) => (url || '').startsWith('/reseller-billing'), permission: 'menu_customers_all' },
             { href: '/reseller-settlements', label: 'Pelunasan Kasbon', active: (url) => (url || '').startsWith('/reseller-settlements'), permission: 'menu_customers_all' },
-            { href: '/reseller-reports', label: 'Laporan Keuangan', active: (url) => (url || '').startsWith('/reseller-reports'), permission: 'menu_customers_all' },
+            { href: '/reseller-reports', label: 'Laporan Reseller', active: (url) => (url || '').startsWith('/reseller-reports'), permission: 'menu_customers_all' },
         ]
     },
 
