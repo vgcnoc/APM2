@@ -158,13 +158,6 @@
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-700 mb-1">Warna Label</label>
-                                        <div class="flex items-center gap-3">
-                                            <input v-model="form.color" type="color" class="w-10 h-10 p-1 bg-white border border-gray-300 rounded cursor-pointer">
-                                            <div class="text-xs font-mono text-gray-500">{{ form.color }}</div>
-                                        </div>
-                                    </div>
 
                                     <div class="md:col-span-2">
                                         <label class="block text-xs font-bold text-gray-700 mb-1">Deskripsi Singkat</label>
