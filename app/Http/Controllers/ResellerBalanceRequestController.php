@@ -49,18 +49,31 @@ class ResellerBalanceRequestController extends Controller
             $reseller->balance += $validated['amount'];
             $reseller->save();
 
-            if ($validated['payment_method'] === 'kasbon') {
-                $customer = $reseller->customer;
-                if ($customer) {
-                    Invoice::create([
-                        'invoice_number' => 'INV-' . date('Ym') . '-' . str_pad(Invoice::count() + 1, 4, '0', STR_PAD_LEFT),
+            // Selalu buat invoice untuk setiap penambahan saldo sebagai riwayat keuangan
+            $customer = $reseller->customer;
+            if ($customer) {
+                $isKasbon = $validated['payment_method'] === 'kasbon';
+                
+                $invoice = Invoice::create([
+                    'invoice_number' => 'INV-' . date('Ym') . '-' . str_pad(Invoice::count() + 1, 4, '0', STR_PAD_LEFT),
+                    'customer_id' => $customer->id,
+                    'amount' => $validated['amount'],
+                    'status' => $isKasbon ? 'unpaid' : 'paid',
+                    'issued_date' => Carbon::now(),
+                    'due_date' => $isKasbon ? Carbon::tomorrow() : Carbon::now(),
+                    'period_label' => 'Saldo Reseller (' . date('d M Y') . ')',
+                    'notes' => ($isKasbon ? 'Kasbon' : 'Pembelian') . ' Saldo Reseller via Admin. Ref: REQ-' . $balanceRequest->id,
+                ]);
+
+                // Jika cash atau transfer, langsung buatkan record pembayaran (Lunas)
+                if (!$isKasbon) {
+                    $invoice->payments()->create([
                         'customer_id' => $customer->id,
+                        'payment_date' => Carbon::now(),
                         'amount' => $validated['amount'],
-                        'status' => 'unpaid',
-                        'issued_date' => Carbon::now(),
-                        'due_date' => Carbon::tomorrow(),
-                        'period_label' => 'Kasbon Saldo (' . date('d M Y') . ')',
-                        'notes' => 'Kasbon Penambahan Saldo Reseller via Admin. Ref: REQ-' . $balanceRequest->id,
+                        'payment_method' => $validated['payment_method'],
+                        'notes' => 'Pembayaran Langsung via Admin (' . $validated['payment_method'] . ')',
+                        'collected_by' => auth()->id(),
                     ]);
                 }
             }
@@ -92,19 +105,31 @@ class ResellerBalanceRequestController extends Controller
             $reseller->balance += $balanceRequest->amount;
             $reseller->save();
 
-            // If kasbon, create an invoice for tomorrow
-            if ($balanceRequest->payment_method === 'kasbon') {
-                $customer = $reseller->customer;
-                if ($customer) {
-                    Invoice::create([
-                        'invoice_number' => 'INV-' . date('Ym') . '-' . str_pad(Invoice::count() + 1, 4, '0', STR_PAD_LEFT),
+            // Selalu buat invoice untuk setiap penambahan saldo
+            $customer = $reseller->customer;
+            if ($customer) {
+                $isKasbon = $balanceRequest->payment_method === 'kasbon';
+                
+                $invoice = Invoice::create([
+                    'invoice_number' => 'INV-' . date('Ym') . '-' . str_pad(Invoice::count() + 1, 4, '0', STR_PAD_LEFT),
+                    'customer_id' => $customer->id,
+                    'amount' => $balanceRequest->amount,
+                    'status' => $isKasbon ? 'unpaid' : 'paid',
+                    'issued_date' => Carbon::now(),
+                    'due_date' => $isKasbon ? Carbon::tomorrow() : Carbon::now(),
+                    'period_label' => 'Saldo Reseller (' . date('d M Y') . ')',
+                    'notes' => ($isKasbon ? 'Kasbon' : 'Pembelian') . ' Saldo Reseller (Approval). Ref: REQ-' . $balanceRequest->id,
+                ]);
+
+                // Jika cash atau transfer, langsung record sebagai lunas
+                if (!$isKasbon) {
+                    $invoice->payments()->create([
                         'customer_id' => $customer->id,
+                        'payment_date' => Carbon::now(),
                         'amount' => $balanceRequest->amount,
-                        'status' => 'unpaid',
-                        'issued_date' => Carbon::now(),
-                        'due_date' => Carbon::tomorrow(),
-                        'period_label' => 'Kasbon Saldo (' . date('d M Y') . ')',
-                        'notes' => 'Kasbon Penambahan Saldo Reseller. Ref: REQ-' . $balanceRequest->id,
+                        'payment_method' => $balanceRequest->payment_method,
+                        'notes' => 'Disetujui Admin (' . $balanceRequest->payment_method . ')',
+                        'collected_by' => auth()->id(),
                     ]);
                 }
             }
