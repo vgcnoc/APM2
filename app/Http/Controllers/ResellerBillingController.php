@@ -20,6 +20,10 @@ class ResellerBillingController extends Controller
             ->whereHas('customer', function($q) {
                 $q->where('is_reseller', true);
             })
+            ->where(function($q) {
+                $q->where('period_label', 'like', '%Saldo%')
+                  ->orWhere('notes', 'like', '%Saldo Reseller%');
+            })
             ->whereIn('status', ['unpaid', 'partial']);
             
         $invoices = $query->latest()->paginate(10);
