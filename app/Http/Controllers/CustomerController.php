@@ -87,7 +87,7 @@ class CustomerController extends Controller
             'packages' => InternetPackage::active()->get(),
             'areas' => \App\Models\Area::orderBy('name')->get(),
             'odps' => class_exists('\App\Models\Odp') ? \App\Models\Odp::orderBy('name')->get() : [],
-            'officers' => \App\Models\User::where('is_active', true)->where('is_on_duty', true)->whereNotIn('role', ['customer', 'reseller'])->get(['id', 'name', 'phone', 'role']),
+            'officers' => \App\Models\User::where('is_on_duty', true)->get(['id', 'name', 'phone', 'role']),
             'filters' => $request->only(['search', 'status', 'package_id', 'area_id', 'odp_id', 'sort_by']),
             'stats' => [
                 'total' => ['value' => $totalCustomers, 'growth' => $totalGrowth],
