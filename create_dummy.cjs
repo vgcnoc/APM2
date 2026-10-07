@@ -1,33 +1,9 @@
 const { Client } = require('ssh2');
-const c = new Client();
-
-const commands = `
-cd /var/www/APM2
-php artisan tinker --execute="
-\\$pkg = \\App\\Models\\InternetPackage::first();
-\\$pkgId = \\$pkg ? \\$pkg->id : null;
-\\App\\Models\\Customer::create([
-    'customer_code' => 'DUMMY-' . rand(1000, 9999),
-    'name' => 'Bapak Dummy',
-    'email' => 'dummy@example.com',
-    'phone' => '081234567890',
-    'address' => 'Jl. Dummy No. ' . rand(1, 100) . ', RT/RW 01/02, Kel. Percobaan',
-    'package_id' => \\$pkgId,
-    'base_amount' => 200000,
-    'installation_fee' => 150000,
-    'status' => 'survey',
-    'registration_date' => now(),
-    'notes' => 'Ini data dummy untuk percobaan survey',
-]);
-echo \\"Dummy created successfully\\n\\";
-"
-`;
-
-c.on('ready', () => {
-  c.exec(commands, (e, s) => {
-    if (e) throw e;
-    s.on('data', d => process.stdout.write(d))
-     .on('close', (code) => { console.log('Exit:', code); c.end(); })
-     .stderr.on('data', d => process.stderr.write(d));
+const conn = new Client();
+conn.on('ready', () => {
+  const tinkerCmd = `php artisan tinker --execute="\\App\\Models\\CbpRequest::create(['cbp_number' => 'CBP-'.date('Ymd').'-0001', 'customer_id' => \\App\\Models\\Customer::where('status', 'active')->first()->id ?? \\App\\Models\\Customer::first()->id, 'reason' => 'Dummy data untuk testing pencabutan (Pindah Rumah)', 'status' => 'pending', 'created_by' => 1]);"`;
+  conn.exec(`cd /var/www/APM2 && ${tinkerCmd}`, (err, stream) => {
+    if (err) throw err;
+    stream.on('close', () => { conn.end(); }).on('data', (d) => process.stdout.write(d)).stderr.on('data', (d) => process.stderr.write(d));
   });
-}).connect({host:'157.66.140.17',port:22,username:'root',password:'viruzs123'});
+}).connect({ host: '157.66.140.17', port: 22, username: 'root', password: 'viruzs123' });

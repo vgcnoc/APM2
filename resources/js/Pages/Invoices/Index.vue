@@ -460,6 +460,50 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- Stop Sementara Modal -->
+        <Teleport to="body">
+            <div v-if="showStopSementaraModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closeStopSementaraModal"></div>
+
+                <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-sm relative z-10 animate-fade-in-up">
+                    <div class="px-6 py-4 border-b border-orange-100 flex items-center gap-3 bg-orange-50/50">
+                        <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">Stop Sementara</h3>
+                            <p class="text-[11px] font-medium text-gray-500 mt-0.5">Suspend sementara pelanggan {{ selectedInvoice?.customer?.name }}</p>
+                        </div>
+                    </div>
+
+                    <form @submit.prevent="submitStopSementara">
+                        <div class="p-6 space-y-4">
+                            <p class="text-sm text-gray-600 mb-4">
+                                Harap tentukan tanggal mulai dan tanggal selesai untuk menghentikan layanan (isolir) sementara. Tagihan baru tidak akan tercetak selama masa ini.
+                            </p>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Mulai (Start Date)</label>
+                                <input type="date" v-model="stopSementaraForm.start_date" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-orange-500" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Selesai (End Date)</label>
+                                <input type="date" v-model="stopSementaraForm.end_date" :min="stopSementaraForm.start_date" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-orange-500" required>
+                            </div>
+                        </div>
+
+                        <div class="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-2">
+                            <button type="button" @click="closeStopSementaraModal" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+                                Batal
+                            </button>
+                            <button type="submit" :disabled="stopSementaraForm.processing" class="bg-orange-500 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-sm shadow-orange-500/20 hover:bg-orange-600 transition-all disabled:opacity-50 flex items-center gap-2">
+                                {{ stopSementaraForm.processing ? 'Menyimpan...' : 'Stop Sementara' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
 
@@ -623,10 +667,31 @@ const promiseForm = useForm({
     promise_date: '',
 });
 
+// Stop Sementara Modal Logic
+const showStopSementaraModal = ref(false);
+const stopSementaraForm = useForm({
+    start_date: '',
+    end_date: '',
+});
+
 function stopSementara(row) {
-    if (confirm(`Apakah Anda yakin ingin Stop Sementara pelanggan ${row.customer.name}? Internet akan mati dan invoice baru tidak akan berjalan.`)) {
-        router.post(`/invoices/${row.id}/stop-sementara`, {}, { preserveScroll: true });
-    }
+    selectedInvoice.value = row;
+    stopSementaraForm.start_date = '';
+    stopSementaraForm.end_date = '';
+    showStopSementaraModal.value = true;
+}
+
+function closeStopSementaraModal() {
+    showStopSementaraModal.value = false;
+    selectedInvoice.value = null;
+    stopSementaraForm.reset();
+}
+
+function submitStopSementara() {
+    stopSementaraForm.post(`/invoices/${selectedInvoice.value.id}/stop-sementara`, {
+        preserveScroll: true,
+        onSuccess: () => closeStopSementaraModal(),
+    });
 }
 
 function stopPermanen(row) {

@@ -267,18 +267,27 @@ class InvoiceController extends Controller
         return back()->with('success', 'Tagihan berhasil dihapus.');
     }
 
-    public function stopSementara(Invoice $invoice, \App\Services\RadiusService $radius)
+    public function stopSementara(Request $request, Invoice $invoice, \App\Services\RadiusService $radius)
     {
+        $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
         $customer = $invoice->customer;
         if ($customer && $customer->status !== 'suspended') {
-            $customer->update(['status' => 'suspended']);
+            $customer->update([
+                'status' => 'suspended',
+                'suspend_start' => $request->start_date,
+                'suspend_end' => $request->end_date,
+            ]);
             $radius->guard(fn($r) => $r->syncCustomer($customer));
             $accounts = $radius->customerAccounts($customer);
             foreach (array_keys($accounts) as $username) {
                 $radius->guard(fn($r) => $r->disconnect($username));
             }
         }
-        return redirect()->back()->with('success', 'Pelanggan berhasil di-Stop Sementara.');
+        return redirect()->back()->with('success', 'Pelanggan berhasil di-Stop Sementara mulai ' . $request->start_date . ' sampai ' . $request->end_date . '.');
     }
 
     public function stopPermanen(Invoice $invoice, \App\Services\RadiusService $radius)

@@ -40,6 +40,8 @@ class Customer extends Model
         'tax_uso',
         'cancel_reason',
         'cancel_date',
+        'suspend_start',
+        'suspend_end',
     ];
 
     protected function casts(): array
@@ -50,6 +52,8 @@ class Customer extends Model
             'registration_date' => 'date:Y-m-d',
             'activation_date' => 'date:Y-m-d',
             'cancel_date' => 'date:Y-m-d',
+            'suspend_start' => 'date:Y-m-d',
+            'suspend_end' => 'date:Y-m-d',
             'is_audited' => 'boolean',
         ];
     }
