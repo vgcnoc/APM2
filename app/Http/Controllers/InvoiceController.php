@@ -21,7 +21,7 @@ class InvoiceController extends Controller
               }], 'amount');
         }, 'customer.areaModel', 'customer.package', 'payments' => function($q) {
             $q->latest('payment_date');
-        }]);
+        }])->where('is_reseller_balance', false);
 
         $tab = $request->query('tab', 'semua');
         if ($tab === 'jatuh_tempo') {
@@ -66,20 +66,22 @@ class InvoiceController extends Controller
         }
 
         // Get counts for tabs
+        $baseQuery = Invoice::where('is_reseller_balance', false);
+        
         $stats = [
-            'semua' => Invoice::count(),
-            'jatuh_tempo' => Invoice::where('due_date', '<', now())->where('status', '!=', 'paid')->count(),
-            'piutang' => Invoice::where('status', 'partial')->count(),
-            'lunas' => Invoice::where('status', 'paid')->count(),
-            'prorata' => Invoice::where('is_prorata', true)->count(),
+            'semua' => (clone $baseQuery)->count(),
+            'jatuh_tempo' => (clone $baseQuery)->where('due_date', '<', now())->where('status', '!=', 'paid')->count(),
+            'piutang' => (clone $baseQuery)->where('status', 'partial')->count(),
+            'lunas' => (clone $baseQuery)->where('status', 'paid')->count(),
+            'prorata' => (clone $baseQuery)->where('is_prorata', true)->count(),
             'upgrade' => 0, // Placeholder
-            'janji_bayar' => Invoice::whereNotNull('promise_date')->where('status', '!=', 'paid')->count(),
+            'janji_bayar' => (clone $baseQuery)->whereNotNull('promise_date')->where('status', '!=', 'paid')->count(),
 
             // Amounts for cards
-            'total_unpaid_amount' => Invoice::where('status', 'unpaid')->sum('amount'),
-            'total_paid_amount' => \App\Models\Payment::whereMonth('payment_date', now()->month)->whereYear('payment_date', now()->year)->sum('amount'),
-            'total_piutang_amount' => Invoice::where('status', 'partial')->sum('amount') - \App\Models\Payment::whereHas('invoice', fn($q) => $q->where('status', 'partial'))->sum('amount'),
-            'total_jatuh_tempo_amount' => Invoice::where('due_date', '<', now())->where('status', 'unpaid')->sum('amount') + (Invoice::where('due_date', '<', now())->where('status', 'partial')->sum('amount') - \App\Models\Payment::whereHas('invoice', fn($q) => $q->where('due_date', '<', now())->where('status', 'partial'))->sum('amount')),
+            'total_unpaid_amount' => (clone $baseQuery)->where('status', 'unpaid')->sum('amount'),
+            'total_paid_amount' => \App\Models\Payment::whereHas('invoice', fn($q) => $q->where('is_reseller_balance', false))->whereMonth('payment_date', now()->month)->whereYear('payment_date', now()->year)->sum('amount'),
+            'total_piutang_amount' => (clone $baseQuery)->where('status', 'partial')->sum('amount') - \App\Models\Payment::whereHas('invoice', fn($q) => $q->where('status', 'partial')->where('is_reseller_balance', false))->sum('amount'),
+            'total_jatuh_tempo_amount' => (clone $baseQuery)->where('due_date', '<', now())->where('status', 'unpaid')->sum('amount') + ((clone $baseQuery)->where('due_date', '<', now())->where('status', 'partial')->sum('amount') - \App\Models\Payment::whereHas('invoice', fn($q) => $q->where('due_date', '<', now())->where('status', 'partial')->where('is_reseller_balance', false))->sum('amount')),
         ];
 
         $invoices = $query->latest('id')

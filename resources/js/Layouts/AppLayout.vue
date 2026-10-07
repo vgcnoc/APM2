@@ -253,7 +253,18 @@ const menuItems = [
     { type: 'link', href: '/tickets', icon: 'alert-circle', label: 'Ticketing / Gangguan', active: (url) => (url || '').startsWith('/tickets'), permission: 'menu_tickets' },
     
     { type: 'group', label: 'BILLING & PRODUK' },
-    { type: 'link', href: '/invoices', icon: 'document-text', label: 'Invoice Pelanggan', active: (url) => (url || '').startsWith('/invoices'), permission: 'menu_customers_all' },
+    { type: 'link', href: '/invoices', icon: 'document-text', label: 'Invoice Pelanggan', active: (url) => (url || '').length > 0 && url === '/invoices', permission: 'menu_customers_all' },
+    {
+        type: 'dropdown',
+        icon: 'cash',
+        label: 'Penagihan Lapangan',
+        active: (url) => ['/customer-billing', '/customer-settlements'].some(path => (url || '').startsWith(path)),
+        permission: 'menu_customers_all',
+        children: [
+            { href: '/customer-billing', label: 'Terima Setoran', active: (url) => (url || '').startsWith('/customer-billing'), permission: 'menu_customers_all' },
+            { href: '/customer-settlements', label: 'Validasi Setoran', active: (url) => (url || '').startsWith('/customer-settlements'), permission: 'menu_customers_all' },
+        ]
+    },
     { type: 'link', href: '/tax-reports', icon: 'calculator', label: 'Laporan Pajak', active: (url) => (url || '').startsWith('/tax-reports'), permission: 'menu_customers_all' },
     { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
 
