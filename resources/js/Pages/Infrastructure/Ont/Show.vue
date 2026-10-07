@@ -112,14 +112,9 @@
                                     <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Mode Akses</p>
                                     <p class="text-sm font-medium text-gray-900">{{ ont.access_mode || '-' }}</p>
                                 </div>
-                                <div>
-                                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Kredensial PPPoE</p>
-                                    <div class="text-sm font-medium text-gray-900" v-if="ont.pppoe_user">
-                                        <span class="text-gray-500 mr-2">User:</span> {{ ont.pppoe_user }}<br>
-                                        <span class="text-gray-500 mr-2">Pass:</span> 
-                                        <span class="font-mono bg-gray-100 px-1 py-0.5 rounded text-xs">{{ ont.pppoe_password || '***' }}</span>
-                                    </div>
-                                    <p class="text-sm font-medium text-gray-900" v-else>-</p>
+                                <div v-if="ont.free_hotspot">
+                                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">VLAN ID Hotspot</p>
+                                    <p class="text-sm font-medium text-gray-900">{{ ont.hotspot_vlan_id || '-' }}</p>
                                 </div>
                                 
                                 <div class="col-span-1 md:col-span-2 border-t border-gray-100 pt-4 mt-2">
