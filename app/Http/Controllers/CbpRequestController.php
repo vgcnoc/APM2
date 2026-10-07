@@ -29,7 +29,7 @@ class CbpRequestController extends Controller
             ->paginate($request->per_page ?? 15)
             ->withQueryString();
 
-        $technicians = \App\Models\User::role('technician')->get();
+        $technicians = \App\Models\User::role('teknisi')->get();
         $materials = \App\Models\Material::all();
 
         return Inertia::render('Tickets/Cbp', [
