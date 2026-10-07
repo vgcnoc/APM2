@@ -22,6 +22,7 @@ class User extends Authenticatable
         'area_id',
         'accessible_areas',
         'is_active',
+        'is_on_duty',
         'base_salary',
         'incentive_rate',
     ];
@@ -37,6 +38,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'is_on_duty' => 'boolean',
             'accessible_areas' => 'array',
         ];
     }

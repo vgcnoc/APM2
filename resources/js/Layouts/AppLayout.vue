@@ -104,6 +104,15 @@
                     </div>
                 </div>
                     <div class="flex items-center gap-5">
+                        <!-- On Duty Toggle -->
+                        <div v-if="$page.props.auth?.user?.role !== 'customer'" class="hidden sm:flex items-center gap-2">
+                            <span class="text-xs font-bold" :class="$page.props.auth?.user?.is_on_duty ? 'text-green-600' : 'text-gray-400'">
+                                {{ $page.props.auth?.user?.is_on_duty ? 'ON DUTY' : 'OFF DUTY' }}
+                            </span>
+                            <Link href="/profile/toggle-duty" method="post" as="button" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none" :class="$page.props.auth?.user?.is_on_duty ? 'bg-green-500' : 'bg-gray-200'" title="Toggle On Duty">
+                                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="$page.props.auth?.user?.is_on_duty ? 'translate-x-6' : 'translate-x-1'"></span>
+                            </Link>
+                        </div>
                         <!-- Notification Bell -->
                         <button class="relative p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-600 transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

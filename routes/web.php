@@ -23,6 +23,7 @@ require __DIR__ . '/auth.php';
 
 // ── Protected Routes ───────────────────────────────────────────
 Route::middleware(['auth'])->group(function () {
+    Route::post('/profile/toggle-duty', [\App\Http\Controllers\UserController::class, 'toggleDuty'])->name('profile.toggle-duty');
 
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');

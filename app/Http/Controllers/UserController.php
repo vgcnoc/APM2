@@ -144,4 +144,18 @@ class UserController extends Controller
 
         return redirect()->route('users.index')->with('success', 'User berhasil dihapus.');
     }
+
+    /**
+     * Toggle status on duty for authenticated user
+     */
+    public function toggleDuty(Request $request)
+    {
+        $user = $request->user();
+        if ($user) {
+            $user->is_on_duty = !$user->is_on_duty;
+            $user->save();
+        }
+        
+        return back();
+    }
 }
