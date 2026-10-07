@@ -46,6 +46,36 @@ class SettingController extends Controller
         ]);
     }
 
+    public function payroll()
+    {
+        return Inertia::render('Settings/Payroll', [
+            'payroll_cutoff_date' => Setting::get('payroll_cutoff_date', '1'),
+            'payroll_payment_date' => Setting::get('payroll_payment_date', '12'),
+            'payroll_components' => json_decode(Setting::get('payroll_components', '["insentif", "potongan"]'), true),
+            'payroll_note' => Setting::get('payroll_note', ''),
+            'payroll_incentive_mode' => Setting::get('payroll_incentive_mode', 'Bulanan (sekali sebulan)'),
+        ]);
+    }
+
+    public function updatePayroll(Request $request)
+    {
+        $request->validate([
+            'payroll_cutoff_date' => 'required|integer|min:1|max:28',
+            'payroll_payment_date' => 'required|integer|min:1|max:28',
+            'payroll_components' => 'nullable|array',
+            'payroll_note' => 'nullable|string',
+            'payroll_incentive_mode' => 'required|string',
+        ]);
+
+        Setting::set('payroll_cutoff_date', $request->payroll_cutoff_date);
+        Setting::set('payroll_payment_date', $request->payroll_payment_date);
+        Setting::set('payroll_components', json_encode($request->payroll_components ?? []));
+        Setting::set('payroll_note', $request->payroll_note ?? '');
+        Setting::set('payroll_incentive_mode', $request->payroll_incentive_mode);
+
+        return redirect()->back()->with('success', 'Pengaturan sistem gaji berhasil diperbarui.');
+    }
+
     public function updateBilling(Request $request)
     {
         $request->validate([

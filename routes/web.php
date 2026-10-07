@@ -270,6 +270,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/settings/billing', [\App\Http\Controllers\SettingController::class, 'billing'])->name('settings.billing');
     Route::post('/settings/billing', [\App\Http\Controllers\SettingController::class, 'updateBilling'])->name('settings.billing.update');
 
+    Route::get('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'payroll'])->name('settings.payroll');
+    Route::post('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'updatePayroll'])->name('settings.payroll.update');
+
     Route::get('/settings/api', function () {
         return inertia('Settings/Api');
     })->name('settings.api');
