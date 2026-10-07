@@ -277,12 +277,13 @@ const menuItems = [
         type: 'dropdown',
         icon: 'cash',
         label: 'Keuangan Reseller',
-        active: (url) => ['/reseller-requests', '/reseller-billing', '/reseller-settlements'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/reseller-requests', '/reseller-billing', '/reseller-settlements', '/reseller-reports'].some(path => (url || '').startsWith(path)),
         permission: 'menu_resellers',
         children: [
             { href: '/reseller-requests', label: 'Riwayat Saldo', active: (url) => (url || '').startsWith('/reseller-requests'), permission: 'menu_resellers' },
             { href: '/reseller-billing', label: 'Penagihan Kasbon', active: (url) => (url || '').startsWith('/reseller-billing'), permission: 'menu_customers_all' },
             { href: '/reseller-settlements', label: 'Pelunasan Kasbon', active: (url) => (url || '').startsWith('/reseller-settlements'), permission: 'menu_customers_all' },
+            { href: '/reseller-reports', label: 'Laporan Keuangan', active: (url) => (url || '').startsWith('/reseller-reports'), permission: 'menu_customers_all' },
         ]
     },
 

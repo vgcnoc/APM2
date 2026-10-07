@@ -203,6 +203,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/reseller-settlements', [\App\Http\Controllers\ResellerBillingController::class, 'settlements'])->name('reseller-settlements.index');
     Route::post('/reseller-settlements/{payment}/approve', [\App\Http\Controllers\ResellerBillingController::class, 'approve'])->name('reseller-settlements.approve');
 
+    Route::get('/reseller-reports', [\App\Http\Controllers\ResellerReportController::class, 'index'])->name('reseller-reports.index');
+
 
     // ── Pengguna & Hak Akses ───────────────────────────────────
     Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit'])->middleware('role:admin');
