@@ -206,36 +206,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- Toggles for Custom Lists -->
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                                        <div class="p-3 border rounded-lg bg-gray-50/50">
-                                            <label class="flex items-center cursor-pointer">
-                                                <div class="relative">
-                                                    <input type="checkbox" v-model="form.is_mikrotik_group_custom" class="sr-only">
-                                                    <div class="block w-10 h-6 rounded-full transition-colors" :class="form.is_mikrotik_group_custom ? 'bg-indigo-500' : 'bg-gray-300'"></div>
-                                                    <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform" :class="form.is_mikrotik_group_custom ? 'transform translate-x-4' : ''"></div>
-                                                </div>
-                                                <div class="ml-3 text-xs font-bold text-gray-700">MikroTik Group Custom</div>
-                                            </label>
-                                            <div v-if="form.is_mikrotik_group_custom" class="mt-3">
-                                                <input v-model="form.mikrotik_group" type="text" class="input-text text-sm" placeholder="Nama profile/group...">
-                                            </div>
-                                        </div>
 
-                                        <div class="p-3 border rounded-lg bg-gray-50/50">
-                                            <label class="flex items-center cursor-pointer">
-                                                <div class="relative">
-                                                    <input type="checkbox" v-model="form.is_mikrotik_address_list_custom" class="sr-only">
-                                                    <div class="block w-10 h-6 rounded-full transition-colors" :class="form.is_mikrotik_address_list_custom ? 'bg-indigo-500' : 'bg-gray-300'"></div>
-                                                    <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform" :class="form.is_mikrotik_address_list_custom ? 'transform translate-x-4' : ''"></div>
-                                                </div>
-                                                <div class="ml-3 text-xs font-bold text-gray-700">Address List Custom</div>
-                                            </label>
-                                            <div v-if="form.is_mikrotik_address_list_custom" class="mt-3">
-                                                <input v-model="form.mikrotik_address_list" type="text" class="input-text text-sm" placeholder="Nama address list...">
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
 
