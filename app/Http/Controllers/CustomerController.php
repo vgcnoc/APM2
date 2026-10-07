@@ -360,6 +360,41 @@ class CustomerController extends Controller
         ]);
     }
 
+    public function canceled(Request $request): Response
+    {
+        $query = Customer::where('status', 'canceled')
+            ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_booking_view_all'), function($q) {
+                if (auth()->user()->can('customers_booking_view_area')) {
+                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                } else {
+                    $q->where('sales_id', auth()->id());
+                }
+            })
+            ->when($request->search, function ($q, $search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('name', 'like', "%{$search}%")
+                        ->orWhere('customer_code', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
+                });
+            });
+
+        $customers = (clone $query)
+            ->with(['package', 'sales', 'areaModel', 'user'])
+            ->orderByDesc('updated_at')
+            ->paginate(15)
+            ->withQueryString();
+
+        $stats = [
+            'total' => (clone $query)->count(),
+        ];
+
+        return Inertia::render('Customers/Canceled', [
+            'customers' => $customers,
+            'stats' => $stats,
+            'filters' => $request->only(['search']),
+        ]);
+    }
+
     /**
      * Halaman Survey (status = survey)
      */
@@ -1847,6 +1882,20 @@ class CustomerController extends Controller
         
         return redirect()->route('customers.booking')
             ->with('success', 'Permintaan jadwal survey berhasil dikirim.');
+    }
+
+    public function cancel(Request $request, Customer $customer): RedirectResponse
+    {
+        $request->validate([
+            'cancel_reason' => 'required|string|max:1000',
+        ]);
+
+        $customer->update([
+            'status' => 'canceled',
+            'cancel_reason' => $request->cancel_reason,
+        ]);
+
+        return redirect()->back()->with('success', 'Pendaftaran pelanggan berhasil dibatalkan.');
     }
 
     public function bulkDestroy(Request $request): RedirectResponse

@@ -159,6 +159,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                         </svg>
                     </Link>
+                    <button @click="openCancelModal(row)" class="p-2 rounded-lg text-gray-500 hover:bg-orange-50 hover:text-orange-500 transition-colors" title="Batalkan Booking">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </button>
                     <button @click="sendWa(row)" class="p-2 rounded-lg text-green-500 hover:bg-green-50 hover:text-green-600 transition-colors" title="Kirim Pesan WA ke Petugas">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
                     </button>
@@ -333,6 +336,35 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- Modal Batal Booking -->
+        <Teleport to="body">
+            <div v-if="showCancelModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-orange-900/60 backdrop-blur-sm cursor-pointer" @click="showCancelModal = false"></div>
+                <div class="relative bg-white border border-orange-200 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in-up">
+                    <div class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-orange-50">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-2 text-center">
+                        Batalkan Pendaftaran?
+                    </h3>
+                    <p class="text-sm text-gray-500 mb-4 text-center">
+                        Pelanggan <strong>{{ cancelCustomer?.name }}</strong> akan dipindahkan ke menu "Dibatalkan".
+                    </p>
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Alasan Pembatalan <span class="text-red-500">*</span></label>
+                        <textarea v-model="cancelReason" rows="3" class="w-full rounded-xl border-gray-300 focus:border-orange-500 focus:ring focus:ring-orange-200 transition-all text-sm" placeholder="Masukkan alasan pembatalan..." required></textarea>
+                    </div>
+                    <div class="flex items-center justify-center gap-3">
+                        <button @click="showCancelModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm rounded-xl transition-colors w-full">Kembali</button>
+                        <button @click="submitCancel" :disabled="!cancelReason || isCanceling" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium text-sm rounded-xl transition-colors w-full flex justify-center items-center shadow-sm shadow-orange-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg v-if="isCanceling" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span v-else>Ya, Batalkan</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
 
@@ -496,6 +528,38 @@ function deleteAllBooking() {
         },
         onFinish: () => {
             isDeletingAll.value = false;
+        }
+    });
+}
+
+// ── Batal Booking ───────────────────────────────────────────────
+const showCancelModal = ref(false);
+const cancelCustomer = ref(null);
+const cancelReason = ref('');
+const isCanceling = ref(false);
+
+function openCancelModal(row) {
+    cancelCustomer.value = row;
+    cancelReason.value = '';
+    showCancelModal.value = true;
+}
+
+function submitCancel() {
+    if (!cancelCustomer.value || !cancelReason.value) return;
+    
+    isCanceling.value = true;
+    router.post(`/customers/${cancelCustomer.value.id}/cancel`, {
+        cancel_reason: cancelReason.value
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showCancelModal.value = false;
+            cancelCustomer.value = null;
+            cancelReason.value = '';
+            selectedIds.value = [];
+        },
+        onFinish: () => {
+            isCanceling.value = false;
         }
     });
 }

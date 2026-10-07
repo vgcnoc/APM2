@@ -51,6 +51,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/isolir', [CustomerController::class, 'isolir'])->name('isolir');
         Route::get('/online', [CustomerController::class, 'online'])->name('online');
         Route::get('/offline', [CustomerController::class, 'offline'])->name('offline');
+        Route::get('/canceled', [CustomerController::class, 'canceled'])->name('canceled');
 
         // Assign ONT ke pelanggan
         Route::post('/{customer}/assign-ont', [CustomerController::class, 'assignOnt'])
@@ -95,6 +96,10 @@ Route::middleware(['auth'])->group(function () {
         // Pindah ke tahap Instalasi
         Route::post('/{customer}/mark-installing', [CustomerController::class, 'markInstalling'])
             ->name('mark-installing');
+            
+        // Batalkan Booking
+        Route::post('/{customer}/cancel', [CustomerController::class, 'cancel'])
+            ->name('cancel');
             
         // Update ONT via Ajax
         Route::post('/{customer}/update-ont-inline', [CustomerController::class, 'updateOntInline'])
