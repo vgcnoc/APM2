@@ -127,88 +127,127 @@
             </div>
         </div>
 
-        <!-- Create Modal -->
+        <!-- Create Modal (Ultra Modern) -->
         <Teleport to="body">
             <div v-if="showModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
-                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closeModal"></div>
-                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg relative z-10 animate-fade-in-up flex flex-col max-h-[90vh]">
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-2xl shrink-0">
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900">Buat CBP Baru</h3>
-                            <p class="text-[11px] font-medium text-gray-500 mt-0.5">Form pembuatan data cabut perangkat (Stop Permanen)</p>
+                <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity" @click="closeModal"></div>
+                <div class="bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] w-full max-w-lg relative z-10 animate-fade-in-up border border-white/40 overflow-hidden flex flex-col max-h-[90vh]">
+                    
+                    <!-- Decorative background blur -->
+                    <div class="absolute -top-24 -right-24 w-48 h-48 bg-rose-400/20 rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="absolute top-1/2 -left-24 w-40 h-40 bg-red-400/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                    <div class="px-7 py-5 flex items-center justify-between bg-white/60 backdrop-blur-xl border-b border-gray-100 z-10 relative shrink-0">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center shadow-lg shadow-rose-500/30 text-white shrink-0">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-extrabold text-slate-800 tracking-tight">Buat Eskalasi CBP</h3>
+                                <p class="text-xs font-medium text-slate-500 mt-0.5">Penjadwalan cabut perangkat (Stop Permanen)</p>
+                            </div>
                         </div>
-                        <button @click="closeModal" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors">
+                        <button @click="closeModal" class="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2.5 rounded-full transition-all hover:rotate-90 duration-300">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
 
-                    <form @submit.prevent="submitCreate" class="flex flex-col flex-1 overflow-hidden">
-                        <div class="p-6 overflow-y-auto custom-scrollbar space-y-5">
+                    <form @submit.prevent="submitCreate" class="flex flex-col flex-1 overflow-hidden relative z-10">
+                        <div class="p-7 overflow-y-auto custom-scrollbar space-y-6">
                             
                             <!-- Notice -->
-                            <div class="bg-rose-50 border border-rose-200 rounded-xl p-4 flex gap-3">
-                                <div class="shrink-0 text-rose-500">
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            <div class="bg-gradient-to-r from-rose-50 to-red-50/50 border border-rose-200/60 rounded-2xl p-5 flex gap-4 shadow-sm relative overflow-hidden group">
+                                <div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                                    <svg class="w-24 h-24 text-rose-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 3.99L19.53 19H4.47L12 5.99zM11 16h2v2h-2zm0-6h2v4h-2z"/></svg>
                                 </div>
-                                <div>
-                                    <h4 class="text-xs font-bold text-rose-800">Perhatian!</h4>
-                                    <p class="text-[11px] text-rose-600 mt-1 leading-snug">Menyimpan form ini akan otomatis mengubah status pelanggan menjadi <strong>Stop Permanen</strong>, menghentikan layanan, dan memberhentikan tagihan bulan depan.</p>
+                                <div class="shrink-0 w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 relative z-10">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                </div>
+                                <div class="relative z-10">
+                                    <h4 class="text-sm font-bold text-rose-900">Peringatan Penting!</h4>
+                                    <p class="text-[11px] text-rose-700 mt-1 leading-relaxed">Menyimpan form ini akan mengubah status pelanggan menjadi <strong class="text-rose-900 bg-rose-200/50 px-1 rounded">Stop Permanen</strong>, mengisolir internet, dan menghentikan penagihan bulan berikutnya.</p>
                                 </div>
                             </div>
 
                             <!-- Area Selection -->
                             <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Pilih Area / Wilayah</label>
-                                <select v-model="selectedArea" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all">
-                                    <option value="" disabled>Pilih Area...</option>
-                                    <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
-                                </select>
-                            </div>
-
-                            <!-- Customer ID -->
-                            <div v-if="selectedArea">
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Pilih Pelanggan</label>
-                                <select v-model="form.customer_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all" required>
-                                    <option value="" disabled>Pilih Pelanggan...</option>
-                                    <option v-for="cust in filteredCustomers" :key="cust.id" :value="cust.id">{{ cust.customer_code }} - {{ cust.name }}</option>
-                                </select>
-                                <p class="text-[10px] text-gray-500 mt-1">Pelanggan yang dipilih akan di-stop permanen.</p>
-
-                                <!-- Customer Data Display -->
-                                <div v-if="selectedCustomerData" class="mt-3 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                                    <h4 class="text-xs font-bold text-gray-800 mb-2 border-b border-gray-100 pb-2">Informasi Pelanggan</h4>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                                        <div>
-                                            <span class="block text-[10px] font-bold text-gray-500 uppercase">Nama</span>
-                                            <span class="text-gray-900 font-medium">{{ selectedCustomerData.name }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="block text-[10px] font-bold text-gray-500 uppercase">Paket</span>
-                                            <span class="text-gray-900">{{ selectedCustomerData.package?.name || '-' }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="block text-[10px] font-bold text-gray-500 uppercase">No. Telepon</span>
-                                            <span class="text-gray-900">{{ selectedCustomerData.phone || '-' }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="block text-[10px] font-bold text-gray-500 uppercase">Alamat</span>
-                                            <span class="text-gray-900 truncate block" :title="selectedCustomerData.address">{{ selectedCustomerData.address || '-' }}</span>
-                                        </div>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2.5">Filter Wilayah/Area</label>
+                                <div class="relative">
+                                    <select v-model="selectedArea" class="w-full pl-4 pr-10 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 transition-all appearance-none cursor-pointer">
+                                        <option value="" disabled>Pilih Area...</option>
+                                        <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-400">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                                     </div>
                                 </div>
                             </div>
 
+                            <!-- Customer Selection & Info -->
+                            <transition
+                                enter-active-class="transition duration-300 ease-out"
+                                enter-from-class="transform opacity-0 -translate-y-4"
+                                enter-to-class="transform opacity-100 translate-y-0"
+                                leave-active-class="transition duration-200 ease-in"
+                                leave-from-class="transform opacity-100 translate-y-0"
+                                leave-to-class="transform opacity-0 -translate-y-4"
+                            >
+                                <div v-if="selectedArea" class="space-y-4">
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2.5">Pilih Pelanggan</label>
+                                        <div class="relative">
+                                            <select v-model="form.customer_id" class="w-full pl-4 pr-10 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 transition-all appearance-none cursor-pointer" required>
+                                                <option value="" disabled>Pilih Pelanggan Aktif...</option>
+                                                <option v-for="cust in filteredCustomers" :key="cust.id" :value="cust.id">{{ cust.customer_code }} - {{ cust.name }}</option>
+                                            </select>
+                                            <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-400">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Customer Data Display -->
+                                    <div v-if="selectedCustomerData" class="relative overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-5 border border-slate-200/60 shadow-sm group hover:border-rose-200 transition-colors">
+                                        <h4 class="text-[11px] font-black text-slate-800 mb-3 border-b border-slate-200 pb-2 flex items-center gap-2 tracking-widest uppercase">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Detail Pelanggan
+                                        </h4>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm relative z-10">
+                                            <div class="bg-white/60 p-3 rounded-xl border border-white">
+                                                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Nama Lengkap</span>
+                                                <span class="text-slate-900 font-bold">{{ selectedCustomerData.name }}</span>
+                                            </div>
+                                            <div class="bg-white/60 p-3 rounded-xl border border-white">
+                                                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Paket Aktif</span>
+                                                <span class="text-slate-900 font-medium">{{ selectedCustomerData.package?.name || '-' }}</span>
+                                            </div>
+                                            <div class="bg-white/60 p-3 rounded-xl border border-white">
+                                                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">No. HP / WA</span>
+                                                <span class="text-slate-900 font-medium font-mono">{{ selectedCustomerData.phone || '-' }}</span>
+                                            </div>
+                                            <div class="bg-white/60 p-3 rounded-xl border border-white">
+                                                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Alamat</span>
+                                                <span class="text-slate-900 font-medium truncate block" :title="selectedCustomerData.address">{{ selectedCustomerData.address || '-' }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </transition>
+
                             <!-- Alasan -->
                             <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Alasan Pencabutan</label>
-                                <textarea v-model="form.reason" rows="3" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all" placeholder="Jelaskan alasan pelanggan berhenti... (misal: pindah rumah, dsb)" required></textarea>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2.5">Alasan Pencabutan / Stop Permanen</label>
+                                <textarea v-model="form.reason" rows="3" class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm focus:bg-white focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 transition-all placeholder-slate-400 resize-none custom-scrollbar" placeholder="Jelaskan secara singkat alasan pelanggan ini berhenti berlangganan..." required></textarea>
                             </div>
                         </div>
 
-                        <div class="px-6 py-4 bg-gray-50/50 border-t border-gray-100 rounded-b-2xl flex justify-end gap-3 shrink-0">
-                            <button type="button" @click="closeModal" class="px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">Batal</button>
-                            <button type="submit" :disabled="form.processing || !form.customer_id" class="bg-red-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-sm shadow-red-500/20 hover:bg-red-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                {{ form.processing ? 'Menyimpan...' : 'Eskalasi' }}
+                        <div class="px-7 py-5 bg-slate-50/80 backdrop-blur-md border-t border-slate-100 flex justify-end gap-3 shrink-0 rounded-b-3xl">
+                            <button type="button" @click="closeModal" class="px-6 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-200/50 rounded-xl transition-colors">Batal</button>
+                            <button type="submit" :disabled="form.processing || !form.customer_id" class="relative group overflow-hidden bg-rose-600 text-white px-7 py-2.5 rounded-xl text-sm font-bold shadow-[0_8px_20px_-6px_rgba(225,29,72,0.5)] hover:bg-rose-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:cursor-not-allowed">
+                                <span class="relative z-10 flex items-center gap-2">
+                                    <svg v-if="form.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    {{ form.processing ? 'Menyimpan...' : 'Eskalasi CBP' }}
+                                </span>
+                                <div class="absolute inset-0 h-full w-full bg-gradient-to-r from-rose-500 to-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                             </button>
                         </div>
                     </form>

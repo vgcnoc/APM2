@@ -117,68 +117,160 @@
         </div>
 
         <!-- Progress Modal -->
+        <!-- Progress Modal (Ultra Modern) -->
         <Teleport to="body">
             <div v-if="showProgressModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
-                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closeProgressModal"></div>
-                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm relative z-10 animate-fade-in-up">
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                        <h3 class="text-lg font-bold text-gray-900">Laporan CBP Selesai</h3>
-                        <button @click="closeProgressModal" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors">
+                <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity" @click="closeProgressModal"></div>
+                <div class="bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] w-full max-w-md relative z-10 animate-fade-in-up border border-white/40 overflow-hidden flex flex-col">
+                    
+                    <!-- Decorative background blur -->
+                    <div class="absolute -top-24 -right-24 w-48 h-48 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="absolute top-1/2 -left-24 w-40 h-40 bg-teal-400/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                    <div class="px-7 py-5 flex items-center justify-between bg-white/60 backdrop-blur-xl border-b border-gray-100 z-10 relative">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 text-white shrink-0">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-extrabold text-slate-800 tracking-tight">Laporan Teknisi</h3>
+                                <p class="text-xs font-medium text-slate-500 mt-0.5">Laporan hasil cabut perangkat</p>
+                            </div>
+                        </div>
+                        <button @click="closeProgressModal" class="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2.5 rounded-full transition-all hover:rotate-90 duration-300">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
 
-                    <form @submit.prevent="submitProgress">
-                        <div class="p-6 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Update Status</label>
-                                <select v-model="progressForm.status" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all">
-                                    <option value="assigned">Masih Diproses</option>
-                                    <option value="completed">Selesai Cabut</option>
-                                </select>
+                    <form @submit.prevent="submitProgress" class="flex flex-col relative z-10">
+                        <div class="p-7 space-y-6 max-h-[65vh] overflow-y-auto custom-scrollbar">
+                            
+                            <!-- Customer Info -->
+                            <div class="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 flex gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shrink-0 shadow-sm">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                </div>
+                                <div>
+                                    <h4 class="text-sm font-bold text-slate-800">{{ selectedCbp?.customer?.name }}</h4>
+                                    <p class="text-xs text-slate-500 mt-0.5 font-medium">{{ selectedCbp?.customer?.customer_code }} <span v-if="selectedCbp?.customer?.area"> • {{ selectedCbp?.customer?.area?.name || selectedCbp?.customer?.area }}</span></p>
+                                </div>
+                            </div>
+
+                            <!-- Time Input -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2.5">Jam Mulai</label>
+                                    <input type="time" v-model="progressForm.start_time" required class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2.5">Jam Selesai</label>
+                                    <input type="time" v-model="progressForm.end_time" required class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all">
+                                </div>
                             </div>
                             
+                            <!-- Photo Progress -->
                             <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Catatan Teknisi</label>
-                                <textarea v-model="progressForm.notes" rows="3" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" placeholder="Catatan opsional..."></textarea>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2.5">Foto Progress</label>
+                                <input type="file" @change="e => progressForm.photo = e.target.files[0]" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 file:transition-colors bg-slate-50 border-2 border-slate-200 rounded-2xl cursor-pointer">
+                                <div v-if="progressForm.errors?.photo" class="text-xs text-rose-500 mt-1.5">{{ progressForm.errors.photo }}</div>
+                            </div>
+
+                            <!-- Notes -->
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2.5">Catatan Teknisi <span class="text-slate-400 lowercase font-normal">(opsional)</span></label>
+                                <textarea v-model="progressForm.notes" rows="3" class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all placeholder-slate-400 resize-none custom-scrollbar" placeholder="Tuliskan kendala atau catatan..."></textarea>
+                            </div>
+
+                            <!-- Device/Material info during installation -->
+                            <div class="bg-amber-50/50 border border-amber-100 rounded-2xl p-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-6 h-6 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/></svg>
+                                        </div>
+                                        <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Perangkat Terpasang (Instalasi)</label>
+                                    </div>
+                                </div>
+                                <div v-if="selectedCbp?.customer?.ont" class="flex items-center justify-between bg-white rounded-xl p-3 border border-slate-200 mb-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-slate-800">ONT {{ selectedCbp.customer.ont.brand }} {{ selectedCbp.customer.ont.model }}</div>
+                                        <div class="text-xs text-slate-500 font-mono mt-0.5">SN: {{ selectedCbp.customer.ont.serial_number || '-' }}</div>
+                                    </div>
+                                    <button type="button" @click="cabutOnt" class="text-xs bg-rose-100 text-rose-700 font-bold px-3 py-1.5 rounded-lg hover:bg-rose-200 transition-colors shadow-sm">
+                                        Cabut ONT
+                                    </button>
+                                </div>
+                                <div v-else class="text-xs text-slate-500 mb-2 italic">Data ONT tidak ditemukan.</div>
+                                <div class="flex gap-2">
+                                    <button type="button" @click="cabutKabel" class="text-xs bg-white border border-slate-200 text-slate-700 font-bold px-3 py-2 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all w-full text-center shadow-sm flex items-center justify-center gap-1.5">
+                                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                        Cabut Kabel
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Material Return Section -->
-                            <div v-if="progressForm.status === 'completed'" class="border-t border-gray-100 pt-4 mt-2">
-                                <div class="flex items-center justify-between mb-3">
-                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">Pengembalian Material/Stok</label>
-                                    <button type="button" @click="addMaterial" class="text-xs text-blue-600 font-medium hover:text-blue-700 flex items-center gap-1">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                                        Tambah Barang
-                                    </button>
-                                </div>
-                                <div class="space-y-3">
-                                    <div v-for="(item, index) in progressForm.materials" :key="index" class="flex gap-2 items-start relative group">
-                                        <div class="flex-1 space-y-2">
-                                            <select v-model="item.material_id" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent" required>
-                                                <option value="" disabled>Pilih Material...</option>
-                                                <option v-for="mat in materials" :key="mat.id" :value="mat.id">{{ mat.name }} ({{ mat.unit }})</option>
-                                            </select>
-                                            <div class="flex gap-2">
-                                                <input type="number" v-model="item.quantity" min="0.01" step="0.01" class="w-24 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent" placeholder="Jumlah" required>
-                                                <input type="text" v-model="item.unit" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm" placeholder="Unit/Keterangan">
+                            <div class="bg-gradient-to-br from-slate-50 to-emerald-50/30 border border-slate-200 rounded-2xl p-5">
+                                    <div class="flex items-center justify-between mb-4 border-b border-slate-200/60 pb-3">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                                             </div>
+                                            <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Pengembalian Alat</label>
                                         </div>
-                                        <button type="button" @click="removeMaterial(index)" class="mt-2 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        <button type="button" @click="addMaterial" class="text-xs bg-emerald-100 text-emerald-700 font-bold px-3 py-1.5 rounded-lg hover:bg-emerald-200 hover:text-emerald-800 flex items-center gap-1.5 transition-colors shadow-sm">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                            Tambah
                                         </button>
                                     </div>
-                                    <div v-if="!progressForm.materials.length" class="text-[11px] text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100 text-center italic">
-                                        Tidak ada material yang dikembalikan.
+                                    <div class="space-y-3">
+                                        <transition-group
+                                            enter-active-class="transition duration-200 ease-out"
+                                            enter-from-class="transform opacity-0 -translate-x-4"
+                                            enter-to-class="transform opacity-100 translate-x-0"
+                                            leave-active-class="transition duration-200 ease-in"
+                                            leave-from-class="transform opacity-100 translate-x-0"
+                                            leave-to-class="transform opacity-0 -translate-x-4"
+                                        >
+                                            <div v-for="(item, index) in progressForm.materials" :key="index" class="relative group bg-white border border-slate-200 p-3 rounded-xl shadow-sm hover:border-emerald-300 transition-colors">
+                                                <button type="button" @click="removeMaterial(index)" class="absolute -top-2 -right-2 p-1 bg-white text-rose-500 border border-slate-200 hover:bg-rose-500 hover:text-white rounded-full transition-all shadow-sm z-10 opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                </button>
+                                                <div class="space-y-2">
+                                                    <div class="relative">
+                                                        <select v-model="item.material_id" class="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none" required>
+                                                            <option value="" disabled>Pilih Material...</option>
+                                                            <option v-for="mat in materials" :key="mat.id" :value="mat.id">{{ mat.name }} ({{ mat.unit }})</option>
+                                                        </select>
+                                                        <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-slate-400">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex gap-2">
+                                                        <div class="relative w-24">
+                                                            <input type="number" v-model="item.quantity" min="0.01" step="0.01" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-center" placeholder="Jml" required>
+                                                        </div>
+                                                        <input type="text" v-model="item.unit" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent" placeholder="Keterangan (opsional)">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </transition-group>
+                                        <div v-if="!progressForm.materials.length" class="text-xs text-slate-400 bg-white p-4 rounded-xl border border-slate-200 border-dashed text-center flex flex-col items-center justify-center gap-2">
+                                            <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                            <span>Tidak ada material yang dikembalikan.</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-3">
-                            <button type="button" @click="closeProgressModal" class="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">Batal</button>
-                            <button type="submit" :disabled="progressForm.processing" class="bg-emerald-600 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-sm shadow-emerald-500/20 hover:bg-emerald-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                {{ progressForm.processing ? 'Menyimpan...' : 'Simpan & Laporkan' }}
+                        <div class="px-7 py-5 bg-slate-50/80 backdrop-blur-md border-t border-slate-100 flex justify-end gap-3 z-10 rounded-b-3xl">
+                            <button type="button" @click="closeProgressModal" class="px-6 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-200/50 rounded-xl transition-colors">Batal</button>
+                            <button type="submit" :disabled="progressForm.processing" class="relative group overflow-hidden bg-emerald-600 text-white px-7 py-2.5 rounded-xl text-sm font-bold shadow-[0_8px_20px_-6px_rgba(16,185,129,0.5)] hover:bg-emerald-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:cursor-not-allowed">
+                                <span class="relative z-10 flex items-center gap-2">
+                                    <svg v-if="progressForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    {{ progressForm.processing ? 'Menyimpan...' : 'Simpan Laporan' }}
+                                </span>
+                                <div class="absolute inset-0 h-full w-full bg-gradient-to-r from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                             </button>
                         </div>
                     </form>
@@ -211,7 +303,9 @@ function performSearch() {
 const showProgressModal = ref(false);
 const selectedCbp = ref(null);
 const progressForm = useForm({
-    status: 'completed',
+    start_time: '',
+    end_time: '',
+    photo: null,
     notes: '',
     materials: [],
 });
@@ -220,6 +314,7 @@ function addMaterial() {
     progressForm.materials.push({
         material_id: '',
         quantity: 1,
+        unit: 'pcs',
     });
 }
 
@@ -227,9 +322,31 @@ function removeMaterial(index) {
     progressForm.materials.splice(index, 1);
 }
 
+function cabutOnt() {
+    // Find ONT material if possible
+    let ontMat = props.materials.find(m => m.category === 'ont' || m.name.toLowerCase().includes('ont'));
+    progressForm.materials.push({
+        material_id: ontMat ? ontMat.id : '',
+        quantity: 1,
+        unit: 'pcs',
+    });
+}
+
+function cabutKabel() {
+    // Find Kabel material if possible
+    let kabelMat = props.materials.find(m => m.category === 'kabel' || m.name.toLowerCase().includes('kabel'));
+    progressForm.materials.push({
+        material_id: kabelMat ? kabelMat.id : '',
+        quantity: 1,
+        unit: 'm',
+    });
+}
+
 function openProgressModal(req) {
     selectedCbp.value = req;
-    progressForm.status = 'completed';
+    progressForm.start_time = '';
+    progressForm.end_time = '';
+    progressForm.photo = null;
     progressForm.notes = req.notes || '';
     progressForm.materials = [];
     showProgressModal.value = true;
@@ -239,11 +356,13 @@ function closeProgressModal() {
     showProgressModal.value = false;
     selectedCbp.value = null;
     progressForm.reset();
+    progressForm.clearErrors();
 }
 
 function submitProgress() {
     progressForm.post(`/cbp/${selectedCbp.value.id}/status`, {
         preserveScroll: true,
+        forceFormData: true,
         onSuccess: () => closeProgressModal(),
     });
 }

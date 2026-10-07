@@ -67,7 +67,7 @@ class CbpRequestController extends Controller
 
     public function laporan(Request $request)
     {
-        $query = CbpRequest::with(['customer', 'technicians', 'creator'])->whereIn('status', ['assigned', 'completed']);
+        $query = CbpRequest::with(['customer.ont.material', 'technicians', 'creator'])->whereIn('status', ['assigned', 'completed']);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -135,15 +135,22 @@ class CbpRequestController extends Controller
     public function updateStatus(Request $request, CbpRequest $cbp)
     {
         $validated = $request->validate([
-            'status' => 'required|in:assigned,completed,canceled',
             'notes' => 'nullable|string',
+            'start_time' => 'required',
+            'end_time' => 'required',
+            'photo' => 'nullable|image|max:2048',
             'materials' => 'nullable|array',
             'materials.*.material_id' => 'required|exists:materials,id',
             'materials.*.quantity' => 'required|numeric|min:0.01',
             'materials.*.unit' => 'nullable|string',
         ]);
 
-        if ($validated['status'] === 'completed' && $cbp->status !== 'completed') {
+        $photoPath = $cbp->photo;
+        if ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('cbp_photos', 'public');
+        }
+
+        if ($cbp->status !== 'completed') {
             $validated['completed_at'] = now();
 
             // Handle Returned Materials
@@ -182,11 +189,14 @@ class CbpRequestController extends Controller
         }
 
         $cbp->update([
-            'status' => $validated['status'],
-            'notes' => $validated['notes'],
+            'status' => 'completed',
+            'notes' => $validated['notes'] ?? $cbp->notes,
+            'start_time' => $validated['start_time'],
+            'end_time' => $validated['end_time'],
+            'photo' => $photoPath,
             'completed_at' => $validated['completed_at'] ?? $cbp->completed_at,
         ]);
 
-        return redirect()->back()->with('success', 'Status Pencabutan berhasil diperbarui.');
+        return redirect()->back()->with('success', 'Laporan Pencabutan berhasil disimpan.');
     }
 }

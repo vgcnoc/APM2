@@ -121,81 +121,136 @@
             </div>
         </div>
 
-        <!-- Assign Modal -->
+        <!-- Assign Modal (Ultra Modern) -->
         <Teleport to="body">
             <div v-if="showAssignModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
-                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closeAssignModal"></div>
-                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm relative z-10 animate-fade-in-up">
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                        <h3 class="text-lg font-bold text-gray-900">Tugaskan Teknisi</h3>
-                        <button @click="closeAssignModal" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors">
+                <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity" @click="closeAssignModal"></div>
+                <div class="bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] w-full max-w-md relative z-10 animate-fade-in-up border border-white/40 overflow-hidden flex flex-col">
+                    
+                    <!-- Decorative background blur -->
+                    <div class="absolute -top-24 -right-24 w-48 h-48 bg-blue-400/20 rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="absolute top-1/2 -left-24 w-40 h-40 bg-indigo-400/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                    <div class="px-7 py-5 flex items-center justify-between bg-white/60 backdrop-blur-xl border-b border-gray-100 z-10 relative">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30 text-white shrink-0">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-extrabold text-slate-800 tracking-tight">Tugaskan Teknisi</h3>
+                                <p class="text-xs font-medium text-slate-500 mt-0.5">Penugasan tim lapangan (CBP)</p>
+                            </div>
+                        </div>
+                        <button @click="closeAssignModal" class="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2.5 rounded-full transition-all hover:rotate-90 duration-300">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
 
-                    <form @submit.prevent="submitAssign">
-                        <div class="p-6 space-y-5 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                            <!-- Customer Info -->
-                            <div v-if="selectedCbp?.customer" class="bg-gray-50/80 border border-gray-100 rounded-xl p-4">
-                                <h4 class="text-xs font-bold text-gray-800 mb-3 border-b border-gray-200/60 pb-2">Data Pelanggan</h4>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                                    <div>
-                                        <span class="block text-[10px] font-bold text-gray-500 uppercase">Nama</span>
-                                        <span class="text-gray-900 font-medium">{{ selectedCbp.customer.name }}</span>
+                    <form @submit.prevent="submitAssign" class="flex flex-col relative z-10">
+                        <div class="p-7 space-y-6 max-h-[65vh] overflow-y-auto custom-scrollbar">
+                            
+                            <!-- Customer Info Card -->
+                            <div v-if="selectedCbp?.customer" class="relative overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-5 border border-slate-200/60 shadow-sm group hover:border-blue-200 transition-colors">
+                                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <svg class="w-16 h-16 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                </div>
+                                <h4 class="text-[11px] font-black text-slate-800 mb-3 border-b border-slate-200 pb-2 flex items-center gap-2 tracking-widest uppercase">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Data Pelanggan
+                                </h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm relative z-10">
+                                    <div class="bg-white/60 p-3 rounded-xl border border-white">
+                                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Nama</span>
+                                        <span class="text-slate-900 font-bold">{{ selectedCbp.customer.name }}</span>
                                     </div>
-                                    <div>
-                                        <span class="block text-[10px] font-bold text-gray-500 uppercase">ID Pelanggan</span>
-                                        <span class="text-gray-900">{{ selectedCbp.customer.customer_code || '-' }}</span>
+                                    <div class="bg-white/60 p-3 rounded-xl border border-white">
+                                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">ID Pelanggan</span>
+                                        <span class="text-slate-900 font-medium font-mono">{{ selectedCbp.customer.customer_code || '-' }}</span>
                                     </div>
-                                    <div class="sm:col-span-2">
-                                        <span class="block text-[10px] font-bold text-gray-500 uppercase">Area / Wilayah</span>
-                                        <span class="text-gray-900">{{ selectedCbp.customer.area_model?.name || selectedCbp.customer.area || '-' }}</span>
+                                    <div class="sm:col-span-2 bg-white/60 p-3 rounded-xl border border-white">
+                                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Area / Wilayah</span>
+                                        <span class="text-slate-900 font-medium">{{ selectedCbp.customer.area_model?.name || selectedCbp.customer.area || '-' }}</span>
                                     </div>
-                                    <div class="sm:col-span-2">
-                                        <span class="block text-[10px] font-bold text-gray-500 uppercase">Alamat</span>
-                                        <span class="text-gray-900 block" :title="selectedCbp.customer.address">{{ selectedCbp.customer.address || '-' }}</span>
+                                    <div class="sm:col-span-2 bg-white/60 p-3 rounded-xl border border-white">
+                                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Alamat</span>
+                                        <span class="text-slate-900 font-medium leading-relaxed" :title="selectedCbp.customer.address">{{ selectedCbp.customer.address || '-' }}</span>
                                     </div>
                                 </div>
                             </div>
 
+                            <!-- Modern Multi-Select Dropdown -->
                             <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tugaskan Ke Teknisi <span class="text-gray-400 lowercase font-normal">(Bisa pilih lebih dari 1)</span></label>
+                                <label class="flex items-center justify-between text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2.5">
+                                    <span>Pilih Teknisi</span>
+                                    <span class="text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full lowercase font-medium tracking-normal">Bisa pilih lebih dari 1</span>
+                                </label>
                                 <div class="relative">
                                     <!-- Trigger Button -->
-                                    <div @click="showDropdown = !showDropdown" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer flex items-center justify-between hover:border-blue-500 transition-colors">
-                                        <div class="flex flex-wrap gap-1.5">
+                                    <div @click="showDropdown = !showDropdown" class="w-full min-h-[56px] px-4 py-3 bg-white border-2 border-slate-200 rounded-2xl text-sm cursor-pointer flex items-center justify-between hover:border-blue-400 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all duration-300 shadow-sm">
+                                        <div class="flex flex-wrap gap-2 flex-1">
                                             <template v-if="assignForm.technicians.length">
-                                                <span v-for="tId in assignForm.technicians" :key="tId" class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg text-xs font-semibold border border-blue-200">
+                                                <div v-for="tId in assignForm.technicians" :key="tId" class="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-800 px-3 py-1.5 rounded-xl text-xs font-bold border border-blue-200/60 shadow-sm animate-fade-in-up">
+                                                    <div class="w-4 h-4 rounded-full bg-blue-200 flex items-center justify-center text-[8px] text-blue-700">
+                                                        {{ getTechnicianName(tId).charAt(0) }}
+                                                    </div>
                                                     {{ getTechnicianName(tId) }}
-                                                    <span @click.stop="removeTechnician(tId)" class="hover:text-blue-900 cursor-pointer ml-1 p-0.5 rounded hover:bg-blue-200/50">
-                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                    <span @click.stop="removeTechnician(tId)" class="hover:bg-blue-200/80 p-0.5 rounded-md cursor-pointer transition-colors ml-0.5 text-blue-500 hover:text-blue-900">
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
                                                     </span>
-                                                </span>
+                                                </div>
                                             </template>
-                                            <span v-else class="text-gray-400">Pilih teknisi...</span>
+                                            <span v-else class="text-slate-400 flex items-center gap-2 font-medium">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                                                Silakan pilih tim teknisi...
+                                            </span>
                                         </div>
-                                        <svg class="w-5 h-5 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" :class="{'rotate-180': showDropdown}"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                        <div class="ml-2 pl-2 border-l border-slate-200 flex items-center justify-center">
+                                            <div class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center transition-transform duration-300" :class="{'rotate-180 bg-blue-50 text-blue-600': showDropdown}">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <!-- Dropdown List -->
-                                    <div v-if="showDropdown" class="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
-                                        <div class="p-2 space-y-1">
-                                            <label v-for="tech in technicians" :key="tech.id" class="flex items-center p-2.5 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors group">
-                                                <div class="flex items-center h-5">
-                                                    <input type="checkbox" :value="tech.id" v-model="assignForm.technicians" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
-                                                </div>
-                                                <span class="ml-3 text-sm font-medium text-gray-700 group-hover:text-gray-900">{{ tech.name }}</span>
-                                            </label>
+                                    <!-- Dropdown List with Animation -->
+                                    <transition
+                                        enter-active-class="transition duration-200 ease-out"
+                                        enter-from-class="transform scale-95 opacity-0 -translate-y-2"
+                                        enter-to-class="transform scale-100 opacity-100 translate-y-0"
+                                        leave-active-class="transition duration-150 ease-in"
+                                        leave-from-class="transform scale-100 opacity-100 translate-y-0"
+                                        leave-to-class="transform scale-95 opacity-0 -translate-y-2"
+                                    >
+                                        <div v-if="showDropdown" class="absolute z-50 w-full mt-2 bg-white/95 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] max-h-64 overflow-y-auto custom-scrollbar p-2">
+                                            <div class="space-y-1">
+                                                <label v-for="tech in technicians" :key="tech.id" class="flex items-center p-3 rounded-xl cursor-pointer transition-all duration-200 group relative overflow-hidden" :class="assignForm.technicians.includes(tech.id) ? 'bg-blue-50/50' : 'hover:bg-slate-50'">
+                                                    <div class="absolute inset-0 bg-blue-100/50 transform scale-x-0 origin-left transition-transform duration-300" :class="{'scale-x-100': assignForm.technicians.includes(tech.id)}"></div>
+                                                    
+                                                    <div class="relative z-10 flex items-center w-full">
+                                                        <div class="flex items-center justify-center w-5 h-5 rounded-md border-2 transition-colors duration-200" :class="assignForm.technicians.includes(tech.id) ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300 group-hover:border-blue-400'">
+                                                            <svg v-if="assignForm.technicians.includes(tech.id)" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                                        </div>
+                                                        <div class="ml-3 flex items-center gap-3">
+                                                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 transition-colors" :class="{'bg-white text-blue-700 shadow-sm': assignForm.technicians.includes(tech.id)}">
+                                                                {{ tech.name.charAt(0) }}
+                                                            </div>
+                                                            <span class="text-sm font-bold transition-colors" :class="assignForm.technicians.includes(tech.id) ? 'text-blue-900' : 'text-slate-700 group-hover:text-slate-900'">{{ tech.name }}</span>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            </div>
                                         </div>
-                                    </div>
+                                    </transition>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-3">
-                            <button type="button" @click="closeAssignModal" class="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">Batal</button>
-                            <button type="submit" :disabled="assignForm.processing || assignForm.technicians.length === 0" class="bg-blue-600 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-sm shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                {{ assignForm.processing ? 'Menyimpan...' : 'Tugaskan' }}
+                        <div class="px-7 py-5 bg-slate-50/80 backdrop-blur-md border-t border-slate-100 flex justify-end gap-3 z-10 rounded-b-3xl">
+                            <button type="button" @click="closeAssignModal" class="px-6 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-200/50 rounded-xl transition-colors">Batal</button>
+                            <button type="submit" :disabled="assignForm.processing || assignForm.technicians.length === 0" class="relative group overflow-hidden bg-blue-600 text-white px-7 py-2.5 rounded-xl text-sm font-bold shadow-[0_8px_20px_-6px_rgba(37,99,235,0.5)] hover:bg-blue-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:cursor-not-allowed">
+                                <span class="relative z-10 flex items-center gap-2">
+                                    <svg v-if="assignForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    {{ assignForm.processing ? 'Menyimpan...' : 'Tugaskan Teknisi' }}
+                                </span>
+                                <div class="absolute inset-0 h-full w-full bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                             </button>
                         </div>
                     </form>

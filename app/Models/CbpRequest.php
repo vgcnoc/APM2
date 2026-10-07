@@ -8,7 +8,8 @@ class CbpRequest extends Model
 {
     protected $fillable = [
         'cbp_number', 'customer_id', 'reason', 'status',
-        'assigned_to', 'created_by', 'completed_at', 'notes'
+        'assigned_to', 'created_by', 'completed_at', 'notes',
+        'start_time', 'end_time', 'photo'
     ];
 
     protected function casts(): array
