@@ -206,36 +206,6 @@ const menuItems = [
     { type: 'link', href: '/', icon: 'dashboard', label: 'Dashboard', active: (url) => (url || '').length > 0 && url === '/', permission: 'menu_dashboard' },
     
     { type: 'group', label: 'MANAJEMEN PELANGGAN' },
-    { type: 'link', href: '/customers/booking', icon: 'document-add', label: 'Data Booking', active: (url) => (url || '').startsWith('/customers/booking'), permission: 'menu_customers_booking' },
-    { 
-        type: 'dropdown', 
-        icon: 'clipboard-check', 
-        label: 'Survey', 
-        active: (url) => (url || '').startsWith('/customers/survey'), 
-        permission: 'menu_customers_survey',
-        children: [
-            { href: '/customers/survey', label: 'Semua Survey', active: (url) => (url || '').startsWith('/customers/survey') && !(url || '').includes('tab='), permission: 'customers_survey_tab_semua' },
-            { href: '/customers/survey?tab=jadwalkan', label: 'Jadwalkan', active: (url) => (url || '').includes('tab=jadwalkan'), permission: 'customers_survey_tab_jadwalkan' },
-            { href: '/customers/survey?tab=laporan', label: 'Isi Laporan', active: (url) => (url || '').includes('tab=laporan'), permission: 'customers_survey_tab_laporan' },
-            { href: '/customers/survey?tab=ready', label: 'Ready Install', active: (url) => (url || '').includes('tab=ready'), permission: 'customers_survey_tab_ready' },
-            { href: '/customers/survey?tab=unfeasible', label: 'Unfeasible', active: (url) => (url || '').includes('tab=unfeasible'), permission: 'customers_survey_tab_unfeasible' },
-        ]
-    },
-    { 
-        type: 'dropdown', 
-        icon: 'cog', 
-        label: 'Instalasi', 
-        active: (url) => (url || '').startsWith('/customers/installed'), 
-        permission: 'menu_customers_installed',
-        children: [
-            { href: '/customers/installed', label: 'Semua Instalasi', active: (url) => (url || '').startsWith('/customers/installed') && !(url || '').includes('tab='), permission: 'customers_installed_tab_semua' },
-            { href: '/customers/installed?tab=jadwal_pasang', label: 'Jadwal Pasang', active: (url) => (url || '').includes('tab=jadwal_pasang'), permission: 'customers_installed_tab_jadwal' },
-            { href: '/customers/installed?tab=laporan_pasang', label: 'Laporan Pasang', active: (url) => (url || '').includes('tab=laporan_pasang'), permission: 'customers_installed_tab_laporan' },
-            { href: '/customers/installed?tab=audit', label: 'Audit', active: (url) => (url || '').includes('tab=audit'), permission: 'customers_installed_tab_audit' },
-            { href: '/customers/installed?tab=selesai_instalasi', label: 'Selesai Instalasi', active: (url) => (url || '').includes('tab=selesai_instalasi'), permission: 'customers_installed_tab_selesai' },
-        ]
-    },
-    { type: 'link', href: '/customers/activation', icon: 'key', label: 'Aktivasi', active: (url) => (url || '').startsWith('/customers/activation'), permission: 'menu_customers_activation' },
     {
         type: 'dropdown',
         icon: 'users',
@@ -251,8 +221,14 @@ const menuItems = [
         ]
     },
     { type: 'link', href: '/tickets', icon: 'alert-circle', label: 'Ticketing / Gangguan', active: (url) => (url || '').startsWith('/tickets'), permission: 'menu_tickets' },
+
+    { type: 'group', label: 'PEMASANGAN BARU' },
+    { type: 'link', href: '/customers/booking', icon: 'document-add', label: 'Data Booking', active: (url) => (url || '').startsWith('/customers/booking'), permission: 'menu_customers_booking' },
+    { type: 'link', href: '/customers/survey', icon: 'clipboard-check', label: 'Survey Lokasi', active: (url) => (url || '').startsWith('/customers/survey'), permission: 'menu_customers_survey' },
+    { type: 'link', href: '/customers/installed', icon: 'cog', label: 'Instalasi Jaringan', active: (url) => (url || '').startsWith('/customers/installed'), permission: 'menu_customers_installed' },
+    { type: 'link', href: '/customers/activation', icon: 'key', label: 'Aktivasi Layanan', active: (url) => (url || '').startsWith('/customers/activation'), permission: 'menu_customers_activation' },
     
-    { type: 'group', label: 'BILLING & PRODUK' },
+    { type: 'group', label: 'BILLING & KEUANGAN' },
     { type: 'link', href: '/invoices', icon: 'document-text', label: 'Invoice Pelanggan', active: (url) => (url || '').length > 0 && url === '/invoices', permission: 'menu_customers_all' },
     {
         type: 'dropdown',
@@ -277,23 +253,20 @@ const menuItems = [
             { href: '/tax-reports', label: 'Laporan Pajak', active: (url) => (url || '').startsWith('/tax-reports'), permission: 'menu_customers_all' },
         ]
     },
-    { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
 
-    { type: 'group', label: 'VOUCHER & RESELLER' },
+    { type: 'group', label: 'PRODUK & RESELLER' },
+    { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
     { 
         type: 'dropdown',
         icon: 'ticket',
-        label: 'Data Voucher',
-        active: (url) => ['/vouchers', '/vouchers/online', '/vouchers/offline', '/vouchers/expired'].some(path => (url || '') === path || (url || '').startsWith(path + '?')),
+        label: 'Sistem Voucher',
+        active: (url) => ['/vouchers', '/vouchers/profiles'].some(path => (url || '') === path || (url || '').startsWith(path + '?')),
         permission: 'menu_vouchers',
         children: [
-            { href: '/vouchers', label: 'Semua Voucher', active: (url) => (url || '').length > 0 && url === '/vouchers', permission: 'menu_vouchers' },
-            { href: '/vouchers/online', label: 'Voucher Online', active: (url) => (url || '').startsWith('/vouchers/online'), permission: 'menu_vouchers' },
-            { href: '/vouchers/offline', label: 'Voucher Offline', active: (url) => (url || '').startsWith('/vouchers/offline'), permission: 'menu_vouchers' },
-            { href: '/vouchers/expired', label: 'Voucher Expired', active: (url) => (url || '').startsWith('/vouchers/expired'), permission: 'menu_vouchers' },
+            { href: '/vouchers', label: 'Data Voucher', active: (url) => (url || '').length > 0 && url === '/vouchers', permission: 'menu_vouchers' },
+            { href: '/vouchers/profiles', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers_profiles' },
         ]
     },
-    { type: 'link', href: '/vouchers/profiles', icon: 'document-text', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers_profiles' },
     { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
     {
         type: 'dropdown',
@@ -309,7 +282,7 @@ const menuItems = [
         ]
     },
 
-    { type: 'group', label: 'INFRASTRUKTUR & JARINGAN' },
+    { type: 'group', label: 'INFRASTRUKTUR JARINGAN' },
     { type: 'link', href: '/network-topology', icon: 'globe', label: 'Network Topology', active: (url) => (url || '').startsWith('/network-topology'), permission: 'menu_network_topology' },
     { type: 'link', href: '/network-data', icon: 'globe', label: 'Data Jaringan', active: (url) => (url || '').startsWith('/network-data'), permission: 'menu_network_data' },
     {
@@ -340,7 +313,7 @@ const menuItems = [
         ]
     },
 
-    { type: 'group', label: 'INVENTARIS & HR' },
+    { type: 'group', label: 'LOGISTIK & HRD' },
     {
         type: 'dropdown',
         icon: 'archive',
@@ -356,34 +329,52 @@ const menuItems = [
         type: 'dropdown',
         icon: 'users',
         label: 'HR & Personalia',
-        active: (url) => (url || '').startsWith('/employees') || (url || '').startsWith('/positions') || (url || '').startsWith('/payroll') || (url || '').startsWith('/insentif-potongan') || (url || '').startsWith('/settings/payroll-categories') || (url || '').startsWith('/settings/master-fees') || (url || '').startsWith('/settings/payroll'),
+        active: (url) => (url || '').startsWith('/employees') || (url || '').startsWith('/positions') || (url || '').startsWith('/payroll') || (url || '').startsWith('/insentif-potongan'),
         permission: 'menu_hr_employees',
         children: [
             { href: '/employees', label: 'Data Karyawan', active: (url) => (url || '').startsWith('/employees'), permission: 'menu_hr_employees' },
             { href: '/positions', label: 'Posisi / Jabatan', active: (url) => (url || '').startsWith('/positions'), permission: 'menu_hr_positions' },
-            { href: '/payroll', label: 'Gaji, Insentif & Potongan', active: (url) => (url || '').length > 0 && url === '/payroll', permission: 'menu_hr_employees' },
-            { href: '/insentif-potongan', label: 'Data Insentif & Potongan', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: 'menu_hr_employees' },
-            { href: '/settings/payroll-categories', label: 'Master Insentif & Potongan', active: (url) => (url || '').startsWith('/settings/payroll-categories'), permission: 'menu_hr_employees' },
-            { href: '/settings/master-fees', label: 'Master Fee', active: (url) => (url || '').startsWith('/settings/master-fees'), permission: 'menu_hr_employees' },
-            { href: '/settings/payroll', label: 'Pengaturan Gaji', active: (url) => (url || '').startsWith('/settings/payroll'), permission: 'menu_hr_employees' },
+            { href: '/payroll', label: 'Gaji & Insentif', active: (url) => (url || '').length > 0 && url === '/payroll', permission: 'menu_hr_employees' },
+            { href: '/insentif-potongan', label: 'Histori Insentif', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: 'menu_hr_employees' },
         ]
     },
     
     { type: 'group', label: 'PENGATURAN' },
-    { type: 'link', href: '/settings/areas', icon: 'map', label: 'Master Area', active: (url) => (url || '').startsWith('/settings/areas'), permission: 'menu_settings_areas' },
-    { type: 'link', href: '/users', icon: 'users', label: 'Manajemen User', active: (url) => (url || '').startsWith('/users'), permission: 'menu_users' },
-    { type: 'link', href: '/settings/roles', icon: 'lock-closed', label: 'Role & Akses', active: (url) => (url || '').startsWith('/settings/roles'), permission: 'menu_settings_roles' },
     {
         type: 'dropdown',
         icon: 'cog',
         label: 'Konfigurasi Sistem',
-        active: (url) => ['/settings/resellers', '/settings/api', '/settings/branding', '/settings/billing'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/settings/api', '/settings/branding', '/settings/billing', '/settings/payroll', '/settings/resellers'].some(path => (url || '').startsWith(path)),
         permission: 'menu_settings_roles',
         children: [
-            { href: '/settings/resellers', label: 'Pengaturan Reseller', active: (url) => (url || '').startsWith('/settings/resellers'), permission: 'menu_settings_roles' },
-            { href: '/settings/api', label: 'API & Integrasi', active: (url) => (url || '').startsWith('/settings/api'), permission: 'menu_settings_api' },
             { href: '/settings/branding', label: 'Branding', active: (url) => (url || '').startsWith('/settings/branding'), permission: 'menu_settings_branding' },
             { href: '/settings/billing', label: 'Billing / Invoice', active: (url) => (url || '').startsWith('/settings/billing'), permission: 'menu_settings_branding' },
+            { href: '/settings/payroll', label: 'Sistem Gaji', active: (url) => (url || '').startsWith('/settings/payroll'), permission: 'menu_hr_employees' },
+            { href: '/settings/resellers', label: 'Reseller', active: (url) => (url || '').startsWith('/settings/resellers'), permission: 'menu_settings_roles' },
+            { href: '/settings/api', label: 'API & Integrasi', active: (url) => (url || '').startsWith('/settings/api'), permission: 'menu_settings_api' },
+        ]
+    },
+    {
+        type: 'dropdown',
+        icon: 'box',
+        label: 'Master Data',
+        active: (url) => ['/settings/areas', '/settings/payroll-categories', '/settings/master-fees'].some(path => (url || '').startsWith(path)),
+        permission: 'menu_settings_areas',
+        children: [
+            { href: '/settings/areas', label: 'Master Area', active: (url) => (url || '').startsWith('/settings/areas'), permission: 'menu_settings_areas' },
+            { href: '/settings/master-fees', label: 'Master Fee', active: (url) => (url || '').startsWith('/settings/master-fees'), permission: 'menu_hr_employees' },
+            { href: '/settings/payroll-categories', label: 'Kategori Insentif/Potongan', active: (url) => (url || '').startsWith('/settings/payroll-categories'), permission: 'menu_hr_employees' },
+        ]
+    },
+    {
+        type: 'dropdown',
+        icon: 'lock-closed',
+        label: 'Hak Akses',
+        active: (url) => ['/users', '/settings/roles'].some(path => (url || '').startsWith(path)),
+        permission: 'menu_users',
+        children: [
+            { href: '/users', label: 'Manajemen User', active: (url) => (url || '').startsWith('/users'), permission: 'menu_users' },
+            { href: '/settings/roles', label: 'Role & Akses', active: (url) => (url || '').startsWith('/settings/roles'), permission: 'menu_settings_roles' },
         ]
     }
 ];
