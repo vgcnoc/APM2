@@ -41,7 +41,7 @@ class CbpRequestController extends Controller
 
     public function jadwal(Request $request)
     {
-        $query = CbpRequest::with(['customer', 'technicians', 'creator'])->whereIn('status', ['pending', 'assigned']);
+        $query = CbpRequest::with(['customer.areaModel', 'technicians', 'creator'])->whereIn('status', ['pending', 'assigned']);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);

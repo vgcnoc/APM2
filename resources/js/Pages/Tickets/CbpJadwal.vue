@@ -148,6 +148,10 @@
                                         <span class="text-gray-900">{{ selectedCbp.customer.customer_code || '-' }}</span>
                                     </div>
                                     <div class="sm:col-span-2">
+                                        <span class="block text-[10px] font-bold text-gray-500 uppercase">Area / Wilayah</span>
+                                        <span class="text-gray-900">{{ selectedCbp.customer.area_model?.name || selectedCbp.customer.area || '-' }}</span>
+                                    </div>
+                                    <div class="sm:col-span-2">
                                         <span class="block text-[10px] font-bold text-gray-500 uppercase">Alamat</span>
                                         <span class="text-gray-900 block" :title="selectedCbp.customer.address">{{ selectedCbp.customer.address || '-' }}</span>
                                     </div>
@@ -155,16 +159,35 @@
                             </div>
 
                             <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-3">Tugaskan Ke Teknisi <span class="text-gray-400 lowercase font-normal">(Bisa pilih lebih dari 1)</span></label>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    <label v-for="tech in technicians" :key="tech.id" class="relative flex items-start p-3 border rounded-xl cursor-pointer hover:bg-blue-50/50 transition-colors" :class="assignForm.technicians.includes(tech.id) ? 'border-blue-500 bg-blue-50/30' : 'border-gray-200 bg-white'">
-                                        <div class="flex items-center h-5">
-                                            <input type="checkbox" :value="tech.id" v-model="assignForm.technicians" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tugaskan Ke Teknisi <span class="text-gray-400 lowercase font-normal">(Bisa pilih lebih dari 1)</span></label>
+                                <div class="relative">
+                                    <!-- Trigger Button -->
+                                    <div @click="showDropdown = !showDropdown" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm cursor-pointer flex items-center justify-between hover:border-blue-500 transition-colors">
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <template v-if="assignForm.technicians.length">
+                                                <span v-for="tId in assignForm.technicians" :key="tId" class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg text-xs font-semibold border border-blue-200">
+                                                    {{ getTechnicianName(tId) }}
+                                                    <span @click.stop="removeTechnician(tId)" class="hover:text-blue-900 cursor-pointer ml-1 p-0.5 rounded hover:bg-blue-200/50">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                    </span>
+                                                </span>
+                                            </template>
+                                            <span v-else class="text-gray-400">Pilih teknisi...</span>
                                         </div>
-                                        <div class="ml-3 flex flex-col">
-                                            <span class="text-sm font-medium" :class="assignForm.technicians.includes(tech.id) ? 'text-blue-900' : 'text-gray-900'">{{ tech.name }}</span>
+                                        <svg class="w-5 h-5 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" :class="{'rotate-180': showDropdown}"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+
+                                    <!-- Dropdown List -->
+                                    <div v-if="showDropdown" class="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
+                                        <div class="p-2 space-y-1">
+                                            <label v-for="tech in technicians" :key="tech.id" class="flex items-center p-2.5 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors group">
+                                                <div class="flex items-center h-5">
+                                                    <input type="checkbox" :value="tech.id" v-model="assignForm.technicians" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                                                </div>
+                                                <span class="ml-3 text-sm font-medium text-gray-700 group-hover:text-gray-900">{{ tech.name }}</span>
+                                            </label>
                                         </div>
-                                    </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -203,6 +226,7 @@ function performSearch() {
 
 // Assign Modal
 const showAssignModal = ref(false);
+const showDropdown = ref(false);
 const selectedCbp = ref(null);
 const assignForm = useForm({
     technicians: [],
@@ -212,10 +236,12 @@ function openAssignModal(req) {
     selectedCbp.value = req;
     assignForm.technicians = req.technicians ? req.technicians.map(t => t.id) : [];
     showAssignModal.value = true;
+    showDropdown.value = false;
 }
 
 function closeAssignModal() {
     showAssignModal.value = false;
+    showDropdown.value = false;
     selectedCbp.value = null;
     assignForm.reset();
 }
@@ -225,5 +251,14 @@ function submitAssign() {
         preserveScroll: true,
         onSuccess: () => closeAssignModal(),
     });
+}
+
+function getTechnicianName(id) {
+    const tech = props.technicians.find(t => t.id === id);
+    return tech ? tech.name : '';
+}
+
+function removeTechnician(id) {
+    assignForm.technicians = assignForm.technicians.filter(t => t !== id);
 }
 </script>
