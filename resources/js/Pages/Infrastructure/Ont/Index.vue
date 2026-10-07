@@ -209,6 +209,29 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Hotspot Gratis -->
+                            <div class="px-4 pb-4 border-t border-gray-100 pt-4 bg-purple-50/30">
+                                <label class="flex items-center gap-2 cursor-pointer mb-3">
+                                    <input type="checkbox" v-model="form.free_hotspot" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 w-4 h-4">
+                                    <span class="text-sm font-bold text-purple-800">Berikan Gratis 1 User Hotspot</span>
+                                </label>
+
+                                <div v-if="form.free_hotspot" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">User Hotspot</label>
+                                        <input v-model="form.hotspot_user" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="user_hotspot" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">Password Hotspot</label>
+                                        <input v-model="form.hotspot_password" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="***" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">VLAN ID Hotspot</label>
+                                        <input v-model="form.hotspot_vlan_id" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Misal: 200" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Petugas Input -->
@@ -439,6 +462,10 @@ const form = useForm({
     login_password: '',
     pppoe_user: '',
     pppoe_password: '',
+    free_hotspot: false,
+    hotspot_user: '',
+    hotspot_password: '',
+    hotspot_vlan_id: '',
     input_officers: [
         { name: '', date: new Date().toISOString().split('T')[0], note: '' }
     ],
@@ -471,6 +498,10 @@ function openEditModal(ont) {
     form.login_password = ont.login_password || '';
     form.pppoe_user = ont.pppoe_user || '';
     form.pppoe_password = ont.pppoe_password || '';
+    form.free_hotspot = !!ont.free_hotspot;
+    form.hotspot_user = ont.hotspot_user || '';
+    form.hotspot_password = ont.hotspot_password || '';
+    form.hotspot_vlan_id = ont.hotspot_vlan_id || '';
     
     if (ont.input_officers && ont.input_officers.length > 0) {
         form.input_officers = JSON.parse(JSON.stringify(ont.input_officers));
