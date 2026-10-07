@@ -30,10 +30,12 @@ class CbpRequestController extends Controller
             ->withQueryString();
 
         $technicians = \App\Models\User::role('technician')->get();
+        $materials = \App\Models\Material::all();
 
         return Inertia::render('Tickets/Cbp', [
             'requests' => $cbpRequests,
             'technicians' => $technicians,
+            'materials' => $materials,
             'filters' => $request->only(['search', 'status']),
         ]);
     }
@@ -88,13 +90,55 @@ class CbpRequestController extends Controller
         $validated = $request->validate([
             'status' => 'required|in:assigned,completed,canceled',
             'notes' => 'nullable|string',
+            'materials' => 'nullable|array',
+            'materials.*.material_id' => 'required|exists:materials,id',
+            'materials.*.quantity' => 'required|numeric|min:0.01',
+            'materials.*.unit' => 'nullable|string',
         ]);
 
         if ($validated['status'] === 'completed' && $cbp->status !== 'completed') {
             $validated['completed_at'] = now();
+
+            // Handle Returned Materials
+            if (!empty($validated['materials'])) {
+                $transaction = \App\Models\MaterialTransaction::create([
+                    'transaction_number' => 'IN-' . date('YmdHis') . rand(10, 99),
+                    'type' => 'in',
+                    'date' => now(),
+                    'technician_name' => auth()->user()->name,
+                    'purpose' => 'Pengembalian Cabut Perangkat ' . $cbp->cbp_number,
+                    'user_id' => auth()->id(),
+                ]);
+
+                foreach ($validated['materials'] as $item) {
+                    $material = \App\Models\Material::find($item['material_id']);
+                    if ($material) {
+                        \App\Models\MaterialTransactionItem::create([
+                            'material_transaction_id' => $transaction->id,
+                            'material_id' => $item['material_id'],
+                            'quantity' => $item['quantity'],
+                            'unit' => $item['unit'] ?? $material->unit,
+                            'price_per_unit' => $material->price_per_unit ?? 0,
+                            'total_price' => ($material->price_per_unit ?? 0) * $item['quantity'],
+                        ]);
+                        
+                        // Restock based on categories
+                        if ($material->category === 'kabel') {
+                            $material->increment('stock', $item['quantity']);
+                            $material->increment('total_pieces', $item['quantity']);
+                        } else {
+                            $material->increment('stock', $item['quantity']);
+                        }
+                    }
+                }
+            }
         }
 
-        $cbp->update($validated);
+        $cbp->update([
+            'status' => $validated['status'],
+            'notes' => $validated['notes'],
+            'completed_at' => $validated['completed_at'] ?? $cbp->completed_at,
+        ]);
 
         return redirect()->back()->with('success', 'Status Pencabutan berhasil diperbarui.');
     }

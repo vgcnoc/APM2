@@ -246,7 +246,7 @@
                     </div>
 
                     <form @submit.prevent="submitProgress">
-                        <div class="p-6 space-y-4">
+                        <div class="p-6 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Update Status</label>
                                 <select v-model="progressForm.status" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" required>
@@ -254,9 +254,41 @@
                                     <option value="completed">Selesai Dicabut</option>
                                 </select>
                             </div>
-                            <div>
+                            
+                            <div v-if="progressForm.status === 'completed'" class="border-t border-gray-100 pt-4 mt-2">
+                                <div class="flex items-center justify-between mb-3">
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">Perangkat / Material yang Dikembalikan</label>
+                                    <button type="button" @click="addMaterial" class="text-[10px] font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                        Tambah Material
+                                    </button>
+                                </div>
+                                <div v-if="progressForm.materials.length === 0" class="text-[11px] text-gray-400 italic text-center py-2 bg-gray-50 rounded-xl border border-gray-100 border-dashed">
+                                    Tidak ada material yang dikembalikan (atau kabel terputus/hilang).
+                                </div>
+                                <div class="space-y-3">
+                                    <div v-for="(mat, idx) in progressForm.materials" :key="idx" class="flex items-start gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                        <div class="flex-1 space-y-2">
+                                            <select v-model="mat.material_id" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:border-transparent" required>
+                                                <option value="" disabled>Pilih Material/Perangkat...</option>
+                                                <option v-for="m in materials" :key="m.id" :value="m.id">{{ m.name }} (Stok: {{ m.stock }} {{ m.unit }})</option>
+                                            </select>
+                                            <div class="flex items-center gap-2">
+                                                <input type="number" v-model="mat.quantity" step="0.01" min="0.01" class="w-20 px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:border-transparent" placeholder="Qty" required>
+                                                <span class="text-[10px] text-gray-500 font-medium">Qty (Jumlah yang kembali)</span>
+                                            </div>
+                                        </div>
+                                        <button type="button" @click="removeMaterial(idx)" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="text-[9px] text-gray-400 mt-2">Otomatis masuk ke stok gudang saat proses selesai.</p>
+                            </div>
+
+                            <div class="border-t border-gray-100 pt-4">
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Catatan Teknisi (Opsional)</label>
-                                <textarea v-model="progressForm.notes" rows="3" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" placeholder="Catatan alat yang ditarik, dsb..."></textarea>
+                                <textarea v-model="progressForm.notes" rows="3" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" placeholder="Catatan... misal: ONT terbakar, dsb"></textarea>
                             </div>
                         </div>
 
@@ -281,6 +313,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 const props = defineProps({
     requests: Object,
     technicians: Array,
+    materials: Array,
     filters: Object,
 });
 
@@ -350,12 +383,25 @@ const showProgressModal = ref(false);
 const progressForm = useForm({
     status: 'completed',
     notes: '',
+    materials: [],
 });
+
+function addMaterial() {
+    progressForm.materials.push({
+        material_id: '',
+        quantity: 1,
+    });
+}
+
+function removeMaterial(index) {
+    progressForm.materials.splice(index, 1);
+}
 
 function openProgressModal(req) {
     selectedCbp.value = req;
     progressForm.status = 'completed';
     progressForm.notes = req.notes || '';
+    progressForm.materials = [];
     showProgressModal.value = true;
 }
 
