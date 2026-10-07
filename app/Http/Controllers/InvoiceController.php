@@ -38,6 +38,10 @@ class InvoiceController extends Controller
             $query->where('id', '<', 0); // Placeholder
         } elseif ($tab === 'janji_bayar') {
             $query->whereNotNull('promise_date')->where('status', '!=', 'paid');
+        } elseif ($tab === 'stop_sementara') {
+            $query->whereHas('customer', fn($q) => $q->where('status', 'suspended'));
+        } elseif ($tab === 'stop_permanen') {
+            $query->whereHas('customer', fn($q) => $q->where('status', 'terminated'));
         }
 
         if ($request->filled('search')) {
@@ -81,6 +85,8 @@ class InvoiceController extends Controller
             'prorata' => (clone $baseQuery)->where('is_prorata', true)->count(),
             'upgrade' => 0, // Placeholder
             'janji_bayar' => (clone $baseQuery)->whereNotNull('promise_date')->where('status', '!=', 'paid')->count(),
+            'stop_sementara' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'suspended'))->count(),
+            'stop_permanen' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'terminated'))->count(),
 
             // Amounts for cards
             'total_unpaid_amount' => (clone $baseQuery)->where('status', 'unpaid')->sum('amount'),
@@ -259,6 +265,34 @@ class InvoiceController extends Controller
     {
         $invoice->delete();
         return back()->with('success', 'Tagihan berhasil dihapus.');
+    }
+
+    public function stopSementara(Invoice $invoice, \App\Services\RadiusService $radius)
+    {
+        $customer = $invoice->customer;
+        if ($customer && $customer->status !== 'suspended') {
+            $customer->update(['status' => 'suspended']);
+            $radius->guard(fn($r) => $r->syncCustomer($customer));
+            $accounts = $radius->customerAccounts($customer);
+            foreach (array_keys($accounts) as $username) {
+                $radius->guard(fn($r) => $r->disconnect($username));
+            }
+        }
+        return redirect()->back()->with('success', 'Pelanggan berhasil di-Stop Sementara.');
+    }
+
+    public function stopPermanen(Invoice $invoice, \App\Services\RadiusService $radius)
+    {
+        $customer = $invoice->customer;
+        if ($customer && $customer->status !== 'terminated') {
+            $customer->update(['status' => 'terminated']);
+            $radius->guard(fn($r) => $r->syncCustomer($customer));
+            $accounts = $radius->customerAccounts($customer);
+            foreach (array_keys($accounts) as $username) {
+                $radius->guard(fn($r) => $r->disconnect($username));
+            }
+        }
+        return redirect()->back()->with('success', 'Pelanggan berhasil di-Stop Permanen.');
     }
 
     public function print(Invoice $invoice)

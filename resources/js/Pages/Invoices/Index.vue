@@ -66,17 +66,24 @@
                 Lunas <span class="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.lunas }}</span>
             </button>
             <button @click="filterTab('prorata')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'prorata' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700']">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                 Pelanggan Prorata <span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.prorata }}</span>
             </button>
             <button @click="filterTab('upgrade')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'upgrade' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                 Riwayat Upgrade <span class="bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.upgrade }}</span>
             </button>
-            <!-- Janji Bayar Tab -->
             <button @click="filterTab('janji_bayar')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'janji_bayar' ? 'text-yellow-600 border-b-2 border-yellow-600' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 Janji Bayar <span class="bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.janji_bayar }}</span>
+            </button>
+            <button @click="filterTab('stop_sementara')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'stop_sementara' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-500 hover:text-gray-700']">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Stop Sementara <span class="bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.stop_sementara || 0 }}</span>
+            </button>
+            <button @click="filterTab('stop_permanen')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'stop_permanen' ? 'text-red-800 border-b-2 border-red-800' : 'text-gray-500 hover:text-gray-700']">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                Stop Permanen <span class="bg-red-50 text-red-800 px-2 py-0.5 rounded-full text-[10px]">{{ stats.stop_permanen || 0 }}</span>
             </button>
         </div>
 
@@ -216,6 +223,12 @@
                     </a>
                     <button @click="openEditModal(row)" class="p-1.5 text-gray-400 hover:text-blue-600 transition-colors" title="Edit Tagihan">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    </button>
+                    <button v-if="row.customer && row.customer.status !== 'suspended'" @click="stopSementara(row)" class="p-1.5 text-gray-400 hover:text-orange-600 transition-colors" title="Stop Sementara">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </button>
+                    <button v-if="row.customer && row.customer.status !== 'terminated'" @click="stopPermanen(row)" class="p-1.5 text-gray-400 hover:text-red-800 transition-colors" title="Stop Permanen">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                     </button>
                     <button @click="deleteInvoice(row)" class="p-1.5 text-gray-400 hover:text-red-600 transition-colors" title="Hapus Tagihan">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -609,6 +622,18 @@ const showPromiseModal = ref(false);
 const promiseForm = useForm({
     promise_date: '',
 });
+
+function stopSementara(row) {
+    if (confirm(`Apakah Anda yakin ingin Stop Sementara pelanggan ${row.customer.name}? Internet akan mati dan invoice baru tidak akan berjalan.`)) {
+        router.post(`/invoices/${row.id}/stop-sementara`, {}, { preserveScroll: true });
+    }
+}
+
+function stopPermanen(row) {
+    if (confirm(`Apakah Anda yakin ingin Stop Permanen pelanggan ${row.customer.name}? Layanan akan dinonaktifkan secara permanen.`)) {
+        router.post(`/invoices/${row.id}/stop-permanen`, {}, { preserveScroll: true });
+    }
+}
 
 function openPromiseModal(invoice) {
     selectedInvoice.value = invoice;

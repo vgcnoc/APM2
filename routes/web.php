@@ -223,6 +223,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('invoices/{invoice}/pay', [\App\Http\Controllers\InvoiceController::class, 'pay'])->name('invoices.pay');
     Route::post('invoices/{invoice}/rollback', [\App\Http\Controllers\InvoiceController::class, 'rollback'])->name('invoices.rollback');
     Route::post('invoices/{invoice}/promise', [\App\Http\Controllers\InvoiceController::class, 'promise'])->name('invoices.promise');
+    Route::post('invoices/{invoice}/stop-sementara', [\App\Http\Controllers\InvoiceController::class, 'stopSementara'])->name('invoices.stop-sementara');
+    Route::post('invoices/{invoice}/stop-permanen', [\App\Http\Controllers\InvoiceController::class, 'stopPermanen'])->name('invoices.stop-permanen');
     Route::get('invoices/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->name('invoices.print');
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
     
