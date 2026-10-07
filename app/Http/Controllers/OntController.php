@@ -64,6 +64,10 @@ class OntController extends Controller
             'login_password' => 'nullable|string',
             'pppoe_user' => 'nullable|string',
             'pppoe_password' => 'nullable|string',
+            'free_hotspot' => 'nullable|boolean',
+            'hotspot_user' => 'nullable|string',
+            'hotspot_password' => 'nullable|string',
+            'hotspot_vlan_id' => 'nullable|string',
             'input_officers' => 'nullable|array',
             'status' => 'nullable|string',
             
@@ -132,6 +136,10 @@ class OntController extends Controller
             'login_password' => 'nullable|string',
             'pppoe_user' => 'nullable|string',
             'pppoe_password' => 'nullable|string',
+            'free_hotspot' => 'nullable|boolean',
+            'hotspot_user' => 'nullable|string',
+            'hotspot_password' => 'nullable|string',
+            'hotspot_vlan_id' => 'nullable|string',
             'input_officers' => 'nullable|array',
             'status' => 'nullable|string',
             

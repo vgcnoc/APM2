@@ -658,7 +658,7 @@
                                 <span class="text-sm font-semibold text-gray-700">Berikan Gratis 1 User Hotspot</span>
                             </label>
 
-                            <div v-if="activationForm.free_hotspot" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                            <div v-if="activationForm.free_hotspot" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">User Hotspot</label>
                                     <input v-model="activationForm.hotspot_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="user_hotspot" />
@@ -666,6 +666,10 @@
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Password Hotspot</label>
                                     <input v-model="activationForm.hotspot_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="***" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">VLAN ID Hotspot</label>
+                                    <input v-model="activationForm.hotspot_vlan_id" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="Misal: 200" />
                                 </div>
                             </div>
                         </div>
@@ -1169,7 +1173,8 @@ const activationForm = useForm({
     notes: '',
     free_hotspot: false,
     hotspot_user: '',
-    hotspot_password: ''
+    hotspot_password: '',
+    hotspot_vlan_id: ''
 });
 
 function openActivationModal(customer) {
@@ -1188,6 +1193,7 @@ function openActivationModal(customer) {
     activationForm.free_hotspot = !!customer.ont?.free_hotspot;
     activationForm.hotspot_user = customer.ont?.hotspot_user || '';
     activationForm.hotspot_password = customer.ont?.hotspot_password || '';
+    activationForm.hotspot_vlan_id = customer.ont?.hotspot_vlan_id || '';
     showActivationModal.value = true;
 }
 
