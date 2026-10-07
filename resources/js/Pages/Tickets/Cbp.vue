@@ -101,7 +101,6 @@
                                     <span v-if="req.completed_at" class="text-xs text-gray-600">{{ req.completed_at }}</span>
                                     <span v-else class="text-xs text-gray-400">-</span>
                                 </td>
-                                </td>
                             </tr>
                             <tr v-if="!requests.data.length">
                                 <td colspan="7" class="p-8 text-center text-gray-500">
