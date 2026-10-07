@@ -138,6 +138,10 @@
                         </h3>
                         <p class="text-sm text-gray-500 mt-1">Rekapitulasi riwayat keluar masuk uang bulan ini</p>
                     </div>
+                    <button @click="showExpenseModal = true" class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl shadow-sm transition-all hover:shadow text-sm font-bold">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        Catat Pengeluaran
+                    </button>
                 </div>
                 
                 <div class="overflow-x-auto">
@@ -185,6 +189,54 @@
             </div>
 
         </div>
+
+        <!-- Modal Form Pengeluaran -->
+        <div v-if="showExpenseModal" class="fixed inset-0 z-[100] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="showExpenseModal = false"></div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full border border-gray-100">
+                    <div class="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                        <h3 class="text-lg leading-6 font-bold text-gray-900 flex items-center gap-2">
+                            <span class="bg-rose-100 text-rose-600 p-1.5 rounded-lg">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            </span>
+                            Catat Pengeluaran Baru
+                        </h3>
+                        <button @click="showExpenseModal = false" class="text-gray-400 hover:text-gray-500">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    
+                    <div class="px-6 py-5">
+                        <form @submit.prevent="submitExpense" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Tanggal Pengeluaran</label>
+                                <input type="date" v-model="expenseForm.expense_date" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Nominal (Rp)</label>
+                                <input type="number" v-model="expenseForm.amount" min="1" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 font-bold text-lg" placeholder="Contoh: 150000" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Keterangan / Tujuan Pengeluaran</label>
+                                <textarea v-model="expenseForm.description" rows="2" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500" placeholder="Contoh: Beli kabel LAN, bensin teknisi, dll" required></textarea>
+                            </div>
+                            
+                            <div class="pt-4 flex justify-end gap-3">
+                                <button type="button" @click="showExpenseModal = false" class="bg-white py-2.5 px-5 border border-gray-300 rounded-xl shadow-sm text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all">
+                                    Batal
+                                </button>
+                                <button type="submit" :disabled="expenseForm.processing" class="inline-flex justify-center py-2.5 px-5 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-all disabled:opacity-50">
+                                    {{ expenseForm.processing ? 'Menyimpan...' : 'Simpan Pengeluaran' }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </AppLayout>
 </template>
 
@@ -225,6 +277,23 @@ const applyFilter = () => {
 
 const formatRupiah = (number) => {
     return new Intl.NumberFormat('id-ID').format(number);
+};
+
+const showExpenseModal = ref(false);
+const expenseForm = useForm({
+    amount: '',
+    description: '',
+    expense_date: new Date().toISOString().split('T')[0],
+});
+
+const submitExpense = () => {
+    expenseForm.post(route('expenses.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showExpenseModal.value = false;
+            expenseForm.reset();
+        }
+    });
 };
 
 // Setup Chart
