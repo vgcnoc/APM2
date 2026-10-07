@@ -162,9 +162,6 @@
                     <button @click="openCancelModal(row)" class="p-2 rounded-lg text-gray-500 hover:bg-orange-50 hover:text-orange-500 transition-colors" title="Batalkan Booking">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </button>
-                    <button @click="sendWa(row)" class="p-2 rounded-lg text-green-500 hover:bg-green-50 hover:text-green-600 transition-colors" title="Kirim Pesan WA ke Petugas">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                    </button>
                     <button v-if="canDelete" 
                         @click="confirmDelete(row)" 
                         class="p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-500 transition-all" title="Hapus Booking">
@@ -175,9 +172,6 @@
                 </div>
             </template>
         </DataTable>
-
-        <WaModal :show="showWaModal" :customerRow="waCustomerRow" @close="showWaModal = false" />
-
         <!-- Modal Detail Booking -->
         <Teleport to="body">
             <div v-if="showViewModal && selectedCustomer" class="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -377,20 +371,11 @@ import { ref, computed } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
-import WaModal from '@/Components/WaModal.vue';
 
 const props = defineProps({ customers: Object, filters: Object, areas: Array, stats: Object });
 const page = usePage();
 
-// WA Modal
-const showWaModal = ref(false);
-const waCustomerRow = ref(null);
-
-function sendWa(row) {
-    waCustomerRow.value = row;
-    showWaModal.value = true;
-}
-
+// WA Modal removed
 const selectedIds = ref([]);
 
 const canDelete = computed(() => {
