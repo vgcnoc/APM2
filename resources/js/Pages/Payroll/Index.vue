@@ -180,8 +180,23 @@
                                     <input type="number" v-model="manualForm.amount" min="1" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-bold text-lg" placeholder="Contoh: 50000" required>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700">Keterangan / Alasan</label>
-                                    <textarea v-model="manualForm.description" rows="2" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Contoh: Bonus rajin, Potongan kasbon, dll" required></textarea>
+                                    <label class="block text-sm font-medium text-gray-700">Kategori / Keterangan</label>
+                                    <input list="category-list" v-model="manualForm.description" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Pilih atau ketik keterangan..." required>
+                                    <datalist id="category-list">
+                                        <template v-if="modalType === 'incentive'">
+                                            <option value="Lembur"></option>
+                                            <option value="Bonus Kerajinan"></option>
+                                            <option value="THR (Tunjangan Hari Raya)"></option>
+                                            <option value="Bonus Pencapaian Target"></option>
+                                        </template>
+                                        <template v-else>
+                                            <option value="Kasbon / Pinjaman"></option>
+                                            <option value="Potongan Absen / Terlambat"></option>
+                                            <option value="Iuran BPJS Kesehatan"></option>
+                                            <option value="Iuran BPJS Ketenagakerjaan"></option>
+                                            <option value="Denda / Ganti Rugi Barang"></option>
+                                        </template>
+                                    </datalist>
                                 </div>
                                 
                                 <div class="pt-4 flex justify-end gap-3">

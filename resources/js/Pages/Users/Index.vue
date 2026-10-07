@@ -157,9 +157,19 @@
                             <div v-if="form.errors.base_salary" class="text-red-500 text-xs mt-1">{{ form.errors.base_salary }}</div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Insentif per Action (Rp)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Insentif Penagihan (Rp)</label>
                             <input type="number" v-model="form.incentive_rate" min="0" class="w-full border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5">
                             <div v-if="form.errors.incentive_rate" class="text-red-500 text-xs mt-1">{{ form.errors.incentive_rate }}</div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fee Market/Booking (Rp)</label>
+                            <input type="number" v-model="form.booking_fee" min="0" class="w-full border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5">
+                            <div v-if="form.errors.booking_fee" class="text-red-500 text-xs mt-1">{{ form.errors.booking_fee }}</div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fee Pasang (Rp)</label>
+                            <input type="number" v-model="form.installation_fee" min="0" class="w-full border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5">
+                            <div v-if="form.errors.installation_fee" class="text-red-500 text-xs mt-1">{{ form.errors.installation_fee }}</div>
                         </div>
                     </div>
 
@@ -212,6 +222,8 @@ const form = useForm({
     accessible_areas: [],
     base_salary: 0,
     incentive_rate: 0,
+    booking_fee: 0,
+    installation_fee: 0,
     is_active: true,
 });
 
@@ -245,6 +257,8 @@ function openEditModal(user) {
     form.accessible_areas = user.accessible_areas || [];
     form.base_salary = user.base_salary || 0;
     form.incentive_rate = user.incentive_rate || 0;
+    form.booking_fee = user.booking_fee || 0;
+    form.installation_fee = user.installation_fee || 0;
     form.password = '';
     form.is_active = !!user.is_active;
     isModalOpen.value = true;

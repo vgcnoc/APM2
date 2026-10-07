@@ -1392,6 +1392,37 @@ class CustomerController extends Controller
                     'status' => $status,
                     'is_prorata' => $isProrata,
                 ]);
+
+                // Auto Incentives: Fee Market/Booking for Sales
+                if ($customer->sales_id) {
+                    $salesUser = \App\Models\User::find($customer->sales_id);
+                    if ($salesUser && $salesUser->booking_fee > 0) {
+                        \App\Models\Incentive::create([
+                            'user_id' => $salesUser->id,
+                            'amount' => $salesUser->booking_fee,
+                            'type' => 'auto',
+                            'description' => 'Fee Market/Booking Pelanggan: ' . $customer->name,
+                            'incentive_date' => now(),
+                            'status' => 'pending'
+                        ]);
+                    }
+                }
+
+                // Auto Incentives: Fee Pasang for Technician
+                $installationSchedule = $customer->technicianSchedules()->where('type', 'installation')->latest()->first();
+                if ($installationSchedule && $installationSchedule->technician_id) {
+                    $techUser = \App\Models\User::find($installationSchedule->technician_id);
+                    if ($techUser && $techUser->installation_fee > 0) {
+                        \App\Models\Incentive::create([
+                            'user_id' => $techUser->id,
+                            'amount' => $techUser->installation_fee,
+                            'type' => 'auto',
+                            'description' => 'Fee Pasang Pelanggan: ' . $customer->name,
+                            'incentive_date' => now(),
+                            'status' => 'pending'
+                        ]);
+                    }
+                }
             });
 
             \App\Models\AuditLog::createLog('Aktivasi Layanan', $customer, 'installing', 'active', 'Mengaktifkan layanan pelanggan');

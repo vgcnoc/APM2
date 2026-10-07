@@ -51,6 +51,8 @@ class UserController extends Controller
             'accessible_areas' => 'nullable|array',
             'base_salary' => 'nullable|numeric|min:0',
             'incentive_rate' => 'nullable|numeric|min:0',
+            'booking_fee' => 'nullable|numeric|min:0',
+            'installation_fee' => 'nullable|numeric|min:0',
         ]);
 
         $employee = \App\Models\Employee::where('email', $validated['email'])->first();
@@ -68,6 +70,8 @@ class UserController extends Controller
         $validated['accessible_areas'] = $request->input('accessible_areas', []);
         $validated['base_salary'] = $request->input('base_salary', 0);
         $validated['incentive_rate'] = $request->input('incentive_rate', 0);
+        $validated['booking_fee'] = $request->input('booking_fee', 0);
+        $validated['installation_fee'] = $request->input('installation_fee', 0);
 
         $user = User::create($validated);
         
@@ -90,6 +94,8 @@ class UserController extends Controller
             'accessible_areas' => 'nullable|array',
             'base_salary' => 'nullable|numeric|min:0',
             'incentive_rate' => 'nullable|numeric|min:0',
+            'booking_fee' => 'nullable|numeric|min:0',
+            'installation_fee' => 'nullable|numeric|min:0',
         ]);
 
         $employee = \App\Models\Employee::where('email', $validated['email'])->first();
@@ -112,6 +118,8 @@ class UserController extends Controller
         $validated['accessible_areas'] = $request->input('accessible_areas', []);
         $validated['base_salary'] = $request->input('base_salary', 0);
         $validated['incentive_rate'] = $request->input('incentive_rate', 0);
+        $validated['booking_fee'] = $request->input('booking_fee', 0);
+        $validated['installation_fee'] = $request->input('installation_fee', 0);
 
         $user->update($validated);
         
