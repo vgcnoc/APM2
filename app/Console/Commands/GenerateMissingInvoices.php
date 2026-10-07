@@ -42,6 +42,15 @@ class GenerateMissingInvoices extends Command
                 if ($customer->service_status === 'gratis') {
                     $amount = 0;
                     $status = 'paid';
+                } else {
+                    $taxPpn = (float) ($customer->tax_ppn ?? \App\Models\Setting::get('tax_ppn', '0'));
+                    $taxBhp = (float) ($customer->tax_bhp ?? \App\Models\Setting::get('tax_bhp', '0'));
+                    $taxUso = (float) ($customer->tax_uso ?? \App\Models\Setting::get('tax_uso', '0'));
+                    
+                    $totalTaxPercent = $taxPpn + $taxBhp + $taxUso;
+                    if ($totalTaxPercent > 0) {
+                        $amount = $amount + ($amount * ($totalTaxPercent / 100));
+                    }
                 }
                 
                 $isolateDays = (int) \App\Models\Setting::get('isolate_days', '3');

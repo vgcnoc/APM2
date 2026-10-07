@@ -85,27 +85,20 @@
                     <th>Deskripsi Layanan</th>
                     <th>Periode</th>
                     <th class="right">Total</th>
-                </tr>
-            </thead>
-            <tbody>
 @php
-    $packagePrice = $invoice->customer->package ? $invoice->customer->package->price : $invoice->amount;
-    $taxAmount = 0;
+    $taxPpn = (float) \App\Models\Setting::get('tax_ppn', '0');
+    $taxBhp = (float) \App\Models\Setting::get('tax_bhp', '0');
+    $taxUso = (float) \App\Models\Setting::get('tax_uso', '0');
+    
+    $totalTaxPercent = $taxPpn + $taxBhp + $taxUso;
+    
+    // Asumsikan total tagihan ($invoice->amount) sudah termasuk pajak
     $subtotal = $invoice->amount;
+    $taxAmount = 0;
     
-    // Jika tagihan lebih besar dari harga paket dasar (dan bukan prorata), berarti ada pajak
-    if (!$invoice->is_prorata && $invoice->amount > $packagePrice) {
-        $taxAmount = $invoice->amount - $packagePrice;
-        $subtotal = $packagePrice;
-    }
-    
-    // Jika tagihan prorata, kita gunakan persentase dari setting sebagai tebakan terbaik
-    if ($invoice->is_prorata) {
-        $taxPpn = (float) \App\Models\Setting::get('tax_ppn', '0');
-        if ($taxPpn > 0) {
-            $subtotal = round($invoice->amount / (1 + ($taxPpn / 100)));
-            $taxAmount = $invoice->amount - $subtotal;
-        }
+    if ($totalTaxPercent > 0) {
+        $subtotal = round($invoice->amount / (1 + ($totalTaxPercent / 100)));
+        $taxAmount = $invoice->amount - $subtotal;
     }
 @endphp
                 <tr>
@@ -124,7 +117,7 @@
                 </tr>
                 @if($taxAmount > 0)
                 <tr>
-                    <td>PPN & Pajak Lainnya</td>
+                    <td>PPN & Pajak ({{ $totalTaxPercent }}%)</td>
                     <td class="right">Rp {{ number_format($taxAmount, 0, ',', '.') }}</td>
                 </tr>
                 @endif
