@@ -88,10 +88,30 @@
                 </tr>
             </thead>
             <tbody>
+@php
+    $packagePrice = $invoice->customer->package ? $invoice->customer->package->price : $invoice->amount;
+    $taxAmount = 0;
+    $subtotal = $invoice->amount;
+    
+    // Jika tagihan lebih besar dari harga paket dasar (dan bukan prorata), berarti ada pajak
+    if (!$invoice->is_prorata && $invoice->amount > $packagePrice) {
+        $taxAmount = $invoice->amount - $packagePrice;
+        $subtotal = $packagePrice;
+    }
+    
+    // Jika tagihan prorata, kita gunakan persentase dari setting sebagai tebakan terbaik
+    if ($invoice->is_prorata) {
+        $taxPpn = (float) \App\Models\Setting::get('tax_ppn', '0');
+        if ($taxPpn > 0) {
+            $subtotal = round($invoice->amount / (1 + ($taxPpn / 100)));
+            $taxAmount = $invoice->amount - $subtotal;
+        }
+    }
+@endphp
                 <tr>
                     <td>Tagihan Layanan Internet {{ $invoice->customer->package ? $invoice->customer->package->name : '' }}</td>
                     <td>{{ $invoice->period_label }}</td>
-                    <td class="right">Rp {{ number_format($invoice->amount, 0, ',', '.') }}</td>
+                    <td class="right">Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
                 </tr>
             </tbody>
         </table>
@@ -100,7 +120,17 @@
             <table class="total-table">
                 <tr>
                     <td>Subtotal</td>
-                    <td class="right">Rp {{ number_format($invoice->amount, 0, ',', '.') }}</td>
+                    <td class="right">Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
+                </tr>
+                @if($taxAmount > 0)
+                <tr>
+                    <td>PPN & Pajak Lainnya</td>
+                    <td class="right">Rp {{ number_format($taxAmount, 0, ',', '.') }}</td>
+                </tr>
+                @endif
+                <tr style="border-top: 1px solid #e5e7eb;">
+                    <td style="padding-top: 10px;">Total Tagihan</td>
+                    <td class="right" style="padding-top: 10px;">Rp {{ number_format($invoice->amount, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
                     <td>Sudah Dibayar</td>
