@@ -248,6 +248,10 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/payroll/deductions/{deduction}', [\App\Http\Controllers\PayrollController::class, 'destroyDeduction'])->name('payroll.deduction.destroy');
     Route::post('/payroll/{user}/disburse', [\App\Http\Controllers\PayrollController::class, 'disburse'])->name('payroll.disburse');
 
+    // Insentif & Potongan List
+    Route::get('/insentif-potongan', [\App\Http\Controllers\IncentiveDeductionController::class, 'index'])->name('insentif-potongan.index');
+    Route::delete('/insentif-potongan/destroy', [\App\Http\Controllers\IncentiveDeductionController::class, 'destroyRecord'])->name('insentif-potongan.destroy');
+
     // ── Master Data & Pengaturan ───────────────────────────────
     Route::resource('settings/areas', \App\Http\Controllers\AreaController::class);
     Route::post('settings/areas/{area}/update', [\App\Http\Controllers\AreaController::class, 'update'])->name('areas.update.post');
