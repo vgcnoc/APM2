@@ -57,14 +57,28 @@ class ResellerReportController extends Controller
             ->take(15)
             ->get();
 
+        // 6. Total Pengeluaran dan Kas Bersih
+        $totalPengeluaran = \App\Models\Expense::sum('amount');
+        $kasBersih = $totalPemasukan - $totalPengeluaran;
+
+        // 7. Riwayat Pengeluaran Terakhir
+        $recentExpenses = \App\Models\Expense::with('user')
+            ->latest('expense_date')
+            ->latest('created_at')
+            ->take(15)
+            ->get();
+
         return Inertia::render('ResellerReports/Index', [
             'stats' => [
                 'saldo_beredar' => $totalSaldoBeredar,
                 'pemasukan' => $totalPemasukan,
                 'piutang' => $totalPiutang,
+                'pengeluaran' => $totalPengeluaran,
+                'kas_bersih' => $kasBersih,
             ],
             'resellers' => $resellers,
-            'recent_transactions' => $recentTransactions
+            'recent_transactions' => $recentTransactions,
+            'recent_expenses' => $recentExpenses
         ]);
     }
 }

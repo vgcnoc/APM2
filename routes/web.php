@@ -204,6 +204,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/reseller-settlements/{payment}/approve', [\App\Http\Controllers\ResellerBillingController::class, 'approve'])->name('reseller-settlements.approve');
 
     Route::get('/reseller-reports', [\App\Http\Controllers\ResellerReportController::class, 'index'])->name('reseller-reports.index');
+    Route::post('/expenses', [\App\Http\Controllers\ExpenseController::class, 'store'])->name('expenses.store');
+    Route::delete('/expenses/{expense}', [\App\Http\Controllers\ExpenseController::class, 'destroy'])->name('expenses.destroy');
 
 
     // ── Pengguna & Hak Akses ───────────────────────────────────
