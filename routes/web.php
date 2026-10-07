@@ -255,6 +255,9 @@ Route::middleware(['auth'])->group(function () {
     // Master Insentif & Potongan
     Route::resource('settings/payroll-categories', \App\Http\Controllers\PayrollCategoryController::class);
     Route::get('api/payroll-categories/active', [\App\Http\Controllers\PayrollCategoryController::class, 'getActiveCategories'])->name('payroll-categories.active');
+    
+    // Master Fee
+    Route::resource('settings/master-fees', \App\Http\Controllers\MasterFeeController::class);
 
     // ── Master Data & Pengaturan ───────────────────────────────
     Route::resource('settings/areas', \App\Http\Controllers\AreaController::class);
