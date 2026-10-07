@@ -107,17 +107,27 @@ class ResellerBillingController extends Controller
      */
     public function settlements(Request $request)
     {
-        // Only show pending payments for Resellers
-        $payments = Payment::with(['invoice', 'customer', 'collector'])
-            ->where('status', 'pending')
+        $activeTab = $request->get('tab', 'pending');
+        
+        $query = Payment::with(['invoice', 'customer', 'collector'])
+            ->whereHas('invoice', function($q) {
+                $q->where('is_reseller_balance', true);
+            })
             ->whereHas('customer', function($q) {
                 $q->where('is_reseller', true);
-            })
-            ->latest()
-            ->paginate(10);
+            });
+
+        if ($activeTab === 'verified') {
+            $query->where('status', 'verified');
+        } else {
+            $query->where('status', 'pending');
+        }
+            
+        $payments = $query->latest()->paginate(10);
 
         return Inertia::render('ResellerBilling/Settlements', [
-            'payments' => $payments
+            'payments' => $payments,
+            'activeTab' => $activeTab
         ]);
     }
 
