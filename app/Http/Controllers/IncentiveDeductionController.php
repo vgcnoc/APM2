@@ -98,6 +98,7 @@ class IncentiveDeductionController extends Controller
         );
 
         $users = User::where('is_active', true)->get(['id', 'name']);
+        $categories = \App\Models\PayrollCategory::where('is_active', true)->get();
 
         return Inertia::render('Payroll/IncentivesDeductions', [
             'records' => $paginated,
@@ -109,6 +110,7 @@ class IncentiveDeductionController extends Controller
             ],
             'filters' => $request->only(['tab', 'month', 'year', 'search']),
             'users' => $users,
+            'payrollCategories' => $categories,
         ]);
     }
 

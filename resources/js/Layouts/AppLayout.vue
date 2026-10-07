@@ -356,13 +356,14 @@ const menuItems = [
         type: 'dropdown',
         icon: 'users',
         label: 'HR & Personalia',
-        active: (url) => (url || '').startsWith('/employees') || (url || '').startsWith('/positions') || (url || '').startsWith('/payroll') || (url || '').startsWith('/insentif-potongan'),
+        active: (url) => (url || '').startsWith('/employees') || (url || '').startsWith('/positions') || (url || '').startsWith('/payroll') || (url || '').startsWith('/insentif-potongan') || (url || '').startsWith('/settings/payroll-categories'),
         permission: 'menu_hr_employees',
         children: [
             { href: '/employees', label: 'Data Karyawan', active: (url) => (url || '').startsWith('/employees'), permission: 'menu_hr_employees' },
             { href: '/positions', label: 'Posisi / Jabatan', active: (url) => (url || '').startsWith('/positions'), permission: 'menu_hr_positions' },
             { href: '/payroll', label: 'Gaji, Insentif & Potongan', active: (url) => (url || '').length > 0 && url === '/payroll', permission: 'menu_hr_employees' },
             { href: '/insentif-potongan', label: 'Data Insentif & Potongan', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: 'menu_hr_employees' },
+            { href: '/settings/payroll-categories', label: 'Master Insentif & Potongan', active: (url) => (url || '').startsWith('/settings/payroll-categories'), permission: 'menu_hr_employees' },
         ]
     },
     

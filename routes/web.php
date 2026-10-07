@@ -251,6 +251,10 @@ Route::middleware(['auth'])->group(function () {
     // Insentif & Potongan List
     Route::get('/insentif-potongan', [\App\Http\Controllers\IncentiveDeductionController::class, 'index'])->name('insentif-potongan.index');
     Route::delete('/insentif-potongan/destroy', [\App\Http\Controllers\IncentiveDeductionController::class, 'destroyRecord'])->name('insentif-potongan.destroy');
+    
+    // Master Insentif & Potongan
+    Route::resource('settings/payroll-categories', \App\Http\Controllers\PayrollCategoryController::class);
+    Route::get('api/payroll-categories/active', [\App\Http\Controllers\PayrollCategoryController::class, 'getActiveCategories'])->name('payroll-categories.active');
 
     // ── Master Data & Pengaturan ───────────────────────────────
     Route::resource('settings/areas', \App\Http\Controllers\AreaController::class);

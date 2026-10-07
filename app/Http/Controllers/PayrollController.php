@@ -73,13 +73,16 @@ class PayrollController extends Controller
                 ];
             });
 
+        $categories = \App\Models\PayrollCategory::where('is_active', true)->get();
+
         return Inertia::render('Payroll/Index', [
             'month' => (int)$month,
             'year' => (int)$year,
             'users' => $users,
             'settings' => [
                 'disbursement_date' => $disbursementDate
-            ]
+            ],
+            'payrollCategories' => $categories
         ]);
     }
 

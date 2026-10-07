@@ -181,20 +181,13 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Kategori / Keterangan</label>
-                                    <input list="category-list" v-model="manualForm.description" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Pilih atau ketik keterangan..." required>
+                                    <input list="category-list" v-model="manualForm.description" @input="handleDescriptionChange" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Pilih atau ketik keterangan..." required>
                                     <datalist id="category-list">
                                         <template v-if="modalType === 'incentive'">
-                                            <option value="Lembur"></option>
-                                            <option value="Bonus Kerajinan"></option>
-                                            <option value="THR (Tunjangan Hari Raya)"></option>
-                                            <option value="Bonus Pencapaian Target"></option>
+                                            <option v-for="cat in (payrollCategories || []).filter(c => c.type === 'incentive' && c.mode === 'manual')" :key="cat.id" :value="cat.name"></option>
                                         </template>
                                         <template v-else>
-                                            <option value="Kasbon / Pinjaman"></option>
-                                            <option value="Potongan Absen / Terlambat"></option>
-                                            <option value="Iuran BPJS Kesehatan"></option>
-                                            <option value="Iuran BPJS Ketenagakerjaan"></option>
-                                            <option value="Denda / Ganti Rugi Barang"></option>
+                                            <option v-for="cat in (payrollCategories || []).filter(c => c.type === 'deduction' && c.mode === 'manual')" :key="cat.id" :value="cat.name"></option>
                                         </template>
                                     </datalist>
                                 </div>
@@ -226,7 +219,8 @@ const props = defineProps({
     month: Number,
     year: Number,
     users: Array,
-    settings: Object
+    settings: Object,
+    payrollCategories: Array
 });
 
 const months = [
@@ -283,6 +277,13 @@ const openManualModal = (user, type = 'incentive') => {
 const closeManualModal = () => {
     showManualModal.value = false;
     selectedUser.value = null;
+};
+
+const handleDescriptionChange = () => {
+    const category = (props.payrollCategories || []).find(c => c.name === manualForm.description && c.type === modalType.value);
+    if (category && category.default_amount > 0) {
+        manualForm.amount = category.default_amount;
+    }
 };
 
 const submitManual = () => {
