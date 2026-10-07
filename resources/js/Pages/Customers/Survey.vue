@@ -58,31 +58,31 @@
             v-model:selected="selectedIds"
         >
             <template #filters>
-                <!-- Filter Teknisi -->
-                <select v-model="selectedTechnician" class="form-select bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 w-full sm:w-auto">
-                    <option value="">Semua Teknisi / Surveyor</option>
-                    <option v-for="tech in technicians" :key="tech.id" :value="tech.id">{{ tech.name }}</option>
-                </select>
-                
-                <!-- Filter Tanggal -->
-                <input type="date" v-model="selectedDate" class="form-input bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 w-full sm:w-auto" />
-                
-                <!-- Filter Area / Wilayah -->
-                <select v-model="selectedArea" class="form-select bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 w-full sm:w-auto">
-                    <option value="">Semua Area / Wilayah</option>
-                    <option v-for="area in areas" :key="area" :value="area">{{ area }}</option>
-                </select>
+                <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 w-full">
+                    <!-- Filter Teknisi -->
+                    <select v-model="selectedTechnician" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
+                        <option value="">Semua Teknisi / Surveyor</option>
+                        <option v-for="tech in technicians" :key="tech.id" :value="tech.id">{{ tech.name }}</option>
+                    </select>
+                    
+                    <!-- Filter Tanggal -->
+                    <input type="date" v-model="selectedDate" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all" />
+                    
+                    <!-- Filter Area / Wilayah -->
+                    <select v-model="selectedArea" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
+                        <option value="">Semua Area / Wilayah</option>
+                        <option v-for="area in areas" :key="area" :value="area">{{ area }}</option>
+                    </select>
 
-
-
-                <!-- Tombol Tampilkan & Reset -->
-                <div class="flex items-center gap-2">
-                    <button @click="applyFilters" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-gray-900 rounded-lg text-sm font-medium transition-colors shadow-[0_0_10px_rgba(37,99,235,0.3)] whitespace-nowrap">
-                        Tampilkan
-                    </button>
-                    <button @click="resetFilters" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-900 rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
-                        Reset
-                    </button>
+                    <!-- Tombol Tampilkan & Reset -->
+                    <div class="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
+                        <button @click="applyFilters" class="w-full md:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl transition-colors shadow-sm shadow-blue-200 whitespace-nowrap">
+                            Tampilkan
+                        </button>
+                        <button @click="resetFilters" class="w-full md:w-auto px-4 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 font-medium text-sm rounded-xl transition-colors whitespace-nowrap">
+                            Reset
+                        </button>
+                    </div>
                 </div>
             </template>
             

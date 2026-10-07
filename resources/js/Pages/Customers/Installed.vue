@@ -41,15 +41,15 @@
             v-model:selected="selectedIds"
         >
             <template #filters>
-                <form @submit.prevent="applyFilter" class="flex flex-wrap items-center gap-2">
-                    <select v-model="filterState.area" class="form-select w-36 text-sm">
+                <form @submit.prevent="applyFilter" class="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 w-full">
+                    <select v-model="filterState.area" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
                         <option value="">Semua Area</option>
                         <option v-for="area in areas" :key="area" :value="area">
                             {{ area }}
                         </option>
                     </select>
 
-                    <select v-model="filterState.tab" class="form-select w-40 text-sm">
+                    <select v-model="filterState.tab" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
                         <option value="">Semua Status</option>
                         <option value="jadwal_pasang">Jadwal Pasang</option>
                         <option value="laporan_pasang">Laporan Pasang</option>
@@ -57,19 +57,21 @@
                         <option value="selesai_instalasi">Selesai Instalasi</option>
                     </select>
                     
-                    <div class="flex items-center gap-1">
-                        <input type="date" v-model="filterState.date_from" class="form-input w-36 text-sm" title="Tanggal Dari">
+                    <div class="flex items-center gap-2 w-full md:w-auto">
+                        <input type="date" v-model="filterState.date_from" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all" title="Tanggal Dari">
                         <span class="text-xs text-gray-500 font-medium px-1">s/d</span>
-                        <input type="date" v-model="filterState.date_to" class="form-input w-36 text-sm" title="Tanggal Sampai">
+                        <input type="date" v-model="filterState.date_to" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all" title="Tanggal Sampai">
                     </div>
 
-                    <button type="submit" class="btn-primary py-2 text-sm shadow-sm">
-                        Tampilkan
-                    </button>
-                    
-                    <button type="button" @click="resetFilter" class="btn-ghost py-2 text-sm">
-                        Reset
-                    </button>
+                    <div class="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
+                        <button type="submit" class="w-full md:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl transition-colors shadow-sm shadow-blue-200">
+                            Tampilkan
+                        </button>
+                        
+                        <button type="button" @click="resetFilter" class="w-full md:w-auto px-4 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 font-medium text-sm rounded-xl transition-colors">
+                            Reset
+                        </button>
+                    </div>
                 </form>
             </template>
             
