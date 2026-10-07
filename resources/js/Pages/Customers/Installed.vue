@@ -29,7 +29,24 @@
             />
         </div>
 
-        <!-- Tabs Menu removed (Moved to sidebar) -->
+        <!-- Tabs Menu -->
+        <div class="flex flex-wrap gap-2 mb-6 bg-slate-50/50 p-1.5 rounded-xl border border-slate-100 overflow-x-auto">
+            <button @click="filterState.tab = ''; applyFilter()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', filterState.tab === '' ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
+                Semua Status
+            </button>
+            <button @click="filterState.tab = 'jadwal_pasang'; applyFilter()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', filterState.tab === 'jadwal_pasang' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
+                Jadwal Pasang
+            </button>
+            <button @click="filterState.tab = 'laporan_pasang'; applyFilter()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', filterState.tab === 'laporan_pasang' ? 'bg-white text-amber-600 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
+                Laporan Pasang
+            </button>
+            <button @click="filterState.tab = 'audit'; applyFilter()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', filterState.tab === 'audit' ? 'bg-white text-purple-600 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
+                Audit
+            </button>
+            <button @click="filterState.tab = 'selesai_instalasi'; applyFilter()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', filterState.tab === 'selesai_instalasi' ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
+                Selesai Instalasi
+            </button>
+        </div>
 
         <DataTable
             :columns="columns"
@@ -47,14 +64,6 @@
                         <option v-for="area in areas" :key="area" :value="area">
                             {{ area }}
                         </option>
-                    </select>
-
-                    <select v-model="filterState.tab" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
-                        <option value="">Semua Status</option>
-                        <option value="jadwal_pasang">Jadwal Pasang</option>
-                        <option value="laporan_pasang">Laporan Pasang</option>
-                        <option value="audit">Audit</option>
-                        <option value="selesai_instalasi">Selesai Instalasi</option>
                     </select>
                     
                     <div class="flex items-center gap-2 w-full md:w-auto">
