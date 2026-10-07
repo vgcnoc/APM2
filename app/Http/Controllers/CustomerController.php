@@ -1396,15 +1396,18 @@ class CustomerController extends Controller
                 // Auto Incentives: Fee Market/Booking for Sales
                 if ($customer->sales_id) {
                     $salesUser = \App\Models\User::find($customer->sales_id);
-                    if ($salesUser && $salesUser->booking_fee > 0) {
-                        \App\Models\Incentive::create([
-                            'user_id' => $salesUser->id,
-                            'amount' => $salesUser->booking_fee,
-                            'type' => 'auto',
-                            'description' => 'Fee Market/Booking Pelanggan: ' . $customer->name,
-                            'incentive_date' => now(),
-                            'status' => 'pending'
-                        ]);
+                    if ($salesUser) {
+                        $feeAmount = $salesUser->booking_fee > 0 ? $salesUser->booking_fee : \App\Models\MasterFee::where('type', 'Fee Booking')->where('is_active', true)->value('nominal');
+                        if ($feeAmount > 0) {
+                            \App\Models\Incentive::create([
+                                'user_id' => $salesUser->id,
+                                'amount' => $feeAmount,
+                                'type' => 'auto',
+                                'description' => 'Fee Booking Pelanggan: ' . $customer->name,
+                                'incentive_date' => now(),
+                                'status' => 'pending'
+                            ]);
+                        }
                     }
                 }
 
@@ -1412,15 +1415,18 @@ class CustomerController extends Controller
                 $installationSchedule = $customer->technicianSchedules()->where('type', 'installation')->latest()->first();
                 if ($installationSchedule && $installationSchedule->technician_id) {
                     $techUser = \App\Models\User::find($installationSchedule->technician_id);
-                    if ($techUser && $techUser->installation_fee > 0) {
-                        \App\Models\Incentive::create([
-                            'user_id' => $techUser->id,
-                            'amount' => $techUser->installation_fee,
-                            'type' => 'auto',
-                            'description' => 'Fee Pasang Pelanggan: ' . $customer->name,
-                            'incentive_date' => now(),
-                            'status' => 'pending'
-                        ]);
+                    if ($techUser) {
+                        $feeAmount = $techUser->installation_fee > 0 ? $techUser->installation_fee : \App\Models\MasterFee::where('type', 'Fee Pasang')->where('is_active', true)->value('nominal');
+                        if ($feeAmount > 0) {
+                            \App\Models\Incentive::create([
+                                'user_id' => $techUser->id,
+                                'amount' => $feeAmount,
+                                'type' => 'auto',
+                                'description' => 'Fee Pasang Pelanggan: ' . $customer->name,
+                                'incentive_date' => now(),
+                                'status' => 'pending'
+                            ]);
+                        }
                     }
                 }
             });
@@ -1772,6 +1778,19 @@ class CustomerController extends Controller
         $schedule = $customer->technicianSchedules()->where('type', 'survey')->where('status', 'scheduled')->first();
         if ($schedule) {
             $schedule->update(['status' => 'done']);
+        }
+
+        // Auto Incentive: Fee Survey
+        $surveyFee = \App\Models\MasterFee::where('type', 'Fee Survey')->where('is_active', true)->value('nominal');
+        if ($surveyFee > 0) {
+            \App\Models\Incentive::create([
+                'user_id' => $validated['surveyor_id'],
+                'amount' => $surveyFee,
+                'type' => 'auto',
+                'description' => 'Fee Survey Pelanggan: ' . $customer->name,
+                'incentive_date' => now(),
+                'status' => 'pending'
+            ]);
         }
 
         if ($validated['feasibility'] === 'feasible') {
