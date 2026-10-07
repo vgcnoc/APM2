@@ -39,7 +39,7 @@
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal Terima</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reseller / Invoice</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Penagih</th>
-                                <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nominal Bayar</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Rincian Pembayaran</th>
                                 <th scope="col" class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
@@ -57,8 +57,15 @@
                                     <div class="text-xs text-gray-500 capitalize">{{ pay.payment_method }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-black text-green-600">Rp {{ formatRupiah(pay.amount) }}</div>
-                                    <div class="text-xs text-gray-500 italic">{{ pay.notes || '-' }}</div>
+                                    <div class="flex flex-col gap-1">
+                                        <div class="text-[11px] text-gray-500 font-medium">Tagihan: Rp {{ formatRupiah(pay.invoice?.amount || 0) }}</div>
+                                        <div class="text-sm font-black text-green-600 flex items-center gap-1">
+                                            <span class="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[10px] uppercase">Setor</span>
+                                            Rp {{ formatRupiah(pay.amount) }}
+                                        </div>
+                                        <div class="text-[11px] font-bold text-red-500">Sisa Utang: Rp {{ formatRupiah(pay.invoice?.remaining || 0) }}</div>
+                                        <div class="text-[10px] text-gray-400 italic mt-0.5 line-clamp-1 max-w-[200px]" :title="pay.notes || '-'">{{ pay.notes || '-' }}</div>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <button v-if="pay.status === 'pending'" @click="approve(pay.id)" class="inline-flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white px-3.5 py-2 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold ring-1 ring-green-600/50">

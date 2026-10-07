@@ -109,7 +109,7 @@ class ResellerBillingController extends Controller
     {
         $activeTab = $request->get('tab', 'pending');
         
-        $query = Payment::with(['invoice', 'customer', 'collector'])
+        $query = Payment::with(['invoice.payments', 'customer', 'collector'])
             ->whereHas('invoice', function($q) {
                 $q->where('is_reseller_balance', true);
             })
@@ -123,7 +123,18 @@ class ResellerBillingController extends Controller
             $query->where('status', 'pending');
         }
             
-        $payments = $query->latest()->paginate(10);
+        $payments = $query->latest()->paginate(10)
+            ->through(function ($payment) {
+                if ($payment->invoice) {
+                    $verifiedPaid = $payment->invoice->payments->where('status', 'verified')->sum('amount');
+                    $pendingPaid = $payment->invoice->payments->where('status', 'pending')->sum('amount');
+                    
+                    $payment->invoice->setAttribute('remaining', $payment->invoice->amount - $verifiedPaid);
+                    $payment->invoice->setAttribute('total_paid', $verifiedPaid);
+                    $payment->invoice->setAttribute('pending_amount', $pendingPaid);
+                }
+                return $payment;
+            });
 
         return Inertia::render('ResellerBilling/Settlements', [
             'payments' => $payments,
