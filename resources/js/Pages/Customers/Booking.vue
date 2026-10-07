@@ -351,13 +351,17 @@
                     <p class="text-sm text-gray-500 mb-4 text-center">
                         Pelanggan <strong>{{ cancelCustomer?.name }}</strong> akan dipindahkan ke menu "Dibatalkan".
                     </p>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pembatalan <span class="text-red-500">*</span></label>
+                        <input type="date" v-model="cancelDate" class="w-full rounded-xl border-gray-300 focus:border-orange-500 focus:ring focus:ring-orange-200 transition-all text-sm" required />
+                    </div>
                     <div class="mb-6">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Alasan Pembatalan <span class="text-red-500">*</span></label>
                         <textarea v-model="cancelReason" rows="3" class="w-full rounded-xl border-gray-300 focus:border-orange-500 focus:ring focus:ring-orange-200 transition-all text-sm" placeholder="Masukkan alasan pembatalan..." required></textarea>
                     </div>
                     <div class="flex items-center justify-center gap-3">
                         <button @click="showCancelModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm rounded-xl transition-colors w-full">Kembali</button>
-                        <button @click="submitCancel" :disabled="!cancelReason || isCanceling" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium text-sm rounded-xl transition-colors w-full flex justify-center items-center shadow-sm shadow-orange-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button @click="submitCancel" :disabled="!cancelReason || !cancelDate || isCanceling" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium text-sm rounded-xl transition-colors w-full flex justify-center items-center shadow-sm shadow-orange-200 disabled:opacity-50 disabled:cursor-not-allowed">
                             <svg v-if="isCanceling" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             <span v-else>Ya, Batalkan</span>
                         </button>
@@ -536,20 +540,23 @@ function deleteAllBooking() {
 const showCancelModal = ref(false);
 const cancelCustomer = ref(null);
 const cancelReason = ref('');
+const cancelDate = ref(new Date().toISOString().split('T')[0]);
 const isCanceling = ref(false);
 
 function openCancelModal(row) {
     cancelCustomer.value = row;
     cancelReason.value = '';
+    cancelDate.value = new Date().toISOString().split('T')[0];
     showCancelModal.value = true;
 }
 
 function submitCancel() {
-    if (!cancelCustomer.value || !cancelReason.value) return;
+    if (!cancelCustomer.value || !cancelReason.value || !cancelDate.value) return;
     
     isCanceling.value = true;
     router.post(`/customers/${cancelCustomer.value.id}/cancel`, {
-        cancel_reason: cancelReason.value
+        cancel_reason: cancelReason.value,
+        cancel_date: cancelDate.value
     }, {
         preserveScroll: true,
         onSuccess: () => {

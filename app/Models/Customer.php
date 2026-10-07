@@ -38,6 +38,8 @@ class Customer extends Model
         'tax_ppn',
         'tax_bhp',
         'tax_uso',
+        'cancel_reason',
+        'cancel_date',
     ];
 
     protected function casts(): array
@@ -47,6 +49,7 @@ class Customer extends Model
             'longitude' => 'decimal:8',
             'registration_date' => 'date:Y-m-d',
             'activation_date' => 'date:Y-m-d',
+            'cancel_date' => 'date:Y-m-d',
             'is_audited' => 'boolean',
         ];
     }

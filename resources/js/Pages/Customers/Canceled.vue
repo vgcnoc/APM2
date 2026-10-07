@@ -83,7 +83,7 @@
             </template>
 
             <template #cell(date)="{ row }">
-                <td class="text-xs text-gray-500">{{ row.updated_at ? new Date(row.updated_at).toLocaleDateString('id-ID') : '-' }}</td>
+                <td class="text-xs text-gray-500">{{ row.cancel_date ? new Date(row.cancel_date).toLocaleDateString('id-ID') : '-' }}</td>
             </template>
 
             <template #rowActions="{ row }">

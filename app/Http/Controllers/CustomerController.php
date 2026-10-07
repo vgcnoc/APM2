@@ -1888,11 +1888,13 @@ class CustomerController extends Controller
     {
         $request->validate([
             'cancel_reason' => 'required|string|max:1000',
+            'cancel_date' => 'required|date',
         ]);
 
         $customer->update([
             'status' => 'canceled',
             'cancel_reason' => $request->cancel_reason,
+            'cancel_date' => $request->cancel_date,
         ]);
 
         return redirect()->back()->with('success', 'Pendaftaran pelanggan berhasil dibatalkan.');
