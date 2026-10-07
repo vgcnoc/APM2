@@ -113,4 +113,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Incentive::class);
     }
+
+    public function deductions(): HasMany
+    {
+        return $this->hasMany(Deduction::class);
+    }
 }

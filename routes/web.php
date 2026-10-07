@@ -243,6 +243,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/payroll', [\App\Http\Controllers\PayrollController::class, 'index'])->name('payroll.index');
     Route::post('/payroll/settings', [\App\Http\Controllers\PayrollController::class, 'updateSettings'])->name('payroll.settings.update');
     Route::post('/payroll/{user}/incentives', [\App\Http\Controllers\PayrollController::class, 'storeIncentive'])->name('payroll.incentive.store');
+    Route::delete('/payroll/incentives/{incentive}', [\App\Http\Controllers\PayrollController::class, 'destroyIncentive'])->name('payroll.incentive.destroy');
+    Route::post('/payroll/{user}/deductions', [\App\Http\Controllers\PayrollController::class, 'storeDeduction'])->name('payroll.deduction.store');
+    Route::delete('/payroll/deductions/{deduction}', [\App\Http\Controllers\PayrollController::class, 'destroyDeduction'])->name('payroll.deduction.destroy');
     Route::post('/payroll/{user}/disburse', [\App\Http\Controllers\PayrollController::class, 'disburse'])->name('payroll.disburse');
 
     // ── Master Data & Pengaturan ───────────────────────────────

@@ -29,4 +29,9 @@ class Payroll extends Model
     {
         return $this->hasMany(Incentive::class);
     }
+
+    public function deductions()
+    {
+        return $this->hasMany(Deduction::class);
+    }
 }

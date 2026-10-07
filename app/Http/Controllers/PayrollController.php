@@ -26,17 +26,25 @@ class PayrollController extends Controller
         $disbursementDate = Setting::get('payroll_disbursement_date', '25'); // Default tanggal 25
 
         $users = User::where('is_active', true)
-            ->with(['incentives' => function($q) use ($month, $year) {
-                $q->whereMonth('incentive_date', $month)
-                  ->whereYear('incentive_date', $year);
-            }, 'payrolls' => function($q) use ($month, $year) {
-                $q->where('month', $month)->where('year', $year);
-            }])
+            ->with([
+                'incentives' => function($q) use ($month, $year) {
+                    $q->whereMonth('incentive_date', $month)->whereYear('incentive_date', $year);
+                }, 
+                'deductions' => function($q) use ($month, $year) {
+                    $q->whereMonth('deduction_date', $month)->whereYear('deduction_date', $year);
+                },
+                'payrolls' => function($q) use ($month, $year) {
+                    $q->where('month', $month)->where('year', $year);
+                }
+            ])
             ->get()
             ->map(function ($user) {
                 $pendingIncentives = $user->incentives->where('status', 'pending');
                 $totalAuto = $pendingIncentives->where('type', 'auto')->sum('amount');
                 $totalManual = $pendingIncentives->where('type', 'manual')->sum('amount');
+                
+                $pendingDeductions = $user->deductions->where('status', 'pending');
+                $totalDeduction = $pendingDeductions->sum('amount');
                 
                 $payroll = $user->payrolls->first();
                 
@@ -45,6 +53,7 @@ class PayrollController extends Controller
                 // If paid, show historical data from payroll. If draft, show live calculation
                 $baseSalary = $isPaid ? $payroll->base_salary : $user->base_salary;
                 $totalIncentive = $isPaid ? $payroll->total_incentive : ($totalAuto + $totalManual);
+                $finalDeduction = $isPaid ? $payroll->total_deduction : $totalDeduction;
                 
                 return [
                     'id' => $user->id,
@@ -52,13 +61,15 @@ class PayrollController extends Controller
                     'role' => $user->role,
                     'base_salary' => $baseSalary,
                     'auto_incentive_rate' => $user->incentive_rate,
-                    'total_auto_incentive' => $isPaid ? 0 : $totalAuto, // if paid, it's grouped in total_incentive
+                    'total_auto_incentive' => $isPaid ? 0 : $totalAuto,
                     'total_manual_incentive' => $isPaid ? 0 : $totalManual,
                     'total_incentive' => $totalIncentive,
-                    'net_salary' => $isPaid ? $payroll->net_salary : ($baseSalary + $totalIncentive),
+                    'total_deduction' => $finalDeduction,
+                    'net_salary' => $isPaid ? $payroll->net_salary : max(0, $baseSalary + $totalIncentive - $finalDeduction),
                     'is_paid' => $isPaid,
                     'payment_date' => $isPaid ? $payroll->payment_date : null,
-                    'incentives_list' => $user->incentives->toArray()
+                    'incentives_list' => $user->incentives->toArray(),
+                    'deductions_list' => $user->deductions->toArray()
                 ];
             });
 
@@ -122,6 +133,41 @@ class PayrollController extends Controller
     }
 
     /**
+     * Tambah Potongan Manual
+     */
+    public function storeDeduction(Request $request, User $user)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:1',
+            'description' => 'required|string|max:255',
+            'deduction_date' => 'required|date'
+        ]);
+
+        \App\Models\Deduction::create([
+            'user_id' => $user->id,
+            'amount' => $request->amount,
+            'type' => 'manual',
+            'description' => $request->description,
+            'deduction_date' => $request->deduction_date,
+            'status' => 'pending'
+        ]);
+
+        return back()->with('success', 'Potongan berhasil ditambahkan untuk ' . $user->name);
+    }
+    
+    /**
+     * Hapus Potongan Manual
+     */
+    public function destroyDeduction(\App\Models\Deduction $deduction)
+    {
+        if ($deduction->status === 'applied') {
+            return back()->with('error', 'Tidak bisa menghapus potongan yang sudah dicairkan.');
+        }
+        $deduction->delete();
+        return back()->with('success', 'Potongan berhasil dihapus.');
+    }
+
+    /**
      * Cairkan Gaji (Disbursement)
      */
     public function disburse(Request $request, User $user)
@@ -144,8 +190,16 @@ class PayrollController extends Controller
                 ->where('status', 'pending')
                 ->get();
 
+            // Get all pending deductions for this month
+            $pendingDeductions = \App\Models\Deduction::where('user_id', $user->id)
+                ->whereMonth('deduction_date', $month)
+                ->whereYear('deduction_date', $year)
+                ->where('status', 'pending')
+                ->get();
+
             $totalIncentive = $pendingIncentives->sum('amount');
-            $netSalary = $user->base_salary + $totalIncentive;
+            $totalDeduction = $pendingDeductions->sum('amount');
+            $netSalary = max(0, $user->base_salary + $totalIncentive - $totalDeduction);
 
             // 1. Create Expense (Buku Kas Umum)
             $expense = Expense::create([
@@ -165,7 +219,7 @@ class PayrollController extends Controller
                 [
                     'base_salary' => $user->base_salary,
                     'total_incentive' => $totalIncentive,
-                    'total_deduction' => 0,
+                    'total_deduction' => $totalDeduction,
                     'net_salary' => $netSalary,
                     'status' => 'paid',
                     'payment_date' => now(),
@@ -178,6 +232,14 @@ class PayrollController extends Controller
             foreach ($pendingIncentives as $inc) {
                 $inc->update([
                     'status' => 'paid',
+                    'payroll_id' => $payroll->id
+                ]);
+            }
+
+            // 4. Mark Deductions as Applied and link to Payroll
+            foreach ($pendingDeductions as $ded) {
+                $ded->update([
+                    'status' => 'applied',
                     'payroll_id' => $payroll->id
                 ]);
             }

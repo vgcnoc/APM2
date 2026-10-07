@@ -1,5 +1,5 @@
 <template>
-    <AppLayout title="Penggajian & Insentif Karyawan" subtitle="Manajemen Gaji, Bonus, dan Pencairan">
+    <AppLayout title="Gaji, Insentif & Potongan" subtitle="Manajemen Gaji, Bonus, Potongan, dan Pencairan">
         <div class="max-w-7xl mx-auto space-y-6">
             
             <div v-if="$page.props.flash?.success" class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-2xl text-sm font-medium shadow-sm flex items-center gap-2">
@@ -93,11 +93,39 @@
                                 <span class="font-bold text-emerald-600">+ Rp {{ formatRupiah(user.total_manual_incentive) }}</span>
                             </div>
 
-                            <div v-if="!user.is_paid" class="pt-1 pb-2">
-                                <button @click="openManualModal(user)" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors w-full justify-center">
+                            <div v-for="inc in user.incentives_list.filter(i => i.type === 'manual')" :key="'inc-'+inc.id" class="flex justify-between items-center text-xs text-gray-500 pl-4 mb-1">
+                                <span>↳ {{ inc.description }}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-emerald-600">+ {{ formatRupiah(inc.amount) }}</span>
+                                    <button v-if="inc.status === 'pending'" @click="destroyIncentive(inc.id)" class="text-rose-500 hover:text-rose-700">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div v-if="!user.is_paid" class="pt-1 pb-2 flex gap-2">
+                                <button @click="openManualModal(user, 'incentive')" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center justify-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2 py-1.5 rounded-lg transition-colors w-full">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                                    Tambah Bonus Manual
+                                    Bonus
                                 </button>
+                                <button @click="openManualModal(user, 'deduction')" class="text-xs font-bold text-rose-600 hover:text-rose-800 flex items-center justify-center gap-1 bg-rose-50 hover:bg-rose-100 px-2 py-1.5 rounded-lg transition-colors w-full">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg>
+                                    Potongan
+                                </button>
+                            </div>
+
+                            <div class="flex justify-between items-center text-sm border-b border-gray-100 pb-2">
+                                <span class="text-gray-500">Total Potongan:</span>
+                                <span class="font-bold text-rose-600">- Rp {{ formatRupiah(user.total_deduction) }}</span>
+                            </div>
+                            <div v-for="ded in user.deductions_list" :key="'ded-'+ded.id" class="flex justify-between items-center text-xs text-gray-500 pl-4 mb-1">
+                                <span>↳ {{ ded.description }}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-rose-600">- {{ formatRupiah(ded.amount) }}</span>
+                                    <button v-if="ded.status === 'pending'" @click="destroyDeduction(ded.id)" class="text-rose-500 hover:text-rose-700">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="bg-gray-50 rounded-xl p-3 flex justify-between items-center mt-2 border border-gray-100">
@@ -127,10 +155,11 @@
                     <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full border border-gray-100">
                         <div class="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex items-center justify-between">
                             <h3 class="text-lg leading-6 font-bold text-gray-900 flex items-center gap-2">
-                                <span class="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                <span :class="modalType === 'incentive' ? 'bg-indigo-100 text-indigo-600' : 'bg-rose-100 text-rose-600'" class="p-1.5 rounded-lg">
+                                    <svg v-if="modalType === 'incentive'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                    <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg>
                                 </span>
-                                Tambah Bonus / Insentif
+                                {{ modalType === 'incentive' ? 'Tambah Bonus / Insentif' : 'Tambah Potongan' }}
                             </h3>
                             <button @click="closeManualModal" class="text-gray-400 hover:text-gray-500">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -143,24 +172,24 @@
                                     <p class="text-sm font-medium text-indigo-900">Karyawan: <strong>{{ selectedUser?.name }}</strong></p>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700">Tanggal Insentif</label>
-                                    <input type="date" v-model="manualForm.incentive_date" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                                    <label class="block text-sm font-medium text-gray-700">Tanggal {{ modalType === 'incentive' ? 'Insentif' : 'Potongan' }}</label>
+                                    <input type="date" v-model="manualForm.date" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700">Nominal Bonus (Rp)</label>
+                                    <label class="block text-sm font-medium text-gray-700">Nominal (Rp)</label>
                                     <input type="number" v-model="manualForm.amount" min="1" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-bold text-lg" placeholder="Contoh: 50000" required>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Keterangan / Alasan</label>
-                                    <textarea v-model="manualForm.description" rows="2" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Contoh: Bonus rajin, lembur, THR, dll" required></textarea>
+                                    <textarea v-model="manualForm.description" rows="2" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Contoh: Bonus rajin, Potongan kasbon, dll" required></textarea>
                                 </div>
                                 
                                 <div class="pt-4 flex justify-end gap-3">
                                     <button type="button" @click="closeManualModal" class="bg-white py-2.5 px-5 border border-gray-300 rounded-xl shadow-sm text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all">
                                         Batal
                                     </button>
-                                    <button type="submit" :disabled="manualForm.processing" class="inline-flex justify-center py-2.5 px-5 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all disabled:opacity-50">
-                                        {{ manualForm.processing ? 'Menyimpan...' : 'Simpan Bonus' }}
+                                    <button type="submit" :disabled="manualForm.processing" :class="modalType === 'incentive' ? 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500' : 'bg-rose-600 hover:bg-rose-700 focus:ring-rose-500'" class="inline-flex justify-center py-2.5 px-5 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all disabled:opacity-50">
+                                        {{ manualForm.processing ? 'Menyimpan...' : 'Simpan ' + (modalType === 'incentive' ? 'Bonus' : 'Potongan') }}
                                     </button>
                                 </div>
                             </form>
@@ -221,15 +250,17 @@ const formatRupiah = (number) => {
 
 // Manual Modal
 const showManualModal = ref(false);
+const modalType = ref('incentive'); // 'incentive' or 'deduction'
 const selectedUser = ref(null);
 const manualForm = useForm({
     amount: '',
     description: '',
-    incentive_date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split('T')[0],
 });
 
-const openManualModal = (user) => {
+const openManualModal = (user, type = 'incentive') => {
     selectedUser.value = user;
+    modalType.value = type;
     manualForm.reset();
     showManualModal.value = true;
 };
@@ -240,12 +271,35 @@ const closeManualModal = () => {
 };
 
 const submitManual = () => {
-    manualForm.post(route('payroll.incentive.store', selectedUser.value.id), {
+    const r = modalType.value === 'incentive' 
+        ? route('payroll.incentive.store', selectedUser.value.id)
+        : route('payroll.deduction.store', selectedUser.value.id);
+
+    // Map `date` to either `incentive_date` or `deduction_date`
+    const payload = {
+        amount: manualForm.amount,
+        description: manualForm.description,
+        [modalType.value === 'incentive' ? 'incentive_date' : 'deduction_date']: manualForm.date
+    };
+
+    router.post(r, payload, {
         preserveScroll: true,
         onSuccess: () => {
             closeManualModal();
         }
     });
+};
+
+const destroyIncentive = (id) => {
+    if (confirm('Hapus insentif manual ini?')) {
+        router.delete(route('payroll.incentive.destroy', id), { preserveScroll: true });
+    }
+};
+
+const destroyDeduction = (id) => {
+    if (confirm('Hapus potongan manual ini?')) {
+        router.delete(route('payroll.deduction.destroy', id), { preserveScroll: true });
+    }
 };
 
 const disburse = (user) => {
