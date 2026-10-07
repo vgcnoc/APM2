@@ -171,6 +171,20 @@ class CustomerBillingController extends Controller
                 $invoice->update(['status' => 'partial']);
             }
 
+            // AUTO INCENTIVE GENERATION
+            // Jika penagih (collector) memiliki incentive_rate > 0, berikan insentif
+            if ($payment->collector && $payment->collector->incentive_rate > 0) {
+                \App\Models\Incentive::create([
+                    'user_id' => $payment->collector_id,
+                    'amount' => $payment->collector->incentive_rate,
+                    'type' => 'auto',
+                    'description' => 'Insentif penagihan Invoice: ' . $invoice->invoice_number,
+                    'reference_id' => 'payment_' . $payment->id,
+                    'incentive_date' => now(),
+                    'status' => 'pending'
+                ]);
+            }
+
             DB::commit();
             return back()->with('success', 'Setoran pelanggan berhasil divalidasi dan tersinkronisasi ke Invoice.');
         } catch (\Exception $e) {

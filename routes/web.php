@@ -239,6 +239,12 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('tickets', TicketController::class);
     // Route::resource('schedules', TechnicianScheduleController::class);
 
+    // ── Penggajian & Insentif (Payroll) ────────────────────────
+    Route::get('/payroll', [\App\Http\Controllers\PayrollController::class, 'index'])->name('payroll.index');
+    Route::post('/payroll/settings', [\App\Http\Controllers\PayrollController::class, 'updateSettings'])->name('payroll.settings.update');
+    Route::post('/payroll/{user}/incentives', [\App\Http\Controllers\PayrollController::class, 'storeIncentive'])->name('payroll.incentive.store');
+    Route::post('/payroll/{user}/disburse', [\App\Http\Controllers\PayrollController::class, 'disburse'])->name('payroll.disburse');
+
     // ── Master Data & Pengaturan ───────────────────────────────
     Route::resource('settings/areas', \App\Http\Controllers\AreaController::class);
     Route::post('settings/areas/{area}/update', [\App\Http\Controllers\AreaController::class, 'update'])->name('areas.update.post');

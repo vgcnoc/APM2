@@ -352,6 +352,7 @@ const menuItems = [
         children: [
             { href: '/employees', label: 'Data Karyawan', active: (url) => (url || '').startsWith('/employees'), permission: 'menu_hr_employees' },
             { href: '/positions', label: 'Posisi / Jabatan', active: (url) => (url || '').startsWith('/positions'), permission: 'menu_hr_positions' },
+            { href: '/payroll', label: 'Gaji & Insentif', active: (url) => (url || '').startsWith('/payroll'), permission: 'menu_hr_employees' },
         ]
     },
     

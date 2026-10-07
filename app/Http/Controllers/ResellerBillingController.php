@@ -172,6 +172,19 @@ class ResellerBillingController extends Controller
                 $invoice->update(['status' => 'partial']);
             }
 
+            // AUTO INCENTIVE GENERATION
+            if ($payment->collector && $payment->collector->incentive_rate > 0) {
+                \App\Models\Incentive::create([
+                    'user_id' => $payment->collector_id,
+                    'amount' => $payment->collector->incentive_rate,
+                    'type' => 'auto',
+                    'description' => 'Insentif penagihan Reseller Invoice: ' . $invoice->invoice_number,
+                    'reference_id' => 'payment_' . $payment->id,
+                    'incentive_date' => now(),
+                    'status' => 'pending'
+                ]);
+            }
+
             DB::commit();
             return back()->with('success', 'Pelunasan berhasil disetujui. Saldo tagihan telah berkurang.');
         } catch (\Exception $e) {

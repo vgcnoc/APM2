@@ -150,6 +150,19 @@
                         </label>
                     </div>
 
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Gaji Pokok (Rp)</label>
+                            <input type="number" v-model="form.base_salary" min="0" class="w-full border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5">
+                            <div v-if="form.errors.base_salary" class="text-red-500 text-xs mt-1">{{ form.errors.base_salary }}</div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Insentif per Action (Rp)</label>
+                            <input type="number" v-model="form.incentive_rate" min="0" class="w-full border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5">
+                            <div v-if="form.errors.incentive_rate" class="text-red-500 text-xs mt-1">{{ form.errors.incentive_rate }}</div>
+                        </div>
+                    </div>
+
                     <div class="pt-4 flex justify-end gap-3 border-t border-gray-100">
                         <button type="button" @click="closeModal" class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">Batal</button>
                         <button type="submit" :disabled="form.processing" class="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
@@ -197,6 +210,8 @@ const form = useForm({
     role: '',
     area_id: null,
     accessible_areas: [],
+    base_salary: 0,
+    incentive_rate: 0,
     is_active: true,
 });
 
@@ -228,6 +243,8 @@ function openEditModal(user) {
     form.role = user.role;
     form.area_id = user.area_id;
     form.accessible_areas = user.accessible_areas || [];
+    form.base_salary = user.base_salary || 0;
+    form.incentive_rate = user.incentive_rate || 0;
     form.password = '';
     form.is_active = !!user.is_active;
     isModalOpen.value = true;

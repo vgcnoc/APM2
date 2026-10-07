@@ -22,6 +22,8 @@ class User extends Authenticatable
         'area_id',
         'accessible_areas',
         'is_active',
+        'base_salary',
+        'incentive_rate',
     ];
 
     protected $hidden = [
@@ -100,5 +102,15 @@ class User extends Authenticatable
     public function reseller(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(Reseller::class, 'user_id');
+    }
+
+    public function payrolls(): HasMany
+    {
+        return $this->hasMany(Payroll::class);
+    }
+
+    public function incentives(): HasMany
+    {
+        return $this->hasMany(Incentive::class);
     }
 }
