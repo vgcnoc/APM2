@@ -236,7 +236,7 @@ const menuItems = [
     { type: 'link', href: '/customers/survey', icon: 'clipboard-check', label: 'Survey Lokasi', active: (url) => (url || '').startsWith('/customers/survey'), permission: 'menu_customers_survey' },
     { type: 'link', href: '/customers/installed', icon: 'cog', label: 'Instalasi Jaringan', active: (url) => (url || '').startsWith('/customers/installed'), permission: 'menu_customers_installed' },
     { type: 'link', href: '/customers/activation', icon: 'key', label: 'Aktivasi Layanan', active: (url) => (url || '').startsWith('/customers/activation'), permission: 'menu_customers_activation' },
-    { type: 'link', href: '/canceled', icon: 'x-circle', label: 'Dibatalkan', active: (url) => (url || '').startsWith('/canceled'), permission: 'menu_customers_booking' },
+    { type: 'link', href: '/customers/canceled', icon: 'x-circle', label: 'Dibatalkan', active: (url) => (url || '').startsWith('/customers/canceled'), permission: 'menu_customers_booking' },
     
     { type: 'group', label: 'BILLING & KEUANGAN' },
     { type: 'link', href: '/invoices', icon: 'document-text', label: 'Invoice Pelanggan', active: (url) => (url || '').length > 0 && url === '/invoices', permission: 'menu_customers_all' },
