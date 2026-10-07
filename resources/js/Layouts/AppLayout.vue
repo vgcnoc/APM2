@@ -237,7 +237,9 @@ const menuItems = [
         permission: 'menu_tickets',
         children: [
             { href: '/tickets', label: 'Semua Gangguan', active: (url) => (url || '').length > 0 && url === '/tickets', permission: 'menu_tickets' },
-            { href: '/cbp', label: 'CBP / Cabut Perangkat', active: (url) => (url || '').startsWith('/cbp'), permission: 'menu_tickets' },
+            { href: '/cbp', label: 'CBP / Cabut Perangkat', active: (url) => (url || '').length > 0 && url === '/cbp', permission: 'menu_tickets' },
+            { href: '/cbp/jadwal', label: 'Jadwal CBP', active: (url) => (url || '').startsWith('/cbp/jadwal'), permission: 'menu_tickets' },
+            { href: '/cbp/laporan', label: 'Laporan CBP', active: (url) => (url || '').startsWith('/cbp/laporan'), permission: 'menu_tickets' },
         ]
     },
 

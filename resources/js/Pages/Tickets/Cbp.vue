@@ -54,7 +54,6 @@
                                 <th class="p-4">Status</th>
                                 <th class="p-4">Teknisi</th>
                                 <th class="p-4">Waktu Selesai</th>
-                                <th class="p-4 w-24 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 text-sm">
@@ -88,11 +87,13 @@
                                     </span>
                                 </td>
                                 <td class="p-4">
-                                    <div v-if="req.assignee" class="flex items-center gap-2">
-                                        <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700">
-                                            {{ req.assignee.name.charAt(0) }}
+                                    <div v-if="req.technicians && req.technicians.length" class="flex flex-col gap-1">
+                                        <div v-for="tech in req.technicians" :key="tech.id" class="flex items-center gap-2">
+                                            <div class="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[9px] font-bold text-blue-700">
+                                                {{ tech.name.charAt(0) }}
+                                            </div>
+                                            <span class="text-xs font-medium text-gray-700">{{ tech.name }}</span>
                                         </div>
-                                        <span class="text-xs font-medium text-gray-700">{{ req.assignee.name }}</span>
                                     </div>
                                     <span v-else class="text-xs text-gray-400 italic">Belum ditugaskan</span>
                                 </td>
@@ -100,15 +101,6 @@
                                     <span v-if="req.completed_at" class="text-xs text-gray-600">{{ req.completed_at }}</span>
                                     <span v-else class="text-xs text-gray-400">-</span>
                                 </td>
-                                <td class="p-4 text-center">
-                                    <div class="flex items-center justify-center gap-2">
-                                        <button v-if="req.status === 'pending'" @click="openAssignModal(req)" class="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors" title="Tugaskan Teknisi">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                                        </button>
-                                        <button v-if="req.status === 'assigned'" @click="openProgressModal(req)" class="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors" title="Selesaikan">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                        </button>
-                                    </div>
                                 </td>
                             </tr>
                             <tr v-if="!requests.data.length">
@@ -165,11 +157,23 @@
                                 </div>
                             </div>
 
-                            <!-- Customer ID -->
+                            <!-- Area Selection -->
                             <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">ID Pelanggan (Database ID)</label>
-                                <input type="number" v-model="form.customer_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all" placeholder="Masukkan ID Pelanggan" required>
-                                <p class="text-[10px] text-gray-500 mt-1">Masukkan ID Database Pelanggan yang akan di-stop permanen.</p>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Pilih Area / Wilayah</label>
+                                <select v-model="selectedArea" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all">
+                                    <option value="" disabled>Pilih Area...</option>
+                                    <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                                </select>
+                            </div>
+
+                            <!-- Customer ID -->
+                            <div v-if="selectedArea">
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Pilih Pelanggan</label>
+                                <select v-model="form.customer_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all" required>
+                                    <option value="" disabled>Pilih Pelanggan...</option>
+                                    <option v-for="cust in filteredCustomers" :key="cust.id" :value="cust.id">{{ cust.customer_code }} - {{ cust.name }}</option>
+                                </select>
+                                <p class="text-[10px] text-gray-500 mt-1">Pelanggan yang dipilih akan di-stop permanen.</p>
                             </div>
 
                             <!-- Alasan -->
@@ -177,21 +181,12 @@
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Alasan Pencabutan</label>
                                 <textarea v-model="form.reason" rows="3" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all" placeholder="Jelaskan alasan pelanggan berhenti... (misal: pindah rumah, dsb)" required></textarea>
                             </div>
-
-                            <!-- Tugaskan Ke (Optional) -->
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tugaskan Ke Teknisi <span class="text-gray-400 font-normal lowercase">(Opsional)</span></label>
-                                <select v-model="form.assigned_to" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all">
-                                    <option value="">Nanti Saja (Pending)</option>
-                                    <option v-for="tech in technicians" :key="tech.id" :value="tech.id">{{ tech.name }}</option>
-                                </select>
-                            </div>
                         </div>
 
                         <div class="px-6 py-4 bg-gray-50/50 border-t border-gray-100 rounded-b-2xl flex justify-end gap-3 shrink-0">
                             <button type="button" @click="closeModal" class="px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">Batal</button>
-                            <button type="submit" :disabled="form.processing" class="bg-red-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-sm shadow-red-500/20 hover:bg-red-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                {{ form.processing ? 'Menyimpan...' : 'Simpan & Stop Permanen' }}
+                            <button type="submit" :disabled="form.processing || !form.customer_id" class="bg-red-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-sm shadow-red-500/20 hover:bg-red-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                {{ form.processing ? 'Menyimpan...' : 'Eskalasi' }}
                             </button>
                         </div>
                     </form>
@@ -306,115 +301,55 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     requests: Object,
-    technicians: Array,
-    materials: Array,
+    areas: Array,
+    customers: Array,
     filters: Object,
 });
 
 const search = ref(props.filters.search || '');
-const filterStatus = ref(props.filters.status || '');
 
 function performSearch() {
     router.get('/cbp', {
         search: search.value,
-        status: filterStatus.value,
     }, { preserveState: true, preserveScroll: true });
 }
 
 // Create Modal
 const showModal = ref(false);
+const selectedArea = ref('');
+
 const form = useForm({
     customer_id: '',
     reason: '',
-    assigned_to: '',
+});
+
+const filteredCustomers = computed(() => {
+    if (!selectedArea.value) return [];
+    return props.customers.filter(c => c.area_id === selectedArea.value);
 });
 
 function openModal() {
     form.reset();
+    selectedArea.value = '';
     showModal.value = true;
 }
 
 function closeModal() {
     showModal.value = false;
     form.reset();
+    selectedArea.value = '';
 }
 
 function submitCreate() {
     form.post('/cbp', {
         preserveScroll: true,
         onSuccess: () => closeModal(),
-    });
-}
-
-// Assign Modal
-const showAssignModal = ref(false);
-const selectedCbp = ref(null);
-const assignForm = useForm({
-    assigned_to: '',
-});
-
-function openAssignModal(req) {
-    selectedCbp.value = req;
-    assignForm.assigned_to = '';
-    showAssignModal.value = true;
-}
-
-function closeAssignModal() {
-    showAssignModal.value = false;
-    selectedCbp.value = null;
-    assignForm.reset();
-}
-
-function submitAssign() {
-    assignForm.post(`/cbp/${selectedCbp.value.id}/assign`, {
-        preserveScroll: true,
-        onSuccess: () => closeAssignModal(),
-    });
-}
-
-// Progress Modal
-const showProgressModal = ref(false);
-const progressForm = useForm({
-    status: 'completed',
-    notes: '',
-    materials: [],
-});
-
-function addMaterial() {
-    progressForm.materials.push({
-        material_id: '',
-        quantity: 1,
-    });
-}
-
-function removeMaterial(index) {
-    progressForm.materials.splice(index, 1);
-}
-
-function openProgressModal(req) {
-    selectedCbp.value = req;
-    progressForm.status = 'completed';
-    progressForm.notes = req.notes || '';
-    progressForm.materials = [];
-    showProgressModal.value = true;
-}
-
-function closeProgressModal() {
-    showProgressModal.value = false;
-    selectedCbp.value = null;
-    progressForm.reset();
-}
-
-function submitProgress() {
-    progressForm.post(`/cbp/${selectedCbp.value.id}/status`, {
-        preserveScroll: true,
-        onSuccess: () => closeProgressModal(),
     });
 }
 </script>

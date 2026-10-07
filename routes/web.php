@@ -248,6 +248,8 @@ Route::middleware(['auth'])->group(function () {
     
     // CBP / Cabut Perangkat
     Route::get('cbp', [\App\Http\Controllers\CbpRequestController::class, 'index'])->name('cbp.index');
+    Route::get('cbp/jadwal', [\App\Http\Controllers\CbpRequestController::class, 'jadwal'])->name('cbp.jadwal');
+    Route::get('cbp/laporan', [\App\Http\Controllers\CbpRequestController::class, 'laporan'])->name('cbp.laporan');
     Route::post('cbp', [\App\Http\Controllers\CbpRequestController::class, 'store'])->name('cbp.store');
     Route::post('cbp/{cbp}/assign', [\App\Http\Controllers\CbpRequestController::class, 'assign'])->name('cbp.assign');
     Route::post('cbp/{cbp}/status', [\App\Http\Controllers\CbpRequestController::class, 'updateStatus'])->name('cbp.status');

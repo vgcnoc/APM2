@@ -10,7 +10,7 @@ class CbpRequestController extends Controller
 {
     public function index(Request $request)
     {
-        $query = CbpRequest::with(['customer', 'assignee', 'creator']);
+        $query = CbpRequest::with(['customer', 'technicians', 'creator'])->where('status', 'pending');
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -21,8 +21,32 @@ class CbpRequestController extends Controller
                 });
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        $cbpRequests = $query->latest('id')
+            ->paginate($request->per_page ?? 15)
+            ->withQueryString();
+
+        $areas = \App\Models\Area::all();
+        $customers = \App\Models\Customer::where('status', '!=', 'terminated')->select('id', 'name', 'customer_code', 'area_id')->get();
+
+        return Inertia::render('Tickets/Cbp', [
+            'requests' => $cbpRequests,
+            'areas' => $areas,
+            'customers' => $customers,
+            'filters' => $request->only(['search']),
+        ]);
+    }
+
+    public function jadwal(Request $request)
+    {
+        $query = CbpRequest::with(['customer', 'technicians', 'creator'])->whereIn('status', ['pending', 'assigned']);
+
+        if ($request->filled('search')) {
+            $search = strtolower($request->search);
+            $query->where('cbp_number', 'like', "%{$search}%")
+                ->orWhereHas('customer', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('customer_code', 'like', "%{$search}%");
+                });
         }
 
         $cbpRequests = $query->latest('id')
@@ -30,13 +54,37 @@ class CbpRequestController extends Controller
             ->withQueryString();
 
         $technicians = \App\Models\User::role('teknisi')->get();
-        $materials = \App\Models\Material::all();
 
-        return Inertia::render('Tickets/Cbp', [
+        return Inertia::render('Tickets/CbpJadwal', [
             'requests' => $cbpRequests,
             'technicians' => $technicians,
+            'filters' => $request->only(['search']),
+        ]);
+    }
+
+    public function laporan(Request $request)
+    {
+        $query = CbpRequest::with(['customer', 'technicians', 'creator'])->whereIn('status', ['assigned', 'completed']);
+
+        if ($request->filled('search')) {
+            $search = strtolower($request->search);
+            $query->where('cbp_number', 'like', "%{$search}%")
+                ->orWhereHas('customer', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('customer_code', 'like', "%{$search}%");
+                });
+        }
+
+        $cbpRequests = $query->latest('id')
+            ->paginate($request->per_page ?? 15)
+            ->withQueryString();
+
+        $materials = \App\Models\Material::all();
+
+        return Inertia::render('Tickets/CbpLaporan', [
+            'requests' => $cbpRequests,
             'materials' => $materials,
-            'filters' => $request->only(['search', 'status']),
+            'filters' => $request->only(['search']),
         ]);
     }
 
@@ -45,7 +93,6 @@ class CbpRequestController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'reason' => 'required|string',
-            'assigned_to' => 'nullable|exists:users,id',
             'notes' => 'nullable|string',
         ]);
 
@@ -62,25 +109,22 @@ class CbpRequestController extends Controller
         }
 
         $validated['created_by'] = auth()->id();
-        if (!empty($validated['assigned_to'])) {
-            $validated['status'] = 'assigned';
-        }
+        $validated['status'] = 'pending';
 
         CbpRequest::create($validated);
 
-        return redirect()->back()->with('success', 'Data Pencabutan berhasil dibuat dan Pelanggan sudah di-Stop Permanen.');
+        return redirect()->back()->with('success', 'Data Pencabutan berhasil diekskalasi dan Pelanggan sudah di-Stop Permanen.');
     }
 
     public function assign(Request $request, CbpRequest $cbp)
     {
         $validated = $request->validate([
-            'assigned_to' => 'required|exists:users,id',
+            'technicians' => 'required|array',
+            'technicians.*' => 'exists:users,id',
         ]);
 
-        $cbp->update([
-            'assigned_to' => $validated['assigned_to'],
-            'status' => 'assigned',
-        ]);
+        $cbp->update(['status' => 'assigned']);
+        $cbp->technicians()->sync($validated['technicians']);
 
         return redirect()->back()->with('success', 'Tugas Pencabutan berhasil ditugaskan ke Teknisi.');
     }

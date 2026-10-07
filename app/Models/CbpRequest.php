@@ -23,9 +23,9 @@ class CbpRequest extends Model
         return $this->belongsTo(Customer::class);
     }
 
-    public function assignee()
+    public function technicians()
     {
-        return $this->belongsTo(User::class, 'assigned_to');
+        return $this->belongsToMany(User::class, 'cbp_request_user', 'cbp_request_id', 'user_id');
     }
 
     public function creator()
