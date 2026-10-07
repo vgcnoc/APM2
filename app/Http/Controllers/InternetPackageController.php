@@ -46,6 +46,7 @@ class InternetPackageController extends Controller
             'rate_limit' => 'nullable|string|max:255',
             'active_period' => 'required|integer|min:1',
             'active_period_unit' => 'required|in:Hari,Minggu,Bulan,Tahun',
+            'fee_reseller' => 'required|numeric|min:0',
         ];
     }
 
@@ -53,6 +54,10 @@ class InternetPackageController extends Controller
     {
         $validated = $request->validate($this->getValidationRules());
         
+        if ($validated['fee_reseller'] > $validated['price']) {
+            return redirect()->back()->with('error', 'Fee Reseller tidak boleh melebihi harga jual.');
+        }
+
         InternetPackage::create($validated);
 
         return redirect()->back()->with('success', 'Paket internet berhasil ditambahkan.');
@@ -62,6 +67,10 @@ class InternetPackageController extends Controller
     {
         $validated = $request->validate($this->getValidationRules());
         
+        if ($validated['fee_reseller'] > $validated['price']) {
+            return redirect()->back()->with('error', 'Fee Reseller tidak boleh melebihi harga jual.');
+        }
+
         $internetPackage->update($validated);
 
         return redirect()->back()->with('success', 'Paket internet berhasil diperbarui.');
