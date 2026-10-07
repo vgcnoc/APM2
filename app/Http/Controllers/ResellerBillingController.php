@@ -23,7 +23,18 @@ class ResellerBillingController extends Controller
             ->where('is_reseller_balance', true)
             ->whereIn('status', ['unpaid', 'partial']);
             
-        $invoices = $query->latest()->paginate(10);
+        $invoices = $query->latest()->paginate(10)
+            ->through(function ($invoice) {
+                $verifiedPaid = $invoice->payments->where('status', 'verified')->sum('amount');
+                $pendingPaid = $invoice->payments->where('status', 'pending')->sum('amount');
+                
+                return array_merge($invoice->toArray(), [
+                    'remaining' => $invoice->amount - $verifiedPaid,
+                    'total_paid' => $verifiedPaid,
+                    'pending_amount' => $pendingPaid,
+                    'effective_remaining' => $invoice->amount - $verifiedPaid - $pendingPaid
+                ]);
+            });
 
         return Inertia::render('ResellerBilling/Index', [
             'invoices' => $invoices

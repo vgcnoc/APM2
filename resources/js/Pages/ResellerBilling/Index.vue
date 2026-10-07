@@ -37,16 +37,21 @@
                                     <div class="text-xs text-gray-500">{{ inv.customer?.phone || '-' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-gray-500">Total: Rp {{ formatRupiah(inv.amount) }}</div>
-                                    <div class="text-sm font-black text-indigo-600">Sisa: Rp {{ formatRupiah(inv.remaining) }}</div>
+                                    <div class="text-xs font-medium text-gray-500">Total: Rp {{ formatRupiah(inv.amount) }}</div>
+                                    <div class="text-sm font-black text-indigo-600 mt-0.5">Sisa: Rp {{ formatRupiah(inv.remaining) }}</div>
+                                    <div v-if="inv.pending_amount > 0" class="mt-1 flex items-center gap-1.5 bg-yellow-50 text-yellow-700 px-2 py-1 rounded-md text-[10px] font-bold border border-yellow-200 w-max">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        Pending Validasi: Rp {{ formatRupiah(inv.pending_amount) }}
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     {{ new Date(inv.due_date).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button @click="openModal(inv)" class="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg shadow-sm transition-colors text-xs font-bold">
+                                    <button v-if="inv.effective_remaining > 0" @click="openModal(inv)" class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold ring-1 ring-indigo-700/50">
                                         💰 Terima Uang
                                     </button>
+                                    <span v-else class="text-xs font-bold text-gray-400 italic">Menunggu Validasi Admin</span>
                                 </td>
                             </tr>
                             <tr v-if="!invoices.data.length">
@@ -68,7 +73,14 @@
                 <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
                     <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <h3 class="text-lg leading-6 font-bold text-gray-900 mb-2">Penerimaan Uang - {{ selectedInvoice.invoice_number }}</h3>
-                        <p class="text-sm text-gray-500 mb-4">Sisa Tagihan: <span class="font-bold text-indigo-600">Rp {{ formatRupiah(selectedInvoice.remaining) }}</span></p>
+                        <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-xl mb-4">
+                            <p class="text-[11px] text-indigo-600 uppercase font-bold tracking-wider mb-1">Sisa Tagihan Bisa Diterima</p>
+                            <p class="font-black text-2xl text-indigo-700">Rp {{ formatRupiah(selectedInvoice.effective_remaining) }}</p>
+                            <p v-if="selectedInvoice.pending_amount > 0" class="text-xs text-yellow-600 mt-2 flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Ada pembayaran Rp {{ formatRupiah(selectedInvoice.pending_amount) }} sedang menunggu validasi admin.
+                            </p>
+                        </div>
                         
                         <!-- History Area -->
                         <div v-if="selectedInvoice.payments && selectedInvoice.payments.length > 0" class="mb-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
@@ -91,9 +103,12 @@
                                 <input type="date" v-model="form.payment_date" class="mt-1 block w-full border-gray-300 rounded-xl" required>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Nominal Uang (Rp)</label>
-                                <input type="number" v-model="form.amount" class="mt-1 block w-full border-gray-300 rounded-xl" required :max="selectedInvoice.remaining">
-                                <p class="text-xs text-gray-500 mt-1">Bisa diisi lunas ({{ formatRupiah(selectedInvoice.remaining) }}) atau sebagian.</p>
+                                <label class="block text-[11px] uppercase tracking-wider font-bold text-gray-600 mb-1">Nominal Uang (Rp)</label>
+                                <input type="number" v-model="form.amount" class="block w-full border-gray-200 bg-gray-50 focus:bg-white rounded-xl font-bold text-lg" required :max="selectedInvoice.effective_remaining">
+                                <div class="flex justify-between items-center mt-2">
+                                    <p class="text-xs text-gray-500">Bisa diisi lunas atau sebagian.</p>
+                                    <button type="button" @click="form.amount = selectedInvoice.effective_remaining" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-1 rounded-md">Isi Max Lunas</button>
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Metode Bayar</label>
