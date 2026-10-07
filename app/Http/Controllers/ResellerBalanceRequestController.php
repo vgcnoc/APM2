@@ -61,7 +61,9 @@ class ResellerBalanceRequestController extends Controller
                     'status' => $isKasbon ? 'unpaid' : 'paid',
                     'issued_date' => Carbon::now(),
                     'due_date' => $isKasbon ? Carbon::tomorrow() : Carbon::now(),
-                    'period_label' => 'Saldo Reseller (' . date('d M Y') . ')',
+                    'period_month' => date('n'),
+                    'period_year' => date('Y'),
+                    'is_reseller_balance' => true,
                     'notes' => ($isKasbon ? 'Kasbon' : 'Pembelian') . ' Saldo Reseller via Admin. Ref: REQ-' . $balanceRequest->id,
                 ]);
 
@@ -117,7 +119,9 @@ class ResellerBalanceRequestController extends Controller
                     'status' => $isKasbon ? 'unpaid' : 'paid',
                     'issued_date' => Carbon::now(),
                     'due_date' => $isKasbon ? Carbon::tomorrow() : Carbon::now(),
-                    'period_label' => 'Saldo Reseller (' . date('d M Y') . ')',
+                    'period_month' => date('n'),
+                    'period_year' => date('Y'),
+                    'is_reseller_balance' => true,
                     'notes' => ($isKasbon ? 'Kasbon' : 'Pembelian') . ' Saldo Reseller (Approval). Ref: REQ-' . $balanceRequest->id,
                 ]);
 

@@ -14,6 +14,7 @@ class Invoice extends Model
     protected $fillable = [
         'customer_id', 'invoice_number', 'period_month', 'period_year',
         'amount', 'due_date', 'issued_date', 'status', 'is_prorata', 'promise_date',
+        'is_reseller_balance', 'notes'
     ];
 
     protected function casts(): array
@@ -23,6 +24,7 @@ class Invoice extends Model
             'due_date' => 'date',
             'issued_date' => 'date',
             'promise_date' => 'date',
+            'is_reseller_balance' => 'boolean',
         ];
     }
 
