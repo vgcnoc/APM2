@@ -674,7 +674,17 @@ function sendWaToOfficer(officer) {
         phone = '62' + phone.substring(1);
     }
     
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    let url = '';
+    
+    if (isMobile) {
+        // Jika di HP, buka aplikasi WA langsung
+        url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    } else {
+        // Jika di Komputer/Laptop, langsung buka WA Web agar tidak perlu klik "Continue to WhatsApp Web" lagi
+        url = `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+    }
+    
     window.open(url, '_blank');
     showWaModal.value = false;
 }
