@@ -229,7 +229,17 @@ const menuItems = [
             { href: '/customers/offline', label: 'Offline', active: (url) => (url || '').startsWith('/customers/offline'), permission: 'menu_customers_online' },
         ]
     },
-    { type: 'link', href: '/tickets', icon: 'alert-circle', label: 'Ticketing / Gangguan', active: (url) => (url || '').startsWith('/tickets'), permission: 'menu_tickets' },
+    {
+        type: 'dropdown',
+        icon: 'alert-circle',
+        label: 'Ticketing & CBP',
+        active: (url) => ['/tickets', '/cbp'].some(path => (url || '').startsWith(path)),
+        permission: 'menu_tickets',
+        children: [
+            { href: '/tickets', label: 'Semua Gangguan', active: (url) => (url || '').length > 0 && url === '/tickets', permission: 'menu_tickets' },
+            { href: '/cbp', label: 'CBP / Cabut Perangkat', active: (url) => (url || '').startsWith('/cbp'), permission: 'menu_tickets' },
+        ]
+    },
 
     { type: 'group', label: 'PEMASANGAN BARU' },
     { type: 'link', href: '/customers/booking', icon: 'document-add', label: 'Data Booking', active: (url) => (url || '').startsWith('/customers/booking'), permission: 'menu_customers_booking' },

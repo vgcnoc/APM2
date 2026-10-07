@@ -210,9 +210,15 @@
                                             <span class="text-gray-400 font-mono w-4 text-right">{{ portNum }}</span>
                                             <template v-if="getPortData(odp, portNum)">
                                                 <div class="w-2 h-2 rounded-full shrink-0" :class="getCustomerStatusColor(getPortData(odp, portNum).customer?.status)"></div>
-                                                <span v-if="getPortData(odp, portNum).customer" class="font-medium text-gray-700 truncate">
-                                                    {{ getPortData(odp, portNum).customer.customer_code }} - {{ getPortData(odp, portNum).customer.name }}
-                                                </span>
+                                                <div v-if="getPortData(odp, portNum).customer" class="flex flex-col">
+                                                    <span class="font-medium text-gray-700 truncate">
+                                                        {{ getPortData(odp, portNum).customer.customer_code }} - {{ getPortData(odp, portNum).customer.name }}
+                                                    </span>
+                                                    <span v-if="getCbpForCustomer(getPortData(odp, portNum).customer.id)" class="text-[9px] text-red-600 font-bold flex items-center gap-1 mt-0.5">
+                                                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                        CBP Status: Proses ({{ getCbpForCustomer(getPortData(odp, portNum).customer.id).created_at ? getCbpForCustomer(getPortData(odp, portNum).customer.id).created_at.substring(0, 10) : 'Baru' }})
+                                                    </span>
+                                                </div>
                                                 <span v-else class="font-medium text-gray-400 italic">ONT Inventori</span>
                                             </template>
                                             <template v-else>
@@ -443,7 +449,8 @@ const props = defineProps({
     odps: Array,
     stats: Object,
     filters: Object,
-    terminated_customers: Array
+    terminated_customers: Array,
+    cbp_requests: Array
 });
 
 const viewMode = ref('card');
@@ -587,6 +594,11 @@ const getPortData = (odp, portNum) => {
     return odp.onts.find(o => o.port_number == portNum);
 };
 
+const getCbpForCustomer = (customerId) => {
+    if (!props.cbp_requests) return null;
+    return props.cbp_requests.find(cbp => cbp.customer_id === customerId);
+};
+
 const getCustomerStatusColor = (status) => {
     if (status === 'active') return 'bg-emerald-500';
     if (status === 'suspended' || status === 'terminated') return 'bg-red-500';
@@ -599,8 +611,13 @@ const renderPortTopology = (odp, portNum) => {
     if (!data) return `<span class="text-emerald-400 font-bold">➔ Available</span>`;
     
     if (data.customer) {
+        const cbp = getCbpForCustomer(data.customer.id);
         const color = data.customer.status === 'active' ? 'text-indigo-300' : 'text-amber-400';
-        return `<span class="${color}">➔ ${data.customer.customer_code} - ${data.customer.name}</span>`;
+        let html = `<span class="${color}">➔ ${data.customer.customer_code} - ${data.customer.name}</span>`;
+        if (cbp) {
+            html += ` <span class="text-red-500 font-bold text-[10px] ml-2">[CBP: Proses]</span>`;
+        }
+        return html;
     }
     return `<span class="text-gray-400">➔ Blocked / Inventory</span>`;
 };

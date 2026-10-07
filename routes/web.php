@@ -245,6 +245,12 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Ticketing & Gangguan ───────────────────────────────────
     Route::resource('tickets', TicketController::class);
+    
+    // CBP / Cabut Perangkat
+    Route::get('cbp', [\App\Http\Controllers\CbpRequestController::class, 'index'])->name('cbp.index');
+    Route::post('cbp', [\App\Http\Controllers\CbpRequestController::class, 'store'])->name('cbp.store');
+    Route::post('cbp/{cbp}/assign', [\App\Http\Controllers\CbpRequestController::class, 'assign'])->name('cbp.assign');
+    Route::post('cbp/{cbp}/status', [\App\Http\Controllers\CbpRequestController::class, 'updateStatus'])->name('cbp.status');
     // Route::resource('schedules', TechnicianScheduleController::class);
 
     // ── Penggajian & Insentif (Payroll) ────────────────────────

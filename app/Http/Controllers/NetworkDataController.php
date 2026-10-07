@@ -73,6 +73,7 @@ class NetworkDataController extends Controller
         $stopPermanen = Customer::where('status', 'terminated')->count();
         
         $terminatedCustomers = Customer::where('status', 'terminated')->with('ont.odp')->get();
+        $cbpRequests = \App\Models\CbpRequest::whereIn('status', ['pending', 'assigned'])->with('customer')->get();
 
         return Inertia::render('NetworkData/Index', [
             'olts' => Olt::all(),
@@ -91,6 +92,7 @@ class NetworkDataController extends Controller
                 'stop_permanen' => $stopPermanen,
             ],
             'terminated_customers' => $terminatedCustomers,
+            'cbp_requests' => $cbpRequests,
             'filters' => $request->only(['olt_id', 'odc_id', 'odp_id', 'area_id', 'status', 'search']),
         ]);
     }
