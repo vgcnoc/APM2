@@ -193,9 +193,9 @@
                                                     <div class="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-48 p-2 bg-gray-800 text-white text-[10px] rounded shadow-lg z-10 font-normal">Format limitasi bandwidth MikroTik. Kosongkan untuk pakai default profil.</div>
                                                 </span>
                                             </label>
-                                            <button type="button" @click="showRateLimitGen = true" class="text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-2 py-1 rounded flex items-center gap-1 transition-colors">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                                Generator
+                                            <button type="button" @click="openRateLimitGen" class="text-[10px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-2.5 py-1.5 rounded flex items-center gap-1.5 transition-colors border border-indigo-200 shadow-sm">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                Advanced Generator
                                             </button>
                                         </div>
                                         <div class="flex gap-2">
@@ -489,32 +489,135 @@
         </div>
 
         <!-- RATE LIMIT GENERATOR DIALOG -->
-        <div v-if="showRateLimitGen" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-gray-900/50">
-            <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden p-5 border border-indigo-100">
-                <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                    Generator Rate Limit
-                </h4>
+        <div v-if="showRateLimitGen" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm overflow-y-auto">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-indigo-100 my-8">
+                <div class="bg-gradient-to-r from-indigo-600 to-blue-600 px-6 py-4 flex justify-between items-center">
+                    <h4 class="font-bold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        Advanced Rate Limit Generator
+                    </h4>
+                    <button @click="showRateLimitGen = false" class="text-indigo-100 hover:text-white transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
                 
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 mb-1">Max Download (Tx)</label>
-                        <input v-model="rlGen.dl" type="text" placeholder="Contoh: 4M" class="input-text w-full text-sm font-mono">
+                <div class="p-6">
+                    <!-- Basic Limit -->
+                    <div class="mb-6">
+                        <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <span class="w-5 h-px bg-gray-300"></span> Max Limit (Dasar)
+                        </h5>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Max Download (Tx)</label>
+                                <div class="relative">
+                                    <input v-model="rlGen.maxDl" type="text" placeholder="Contoh: 10M" class="input-text w-full pl-9 font-mono">
+                                    <svg class="w-4 h-4 text-emerald-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Max Upload (Rx)</label>
+                                <div class="relative">
+                                    <input v-model="rlGen.maxUl" type="text" placeholder="Contoh: 5M" class="input-text w-full pl-9 font-mono">
+                                    <svg class="w-4 h-4 text-blue-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 mb-1">Max Upload (Rx)</label>
-                        <input v-model="rlGen.ul" type="text" placeholder="Contoh: 4M" class="input-text w-full text-sm font-mono">
+
+                    <!-- Burst Config -->
+                    <div class="mb-6 bg-slate-50 border border-slate-200 rounded-xl p-4 transition-colors hover:border-indigo-200">
+                        <div class="flex items-center justify-between mb-4">
+                            <h5 class="text-xs font-bold text-indigo-700 uppercase tracking-wider flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                Konfigurasi Burst (Opsional)
+                            </h5>
+                            <label class="flex items-center cursor-pointer">
+                                <div class="relative">
+                                    <input type="checkbox" v-model="rlGen.useBurst" class="sr-only">
+                                    <div class="block w-10 h-6 rounded-full transition-colors" :class="rlGen.useBurst ? 'bg-indigo-500' : 'bg-gray-300'"></div>
+                                    <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform" :class="rlGen.useBurst ? 'transform translate-x-4' : ''"></div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div v-if="rlGen.useBurst" class="space-y-4 animate-fadeIn">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Burst Limit DL/UL</label>
+                                    <div class="flex gap-2">
+                                        <input v-model="rlGen.burstDl" type="text" placeholder="DL (15M)" class="input-text w-full font-mono text-xs">
+                                        <input v-model="rlGen.burstUl" type="text" placeholder="UL (8M)" class="input-text w-full font-mono text-xs">
+                                    </div>
+                                    <p class="text-[9px] text-gray-500 mt-1 leading-tight">Kecepatan maksimal saat burst aktif</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Burst Threshold DL/UL</label>
+                                    <div class="flex gap-2">
+                                        <input v-model="rlGen.threshDl" type="text" placeholder="DL (8M)" class="input-text w-full font-mono text-xs">
+                                        <input v-model="rlGen.threshUl" type="text" placeholder="UL (4M)" class="input-text w-full font-mono text-xs">
+                                    </div>
+                                    <p class="text-[9px] text-gray-500 mt-1 leading-tight">Batas rata-rata untuk memicu burst</p>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Burst Time DL/UL (detik)</label>
+                                    <div class="flex gap-2">
+                                        <input v-model="rlGen.timeDl" type="number" placeholder="DL (16)" class="input-text w-full font-mono text-xs">
+                                        <input v-model="rlGen.timeUl" type="number" placeholder="UL (16)" class="input-text w-full font-mono text-xs">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Prioritas (1-8)</label>
+                                    <input v-model="rlGen.priority" type="number" min="1" max="8" class="input-text w-full font-mono text-xs">
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="text-xs text-gray-400 italic">Burst tidak diaktifkan.</div>
                     </div>
-                    
-                    <div class="p-3 bg-gray-50 rounded-lg border text-center">
-                        <div class="text-[10px] text-gray-500 mb-1 font-bold">HASIL:</div>
-                        <div class="font-mono text-sm font-bold text-indigo-700">{{ generatedRateLimit }}</div>
+
+                    <!-- Limit At Config -->
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                                <span class="w-5 h-px bg-gray-300"></span> Limit At / GARANSI MINIMAL
+                            </h5>
+                            <label class="flex items-center cursor-pointer">
+                                <div class="relative">
+                                    <input type="checkbox" v-model="rlGen.useLimitAt" class="sr-only">
+                                    <div class="block w-8 h-5 rounded-full transition-colors" :class="rlGen.useLimitAt ? 'bg-emerald-500' : 'bg-gray-300'"></div>
+                                    <div class="dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform" :class="rlGen.useLimitAt ? 'transform translate-x-3' : ''"></div>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <div v-if="rlGen.useLimitAt" class="grid grid-cols-2 gap-4 animate-fadeIn bg-emerald-50/50 p-3 border border-emerald-100 rounded-lg">
+                            <div>
+                                <label class="block text-[10px] font-bold text-emerald-700 mb-1">Min. Download (Limit At)</label>
+                                <input v-model="rlGen.limitAtDl" type="text" placeholder="Contoh: 2M" class="input-text w-full text-xs font-mono border-emerald-200 focus:border-emerald-500 focus:ring-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-emerald-700 mb-1">Min. Upload (Limit At)</label>
+                                <input v-model="rlGen.limitAtUl" type="text" placeholder="Contoh: 1M" class="input-text w-full text-xs font-mono border-emerald-200 focus:border-emerald-500 focus:ring-emerald-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-4 bg-gray-900 rounded-xl border border-gray-800 relative overflow-hidden group shadow-inner">
+                        <div class="relative z-10">
+                            <div class="text-[10px] text-gray-400 mb-1 font-bold tracking-wider">PREVIEW MIKROTIK RULE:</div>
+                            <div class="font-mono text-lg font-bold text-green-400 break-all">{{ generatedRateLimit }}</div>
+                        </div>
+                        <button @click="copyText(generatedRateLimit)" class="absolute top-1/2 -translate-y-1/2 right-4 p-2 bg-gray-700/80 hover:bg-gray-600 text-gray-200 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-20" title="Copy">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                        </button>
                     </div>
                 </div>
                 
-                <div class="mt-5 flex gap-2">
-                    <button type="button" @click="showRateLimitGen = false" class="flex-1 py-2 rounded-lg text-xs font-bold border border-gray-300 text-gray-600 hover:bg-gray-50">Tutup</button>
-                    <button type="button" @click="applyRateLimit" class="flex-1 py-2 rounded-lg text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700">Terapkan</button>
+                <div class="p-6 pt-0 flex gap-3 mt-4 border-t border-gray-100 pt-5">
+                    <button type="button" @click="showRateLimitGen = false" class="flex-1 py-2.5 rounded-lg text-sm font-bold border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">Batal</button>
+                    <button type="button" @click="applyRateLimit" class="flex-[2] py-2.5 rounded-lg text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all">Gunakan Konfigurasi Ini</button>
                 </div>
             </div>
         </div>
@@ -573,12 +676,86 @@ const copyText = (text) => {
 
 // Generator Logic
 const showRateLimitGen = ref(false);
-const rlGen = ref({ dl: '4M', ul: '4M' });
-const generatedRateLimit = computed(() => {
-    const d = rlGen.value.dl || '0';
-    const u = rlGen.value.ul || '0';
-    return `${u}/${d} 0/0 0/0 0/0 8 0/0`;
+const rlGen = ref({ 
+    maxDl: '10M', maxUl: '5M',
+    useBurst: false, burstDl: '15M', burstUl: '8M', threshDl: '8M', threshUl: '4M', timeDl: 16, timeUl: 16, priority: 8,
+    useLimitAt: false, limitAtDl: '2M', limitAtUl: '1M'
 });
+
+const generatedRateLimit = computed(() => {
+    const rx = rlGen.value.maxUl || '0';
+    const tx = rlGen.value.maxDl || '0';
+    
+    // Default format Rx/Tx
+    let rate = `${rx}/${tx}`;
+    
+    // Burst
+    if (rlGen.value.useBurst) {
+        const brx = rlGen.value.burstUl || '0';
+        const btx = rlGen.value.burstDl || '0';
+        
+        const thrx = rlGen.value.threshUl || '0';
+        const thtx = rlGen.value.threshDl || '0';
+        
+        const trx = rlGen.value.timeUl || '0';
+        const ttx = rlGen.value.timeDl || '0';
+        
+        rate += ` ${brx}/${btx} ${thrx}/${thtx} ${trx}/${ttx}`;
+    } else {
+        rate += ` 0/0 0/0 0/0`;
+    }
+    
+    // Priority
+    const prio = rlGen.value.priority || 8;
+    rate += ` ${prio}`;
+    
+    // Limit At
+    if (rlGen.value.useLimitAt) {
+        const minrx = rlGen.value.limitAtUl || '0';
+        const mintx = rlGen.value.limitAtDl || '0';
+        rate += ` ${minrx}/${mintx}`;
+    } else {
+        rate += ` 0/0`;
+    }
+    
+    return rate;
+});
+
+const openRateLimitGen = () => {
+    if (form.rate_limit) {
+        const parts = form.rate_limit.split(' ');
+        if (parts[0]) {
+            const rxTx = parts[0].split('/');
+            if (rxTx.length === 2) {
+                rlGen.value.maxUl = rxTx[0];
+                rlGen.value.maxDl = rxTx[1];
+            }
+        }
+        if (parts[1] && parts[1] !== '0/0') {
+            rlGen.value.useBurst = true;
+            const b = parts[1].split('/'); if (b.length == 2) { rlGen.value.burstUl = b[0]; rlGen.value.burstDl = b[1]; }
+            if (parts[2]) { const th = parts[2].split('/'); if (th.length == 2) { rlGen.value.threshUl = th[0]; rlGen.value.threshDl = th[1]; } }
+            if (parts[3]) { const tm = parts[3].split('/'); if (tm.length == 2) { rlGen.value.timeUl = tm[0]; rlGen.value.timeDl = tm[1]; } }
+        } else {
+            rlGen.value.useBurst = false;
+        }
+        if (parts[4]) rlGen.value.priority = parseInt(parts[4]) || 8;
+        if (parts[5] && parts[5] !== '0/0') {
+            rlGen.value.useLimitAt = true;
+            const l = parts[5].split('/'); if (l.length == 2) { rlGen.value.limitAtUl = l[0]; rlGen.value.limitAtDl = l[1]; }
+        } else {
+            rlGen.value.useLimitAt = false;
+        }
+    } else {
+        rlGen.value.maxDl = form.speed_mbps ? `${form.speed_mbps}M` : '10M';
+        rlGen.value.maxUl = form.speed_mbps ? `${Math.floor(form.speed_mbps/2)}M` : '5M';
+        rlGen.value.useBurst = false;
+        rlGen.value.useLimitAt = false;
+        rlGen.value.priority = 8;
+    }
+    showRateLimitGen.value = true;
+};
+
 const applyRateLimit = () => {
     form.rate_limit = generatedRateLimit.value;
     showRateLimitGen.value = false;
