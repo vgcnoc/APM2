@@ -16,12 +16,19 @@ class ResellerBillingController extends Controller
      */
     public function index(Request $request)
     {
+        $activeTab = $request->get('tab', 'unpaid');
+        
         $query = Invoice::with(['customer', 'payments'])
             ->whereHas('customer', function($q) {
                 $q->where('is_reseller', true);
             })
-            ->where('is_reseller_balance', true)
-            ->whereIn('status', ['unpaid', 'partial']);
+            ->where('is_reseller_balance', true);
+            
+        if ($activeTab === 'paid') {
+            $query->where('status', 'paid');
+        } else {
+            $query->whereIn('status', ['unpaid', 'partial']);
+        }
             
         $invoices = $query->latest()->paginate(10)
             ->through(function ($invoice) {
@@ -37,7 +44,8 @@ class ResellerBillingController extends Controller
             });
 
         return Inertia::render('ResellerBilling/Index', [
-            'invoices' => $invoices
+            'invoices' => $invoices,
+            'activeTab' => $activeTab
         ]);
     }
 

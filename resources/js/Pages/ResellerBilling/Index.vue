@@ -10,8 +10,23 @@
             </div>
 
             <div class="bg-white rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 overflow-hidden">
-                <div class="p-6 border-b border-gray-100 bg-gray-50/50">
-                    <h3 class="text-lg font-bold text-gray-900">Daftar Tagihan Reseller (Belum Lunas)</h3>
+                <div class="p-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-gray-900">Daftar Tagihan Reseller</h3>
+                    
+                    <div class="flex bg-gray-200/70 p-1 rounded-xl">
+                        <Link 
+                            :href="route('reseller-billing.index', { tab: 'unpaid' })" 
+                            class="px-4 py-1.5 text-sm font-bold rounded-lg transition-all"
+                            :class="activeTab === 'unpaid' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
+                            Belum Lunas
+                        </Link>
+                        <Link 
+                            :href="route('reseller-billing.index', { tab: 'paid' })" 
+                            class="px-4 py-1.5 text-sm font-bold rounded-lg transition-all"
+                            :class="activeTab === 'paid' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
+                            Sudah Lunas
+                        </Link>
+                    </div>
                 </div>
 
                 <div class="overflow-x-auto">
@@ -31,6 +46,7 @@
                                     <div class="text-sm font-bold text-gray-900">{{ inv.invoice_number }}</div>
                                     <span v-if="inv.status === 'unpaid'" class="bg-red-50 text-red-700 px-2 py-0.5 rounded text-xs font-bold border border-red-200">Belum Lunas</span>
                                     <span v-else-if="inv.status === 'partial'" class="bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded text-xs font-bold border border-yellow-200">Sebagian</span>
+                                    <span v-else-if="inv.status === 'paid'" class="bg-green-50 text-green-700 px-2 py-0.5 rounded text-xs font-bold border border-green-200">Lunas</span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-bold text-gray-900">{{ inv.customer?.name || 'Unknown' }}</div>
@@ -48,10 +64,15 @@
                                     {{ new Date(inv.due_date).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button v-if="inv.effective_remaining > 0" @click="openModal(inv)" class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold ring-1 ring-indigo-700/50">
-                                        💰 Terima Uang
-                                    </button>
-                                    <span v-else class="text-xs font-bold text-gray-400 italic">Menunggu Validasi Admin</span>
+                                    <template v-if="inv.status !== 'paid'">
+                                        <button v-if="inv.effective_remaining > 0" @click="openModal(inv)" class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold ring-1 ring-indigo-700/50">
+                                            💰 Terima Uang
+                                        </button>
+                                        <span v-else class="text-xs font-bold text-gray-400 italic">Menunggu Validasi Admin</span>
+                                    </template>
+                                    <span v-else class="text-green-600 font-bold text-xs bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                                        Selesai
+                                    </span>
                                 </td>
                             </tr>
                             <tr v-if="!invoices.data.length">
@@ -148,11 +169,12 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
-    invoices: Object
+    invoices: Object,
+    activeTab: String
 });
 
 const formatRupiah = (number) => {
