@@ -168,7 +168,12 @@
                 <td>
                     <span v-if="row.last_payment_date" class="flex flex-col">
                         <span class="text-[11px] text-gray-600">{{ row.last_payment_date }}</span>
-                        <span class="text-[9px] font-bold text-indigo-500 uppercase mt-0.5">{{ formatPaymentMethod(row.last_payment_method) }}</span>
+                        <span class="text-[9px] font-bold text-indigo-500 uppercase mt-0.5">
+                            {{ formatPaymentMethod(row.last_payment_method) }}
+                            <template v-if="row.last_payment_method === 'transfer' && extractBankName(row.last_payment_notes)">
+                                - {{ extractBankName(row.last_payment_notes) }}
+                            </template>
+                        </span>
                     </span>
                     <span v-else class="text-[11px] text-gray-600">-</span>
                 </td>
@@ -511,10 +516,19 @@ function formatStatus(status) {
 function formatPaymentMethod(method) {
     if (!method) return '';
     if (method === 'cash') return 'Tunai / Cash';
-    if (method === 'transfer') return 'Transfer Bank';
+    if (method === 'transfer') return 'Transfer';
     if (method === 'qris') return 'QRIS';
     if (method === 'payment_gateway') return 'Payment Gateway';
     return method;
+}
+
+function extractBankName(notes) {
+    if (!notes) return null;
+    const match = notes.match(/\[Transfer ke:\s*(.*?)\s*-/);
+    if (match && match[1]) {
+        return match[1].trim();
+    }
+    return null;
 }
 
 function statusClass(status) {

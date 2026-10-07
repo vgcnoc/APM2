@@ -108,6 +108,7 @@ class InvoiceController extends Controller
                     'status' => $invoice->status,
                     'last_payment_date' => $lastPayment ? \Carbon\Carbon::parse($lastPayment->payment_date)->format('d M Y') : null,
                     'last_payment_method' => $lastPayment ? $lastPayment->payment_method : null,
+                    'last_payment_notes' => $lastPayment ? $lastPayment->notes : null,
                     'due_date' => $invoice->due_date ? $invoice->due_date->format('Y-m-d') : null,
                     'issued_date' => $invoice->issued_date ? $invoice->issued_date->format('Y-m-d') : null,
                     'promise_date' => $invoice->promise_date ? $invoice->promise_date->format('Y-m-d') : null,
