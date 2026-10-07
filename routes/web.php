@@ -231,6 +231,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/customer-settlements', [\App\Http\Controllers\CustomerBillingController::class, 'settlements'])->name('customer-settlements.index');
     Route::post('/customer-settlements/{payment}/approve', [\App\Http\Controllers\CustomerBillingController::class, 'approve'])->name('customer-settlements.approve');
 
+    // ── Laporan Keuangan Global ────────────────────────────────
+    Route::get('/financial-reports', [\App\Http\Controllers\FinancialReportController::class, 'index'])->name('financial-reports.index');
+
     // ── Ticketing & Gangguan ───────────────────────────────────
     Route::resource('tickets', TicketController::class);
     // Route::resource('schedules', TechnicianScheduleController::class);

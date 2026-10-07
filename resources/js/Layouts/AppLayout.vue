@@ -265,6 +265,7 @@ const menuItems = [
             { href: '/customer-settlements', label: 'Validasi Setoran', active: (url) => (url || '').startsWith('/customer-settlements'), permission: 'menu_customers_all' },
         ]
     },
+    { type: 'link', href: '/financial-reports', icon: 'chart-pie', label: 'Laporan Keseluruhan', active: (url) => (url || '').startsWith('/financial-reports'), permission: 'menu_customers_all' },
     { type: 'link', href: '/tax-reports', icon: 'calculator', label: 'Laporan Pajak', active: (url) => (url || '').startsWith('/tax-reports'), permission: 'menu_customers_all' },
     { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
 
