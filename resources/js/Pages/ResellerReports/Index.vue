@@ -91,28 +91,37 @@
                 </div>
             </div>
 
-            <!-- Recent Payments -->
+            <!-- Mutasi Transaksi -->
             <div class="bg-white rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 p-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">5 Riwayat Pemasukan Terakhir</h3>
-                <div v-if="recent_payments.length" class="space-y-3">
-                    <div v-for="pay in recent_payments" :key="pay.id" class="flex items-center justify-between p-3 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-colors">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-900">Riwayat Mutasi Saldo & Voucher</h3>
+                    <span class="text-xs font-bold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg">15 Transaksi Terakhir</span>
+                </div>
+                
+                <div v-if="recent_transactions.length" class="space-y-3">
+                    <div v-for="trx in recent_transactions" :key="trx.id" class="flex items-center justify-between p-3.5 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-colors">
                         <div class="flex items-center gap-4">
-                            <div class="bg-green-100 text-green-600 p-2.5 rounded-xl">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div :class="trx.type === 'credit' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'" class="p-2.5 rounded-xl">
+                                <svg v-if="trx.type === 'credit'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg>
                             </div>
                             <div>
-                                <p class="text-sm font-bold text-gray-900">{{ pay.customer?.name || 'Unknown' }}</p>
-                                <p class="text-xs text-gray-500">{{ pay.invoice?.invoice_number }} &middot; {{ new Date(pay.updated_at).toLocaleDateString('id-ID') }}</p>
+                                <p class="text-sm font-bold text-gray-900">{{ trx.reseller?.customer?.name || 'Unknown' }}</p>
+                                <p class="text-xs text-gray-500 max-w-sm truncate" :title="trx.description">{{ trx.description }}</p>
+                                <p class="text-[10px] text-gray-400 mt-0.5">{{ new Date(trx.created_at).toLocaleString('id-ID') }}</p>
                             </div>
                         </div>
                         <div class="text-right">
-                            <p class="text-sm font-black text-green-600">+ Rp {{ formatRupiah(pay.amount) }}</p>
-                            <p class="text-[10px] text-gray-400 uppercase tracking-wide font-bold">Via {{ pay.payment_method }}</p>
+                            <p :class="trx.type === 'credit' ? 'text-green-600' : 'text-red-600'" class="text-sm font-black whitespace-nowrap">
+                                {{ trx.type === 'credit' ? '+' : '-' }} Rp {{ formatRupiah(trx.amount) }}
+                            </p>
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wide font-bold">{{ trx.reference_id }}</p>
                         </div>
                     </div>
                 </div>
-                <div v-else class="text-center py-6 text-gray-500 text-sm">
-                    Belum ada riwayat pemasukan yang divalidasi.
+                <div v-else class="text-center py-8 bg-gray-50 rounded-2xl border border-gray-100 border-dashed text-gray-500 text-sm">
+                    Belum ada riwayat mutasi transaksi. <br>
+                    <span class="text-xs">Beli voucher atau tambah saldo untuk melihat transaksi di sini.</span>
                 </div>
             </div>
 
@@ -126,7 +135,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 const props = defineProps({
     stats: Object,
     resellers: Array,
-    recent_payments: Array
+    recent_transactions: Array
 });
 
 const formatRupiah = (number) => {

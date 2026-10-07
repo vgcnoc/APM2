@@ -49,6 +49,14 @@ class ResellerBalanceRequestController extends Controller
             $reseller->balance += $validated['amount'];
             $reseller->save();
 
+            \App\Models\ResellerTransaction::create([
+                'reseller_id' => $reseller->id,
+                'type' => 'credit',
+                'amount' => $validated['amount'],
+                'description' => 'Penambahan Saldo (' . ucfirst($validated['payment_method']) . ') via Admin',
+                'reference_id' => 'TOPUP-' . time(),
+            ]);
+
             // Selalu buat invoice untuk setiap penambahan saldo sebagai riwayat keuangan
             $customer = $reseller->customer;
             if ($customer) {
@@ -106,6 +114,14 @@ class ResellerBalanceRequestController extends Controller
             $reseller = $balanceRequest->reseller;
             $reseller->balance += $balanceRequest->amount;
             $reseller->save();
+
+            \App\Models\ResellerTransaction::create([
+                'reseller_id' => $reseller->id,
+                'type' => 'credit',
+                'amount' => $balanceRequest->amount,
+                'description' => 'Persetujuan Permintaan Saldo (' . ucfirst($balanceRequest->payment_method) . ')',
+                'reference_id' => 'REQ-' . $balanceRequest->id,
+            ]);
 
             // Selalu buat invoice untuk setiap penambahan saldo
             $customer = $reseller->customer;

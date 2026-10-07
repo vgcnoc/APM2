@@ -251,6 +251,15 @@ class VoucherController extends Controller
             // Potong saldo reseller
             $reseller->balance -= $totalPrice;
             $reseller->save();
+            
+            // Catat transaksi mutasi
+            \App\Models\ResellerTransaction::create([
+                'reseller_id' => $reseller->id,
+                'type' => 'debit',
+                'amount' => $totalPrice,
+                'description' => 'Pembelian ' . $validated['amount'] . ' Voucher ' . $profile->name,
+                'reference_id' => 'VOUCHER-GEN',
+            ]);
         }
         
         $vouchers = [];

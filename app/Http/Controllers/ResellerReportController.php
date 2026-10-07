@@ -51,14 +51,10 @@ class ResellerReportController extends Controller
             ];
         });
 
-        // 5. Riwayat Pemasukan Terakhir (Verified Payments)
-        $recentPayments = Payment::with(['invoice', 'customer'])
-            ->where('status', 'verified')
-            ->whereHas('invoice', function ($q) {
-                $q->where('is_reseller_balance', true);
-            })
-            ->latest('updated_at')
-            ->take(5)
+        // 5. Riwayat Transaksi Mutasi Reseller Terakhir
+        $recentTransactions = \App\Models\ResellerTransaction::with(['reseller.customer'])
+            ->latest()
+            ->take(15)
             ->get();
 
         return Inertia::render('ResellerReports/Index', [
@@ -68,7 +64,7 @@ class ResellerReportController extends Controller
                 'piutang' => $totalPiutang,
             ],
             'resellers' => $resellers,
-            'recent_payments' => $recentPayments
+            'recent_transactions' => $recentTransactions
         ]);
     }
 }
