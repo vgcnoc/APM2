@@ -134,13 +134,38 @@
                     </div>
 
                     <form @submit.prevent="submitAssign">
-                        <div class="p-6 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                        <div class="p-6 space-y-5 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                            <!-- Customer Info -->
+                            <div v-if="selectedCbp?.customer" class="bg-gray-50/80 border border-gray-100 rounded-xl p-4">
+                                <h4 class="text-xs font-bold text-gray-800 mb-3 border-b border-gray-200/60 pb-2">Data Pelanggan</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                                    <div>
+                                        <span class="block text-[10px] font-bold text-gray-500 uppercase">Nama</span>
+                                        <span class="text-gray-900 font-medium">{{ selectedCbp.customer.name }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="block text-[10px] font-bold text-gray-500 uppercase">ID Pelanggan</span>
+                                        <span class="text-gray-900">{{ selectedCbp.customer.customer_code || '-' }}</span>
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <span class="block text-[10px] font-bold text-gray-500 uppercase">Alamat</span>
+                                        <span class="text-gray-900 block" :title="selectedCbp.customer.address">{{ selectedCbp.customer.address || '-' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Pilih Teknisi <span class="text-gray-400 lowercase font-normal">(Bisa pilih lebih dari 1)</span></label>
-                                <select multiple v-model="assignForm.technicians" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all h-32" required>
-                                    <option v-for="tech in technicians" :key="tech.id" :value="tech.id">{{ tech.name }}</option>
-                                </select>
-                                <p class="text-[10px] text-gray-500 mt-1">Tahan tombol CTRL (atau Command di Mac) untuk memilih beberapa teknisi.</p>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-3">Tugaskan Ke Teknisi <span class="text-gray-400 lowercase font-normal">(Bisa pilih lebih dari 1)</span></label>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <label v-for="tech in technicians" :key="tech.id" class="relative flex items-start p-3 border rounded-xl cursor-pointer hover:bg-blue-50/50 transition-colors" :class="assignForm.technicians.includes(tech.id) ? 'border-blue-500 bg-blue-50/30' : 'border-gray-200 bg-white'">
+                                        <div class="flex items-center h-5">
+                                            <input type="checkbox" :value="tech.id" v-model="assignForm.technicians" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                                        </div>
+                                        <div class="ml-3 flex flex-col">
+                                            <span class="text-sm font-medium" :class="assignForm.technicians.includes(tech.id) ? 'text-blue-900' : 'text-gray-900'">{{ tech.name }}</span>
+                                        </div>
+                                    </label>
+                                </div>
                             </div>
                         </div>
 
