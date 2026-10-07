@@ -21,6 +21,12 @@
                             Belum Lunas
                         </Link>
                         <Link 
+                            :href="route('reseller-billing.index', { tab: 'overdue' })" 
+                            class="px-4 py-1.5 text-sm font-bold rounded-lg transition-all"
+                            :class="activeTab === 'overdue' ? 'bg-red-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'">
+                            Jatuh Tempo
+                        </Link>
+                        <Link 
                             :href="route('reseller-billing.index', { tab: 'paid' })" 
                             class="px-4 py-1.5 text-sm font-bold rounded-lg transition-all"
                             :class="activeTab === 'paid' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
@@ -36,7 +42,10 @@
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">No. Tagihan</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reseller</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Total / Sisa</th>
-                                <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Jatuh Tempo</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    <span v-if="activeTab === 'paid'">Tgl Bayar Lunas</span>
+                                    <span v-else>Jatuh Tempo</span>
+                                </th>
                                 <th scope="col" class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
@@ -61,7 +70,18 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ new Date(inv.due_date).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) }}
+                                    <template v-if="activeTab === 'paid'">
+                                        <!-- Ambil tanggal bayar terakhir -->
+                                        <div class="font-medium text-gray-900">
+                                            {{ inv.payments?.length ? new Date(Math.max(...inv.payments.map(p => new Date(p.payment_date)))).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) : '-' }}
+                                        </div>
+                                    </template>
+                                    <template v-else>
+                                        <div class="font-medium text-gray-900">{{ new Date(inv.due_date).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) }}</div>
+                                        <div v-if="inv.status !== 'paid'" :class="getDueDuration(inv.due_date).class" class="text-[11px] font-bold mt-1">
+                                            {{ getDueDuration(inv.due_date).text }}
+                                        </div>
+                                    </template>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <template v-if="inv.status !== 'paid'">
@@ -206,5 +226,23 @@ const submitCollection = () => {
             showModal.value = false;
         }
     });
+};
+
+const getDueDuration = (dueDateStr) => {
+    const due = new Date(dueDateStr);
+    const today = new Date();
+    due.setHours(0,0,0,0);
+    today.setHours(0,0,0,0);
+    
+    const diffTime = due - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+        return { text: `Lewat ${Math.abs(diffDays)} hari`, class: 'text-red-600 bg-red-50 px-2 py-0.5 rounded inline-block' };
+    } else if (diffDays === 0) {
+        return { text: 'Jatuh tempo hari ini', class: 'text-orange-600 bg-orange-50 px-2 py-0.5 rounded inline-block' };
+    } else {
+        return { text: `Sisa ${diffDays} hari`, class: 'text-green-600 bg-green-50 px-2 py-0.5 rounded inline-block' };
+    }
 };
 </script>

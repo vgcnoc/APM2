@@ -26,7 +26,11 @@ class ResellerBillingController extends Controller
             
         if ($activeTab === 'paid') {
             $query->where('status', 'paid');
+        } elseif ($activeTab === 'overdue') {
+            $query->whereIn('status', ['unpaid', 'partial'])
+                  ->where('due_date', '<', Carbon::today());
         } else {
+            // unpaid tab (can include all unpaid/partial, or strictly those not overdue. We'll show all unpaid but user can use overdue tab to filter specifically)
             $query->whereIn('status', ['unpaid', 'partial']);
         }
             
