@@ -292,32 +292,7 @@
                                         </div>
                                     </div>
 
-                                    <hr class="border-gray-100">
 
-                                    <div class="grid grid-cols-1 gap-4 bg-cyan-50/40 p-4 rounded-xl border border-cyan-100">
-                                        <div>
-                                            <label class="flex items-center gap-1.5 text-[13px] font-bold text-slate-700 mb-2">
-                                                Fee Reseller/Mitra 
-                                                <svg class="w-4 h-4 text-slate-700" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path></svg>
-                                                <span class="text-red-500 font-bold">*Req</span>
-                                            </label>
-                                            <div class="flex shadow-sm">
-                                                <span class="inline-flex items-center px-3 text-sm text-gray-700 bg-gray-50 border border-r-0 border-gray-200 rounded-l-md font-medium">Rp</span>
-                                                <input v-model="form.fee_reseller" type="number" min="0" placeholder="min : 0" class="input-text rounded-l-none flex-1 border-gray-200" required>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="p-3 rounded-lg border flex justify-between items-center transition-colors" 
-                                         :class="marginBersih < 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-100'">
-                                        <div class="text-xs font-bold" :class="marginBersih < 0 ? 'text-red-700' : 'text-emerald-800'">
-                                            Estimasi Margin Bersih:
-                                            <div v-if="marginBersih < 0" class="text-[10px] text-red-500 font-normal mt-0.5">⚠️ Pembagian fee melebihi harga jual</div>
-                                        </div>
-                                        <div class="text-lg font-black" :class="marginBersih < 0 ? 'text-red-600' : 'text-emerald-600'">
-                                            Rp {{ formatPrice(marginBersih) }}
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                             
@@ -393,7 +368,7 @@
                     <div class="flex gap-3 w-full sm:w-auto">
                         <button type="button" @click="closeModal" class="flex-1 sm:flex-none px-6 py-2.5 border border-gray-300 text-gray-700 font-bold text-sm rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
                         <button type="button" @click="openSummary" class="flex-1 sm:flex-none px-6 py-2.5 bg-indigo-600 text-white font-bold text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
-                                :disabled="!isFormValid || marginBersih < 0">
+                                :disabled="!isFormValid">
                             {{ editMode ? 'Lanjutkan Perubahan' : 'Lanjutkan Simpan' }}
                         </button>
                     </div>
@@ -436,10 +411,7 @@
                         <span class="text-sm font-bold text-gray-700">Harga Jual</span>
                         <span class="text-sm font-black text-gray-900">Rp {{ formatPrice(currentActivePrice) }}</span>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-sm font-bold text-gray-700">Margin Bersih</span>
-                        <span class="text-sm font-black text-emerald-600">Rp {{ formatPrice(marginBersih) }}</span>
-                    </div>
+
                 </div>
 
                 <div class="bg-gray-50 px-6 py-4 flex gap-3">
@@ -741,9 +713,6 @@ const form = useForm({
     price: '',
     is_promo: false,
     promo_price: '',
-    fee_admin: 0,
-    fee_reseller: 0,
-    fee_partner: 0,
     is_mikrotik_group_custom: false,
     mikrotik_group: '',
     is_mikrotik_address_list_custom: false,
@@ -757,14 +726,6 @@ const form = useForm({
 
 const currentActivePrice = computed(() => {
     return form.is_promo ? (form.promo_price || 0) : (form.price || 0);
-});
-
-const marginBersih = computed(() => {
-    const sellPrice = parseFloat(currentActivePrice.value) || 0;
-    const admin = parseFloat(form.fee_admin) || 0;
-    const res = parseFloat(form.fee_reseller) || 0;
-    const part = parseFloat(form.fee_partner) || 0;
-    return sellPrice - (admin + res + part);
 });
 
 const isFormValid = computed(() => {
