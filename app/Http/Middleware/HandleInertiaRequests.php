@@ -64,6 +64,7 @@ class HandleInertiaRequests extends Middleware
                     })() : null,
                 ];
             },
+            'officers' => \App\Models\User::where('is_on_duty', true)->get(['id', 'name', 'phone', 'role']),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
