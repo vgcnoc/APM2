@@ -285,6 +285,9 @@
                     <button v-if="row.user_id" @click="openResetModal(row)" class="p-1.5 rounded-md border border-gray-200 text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-colors shadow-sm bg-white" title="Ubah Password Akun">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
                     </button>
+                    <button @click="sendWa(row)" class="p-1.5 rounded-md border border-gray-200 text-green-500 hover:bg-green-50 hover:text-green-600 transition-colors shadow-sm bg-white ml-1" title="Kirim Pesan WhatsApp ke Petugas">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                    </button>
                     <button @click="confirmDelete(row)" class="p-1.5 rounded-md border border-gray-200 text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm bg-white ml-1" title="Hapus">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -596,5 +599,22 @@ function submitResetPassword() {
             showResetPasswordModal.value = false;
         }
     });
+}
+
+// ── WhatsApp Notification ───────────────────────────────────────────
+function sendWa(row) {
+    let message = '';
+    if (row.status === 'booking') {
+        message = `Halo tim, mohon bantuannya untuk *menugaskan jadwal survey* pelanggan baru berikut:\n\nNama: ${row.name}\nKode: ${row.customer_code}\nAlamat: ${row.address}\nNo. HP: ${row.phone}\n\nTerima kasih.`;
+    } else if (row.status === 'survey' || row.status === 'jadwal_pasang') {
+        message = `Halo tim, mohon bantuannya untuk *menjadwalkan pemasangan* pelanggan berikut:\n\nNama: ${row.name}\nKode: ${row.customer_code}\nAlamat: ${row.address}\n\nTerima kasih.`;
+    } else if (row.status === 'laporan_pasang' || row.status === 'menunggu_aktivasi' || row.status === 'audit') {
+        message = `Halo tim, proses instalasi telah selesai. Mohon bantuannya untuk segera *memverifikasi dan mengaktifkan* pelanggan berikut:\n\nNama: ${row.name}\nKode: ${row.customer_code}\nAlamat: ${row.address}\n\nTerima kasih.`;
+    } else {
+        message = `Halo tim, info pelanggan:\n\nNama: ${row.name}\nKode: ${row.customer_code}\nStatus: ${row.status}`;
+    }
+    
+    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
 }
 </script>
