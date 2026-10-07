@@ -424,36 +424,48 @@
         <Teleport to="body">
             <div v-if="showWaModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showWaModal = false"></div>
-                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto animate-fade-in-up">
-                    <div class="flex items-center gap-4 mb-4">
-                        <div class="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
-                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-900">Pilih Petugas (WhatsApp)</h3>
-                            <p class="text-sm text-gray-500 font-medium">Kirim ke siapa?</p>
-                        </div>
+                <div class="relative bg-[#f4f6f8] rounded-xl shadow-2xl max-w-[420px] w-full max-h-[90vh] overflow-hidden flex flex-col animate-fade-in-up">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between p-4 border-b border-gray-200 bg-[#f4f6f8]">
+                        <h3 class="text-[16px] font-bold text-gray-800 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                            Pilih Admin/CS On Duty
+                        </h3>
+                        <button @click="showWaModal = false" class="text-gray-500 hover:text-gray-800">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
                     </div>
                     
-                    <div class="space-y-2 mt-6">
-                        <div v-if="officers && officers.length > 0">
-                            <button v-for="officer in officers" :key="officer.id" @click="sendWaToOfficer(officer)" class="w-full flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-green-400 hover:bg-green-50 transition-colors text-left group">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-800 group-hover:text-green-700">{{ officer.name }}</h4>
-                                    <p class="text-xs text-gray-500 uppercase">{{ officer.role }}</p>
-                                </div>
-                                <div class="text-green-500 bg-white p-1.5 rounded-full shadow-sm group-hover:bg-green-500 group-hover:text-white transition-colors">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                                </div>
-                            </button>
-                        </div>
-                        <div v-else class="text-center p-4 text-sm text-gray-500">
-                            Tidak ada petugas aktif.
-                        </div>
-                    </div>
+                    <div class="p-4 overflow-y-auto custom-scrollbar">
+                        <p class="text-[13px] text-gray-500 mb-4 font-medium leading-relaxed">
+                            Kirim informasi pelanggan <span class="font-bold text-gray-700">{{ waCustomerRow?.name }}</span> ke admin/CS yang sedang on duty:
+                        </p>
 
-                    <div class="mt-6 border-t border-gray-100 pt-4 flex justify-end">
-                        <button type="button" @click="showWaModal = false" class="px-5 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">Batal</button>
+                        <div class="space-y-2 mb-4">
+                            <div v-if="officers && officers.length > 0">
+                                <button v-for="officer in officers" :key="officer.id" @click="sendWaToOfficer(officer)" class="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-sm transition-all text-left bg-white group">
+                                    <div>
+                                        <h4 class="text-[14px] font-bold text-gray-800 group-hover:text-blue-700">{{ officer.name }}</h4>
+                                        <p class="text-[12px] text-gray-400 mt-0.5">{{ officer.phone || 'Tidak ada nomor' }}</p>
+                                    </div>
+                                    <div class="bg-[#244186] text-white px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
+                                        <span class="w-2 h-2 rounded-full bg-green-400 border border-[#244186]"></span>
+                                        On Duty
+                                    </div>
+                                </button>
+                            </div>
+                            <div v-else class="text-center p-6 text-sm text-gray-500 bg-white rounded-xl border border-gray-200">
+                                Tidak ada petugas aktif.
+                            </div>
+                        </div>
+
+                        <!-- Preview Pesan -->
+                        <div class="bg-gray-100 rounded-xl p-4 border border-gray-200 shadow-inner">
+                            <h4 class="text-[12px] font-bold text-gray-800 mb-2">Preview Pesan:</h4>
+                            <div class="text-[12.5px] text-gray-600 whitespace-pre-wrap leading-relaxed font-sans">
+                                {{ previewWaMessage }}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -650,23 +662,38 @@ function sendWa(row) {
     showWaModal.value = true;
 }
 
+const previewWaMessage = computed(() => {
+    if (!waCustomerRow.value) return '';
+    const row = waCustomerRow.value;
+    let title = 'Informasi Pelanggan:';
+    if (row.status === 'booking') title = 'Konfirmasi Booking Baru:';
+    else if (row.status === 'survey' || row.status === 'jadwal_pasang') title = 'Permintaan Jadwal Pemasangan:';
+    else if (row.status === 'laporan_pasang' || row.status === 'menunggu_aktivasi') title = 'Permintaan Aktivasi Pelanggan:';
+    
+    // Format Rp
+    const rpFormat = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format;
+    
+    return `${title}
+
+Nama: ${row.name || '-'}
+No HP: ${row.phone || '-'}
+Alamat: ${row.address || '-'}
+Paket: ${row.package ? row.package.name : '-'}
+Biaya Pasang: ${row.installation_fee ? rpFormat(row.installation_fee) : '-'}
+Cabang: ${row.area_model ? row.area_model.name : '-'}
+Petugas: ${row.user ? row.user.name : '-'}
+Tanggal: ${row.created_at ? new Date(row.created_at).toLocaleString('id-ID', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'}) : '-'}
+
+Mohon segera diproses. Terima kasih.`;
+});
+
 function sendWaToOfficer(officer) {
     if (!officer.phone) {
         alert('Petugas ini belum memiliki nomor telepon yang terdaftar.');
         return;
     }
 
-    const row = waCustomerRow.value;
-    let message = '';
-    if (row.status === 'booking') {
-        message = `Halo ${officer.name}, mohon bantuannya untuk *menugaskan jadwal survey* pelanggan baru berikut:\n\nNama: ${row.name}\nKode: ${row.customer_code}\nAlamat: ${row.address}\nNo. HP: ${row.phone}\n\nTerima kasih.`;
-    } else if (row.status === 'survey' || row.status === 'jadwal_pasang') {
-        message = `Halo ${officer.name}, mohon bantuannya untuk *menjadwalkan pemasangan* pelanggan berikut:\n\nNama: ${row.name}\nKode: ${row.customer_code}\nAlamat: ${row.address}\n\nTerima kasih.`;
-    } else if (row.status === 'laporan_pasang' || row.status === 'menunggu_aktivasi' || row.status === 'audit') {
-        message = `Halo ${officer.name}, proses instalasi telah selesai. Mohon bantuannya untuk segera *memverifikasi dan mengaktifkan* pelanggan berikut:\n\nNama: ${row.name}\nKode: ${row.customer_code}\nAlamat: ${row.address}\n\nTerima kasih.`;
-    } else {
-        message = `Halo ${officer.name}, info pelanggan:\n\nNama: ${row.name}\nKode: ${row.customer_code}\nStatus: ${row.status}`;
-    }
+    const message = previewWaMessage.value;
     
     // Format the phone number (change leading 0 to 62 if needed)
     let phone = officer.phone.trim();
