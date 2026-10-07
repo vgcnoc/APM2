@@ -26,7 +26,10 @@ class CbpRequestController extends Controller
             ->withQueryString();
 
         $areas = \App\Models\Area::all();
-        $customers = \App\Models\Customer::where('status', '!=', 'terminated')->select('id', 'name', 'customer_code', 'area_id')->get();
+        $customers = \App\Models\Customer::where('status', 'active')
+            ->select('id', 'name', 'customer_code', 'area_id', 'phone', 'address', 'status', 'service_status', 'package_id')
+            ->with('package:id,name')
+            ->get();
 
         return Inertia::render('Tickets/Cbp', [
             'requests' => $cbpRequests,

@@ -173,6 +173,29 @@
                                     <option v-for="cust in filteredCustomers" :key="cust.id" :value="cust.id">{{ cust.customer_code }} - {{ cust.name }}</option>
                                 </select>
                                 <p class="text-[10px] text-gray-500 mt-1">Pelanggan yang dipilih akan di-stop permanen.</p>
+
+                                <!-- Customer Data Display -->
+                                <div v-if="selectedCustomerData" class="mt-3 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                                    <h4 class="text-xs font-bold text-gray-800 mb-2 border-b border-gray-100 pb-2">Informasi Pelanggan</h4>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                                        <div>
+                                            <span class="block text-[10px] font-bold text-gray-500 uppercase">Nama</span>
+                                            <span class="text-gray-900 font-medium">{{ selectedCustomerData.name }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="block text-[10px] font-bold text-gray-500 uppercase">Paket</span>
+                                            <span class="text-gray-900">{{ selectedCustomerData.package?.name || '-' }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="block text-[10px] font-bold text-gray-500 uppercase">No. Telepon</span>
+                                            <span class="text-gray-900">{{ selectedCustomerData.phone || '-' }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="block text-[10px] font-bold text-gray-500 uppercase">Alamat</span>
+                                            <span class="text-gray-900 truncate block" :title="selectedCustomerData.address">{{ selectedCustomerData.address || '-' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Alasan -->
@@ -331,6 +354,11 @@ const form = useForm({
 const filteredCustomers = computed(() => {
     if (!selectedArea.value) return [];
     return props.customers.filter(c => c.area_id === selectedArea.value);
+});
+
+const selectedCustomerData = computed(() => {
+    if (!form.customer_id) return null;
+    return props.customers.find(c => c.id === form.customer_id);
 });
 
 function openModal() {
