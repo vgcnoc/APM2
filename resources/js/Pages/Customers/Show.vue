@@ -1256,6 +1256,43 @@ function toggleInstallItem(item) {
     localStorage.setItem(`apm_hardware_${props.customer.id}`, JSON.stringify(savedState));
 }
 
+// Modal state for Install confirmation
+const showInstallModal = ref(false);
+const installModalItem = ref(null);
+const installModalIsBroken = ref(false);
+const installModalQty = ref(0);
+
+function openInstallModal(item) {
+    if (item.isInstalled) {
+        // If already installed, just toggle off (uninstall)
+        toggleInstallItem(item);
+        return;
+    }
+    installModalItem.value = item;
+    installModalIsBroken.value = false;
+    installModalQty.value = 0;
+    showInstallModal.value = true;
+}
+
+function confirmInstall() {
+    const item = installModalItem.value;
+    if (!item) return;
+
+    if (item.type === 'ONT' && installModalIsBroken.value) {
+        // Mark as installed but broken (RMA) — store status for later
+        item.isBroken = true;
+        item.rmaNote = 'ONT Rusak - RMA';
+    }
+
+    if (item.type === 'Material') {
+        item.actual_qty = installModalQty.value;
+    }
+
+    toggleInstallItem(item);
+    showInstallModal.value = false;
+    installModalItem.value = null;
+}
+
 const isInstallingHardware = computed(() => {
     // Show hardware form if there are no items, or if at least one item is marked as installed.
     if (hardwareItems.value.length === 0) return true;
