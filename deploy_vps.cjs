@@ -13,6 +13,8 @@ php artisan db:seed --class=RbcaSeeder --force
 npm run build
 php artisan optimize:clear
 php artisan view:clear
+chown -R www-data:www-data storage bootstrap/cache
+chmod -R 775 storage bootstrap/cache
 `;
 
 conn.on('ready', () => {

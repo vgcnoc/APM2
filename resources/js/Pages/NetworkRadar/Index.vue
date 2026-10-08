@@ -39,8 +39,9 @@ let watchId = null;
 const layers = ref([
     { key: 'odc', label: 'ODC', color: '#f59e0b', visible: true, icon: '🟠', count: 0 },
     { key: 'odp', label: 'ODP', color: '#22c55e', visible: true, icon: '🟢', count: 0 },
-    { key: 'customer', label: 'Pelanggan', color: '#3b82f6', visible: true, icon: '🔵', count: 0 },
+    { key: 'customer', label: 'Pelanggan Aktif', color: '#3b82f6', visible: true, icon: '🔵', count: 0 },
     { key: 'booking', label: 'Booking', color: '#eab308', visible: true, icon: '🟡', count: 0 },
+    { key: 'proses', label: 'Proses Instalasi', color: '#06b6d4', visible: true, icon: '🛠️', count: 0 },
     { key: 'reseller', label: 'Reseller', color: '#8b5cf6', visible: true, icon: '🟣', count: 0 },
 ]);
 
@@ -48,8 +49,9 @@ const layers = ref([
 onMounted(() => {
     layers.value.find(l => l.key === 'odc').count = props.odcs?.length || 0;
     layers.value.find(l => l.key === 'odp').count = props.odps?.length || 0;
-    layers.value.find(l => l.key === 'customer').count = props.customers?.filter(c => !c.is_reseller && c.status !== 'booking')?.length || 0;
+    layers.value.find(l => l.key === 'customer').count = props.customers?.filter(c => !c.is_reseller && !['booking', 'survey', 'installing'].includes(c.status))?.length || 0;
     layers.value.find(l => l.key === 'booking').count = props.customers?.filter(c => !c.is_reseller && c.status === 'booking')?.length || 0;
+    layers.value.find(l => l.key === 'proses').count = props.customers?.filter(c => !c.is_reseller && ['survey', 'installing'].includes(c.status))?.length || 0;
     layers.value.find(l => l.key === 'reseller').count = props.customers?.filter(c => c.is_reseller)?.length || 0;
 });
 
@@ -61,6 +63,7 @@ const svgPaths = {
     odp: 'M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684z',
     customer: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
     booking: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', // clock icon for booking
+    proses: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z', // settings/gear icon for proses
     reseller: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
     mylocation: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z',
 };
@@ -70,14 +73,16 @@ const typeColors = {
     odp: '#22c55e',
     customer: '#3b82f6',
     booking: '#eab308',
+    proses: '#06b6d4',
     reseller: '#8b5cf6',
 };
 
 const typeLabels = {
     odc: 'ODC',
     odp: 'ODP',
-    customer: 'Pelanggan',
+    customer: 'Pelanggan Aktif',
     booking: 'Booking',
+    proses: 'Proses Instalasi',
     reseller: 'Reseller',
 };
 
@@ -446,6 +451,7 @@ onMounted(async () => {
         odp: createIcon('#22c55e', svgPaths.odp),
         customer: createIcon('#3b82f6', svgPaths.customer),
         booking: createIcon('#eab308', svgPaths.booking),
+        proses: createIcon('#06b6d4', svgPaths.proses),
         reseller: createIcon('#8b5cf6', svgPaths.reseller),
     };
 
@@ -513,17 +519,20 @@ onMounted(async () => {
         if (!item.latitude || !item.longitude) return;
         const isReseller = item.is_reseller;
         const isBooking = item.status === 'booking';
-        const groupKey = isReseller ? 'reseller' : (isBooking ? 'booking' : 'customer');
+        const isProses = item.status === 'survey' || item.status === 'installing';
+        const groupKey = isReseller ? 'reseller' : (isBooking ? 'booking' : (isProses ? 'proses' : 'customer'));
         const marker = L.marker([item.latitude, item.longitude], { icon: icons[groupKey] });
 
         let statusBadge = '';
         if (item.status === 'active') statusBadge = '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-bold uppercase">Aktif</span>';
         else if (item.status === 'suspended') statusBadge = '<span class="px-2 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-bold uppercase">Isolir</span>';
         else if (item.status === 'booking') statusBadge = '<span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-[10px] font-bold uppercase">Booking</span>';
+        else if (item.status === 'survey') statusBadge = '<span class="px-2 py-0.5 bg-cyan-100 text-cyan-700 rounded text-[10px] font-bold uppercase">Survey</span>';
+        else if (item.status === 'installing') statusBadge = '<span class="px-2 py-0.5 bg-cyan-100 text-cyan-700 rounded text-[10px] font-bold uppercase">Instalasi</span>';
         else statusBadge = `<span class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-[10px] font-bold uppercase">${item.status}</span>`;
 
-        const titleText = isReseller ? 'Reseller' : (isBooking ? 'Booking' : 'Pelanggan');
-        const titleColor = isReseller ? 'text-purple-500' : (isBooking ? 'text-yellow-500' : 'text-blue-500');
+        const titleText = isReseller ? 'Reseller' : (isBooking ? 'Booking' : (isProses ? 'Proses Instalasi' : 'Pelanggan'));
+        const titleColor = isReseller ? 'text-purple-500' : (isBooking ? 'text-yellow-500' : (isProses ? 'text-cyan-500' : 'text-blue-500'));
 
         marker.bindPopup(`
             <div class="font-sans min-w-[200px]">
