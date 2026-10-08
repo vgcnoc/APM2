@@ -12,9 +12,11 @@ class SettingController extends Controller
     public function branding()
     {
         $appLogo = Setting::get('app_logo');
+        $appFavicon = Setting::get('app_favicon');
         $companyLogo = Setting::get('company_logo');
         return Inertia::render('Settings/Branding', [
             'current_app_logo' => $appLogo ? asset('storage/' . $appLogo) : null,
+            'current_app_favicon' => $appFavicon ? asset('storage/' . $appFavicon) : null,
             'current_company_logo' => $companyLogo ? asset('storage/' . $companyLogo) : null,
             'current_app_name' => Setting::get('app_name', ''),
             'company_name' => Setting::get('company_name', ''),
@@ -131,6 +133,8 @@ class SettingController extends Controller
             'app_name' => 'nullable|string|max:255',
             'app_logo' => 'nullable|image|max:2048',
             'remove_app_logo' => 'nullable|boolean',
+            'app_favicon' => 'nullable|mimes:jpeg,png,jpg,gif,svg,ico|max:1024',
+            'remove_app_favicon' => 'nullable|boolean',
             'company_logo' => 'nullable|image|max:2048',
             'remove_company_logo' => 'nullable|boolean',
             'company_name' => 'nullable|string|max:255',
@@ -163,6 +167,22 @@ class SettingController extends Controller
             Setting::set('app_logo', $path);
         }
 
+        // Handle App Favicon
+        if ($request->boolean('remove_app_favicon')) {
+            $oldFavicon = Setting::get('app_favicon');
+            if ($oldFavicon && Storage::disk('public')->exists($oldFavicon)) {
+                Storage::disk('public')->delete($oldFavicon);
+            }
+            Setting::set('app_favicon', null);
+        } elseif ($request->hasFile('app_favicon')) {
+            $oldFavicon = Setting::get('app_favicon');
+            if ($oldFavicon && Storage::disk('public')->exists($oldFavicon)) {
+                Storage::disk('public')->delete($oldFavicon);
+            }
+            $favPath = $request->file('app_favicon')->store('logos', 'public');
+            Setting::set('app_favicon', $favPath);
+        }
+
         // Handle Company Logo
         if ($request->boolean('remove_company_logo')) {
             $oldCompLogo = Setting::get('company_logo');
@@ -181,11 +201,13 @@ class SettingController extends Controller
 
         if ($request->ajax() || $request->wantsJson()) {
             $appLogo = Setting::get('app_logo');
+            $appFavicon = Setting::get('app_favicon');
             $compLogo = Setting::get('company_logo');
             return response()->json([
                 'success' => true,
                 'message' => 'Branding berhasil diperbarui.',
                 'app_logo' => $appLogo ? asset('storage/' . $appLogo) : null,
+                'app_favicon' => $appFavicon ? asset('storage/' . $appFavicon) : null,
                 'company_logo' => $compLogo ? asset('storage/' . $compLogo) : null,
             ]);
         }

@@ -9,6 +9,16 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
 
+    @php
+        $favicon = \App\Models\Setting::get('app_favicon');
+    @endphp
+    @if($favicon)
+        <link rel="icon" href="{{ asset('storage/' . $favicon) }}">
+        <link rel="shortcut icon" href="{{ asset('storage/' . $favicon) }}">
+    @else
+        <link rel="icon" href="/favicon.ico">
+    @endif
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

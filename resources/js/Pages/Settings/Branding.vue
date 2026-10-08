@@ -49,6 +49,31 @@
                                     Hapus Logo Aplikasi
                                 </button>
                             </div>
+                            
+                            <hr class="border-gray-100 my-4">
+                            
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-3">Preview Favicon (Icon Tab)</label>
+                                <div class="bg-gray-50 rounded-2xl p-6 flex items-center justify-center border-2 border-dashed border-gray-200 relative min-h-[100px] group transition-all hover:bg-gray-100 hover:border-indigo-300">
+                                    <img v-if="appFaviconPreview" :src="appFaviconPreview" class="max-h-[40px] w-auto object-contain drop-shadow-sm transition-transform group-hover:scale-110" @error="onFaviconError" />
+                                    <div v-else class="text-center text-gray-400">
+                                        <svg class="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                                        <span class="text-xs font-bold block">Belum ada favicon</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Upload Favicon Baru</label>
+                                <input type="file" ref="faviconInput" @change="handleFaviconChange" accept="image/png, image/x-icon, image/jpeg, image/gif, image/svg+xml" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer transition-colors" />
+                                <p class="text-xs text-gray-400 mt-2">Format: PNG, ICO, SVG. Disarankan ukuran kotak 32x32 atau 64x64.</p>
+                            </div>
+                            
+                            <div class="pt-2">
+                                <button type="button" v-if="props.current_app_favicon" @click="removeFavicon" :disabled="isSubmitting" class="text-xs font-bold text-red-500 hover:text-red-700 transition-colors">
+                                    Hapus Favicon
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -135,6 +160,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     current_app_logo: String,
+    current_app_favicon: String,
     current_company_logo: String,
     current_app_name: String,
     company_name: String,
@@ -146,9 +172,11 @@ const props = defineProps({
 
 const page = usePage();
 const appFileInput = ref(null);
+const faviconInput = ref(null);
 const compFileInput = ref(null);
 
 const selectedAppFile = ref(null);
+const selectedFaviconFile = ref(null);
 const selectedCompFile = ref(null);
 
 const isSubmitting = ref(false);
@@ -163,9 +191,11 @@ const form = reactive({
 });
 
 const appLogoPreview = ref(props.current_app_logo || null);
+const appFaviconPreview = ref(props.current_app_favicon || null);
 const compLogoPreview = ref(props.current_company_logo || null);
 
 const onAppImgError = () => { appLogoPreview.value = null; };
+const onFaviconError = () => { appFaviconPreview.value = null; };
 const onCompImgError = () => { compLogoPreview.value = null; };
 
 const handleAppFileChange = (e) => {
@@ -173,6 +203,14 @@ const handleAppFileChange = (e) => {
     if (file) {
         selectedAppFile.value = file;
         appLogoPreview.value = URL.createObjectURL(file);
+    }
+};
+
+const handleFaviconChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        selectedFaviconFile.value = file;
+        appFaviconPreview.value = URL.createObjectURL(file);
     }
 };
 
@@ -196,6 +234,7 @@ const submitForm = () => {
     formData.append('company_website', form.companyWebsite);
     
     if (selectedAppFile.value) formData.append('app_logo', selectedAppFile.value);
+    if (selectedFaviconFile.value) formData.append('app_favicon', selectedFaviconFile.value);
     if (selectedCompFile.value) formData.append('company_logo', selectedCompFile.value);
 
     const xsrfToken = document.cookie.split('; ').find(row => row.startsWith('XSRF-TOKEN='))?.split('=')[1];
@@ -225,6 +264,20 @@ const removeAppLogo = () => {
         isSubmitting.value = true;
         const formData = new FormData();
         formData.append('remove_app_logo', '1');
+        const xsrfToken = document.cookie.split('; ').find(row => row.startsWith('XSRF-TOKEN='))?.split('=')[1];
+        fetch(route('settings.branding.update'), {
+            method: 'POST', body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json', ...(xsrfToken ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrfToken) } : {}) },
+            credentials: 'same-origin',
+        }).then(() => window.location.href = route('settings.branding'));
+    }
+};
+
+const removeFavicon = () => {
+    if (confirm('Hapus Favicon?')) {
+        isSubmitting.value = true;
+        const formData = new FormData();
+        formData.append('remove_app_favicon', '1');
         const xsrfToken = document.cookie.split('; ').find(row => row.startsWith('XSRF-TOKEN='))?.split('=')[1];
         fetch(route('settings.branding.update'), {
             method: 'POST', body: formData,
