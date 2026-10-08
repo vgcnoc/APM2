@@ -606,10 +606,10 @@ const toggleLayer = (layer) => {
                 </div>
             </div>
 
-            <!-- ═══ Nearby Search Panel ═══ -->
-            <transition name="slide-panel">
-                <div v-if="showPanel" class="absolute top-3 right-3 bottom-3 z-[401] w-80 sm:w-96 flex flex-col pointer-events-auto">
-                    <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-100 flex flex-col h-full overflow-hidden">
+            <!-- ═══ Nearby Search Panel (Bottom Sheet) ═══ -->
+            <transition name="slide-up">
+                <div v-if="showPanel" class="absolute bottom-0 left-0 right-0 z-[401] flex flex-col items-center pointer-events-none">
+                    <div class="bg-white/95 backdrop-blur-xl rounded-t-3xl shadow-[0_-15px_40px_rgba(0,0,0,0.15)] border-t border-gray-100 flex flex-col w-full max-w-xl max-h-[60vh] sm:max-h-[70vh] pointer-events-auto overflow-hidden">
 
                         <!-- Panel Header -->
                         <div class="p-4 border-b border-gray-100">
@@ -822,14 +822,14 @@ const toggleLayer = (layer) => {
 .leaflet-popup-content { margin: 14px; }
 
 /* Panel Transition */
-.slide-panel-enter-active,
-.slide-panel-leave-active {
+.slide-up-enter-active,
+.slide-up-leave-active {
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.slide-panel-enter-from,
-.slide-panel-leave-to {
+.slide-up-enter-from,
+.slide-up-leave-to {
     opacity: 0;
-    transform: translateX(100%);
+    transform: translateY(100%);
 }
 
 /* Bounce In Animation */
