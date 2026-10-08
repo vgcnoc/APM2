@@ -18,11 +18,17 @@ class NetworkRadarController extends Controller
             ->with(['odc:id,name'])
             ->get();
             
-        $customers = Customer::select('id', 'name', 'customer_code', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'odp_id')
+        $customers = Customer::select('id', 'name', 'customer_code', 'latitude', 'longitude', 'address', 'is_reseller', 'status')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
-            ->with(['odp:id,name'])
-            ->get();
+            ->with(['ont.odp:id,name'])
+            ->get()
+            ->map(function ($customer) {
+                $arr = $customer->toArray();
+                $arr['odp'] = $customer->ont ? $customer->ont->odp : null;
+                unset($arr['ont']);
+                return $arr;
+            });
 
         return Inertia::render('NetworkRadar/Index', [
             'odcs' => $odcs,
