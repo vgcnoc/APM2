@@ -475,7 +475,7 @@
                             <div class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                                 <div class="flex items-center justify-between mb-3">
                                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Data ONT</label>
-                                    <button type="button" @click="assignForm.ont_models.push('')" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-md focus:outline-none transition-colors border border-transparent hover:border-blue-200 text-xs font-medium flex items-center gap-1" title="Tambah ONT">
+                                    <button type="button" @click="assignForm.ont_models.push('')" :disabled="filteredOnts.length <= assignForm.ont_models.length" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-md focus:outline-none transition-colors border border-transparent hover:border-blue-200 text-xs font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed" title="Tambah ONT">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                         Tambah
                                     </button>
@@ -483,8 +483,9 @@
                                 <div class="space-y-3">
                                     <div v-for="(ont, index) in assignForm.ont_models" :key="'ont-'+index" class="group relative">
                                         <div class="flex gap-2 items-center">
-                                            <select v-model="assignForm.ont_models[index]" class="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all truncate hover:bg-white">
-                                                <option value="">-- Pilih ONT --</option>
+                                            <select v-model="assignForm.ont_models[index]" :disabled="filteredOnts.length === 0" class="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all truncate hover:bg-white disabled:bg-gray-100 disabled:text-gray-400">
+                                                <option value="" v-if="filteredOnts.length > 0">-- Pilih ONT --</option>
+                                                <option value="" v-else>-- Stok ONT Kosong --</option>
                                                 <option v-for="ontOption in filteredOnts" :key="ontOption.id" :value="ontOption.id">
                                                     {{ ontOption.brand }} {{ ontOption.model || '' }} - SN: {{ ontOption.serial_number }}
                                                 </option>
@@ -526,7 +527,7 @@
                                             </option>
                                         </select>
                                         <div class="flex items-center gap-1.5 shrink-0" v-if="assignForm.material_items[index].id">
-                                            <input v-model="assignForm.material_items[index].qty" type="number" step="0.01" min="0" class="w-20 px-2 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 text-center font-semibold text-blue-700 bg-blue-50/50" placeholder="Qty">
+                                            <input v-model="assignForm.material_items[index].qty" @input="validateMaterialQty(index)" type="number" step="0.01" min="0" class="w-20 px-2 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 text-center font-semibold text-blue-700 bg-blue-50/50" placeholder="Qty">
                                             <span class="text-xs font-medium text-gray-500 w-12 truncate">{{ assignForm.material_items[index].unit }}</span>
                                         </div>
                                         <button type="button" @click="assignForm.material_items.splice(index, 1)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-all focus:outline-none shrink-0" title="Hapus">
@@ -995,6 +996,17 @@ function updateMaterialItemDetails(index) {
         assignForm.material_items[index].qty = qty;
         assignForm.material_items[index].unit = unit;
         assignForm.material_items[index].trx_number = item.trx_number;
+        assignForm.material_items[index].area_stock = item.area_stock;
+    }
+}
+
+function validateMaterialQty(index) {
+    const formItem = assignForm.material_items[index];
+    if (formItem.id && formItem.area_stock !== undefined) {
+        if (formItem.qty > formItem.area_stock) {
+            formItem.qty = formItem.area_stock;
+            alert(`Stok tidak mencukupi! Maksimal stok untuk material ini adalah ${formItem.area_stock} ${formItem.unit}`);
+        }
     }
 }
 
