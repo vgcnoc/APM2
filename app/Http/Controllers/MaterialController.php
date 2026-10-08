@@ -167,7 +167,7 @@ class MaterialController extends Controller
         $materialStock->stock += $validated['added_stock'];
         $materialStock->initial_stock += $validated['added_stock'];
 
-        if ($material->category === 'Kabel' && !empty($validated['added_rolls'])) {
+        if (str_contains(strtolower($material->category), 'kabel') && !empty($validated['added_rolls'])) {
             $material->total_rolls += $validated['added_rolls'];
             $materialStock->total_rolls += $validated['added_rolls'];
         }
