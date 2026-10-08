@@ -497,7 +497,7 @@ class CustomerController extends Controller
 
         return Inertia::render('Customers/Survey', [
             'customers' => $customers,
-            'availableOdps' => $availableOdps,
+            'availableOdps' => Odp::active()->with(['odc.olt', 'ports'])->get(),
             'technicians' => $technicians,
             'areas' => $areas,
             'stats' => $stats,
@@ -1826,6 +1826,7 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'surveyor_id' => 'required|exists:users,id',
             'odp_id' => 'nullable|exists:odps,id',
+            'port_number' => 'nullable|integer',
             'distance_meters' => 'nullable|numeric',
             'port_available' => 'nullable|boolean',
             'feasibility' => 'required|in:feasible,not_feasible',
@@ -1856,6 +1857,14 @@ class CustomerController extends Controller
             if ($availablePorts <= 0) {
                 return back()->withErrors(['odp_id' => 'ODP ini sudah penuh (termasuk antrean pelanggan yang belum diinstalasi). Silakan pilih ODP lain.']);
             }
+            
+            if (!empty($validated['port_number'])) {
+                // Check if port is available
+                $port = \App\Models\OdpPort::where('odp_id', $odp->id)->where('port_number', $validated['port_number'])->first();
+                if ($port && in_array($port->status, ['used', 'reserved', 'fault', 'stop'])) {
+                    return back()->withErrors(['port_number' => 'Port ' . $validated['port_number'] . ' sudah digunakan/tidak tersedia.']);
+                }
+            }
         }
 
         $photoPaths = [];
@@ -1875,7 +1884,14 @@ class CustomerController extends Controller
         $validated['survey_date'] = now()->toDateString();
         $validated['photos'] = empty($photoPaths) ? null : $photoPaths;
 
-        Survey::create($validated);
+        $survey = Survey::create($validated);
+
+        if (!empty($validated['odp_id']) && !empty($validated['port_number'])) {
+            \App\Models\OdpPort::updateOrCreate(
+                ['odp_id' => $validated['odp_id'], 'port_number' => $validated['port_number']],
+                ['status' => 'reserved']
+            );
+        }
         
         // Update schedule status if any
         $schedule = $customer->technicianSchedules()->where('type', 'survey')->where('status', 'scheduled')->first();

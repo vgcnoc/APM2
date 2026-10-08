@@ -357,6 +357,16 @@
                             </select>
                             <p v-if="nearestOdpMsg" :class="nearestOdpMsg.includes('⚠️') ? 'text-yellow-400' : 'text-emerald-400'" class="mt-1 text-[10px]">{{ nearestOdpMsg }}</p>
                         </div>
+                        
+                        <div v-if="reportForm.odp_id">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Pilih Port ODP (Reservasi)</label>
+                            <select v-model="reportForm.port_number" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- Pilih Port --</option>
+                                <option v-for="port in availablePortNumbers" :key="port" :value="port">
+                                    Port {{ port }}
+                                </option>
+                            </select>
+                        </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-500 mb-1">Jarak Kabel (Meter)</label>
                             <input v-model="reportForm.distance_meters" type="number" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500" placeholder="150" />
@@ -846,11 +856,31 @@ const sortedOdps = ref([...props.availableOdps]);
 const reportForm = useForm({
     surveyor_id: '',
     odp_id: '',
+    port_number: '',
     distance_meters: '',
     port_available: true,
     feasibility: 'feasible',
     notes: '',
     photos: []
+});
+
+const selectedOdp = computed(() => {
+    return sortedOdps.value.find(o => o.id === reportForm.odp_id);
+});
+
+const availablePortNumbers = computed(() => {
+    if (!selectedOdp.value) return [];
+    let ports = [];
+    let usedPortNumbers = [];
+    if (selectedOdp.value.ports) {
+        usedPortNumbers = selectedOdp.value.ports.filter(p => ['used', 'reserved', 'fault', 'stop'].includes(p.status)).map(p => p.port_number);
+    }
+    for (let i = 1; i <= selectedOdp.value.total_ports; i++) {
+        if (!usedPortNumbers.includes(i)) {
+            ports.push(i);
+        }
+    }
+    return ports;
 });
 
 function calculateDistance(lat1, lon1, lat2, lon2) {

@@ -603,8 +603,29 @@ const openOdpDetail = (odp) => {
 };
 
 const getPortData = (odp, portNum) => {
-    if (!odp || !odp.onts) return null;
-    return odp.onts.find(o => o.port_number == portNum);
+    if (!odp) return null;
+    
+    // 1. Cek dari data ONT
+    let portData = odp.onts ? odp.onts.find(o => o.port_number == portNum) : null;
+    if (portData) return portData;
+    
+    // 2. Cek dari reservasi Survey (jika belum ada ONT)
+    if (odp.surveys) {
+        let survey = [...odp.surveys]
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            .find(s => s.port_number == portNum && s.customer && ['survey', 'installing'].includes(s.customer.status));
+            
+        if (survey) {
+            return {
+                customer: survey.customer,
+                is_reservation: true,
+                start_time: survey.created_at,
+                updated_at: survey.updated_at
+            };
+        }
+    }
+    
+    return null;
 };
 
 const getPendingInstallationsForOdp = (odp) => {
@@ -619,6 +640,11 @@ const getPendingInstallationsForOdp = (odp) => {
             }
         });
     }
+    odp.surveys.forEach(survey => {
+        if (survey.port_number && survey.customer_id) {
+            customersInPorts.add(survey.customer_id);
+        }
+    });
     
     const customers = [];
     const seen = new Set();
