@@ -342,11 +342,12 @@ const menuItems = [
         type: 'dropdown',
         icon: 'archive',
         label: 'Inventaris & Logistik',
-        active: (url) => (url || '').startsWith('/materials') || (url || '').startsWith('/material-transactions'),
+        active: (url) => (url || '').startsWith('/materials') || (url || '').startsWith('/material-transactions') || (url || '').startsWith('/material-returns'),
         permission: 'menu_materials',
         children: [
             { href: '/materials', label: 'Material / Barang', active: (url) => (url || '').startsWith('/materials'), permission: 'menu_materials' },
             { href: '/material-transactions', label: 'Order / Pengambilan', active: (url) => (url || '').startsWith('/material-transactions'), permission: 'menu_material_transactions' },
+            { href: '/material-returns', label: 'Retur Material', active: (url) => (url || '').startsWith('/material-returns'), permission: 'menu_material_transactions' },
         ]
     },
     {

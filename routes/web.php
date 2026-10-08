@@ -9,6 +9,7 @@ use App\Http\Controllers\OltController;
 use App\Http\Controllers\OntController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\MaterialTransactionController;
+use App\Http\Controllers\MaterialReturnController;
 use App\Http\Controllers\TicketController;
 use Illuminate\Support\Facades\Route;
 
@@ -172,6 +173,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('material-transactions/{item}/register-ont', [MaterialTransactionController::class, 'registerOnt'])->name('material-transactions.register-ont');
     Route::post('material-transactions/{item}/reset-ont', [MaterialTransactionController::class, 'resetOnt'])->name('material-transactions.reset-ont');
     Route::post('material-transactions/{material_transaction}/delete', [MaterialTransactionController::class, 'destroy'])->name('material-transactions.destroy');
+
+    // ── Retur Material (Area → Gudang Utama) ────────────────────
+    Route::get('material-returns', [MaterialReturnController::class, 'index'])->name('material-returns.index');
+    Route::post('material-returns', [MaterialReturnController::class, 'store'])->name('material-returns.store');
+    Route::post('material-returns/{material_return}/delete', [MaterialReturnController::class, 'destroy'])->name('material-returns.destroy');
 
     // ── Data Jaringan (Dashboard Topology) ─────────────────────
     Route::get('/network-data', [\App\Http\Controllers\NetworkDataController::class, 'index'])->name('network-data.index');
