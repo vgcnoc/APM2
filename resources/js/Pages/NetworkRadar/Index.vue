@@ -8,6 +8,8 @@ const props = defineProps({
     odcs: Array,
     odps: Array,
     customers: Array,
+    initLat: [String, Number],
+    initLng: [String, Number],
 });
 
 const mapEl = ref(null);
@@ -563,6 +565,13 @@ onMounted(async () => {
         if (map) requestAnimationFrame(() => map.invalidateSize());
     });
     if (mapEl.value) resizeObserver.observe(mapEl.value);
+
+    // Initial Coordinates
+    if (props.initLat && props.initLng) {
+        myLocation.value = { lat: parseFloat(props.initLat), lng: parseFloat(props.initLng), accuracy: 10 };
+        placeMyLocation(myLocation.value.lat, myLocation.value.lng, 10, true);
+        searchNearby();
+    }
 });
 
 onUnmounted(() => {

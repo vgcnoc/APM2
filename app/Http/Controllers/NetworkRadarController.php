@@ -37,6 +37,8 @@ class NetworkRadarController extends Controller
             'odcs' => $odcs,
             'odps' => $odps,
             'customers' => $customers,
+            'initLat' => request()->query('lat'),
+            'initLng' => request()->query('lng'),
         ]);
     }
 
