@@ -25,7 +25,7 @@ class NetworkDataController extends Controller
         $search = $request->input('search');
 
         // Base ODP query with relations
-        $odpQuery = Odp::with(['odc.olt', 'area', 'onts.customer']);
+        $odpQuery = Odp::with(['odc.olt', 'area', 'onts.customer', 'surveys.customer']);
 
         // Apply filters
         if ($oltId) {

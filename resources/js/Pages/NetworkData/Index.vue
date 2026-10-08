@@ -221,7 +221,20 @@
                                         </div>
                                     </div>
 
-                                    <button @click="openOdpDetail(odp)" class="w-full text-center bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1">
+                                    <!-- Pending Installations -->
+                                    <div v-if="getPendingInstallationsForOdp(odp).length > 0" class="mt-4 pt-4 border-t border-gray-100">
+                                        <h5 class="text-[11px] font-bold text-gray-800 mb-2">Antrean Instalasi (Menunggu Kabel & Port)</h5>
+                                        <div class="space-y-1">
+                                            <div v-for="cust in getPendingInstallationsForOdp(odp)" :key="cust.id" class="flex items-start gap-1.5 text-[10px]">
+                                                <div class="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0 mt-1"></div>
+                                                <span class="text-gray-600">
+                                                    <span class="font-medium text-gray-800">{{ cust.customer_code }}</span> - {{ cust.name }} <span class="text-gray-400">[{{ cust.status === 'installing' ? 'Ready Instalasi' : 'Proses Survey' }}]</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button @click="openOdpDetail(odp)" class="mt-4 w-full text-center bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                         Lihat Foto
                                     </button>
@@ -573,6 +586,26 @@ const openOdpDetail = (odp) => {
 const getPortData = (odp, portNum) => {
     if (!odp || !odp.onts) return null;
     return odp.onts.find(o => o.port_number == portNum);
+};
+
+const getPendingInstallationsForOdp = (odp) => {
+    if (!odp.surveys) return [];
+    
+    const customers = [];
+    const seen = new Set();
+    
+    // Sort so newest is processed first if there are multiple surveys for the same customer
+    const sortedSurveys = [...odp.surveys].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    
+    for (const survey of sortedSurveys) {
+        if (!survey.customer) continue;
+        if (['survey', 'installing'].includes(survey.customer.status) && !seen.has(survey.customer.id)) {
+            seen.add(survey.customer.id);
+            customers.push(survey.customer);
+        }
+    }
+    
+    return customers;
 };
 
 const getCbpForCustomer = (customerId) => {
