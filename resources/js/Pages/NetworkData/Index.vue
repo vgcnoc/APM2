@@ -203,6 +203,25 @@
                                                     <span class="font-medium text-gray-700 truncate">
                                                         {{ getPortData(odp, portNum).customer.customer_code }} - {{ getPortData(odp, portNum).customer.name }}
                                                     </span>
+                                                    <!-- Update Tgl & Status -->
+                                                    <div class="flex items-center gap-1 mt-0.5 text-[9px] text-gray-500">
+                                                        <span v-if="getPortData(odp, portNum).customer.status === 'active'" class="text-emerald-600 font-bold">Aktif</span>
+                                                        <span v-else-if="getPortData(odp, portNum).customer.status === 'installing'" class="text-amber-600 font-bold">Proses Instalasi</span>
+                                                        <span v-else-if="getPortData(odp, portNum).customer.status === 'suspended'" class="text-red-600 font-bold">Isolir</span>
+                                                        <span v-else class="text-gray-600 font-bold">{{ getPortData(odp, portNum).customer.status }}</span>
+                                                        
+                                                        <span class="px-1">•</span>
+                                                        
+                                                        <span v-if="getPortData(odp, portNum).customer.status === 'active' && getPortData(odp, portNum).customer.activation_date">
+                                                            Tgl: {{ getPortData(odp, portNum).customer.activation_date }}
+                                                        </span>
+                                                        <span v-else-if="getPortData(odp, portNum).start_time">
+                                                            Tgl: {{ getPortData(odp, portNum).updated_at ? getPortData(odp, portNum).updated_at.substring(0, 10) : '' }}
+                                                        </span>
+                                                        <span v-else>
+                                                            Tgl: {{ getPortData(odp, portNum).customer.created_at.substring(0, 10) }}
+                                                        </span>
+                                                    </div>
                                                     <div class="flex flex-wrap gap-1 mt-0.5">
                                                         <span v-if="getPortData(odp, portNum).vlan_id" class="text-[9px] bg-purple-100 text-purple-700 px-1 rounded font-bold border border-purple-200">VLAN: {{ getPortData(odp, portNum).vlan_id }}</span>
                                                         <span v-if="getPortData(odp, portNum).hotspot_vlan_id" class="text-[9px] bg-orange-100 text-orange-700 px-1 rounded font-bold border border-orange-200">HS: {{ getPortData(odp, portNum).hotspot_vlan_id }}</span>
@@ -591,6 +610,16 @@ const getPortData = (odp, portNum) => {
 const getPendingInstallationsForOdp = (odp) => {
     if (!odp.surveys) return [];
     
+    // Kumpulkan customer ID yang sudah memiliki port di ODP ini
+    const customersInPorts = new Set();
+    if (odp.onts) {
+        odp.onts.forEach(ont => {
+            if (ont.port_number && ont.customer_id) {
+                customersInPorts.add(ont.customer_id);
+            }
+        });
+    }
+    
     const customers = [];
     const seen = new Set();
     
@@ -599,6 +628,10 @@ const getPendingInstallationsForOdp = (odp) => {
     
     for (const survey of sortedSurveys) {
         if (!survey.customer) continue;
+        
+        // JANGAN tampilkan di Antrean jika sudah masuk ke dalam Port!
+        if (customersInPorts.has(survey.customer.id)) continue;
+        
         if (['survey', 'installing'].includes(survey.customer.status) && !seen.has(survey.customer.id)) {
             seen.add(survey.customer.id);
             customers.push(survey.customer);
