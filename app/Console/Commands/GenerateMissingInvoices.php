@@ -28,7 +28,7 @@ class GenerateMissingInvoices extends Command
      */
     public function handle()
     {
-        $customers = Customer::whereIn('status', ['active', 'suspended'])->get();
+        $customers = Customer::where('status', 'active')->get();
         $count = 0;
         
         foreach ($customers as $customer) {

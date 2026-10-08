@@ -56,12 +56,14 @@ class GenerateInvoices extends Command
                 ->where('period_year', $today->year)
                 ->exists();
 
-            // Check if suspended and already has 2 or more unpaid invoices
+            // Check if suspended
             if ($customer->status === 'suspended') {
                 $unpaidCount = Invoice::where('customer_id', $customer->id)
                     ->whereIn('status', ['unpaid', 'partial'])
                     ->count();
-                if ($unpaidCount >= 2) {
+                
+                // Jika tidak ada tunggakan (murni stop sementara manual) ATAU sudah menunggak >= 2 bulan, jangan buat invoice baru
+                if ($unpaidCount == 0 || $unpaidCount >= 2) {
                     continue;
                 }
             }
