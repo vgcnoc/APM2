@@ -67,7 +67,7 @@ class CbpRequestController extends Controller
 
     public function laporan(Request $request)
     {
-        $query = CbpRequest::with(['customer.ont.material', 'technicians', 'creator'])->whereIn('status', ['assigned', 'completed']);
+        $query = CbpRequest::with(['customer.ont', 'technicians', 'creator'])->whereIn('status', ['assigned', 'completed']);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);

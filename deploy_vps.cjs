@@ -4,11 +4,15 @@ const conn = new Client();
 
 const script = `
 cd /var/www/APM2
-git pull
+git fetch origin
+git reset --hard origin/main
+git clean -fd
 composer dump-autoload
 php artisan migrate --force
 php artisan db:seed --class=RbcaSeeder --force
 npm run build
+php artisan optimize:clear
+php artisan view:clear
 `;
 
 conn.on('ready', () => {
