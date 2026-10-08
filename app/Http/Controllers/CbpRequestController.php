@@ -10,7 +10,7 @@ class CbpRequestController extends Controller
 {
     public function index(Request $request)
     {
-        $query = CbpRequest::with(['customer', 'technicians', 'creator'])->where('status', 'pending');
+        $query = CbpRequest::with(['customer', 'technicians', 'creator', 'auditLogs'])->where('status', 'pending');
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -41,7 +41,7 @@ class CbpRequestController extends Controller
 
     public function jadwal(Request $request)
     {
-        $query = CbpRequest::with(['customer.areaModel', 'technicians', 'creator'])->whereIn('status', ['pending', 'assigned']);
+        $query = CbpRequest::with(['customer.areaModel', 'technicians', 'creator', 'auditLogs'])->whereIn('status', ['pending', 'assigned']);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -67,7 +67,7 @@ class CbpRequestController extends Controller
 
     public function laporan(Request $request)
     {
-        $query = CbpRequest::with(['customer.ont', 'customer.technicianSchedules', 'technicians', 'creator'])->whereIn('status', ['assigned', 'completed']);
+        $query = CbpRequest::with(['customer.ont', 'customer.technicianSchedules', 'technicians', 'creator', 'auditLogs'])->whereIn('status', ['assigned', 'completed']);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -114,7 +114,9 @@ class CbpRequestController extends Controller
         $validated['created_by'] = auth()->id();
         $validated['status'] = 'pending';
 
-        CbpRequest::create($validated);
+        $cbp = CbpRequest::create($validated);
+        
+        \App\Models\AuditLog::createLog('Buat Request CBP', $cbp, null, 'pending', 'Membuat request pencabutan perangkat untuk pelanggan ID: ' . $validated['customer_id']);
 
         return redirect()->back()->with('success', 'Data Pencabutan berhasil diekskalasi dan Pelanggan sudah di-Stop Permanen.');
     }
@@ -126,8 +128,11 @@ class CbpRequestController extends Controller
             'technicians.*' => 'exists:users,id',
         ]);
 
+        $oldStatus = $cbp->status;
         $cbp->update(['status' => 'assigned']);
         $cbp->technicians()->sync($validated['technicians']);
+
+        \App\Models\AuditLog::createLog('Penugasan Teknisi CBP', $cbp, $oldStatus, 'assigned', 'Menugaskan teknisi untuk tugas CBP.');
 
         return redirect()->back()->with('success', 'Tugas Pencabutan berhasil ditugaskan ke Teknisi.');
     }
@@ -188,6 +193,8 @@ class CbpRequestController extends Controller
             }
         }
 
+        $oldStatus = $cbp->status;
+
         $cbp->update([
             'status' => 'completed',
             'notes' => $validated['notes'] ?? $cbp->notes,
@@ -197,6 +204,18 @@ class CbpRequestController extends Controller
             'completed_at' => $validated['completed_at'] ?? $cbp->completed_at,
         ]);
 
+        \App\Models\AuditLog::createLog('Laporan CBP Selesai', $cbp, $oldStatus, 'completed', 'Menyelesaikan laporan cabut perangkat ' . $cbp->cbp_number);
+
         return redirect()->back()->with('success', 'Laporan Pencabutan berhasil disimpan.');
+    }
+
+    public function cancel(CbpRequest $cbp)
+    {
+        $oldStatus = $cbp->status;
+        $cbp->update(['status' => 'canceled']);
+        
+        \App\Models\AuditLog::createLog('CBP Dibatalkan', $cbp, $oldStatus, 'canceled', 'Membatalkan permintaan cabut perangkat ' . $cbp->cbp_number);
+
+        return redirect()->back()->with('success', 'Permintaan Cabut Perangkat berhasil dibatalkan.');
     }
 }

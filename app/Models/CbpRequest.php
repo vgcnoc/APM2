@@ -34,6 +34,11 @@ class CbpRequest extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function auditLogs()
+    {
+        return $this->hasMany(AuditLog::class, 'entity_id')->where('entity_type', self::class)->orderBy('created_at', 'desc');
+    }
+
     protected static function booted(): void
     {
         static::creating(function (CbpRequest $cbp) {
