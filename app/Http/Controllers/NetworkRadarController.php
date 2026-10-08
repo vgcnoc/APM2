@@ -12,7 +12,7 @@ class NetworkRadarController extends Controller
 {
     public function index()
     {
-        $odcs = Odc::select('id', 'name', 'latitude', 'longitude', 'address')->get();
+        $odcs = Odc::select('id', 'name', 'latitude', 'longitude', 'location as address')->get();
         
         $odps = Odp::select('id', 'name', 'latitude', 'longitude', 'address', 'odc_id')
             ->with(['odc:id,name'])
