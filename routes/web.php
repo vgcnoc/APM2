@@ -168,7 +168,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('ftth/devices/{device}/position', [\App\Http\Controllers\FtthController::class, 'updateDevicePosition'])->name('ftth.devices.position');
 
     Route::post('material-transactions/bulk-destroy', [MaterialTransactionController::class, 'bulkDestroy'])->name('material-transactions.bulk-destroy');
-    Route::resource('material-transactions', MaterialTransactionController::class)->except(['edit', 'update', 'destroy']);
+    Route::resource('material-transactions', MaterialTransactionController::class)->except(['destroy']);
     Route::post('material-transactions/{item}/register-ont', [MaterialTransactionController::class, 'registerOnt'])->name('material-transactions.register-ont');
     Route::post('material-transactions/{item}/reset-ont', [MaterialTransactionController::class, 'resetOnt'])->name('material-transactions.reset-ont');
     Route::post('material-transactions/{material_transaction}/delete', [MaterialTransactionController::class, 'destroy'])->name('material-transactions.destroy');

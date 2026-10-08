@@ -243,6 +243,171 @@ class MaterialTransactionController extends Controller
             ->with('success', 'Order/Pengambilan Barang berhasil dicatat dan stok telah dikurangi.');
     }
 
+
+    public function edit(MaterialTransaction $materialTransaction)
+    {
+        $materialTransaction->load('items.material');
+        return \Inertia\Inertia::render('MaterialTransactions/Edit', [
+            'transaction' => $materialTransaction,
+            'materials' => \App\Models\Material::orderBy('name')->get(),
+            'areas' => \App\Models\Area::orderBy('name')->get(),
+        ]);
+    }
+
+    public function update(Request $request, MaterialTransaction $materialTransaction)
+    {
+        $request->validate([
+            'date' => 'required|date',
+            'technician_name' => 'required|string|max:255',
+            'purpose' => 'required|string|max:255',
+            'area_id' => 'required|exists:areas,id',
+            'notes' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.material_id' => 'required|exists:materials,id',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.unit' => 'nullable|string|max:50',
+        ]);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $materialTransaction) {
+            // Revert old stocks
+            $materialTransaction->load('items.material');
+            foreach ($materialTransaction->items as $item) {
+                $material = $item->material;
+                if ($material) {
+                    $addition = $item->quantity;
+                    if (str_contains(strtolower($material->category), 'kabel') && ($item->unit === 'roll' || $item->unit === 'rol')) {
+                        $addition = $item->quantity * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
+                    }
+                    if ($material->category === 'Paku Klem' && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
+                        $addition = $item->quantity * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
+                    }
+                    if ($material->category === 'Isolasi' && ($item->unit === 'pcs')) {
+                        $addition = $item->quantity * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                    }
+                    $material->stock += $addition;
+                    if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
+                        $material->total_rolls = $material->stock / $material->meter_per_roll;
+                    }
+                    if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
+                        $material->total_packs = $material->stock / $material->pcs_per_pack;
+                    }
+                    if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
+                        $material->total_pieces = $material->stock / $material->cm_per_pcs;
+                    }
+                    $material->save();
+                    
+                    if ($materialTransaction->area_id) {
+                        $materialStock = \App\Models\MaterialStock::firstOrCreate(
+                            ['material_id' => $material->id, 'area_id' => $materialTransaction->area_id],
+                            ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                        );
+                        $materialStock->stock += $addition;
+                        if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
+                            $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
+                        }
+                        if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
+                            $materialStock->total_packs = $materialStock->stock / $material->pcs_per_pack;
+                        }
+                        if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
+                            $materialStock->total_pieces = $materialStock->stock / $material->cm_per_pcs;
+                        }
+                        $materialStock->save();
+                    }
+                }
+            }
+            
+            // Delete old items
+            $materialTransaction->items()->delete();
+
+            $totalCost = 0;
+            // Create New Items and deduct stock
+            foreach ($request->items as $itemData) {
+                $material = \App\Models\Material::findOrFail($itemData['material_id']);
+                
+                $materialStock = \App\Models\MaterialStock::firstOrCreate(
+                    ['material_id' => $material->id, 'area_id' => $request->area_id],
+                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                );
+
+                if ($material->stock < $itemData['quantity']) {
+                    throw new \Exception("Stok {$material->name} di Gudang Utama tidak mencukupi. Sisa stok: {$material->stock}");
+                }
+
+                $pricePerUnit = $material->selling_price ?? 0;
+                
+                if (str_contains(strtolower($material->category), 'kabel') && strtolower($itemData['unit'] ?? '') === 'meter') {
+                    $meterPerRoll = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
+                    $pricePerUnit = $pricePerUnit / $meterPerRoll;
+                }
+                
+                if ($material->category === 'Paku Klem' && strtolower($itemData['unit'] ?? '') === 'pcs') {
+                    $pcsPerPack = $material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1;
+                    $pricePerUnit = $pricePerUnit / $pcsPerPack;
+                }
+                
+                if ($material->category === 'Isolasi' && strtolower($itemData['unit'] ?? '') === 'cm') {
+                    $cmPerPcs = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50;
+                    $pricePerUnit = $pricePerUnit / $cmPerPcs;
+                }
+
+                $totalPrice = $itemData['quantity'] * $pricePerUnit;
+                $totalCost += $totalPrice;
+
+                \App\Models\MaterialTransactionItem::create([
+                    'material_transaction_id' => $materialTransaction->id,
+                    'material_id' => $material->id,
+                    'quantity' => $itemData['quantity'],
+                    'unit' => $itemData['unit'] ?? $material->unit,
+                    'price_per_unit' => $pricePerUnit,
+                    'total_price' => $totalPrice,
+                ]);
+
+                // Deduct Stock
+                $deduction = $itemData['quantity'];
+                if (str_contains(strtolower($material->category), 'kabel') && ($itemData['unit'] === 'roll' || $itemData['unit'] === 'rol')) {
+                    $deduction = $itemData['quantity'] * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
+                }
+                if ($material->category === 'Paku Klem' && ($itemData['unit'] === 'pack' || $itemData['unit'] === 'bungkus')) {
+                    $deduction = $itemData['quantity'] * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
+                }
+                if ($material->category === 'Isolasi' && ($itemData['unit'] === 'pcs')) {
+                    $deduction = $itemData['quantity'] * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                }
+                
+                $material->stock -= $deduction;
+                $materialStock->stock += $deduction;
+                
+                // Recalculate total_rolls roughly
+                if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
+                    $material->total_rolls = $material->stock / $material->meter_per_roll;
+                    $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
+                }
+                if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
+                    $material->total_packs = $material->stock / $material->pcs_per_pack;
+                    $materialStock->total_packs = $materialStock->stock / $material->pcs_per_pack;
+                }
+                if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
+                    $material->total_pieces = $material->stock / $material->cm_per_pcs;
+                    $materialStock->total_pieces = $materialStock->stock / $material->cm_per_pcs;
+                }
+                
+                $material->save();
+                $materialStock->save();
+            }
+
+            $materialTransaction->update([
+                'date' => $request->date,
+                'technician_name' => $request->technician_name,
+                'purpose' => $request->purpose,
+                'area_id' => $request->area_id,
+                'notes' => $request->notes,
+                'total_cost' => $totalCost
+            ]);
+        });
+
+        return redirect()->route('material-transactions.index')
+            ->with('success', 'Order/Pengambilan Barang berhasil diperbarui.');
+    }
     public function show(MaterialTransaction $materialTransaction)
     {
         $materialTransaction->load(['items.material', 'user']);
