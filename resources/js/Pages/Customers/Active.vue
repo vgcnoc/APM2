@@ -240,6 +240,8 @@
                                             <div class="flex justify-between"><span class="text-slate-500">Merek:</span> <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).brand }}</span></div>
                                             <div class="flex justify-between"><span class="text-slate-500">Model:</span> <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).model || '-' }}</span></div>
                                             <div class="flex justify-between"><span class="text-slate-500">SN:</span> <span class="font-mono font-bold text-indigo-700 bg-indigo-100/50 px-1 rounded">{{ getSelectedOntDetails(assignForm.ont_models[index]).serial_number }}</span></div>
+                                            <div class="flex justify-between"><span class="text-slate-500">VLAN:</span> <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).vlan_id || '-' }}</span></div>
+                                            <div class="flex justify-between"><span class="text-slate-500">ID ONU:</span> <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).ont_id || '-' }}</span></div>
                                             
                                             <template v-if="getSelectedOntDetails(assignForm.ont_models[index]).pppoe_user || getSelectedOntDetails(assignForm.ont_models[index]).access_mode === 'PPPoE' || activeCustomer?.package?.name?.toLowerCase().includes('pppoe')">
                                                 <div class="my-1.5 border-t border-indigo-200/60"></div>
