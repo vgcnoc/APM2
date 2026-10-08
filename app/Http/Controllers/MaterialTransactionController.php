@@ -321,28 +321,36 @@ class MaterialTransactionController extends Controller
                         if ($material->category === 'Isolasi' && ($item->unit === 'pcs')) {
                             $addition = $item->quantity * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
                         }
-                        $materialStock = \App\Models\MaterialStock::firstOrCreate(
-                            ['material_id' => $material->id, 'area_id' => $materialTransaction->area_id],
-                            ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-                        );
-
                         $material->stock += $addition;
-                        $materialStock->stock += $addition;
-                        
                         if ($material->category === 'Kabel' && $material->meter_per_roll > 0) {
                             $material->total_rolls = $material->stock / $material->meter_per_roll;
-                            $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
                         }
                         if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
                             $material->total_packs = $material->stock / $material->pcs_per_pack;
-                            $materialStock->total_packs = $materialStock->stock / $material->pcs_per_pack;
                         }
                         if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
                             $material->total_pieces = $material->stock / $material->cm_per_pcs;
-                            $materialStock->total_pieces = $materialStock->stock / $material->cm_per_pcs;
                         }
                         $material->save();
-                        $materialStock->save();
+                        
+                        if ($materialTransaction->area_id) {
+                            $materialStock = \App\Models\MaterialStock::firstOrCreate(
+                                ['material_id' => $material->id, 'area_id' => $materialTransaction->area_id],
+                                ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                            );
+                            $materialStock->stock += $addition;
+                            
+                            if ($material->category === 'Kabel' && $material->meter_per_roll > 0) {
+                                $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
+                            }
+                            if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
+                                $materialStock->total_packs = $materialStock->stock / $material->pcs_per_pack;
+                            }
+                            if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
+                                $materialStock->total_pieces = $materialStock->stock / $material->cm_per_pcs;
+                            }
+                            $materialStock->save();
+                        }
                     }
                 }
                 
@@ -384,28 +392,36 @@ class MaterialTransactionController extends Controller
                             if ($material->category === 'Isolasi' && ($item->unit === 'pcs')) {
                                 $addition = $item->quantity * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
                             }
-                            $materialStock = \App\Models\MaterialStock::firstOrCreate(
-                                ['material_id' => $material->id, 'area_id' => $transaction->area_id],
-                                ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-                            );
-
                             $material->stock += $addition;
-                            $materialStock->stock += $addition;
-                            
                             if ($material->category === 'Kabel' && $material->meter_per_roll > 0) {
                                 $material->total_rolls = $material->stock / $material->meter_per_roll;
-                                $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
                             }
                             if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
                                 $material->total_packs = $material->stock / $material->pcs_per_pack;
-                                $materialStock->total_packs = $materialStock->stock / $material->pcs_per_pack;
                             }
                             if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
                                 $material->total_pieces = $material->stock / $material->cm_per_pcs;
-                                $materialStock->total_pieces = $materialStock->stock / $material->cm_per_pcs;
                             }
                             $material->save();
-                            $materialStock->save();
+                            
+                            if ($transaction->area_id) {
+                                $materialStock = \App\Models\MaterialStock::firstOrCreate(
+                                    ['material_id' => $material->id, 'area_id' => $transaction->area_id],
+                                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                                );
+                                $materialStock->stock += $addition;
+                                
+                                if ($material->category === 'Kabel' && $material->meter_per_roll > 0) {
+                                    $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
+                                }
+                                if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
+                                    $materialStock->total_packs = $materialStock->stock / $material->pcs_per_pack;
+                                }
+                                if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
+                                    $materialStock->total_pieces = $materialStock->stock / $material->cm_per_pcs;
+                                }
+                                $materialStock->save();
+                            }
                         }
                     }
                     
