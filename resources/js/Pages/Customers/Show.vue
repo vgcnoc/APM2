@@ -426,21 +426,27 @@
                                             <span class="text-xs text-gray-500 font-medium block mb-1">{{ item.type }}</span>
                                             <span class="font-bold text-gray-900">{{ item.name }}</span>
                                         </div>
-                                        <button type="button" 
-                                            :disabled="!ontForm.start_time" 
-                                            @click="toggleInstallItem(item)"
-                                            :class="['px-6 py-2 rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2', 
-                                                !ontForm.start_time ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 
-                                                item.isInstalled ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-sm border border-emerald-200' : 'bg-amber-500 text-white hover:bg-amber-600 shadow-md hover:shadow-lg']">
-                                            <template v-if="item.isInstalled">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                                Dipasang
-                                            </template>
-                                            <template v-else>
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                                Pasang
-                                            </template>
-                                        </button>
+                                        <div class="flex items-center gap-2">
+                                            <div v-if="item.isInstalled && item.type === 'Material' && item.name.toLowerCase().includes('kabel')" class="relative w-24">
+                                                <div class="text-[9px] text-slate-400 absolute -top-4 left-0 font-bold uppercase tracking-wider">Dikembalikan</div>
+                                                <input type="number" v-model="item.returned_qty" min="0" class="w-full px-2 py-1.5 text-sm border-2 border-slate-200 rounded-lg text-center font-bold focus:ring-emerald-500 focus:border-emerald-500 transition-colors" placeholder="Meter">
+                                            </div>
+                                            <button type="button" 
+                                                :disabled="!ontForm.start_time" 
+                                                @click="toggleInstallItem(item)"
+                                                :class="['px-6 py-2 rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2', 
+                                                    !ontForm.start_time ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 
+                                                    item.isInstalled ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-sm border border-emerald-200' : 'bg-amber-500 text-white hover:bg-amber-600 shadow-md hover:shadow-lg']">
+                                                <template v-if="item.isInstalled">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                    Dipasang
+                                                </template>
+                                                <template v-else>
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                    Pasang
+                                                </template>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1165,10 +1171,14 @@ watch(() => props.customer, () => {
     const savedHardware = localStorage.getItem(`apm_hardware_${props.customer.id}`);
     if (savedHardware) {
         try {
-            const installedIds = JSON.parse(savedHardware);
+            const savedState = JSON.parse(savedHardware);
             hardwareItems.value.forEach(item => {
-                if (installedIds.includes(item.id)) {
+                const savedItem = savedState.find(s => s.id === item.id);
+                if (savedItem && savedItem.isInstalled) {
                     item.isInstalled = true;
+                }
+                if (savedItem && savedItem.returned_qty) {
+                    item.returned_qty = savedItem.returned_qty;
                 }
             });
         } catch (e) {
@@ -1181,8 +1191,12 @@ function toggleInstallItem(item) {
     item.isInstalled = !item.isInstalled;
     
     // Save to localStorage
-    const installedIds = hardwareItems.value.filter(i => i.isInstalled).map(i => i.id);
-    localStorage.setItem(`apm_hardware_${props.customer.id}`, JSON.stringify(installedIds));
+    const savedState = hardwareItems.value.map(i => ({
+        id: i.id,
+        isInstalled: i.isInstalled,
+        returned_qty: i.returned_qty
+    }));
+    localStorage.setItem(`apm_hardware_${props.customer.id}`, JSON.stringify(savedState));
 }
 
 const isInstallingHardware = computed(() => {
@@ -1296,6 +1310,7 @@ const ontForm = useForm({
     photo_ont: null,
     photo_customer: null,
     photo_redaman: null,
+    materials_returned: [],
 });
 
 const selectedOdp = computed(() => props.availableOdps?.find(o => o.id == ontForm.odp_id));
@@ -1444,6 +1459,15 @@ watch(() => ontForm.rx_power, (val) => {
     else localStorage.removeItem(`apm_rx_power_${props.customer.id}`);
 });
 
+watch(hardwareItems, (items) => {
+    const savedState = items.map(i => ({
+        id: i.id,
+        isInstalled: i.isInstalled,
+        returned_qty: i.returned_qty
+    }));
+    localStorage.setItem(`apm_hardware_${props.customer.id}`, JSON.stringify(savedState));
+}, { deep: true });
+
 function setNow(field) {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
@@ -1456,6 +1480,14 @@ function setNow(field) {
 }
 
 function submitOnt() {
+    // Collect returned materials
+    ontForm.materials_returned = hardwareItems.value
+        .filter(item => item.returned_qty && item.returned_qty > 0)
+        .map(item => ({
+            name: item.name,
+            returned_qty: item.returned_qty
+        }));
+        
     ontForm.post(`/customers/${props.customer.id}/assign-ont`, {
         preserveScroll: true,
         onSuccess: () => {
@@ -1466,6 +1498,7 @@ function submitOnt() {
             localStorage.removeItem(`apm_port_number_${props.customer.id}`);
             localStorage.removeItem(`apm_rx_power_${props.customer.id}`);
             localStorage.removeItem(`apm_hardware_${props.customer.id}`);
+            localStorage.removeItem(`apm_materials_returned_${props.customer.id}`);
             
             const photoFields = ['photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman'];
             photoFields.forEach(field => localStorage.removeItem(`apm_${field}_${props.customer.id}`));

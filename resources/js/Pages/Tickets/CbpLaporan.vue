@@ -195,44 +195,32 @@
                                         <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Perangkat Terpasang (Instalasi)</label>
                                     </div>
                                 </div>
-                                <div v-if="selectedCbp?.customer?.ont" class="flex flex-col gap-2 bg-white rounded-xl p-3 border border-slate-200 mb-2 shadow-sm">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <div class="text-sm font-bold text-slate-800">ONT {{ selectedCbp.customer.ont.brand }} {{ selectedCbp.customer.ont.model }}</div>
-                                            <div class="text-xs text-slate-500 font-mono mt-0.5">SN: {{ selectedCbp.customer.ont.serial_number || '-' }}</div>
-                                        </div>
-                                        <button v-if="!hasMaterial('ont')" type="button" @click="cabutOnt" class="text-xs bg-rose-100 text-rose-700 font-bold px-3 py-1.5 rounded-lg hover:bg-rose-200 transition-colors shadow-sm">
-                                            Cabut ONT
-                                        </button>
-                                        <div v-else class="text-xs bg-emerald-100 text-emerald-700 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                                            Dicabut
-                                        </div>
-                                    </div>
-                                </div>
-                                <div v-else class="text-xs text-slate-500 mb-2 italic">Data ONT tidak ditemukan.</div>
-                                
-                                <div class="flex flex-col gap-2 bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <div class="text-sm font-bold text-slate-800">Kabel Drop Core</div>
-                                            <div class="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-bold">Kabel fiber optik terpasang</div>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <div v-if="hasMaterial('kabel')" class="relative w-20">
-                                                <input type="number" v-model="getMaterial('kabel').quantity" min="1" class="w-full px-2 py-1 text-sm border-2 border-slate-200 rounded-lg text-center font-bold focus:ring-emerald-500 focus:border-emerald-500 transition-colors" placeholder="Meter">
+                                <!-- Render based on hardwareItems from Installation Data -->
+                                <div v-if="hardwareItems.length > 0" class="space-y-2">
+                                    <div v-for="item in hardwareItems" :key="item.id" class="flex flex-col gap-2 bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <div class="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-bold">{{ item.type }}</div>
+                                                <div class="text-sm font-bold text-slate-800">{{ item.name }}</div>
                                             </div>
-                                            <button v-if="!hasMaterial('kabel')" type="button" @click="cabutKabel" class="text-xs bg-rose-100 text-rose-700 font-bold px-3 py-1.5 rounded-lg hover:bg-rose-200 transition-colors shadow-sm">
-                                                Cabut Kabel
-                                            </button>
-                                            <div v-else class="text-xs bg-emerald-100 text-emerald-700 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm h-[32px]">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                                                Dicabut
+                                            <div class="flex items-center gap-2">
+                                                <template v-if="item.type === 'Material' && item.name.toLowerCase().includes('kabel')">
+                                                    <div v-if="hasMaterial(item.id)" class="relative w-20">
+                                                        <input type="number" v-model="getMaterial(item.id).quantity" min="1" class="w-full px-2 py-1 text-sm border-2 border-slate-200 rounded-lg text-center font-bold focus:ring-emerald-500 focus:border-emerald-500 transition-colors" placeholder="Meter">
+                                                    </div>
+                                                </template>
+                                                <button v-if="!hasMaterial(item.id)" type="button" @click="cabutItem(item)" class="text-xs bg-rose-100 text-rose-700 font-bold px-3 py-1.5 rounded-lg hover:bg-rose-200 transition-colors shadow-sm whitespace-nowrap">
+                                                    Cabut
+                                                </button>
+                                                <div v-else class="text-xs bg-emerald-100 text-emerald-700 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm h-[32px] whitespace-nowrap">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                                    Dicabut
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                                <div v-else class="text-xs text-slate-500 mb-2 italic p-3 bg-white border border-slate-200 rounded-xl">Data Instalasi tidak ditemukan.</div>
                             </div>
 
                         <div class="px-7 py-5 bg-slate-50/80 backdrop-blur-md border-t border-slate-100 flex justify-end gap-3 z-10 rounded-b-3xl">
@@ -293,33 +281,83 @@ function setNow(field) {
     }
 }
 
-function hasMaterial(category) {
-    return progressForm.materials.some(m => m._cat === category);
+const hardwareItems = computed(() => {
+    if (!selectedCbp.value || !selectedCbp.value.customer) return [];
+    
+    // Parse from installation report
+    const schedule = selectedCbp.value.customer.technician_schedules?.find(s => s.type === 'installation');
+    let items = [];
+    let idCounter = 0;
+    
+    if (schedule && schedule.notes) {
+        const lines = schedule.notes.split('\n');
+        lines.forEach(line => {
+            if (line.startsWith('ONT: ')) {
+                const onts = line.replace('ONT: ', '').split(', ');
+                onts.forEach(ont => {
+                    if(ont.trim()) items.push({ id: idCounter++, type: 'ONT', name: ont.trim() });
+                });
+            } else if (line.startsWith('Material: ')) {
+                const mats = line.replace('Material: ', '').split(', ');
+                mats.forEach(mat => {
+                    if(mat.trim()) items.push({ id: idCounter++, type: 'Material', name: mat.trim() });
+                });
+            }
+        });
+    }
+
+    // Fallback if installation report notes doesn't exist, use the active ONT
+    if (items.length === 0 && selectedCbp.value.customer.ont) {
+        items.push({
+            id: idCounter++,
+            type: 'ONT',
+            name: `ONT ${selectedCbp.value.customer.ont.brand} ${selectedCbp.value.customer.ont.model} (SN: ${selectedCbp.value.customer.ont.serial_number || '-'})`
+        });
+        items.push({
+            id: idCounter++,
+            type: 'Material',
+            name: 'Kabel Fiber Optik (Drop Core)'
+        });
+    }
+    
+    return items;
+});
+
+function hasMaterial(id) {
+    return progressForm.materials.some(m => m._id === id);
 }
 
-function getMaterial(category) {
-    return progressForm.materials.find(m => m._cat === category);
+function getMaterial(id) {
+    return progressForm.materials.find(m => m._id === id);
 }
 
-function cabutOnt() {
-    // Find ONT material if possible
-    let ontMat = props.materials.find(m => m.category === 'ont' || m.name.toLowerCase().includes('ont'));
+function cabutItem(item) {
+    let unit = 'pcs';
+    if (item.type === 'Material' && item.name.toLowerCase().includes('kabel')) unit = 'm';
+    
+    // Find material_id by matching name with props.materials
+    let matId = '';
+    const nameLower = item.name.toLowerCase();
+    
+    if (item.type === 'ONT') {
+        const ontMat = props.materials.find(m => m.category === 'ont' || m.name.toLowerCase().includes('ont'));
+        if (ontMat) matId = ontMat.id;
+    } else {
+        const matched = props.materials.find(m => nameLower.includes(m.name.toLowerCase()) || m.name.toLowerCase().includes(nameLower));
+        if (matched) {
+            matId = matched.id;
+        } else if (nameLower.includes('kabel')) {
+            const kabelMat = props.materials.find(m => m.category === 'kabel' || m.name.toLowerCase().includes('kabel'));
+            if (kabelMat) matId = kabelMat.id;
+        }
+    }
+    
     progressForm.materials.push({
-        material_id: ontMat ? ontMat.id : '',
+        material_id: matId,
         quantity: 1,
-        unit: 'pcs',
-        _cat: 'ont'
-    });
-}
-
-function cabutKabel() {
-    // Find Kabel material if possible
-    let kabelMat = props.materials.find(m => m.category === 'kabel' || m.name.toLowerCase().includes('kabel'));
-    progressForm.materials.push({
-        material_id: kabelMat ? kabelMat.id : '',
-        quantity: 1,
-        unit: 'm',
-        _cat: 'kabel'
+        unit: unit,
+        _id: item.id,
+        _name: item.name
     });
 }
 

@@ -1268,6 +1268,61 @@ class CustomerController extends Controller
             foreach ($schedules as $schedule) {
                 $schedule->update(['status' => 'done']);
             }
+
+            // Handle excess returned material
+            if ($request->has('materials_returned') && is_array($request->materials_returned)) {
+                $returnedItems = $request->materials_returned;
+                if (count($returnedItems) > 0) {
+                    $transaction = \App\Models\MaterialTransaction::create([
+                        'transaction_number' => 'IN-EXCESS-' . date('YmdHis'),
+                        'type' => 'in',
+                        'date' => now(),
+                        'technician_name' => auth()->user()->name,
+                        'purpose' => 'Pengembalian Kelebihan Material Instalasi Pelanggan ' . $customer->name,
+                        'user_id' => auth()->id(),
+                    ]);
+
+                    foreach ($returnedItems as $item) {
+                        if (!empty($item['returned_qty']) && $item['returned_qty'] > 0) {
+                            $nameLower = strtolower($item['name']);
+                            
+                            // Try to find material id based on name
+                            $material = \App\Models\Material::where('name', 'like', "%{$nameLower}%")->first();
+                            if (!$material && str_contains($nameLower, 'kabel')) {
+                                $material = \App\Models\Material::where('category', 'Kabel Drop')
+                                    ->orWhere('category', 'Kabel')
+                                    ->orWhere('name', 'like', '%kabel%')->first();
+                            }
+
+                            if ($material) {
+                                \App\Models\MaterialTransactionItem::create([
+                                    'material_transaction_id' => $transaction->id,
+                                    'material_id' => $material->id,
+                                    'quantity' => $item['returned_qty'],
+                                    'unit' => str_contains($nameLower, 'kabel') ? 'm' : 'pcs',
+                                    'price_per_unit' => $material->price_per_unit ?? 0,
+                                    'total_price' => ($material->price_per_unit ?? 0) * $item['returned_qty'],
+                                ]);
+                                
+                                // Restock Area Stock
+                                $materialStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                                    ->where('area_id', $customer->area_id)
+                                    ->first();
+                                    
+                                if ($materialStock) {
+                                    $materialStock->increment('stock', $item['returned_qty']);
+                                } else {
+                                    \App\Models\MaterialStock::create([
+                                        'material_id' => $material->id,
+                                        'area_id' => $customer->area_id,
+                                        'stock' => $item['returned_qty']
+                                    ]);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         });
 
         $ont = Ont::where('customer_id', $customer->id)->first();
