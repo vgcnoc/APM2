@@ -158,13 +158,17 @@
 
                             <!-- Time Input -->
                             <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2.5">Jam Mulai</label>
-                                    <input type="time" v-model="progressForm.start_time" required class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all">
+                                <!-- Jam Mulai -->
+                                <div class="bg-slate-50 rounded-2xl p-4 border-2 border-slate-200 flex flex-col justify-center items-center gap-2">
+                                    <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">Jam Mulai</label>
+                                    <div v-if="progressForm.start_time" class="text-2xl font-black text-slate-800 tracking-tight">{{ progressForm.start_time }}</div>
+                                    <button v-else type="button" @click="setNow('start_time')" class="text-xs bg-blue-600 text-white font-bold px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors shadow-sm w-full">MULAI SEKARANG</button>
                                 </div>
-                                <div>
-                                    <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2.5">Jam Selesai</label>
-                                    <input type="time" v-model="progressForm.end_time" required class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all">
+                                <!-- Jam Selesai -->
+                                <div class="bg-slate-50 rounded-2xl p-4 border-2 border-slate-200 flex flex-col justify-center items-center gap-2">
+                                    <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">Jam Selesai</label>
+                                    <div v-if="progressForm.end_time" class="text-2xl font-black text-slate-800 tracking-tight">{{ progressForm.end_time }}</div>
+                                    <button v-else type="button" @click="setNow('end_time')" :disabled="!progressForm.start_time" :class="['text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-sm w-full', !progressForm.start_time ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700']">SELESAI SEKARANG</button>
                                 </div>
                             </div>
                             
@@ -191,76 +195,44 @@
                                         <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Perangkat Terpasang (Instalasi)</label>
                                     </div>
                                 </div>
-                                <div v-if="selectedCbp?.customer?.ont" class="flex items-center justify-between bg-white rounded-xl p-3 border border-slate-200 mb-2">
-                                    <div>
-                                        <div class="text-sm font-bold text-slate-800">ONT {{ selectedCbp.customer.ont.brand }} {{ selectedCbp.customer.ont.model }}</div>
-                                        <div class="text-xs text-slate-500 font-mono mt-0.5">SN: {{ selectedCbp.customer.ont.serial_number || '-' }}</div>
+                                <div v-if="selectedCbp?.customer?.ont" class="flex flex-col gap-2 bg-white rounded-xl p-3 border border-slate-200 mb-2 shadow-sm">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="text-sm font-bold text-slate-800">ONT {{ selectedCbp.customer.ont.brand }} {{ selectedCbp.customer.ont.model }}</div>
+                                            <div class="text-xs text-slate-500 font-mono mt-0.5">SN: {{ selectedCbp.customer.ont.serial_number || '-' }}</div>
+                                        </div>
+                                        <button v-if="!hasMaterial('ont')" type="button" @click="cabutOnt" class="text-xs bg-rose-100 text-rose-700 font-bold px-3 py-1.5 rounded-lg hover:bg-rose-200 transition-colors shadow-sm">
+                                            Cabut ONT
+                                        </button>
+                                        <div v-else class="text-xs bg-emerald-100 text-emerald-700 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                            Dicabut
+                                        </div>
                                     </div>
-                                    <button type="button" @click="cabutOnt" class="text-xs bg-rose-100 text-rose-700 font-bold px-3 py-1.5 rounded-lg hover:bg-rose-200 transition-colors shadow-sm">
-                                        Cabut ONT
-                                    </button>
                                 </div>
                                 <div v-else class="text-xs text-slate-500 mb-2 italic">Data ONT tidak ditemukan.</div>
-                                <div class="flex gap-2">
-                                    <button type="button" @click="cabutKabel" class="text-xs bg-white border border-slate-200 text-slate-700 font-bold px-3 py-2 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all w-full text-center shadow-sm flex items-center justify-center gap-1.5">
-                                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                                        Cabut Kabel
-                                    </button>
+                                
+                                <div class="flex flex-col gap-2 bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="text-sm font-bold text-slate-800">Kabel Drop Core</div>
+                                            <div class="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-bold">Kabel fiber optik terpasang</div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <div v-if="hasMaterial('kabel')" class="relative w-20">
+                                                <input type="number" v-model="getMaterial('kabel').quantity" min="1" class="w-full px-2 py-1 text-sm border-2 border-slate-200 rounded-lg text-center font-bold focus:ring-emerald-500 focus:border-emerald-500 transition-colors" placeholder="Meter">
+                                            </div>
+                                            <button v-if="!hasMaterial('kabel')" type="button" @click="cabutKabel" class="text-xs bg-rose-100 text-rose-700 font-bold px-3 py-1.5 rounded-lg hover:bg-rose-200 transition-colors shadow-sm">
+                                                Cabut Kabel
+                                            </button>
+                                            <div v-else class="text-xs bg-emerald-100 text-emerald-700 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm h-[32px]">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                                Dicabut
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-
-                            <!-- Material Return Section -->
-                            <div class="bg-gradient-to-br from-slate-50 to-emerald-50/30 border border-slate-200 rounded-2xl p-5">
-                                    <div class="flex items-center justify-between mb-4 border-b border-slate-200/60 pb-3">
-                                        <div class="flex items-center gap-2">
-                                            <div class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-                                            </div>
-                                            <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Pengembalian Alat</label>
-                                        </div>
-                                        <button type="button" @click="addMaterial" class="text-xs bg-emerald-100 text-emerald-700 font-bold px-3 py-1.5 rounded-lg hover:bg-emerald-200 hover:text-emerald-800 flex items-center gap-1.5 transition-colors shadow-sm">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                                            Tambah
-                                        </button>
-                                    </div>
-                                    <div class="space-y-3">
-                                        <transition-group
-                                            enter-active-class="transition duration-200 ease-out"
-                                            enter-from-class="transform opacity-0 -translate-x-4"
-                                            enter-to-class="transform opacity-100 translate-x-0"
-                                            leave-active-class="transition duration-200 ease-in"
-                                            leave-from-class="transform opacity-100 translate-x-0"
-                                            leave-to-class="transform opacity-0 -translate-x-4"
-                                        >
-                                            <div v-for="(item, index) in progressForm.materials" :key="index" class="relative group bg-white border border-slate-200 p-3 rounded-xl shadow-sm hover:border-emerald-300 transition-colors">
-                                                <button type="button" @click="removeMaterial(index)" class="absolute -top-2 -right-2 p-1 bg-white text-rose-500 border border-slate-200 hover:bg-rose-500 hover:text-white rounded-full transition-all shadow-sm z-10 opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100">
-                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                                </button>
-                                                <div class="space-y-2">
-                                                    <div class="relative">
-                                                        <select v-model="item.material_id" class="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none" required>
-                                                            <option value="" disabled>Pilih Material...</option>
-                                                            <option v-for="mat in materials" :key="mat.id" :value="mat.id">{{ mat.name }} ({{ mat.unit }})</option>
-                                                        </select>
-                                                        <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-slate-400">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                                        </div>
-                                                    </div>
-                                                    <div class="flex gap-2">
-                                                        <div class="relative w-24">
-                                                            <input type="number" v-model="item.quantity" min="0.01" step="0.01" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-center" placeholder="Jml" required>
-                                                        </div>
-                                                        <input type="text" v-model="item.unit" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent" placeholder="Keterangan (opsional)">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </transition-group>
-                                        <div v-if="!progressForm.materials.length" class="text-xs text-slate-400 bg-white p-4 rounded-xl border border-slate-200 border-dashed text-center flex flex-col items-center justify-center gap-2">
-                                            <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-                                            <span>Tidak ada material yang dikembalikan.</span>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
 
                         <div class="px-7 py-5 bg-slate-50/80 backdrop-blur-md border-t border-slate-100 flex justify-end gap-3 z-10 rounded-b-3xl">
@@ -310,16 +282,23 @@ const progressForm = useForm({
     materials: [],
 });
 
-function addMaterial() {
-    progressForm.materials.push({
-        material_id: '',
-        quantity: 1,
-        unit: 'pcs',
-    });
+function setNow(field) {
+    const now = new Date();
+    const timeString = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+    progressForm[field] = timeString;
+    
+    // Save to localStorage if it's start_time
+    if (selectedCbp.value && field === 'start_time') {
+        localStorage.setItem(`cbp_start_${selectedCbp.value.id}`, timeString);
+    }
 }
 
-function removeMaterial(index) {
-    progressForm.materials.splice(index, 1);
+function hasMaterial(category) {
+    return progressForm.materials.some(m => m._cat === category);
+}
+
+function getMaterial(category) {
+    return progressForm.materials.find(m => m._cat === category);
 }
 
 function cabutOnt() {
@@ -329,6 +308,7 @@ function cabutOnt() {
         material_id: ontMat ? ontMat.id : '',
         quantity: 1,
         unit: 'pcs',
+        _cat: 'ont'
     });
 }
 
@@ -339,12 +319,17 @@ function cabutKabel() {
         material_id: kabelMat ? kabelMat.id : '',
         quantity: 1,
         unit: 'm',
+        _cat: 'kabel'
     });
 }
 
 function openProgressModal(req) {
     selectedCbp.value = req;
-    progressForm.start_time = '';
+    
+    // Restore start_time from localStorage if available
+    const savedStart = localStorage.getItem(`cbp_start_${req.id}`);
+    progressForm.start_time = savedStart || '';
+    
     progressForm.end_time = '';
     progressForm.photo = null;
     progressForm.notes = req.notes || '';
@@ -363,7 +348,12 @@ function submitProgress() {
     progressForm.post(`/cbp/${selectedCbp.value.id}/status`, {
         preserveScroll: true,
         forceFormData: true,
-        onSuccess: () => closeProgressModal(),
+        onSuccess: () => {
+            if (selectedCbp.value) {
+                localStorage.removeItem(`cbp_start_${selectedCbp.value.id}`);
+            }
+            closeProgressModal();
+        },
     });
 }
 </script>
