@@ -433,7 +433,7 @@
                                             </div>
                                             <button type="button" 
                                                 :disabled="!ontForm.start_time" 
-                                                @click="toggleInstallItem(item)"
+                                                @click="openInstallModal(item)"
                                                 :class="['px-6 py-2 rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2', 
                                                     !ontForm.start_time ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 
                                                     item.isInstalled ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-sm border border-emerald-200' : 'bg-amber-500 text-white hover:bg-amber-600 shadow-md hover:shadow-lg']">
@@ -1050,8 +1050,62 @@
             </form>
         </div>
     </div>
-</template>
+        <!-- Modal Pemakaian Aktual / RMA -->
+        <div v-if="showInstallModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <h3 class="font-bold text-gray-900 text-lg">
+                        {{ installModalItem?.type === 'ONT' ? 'Konfirmasi ONT' : 'Pemakaian Aktual' }}
+                    </h3>
+                    <button @click="showInstallModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <p class="text-sm text-gray-600 mb-4">
+                        Barang: <span class="font-bold text-gray-900">{{ installModalItem?.name }}</span>
+                    </p>
+                    
+                    <!-- Kebutuhan ONT -->
+                    <div v-if="installModalItem?.type === 'ONT'" class="space-y-4">
+                        <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 cursor-pointer hover:bg-blue-100 transition-colors" @click="installModalIsBroken = false">
+                            <div class="flex items-center gap-3">
+                                <input type="radio" v-model="installModalIsBroken" :value="false" class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300">
+                                <div>
+                                    <p class="font-bold text-blue-900 text-sm">ONT Berfungsi Normal</p>
+                                    <p class="text-xs text-blue-700 mt-0.5">Berhasil dipasang di pelanggan.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-red-50 border border-red-100 rounded-xl p-4 cursor-pointer hover:bg-red-100 transition-colors" @click="installModalIsBroken = true">
+                            <div class="flex items-center gap-3">
+                                <input type="radio" v-model="installModalIsBroken" :value="true" class="w-4 h-4 text-red-600 focus:ring-red-500 border-gray-300">
+                                <div>
+                                    <p class="font-bold text-red-900 text-sm">Tandai Rusak / RMA</p>
+                                    <p class="text-xs text-red-700 mt-0.5">ONT bermasalah dan akan dikembalikan ke gudang.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
+                    <!-- Kebutuhan Material -->
+                    <div v-else class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Total Pemakaian Aktual</label>
+                            <p class="text-xs text-gray-500 mb-2">Sisa material yang tidak dipakai otomatis akan mengendap di Stok Area Anda untuk bisa di-retur nanti.</p>
+                            <div class="relative">
+                                <input type="number" v-model="installModalQty" min="0" step="0.01" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg font-bold">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                    <button @click="showInstallModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
+                    <button @click="confirmInstall" class="px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-colors">Konfirmasi & Pasang</button>
+                </div>
+            </div>
+        </div>
+</template>
 <script setup>
 import { ref, h, computed, watch, onMounted } from 'vue';
 import { Link, useForm, router, usePage } from '@inertiajs/vue3';
