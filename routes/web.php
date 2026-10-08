@@ -124,8 +124,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('olts/{olt}/update', [OltController::class, 'update'])->name('olts.update.post');
     Route::post('olts/{olt}/delete', [OltController::class, 'destroy'])->name('olts.destroy.post');
 
-    // Network Topology
+    // Network Topology & Radar
     Route::get('network-topology', [NetworkTopologyController::class, 'index'])->name('network-topology.index');
+    Route::get('network-radar', [\App\Http\Controllers\NetworkRadarController::class, 'index'])->name('network-radar.index');
 
     Route::resource('odcs', OdcController::class);
     Route::post('odcs/{odc}/update', [OdcController::class, 'update'])->name('odcs.update.post');
