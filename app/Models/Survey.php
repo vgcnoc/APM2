@@ -11,7 +11,7 @@ class Survey extends Model
     use HasFactory;
 
     protected $fillable = [
-        'customer_id', 'odp_id', 'surveyor_id', 'signal_loss',
+        'customer_id', 'odp_id', 'port_number', 'surveyor_id', 'signal_loss',
         'distance_meters', 'port_available', 'feasibility',
         'survey_date', 'notes', 'photos',
     ];
