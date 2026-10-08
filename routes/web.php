@@ -174,6 +174,7 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Data Jaringan (Dashboard Topology) ─────────────────────
     Route::get('/network-data', [\App\Http\Controllers\NetworkDataController::class, 'index'])->name('network-data.index');
+    Route::get('/network-data/terminated', [\App\Http\Controllers\NetworkDataController::class, 'terminated'])->name('network-data.terminated');
 
     // ── Vouchers & Profil Voucher ─────────────────────────────
     Route::get('/vouchers/profiles', [\App\Http\Controllers\VoucherProfileController::class, 'index'])->name('vouchers.profiles.index');

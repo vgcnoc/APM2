@@ -307,7 +307,8 @@ const menuItems = [
     { type: 'group', label: 'INFRASTRUKTUR JARINGAN' },
     { type: 'link', href: '/network-topology', icon: 'globe', label: 'Network Topology', active: (url) => (url || '').startsWith('/network-topology'), permission: 'menu_network_topology' },
     { type: 'link', href: '/network-radar', icon: 'map', label: 'Radar Tikor', active: (url) => (url || '').startsWith('/network-radar'), permission: 'menu_network_topology' },
-    { type: 'link', href: '/network-data', icon: 'globe', label: 'Data Jaringan', active: (url) => (url || '').startsWith('/network-data'), permission: 'menu_network_data' },
+    { type: 'link', href: '/network-data', icon: 'globe', label: 'Data Jaringan', active: (url) => (url || '').startsWith('/network-data') && !(url || '').startsWith('/network-data/terminated'), permission: 'menu_network_data' },
+    { type: 'link', href: '/network-data/terminated', icon: 'scissors', label: 'Cabut Perangkat', active: (url) => (url || '').startsWith('/network-data/terminated'), permission: 'menu_network_data' },
     {
         type: 'dropdown',
         icon: 'server',

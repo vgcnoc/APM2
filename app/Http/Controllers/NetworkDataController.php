@@ -96,4 +96,26 @@ class NetworkDataController extends Controller
             'filters' => $request->only(['olt_id', 'odc_id', 'odp_id', 'area_id', 'status', 'search']),
         ]);
     }
+
+    public function terminated(Request $request): Response
+    {
+        $search = $request->input('search');
+        
+        $query = Customer::where('status', 'terminated')->with('ont.odp.area', 'ont.odp.odc.olt');
+        
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('customer_code', 'like', "%{$search}%")
+                  ->orWhere('address', 'like', "%{$search}%");
+            });
+        }
+        
+        $customers = $query->latest('updated_at')->paginate(20)->withQueryString();
+
+        return Inertia::render('NetworkData/Terminated', [
+            'customers' => $customers,
+            'filters' => $request->only(['search']),
+        ]);
+    }
 }
