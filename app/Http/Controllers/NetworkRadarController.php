@@ -99,7 +99,12 @@ class NetworkRadarController extends Controller
                 ->orderBy('distance')
                 ->limit(20)
                 ->get()
-                ->map(fn($item) => array_merge($item->toArray(), ['_type' => $item->is_reseller ? 'reseller' : 'customer']));
+                ->map(function($item) {
+                    $type = 'customer';
+                    if ($item->is_reseller) $type = 'reseller';
+                    else if ($item->status === 'booking') $type = 'booking';
+                    return array_merge($item->toArray(), ['_type' => $type]);
+                });
             $results = array_merge($results, $customers->toArray());
         }
 
