@@ -78,12 +78,22 @@
                     </select>
                 </div>
 
-                <button @click="openModal()" class="btn-primary w-full md:w-auto shrink-0 flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Tambah Material
-                </button>
+                <div class="w-full md:w-auto flex flex-col sm:flex-row gap-3 shrink-0">
+                    <button 
+                        v-if="selectedItems.length > 0"
+                        @click="deleteSelected"
+                        class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-medium text-sm transition-all"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        Hapus ({{ selectedItems.length }})
+                    </button>
+                    <button @click="openModal()" class="btn-primary w-full md:w-auto flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Tambah Material
+                    </button>
+                </div>
             </div>
 
             <!-- Flash Messages -->
@@ -107,6 +117,9 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50/50 border-b border-gray-100">
+                                <th class="py-4 px-4 w-12 text-center">
+                                    <input type="checkbox" :checked="isAllSelected" @change="toggleAll" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 transition-all">
+                                </th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Barang</th>
 
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Kategori</th>
@@ -117,6 +130,9 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="item in materials.data" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
+                                <td class="py-4 px-4 text-center">
+                                    <input type="checkbox" v-model="selectedItems" :value="item.id" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 transition-all">
+                                </td>
                                 <td class="py-4 px-6">
                                     <p class="text-sm font-semibold text-gray-900">{{ item.name }}</p>
                                     <p v-if="item.supplier" class="text-xs text-blue-600 mt-0.5">Supplier: {{ item.supplier }}</p>
@@ -185,7 +201,7 @@
                                 </td>
                             </tr>
                             <tr v-if="materials.data.length === 0">
-                                <td colspan="5" class="py-12 text-center">
+                                <td colspan="6" class="py-12 text-center">
                                     <div class="flex flex-col items-center justify-center text-gray-400">
                                         <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
@@ -633,6 +649,35 @@ const isEditing = ref(false);
 const editingId = ref(null);
 const tempTotalModal = ref(null);
 const tempTotalJual = ref(null);
+
+const selectedItems = ref([]);
+
+const isAllSelected = computed(() => {
+    return props.materials.data.length > 0 && selectedItems.value.length === props.materials.data.length;
+});
+
+const toggleAll = (e) => {
+    if (e.target.checked) {
+        selectedItems.value = props.materials.data.map(item => item.id);
+    } else {
+        selectedItems.value = [];
+    }
+};
+
+const deleteSelected = () => {
+    if (selectedItems.value.length === 0) return;
+    
+    if (confirm(`Apakah Anda yakin ingin menghapus ${selectedItems.value.length} material yang dipilih?`)) {
+        router.post('/materials/bulk-destroy', {
+            ids: selectedItems.value
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                selectedItems.value = [];
+            }
+        });
+    }
+};
 
 const form = useForm({
     name: '',

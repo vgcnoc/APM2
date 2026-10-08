@@ -119,6 +119,30 @@ class MaterialController extends Controller
         }
     }
 
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:materials,id'
+        ]);
+
+        try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
+            Material::whereIn('id', $request->ids)->delete();
+            \Illuminate\Support\Facades\DB::commit();
+            return redirect()->route('materials.index')->with('success', count($request->ids) . ' data material berhasil dihapus.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            if ($e->getCode() == "23000") {
+                return redirect()->route('materials.index')->with('error', 'Beberapa material tidak dapat dihapus karena sudah digunakan dalam Riwayat Order/Pengambilan.');
+            }
+            return redirect()->route('materials.index')->with('error', 'Terjadi kesalahan saat menghapus data material.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return redirect()->route('materials.index')->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
     public function addStock(Request $request, Material $material)
     {
         $validated = $request->validate([
