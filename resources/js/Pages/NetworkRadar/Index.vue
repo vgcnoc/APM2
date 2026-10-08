@@ -33,6 +33,7 @@ const nearbyLoading = ref(false);
 const showPanel = ref(false);
 const mapStyle = ref('street'); // street | satellite
 const gpsTracking = ref(false);
+const isMeasuring = ref(false);
 let watchId = null;
 
 const layers = ref([
@@ -325,6 +326,80 @@ const switchMapStyle = () => {
     }
 };
 
+// ───── Measure Distance ──────────────────────────────
+let measurePoints = [];
+let measurePolyline = null;
+let measureCursorLine = null;
+let measureMarkers = [];
+let cursorTooltip = null;
+
+const toggleMeasure = () => {
+    isMeasuring.value = !isMeasuring.value;
+    if (isMeasuring.value) {
+        mapEl.value.style.cursor = 'crosshair';
+        map.on('click', addMeasurePoint);
+        map.on('mousemove', updateMeasureCursor);
+    } else {
+        mapEl.value.style.cursor = '';
+        map.off('click', addMeasurePoint);
+        map.off('mousemove', updateMeasureCursor);
+        clearMeasure();
+    }
+};
+
+const addMeasurePoint = (e) => {
+    measurePoints.push(e.latlng);
+    const isFirst = measurePoints.length === 1;
+    let totalDist = 0;
+    
+    if (measurePoints.length > 1) {
+        for (let i = 0; i < measurePoints.length - 1; i++) {
+            totalDist += map.distance(measurePoints[i], measurePoints[i+1]);
+        }
+        if (measurePolyline) measurePolyline.setLatLngs(measurePoints);
+        else measurePolyline = L.polyline(measurePoints, { color: '#ef4444', weight: 4, dashArray: '5, 8' }).addTo(map);
+    }
+    
+    const marker = L.circleMarker(e.latlng, {
+        radius: 5, color: '#ef4444', fillColor: '#fff', fillOpacity: 1, weight: 2
+    }).addTo(map);
+    
+    if (!isFirst) {
+        marker.bindTooltip(`<div class="font-bold text-[10px] text-red-600">${formatDistance(totalDist/1000)}</div>`, { permanent: true, direction: 'right', className: 'measure-tooltip bg-white border-red-200' });
+    } else {
+        marker.bindTooltip(`<div class="font-bold text-[10px] text-gray-500">Mulai</div>`, { permanent: true, direction: 'right', className: 'measure-tooltip bg-white' });
+    }
+    measureMarkers.push(marker);
+};
+
+const updateMeasureCursor = (e) => {
+    if (measurePoints.length === 0) return;
+    const lastPt = measurePoints[measurePoints.length - 1];
+    const dist = map.distance(lastPt, e.latlng);
+    let totalDist = dist;
+    for (let i = 0; i < measurePoints.length - 1; i++) {
+        totalDist += map.distance(measurePoints[i], measurePoints[i+1]);
+    }
+
+    if (!cursorTooltip) {
+        cursorTooltip = L.tooltip({ permanent: true, sticky: true, className: 'measure-tooltip bg-red-500 text-white border-0 shadow-lg' }).addTo(map);
+    }
+    cursorTooltip.setLatLng(e.latlng);
+    cursorTooltip.setContent(`<div class="font-bold text-[10px]">+${formatDistance(dist/1000)} <span class="font-normal opacity-80">(Total: ${formatDistance(totalDist/1000)})</span></div>`);
+    
+    if (measureCursorLine) measureCursorLine.setLatLngs([lastPt, e.latlng]);
+    else measureCursorLine = L.polyline([lastPt, e.latlng], { color: '#ef4444', weight: 2, dashArray: '4, 6', opacity: 0.5 }).addTo(map);
+};
+
+const clearMeasure = () => {
+    measurePoints = [];
+    if (measurePolyline) { map.removeLayer(measurePolyline); measurePolyline = null; }
+    if (measureCursorLine) { map.removeLayer(measureCursorLine); measureCursorLine = null; }
+    if (cursorTooltip) { map.removeLayer(cursorTooltip); cursorTooltip = null; }
+    measureMarkers.forEach(m => map.removeLayer(m));
+    measureMarkers = [];
+};
+
 // ───── Search Filter ──────────────────────────────────
 const filteredResults = computed(() => {
     if (!searchQuery.value) return nearbyResults.value;
@@ -472,6 +547,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
     stopTracking();
+    if (isMeasuring.value) toggleMeasure();
 });
 
 const getBounds = () => {
@@ -503,7 +579,24 @@ const toggleLayer = (layer) => {
         <div class="h-[calc(100vh-6rem)] flex flex-col relative overflow-hidden bg-gray-900 rounded-2xl shadow-2xl">
 
             <!-- ═══ Map Container ═══ -->
-            <div ref="mapEl" class="w-full h-full z-0"></div>
+            <div ref="mapEl" class="w-full h-full z-0" id="map"></div>
+
+            <!-- ═══ Measuring Banner ═══ -->
+            <transition name="slide-down">
+                <div v-if="isMeasuring" class="absolute top-0 left-0 right-0 z-[450] flex justify-center mt-3 pointer-events-none">
+                    <div class="bg-red-500 text-white px-4 py-2 rounded-full shadow-2xl flex items-center gap-3 pointer-events-auto border border-red-400">
+                        <span class="text-xs font-bold flex items-center gap-2">
+                            <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                            Mode Ukur Jarak Aktif
+                        </span>
+                        <div class="w-px h-4 bg-red-400"></div>
+                        <span class="text-[10px] font-medium opacity-90 hidden sm:block">Klik pada peta untuk menarik garis ukur (kabel).</span>
+                        <button @click="toggleMeasure" class="ml-2 bg-white text-red-600 px-3 py-1 rounded-full text-[10px] font-black hover:bg-red-50 transition-colors shadow-sm">
+                            BATAL / SELESAI
+                        </button>
+                    </div>
+                </div>
+            </transition>
 
             <!-- ═══ Floating Top Bar ═══ -->
             <div class="absolute top-3 left-3 right-3 z-[400] pointer-events-none flex items-start gap-3">
@@ -581,6 +674,19 @@ const toggleLayer = (layer) => {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                     <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-[10px] font-semibold rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity">{{ mapStyle === 'street' ? 'Satellite' : 'Street' }}</span>
+                </button>
+
+                <!-- Measure Distance -->
+                <button
+                    @click="toggleMeasure"
+                    class="group relative w-11 h-11 rounded-xl shadow-lg border flex items-center justify-center transition-all duration-200"
+                    :class="isMeasuring ? 'bg-red-500 text-white border-red-400 ring-2 ring-red-300' : 'bg-white text-gray-600 border-gray-100 hover:text-red-500'"
+                    title="Ukur Jarak Manual"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path>
+                    </svg>
+                    <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-[10px] font-semibold rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity">Ukur Jarak</span>
                 </button>
 
                 <!-- Find Nearest -->
@@ -839,6 +945,24 @@ const toggleLayer = (layer) => {
     100% { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 .animate-bounce-in { animation: bounceIn 0.4s ease-out; }
+
+/* Slide Down Animation for Top Banner */
+.slide-down-enter-active,
+.slide-down-leave-active {
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.slide-down-enter-from,
+.slide-down-leave-to {
+    opacity: 0;
+    transform: translateY(-100%);
+}
+
+/* Measure Tooltip Base */
+.measure-tooltip {
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
 
 /* Scrollbar */
 .overflow-y-auto::-webkit-scrollbar { width: 4px; }
