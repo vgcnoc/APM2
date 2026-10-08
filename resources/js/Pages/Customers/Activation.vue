@@ -201,6 +201,16 @@
                                                 <div class="flex justify-between"><span class="text-slate-500">Akun PPPoE:</span> <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).pppoe_user || '-' }}</span></div>
                                                 <div class="flex justify-between"><span class="text-slate-500">Pass PPPoE:</span> <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).pppoe_password || '-' }}</span></div>
                                             </template>
+                                            
+                                            <template v-if="getSelectedOntDetails(assignForm.ont_models[index]).free_hotspot || getSelectedOntDetails(assignForm.ont_models[index]).hotspot_user">
+                                                <div class="my-1.5 border-t border-indigo-200/60"></div>
+                                                <div class="flex justify-between items-center mb-1">
+                                                    <span class="text-slate-500">Mode Akses:</span> 
+                                                    <span class="font-bold text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded border border-orange-200 uppercase tracking-wider">Dual Mode (Hotspot)</span>
+                                                </div>
+                                                <div class="flex justify-between"><span class="text-slate-500">User Hotspot:</span> <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).hotspot_user || '-' }}</span></div>
+                                                <div class="flex justify-between"><span class="text-slate-500">Pass Hotspot:</span> <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).hotspot_password || '-' }}</span></div>
+                                            </template>
                                         </div>
                                     </div>
                                 </div>
