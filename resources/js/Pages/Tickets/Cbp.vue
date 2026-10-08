@@ -368,6 +368,8 @@
                     </form>
                 </div>
             </div>
+        </Teleport>
+
         <!-- History Modal -->
         <Teleport to="body">
             <div v-if="showHistoryModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
