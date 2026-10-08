@@ -427,7 +427,15 @@
                                     <div v-for="item in hardwareItems" :key="item.id" class="text-sm text-gray-700 bg-white p-3 rounded-lg border border-amber-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                         <div class="flex-1">
                                             <span class="text-xs text-gray-500 font-medium block mb-1">{{ item.type }}</span>
-                                            <span class="font-bold text-gray-900">{{ item.name }}</span>
+                                            <span class="font-bold text-gray-900">
+                                                {{ item.name }}
+                                                <span v-if="item.isInstalled && item.type === 'Material' && item.actual_qty" class="text-emerald-600 ml-2">
+                                                    (Terpakai: {{ item.actual_qty }})
+                                                </span>
+                                                <span v-if="item.isInstalled && item.type === 'ONT' && item.isBroken" class="text-red-600 ml-2">
+                                                    (Rusak / RMA)
+                                                </span>
+                                            </span>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <div v-if="item.isInstalled && item.type === 'Material' && item.name.toLowerCase().includes('kabel')" class="relative w-24">
@@ -1237,6 +1245,13 @@ watch(() => props.customer, () => {
                 if (savedItem && savedItem.returned_qty) {
                     item.returned_qty = savedItem.returned_qty;
                 }
+                if (savedItem && savedItem.actual_qty !== undefined) {
+                    item.actual_qty = savedItem.actual_qty;
+                }
+                if (savedItem && savedItem.isBroken) {
+                    item.isBroken = savedItem.isBroken;
+                    item.rmaNote = savedItem.rmaNote;
+                }
             });
         } catch (e) {
             console.error('Failed to parse saved hardware state', e);
@@ -1251,7 +1266,10 @@ function toggleInstallItem(item) {
     const savedState = hardwareItems.value.map(i => ({
         id: i.id,
         isInstalled: i.isInstalled,
-        returned_qty: i.returned_qty
+        returned_qty: i.returned_qty,
+        actual_qty: i.actual_qty,
+        isBroken: i.isBroken,
+        rmaNote: i.rmaNote
     }));
     localStorage.setItem(`apm_hardware_${props.customer.id}`, JSON.stringify(savedState));
 }
