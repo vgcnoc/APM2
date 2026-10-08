@@ -18,6 +18,8 @@ let myLocationMarker = null;
 let myLocationCircle = null;
 let nearbyLines = [];
 let nearbyMarkers = [];
+let activeRouteLayer = null;
+let activeRouteBadge = null;
 
 // State
 const myLocation = ref(null);
@@ -99,6 +101,15 @@ const createIcon = (color, svgPath, size = 32) => {
 const formatDistance = (km) => {
     if (km < 1) return `${Math.round(km * 1000)} m`;
     return `${km.toFixed(2)} km`;
+};
+
+const formatTime = (seconds) => {
+    if (seconds < 60) return `${Math.round(seconds)} dtk`;
+    const min = Math.round(seconds / 60);
+    if (min < 60) return `${min} mnt`;
+    const hr = Math.floor(min / 60);
+    const m = min % 60;
+    return `${hr}j ${m}m`;
 };
 
 const getGoogleMapsUrl = (lat, lng) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
@@ -219,50 +230,86 @@ const searchNearby = async () => {
 const clearNearbyVisuals = () => {
     nearbyLines.forEach(l => map?.removeLayer(l));
     nearbyMarkers.forEach(m => map?.removeLayer(m));
+    if (activeRouteLayer) map?.removeLayer(activeRouteLayer);
+    if (activeRouteBadge) map?.removeLayer(activeRouteBadge);
     nearbyLines = [];
     nearbyMarkers = [];
+    activeRouteLayer = null;
+    activeRouteBadge = null;
 };
 
 const drawNearbyLines = () => {
-    if (!map || !L || !myLocation.value) return;
+    // Kita tidak lagi menggambar garis lurus untuk semua.
+    // Garis rute akan digambar secara spesifik saat item diklik.
+    
+    // Namun kita tetap tampilkan badge jarak untuk yang TERDEKAT (index 0) 
+    // jika kita tidak otomatis menggambar rutenya, atau kita bisa otomatis gambar rute untuk yang terdekat!
+    if (nearbyResults.value.length > 0) {
+        drawRealRoute(nearbyResults.value[0]);
+    }
+};
 
-    nearbyResults.value.forEach((item, idx) => {
-        if (!item.latitude || !item.longitude) return;
-        const color = typeColors[item._type] || '#6b7280';
-        const isNearest = idx === 0;
+const drawRealRoute = async (item) => {
+    if (!map || !L || !myLocation.value || !item.latitude || !item.longitude) return;
 
-        // Line from me to item
-        const line = L.polyline(
-            [[myLocation.value.lat, myLocation.value.lng], [item.latitude, item.longitude]],
-            {
+    const start = `${myLocation.value.lng},${myLocation.value.lat}`;
+    const end = `${item.longitude},${item.latitude}`;
+    const color = typeColors[item._type] || '#3b82f6';
+
+    try {
+        const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${start};${end}?overview=full&geometries=geojson`);
+        if (res.data.code !== 'Ok') return;
+
+        const route = res.data.routes[0];
+        const distanceKm = route.distance / 1000;
+        const durationSec = route.duration;
+
+        // Update item with real road distance & duration
+        item.realDistance = distanceKm;
+        item.realDuration = durationSec;
+
+        // Clear existing route
+        if (activeRouteLayer) map.removeLayer(activeRouteLayer);
+        if (activeRouteBadge) map.removeLayer(activeRouteBadge);
+
+        // Draw new route
+        activeRouteLayer = L.geoJSON(route.geometry, {
+            style: {
                 color: color,
-                weight: isNearest ? 4 : 2,
-                opacity: isNearest ? 0.9 : 0.4,
-                dashArray: isNearest ? null : '8,6',
+                weight: 5,
+                opacity: 0.8,
+                dashArray: '10, 10',
+                lineCap: 'round',
+                lineJoin: 'round',
             }
-        ).addTo(map);
-        nearbyLines.push(line);
+        }).addTo(map);
 
-        // Distance label on midpoint
-        if (isNearest) {
-            const midLat = (myLocation.value.lat + item.latitude) / 2;
-            const midLng = (myLocation.value.lng + item.longitude) / 2;
-            const label = L.marker([midLat, midLng], {
-                icon: L.divIcon({
-                    className: 'custom-map-marker',
-                    html: `<div class="distance-badge" style="border-color: ${color}; color: ${color};">${formatDistance(item.distance)}</div>`,
-                    iconSize: [80, 24],
-                    iconAnchor: [40, 12],
-                }),
-            }).addTo(map);
-            nearbyMarkers.push(label);
-        }
-    });
+        // Add badge at the end of the route
+        activeRouteBadge = L.marker([item.latitude, item.longitude], {
+            icon: L.divIcon({
+                className: 'custom-map-marker',
+                html: `
+                    <div class="distance-badge flex flex-col items-center shadow-2xl" style="border-color: ${color}; color: ${color}; background: white; transform: translateY(-45px);">
+                        <span class="text-[11px] font-black">${formatDistance(distanceKm)}</span>
+                        <span class="text-[9px] font-bold text-gray-500">🚗 ${formatTime(durationSec)}</span>
+                    </div>
+                `,
+                iconSize: [80, 40],
+                iconAnchor: [40, 0],
+            }),
+            zIndexOffset: 1000
+        }).addTo(map);
+
+        // Fit map to route
+        map.fitBounds(activeRouteLayer.getBounds(), { padding: [50, 50] });
+    } catch (err) {
+        console.error('Gagal mengambil rute OSRM:', err);
+    }
 };
 
 const flyToItem = (item) => {
     if (!map) return;
-    map.flyTo([item.latitude, item.longitude], 18, { duration: 1 });
+    drawRealRoute(item);
 };
 
 // ───── Map Style ───────────────────────────────────────
@@ -667,7 +714,9 @@ const toggleLayer = (layer) => {
 
                                         <div class="flex items-center justify-between mt-2">
                                             <span class="text-xs font-black" :class="idx === 0 ? 'text-indigo-600' : 'text-gray-600'">
-                                                📏 {{ formatDistance(item.distance) }}
+                                                📏 {{ item.realDistance ? formatDistance(item.realDistance) : formatDistance(item.distance) }} 
+                                                <span v-if="item.realDuration" class="text-gray-400 font-medium ml-1"> ({{ formatTime(item.realDuration) }})</span>
+                                                <span v-else class="text-gray-400 font-medium ml-1"> (Lurus)</span>
                                             </span>
                                             <a :href="getGoogleMapsUrl(item.latitude, item.longitude)" target="_blank" @click.stop
                                                 class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
