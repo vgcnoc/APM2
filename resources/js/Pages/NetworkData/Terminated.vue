@@ -3,7 +3,6 @@ import { ref, watch } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 
-import Pagination from '@/Components/Pagination.vue';
 
 const props = defineProps({
     customers: Object,
@@ -129,8 +128,11 @@ watch(search, debounce((value) => {
                     </div>
                     
                     <!-- Pagination -->
-                    <div class="px-6 py-4 border-t border-gray-100 bg-gray-50" v-if="customers.links && customers.links.length > 3">
-                        <Pagination :links="customers.links" />
+                    <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-center gap-2" v-if="customers.links && customers.links.length > 3">
+                        <template v-for="(link, p) in customers.links" :key="p">
+                            <div v-if="link.url === null" class="px-3 py-1.5 text-sm text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed" v-html="link.label"></div>
+                            <Link v-else :href="link.url" class="px-3 py-1.5 text-sm rounded-lg transition-colors" :class="link.active ? 'bg-red-600 text-white font-medium shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 hover:border-gray-300'" v-html="link.label" />
+                        </template>
                     </div>
                 </div>
             </div>
