@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import debounce from 'lodash/debounce';
+
 import Pagination from '@/Components/Pagination.vue';
 
 const props = defineProps({
@@ -11,6 +11,16 @@ const props = defineProps({
 });
 
 const search = ref(props.filters.search || '');
+
+// Custom debounce
+const debounce = (fn, delay) => {
+    let timeoutId;
+    return (...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => fn(...args), delay);
+    };
+};
+
 
 watch(search, debounce((value) => {
     router.get(
