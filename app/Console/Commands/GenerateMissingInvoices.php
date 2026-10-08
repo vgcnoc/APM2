@@ -28,10 +28,17 @@ class GenerateMissingInvoices extends Command
      */
     public function handle()
     {
-        $customers = Customer::where('status', 'active')->get();
+        $customers = Customer::whereIn('status', ['active', 'suspended'])->get();
         $count = 0;
         
         foreach ($customers as $customer) {
+            $unpaidCount = Invoice::where('customer_id', $customer->id)
+                ->where('status', 'unpaid')
+                ->count();
+                
+            if ($unpaidCount >= 2) {
+                continue;
+            }
             // Check if invoice exists for this customer
             $exists = Invoice::where('customer_id', $customer->id)->exists();
             if (!$exists) {

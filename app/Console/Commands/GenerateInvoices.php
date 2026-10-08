@@ -37,10 +37,19 @@ class GenerateInvoices extends Command
             return;
         }
 
-        $customers = Customer::where('status', 'active')->with('package')->get();
+        $customers = Customer::whereIn('status', ['active', 'suspended'])->with('package')->get();
         $count = 0;
 
         foreach ($customers as $customer) {
+            // Jika pelanggan sudah memiliki 2 tagihan yang belum dibayar, jangan buat tagihan baru
+            $unpaidCount = Invoice::where('customer_id', $customer->id)
+                ->where('status', 'unpaid')
+                ->count();
+                
+            if ($unpaidCount >= 2) {
+                continue;
+            }
+
             // Check if invoice for the current month and year already exists
             $exists = Invoice::where('customer_id', $customer->id)
                 ->where('period_month', $today->month)
