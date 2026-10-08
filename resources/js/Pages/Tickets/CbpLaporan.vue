@@ -222,6 +222,7 @@
                                 </div>
                                 <div v-else class="text-xs text-slate-500 mb-2 italic p-3 bg-white border border-slate-200 rounded-xl">Data Instalasi tidak ditemukan.</div>
                             </div>
+                        </div>
 
                         <div class="px-7 py-5 bg-slate-50/80 backdrop-blur-md border-t border-slate-100 flex justify-end gap-3 z-10 rounded-b-3xl">
                             <button type="button" @click="closeProgressModal" class="px-6 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-200/50 rounded-xl transition-colors">Batal</button>
