@@ -11,6 +11,7 @@ class MaterialTransaction extends Model
     protected $fillable = [
         'transaction_number',
         'type',
+        'status',
         'date',
         'technician_name',
         'purpose',

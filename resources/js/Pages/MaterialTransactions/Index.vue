@@ -180,7 +180,12 @@
                                     <input type="checkbox" v-model="selectedItems" :value="item.id" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 mt-1 transition-all">
                                 </td>
                                 <td class="py-4 px-6 align-top">
-                                    <p class="text-sm font-bold text-gray-900">{{ item.transaction_number }}</p>
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-sm font-bold text-gray-900">{{ item.transaction_number }}</p>
+                                        <span v-if="item.status === 'pending'" class="px-2 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-700 rounded-full">Pending</span>
+                                        <span v-else-if="item.status === 'approved' && item.type === 'in'" class="px-2 py-0.5 text-[10px] font-semibold bg-emerald-100 text-emerald-700 rounded-full">Disetujui</span>
+                                        <span v-else-if="item.status === 'rejected'" class="px-2 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 rounded-full">Ditolak</span>
+                                    </div>
                                     <p class="text-xs text-gray-500 mt-0.5">{{ item.date }}</p>
                                 </td>
                                 <td class="py-4 px-6 align-top">
@@ -213,8 +218,24 @@
                                     <span class="text-sm font-bold text-gray-900">Rp {{ formatNumber(item.total_cost) }}</span>
                                 </td>
                                 <td class="py-4 px-6 text-right align-top">
-                                    <div class="flex items-center justify-end gap-2">
-                                        <Link :href="`/material-transactions/${item.id}`" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors">
+                                    <div class="flex flex-col items-end gap-2">
+                                        <div class="flex items-center justify-end gap-2">
+                                            <template v-if="item.type === 'in' && item.status === 'pending' && (hasPermission('menu_material_transactions') || $page.props.auth.user.roles.includes('admin') || $page.props.auth.user.roles.includes('super_admin'))">
+                                                <button @click="approveItem(item)" class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg hover:bg-emerald-100 transition-colors">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                    Terima
+                                                </button>
+                                                <button @click="rejectItem(item)" class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition-colors">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                    Tolak
+                                                </button>
+                                            </template>
+                                            
+                                            <Link :href="`/material-transactions/${item.id}`" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -233,6 +254,7 @@
                                             </svg>
                                             Hapus
                                         </button>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -380,6 +402,22 @@ const deleteSelected = () => {
             onSuccess: () => {
                 selectedItems.value = [];
             }
+        });
+    }
+};
+
+const approveItem = (item) => {
+    if (confirm(`Setujui serah terima pengembalian material ${item.transaction_number}? Stok Area akan bertambah sesuai rincian.`)) {
+        router.post(`/material-transactions/${item.id}/approve`, {}, {
+            preserveScroll: true
+        });
+    }
+};
+
+const rejectItem = (item) => {
+    if (confirm(`Tolak pengembalian material ${item.transaction_number}? Stok tidak akan bertambah.`)) {
+        router.post(`/material-transactions/${item.id}/reject`, {}, {
+            preserveScroll: true
         });
     }
 };

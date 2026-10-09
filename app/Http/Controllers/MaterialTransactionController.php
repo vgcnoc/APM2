@@ -243,6 +243,40 @@ class MaterialTransactionController extends Controller
             ->with('success', 'Order/Pengambilan Barang berhasil dicatat dan stok telah dikurangi.');
     }
 
+    public function approveReturn(MaterialTransaction $material_transaction)
+    {
+        if ($material_transaction->type !== 'in' || $material_transaction->status !== 'pending') {
+            return redirect()->back()->with('error', 'Transaksi tidak valid untuk disetujui.');
+        }
+
+        DB::transaction(function () use ($material_transaction) {
+            $material_transaction->update(['status' => 'approved']);
+
+            // Kembalikan ke Stok Area
+            foreach ($material_transaction->items as $item) {
+                $materialStock = \App\Models\MaterialStock::where('material_id', $item->material_id)
+                    ->where('area_id', $material_transaction->area_id)
+                    ->first();
+                if ($materialStock) {
+                    $materialStock->increment('stock', $item->quantity);
+                }
+            }
+        });
+
+        return redirect()->back()->with('success', 'Serah terima pengembalian material berhasil disetujui! Stok Area bertambah.');
+    }
+
+    public function rejectReturn(MaterialTransaction $material_transaction)
+    {
+        if ($material_transaction->type !== 'in' || $material_transaction->status !== 'pending') {
+            return redirect()->back()->with('error', 'Transaksi tidak valid untuk ditolak.');
+        }
+
+        $material_transaction->update(['status' => 'rejected']);
+
+        return redirect()->back()->with('success', 'Pengembalian material telah ditolak.');
+    }
+
 
     public function edit(MaterialTransaction $materialTransaction)
     {

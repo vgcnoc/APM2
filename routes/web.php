@@ -179,7 +179,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('material-transactions/{item}/register-ont', [MaterialTransactionController::class, 'registerOnt'])->name('material-transactions.register-ont');
     Route::post('material-transactions/{item}/reset-ont', [MaterialTransactionController::class, 'resetOnt'])->name('material-transactions.reset-ont');
     Route::post('material-transactions/{material_transaction}/delete', [MaterialTransactionController::class, 'destroy'])->name('material-transactions.destroy');
-
+    Route::post('material-transactions/{material_transaction}/approve', [MaterialTransactionController::class, 'approveReturn'])->name('material-transactions.approve');
+    Route::post('material-transactions/{material_transaction}/reject', [MaterialTransactionController::class, 'rejectReturn'])->name('material-transactions.reject');
 
 
     // ── Permintaan Material (Teknisi -> Gudang Utama) ────────────────────

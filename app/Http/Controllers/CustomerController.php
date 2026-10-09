@@ -1333,6 +1333,7 @@ class CustomerController extends Controller
                     $transaction = \App\Models\MaterialTransaction::create([
                         'transaction_number' => 'RTR-EXCESS-' . date('YmdHis'),
                         'type' => 'in',
+                        'status' => 'pending',
                         'date' => now(),
                         'technician_name' => auth()->user()->name,
                         'purpose' => 'Pengembalian Kelebihan Material Instalasi Pelanggan ' . $customer->name,
@@ -1366,13 +1367,9 @@ class CustomerController extends Controller
                                     'total_price' => ($material->price_per_unit ?? 0) * $item['returned_qty'],
                                 ]);
                                 
-                                // Kembalikan ke Stok Area (karena Teknisi mengembalikan sisa material ke Admin Area)
-                                $materialStock = \App\Models\MaterialStock::where('material_id', $material->id)
-                                    ->where('area_id', $customer->area_id)
-                                    ->first();
-                                if ($materialStock) {
-                                    $materialStock->increment('stock', $item['returned_qty']);
-                                }
+                                // Note: Stok tidak lagi otomatis ditambahkan di sini.
+                                // Stok akan bertambah saat Admin Area melakukan "Approve" (Serah Terima)
+                                // di menu MaterialTransactionController.
                                 
                                 $assignedQty = $item['assigned_qty'] ?? 0;
                                 $usedQty = $item['used_qty'] ?? 0;
