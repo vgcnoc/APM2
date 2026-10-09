@@ -1307,7 +1307,8 @@ class CustomerController extends Controller
             // Restore old usages back to Area Stock
             foreach ($oldUsages as $old) {
                 $nameLower = strtolower($old['name']);
-                $material = \App\Models\Material::where('name', 'like', "%{$nameLower}%")->first();
+                $cleanName = trim(preg_replace('/\s*\(.*?\)\s*/', '', $nameLower));
+                $material = \App\Models\Material::where('name', 'like', "%{$cleanName}%")->first();
                 if (!$material && str_contains($nameLower, 'kabel')) {
                     $material = \App\Models\Material::where('category', 'Kabel Drop')
                         ->orWhere('category', 'Kabel')
@@ -1364,13 +1365,9 @@ class CustomerController extends Controller
                                 // Retur langsung ke Gudang Utama (bukan ke Stok Area)
                                 $material->increment('stock', $item['returned_qty']);
                                 
-                                // Kurangi dari Stok Area karena barangnya dikembalikan ke Gudang Utama
-                                $materialStock = \App\Models\MaterialStock::where('material_id', $material->id)
-                                    ->where('area_id', $customer->area_id)
-                                    ->first();
-                                if ($materialStock) {
-                                    $materialStock->decrement('stock', $item['returned_qty']);
-                                }
+                                // DO NOT DECREMENT Area Stock here because Admin already deducted it when assigning!
+                                // The material was in the Technician's hands, so returning it to Gudang Utama
+                                // does not take it from Area Stock again.
                             }
                         }
                     }
@@ -1397,13 +1394,18 @@ class CustomerController extends Controller
                             }
 
                             if ($material) {
-                                // Deduct from Area Stock
-                                $materialStock = \App\Models\MaterialStock::where('material_id', $material->id)
-                                    ->where('area_id', $customer->area_id)
-                                    ->first();
-                                    
-                                if ($materialStock) {
-                                    $materialStock->decrement('stock', $item['actual_qty']);
+                                // Check if this item was assigned by admin (has "(xx)" in the name)
+                                $isAssigned = preg_match('/\(\d+(?:\.\d+)?\s*(.*?)\)/', $item['name']);
+                                
+                                if (!$isAssigned) {
+                                    // If not assigned, Technician added it manually, so we MUST deduct from Area Stock
+                                    $materialStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                                        ->where('area_id', $customer->area_id)
+                                        ->first();
+                                        
+                                    if ($materialStock) {
+                                        $materialStock->decrement('stock', $item['actual_qty']);
+                                    }
                                 }
 
                                 $unitStr = str_contains($nameLower, 'kabel') ? 'meter' : 'pcs';
