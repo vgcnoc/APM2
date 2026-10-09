@@ -194,6 +194,9 @@
                                         {{ item.purpose }} 
                                         <span v-if="item.area" class="text-blue-500 font-medium">({{ item.area }})</span>
                                     </p>
+                                    <div v-if="item.notes" class="mt-2 text-[11px] text-gray-500 bg-gray-50 p-2 rounded border border-gray-100 whitespace-pre-line">
+                                        {{ item.notes }}
+                                    </div>
                                 </td>
                                 <td class="py-4 px-6 align-top">
                                     <div class="space-y-2">
