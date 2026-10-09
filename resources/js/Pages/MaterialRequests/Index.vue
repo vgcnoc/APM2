@@ -165,7 +165,6 @@
 import { ref, watch } from 'vue';
 import { Link, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import debounce from 'lodash/debounce';
 
 const props = defineProps({
     requests: Object,
@@ -184,9 +183,13 @@ const formatDate = (dateString) => {
     return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
-watch(filterForm, debounce((value) => {
-    router.get(route('material-requests.index'), value, { preserveState: true, preserveScroll: true });
-}, 300), { deep: true });
+let searchTimeout = null;
+watch(filterForm, (value) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        router.get(route('material-requests.index'), value, { preserveState: true, preserveScroll: true });
+    }, 300);
+}, { deep: true });
 
 function resetFilters() {
     filterForm.value = { search: '', status: '' };
