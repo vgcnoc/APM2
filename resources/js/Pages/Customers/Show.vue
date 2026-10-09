@@ -309,7 +309,7 @@
                         </div>
                         
                         <div v-if="hardwareItems.length > 0" class="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-6">
-                            <p class="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-3">Kebutuhan Material (Telah Dipasang)</p>
+                            <p class="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-3">Riwayat Alokasi Material & ONT</p>
                             <div class="space-y-2">
                                 <div v-for="item in hardwareItems" :key="item.id" class="text-sm text-gray-700 bg-white p-3 rounded-lg border border-amber-200 shadow-sm flex items-center justify-between">
                                     <div>

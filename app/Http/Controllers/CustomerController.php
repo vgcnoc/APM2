@@ -1266,7 +1266,22 @@ class CustomerController extends Controller
             // Update status jadwal teknisi ke done jika ada
             $schedules = $customer->technicianSchedules()->where('type', 'installation')->where('status', 'scheduled')->get();
             foreach ($schedules as $schedule) {
-                $schedule->update(['status' => 'done']);
+                $notes = $schedule->notes;
+                if ($request->has('materials_returned') && is_array($request->materials_returned)) {
+                    foreach ($request->materials_returned as $item) {
+                        if (isset($item['actual_qty']) && isset($item['name']) && $item['type'] === 'Material' && $item['actual_qty'] !== null) {
+                            $originalName = $item['name'];
+                            $unit = str_contains(strtolower($originalName), 'kabel') ? 'meter' : 'pcs';
+                            $baseName = trim(preg_replace('/\s*\(.*\)/', '', $originalName));
+                            $newName = $baseName . ' (' . $item['actual_qty'] . ' ' . $unit . ' aktual)';
+                            $notes = str_replace($originalName, $newName, $notes);
+                        }
+                    }
+                }
+                $schedule->update([
+                    'status' => 'done',
+                    'notes' => $notes
+                ]);
             }
 
             // Handle excess returned material
