@@ -169,7 +169,9 @@
                                 </th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">No. Transaksi / Tgl</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tujuan / Petugas</th>
-                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Rincian Barang</th>
+                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Barang & Stok Awal</th>
+                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Keluar / Masuk</th>
+                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Sisa Stok</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Total Tagihan (Jual)</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
@@ -199,24 +201,33 @@
                                     </div>
                                 </td>
                                 <td class="py-4 px-6 align-top">
-                                    <div class="space-y-2">
-                                        <div v-for="detail in item.items" :key="detail.id" class="text-xs">
-                                            <div>
-                                                <span class="font-medium text-gray-800">{{ detail.material ? detail.material.name : 'Unknown' }}</span>
-                                                <span class="text-gray-500 ml-1">({{ detail.quantity }} {{ detail.unit || (detail.material ? detail.material.unit : 'pcs') }})</span>
-                                                <span class="text-emerald-600 font-medium ml-1">@ Rp {{ formatNumber(detail.price_per_unit) }}</span>
-                                            </div>
-                                            <div v-if="detail.stock_before !== null && detail.stock_after !== null" class="flex items-center gap-2 mt-0.5 text-[10px]">
-                                                <span class="text-gray-400">Stok Sblm: <span class="font-semibold text-gray-600">{{ formatNumber(detail.stock_before) }}</span></span>
-                                                <span class="text-gray-300">|</span>
-                                                <span class="text-gray-400">Stok Sdh: <span class="font-semibold text-blue-600">{{ formatNumber(detail.stock_after) }}</span></span>
-                                            </div>
-                                            <div v-else-if="detail.material" class="flex items-center gap-2 mt-0.5 text-[10px]">
-                                                <span class="text-gray-400 italic">Hitungan stok tidak tersedia (Data Lama)</span>
-                                            </div>
+                                    <div class="space-y-3">
+                                        <div v-for="detail in item.items" :key="detail.id" class="flex flex-col h-10 justify-center">
+                                            <span class="font-bold text-gray-800 text-xs truncate max-w-[200px]" :title="detail.material ? detail.material.name : 'Unknown'">
+                                                {{ detail.material ? detail.material.name : 'Unknown' }}
+                                            </span>
+                                            <span class="text-[10px] text-gray-500 mt-0.5">
+                                                Stok Awal: <span class="font-semibold text-gray-700">{{ detail.stock_before !== null ? formatNumber(detail.stock_before) : '-' }}</span>
+                                            </span>
                                         </div>
-                                        <div v-if="!item.items || item.items.length === 0" class="text-xs text-gray-400 italic">
-                                            Tidak ada barang
+                                    </div>
+                                </td>
+                                <td class="py-4 px-6 align-top text-center">
+                                    <div class="space-y-3">
+                                        <div v-for="detail in item.items" :key="'qty-'+detail.id" class="flex flex-col h-10 justify-center">
+                                            <span class="text-xs font-black" :class="item.type === 'in' ? 'text-emerald-600' : 'text-orange-600'">
+                                                {{ item.type === 'in' ? '+' : '-' }}{{ detail.quantity }}
+                                            </span>
+                                            <span class="text-[10px] text-gray-400 font-medium">{{ detail.unit || (detail.material ? detail.material.unit : 'pcs') }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-6 align-top text-center">
+                                    <div class="space-y-3">
+                                        <div v-for="detail in item.items" :key="'sisa-'+detail.id" class="flex flex-col h-10 justify-center">
+                                            <span class="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 inline-block w-fit mx-auto">
+                                                {{ detail.stock_after !== null ? formatNumber(detail.stock_after) : '-' }}
+                                            </span>
                                         </div>
                                     </div>
                                 </td>
