@@ -1730,6 +1730,26 @@ function submitOnt() {
             actual_qty: item.actual_qty
         }));
 
+    // Auto-calculate returned (excess) materials to go back to Gudang Utama
+    const excessItems = [];
+    hardwareItems.value.forEach(item => {
+        if (item.type === 'Material' && item.isInstalled && item.actual_qty !== undefined) {
+            // Find original qty, example format: "Klem (10 pcs)" -> match "10"
+            const match = item.name.match(/\((\d+(?:\.\d+)?)\s/);
+            if (match) {
+                const originalQty = parseFloat(match[1]);
+                const actualQty = parseFloat(item.actual_qty) || 0;
+                if (originalQty > actualQty) {
+                    excessItems.push({
+                        name: item.name,
+                        returned_qty: originalQty - actualQty
+                    });
+                }
+            }
+        }
+    });
+    ontForm.materials_returned = excessItems;
+
     // Collect material usage for updating schedule notes
     ontForm.material_usage = hardwareItems.value
         .filter(item => item.type === 'Material' && item.actual_qty !== undefined && item.actual_qty !== null)

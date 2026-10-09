@@ -1358,6 +1358,14 @@ class CustomerController extends Controller
                                 
                                 // Retur langsung ke Gudang Utama (bukan ke Stok Area)
                                 $material->increment('stock', $item['returned_qty']);
+                                
+                                // Kurangi dari Stok Area karena barangnya dikembalikan ke Gudang Utama
+                                $materialStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                                    ->where('area_id', $customer->area_id)
+                                    ->first();
+                                if ($materialStock) {
+                                    $materialStock->decrement('stock', $item['returned_qty']);
+                                }
                             }
                         }
                     }
