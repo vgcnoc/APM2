@@ -1334,6 +1334,7 @@ class CustomerController extends Controller
                         'technician_name' => auth()->user()->name,
                         'purpose' => 'Pengembalian Kelebihan Material Instalasi Pelanggan ' . $customer->name,
                         'user_id' => auth()->id(),
+                        'area_id' => $customer->area_id,
                     ]);
 
                     foreach ($returnedItems as $item) {
