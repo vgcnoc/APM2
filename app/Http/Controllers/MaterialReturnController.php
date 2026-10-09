@@ -68,6 +68,9 @@ class MaterialReturnController extends Controller
                 'stock' => $displayStock,
                 'display_unit' => $displayUnit,
                 'raw_stock' => $stock->stock,
+                'meter_per_roll' => $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000,
+                'pcs_per_pack' => $material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1,
+                'cm_per_pcs' => $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50,
             ];
         });
 
@@ -193,8 +196,23 @@ class MaterialReturnController extends Controller
                     'total_price' => $totalPrice,
                 ]);
 
-                // Kurangi Stok Area
+                // Hitung pengurangan Stok Area (dalam satuan dasar: meter/pcs/cm)
                 $deduction = $itemData['quantity'];
+                if (str_contains(strtolower($material->category), 'kabel') && ($itemData['unit'] === 'roll' || $itemData['unit'] === 'rol')) {
+                    $deduction = $itemData['quantity'] * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
+                }
+                if ($material->category === 'Paku Klem' && ($itemData['unit'] === 'pack' || $itemData['unit'] === 'bungkus')) {
+                    $deduction = $itemData['quantity'] * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
+                }
+                if ($material->category === 'Isolasi' && ($itemData['unit'] === 'pcs')) {
+                    $deduction = $itemData['quantity'] * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                }
+
+                if ($materialStock->stock < $deduction) {
+                    throw new \Exception("Stok {$material->name} di area {$area->name} tidak mencukupi untuk retur ini.");
+                }
+
+                // Kurangi Stok Area
                 $materialStock->stock -= $deduction;
 
                 // Tambah Stok Gudang Utama

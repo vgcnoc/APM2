@@ -118,11 +118,40 @@
                                                 type="number" 
                                                 :value="selectedItems.find(s => s.id === stock.id)?.qty"
                                                 @input="updateQty(stock.id, $event.target.value)"
-                                                :max="stock.raw_stock"
+                                                :max="selectedItems.find(s => s.id === stock.id)?.max"
                                                 min="0.01"
                                                 step="0.01"
-                                                class="w-28 px-3 py-1.5 border border-teal-300 rounded-lg text-sm text-right font-bold focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                                class="w-24 px-3 py-1.5 border border-teal-300 rounded-lg text-sm text-right font-bold focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                             >
+                                            <select
+                                                v-if="stock.material_category.toLowerCase().includes('kabel')"
+                                                :value="selectedItems.find(s => s.id === stock.id)?.display_unit"
+                                                @change="updateUnit(stock.id, $event.target.value)"
+                                                class="px-2 py-1.5 border border-teal-300 rounded-lg text-sm bg-white"
+                                            >
+                                                <option value="meter">meter</option>
+                                                <option value="roll">roll</option>
+                                            </select>
+                                            <select
+                                                v-else-if="stock.material_category === 'Paku Klem'"
+                                                :value="selectedItems.find(s => s.id === stock.id)?.display_unit"
+                                                @change="updateUnit(stock.id, $event.target.value)"
+                                                class="px-2 py-1.5 border border-teal-300 rounded-lg text-sm bg-white"
+                                            >
+                                                <option value="pcs">pcs</option>
+                                                <option value="pack">pack</option>
+                                            </select>
+                                            <select
+                                                v-else-if="stock.material_category === 'Isolasi'"
+                                                :value="selectedItems.find(s => s.id === stock.id)?.display_unit"
+                                                @change="updateUnit(stock.id, $event.target.value)"
+                                                class="px-2 py-1.5 border border-teal-300 rounded-lg text-sm bg-white"
+                                            >
+                                                <option value="cm">cm</option>
+                                                <option value="pcs">pcs</option>
+                                            </select>
+                                            <span v-else class="text-xs font-medium text-gray-600">{{ selectedItems.find(s => s.id === stock.id)?.display_unit }}</span>
+                                            
                                             <button @click="setMax(stock)" class="px-2 py-1.5 text-xs font-bold text-teal-700 bg-teal-100 rounded-lg hover:bg-teal-200 transition-colors" title="Retur Semua">
                                                 MAX
                                             </button>
@@ -344,6 +373,11 @@ function toggleSelectAll() {
             display_unit: s.display_unit,
             qty: s.raw_stock,
             max: s.raw_stock,
+            raw_stock: s.raw_stock,
+            meter_per_roll: s.meter_per_roll,
+            pcs_per_pack: s.pcs_per_pack,
+            cm_per_pcs: s.cm_per_pcs,
+            material_category: s.material_category,
         }));
     } else {
         selectedItems.value = [];
@@ -364,7 +398,30 @@ function toggleItem(stock) {
             display_unit: stock.display_unit,
             qty: stock.raw_stock,
             max: stock.raw_stock,
+            raw_stock: stock.raw_stock,
+            meter_per_roll: stock.meter_per_roll,
+            pcs_per_pack: stock.pcs_per_pack,
+            cm_per_pcs: stock.cm_per_pcs,
+            material_category: stock.material_category,
         });
+    }
+}
+
+function updateUnit(stockId, newUnit) {
+    const item = selectedItems.value.find(s => s.id === stockId);
+    if (item) {
+        item.display_unit = newUnit;
+        // Recalculate max based on new unit
+        if (newUnit === 'roll') {
+            item.max = item.raw_stock / item.meter_per_roll;
+        } else if (newUnit === 'pack') {
+            item.max = item.raw_stock / item.pcs_per_pack;
+        } else if (newUnit === 'pcs' && item.material_category === 'Isolasi') {
+            item.max = item.raw_stock / item.cm_per_pcs;
+        } else {
+            item.max = item.raw_stock;
+        }
+        item.qty = item.max; // Automatically set to new max when switching unit
     }
 }
 
@@ -378,7 +435,7 @@ function updateQty(stockId, val) {
 function setMax(stock) {
     const item = selectedItems.value.find(s => s.id === stock.id);
     if (item) {
-        item.qty = stock.raw_stock;
+        item.qty = item.max;
     }
 }
 
