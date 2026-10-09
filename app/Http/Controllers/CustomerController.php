@@ -1280,6 +1280,7 @@ class CustomerController extends Controller
             }
 
             // Update status jadwal teknisi ke done jika ada
+<<<<<<< ours
             $schedules = $customer->technicianSchedules()->where('type', 'installation')->get();
             foreach ($schedules as $schedule) {
                 $notes = $schedule->notes;
@@ -1320,9 +1321,58 @@ class CustomerController extends Controller
                         'purpose' => 'Pengembalian Kelebihan Material Instalasi Pelanggan ' . $customer->name,
                         'user_id' => auth()->id(),
                     ]);
+=======
+            $schedules = $customer->technicianSchedules()->where('type', 'installation')->whereIn('status', ['scheduled', 'done'])->get();
+            
+            // Restore previous usage from old notes if this is an edit to prevent double-deduction
+            $oldUsages = [];
+            foreach ($schedules as $schedule) {
+                if ($schedule->status === 'done' && $schedule->notes) {
+                    $lines = explode("\n", $schedule->notes);
+                    foreach ($lines as $line) {
+                        if (str_starts_with(trim($line), 'Material:')) {
+                            $mats = explode(',', str_replace('Material:', '', $line));
+                            foreach ($mats as $mat) {
+                                $mat = trim($mat);
+                                if (preg_match('/^(.*?)\s*\((\d+(\.\d+)?)\s*(.*?)\)$/', $mat, $matches)) {
+                                    $oldUsages[] = [
+                                        'name' => trim($matches[1]),
+                                        'qty' => (float)$matches[2]
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
-                    foreach ($returnedItems as $item) {
-                        if (!empty($item['returned_qty']) && $item['returned_qty'] > 0) {
+            // Restore old usages back to Area Stock
+            foreach ($oldUsages as $old) {
+                $nameLower = strtolower($old['name']);
+                $material = \App\Models\Material::where('name', 'like', "%{$nameLower}%")->first();
+                if (!$material && str_contains($nameLower, 'kabel')) {
+                    $material = \App\Models\Material::where('category', 'Kabel Drop')
+                        ->orWhere('category', 'Kabel')
+                        ->orWhere('name', 'like', '%kabel%')->first();
+                }
+                if ($material) {
+                    $materialStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                        ->where('area_id', $customer->area_id)
+                        ->first();
+                    if ($materialStock) {
+                        $materialStock->increment('stock', $old['qty']);
+                    }
+                }
+            }
+>>>>>>> theirs
+
+            // Handle material usage (deduct from Area Stock)
+            $usageDetails = [];
+            if ($request->has('materials_used') && is_array($request->materials_used)) {
+                $usedItems = $request->materials_used;
+                if (count($usedItems) > 0) {
+                    foreach ($usedItems as $item) {
+                        if (!empty($item['actual_qty']) && $item['actual_qty'] > 0) {
                             $nameLower = strtolower($item['name']);
                             
                             // Try to find material id based on name
@@ -1334,6 +1384,7 @@ class CustomerController extends Controller
                             }
 
                             if ($material) {
+<<<<<<< ours
                                 \App\Models\MaterialTransactionItem::create([
                                     'material_transaction_id' => $transaction->id,
                                     'material_id' => $material->id,
@@ -1345,15 +1396,47 @@ class CustomerController extends Controller
                                 
                                 // Retur langsung ke Gudang Utama (bukan ke Stok Area)
                                 $material->increment('stock', $item['returned_qty']);
+=======
+                                // Deduct from Area Stock
+                                $materialStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                                    ->where('area_id', $customer->area_id)
+                                    ->first();
+                                    
+                                if ($materialStock) {
+                                    $materialStock->decrement('stock', $item['actual_qty']);
+                                }
+
+                                $unitStr = str_contains($nameLower, 'kabel') ? 'meter' : 'pcs';
+                                $usageDetails[] = $item['name'] . ' (' . $item['actual_qty'] . ' ' . $unitStr . ')';
+>>>>>>> theirs
                             }
                         }
                     }
                 }
             }
+            
+            // Update status jadwal teknisi ke done jika ada dan update notes
+            foreach ($schedules as $schedule) {
+                $newNotes = $schedule->notes;
+                if (count($usageDetails) > 0) {
+                    // Remove old Material lines
+                    $lines = explode("\n", $newNotes);
+                    $lines = array_filter($lines, function($line) {
+                        return !str_starts_with(trim($line), 'Material:');
+                    });
+                    $lines[] = "Material: " . implode(', ', $usageDetails);
+                    $newNotes = implode("\n", $lines);
+                }
+                $schedule->update([
+                    'status' => 'done',
+                    'notes' => $newNotes
+                ]);
+            }
         });
 
         $ont = Ont::where('customer_id', $customer->id)->first();
-        \App\Models\AuditLog::createLog('Laporan Instalasi', $customer, 'installing', 'installing', 'Mengisi laporan instalasi ONT ' . ($ont ? $ont->serial_number : ''));
+        $usageStr = count($usageDetails) > 0 ? " | Material: " . implode(', ', $usageDetails) : "";
+        \App\Models\AuditLog::createLog('Laporan Instalasi', $customer, 'installing', 'installing', 'Mengisi laporan instalasi ONT ' . ($ont ? $ont->serial_number : '') . $usageStr);
 
         return back()
             ->with('success', 'Laporan instalasi berhasil disimpan. Silakan lanjutkan dengan Audit.');
@@ -1895,15 +1978,20 @@ class CustomerController extends Controller
 
         $validated = $request->validate([
             'surveyor_id' => 'required|exists:users,id',
-            'odp_id' => 'nullable|exists:odps,id',
-            'port_number' => 'nullable|integer',
-            'distance_meters' => 'nullable|numeric',
+            'odp_id' => 'required_if:feasibility,feasible|exists:odps,id',
+            'port_number' => 'required_if:feasibility,feasible|integer',
+            'distance_meters' => 'required_if:feasibility,feasible|numeric',
             'port_available' => 'nullable|boolean',
             'feasibility' => 'required|in:feasible,not_feasible',
             'notes' => 'nullable|string',
-            'photos' => 'nullable|array',
+            'photos' => 'required|array|min:1',
             'photos.*.label' => 'required|string',
-            'photos.*.file' => 'nullable|image|max:5120',
+            'photos.*.file' => 'required|image|max:5120',
+        ], [
+            'odp_id.required_if' => 'ODP harus dipilih jika status Feasible.',
+            'port_number.required_if' => 'Port ODP harus dipilih jika status Feasible.',
+            'distance_meters.required_if' => 'Jarak kabel harus diisi jika status Feasible.',
+            'photos.*.file.required' => 'Semua foto dokumentasi wajib diunggah.',
         ]);
 
         if (!empty($validated['odp_id'])) {

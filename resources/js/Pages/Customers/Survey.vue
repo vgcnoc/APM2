@@ -345,7 +345,7 @@
                                     {{ isFindingOdp ? 'Mencari Lokasi...' : 'Radar ODP Terdekat' }}
                                 </button>
                             </div>
-                            <select v-model="reportForm.odp_id" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
+                            <select v-model="reportForm.odp_id" :required="reportForm.feasibility === 'feasible'" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
                                 <option value="">-- Pilih ODP --</option>
                                 <template v-if="sortedOdps.length === 0">
                                     <option value="" disabled>Tidak ada ODP di area ini</option>
@@ -363,7 +363,7 @@
                         
                         <div v-if="reportForm.odp_id">
                             <label class="block text-xs font-medium text-gray-500 mb-1">Pilih Port ODP (Reservasi)</label>
-                            <select v-model="reportForm.port_number" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
+                            <select v-model="reportForm.port_number" :required="reportForm.feasibility === 'feasible'" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
                                 <option value="">-- Pilih Port --</option>
                                 <option v-for="port in availablePortNumbers" :key="port" :value="port">
                                     Port {{ port }}
@@ -372,7 +372,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-500 mb-1">Jarak Kabel (Meter)</label>
-                            <input v-model="reportForm.distance_meters" type="number" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500" placeholder="150" />
+                            <input v-model="reportForm.distance_meters" type="number" :required="reportForm.feasibility === 'feasible'" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500" placeholder="150" />
                         </div>
                         
                         <div class="pt-4 border-t border-gray-200">
@@ -388,7 +388,7 @@
                                 <div v-for="(photo, index) in reportForm.photos" :key="index" class="flex items-start gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm transition-all hover:border-blue-200 hover:bg-blue-50/30">
                                     <div class="flex-1 space-y-3">
                                         <input v-model="photo.label" type="text" class="w-full bg-transparent border-b border-gray-300 px-1 py-1.5 text-sm font-medium text-gray-900 focus:border-blue-500 focus:outline-none placeholder-gray-400 transition-colors" placeholder="Label Foto" />
-                                        <input type="file" @change="handlePhotoChange(index, $event)" accept="image/*" class="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-xs file:font-medium file:bg-white file:text-gray-700 hover:file:bg-gray-50 cursor-pointer transition-colors" />
+                                        <input type="file" @change="handlePhotoChange(index, $event)" accept="image/*" class="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-xs file:font-medium file:bg-white file:text-gray-700 hover:file:bg-gray-50 cursor-pointer transition-colors" required />
                                     </div>
                                     <div v-if="photo.previewUrl" class="w-16 h-16 rounded-lg overflow-hidden shrink-0 group relative border border-gray-200 shadow-sm">
                                         <img :src="photo.previewUrl" class="w-full h-full object-cover" />
@@ -401,7 +401,7 @@
                                             </a>
                                         </div>
                                     </div>
-                                    <button v-if="index > 2" type="button" @click="removePhoto(index)" class="p-1 text-gray-500 hover:text-red-400 transition-colors">
+                                    <button v-if="index > 3" type="button" @click="removePhoto(index)" class="p-1 text-gray-500 hover:text-red-400 transition-colors">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                     </button>
                                 </div>
@@ -978,7 +978,8 @@ function openReportModal(customer) {
     reportForm.photos = [
         { label: 'Foto Selfie Pelanggan & Petugas', file: null },
         { label: 'Foto Rumah Pelanggan', file: null },
-        { label: 'Foto Jalan', file: null }
+        { label: 'Foto Jalan', file: null },
+        { label: 'Foto ODP', file: null }
     ];
     
     showReportModal.value = true;

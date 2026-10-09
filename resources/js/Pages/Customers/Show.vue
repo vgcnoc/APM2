@@ -1548,6 +1548,7 @@ const ontForm = useForm({
     photo_redaman: null,
     materials_returned: [],
     material_usage: [],
+    materials_used: [],
 });
 
 const selectedOdp = computed(() => props.availableOdps?.find(o => o.id == ontForm.odp_id));
@@ -1717,12 +1718,12 @@ function setNow(field) {
 }
 
 function submitOnt() {
-    // Collect returned materials
-    ontForm.materials_returned = hardwareItems.value
-        .filter(item => item.returned_qty && item.returned_qty > 0)
+    // Collect used materials
+    ontForm.materials_used = hardwareItems.value
+        .filter(item => item.type === 'Material' && item.isInstalled && item.actual_qty && item.actual_qty > 0)
         .map(item => ({
             name: item.name,
-            returned_qty: item.returned_qty
+            actual_qty: item.actual_qty
         }));
 
     // Collect material usage for updating schedule notes
@@ -1744,7 +1745,7 @@ function submitOnt() {
             localStorage.removeItem(`apm_port_number_${props.customer.id}`);
             localStorage.removeItem(`apm_rx_power_${props.customer.id}`);
             localStorage.removeItem(`apm_hardware_${props.customer.id}`);
-            localStorage.removeItem(`apm_materials_returned_${props.customer.id}`);
+            localStorage.removeItem(`apm_materials_used_${props.customer.id}`);
             
             const photoFields = ['photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman'];
             photoFields.forEach(field => localStorage.removeItem(`apm_${field}_${props.customer.id}`));
