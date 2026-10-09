@@ -14,7 +14,7 @@ class VoucherController extends Controller
     public function free(Request $request)
     {
         $query = \App\Models\Customer::with('ont')
-            ->where('status', 'active')
+            
             ->whereHas('ont', function($q) {
                 $q->where('free_hotspot', true);
             });

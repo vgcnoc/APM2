@@ -33,6 +33,7 @@
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Hotspot User</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Hotspot Password</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">VLAN ID</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal Aktivasi</th>
                         </tr>
                     </thead>
@@ -57,6 +58,22 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-md">
                                     {{ customer.ont?.hotspot_vlan_id || '-' }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2.5 py-1 rounded-full text-xs font-medium" :class="{
+                                    'bg-emerald-100 text-emerald-800': customer.status === 'active',
+                                    'bg-amber-100 text-amber-800': customer.status === 'suspended',
+                                    'bg-blue-100 text-blue-800': customer.status === 'installing',
+                                    'bg-purple-100 text-purple-800': customer.status === 'survey',
+                                    'bg-gray-100 text-gray-800': !['active', 'suspended', 'installing', 'survey'].includes(customer.status)
+                                }">
+                                    {{ 
+                                        customer.status === 'active' ? 'Aktif' : 
+                                        (customer.status === 'suspended' ? 'Isolir' : 
+                                        (customer.status === 'installing' ? 'Instalasi' : 
+                                        (customer.status === 'survey' ? 'Survey' : customer.status)))
+                                    }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
