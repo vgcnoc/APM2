@@ -105,6 +105,8 @@ Route::middleware(['auth'])->group(function () {
         // Update ONT via Ajax
         Route::post('/{customer}/update-ont-inline', [CustomerController::class, 'updateOntInline'])
             ->name('update-ont-inline');
+        Route::post('/{customer}/material-request', [CustomerController::class, 'requestMaterial'])
+            ->name('material-request');
             
         // Update Pelanggan POST
         Route::post('/{customer}/update', [CustomerController::class, 'update'])
@@ -178,6 +180,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('material-returns', [MaterialReturnController::class, 'index'])->name('material-returns.index');
     Route::post('material-returns', [MaterialReturnController::class, 'store'])->name('material-returns.store');
     Route::post('material-returns/{material_return}/delete', [MaterialReturnController::class, 'destroy'])->name('material-returns.destroy');
+
+    // ── Permintaan Material (Teknisi -> Gudang Utama) ────────────────────
+    Route::get('material-requests', [\App\Http\Controllers\MaterialRequestController::class, 'index'])->name('material-requests.index');
+    Route::post('material-requests/{materialRequest}/approve', [\App\Http\Controllers\MaterialRequestController::class, 'approve'])->name('material-requests.approve');
+    Route::post('material-requests/{materialRequest}/reject', [\App\Http\Controllers\MaterialRequestController::class, 'reject'])->name('material-requests.reject');
 
     // ── Data Jaringan (Dashboard Topology) ─────────────────────
     Route::get('/network-data', [\App\Http\Controllers\NetworkDataController::class, 'index'])->name('network-data.index');

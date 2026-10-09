@@ -462,6 +462,38 @@
                                 </div>
                             </div>
 
+                            <!-- Request Material List & Button -->
+                            <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-blue-50 p-4 rounded-xl border border-blue-100 mt-4">
+                                <div class="flex justify-between items-center mb-3">
+                                    <p class="text-xs font-semibold text-blue-800 uppercase tracking-wider">Permintaan Tambahan Material</p>
+                                    <button type="button" @click="showRequestModal = true" class="text-[10px] px-3 py-1.5 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                        AJUKAN TAMBAHAN
+                                    </button>
+                                </div>
+                                
+                                <div v-if="!materialRequests || materialRequests.length === 0" class="text-sm text-gray-500 italic p-3 bg-white rounded-lg border border-blue-200">
+                                    Belum ada permintaan tambahan material.
+                                </div>
+                                <div v-else class="space-y-2">
+                                    <div v-for="req in materialRequests" :key="req.id" class="text-sm bg-white p-3 rounded-lg border border-blue-200 shadow-sm flex justify-between items-center">
+                                        <div>
+                                            <p class="font-bold text-gray-800">{{ req.request_number }}</p>
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                <span v-for="(item, index) in req.items" :key="item.id">
+                                                    {{ item.material?.name }} ({{ item.quantity }})<span v-if="index < req.items.length - 1">, </span>
+                                                </span>
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <span v-if="req.status === 'pending'" class="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-md border border-amber-200">Menunggu Persetujuan</span>
+                                            <span v-else-if="req.status === 'approved'" class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-md border border-emerald-200">Disetujui</span>
+                                            <span v-else class="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-md border border-red-200">Ditolak</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- STEP 3: Laporan Akhir (Muncul setelah Pasang diklik) -->
                             <div v-show="isInstallingHardware" class="space-y-6 animate-fade-in-up">
                                 <!-- ODP & Port -->
@@ -1116,6 +1148,60 @@
                 </div>
             </div>
         </div>
+        <!-- Modal Ajukan Tambahan Material -->
+        <div v-if="showRequestModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div class="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+                <div class="p-6 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-bold text-blue-900">Ajukan Tambahan Material</h3>
+                        <p class="text-sm text-blue-700 mt-1">Request akan dikirim ke Admin Gudang</p>
+                    </div>
+                    <button @click="showRequestModal = false" class="text-blue-400 hover:text-blue-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                
+                <div class="p-6 overflow-y-auto flex-1">
+                    <form @submit.prevent="submitMaterialRequest" class="space-y-4">
+                        <div v-for="(item, index) in requestForm.items" :key="index" class="bg-gray-50 p-4 rounded-xl border border-gray-200 relative">
+                            <button type="button" @click="removeRequestItem(index)" class="absolute top-2 right-2 text-red-400 hover:text-red-600 p-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div class="sm:col-span-2">
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Pilih Material</label>
+                                    <select v-model="item.material_id" required class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">-- Pilih --</option>
+                                        <option v-for="mat in materials" :key="mat.id" :value="mat.id">{{ mat.name }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Jumlah</label>
+                                    <input type="number" v-model="item.quantity" min="0.1" step="0.1" required class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="button" @click="addRequestItem" class="text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            Tambah Item Lain
+                        </button>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Keterangan / Alasan (Opsional)</label>
+                            <textarea v-model="requestForm.notes" rows="2" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Misal: Kabel awal kurang panjang karena rute memutar..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                    <button type="button" @click="showRequestModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
+                    <button type="button" @click="submitMaterialRequest" :disabled="requestForm.processing" class="px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-colors disabled:opacity-50">
+                        {{ requestForm.processing ? 'Mengirim...' : 'Kirim Request' }}
+                    </button>
+                </div>
+            </div>
+        </div>
 </template>
 <script setup>
 import { ref, h, computed, watch, onMounted } from 'vue';
@@ -1152,7 +1238,7 @@ const hasPermission = (permission) => {
     }
 };
 
-const props = defineProps({ customer: Object, availableOdps: Array, availableOnts: Array, source: String });
+const props = defineProps({ customer: Object, availableOdps: Array, availableOnts: Array, source: String, materials: Array, materialRequests: Array });
 
 const canEditProfile = computed(() => {
     if (hasPermission('customers_all_edit')) return true;
@@ -1281,6 +1367,35 @@ function toggleInstallItem(item) {
         rmaNote: i.rmaNote
     }));
     localStorage.setItem(`apm_hardware_${props.customer.id}`, JSON.stringify(savedState));
+}
+
+// Request Material logic
+const showRequestModal = ref(false);
+const requestForm = useForm({
+    items: [
+        { material_id: '', quantity: '' }
+    ],
+    notes: ''
+});
+
+function addRequestItem() {
+    requestForm.items.push({ material_id: '', quantity: '' });
+}
+
+function removeRequestItem(index) {
+    if (requestForm.items.length > 1) {
+        requestForm.items.splice(index, 1);
+    }
+}
+
+function submitMaterialRequest() {
+    requestForm.post(route('material-request', props.customer.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showRequestModal.value = false;
+            requestForm.reset();
+        }
+    });
 }
 
 // Modal state for Install confirmation

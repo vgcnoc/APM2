@@ -883,11 +883,18 @@ class CustomerController extends Controller
             'user',
         ]);
 
+        $materialRequests = \App\Models\MaterialRequest::with('items.material')
+            ->where('customer_id', $customer->id)
+            ->latest()
+            ->get();
+
         return Inertia::render('Customers/Show', [
             'customer' => $customer,
             'source' => request()->query('source'),
             'availableOdps' => Odp::active()->with(['odc.olt', 'onts.customer'])->get(),
             'availableOnts' => Ont::where('status', 'Sudah Set')->whereNull('customer_id')->get(),
+            'materials' => \App\Models\Material::orderBy('name')->get(),
+            'materialRequests' => $materialRequests,
         ]);
     }
 
@@ -1142,6 +1149,15 @@ class CustomerController extends Controller
             abort(403, 'Anda tidak memiliki hak akses untuk mengisi/mengedit laporan instalasi.');
         }
 
+        // Check if there are any pending material requests
+        $pendingRequest = \App\Models\MaterialRequest::where('customer_id', $customer->id)
+            ->where('status', 'pending')
+            ->first();
+            
+        if ($pendingRequest) {
+            return back()->withErrors(['error' => 'Tidak dapat menyelesaikan instalasi karena ada Request Material Tambahan yang belum disetujui Admin.']);
+        }
+
         $ont = Ont::where('customer_id', $customer->id)->first();
         $isEdit = $ont && $ont->start_time; // If start_time exists, it's already installed, so it's an edit
 
@@ -1364,6 +1380,40 @@ class CustomerController extends Controller
     /**
      * Aktivasi pelanggan setelah audit selesai
      */
+    public function requestMaterial(Request $request, Customer $customer)
+    {
+        $validated = $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.material_id' => 'required|exists:materials,id',
+            'items.*.quantity' => 'required|numeric|min:0.1',
+            'notes' => 'nullable|string'
+        ]);
+
+        DB::transaction(function () use ($customer, $validated) {
+            $materialRequest = \App\Models\MaterialRequest::create([
+                'request_number' => 'REQ-MAT-' . date('YmdHis') . '-' . strtoupper(\Illuminate\Support\Str::random(4)),
+                'customer_id' => $customer->id,
+                'user_id' => auth()->id(),
+                'area_id' => $customer->area_id,
+                'status' => 'pending',
+                'notes' => $validated['notes'],
+            ]);
+
+            foreach ($validated['items'] as $item) {
+                \App\Models\MaterialRequestItem::create([
+                    'material_request_id' => $materialRequest->id,
+                    'material_id' => $item['material_id'],
+                    'quantity' => $item['quantity'],
+                ]);
+            }
+        });
+
+        return back()->with('success', 'Request tambahan material berhasil diajukan dan menunggu persetujuan Admin.');
+    }
+
+    /**
+     * Aktivasi pelanggan setelah audit selesai
+     */
     public function activate(Request $request, Customer $customer): RedirectResponse
     {
         if (!auth()->user()->can('customers_activation_activate')) {
@@ -1542,6 +1592,15 @@ class CustomerController extends Controller
 
     public function updateOntInline(Request $request, Customer $customer)
     {
+        // Check if there are any pending material requests
+        $pendingRequest = \App\Models\MaterialRequest::where('customer_id', $customer->id)
+            ->where('status', 'pending')
+            ->first();
+            
+        if ($pendingRequest) {
+            return back()->with('error', 'Tidak dapat menyelesaikan instalasi karena ada Request Material Tambahan yang belum disetujui Admin.');
+        }
+
         $validated = $request->validate([
             'pppoe_user' => 'nullable|string',
             'pppoe_password' => 'nullable|string',
