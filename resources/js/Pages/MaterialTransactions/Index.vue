@@ -209,7 +209,7 @@
                                             </span>
                                             <span class="text-[10px] text-gray-500 mt-0.5">
                                                 Stok Awal: <span class="font-semibold text-gray-700">
-                                                    {{ isOrder(item) ? formatNumber(detail.quantity) + ' ' + (detail.unit || (detail.material ? detail.material.unit : '')) : (detail.stock_before !== null ? formatNumber(detail.stock_before) + ' ' + (detail.material ? (detail.material.category === 'Kabel' ? 'meter' : (detail.material.category === 'Isolasi' ? 'cm' : (detail.material.category === 'Paku Klem' ? 'pcs' : (detail.material.unit || '')))) : '') : '-') }}
+                                                    {{ isOrder(item) ? getOrderDetailedUnit(detail) : (detail.stock_before !== null ? formatNumber(detail.stock_before) + ' ' + (detail.material ? (detail.material.category === 'Kabel' ? 'meter' : (detail.material.category === 'Isolasi' ? 'cm' : (detail.material.category === 'Paku Klem' ? 'pcs' : (detail.material.unit || '')))) : '') : '-') }}
                                                 </span>
                                             </span>
                                         </div>
@@ -426,6 +426,31 @@ const isOrder = (item) => {
 };
 const isInstall = (item) => {
     return item.type === 'out';
+};
+
+const getOrderDetailedUnit = (detail) => {
+    let text = formatNumber(detail.quantity) + ' ' + (detail.unit || (detail.material ? detail.material.unit : ''));
+    if (!detail.material) return text;
+    
+    let cat = detail.material.category;
+    let unit = (detail.unit || '').toLowerCase();
+    
+    if (cat === 'Kabel' && (unit === 'roll' || unit === 'rol')) {
+        let mpr = detail.material.meter_per_roll || 1000;
+        let meters = detail.quantity * mpr;
+        text += ` (${formatNumber(meters)} meter)`;
+    }
+    else if (cat === 'Paku Klem' && (unit === 'pack' || unit === 'bungkus')) {
+        let ppp = detail.material.pcs_per_pack || 1;
+        let pcs = detail.quantity * ppp;
+        text += ` (${formatNumber(pcs)} pcs)`;
+    }
+    else if (cat === 'Isolasi' && (unit === 'pcs')) {
+        let cpp = detail.material.cm_per_pcs || 50;
+        let cm = detail.quantity * cpp;
+        text += ` (${formatNumber(cm)} cm)`;
+    }
+    return text;
 };
 
 const deleteItem = (item) => {
