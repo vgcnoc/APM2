@@ -21,6 +21,7 @@ class MaterialTransaction extends Model
         'notes',
         'total_cost',
         'user_id',
+        'customer_id',
     ];
 
     public function items(): HasMany
@@ -36,5 +37,10 @@ class MaterialTransaction extends Model
     public function areaModel(): BelongsTo
     {
         return $this->belongsTo(Area::class, 'area_id');
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 }

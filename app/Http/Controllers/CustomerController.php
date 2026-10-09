@@ -1129,6 +1129,9 @@ class CustomerController extends Controller
                 }
             }
 
+            // Hapus Material Transactions yang terkait
+            \App\Models\MaterialTransaction::where('customer_id', $customer->id)->delete();
+
             // Hapus data terkait
             $customer->technicianSchedules()->delete();
             $customer->surveys()->delete();
@@ -1326,13 +1329,13 @@ class CustomerController extends Controller
                 }
             }
 
-            // Handle excess returned material
+                // Handle material usage
             if ($request->has('materials_returned') && is_array($request->materials_returned)) {
                 $items = $request->materials_returned;
+                $usedItems = [];
                 $returnItems = [];
-                $outItems = [];
+                $rincianNotesUsed = [];
                 $rincianNotesReturn = [];
-                $rincianNotesOut = [];
 
                 foreach ($items as $item) {
                     $assignedQty = isset($item['assigned_qty']) ? (float)$item['assigned_qty'] : 0;
@@ -1353,43 +1356,92 @@ class CustomerController extends Controller
                     if ($material) {
                         $unitStr = str_contains($nameLower, 'kabel') ? 'meter' : 'pcs';
                         
-                        // Hitungan Sempurna
+                        // 1. Catat pemakaian asli (Instalasi)
+                        if ($usedQty > 0) {
+                            $usedItems[] = [
+                                'material' => $material,
+                                'qty' => $usedQty,
+                                'unit' => $unitStr
+                            ];
+                            $rincianNotesUsed[] = "- {$material->name}: {$usedQty} {$unitStr} (Bekal awal: {$assignedQty} {$unitStr})";
+                            $usageDetails[] = $material->name . ' (' . $usedQty . ' ' . $unitStr . ')';
+                        }
+                        
+                        // 2. Jika ada sisa, buatkan pengembalian pending
                         if ($usedQty < $assignedQty) {
-                            // PENGEMBALIAN (Ada sisa)
                             $excessQty = $assignedQty - $usedQty;
                             $returnItems[] = [
                                 'material' => $material,
                                 'qty' => $excessQty,
                                 'unit' => $unitStr
                             ];
-                            $rincianNotesReturn[] = "- {$material->name}: Bekal awal {$assignedQty} {$unitStr} | Terpakai {$usedQty} {$unitStr} | SISA (Dikembalikan): {$excessQty} {$unitStr}";
-                        } elseif ($usedQty > $assignedQty) {
-                            // PENAMBAHAN (Pemakaian lebih besar dari bekal)
-                            $extraQty = $usedQty - $assignedQty;
-                            $outItems[] = [
-                                'material' => $material,
-                                'qty' => $extraQty,
-                                'unit' => $unitStr
-                            ];
-                            $rincianNotesOut[] = "- {$material->name}: Bekal awal {$assignedQty} {$unitStr} | Terpakai {$usedQty} {$unitStr} | KURANG (Diambil Tambahan): {$extraQty} {$unitStr}";
-                        }
-                        
-                        if ($usedQty > 0) {
-                            $usageDetails[] = $material->name . ' (' . $usedQty . ' ' . $unitStr . ')';
+                            $rincianNotesReturn[] = "- {$material->name}: SISA (Dikembalikan): {$excessQty} {$unitStr}";
                         }
                     }
                 }
 
-                // Proses Pengembalian (Pending)
+                // Proses Instalasi (Memotong Stok Area sesuai Pemakaian)
+                if (count($usedItems) > 0) {
+                    $transactionOut = \App\Models\MaterialTransaction::create([
+                        'transaction_number' => 'OUT-INSTALASI-' . date('YmdHis'),
+                        'type' => 'out',
+                        'status' => 'approved',
+                        'date' => now(),
+                        'technician_name' => auth()->user()->name,
+                        'purpose' => 'Pemakaian Material Instalasi Pelanggan ' . $customer->name,
+                        'user_id' => auth()->id(),
+                        'customer_id' => $customer->id,
+                        'area_id' => $customer->area_id,
+                        'notes' => "Rincian Pemakaian Instalasi:\n" . implode("\n", $rincianNotesUsed)
+                    ]);
+
+                    foreach ($usedItems as $ui) {
+                        $materialStock = \App\Models\MaterialStock::where('material_id', $ui['material']->id)
+                                        ->where('area_id', $customer->area_id)
+                                        ->first();
+                        
+                        $stockBefore = $materialStock ? $materialStock->stock : 0;
+                        $stockAfter = $stockBefore - $ui['qty'];
+
+                        \App\Models\MaterialTransactionItem::create([
+                            'material_transaction_id' => $transactionOut->id,
+                            'material_id' => $ui['material']->id,
+                            'quantity' => $ui['qty'],
+                            'unit' => $ui['unit'],
+                            'price_per_unit' => $ui['material']->price_per_unit ?? 0,
+                            'total_price' => ($ui['material']->price_per_unit ?? 0) * $ui['qty'],
+                            'stock_before' => $stockBefore,
+                            'stock_after' => $stockAfter,
+                            'condition' => 'Terpasang/Digunakan'
+                        ]);
+
+                        if ($materialStock) {
+                            $materialStock->decrement('stock', $ui['qty']);
+                        } else {
+                            \App\Models\MaterialStock::create([
+                                'material_id' => $ui['material']->id,
+                                'area_id' => $customer->area_id,
+                                'stock' => -$ui['qty'],
+                                'initial_stock' => 0,
+                                'total_rolls' => 0,
+                                'total_packs' => 0,
+                                'total_pieces' => 0
+                            ]);
+                        }
+                    }
+                }
+
+                // Proses Pengembalian (Pending - belum menambah gudang atau memotong area)
                 if (count($returnItems) > 0) {
                     $transactionReturn = \App\Models\MaterialTransaction::create([
                         'transaction_number' => 'RTR-EXCESS-' . date('YmdHis'),
-                        'type' => 'in',
+                        'type' => 'out',
                         'status' => 'pending',
                         'date' => now(),
                         'technician_name' => auth()->user()->name,
                         'purpose' => 'Pengembalian Sisa Material Instalasi Pelanggan ' . $customer->name,
                         'user_id' => auth()->id(),
+                        'customer_id' => $customer->id,
                         'area_id' => $customer->area_id,
                         'notes' => "Rincian Hitungan Sisa:\n" . implode("\n", $rincianNotesReturn)
                     ]);
@@ -1404,46 +1456,6 @@ class CustomerController extends Controller
                             'total_price' => ($ri['material']->price_per_unit ?? 0) * $ri['qty'],
                             'condition' => 'Layak Pakai'
                         ]);
-                    }
-                }
-
-                // Proses Penambahan Otomatis (Approved, motong stok area langsung)
-                if (count($outItems) > 0) {
-                    $transactionOut = \App\Models\MaterialTransaction::create([
-                        'transaction_number' => 'OUT-EXTRA-' . date('YmdHis'),
-                        'type' => 'out',
-                        'status' => 'approved',
-                        'date' => now(),
-                        'technician_name' => auth()->user()->name,
-                        'purpose' => 'Penambahan Ekstra Material Instalasi Pelanggan ' . $customer->name,
-                        'user_id' => auth()->id(),
-                        'area_id' => $customer->area_id,
-                        'notes' => "Rincian Hitungan Tambahan (Nombok):\n" . implode("\n", $rincianNotesOut)
-                    ]);
-
-                    foreach ($outItems as $oi) {
-                        $materialStock = \App\Models\MaterialStock::where('material_id', $oi['material']->id)
-                                        ->where('area_id', $customer->area_id)
-                                        ->first();
-                        
-                        $stockBefore = $materialStock ? $materialStock->stock : 0;
-                        $stockAfter = $stockBefore - $oi['qty'];
-
-                        \App\Models\MaterialTransactionItem::create([
-                            'material_transaction_id' => $transactionOut->id,
-                            'material_id' => $oi['material']->id,
-                            'quantity' => $oi['qty'],
-                            'unit' => $oi['unit'],
-                            'price_per_unit' => $oi['material']->price_per_unit ?? 0,
-                            'total_price' => ($oi['material']->price_per_unit ?? 0) * $oi['qty'],
-                            'stock_before' => $stockBefore,
-                            'stock_after' => $stockAfter,
-                            'condition' => 'Terpasang/Digunakan'
-                        ]);
-
-                        if ($materialStock) {
-                            $materialStock->decrement('stock', $oi['qty']);
-                        }
                     }
                 }
             }

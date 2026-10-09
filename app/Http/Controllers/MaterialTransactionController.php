@@ -141,8 +141,8 @@ class MaterialTransactionController extends Controller
             
             // Create Transaction
             $transaction = MaterialTransaction::create([
-                'transaction_number' => 'OUT-' . date('Ymd') . '-' . strtoupper(Str::random(5)),
-                'type' => 'out',
+                'transaction_number' => 'IN-AREA-' . date('Ymd') . '-' . strtoupper(Str::random(5)),
+                'type' => 'in',
                 'date' => $request->date,
                 'technician_name' => $request->technician_name,
                 'purpose' => $request->purpose,
@@ -201,10 +201,10 @@ class MaterialTransactionController extends Controller
                     $deduction = $itemData['quantity'] * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
                 }
 
-                $stockBefore = $material->stock;
-                $stockAfter = $material->stock - $deduction;
+                $stockBefore = $materialStock->stock;
+                $stockAfter = $materialStock->stock + $deduction;
                 
-                $material->stock = $stockAfter;
+                $material->stock -= $deduction; // still deduct global stock
                 $materialStock->stock += $deduction;
 
                 // Create Item
@@ -251,7 +251,7 @@ class MaterialTransactionController extends Controller
 
     public function approveReturn(MaterialTransaction $material_transaction)
     {
-        if ($material_transaction->type !== 'in' || $material_transaction->status !== 'pending') {
+        if ($material_transaction->type !== 'out' || $material_transaction->status !== 'pending' || !str_contains($material_transaction->purpose, 'Pengembalian Sisa')) {
             return redirect()->back()->with('error', 'Transaksi tidak valid untuk disetujui.');
         }
 
@@ -263,9 +263,11 @@ class MaterialTransactionController extends Controller
                 $materialStock = \App\Models\MaterialStock::where('material_id', $item->material_id)
                     ->where('area_id', $material_transaction->area_id)
                     ->first();
-                if ($materialStock) {
+                $material = \App\Models\Material::find($item->material_id);
+                
+                if ($materialStock && $material) {
                     $stockBefore = $materialStock->stock;
-                    $stockAfter = $stockBefore + $item->quantity;
+                    $stockAfter = $stockBefore - $item->quantity; // Kurangi dari Area
                     
                     $item->update([
                         'stock_before' => $stockBefore,
@@ -273,16 +275,17 @@ class MaterialTransactionController extends Controller
                     ]);
 
                     $materialStock->update(['stock' => $stockAfter]);
+                    $material->increment('stock', $item->quantity); // Tambahkan ke Gudang
                 }
             }
         });
 
-        return redirect()->back()->with('success', 'Serah terima pengembalian material berhasil disetujui! Stok Area bertambah.');
+        return redirect()->back()->with('success', 'Serah terima pengembalian material berhasil disetujui! Stok Gudang bertambah dan Stok Area berkurang.');
     }
 
     public function rejectReturn(MaterialTransaction $material_transaction)
     {
-        if ($material_transaction->type !== 'in' || $material_transaction->status !== 'pending') {
+        if ($material_transaction->type !== 'out' || $material_transaction->status !== 'pending' || !str_contains($material_transaction->purpose, 'Pengembalian Sisa')) {
             return redirect()->back()->with('error', 'Transaksi tidak valid untuk ditolak.');
         }
 
