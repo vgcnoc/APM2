@@ -1030,7 +1030,7 @@ function openEditReportModal(customer) {
         }
         
         if (reportForm.odp_id) {
-            handleOdpChange(); // populate available ports if needed
+            // port list will be populated by computed property
         }
     }
     showReportModal.value = true;
