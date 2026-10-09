@@ -18,6 +18,7 @@ chmod -R 775 storage bootstrap/cache
 systemctl restart php8.2-fpm || true
 systemctl restart php8.3-fpm || true
 systemctl restart php8.4-fpm || true
+systemctl restart php8.5-fpm || true
 `;
 
 conn.on('ready', () => {
