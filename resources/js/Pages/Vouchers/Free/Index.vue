@@ -107,7 +107,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
-import debounce from 'lodash/debounce';
+
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ClientAreaLayout from '@/Layouts/ClientAreaLayout.vue';
 
@@ -132,7 +132,7 @@ const doFilter = () => {
     });
 };
 
-watch(search, debounce(() => {
+watch(search, () => {
     doFilter();
-}, 300));
+});
 </script>
