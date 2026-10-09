@@ -1805,17 +1805,26 @@ function submitOnt() {
     // Auto-calculate returned (excess) materials to go back to Gudang Utama
     const excessItems = [];
     hardwareItems.value.forEach(item => {
-        if (item.type === 'Material' && item.isInstalled && item.actual_qty !== undefined) {
-            // Find original qty, example format: "Klem (10 pcs)" -> match "10"
-            const match = item.name.match(/\((\d+(?:\.\d+)?)\s/);
-            if (match) {
-                const originalQty = parseFloat(match[1]);
-                const actualQty = parseFloat(item.actual_qty) || 0;
-                if (originalQty > actualQty) {
-                    excessItems.push({
-                        name: item.name,
-                        returned_qty: originalQty - actualQty
-                    });
+        if (item.type === 'Material' && item.isInstalled) {
+            if (item.returned_qty && parseFloat(item.returned_qty) > 0) {
+                // If user explicitly inputted returned_qty (e.g. for Kabel)
+                excessItems.push({
+                    name: item.name,
+                    returned_qty: parseFloat(item.returned_qty)
+                });
+            } else if (item.actual_qty !== undefined) {
+                // Auto-calculate for other materials based on actual_qty vs original qty
+                // Find original qty, example format: "Klem (10 pcs)" -> match "10"
+                const match = item.name.match(/\((\d+(?:\.\d+)?)\s/);
+                if (match) {
+                    const originalQty = parseFloat(match[1]);
+                    const actualQty = parseFloat(item.actual_qty) || 0;
+                    if (originalQty > actualQty) {
+                        excessItems.push({
+                            name: item.name,
+                            returned_qty: originalQty - actualQty
+                        });
+                    }
                 }
             }
         }
