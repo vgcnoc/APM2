@@ -189,6 +189,11 @@ class RadiusService
             $accounts[$ont->pppoe_user] = $ont->pppoe_password;
         }
 
+        // Jika pelanggan mendapatkan free_hotspot
+        if ($ont->free_hotspot && $ont->hotspot_user && $ont->hotspot_password) {
+            $accounts[$ont->hotspot_user] = $ont->hotspot_password;
+        }
+
         return $accounts;
     }
 
