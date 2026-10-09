@@ -1407,7 +1407,7 @@ class CustomerController extends Controller
                                 }
 
                                 $unitStr = str_contains($nameLower, 'kabel') ? 'meter' : 'pcs';
-                                $usageDetails[] = $item['name'] . ' (' . $item['actual_qty'] . ' ' . $unitStr . ')';
+                                $usageDetails[] = $material->name . ' (' . $item['actual_qty'] . ' ' . $unitStr . ')';
                             }
                         }
                     }
