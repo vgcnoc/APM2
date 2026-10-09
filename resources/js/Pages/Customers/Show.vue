@@ -288,6 +288,30 @@
                                 <input v-model="activationForm.login_password" type="text" class="w-full border rounded-lg px-4 py-2 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed text-sm' : 'bg-white border-blue-300 focus:ring-2 focus:ring-blue-500 text-sm'" placeholder="admin" :readonly="!isEditingOnt" />
                             </div>
                         </div>
+
+                        <div v-if="customer.ont?.free_hotspot || activationForm.free_hotspot" class="mt-5 p-4 bg-amber-50 rounded-xl border border-amber-200">
+                            <div class="flex items-center gap-2 mb-4">
+                                <input v-if="isEditingOnt" type="checkbox" id="editActiveFreeHotspot" v-model="activationForm.free_hotspot" class="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500" />
+                                <label :for="isEditingOnt ? 'editActiveFreeHotspot' : ''" class="text-sm font-bold text-amber-900 uppercase tracking-wider flex items-center gap-2">
+                                    <span class="bg-amber-200 p-1 rounded-md text-amber-700">🎁</span>
+                                    Gratis 1 User Hotspot
+                                </label>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Username Hotspot</label>
+                                    <input v-model="activationForm.hotspot_user" type="text" class="w-full border rounded-lg px-4 py-2 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-amber-100/50 border-amber-200 text-amber-900 cursor-not-allowed text-sm font-medium' : 'bg-white border-amber-300 focus:ring-2 focus:ring-amber-500 text-sm'" placeholder="username_hotspot" :readonly="!isEditingOnt" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Password Hotspot</label>
+                                    <input v-model="activationForm.hotspot_password" type="text" class="w-full border rounded-lg px-4 py-2 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-amber-100/50 border-amber-200 text-amber-900 cursor-not-allowed text-sm font-medium' : 'bg-white border-amber-300 focus:ring-2 focus:ring-amber-500 text-sm'" placeholder="***" :readonly="!isEditingOnt" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">VLAN ID (Opsional)</label>
+                                    <input v-model="activationForm.hotspot_vlan_id" type="text" class="w-full border rounded-lg px-4 py-2 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-amber-100/50 border-amber-200 text-amber-900 cursor-not-allowed text-sm font-medium' : 'bg-white border-amber-300 focus:ring-2 focus:ring-amber-500 text-sm'" placeholder="Misal: 200" :readonly="!isEditingOnt" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -829,6 +853,30 @@
                         </div>
                         
                         <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <input type="checkbox" id="freeHotspot" v-model="activationForm.free_hotspot" class="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500" :disabled="!isEditingOnt" />
+                                <label for="freeHotspot" class="text-sm font-bold text-gray-700">Gratis 1 User Hotspot</label>
+                            </div>
+                            
+                            <div v-if="activationForm.free_hotspot" class="space-y-4 animate-fade-in-up">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Username Hotspot</label>
+                                        <input v-model="activationForm.hotspot_user" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500'" placeholder="username_hotspot" :readonly="!isEditingOnt" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Password Hotspot</label>
+                                        <input v-model="activationForm.hotspot_password" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500'" placeholder="***" :readonly="!isEditingOnt" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">VLAN ID Hotspot (Opsional)</label>
+                                    <input v-model="activationForm.hotspot_vlan_id" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500'" placeholder="Misal: 200" :readonly="!isEditingOnt" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
                             <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Akses Login ONT</h4>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">IP Login ONT</label>
@@ -982,6 +1030,30 @@
                             </div>
                         </div>
                         
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <input type="checkbox" id="editFreeHotspot" v-model="activeConfigForm.free_hotspot" class="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500" />
+                                <label for="editFreeHotspot" class="text-sm font-bold text-gray-700">Gratis 1 User Hotspot</label>
+                            </div>
+                            
+                            <div v-if="activeConfigForm.free_hotspot" class="space-y-4 animate-fade-in-up">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Username Hotspot</label>
+                                        <input v-model="activeConfigForm.hotspot_user" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all" placeholder="username_hotspot" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Password Hotspot</label>
+                                        <input v-model="activeConfigForm.hotspot_password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all" placeholder="***" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">VLAN ID Hotspot (Opsional)</label>
+                                    <input v-model="activeConfigForm.hotspot_vlan_id" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all" placeholder="Misal: 200" />
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
                             <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Akses Login ONT</h4>
                             <div>
@@ -1802,6 +1874,10 @@ const activationForm = useForm({
     vlan_mode: props.customer?.ont?.vlan_mode || '',
     vlan_id: props.customer?.ont?.vlan_id || '',
     access_mode: props.customer?.ont?.access_mode || 'PPPOE',
+    free_hotspot: props.customer?.ont?.free_hotspot || false,
+    hotspot_user: props.customer?.ont?.hotspot_user || '',
+    hotspot_password: props.customer?.ont?.hotspot_password || '',
+    hotspot_vlan_id: props.customer?.ont?.hotspot_vlan_id || '',
     ip_login: props.customer?.ont?.ip_login || '192.168.1.1',
     login_user: props.customer?.ont?.login_user || 'admin',
     login_password: props.customer?.ont?.login_password || 'admin',
@@ -1845,6 +1921,10 @@ const activeConfigForm = useForm({
     vlan_mode: '',
     vlan_id: '',
     access_mode: 'PPPOE',
+    free_hotspot: false,
+    hotspot_user: '',
+    hotspot_password: '',
+    hotspot_vlan_id: '',
 });
 
 function openEditActiveModal() {
@@ -1857,6 +1937,10 @@ function openEditActiveModal() {
         activeConfigForm.vlan_mode = props.customer.ont?.vlan_mode || '';
         activeConfigForm.vlan_id = props.customer.ont?.vlan_id || '';
         activeConfigForm.access_mode = props.customer.ont?.access_mode || 'PPPOE';
+        activeConfigForm.free_hotspot = props.customer.ont?.free_hotspot || false;
+        activeConfigForm.hotspot_user = props.customer.ont?.hotspot_user || '';
+        activeConfigForm.hotspot_password = props.customer.ont?.hotspot_password || '';
+        activeConfigForm.hotspot_vlan_id = props.customer.ont?.hotspot_vlan_id || '';
     }
     showEditActiveModal.value = true;
 }
