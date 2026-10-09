@@ -15,6 +15,7 @@ fi
 echo "Using PHP socket: $PHP_SOCK"
 
 # Configure Nginx
+if [ ! -f /etc/nginx/sites-available/bill.viruzs.my.id ]; then
 cat > /etc/nginx/sites-available/bill.viruzs.my.id << 'EOF'
 server {
     listen 80;
@@ -48,6 +49,7 @@ server {
     }
 }
 EOF
+fi
 
 # Replace placeholder with actual socket path
 sed -i "s|__PHP_SOCK__|$PHP_SOCK|g" /etc/nginx/sites-available/bill.viruzs.my.id
