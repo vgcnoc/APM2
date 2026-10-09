@@ -2067,6 +2067,108 @@ class CustomerController extends Controller
         }
     }
 
+    public function updateSurvey(Request $request, Customer $customer): RedirectResponse
+    {
+        if (!auth()->user()->can('customers_survey_report')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah laporan survey.');
+        }
+
+        $survey = $customer->surveys()->first();
+        if (!$survey) {
+            return back()->withErrors(['message' => 'Laporan survey tidak ditemukan.']);
+        }
+
+        $validated = $request->validate([
+            'surveyor_id' => 'required|exists:users,id',
+            'odp_id' => 'required_if:feasibility,feasible|exists:odps,id',
+            'port_number' => 'required_if:feasibility,feasible|integer',
+            'distance_meters' => 'required_if:feasibility,feasible|numeric',
+            'port_available' => 'nullable|boolean',
+            'feasibility' => 'required|in:feasible,not_feasible',
+            'notes' => 'nullable|string',
+            'photos' => 'nullable|array',
+            'photos.*.label' => 'nullable|string',
+            'photos.*.file' => 'nullable|image|max:5120',
+        ]);
+
+        if (!empty($validated['odp_id'])) {
+            $odp = Odp::findOrFail($validated['odp_id']);
+            
+            if ($survey->odp_id != $validated['odp_id'] || $survey->port_number != $validated['port_number']) {
+                $pendingCount = \App\Models\Customer::whereIn('status', ['survey', 'installing'])
+                    ->where('id', '!=', $customer->id)
+                    ->whereHas('surveys', function($q) use ($odp) {
+                        $q->where('odp_id', $odp->id);
+                    })
+                    ->whereDoesntHave('ont', function($q) use ($odp) {
+                        $q->where('odp_id', $odp->id);
+                    })->count();
+
+                $availablePorts = $odp->total_ports - $odp->used_ports - $pendingCount;
+
+                if ($availablePorts <= 0) {
+                    return back()->withErrors(['odp_id' => 'ODP ini sudah penuh.']);
+                }
+                
+                if (!empty($validated['port_number'])) {
+                    $port = \App\Models\OdpPort::where('odp_id', $odp->id)->where('port_number', $validated['port_number'])->first();
+                    if ($port && in_array($port->status, ['used', 'reserved', 'fault', 'stop'])) {
+                        return back()->withErrors(['port_number' => 'Port ' . $validated['port_number'] . ' sudah digunakan/tidak tersedia.']);
+                    }
+                }
+            }
+        }
+
+        // Release old port if changed
+        if ($survey->odp_id && $survey->port_number) {
+            if ($survey->odp_id != $request->odp_id || $survey->port_number != $request->port_number) {
+                \App\Models\OdpPort::where('odp_id', $survey->odp_id)
+                    ->where('port_number', $survey->port_number)
+                    ->update(['status' => 'available']);
+            }
+        }
+
+        $photoPaths = $survey->photos ?? [];
+        if ($request->has('photos') && is_array($request->photos)) {
+            $newPhotos = [];
+            foreach ($request->photos as $index => $photoItem) {
+                if (isset($photoItem['file']) && $photoItem['file'] instanceof \Illuminate\Http\UploadedFile) {
+                    $path = $photoItem['file']->store('surveys', 'public');
+                    $newPhotos[] = [
+                        'label' => $photoItem['label'] ?? ('Foto ' . ($index + 1)),
+                        'path' => $path,
+                    ];
+                } elseif (isset($photoPaths[$index])) {
+                    $newPhotos[] = $photoPaths[$index];
+                }
+            }
+            if (count($newPhotos) > 0) {
+                $photoPaths = $newPhotos;
+            }
+        }
+
+        $validated['photos'] = empty($photoPaths) ? null : $photoPaths;
+
+        $survey->update($validated);
+
+        if (!empty($validated['odp_id']) && !empty($validated['port_number'])) {
+            \App\Models\OdpPort::updateOrCreate(
+                ['odp_id' => $validated['odp_id'], 'port_number' => $validated['port_number']],
+                ['status' => 'reserved']
+            );
+        }
+
+        if ($validated['feasibility'] === 'feasible') {
+            $customer->update(['status' => 'survey']);
+            \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'survey', 'Mengubah laporan survey (feasible)');
+        } else {
+            $customer->update(['status' => 'terminated']);
+            \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'terminated', 'Mengubah laporan survey (not feasible)');
+        }
+
+        return redirect()->route('customers.survey')->with('success', 'Hasil survey berhasil diubah.');
+    }
+
     /**
      * Tandai pelanggan siap diinstalasi (dari Ready Install)
      */

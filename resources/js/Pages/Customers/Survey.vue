@@ -201,9 +201,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                         </svg>
                     </button>
-                    <Link :href="`/customers/${row.id}/edit`" class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200" title="Edit Pelanggan">
+                    <button @click="openEditReportModal(row)" class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200" title="Edit Laporan Survey">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                    </Link>
+                    </button>
                     <button @click="confirmDelete(row)" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200" title="Hapus Pelanggan">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
@@ -391,7 +391,7 @@
                                 <div v-for="(photo, index) in reportForm.photos" :key="index" class="flex items-start gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm transition-all hover:border-blue-200 hover:bg-blue-50/30">
                                     <div class="flex-1 space-y-3">
                                         <input v-model="photo.label" type="text" class="w-full bg-transparent border-b border-gray-300 px-1 py-1.5 text-sm font-medium text-gray-900 focus:border-blue-500 focus:outline-none placeholder-gray-400 transition-colors" placeholder="Label Foto" />
-                                        <input type="file" @change="handlePhotoChange(index, $event)" accept="image/*" class="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-xs file:font-medium file:bg-white file:text-gray-700 hover:file:bg-gray-50 cursor-pointer transition-colors" required />
+                                        <input type="file" @change="handlePhotoChange(index, $event)" accept="image/*" class="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-xs file:font-medium file:bg-white file:text-gray-700 hover:file:bg-gray-50 cursor-pointer transition-colors" :required="reportForm.feasibility === 'feasible' && !isEditingSurvey" />
                                     </div>
                                     <div v-if="photo.previewUrl" class="w-16 h-16 rounded-lg overflow-hidden shrink-0 group relative border border-gray-200 shadow-sm">
                                         <img :src="photo.previewUrl" class="w-full h-full object-cover" />
@@ -855,6 +855,7 @@ function submitReschedule() {
 
 // Report Modal Logic
 const showReportModal = ref(false);
+const isEditingSurvey = ref(false);
 const isFindingOdp = ref(false);
 const nearestOdpMsg = ref('');
 const sortedOdps = ref([...props.availableOdps]);
@@ -958,6 +959,7 @@ function findNearestOdp() {
 }
 
 function openReportModal(customer) {
+    isEditingSurvey.value = false;
     activeCustomer.value = customer;
     reportForm.reset();
     
@@ -988,6 +990,52 @@ function openReportModal(customer) {
     showReportModal.value = true;
 }
 
+function openEditReportModal(customer) {
+    isEditingSurvey.value = true;
+    activeCustomer.value = customer;
+    reportForm.reset();
+    
+    // Filter ODPs
+    const customerAreaId = customer.area_id;
+    const filteredOdps = props.availableOdps.filter(odp => {
+        if (!customerAreaId) return false;
+        return Number(odp.area_id) === Number(customerAreaId);
+    });
+    sortedOdps.value = [...filteredOdps];
+    nearestOdpMsg.value = '';
+
+    const survey = customer.surveys && customer.surveys.length > 0 ? customer.surveys[0] : null;
+    if (survey) {
+        reportForm.surveyor_id = survey.surveyor_id;
+        reportForm.odp_id = survey.odp_id || '';
+        reportForm.feasibility = survey.feasibility;
+        reportForm.port_number = survey.port_number || '';
+        reportForm.distance_meters = survey.distance_meters || '';
+        reportForm.port_available = survey.port_available;
+        reportForm.notes = survey.notes || '';
+        
+        if (survey.photos && survey.photos.length > 0) {
+            reportForm.photos = survey.photos.map(p => ({
+                label: p.label,
+                file: null,
+                previewUrl: p.path ? '/storage/' + p.path : null
+            }));
+        } else {
+            reportForm.photos = [
+                { label: 'Foto Selfie Pelanggan & Petugas', file: null },
+                { label: 'Foto Rumah Pelanggan', file: null },
+                { label: 'Foto Jalan', file: null },
+                { label: 'Foto ODP', file: null }
+            ];
+        }
+        
+        if (reportForm.odp_id) {
+            handleOdpChange(); // populate available ports if needed
+        }
+    }
+    showReportModal.value = true;
+}
+
 function addPhoto() {
     reportForm.photos.push({ label: 'Foto Tambahan', file: null });
 }
@@ -1007,7 +1055,11 @@ function handlePhotoChange(index, event) {
 }
 
 function submitReport() {
-    reportForm.post(`/customers/${activeCustomer.value.id}/store-survey`, {
+    const routeName = isEditingSurvey.value 
+        ? `/customers/${activeCustomer.value.id}/update-survey` 
+        : `/customers/${activeCustomer.value.id}/store-survey`;
+        
+    reportForm.post(routeName, {
         preserveScroll: true,
         forceFormData: true,
         onSuccess: () => {

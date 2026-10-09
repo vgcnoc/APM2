@@ -94,6 +94,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{customer}/store-survey', [CustomerController::class, 'storeSurvey'])
             ->name('store-survey');
             
+        // Edit Hasil Survey
+        Route::post('/{customer}/update-survey', [CustomerController::class, 'updateSurvey'])
+            ->name('update-survey');
+            
         // Pindah ke tahap Instalasi
         Route::post('/{customer}/mark-installing', [CustomerController::class, 'markInstalling'])
             ->name('mark-installing');
