@@ -1323,7 +1323,7 @@ class CustomerController extends Controller
                 }
             }
 
-            \Log::info('submitOnt materials_returned', ['data' => ->materials_returned]);\n            // Handle excess returned material
+            // Handle excess returned material
             if ($request->has('materials_returned') && is_array($request->materials_returned)) {
                 $returnedItems = $request->materials_returned;
                 if (count($returnedItems) > 0) {
@@ -1377,7 +1377,7 @@ class CustomerController extends Controller
                 }
             }
 
-            \Log::info('submitOnt materials_used', ['data' => ->materials_used]);\n            // Handle material usage (deduct from Area Stock)
+            // Handle material usage (deduct from Area Stock)
             if ($request->has('materials_used') && is_array($request->materials_used)) {
                 $usedItems = $request->materials_used;
                 if (count($usedItems) > 0) {
