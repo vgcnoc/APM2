@@ -1811,9 +1811,15 @@ function submitOnt() {
         if (item.type === 'Material' && item.isInstalled) {
             if (item.returned_qty && parseFloat(item.returned_qty) > 0) {
                 // If user explicitly inputted returned_qty (e.g. for Kabel)
+                const match = item.name.match(/\((\d+(?:\.\d+)?)\s/);
+                const originalQty = match ? parseFloat(match[1]) : parseFloat(item.returned_qty);
+                const actualQty = parseFloat(item.actual_qty) || (originalQty - parseFloat(item.returned_qty));
+                
                 excessItems.push({
                     name: item.name,
-                    returned_qty: parseFloat(item.returned_qty)
+                    returned_qty: parseFloat(item.returned_qty),
+                    assigned_qty: originalQty,
+                    used_qty: actualQty
                 });
             } else if (item.actual_qty !== undefined) {
                 // Auto-calculate for other materials based on actual_qty vs original qty
@@ -1825,7 +1831,9 @@ function submitOnt() {
                     if (originalQty > actualQty) {
                         excessItems.push({
                             name: item.name,
-                            returned_qty: originalQty - actualQty
+                            returned_qty: originalQty - actualQty,
+                            assigned_qty: originalQty,
+                            used_qty: actualQty
                         });
                     }
                 }

@@ -1339,6 +1339,8 @@ class CustomerController extends Controller
                         'user_id' => auth()->id(),
                         'area_id' => $customer->area_id,
                     ]);
+                    
+                    $rincianNotes = [];
 
                     foreach ($returnedItems as $item) {
                         if (!empty($item['returned_qty']) && $item['returned_qty'] > 0) {
@@ -1371,8 +1373,18 @@ class CustomerController extends Controller
                                 if ($materialStock) {
                                     $materialStock->increment('stock', $item['returned_qty']);
                                 }
+                                
+                                $assignedQty = $item['assigned_qty'] ?? 0;
+                                $usedQty = $item['used_qty'] ?? 0;
+                                $unitStr = str_contains($nameLower, 'kabel') ? 'meter' : 'pcs';
+                                $rincianNotes[] = "- {$material->name}: Bekal awal {$assignedQty} {$unitStr} | Terpakai {$usedQty} {$unitStr} | Dikembalikan {$item['returned_qty']} {$unitStr}";
                             }
                         }
+                    }
+                    
+                    if (count($rincianNotes) > 0) {
+                        $transaction->notes = "Rincian Hitungan Retur:\n" . implode("\n", $rincianNotes);
+                        $transaction->save();
                     }
                 }
             }
