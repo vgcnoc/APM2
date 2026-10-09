@@ -170,7 +170,8 @@
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">No. Transaksi / Tgl</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tujuan / Petugas</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Barang & Stok Awal</th>
-                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Keluar / Masuk</th>
+                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Masuk (+)</th>
+                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Keluar (-)</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Sisa Stok</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Total Tagihan (Jual)</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
@@ -212,13 +213,25 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="py-4 px-6 align-top text-center">
+                                <td class="py-4 px-6 align-top text-center bg-emerald-50/30 border-l border-gray-100">
                                     <div class="space-y-3">
-                                        <div v-for="detail in item.items" :key="'qty-'+detail.id" class="flex flex-col h-10 justify-center">
-                                            <span class="text-xs font-black" :class="item.type === 'in' ? 'text-emerald-600' : 'text-orange-600'">
-                                                {{ item.type === 'in' ? '+' : '-' }}{{ detail.quantity }}
-                                            </span>
-                                            <span class="text-[10px] text-gray-400 font-medium">{{ detail.unit || (detail.material ? detail.material.unit : 'pcs') }}</span>
+                                        <div v-for="detail in item.items" :key="'in-'+detail.id" class="flex flex-col h-10 justify-center">
+                                            <template v-if="item.type === 'in'">
+                                                <span class="text-xs font-black text-emerald-600">+{{ detail.quantity }}</span>
+                                                <span class="text-[10px] text-gray-400 font-medium">{{ detail.unit || (detail.material ? detail.material.unit : 'pcs') }}</span>
+                                            </template>
+                                            <span v-else class="text-gray-300">-</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-6 align-top text-center bg-orange-50/30 border-r border-gray-100">
+                                    <div class="space-y-3">
+                                        <div v-for="detail in item.items" :key="'out-'+detail.id" class="flex flex-col h-10 justify-center">
+                                            <template v-if="item.type === 'out'">
+                                                <span class="text-xs font-black text-orange-600">-{{ detail.quantity }}</span>
+                                                <span class="text-[10px] text-gray-400 font-medium">{{ detail.unit || (detail.material ? detail.material.unit : 'pcs') }}</span>
+                                            </template>
+                                            <span v-else class="text-gray-300">-</span>
                                         </div>
                                     </div>
                                 </td>
