@@ -29,8 +29,8 @@
                             <InfoRow icon="📦" label="Paket" :value="customer.package?.name || 'Belum pilih'" />
                             <InfoRow icon="💳" label="Layanan" :value="customer.service_status === 'gratis' ? 'Gratis' : 'Berbayar'" />
                             <div class="pt-3 mt-3 border-t border-slate-200 space-y-3">
-                                <InfoRow icon="📅" label="Registrasi" :value="customer.registration_date" />
-                                <InfoRow icon="✅" label="Aktivasi" :value="customer.activation_date || '-'" />
+                                <InfoRow icon="📅" label="Registrasi" :value="formatDate(customer.registration_date)" />
+                                <InfoRow icon="✅" label="Aktivasi" :value="formatDate(customer.activation_date) || '-'" />
                             </div>
                         </div>
 
@@ -159,7 +159,7 @@
                             <p class="text-xs text-gray-500 uppercase font-semibold tracking-wider">Jadwal Survey</p>
                             <template v-if="customer.technician_schedules?.find(s => s.type === 'survey')">
                                 <InfoRow label="Teknisi" :value="getAssignedTechnicians('survey')" />
-                                <InfoRow label="Tanggal" :value="customer.technician_schedules.find(s => s.type === 'survey').scheduled_date" />
+                                <InfoRow label="Tanggal" :value="formatDate(customer.technician_schedules.find(s => s.type === 'survey').scheduled_date)" />
                                 <InfoRow label="Waktu" :value="customer.technician_schedules.find(s => s.type === 'survey').scheduled_time" />
                                 <InfoRow label="Status">
                                     <StatusBadge :status="customer.technician_schedules.find(s => s.type === 'survey').status" />
@@ -181,7 +181,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="space-y-2">
                                 <InfoRow label="Surveyor" :value="customer.surveys?.[0]?.surveyor?.name || '-'" />
-                                <InfoRow label="Tanggal Survey" :value="customer.surveys?.[0]?.survey_date || '-'" />
+                                <InfoRow label="Tanggal Survey" :value="formatDate(customer.surveys?.[0]?.survey_date) || '-'" />
                                 <InfoRow label="Catatan" :value="customer.surveys?.[0]?.notes || '-'" />
                             </div>
                             <div class="space-y-2">
@@ -305,7 +305,7 @@
                         <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 space-y-2">
                             <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
                             <InfoRow label="Teknisi" :value="getAssignedTechnicians('installation')" />
-                            <InfoRow label="Tanggal Pasang" :value="customer.technician_schedules.find(s => s.type === 'installation').scheduled_date" />
+                            <InfoRow label="Tanggal Pasang" :value="formatDate(customer.technician_schedules.find(s => s.type === 'installation').scheduled_date)" />
                         </div>
                         
                         <div v-if="hardwareItems.length > 0" class="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-6">
@@ -386,7 +386,7 @@
                         <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 space-y-2">
                             <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
                             <InfoRow label="Teknisi" :value="getAssignedTechnicians('installation')" />
-                            <InfoRow label="Tanggal Pasang" :value="customer.technician_schedules.find(s => s.type === 'installation').scheduled_date" />
+                            <InfoRow label="Tanggal Pasang" :value="formatDate(customer.technician_schedules.find(s => s.type === 'installation').scheduled_date)" />
                             <InfoRow label="Waktu Target" :value="customer.technician_schedules.find(s => s.type === 'installation').scheduled_time || '-'" />
                         </div>
                         <div v-else class="bg-amber-50 p-6 rounded-xl border border-amber-200 text-center space-y-3 mb-6">
@@ -1124,6 +1124,15 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 
 const page = usePage();
+const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' }) + ' ' + date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    } catch(e) {
+        return dateString;
+    }
+};
 const hasPermission = (permission) => {
     try {
         const user = page.props.auth?.user;
