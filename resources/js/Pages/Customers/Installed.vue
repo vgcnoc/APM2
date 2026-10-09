@@ -1300,16 +1300,20 @@ const hardwareItems = computed(() => {
     let idCounter = 0;
     
     lines.forEach(line => {
-        if (line.startsWith('ONT: ')) {
-            const onts = line.replace('ONT: ', '').split(', ');
+        let text = line.trim();
+        if (!text) return;
+        if (text.startsWith('ONT: ')) {
+            const onts = text.replace('ONT: ', '').split(', ');
             onts.forEach(ont => {
                 if(ont.trim()) items.push({ id: idCounter++, type: 'ONT', name: ont.trim() });
             });
-        } else if (line.startsWith('Material: ')) {
-            const mats = line.replace('Material: ', '').split(', ');
+        } else if (text.startsWith('Material: ')) {
+            const mats = text.replace('Material: ', '').split(', ');
             mats.forEach(mat => {
                 if(mat.trim()) items.push({ id: idCounter++, type: 'Material', name: mat.trim() });
             });
+        } else if (!text.startsWith('Material diambil dari Surat Jalan') && text !== 'ONT:') {
+            items.push({ id: idCounter++, type: 'Material', name: text });
         }
     });
     return items;
