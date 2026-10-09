@@ -1258,25 +1258,27 @@ class CustomerController extends Controller
                 ]);
             }
 
+            $newOdp = Odp::find($validated['odp_id']);
             // Update used_ports di ODP baru ONLY if it is a new assignment or port changed
-            if ($isNewAssignment) {
-                $newOdp = Odp::find($validated['odp_id']);
+            if ($isNewAssignment && $newOdp) {
                 $newOdp->increment('used_ports');
             }
 
             // Update odp_ports if exists
-            $newOdpPort = \App\Models\OdpPort::where('odp_id', $newOdp->id)
-                ->where('port_number', $validated['port_number'])
-                ->first();
-            if ($newOdpPort) {
-                $newOdpPort->update([
-                    'status' => 'used'
-                ]);
-            }
+            if ($newOdp) {
+                $newOdpPort = \App\Models\OdpPort::where('odp_id', $newOdp->id)
+                    ->where('port_number', $validated['port_number'])
+                    ->first();
+                if ($newOdpPort) {
+                    $newOdpPort->update([
+                        'status' => 'used'
+                    ]);
+                }
 
-            // Jika ODP penuh, update statusnya
-            if ($newOdp->used_ports >= $newOdp->total_ports) {
-                $newOdp->update(['status' => 'full']);
+                // Jika ODP penuh, update statusnya
+                if ($newOdp->used_ports >= $newOdp->total_ports) {
+                    $newOdp->update(['status' => 'full']);
+                }
             }
 
             // Update status jadwal teknisi ke done jika ada
@@ -1362,12 +1364,13 @@ class CustomerController extends Controller
                                     'total_price' => ($material->price_per_unit ?? 0) * $item['returned_qty'],
                                 ]);
                                 
-                                // Retur langsung ke Gudang Utama (bukan ke Stok Area)
-                                $material->increment('stock', $item['returned_qty']);
-                                
-                                // DO NOT DECREMENT Area Stock here because Admin already deducted it when assigning!
-                                // The material was in the Technician's hands, so returning it to Gudang Utama
-                                // does not take it from Area Stock again.
+                                // Kembalikan ke Stok Area (karena Teknisi mengembalikan sisa material ke Admin Area)
+                                $materialStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                                    ->where('area_id', $customer->area_id)
+                                    ->first();
+                                if ($materialStock) {
+                                    $materialStock->increment('stock', $item['returned_qty']);
+                                }
                             }
                         }
                     }
