@@ -65,9 +65,9 @@ mysql -e "CREATE DATABASE IF NOT EXISTS isp_management;" || mysql -p'viruzs123' 
 
 # Update .env
 cd /var/www/APM2
-sed -i 's/APP_URL=http:\\/\\/localhost/APP_URL=http:\\/\\/bill.viruzs.my.id/g' .env
-sed -i 's/DB_DATABASE=laravel/DB_DATABASE=isp_management/g' .env
-sed -i 's/DB_PASSWORD=/DB_PASSWORD=viruzs123/g' .env # Trying with VPS password just in case
+sed -i 's/^APP_URL=.*/APP_URL=http:\\/\\/bill.viruzs.my.id/g' .env
+sed -i 's/^DB_DATABASE=.*/DB_DATABASE=isp_management/g' .env
+sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=viruzs123/g' .env # Trying with VPS password just in case
 
 # Run migrations
 php artisan migrate --force || echo "Migration failed, check DB credentials"
