@@ -513,6 +513,10 @@
                                                     <span class="text-slate-500">Mode Akses:</span> 
                                                     <span class="font-bold text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded border border-orange-200 uppercase tracking-wider">Dual Mode (Hotspot)</span>
                                                 </div>
+                                                <div class="flex justify-between items-center mb-1" v-if="getSelectedOntDetails(assignForm.ont_models[index]).hotspot_vlan_id">
+                                                    <span class="text-slate-500">VLAN Hotspot:</span> 
+                                                    <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).hotspot_vlan_id }}</span>
+                                                </div>
                                             </template>
                                         </div>
                                     </div>
