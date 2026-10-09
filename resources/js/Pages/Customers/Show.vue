@@ -1777,7 +1777,10 @@ watch(hardwareItems, (items) => {
     const savedState = items.map(i => ({
         id: i.id,
         isInstalled: i.isInstalled,
-        returned_qty: i.returned_qty
+        returned_qty: i.returned_qty,
+        actual_qty: i.actual_qty,
+        isBroken: i.isBroken,
+        rmaNote: i.rmaNote
     }));
     localStorage.setItem(`apm_hardware_${props.customer.id}`, JSON.stringify(savedState));
 }, { deep: true });
