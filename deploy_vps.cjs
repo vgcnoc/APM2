@@ -15,6 +15,9 @@ php artisan optimize:clear
 php artisan view:clear
 chown -R www-data:www-data storage bootstrap/cache
 chmod -R 775 storage bootstrap/cache
+systemctl restart php8.2-fpm || true
+systemctl restart php8.3-fpm || true
+systemctl restart php8.4-fpm || true
 `;
 
 conn.on('ready', () => {
