@@ -1340,8 +1340,12 @@ class CustomerController extends Controller
                     foreach ($returnedItems as $item) {
                         if (!empty($item['returned_qty']) && $item['returned_qty'] > 0) {
                             $nameLower = strtolower($item['name']);
-                            $material = \App\Models\Material::where('name', 'like', "%{$nameLower}%")->first();
-                            if (!$material && str_contains($nameLower, 'kabel')) {
+                            
+                            // Hapus text dalam kurung, misal "klem (20 pcs)" jadi "klem"
+                            $cleanName = trim(preg_replace('/\s*\(.*?\)\s*/', '', $nameLower));
+                            
+                            $material = \App\Models\Material::where('name', 'like', "%{$cleanName}%")->first();
+                            if (!$material && str_contains($cleanName, 'kabel')) {
                                 $material = \App\Models\Material::where('category', 'Kabel Drop')
                                     ->orWhere('category', 'Kabel')
                                     ->orWhere('name', 'like', '%kabel%')->first();
@@ -1381,9 +1385,12 @@ class CustomerController extends Controller
                         if (!empty($item['actual_qty']) && $item['actual_qty'] > 0) {
                             $nameLower = strtolower($item['name']);
                             
+                            // Hapus text dalam kurung, misal "klem (20 pcs)" jadi "klem"
+                            $cleanName = trim(preg_replace('/\s*\(.*?\)\s*/', '', $nameLower));
+                            
                             // Try to find material id based on name
-                            $material = \App\Models\Material::where('name', 'like', "%{$nameLower}%")->first();
-                            if (!$material && str_contains($nameLower, 'kabel')) {
+                            $material = \App\Models\Material::where('name', 'like', "%{$cleanName}%")->first();
+                            if (!$material && str_contains($cleanName, 'kabel')) {
                                 $material = \App\Models\Material::where('category', 'Kabel Drop')
                                     ->orWhere('category', 'Kabel')
                                     ->orWhere('name', 'like', '%kabel%')->first();
