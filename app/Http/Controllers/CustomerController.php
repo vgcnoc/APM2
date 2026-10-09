@@ -1283,14 +1283,22 @@ class CustomerController extends Controller
             $schedules = $customer->technicianSchedules()->where('type', 'installation')->where('status', 'scheduled')->get();
             foreach ($schedules as $schedule) {
                 $notes = $schedule->notes;
-                if ($request->has('materials_returned') && is_array($request->materials_returned)) {
-                    foreach ($request->materials_returned as $item) {
+                if ($request->has('material_usage') && is_array($request->material_usage)) {
+                    foreach ($request->material_usage as $item) {
                         if (isset($item['actual_qty']) && isset($item['name']) && $item['type'] === 'Material' && $item['actual_qty'] !== null) {
-                            $originalName = $item['name'];
+                            $originalName = trim($item['name']);
                             $unit = str_contains(strtolower($originalName), 'kabel') ? 'meter' : 'pcs';
-                            $baseName = trim(preg_replace('/\s*\(.*\)/', '', $originalName));
-                            $newName = $baseName . ' (' . $item['actual_qty'] . ' ' . $unit . ' aktual)';
-                            $notes = str_replace($originalName, $newName, $notes);
+                            $newName = $originalName . ' (' . $item['actual_qty'] . ' ' . $unit . ' aktual)';
+                            
+                            // Replace the whole line containing the original name
+                            $lines = explode("\n", $notes);
+                            foreach ($lines as &$line) {
+                                if (str_contains($line, $originalName) && !str_contains(strtolower($line), 'ont')) {
+                                    $prefix = str_starts_with(trim($line), '-') ? '- ' : '';
+                                    $line = $prefix . $newName;
+                                }
+                            }
+                            $notes = implode("\n", $lines);
                         }
                     }
                 }

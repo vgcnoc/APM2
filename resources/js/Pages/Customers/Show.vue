@@ -1547,6 +1547,7 @@ const ontForm = useForm({
     photo_customer: null,
     photo_redaman: null,
     materials_returned: [],
+    material_usage: [],
 });
 
 const selectedOdp = computed(() => props.availableOdps?.find(o => o.id == ontForm.odp_id));
@@ -1722,6 +1723,15 @@ function submitOnt() {
         .map(item => ({
             name: item.name,
             returned_qty: item.returned_qty
+        }));
+
+    // Collect material usage for updating schedule notes
+    ontForm.material_usage = hardwareItems.value
+        .filter(item => item.type === 'Material' && item.actual_qty !== undefined && item.actual_qty !== null)
+        .map(item => ({
+            name: item.name,
+            type: item.type,
+            actual_qty: item.actual_qty
         }));
         
     ontForm.post(`/customers/${props.customer.id}/assign-ont`, {
