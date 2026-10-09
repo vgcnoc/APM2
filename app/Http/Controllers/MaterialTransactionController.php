@@ -217,6 +217,7 @@ class MaterialTransactionController extends Controller
                     'total_price' => $totalPrice,
                     'stock_before' => $stockBefore,
                     'stock_after' => $stockAfter,
+                    'condition' => 'Layak Pakai'
                 ]);
                 
                 // Recalculate total_rolls roughly

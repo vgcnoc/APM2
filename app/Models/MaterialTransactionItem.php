@@ -17,6 +17,7 @@ class MaterialTransactionItem extends Model
         'is_registered_to_ont',
         'stock_before',
         'stock_after',
+        'condition',
     ];
 
     public function transaction(): BelongsTo

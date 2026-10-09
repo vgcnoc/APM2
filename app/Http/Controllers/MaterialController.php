@@ -194,6 +194,31 @@ class MaterialController extends Controller
 
         $material->save();
 
+        // Rekam ke Log Mutasi (MaterialTransaction & MaterialTransactionItem)
+        $transactionIn = \App\Models\MaterialTransaction::create([
+            'transaction_number' => 'IN-RESTOCK-' . date('YmdHis'),
+            'type' => 'in',
+            'status' => 'approved',
+            'date' => now(),
+            'technician_name' => auth()->user()->name,
+            'purpose' => 'Stok Masuk / Restock Gudang',
+            'user_id' => auth()->id(),
+            'area_id' => $validated['area_id'],
+            'notes' => 'Pemasukan stok baru via menu Material'
+        ]);
+
+        \App\Models\MaterialTransactionItem::create([
+            'material_transaction_id' => $transactionIn->id,
+            'material_id' => $material->id,
+            'quantity' => $validated['added_stock'],
+            'unit' => $material->unit,
+            'price_per_unit' => $material->price_per_unit ?? 0,
+            'total_price' => ($material->price_per_unit ?? 0) * $validated['added_stock'],
+            'stock_before' => $materialStock->stock - $validated['added_stock'],
+            'stock_after' => $materialStock->stock,
+            'condition' => 'Layak Pakai'
+        ]);
+
         return redirect()->route('materials.index')->with('success', "Berhasil menambahkan stok masuk untuk {$material->name}.");
     }
 }

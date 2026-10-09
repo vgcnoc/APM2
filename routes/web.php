@@ -174,8 +174,15 @@ Route::middleware(['auth'])->group(function () {
     Route::post('ftth/devices', [\App\Http\Controllers\FtthController::class, 'storeDevice'])->name('ftth.devices.store');
     Route::post('ftth/devices/{device}/position', [\App\Http\Controllers\FtthController::class, 'updateDevicePosition'])->name('ftth.devices.position');
 
+    Route::post('material-transactions/bulk-destroy', [MaterialTransactionController::class, 'bulkDestroy'])->name('material-transactions.bulk-destroy');
+    Route::resource('material-transactions', MaterialTransactionController::class)->except(['destroy']);
+    Route::post('material-transactions/{item}/register-ont', [MaterialTransactionController::class, 'registerOnt'])->name('material-transactions.register-ont');
+    Route::post('material-transactions/{item}/reset-ont', [MaterialTransactionController::class, 'resetOnt'])->name('material-transactions.reset-ont');
+    Route::post('material-transactions/{material_transaction}/delete', [MaterialTransactionController::class, 'destroy'])->name('material-transactions.destroy');
+    Route::post('material-transactions/{material_transaction}/approve', [MaterialTransactionController::class, 'approveReturn'])->name('material-transactions.approve');
+    Route::post('material-transactions/{material_transaction}/reject', [MaterialTransactionController::class, 'rejectReturn'])->name('material-transactions.reject');
 
-
+    Route::get('material-mutations', [\App\Http\Controllers\MaterialMutationController::class, 'index'])->name('material-mutations.index');
 
     // ── Permintaan Material (Teknisi -> Gudang Utama) ────────────────────
     Route::get('material-requests', [\App\Http\Controllers\MaterialRequestController::class, 'index'])->name('material-requests.index');
