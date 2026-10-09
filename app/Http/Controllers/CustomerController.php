@@ -403,7 +403,7 @@ class CustomerController extends Controller
         $tab = $request->tab ?? 'semua';
         
         $baseQuery = Customer::survey()
-            ->with(['surveys.odp', 'surveys.surveyor', 'technicianSchedules.technician'])
+            ->with(['package', 'surveys.odp', 'surveys.surveyor', 'technicianSchedules.technician'])
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_survey_view_all'), function($q) {
                 if (auth()->user()->hasRole('teknisi')) {
                     $q->where(function($sub) {

@@ -119,7 +119,7 @@
                 </td>
                 <td>
                     <span v-if="row.surveys?.length && row.surveys[0]?.distance_meters" class="text-xs text-gray-700 font-medium">
-                        {{ row.surveys[0].distance_meters }} m
+                        {{ Math.round(row.surveys[0].distance_meters) }} m
                     </span>
                     <span v-else class="text-gray-600 text-xs">-</span>
                 </td>
@@ -520,7 +520,7 @@
                                     </div>
                                     <div class="space-y-1">
                                         <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Jarak Kabel</p>
-                                        <p class="text-sm text-gray-900 font-medium">{{ selectedCustomer.surveys[0].distance_meters ? `${selectedCustomer.surveys[0].distance_meters} Meter` : '-' }}</p>
+                                        <p class="text-sm text-gray-900 font-medium">{{ selectedCustomer.surveys[0].distance_meters ? `${Math.round(selectedCustomer.surveys[0].distance_meters)} Meter` : '-' }}</p>
                                     </div>
                                     <div class="space-y-1">
                                         <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Surveyor</p>
@@ -1010,7 +1010,7 @@ function openEditReportModal(customer) {
         reportForm.odp_id = survey.odp_id || '';
         reportForm.feasibility = survey.feasibility;
         reportForm.port_number = survey.port_number || '';
-        reportForm.distance_meters = survey.distance_meters || '';
+        reportForm.distance_meters = survey.distance_meters ? Math.round(survey.distance_meters) : '';
         reportForm.port_available = survey.port_available;
         reportForm.notes = survey.notes || '';
         
