@@ -1201,7 +1201,7 @@ class CustomerController extends Controller
             return back()->withErrors(['end_time' => 'Jam selesai tidak boleh lebih awal dari jam mulai.']);
         }
 
-        DB::transaction(function () use ($validated, $customer, $odp, $request, $ont) {
+        $usageDetails = []; DB::transaction(function () use ($validated, $customer, $odp, $request, $ont, &$usageDetails) {
             $isNewAssignment = false;
             
             // Update existing linked ONT or Create new
@@ -1374,7 +1374,6 @@ class CustomerController extends Controller
             }
 
             // Handle material usage (deduct from Area Stock)
-            $usageDetails = [];
             if ($request->has('materials_used') && is_array($request->materials_used)) {
                 $usedItems = $request->materials_used;
                 if (count($usedItems) > 0) {
