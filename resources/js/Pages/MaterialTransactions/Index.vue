@@ -238,9 +238,12 @@
                                 <td class="py-4 px-6 align-top text-center">
                                     <div class="space-y-3">
                                         <div v-for="detail in item.items" :key="'sisa-'+detail.id" class="flex flex-col h-10 justify-center">
-                                            <span class="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 inline-block w-fit mx-auto">
-                                                {{ detail.stock_after !== null ? formatNumber(detail.stock_after) : '-' }}
-                                            </span>
+                                            <template v-if="item.type === 'out'">
+                                                <span class="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 inline-block w-fit mx-auto">
+                                                    {{ detail.stock_after !== null ? formatNumber(detail.stock_after) : '-' }}
+                                                </span>
+                                            </template>
+                                            <span v-else class="text-gray-300">-</span>
                                         </div>
                                     </div>
                                 </td>
