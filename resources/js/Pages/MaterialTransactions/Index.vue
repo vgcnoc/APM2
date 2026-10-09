@@ -206,10 +206,13 @@
                                                 <span class="text-gray-500 ml-1">({{ detail.quantity }} {{ detail.unit || (detail.material ? detail.material.unit : 'pcs') }})</span>
                                                 <span class="text-emerald-600 font-medium ml-1">@ Rp {{ formatNumber(detail.price_per_unit) }}</span>
                                             </div>
-                                            <div v-if="detail.material" class="flex items-center gap-2 mt-0.5 text-[10px]">
-                                                <span class="text-gray-400">Stok Awal: <span class="font-semibold text-gray-600">{{ formatNumber(detail.material.initial_stock) }}</span></span>
+                                            <div v-if="detail.stock_before !== null && detail.stock_after !== null" class="flex items-center gap-2 mt-0.5 text-[10px]">
+                                                <span class="text-gray-400">Stok Sblm: <span class="font-semibold text-gray-600">{{ formatNumber(detail.stock_before) }}</span></span>
                                                 <span class="text-gray-300">|</span>
-                                                <span class="text-gray-400">Sisa Stok: <span class="font-semibold text-blue-600">{{ formatNumber(detail.material.stock) }}</span></span>
+                                                <span class="text-gray-400">Stok Sdh: <span class="font-semibold text-blue-600">{{ formatNumber(detail.stock_after) }}</span></span>
+                                            </div>
+                                            <div v-else-if="detail.material" class="flex items-center gap-2 mt-0.5 text-[10px]">
+                                                <span class="text-gray-400 italic">Hitungan stok tidak tersedia (Data Lama)</span>
                                             </div>
                                         </div>
                                         <div v-if="!item.items || item.items.length === 0" class="text-xs text-gray-400 italic">

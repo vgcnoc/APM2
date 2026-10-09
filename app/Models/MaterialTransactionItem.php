@@ -15,6 +15,8 @@ class MaterialTransactionItem extends Model
         'price_per_unit',
         'total_price',
         'is_registered_to_ont',
+        'stock_before',
+        'stock_after',
     ];
 
     public function transaction(): BelongsTo

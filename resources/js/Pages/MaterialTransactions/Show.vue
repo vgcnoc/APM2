@@ -66,10 +66,13 @@
                                     <td class="py-3 px-4 text-sm text-gray-900 font-medium">{{ index + 1 }}</td>
                                     <td class="py-3 px-4">
                                         <p class="text-sm font-bold text-gray-900">{{ item.material?.name || 'Barang Dihapus' }}</p>
-                                        <div v-if="item.material" class="mt-1 flex items-center gap-2 text-xs">
-                                            <span class="text-gray-500">Awal: <span class="font-semibold">{{ formatNumber(item.material.initial_stock) }}</span></span>
+                                        <div v-if="item.stock_before !== null && item.stock_after !== null" class="mt-1 flex items-center gap-2 text-xs">
+                                            <span class="text-gray-500">Stok Sblm: <span class="font-semibold">{{ formatNumber(item.stock_before) }}</span></span>
                                             <span class="text-gray-300">|</span>
-                                            <span class="text-gray-500">Sisa: <span class="text-blue-600 font-semibold">{{ formatNumber(item.material.stock) }}</span></span>
+                                            <span class="text-gray-500">Stok Sdh: <span class="text-blue-600 font-semibold">{{ formatNumber(item.stock_after) }}</span></span>
+                                        </div>
+                                        <div v-else-if="item.material" class="mt-1 flex items-center gap-2 text-xs">
+                                            <span class="text-gray-400 italic">Hitungan stok tidak tersedia (Data Lama)</span>
                                         </div>
                                         <p v-if="item.material?.brand" class="text-xs text-gray-500 mt-1">{{ item.material.brand }}</p>
                                         

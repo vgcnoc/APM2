@@ -1328,101 +1328,119 @@ class CustomerController extends Controller
 
             // Handle excess returned material
             if ($request->has('materials_returned') && is_array($request->materials_returned)) {
-                $returnedItems = $request->materials_returned;
-                if (count($returnedItems) > 0) {
-                    $transaction = \App\Models\MaterialTransaction::create([
+                $items = $request->materials_returned;
+                $returnItems = [];
+                $outItems = [];
+                $rincianNotesReturn = [];
+                $rincianNotesOut = [];
+
+                foreach ($items as $item) {
+                    $assignedQty = isset($item['assigned_qty']) ? (float)$item['assigned_qty'] : 0;
+                    $usedQty = isset($item['used_qty']) ? (float)$item['used_qty'] : 0;
+                    
+                    if ($assignedQty == 0 && $usedQty == 0) continue;
+
+                    $nameLower = strtolower($item['name']);
+                    $cleanName = trim(preg_replace('/\s*\(.*?\)\s*/', '', $nameLower));
+                    $material = \App\Models\Material::where('name', 'like', "%{$cleanName}%")->first();
+                    
+                    if (!$material && str_contains($cleanName, 'kabel')) {
+                        $material = \App\Models\Material::where('category', 'Kabel Drop')
+                            ->orWhere('category', 'Kabel')
+                            ->orWhere('name', 'like', '%kabel%')->first();
+                    }
+
+                    if ($material) {
+                        $unitStr = str_contains($nameLower, 'kabel') ? 'meter' : 'pcs';
+                        
+                        // Hitungan Sempurna
+                        if ($usedQty < $assignedQty) {
+                            // PENGEMBALIAN (Ada sisa)
+                            $excessQty = $assignedQty - $usedQty;
+                            $returnItems[] = [
+                                'material' => $material,
+                                'qty' => $excessQty,
+                                'unit' => $unitStr
+                            ];
+                            $rincianNotesReturn[] = "- {$material->name}: Bekal awal {$assignedQty} {$unitStr} | Terpakai {$usedQty} {$unitStr} | SISA (Dikembalikan): {$excessQty} {$unitStr}";
+                        } elseif ($usedQty > $assignedQty) {
+                            // PENAMBAHAN (Pemakaian lebih besar dari bekal)
+                            $extraQty = $usedQty - $assignedQty;
+                            $outItems[] = [
+                                'material' => $material,
+                                'qty' => $extraQty,
+                                'unit' => $unitStr
+                            ];
+                            $rincianNotesOut[] = "- {$material->name}: Bekal awal {$assignedQty} {$unitStr} | Terpakai {$usedQty} {$unitStr} | KURANG (Diambil Tambahan): {$extraQty} {$unitStr}";
+                        }
+                        
+                        if ($usedQty > 0) {
+                            $usageDetails[] = $material->name . ' (' . $usedQty . ' ' . $unitStr . ')';
+                        }
+                    }
+                }
+
+                // Proses Pengembalian (Pending)
+                if (count($returnItems) > 0) {
+                    $transactionReturn = \App\Models\MaterialTransaction::create([
                         'transaction_number' => 'RTR-EXCESS-' . date('YmdHis'),
                         'type' => 'in',
                         'status' => 'pending',
                         'date' => now(),
                         'technician_name' => auth()->user()->name,
-                        'purpose' => 'Pengembalian Kelebihan Material Instalasi Pelanggan ' . $customer->name,
+                        'purpose' => 'Pengembalian Sisa Material Instalasi Pelanggan ' . $customer->name,
                         'user_id' => auth()->id(),
                         'area_id' => $customer->area_id,
+                        'notes' => "Rincian Hitungan Sisa:\n" . implode("\n", $rincianNotesReturn)
                     ]);
-                    
-                    $rincianNotes = [];
 
-                    foreach ($returnedItems as $item) {
-                        if (!empty($item['returned_qty']) && $item['returned_qty'] > 0) {
-                            $nameLower = strtolower($item['name']);
-                            
-                            // Hapus text dalam kurung, misal "klem (20 pcs)" jadi "klem"
-                            $cleanName = trim(preg_replace('/\s*\(.*?\)\s*/', '', $nameLower));
-                            
-                            $material = \App\Models\Material::where('name', 'like', "%{$cleanName}%")->first();
-                            if (!$material && str_contains($cleanName, 'kabel')) {
-                                $material = \App\Models\Material::where('category', 'Kabel Drop')
-                                    ->orWhere('category', 'Kabel')
-                                    ->orWhere('name', 'like', '%kabel%')->first();
-                            }
-
-                            if ($material) {
-                                \App\Models\MaterialTransactionItem::create([
-                                    'material_transaction_id' => $transaction->id,
-                                    'material_id' => $material->id,
-                                    'quantity' => $item['returned_qty'],
-                                    'unit' => str_contains($nameLower, 'kabel') ? 'm' : 'pcs',
-                                    'price_per_unit' => $material->price_per_unit ?? 0,
-                                    'total_price' => ($material->price_per_unit ?? 0) * $item['returned_qty'],
-                                ]);
-                                
-                                // Note: Stok tidak lagi otomatis ditambahkan di sini.
-                                // Stok akan bertambah saat Admin Area melakukan "Approve" (Serah Terima)
-                                // di menu MaterialTransactionController.
-                                
-                                $assignedQty = $item['assigned_qty'] ?? 0;
-                                $usedQty = $item['used_qty'] ?? 0;
-                                $unitStr = str_contains($nameLower, 'kabel') ? 'meter' : 'pcs';
-                                $rincianNotes[] = "- {$material->name}: Bekal awal {$assignedQty} {$unitStr} | Terpakai {$usedQty} {$unitStr} | Dikembalikan {$item['returned_qty']} {$unitStr}";
-                            }
-                        }
-                    }
-                    
-                    if (count($rincianNotes) > 0) {
-                        $transaction->notes = "Rincian Hitungan Retur:\n" . implode("\n", $rincianNotes);
-                        $transaction->save();
+                    foreach ($returnItems as $ri) {
+                        \App\Models\MaterialTransactionItem::create([
+                            'material_transaction_id' => $transactionReturn->id,
+                            'material_id' => $ri['material']->id,
+                            'quantity' => $ri['qty'],
+                            'unit' => $ri['unit'],
+                            'price_per_unit' => $ri['material']->price_per_unit ?? 0,
+                            'total_price' => ($ri['material']->price_per_unit ?? 0) * $ri['qty'],
+                        ]);
                     }
                 }
-            }
 
-            // Handle material usage (deduct from Area Stock)
-            if ($request->has('materials_used') && is_array($request->materials_used)) {
-                $usedItems = $request->materials_used;
-                if (count($usedItems) > 0) {
-                    foreach ($usedItems as $item) {
-                        if (!empty($item['actual_qty']) && $item['actual_qty'] > 0) {
-                            $nameLower = strtolower($item['name']);
-                            
-                            // Hapus text dalam kurung, misal "klem (20 pcs)" jadi "klem"
-                            $cleanName = trim(preg_replace('/\s*\(.*?\)\s*/', '', $nameLower));
-                            
-                            // Try to find material id based on name
-                            $material = \App\Models\Material::where('name', 'like', "%{$cleanName}%")->first();
-                            if (!$material && str_contains($cleanName, 'kabel')) {
-                                $material = \App\Models\Material::where('category', 'Kabel Drop')
-                                    ->orWhere('category', 'Kabel')
-                                    ->orWhere('name', 'like', '%kabel%')->first();
-                            }
+                // Proses Penambahan Otomatis (Approved, motong stok area langsung)
+                if (count($outItems) > 0) {
+                    $transactionOut = \App\Models\MaterialTransaction::create([
+                        'transaction_number' => 'OUT-EXTRA-' . date('YmdHis'),
+                        'type' => 'out',
+                        'status' => 'approved',
+                        'date' => now(),
+                        'technician_name' => auth()->user()->name,
+                        'purpose' => 'Penambahan Ekstra Material Instalasi Pelanggan ' . $customer->name,
+                        'user_id' => auth()->id(),
+                        'area_id' => $customer->area_id,
+                        'notes' => "Rincian Hitungan Tambahan (Nombok):\n" . implode("\n", $rincianNotesOut)
+                    ]);
 
-                            if ($material) {
-                                // Check if this item was assigned by admin (has "(xx)" in the name)
-                                $isAssigned = preg_match('/\(\d+(?:\.\d+)?\s*(.*?)\)/', $item['name']);
-                                
-                                if (!$isAssigned) {
-                                    // If not assigned, Technician added it manually, so we MUST deduct from Area Stock
-                                    $materialStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                    foreach ($outItems as $oi) {
+                        $materialStock = \App\Models\MaterialStock::where('material_id', $oi['material']->id)
                                         ->where('area_id', $customer->area_id)
                                         ->first();
-                                        
-                                    if ($materialStock) {
-                                        $materialStock->decrement('stock', $item['actual_qty']);
-                                    }
-                                }
+                        
+                        $stockBefore = $materialStock ? $materialStock->stock : 0;
+                        $stockAfter = $stockBefore - $oi['qty'];
 
-                                $unitStr = str_contains($nameLower, 'kabel') ? 'meter' : 'pcs';
-                                $usageDetails[] = $material->name . ' (' . $item['actual_qty'] . ' ' . $unitStr . ')';
-                            }
+                        \App\Models\MaterialTransactionItem::create([
+                            'material_transaction_id' => $transactionOut->id,
+                            'material_id' => $oi['material']->id,
+                            'quantity' => $oi['qty'],
+                            'unit' => $oi['unit'],
+                            'price_per_unit' => $oi['material']->price_per_unit ?? 0,
+                            'total_price' => ($oi['material']->price_per_unit ?? 0) * $oi['qty'],
+                            'stock_before' => $stockBefore,
+                            'stock_after' => $stockAfter,
+                        ]);
+
+                        if ($materialStock) {
+                            $materialStock->decrement('stock', $oi['qty']);
                         }
                     }
                 }

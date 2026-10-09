@@ -189,16 +189,6 @@ class MaterialTransactionController extends Controller
                 $totalPrice = $itemData['quantity'] * $pricePerUnit;
                 $totalCost += $totalPrice;
 
-                // Create Item
-                MaterialTransactionItem::create([
-                    'material_transaction_id' => $transaction->id,
-                    'material_id' => $material->id,
-                    'quantity' => $itemData['quantity'],
-                    'unit' => $itemData['unit'] ?? $material->unit,
-                    'price_per_unit' => $pricePerUnit,
-                    'total_price' => $totalPrice,
-                ]);
-
                 // Deduct Stock
                 $deduction = $itemData['quantity'];
                 if (str_contains(strtolower($material->category), 'kabel') && ($itemData['unit'] === 'roll' || $itemData['unit'] === 'rol')) {
@@ -210,9 +200,24 @@ class MaterialTransactionController extends Controller
                 if ($material->category === 'Isolasi' && ($itemData['unit'] === 'pcs')) {
                     $deduction = $itemData['quantity'] * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
                 }
+
+                $stockBefore = $material->stock;
+                $stockAfter = $material->stock - $deduction;
                 
-                $material->stock -= $deduction;
+                $material->stock = $stockAfter;
                 $materialStock->stock += $deduction;
+
+                // Create Item
+                MaterialTransactionItem::create([
+                    'material_transaction_id' => $transaction->id,
+                    'material_id' => $material->id,
+                    'quantity' => $itemData['quantity'],
+                    'unit' => $itemData['unit'] ?? $material->unit,
+                    'price_per_unit' => $pricePerUnit,
+                    'total_price' => $totalPrice,
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $stockAfter,
+                ]);
                 
                 // Recalculate total_rolls roughly
                 if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
@@ -258,7 +263,15 @@ class MaterialTransactionController extends Controller
                     ->where('area_id', $material_transaction->area_id)
                     ->first();
                 if ($materialStock) {
-                    $materialStock->increment('stock', $item->quantity);
+                    $stockBefore = $materialStock->stock;
+                    $stockAfter = $stockBefore + $item->quantity;
+                    
+                    $item->update([
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $stockAfter
+                    ]);
+
+                    $materialStock->update(['stock' => $stockAfter]);
                 }
             }
         });
