@@ -1280,48 +1280,6 @@ class CustomerController extends Controller
             }
 
             // Update status jadwal teknisi ke done jika ada
-<<<<<<< ours
-            $schedules = $customer->technicianSchedules()->where('type', 'installation')->get();
-            foreach ($schedules as $schedule) {
-                $notes = $schedule->notes;
-                if ($request->has('material_usage') && is_array($request->material_usage)) {
-                    foreach ($request->material_usage as $item) {
-                        if (isset($item['actual_qty']) && isset($item['name']) && $item['type'] === 'Material' && $item['actual_qty'] !== null) {
-                            $originalName = trim($item['name']);
-                            $unit = str_contains(strtolower($originalName), 'kabel') ? 'meter' : 'pcs';
-                            $newName = $originalName . ' (' . $item['actual_qty'] . ' ' . $unit . ' aktual)';
-                            
-                            // Replace the whole line containing the original name
-                            $lines = explode("\n", $notes);
-                            foreach ($lines as &$line) {
-                                if (str_contains($line, $originalName) && !str_contains(strtolower($line), 'ont')) {
-                                    $prefix = str_starts_with(trim($line), '-') ? '- ' : '';
-                                    $line = $prefix . $newName;
-                                }
-                            }
-                            $notes = implode("\n", $lines);
-                        }
-                    }
-                }
-                $schedule->update([
-                    'status' => 'done',
-                    'notes' => $notes
-                ]);
-            }
-
-            // Handle excess returned material
-            if ($request->has('materials_returned') && is_array($request->materials_returned)) {
-                $returnedItems = $request->materials_returned;
-                if (count($returnedItems) > 0) {
-                    $transaction = \App\Models\MaterialTransaction::create([
-                        'transaction_number' => 'RTR-EXCESS-' . date('YmdHis'),
-                        'type' => 'return',
-                        'date' => now(),
-                        'technician_name' => auth()->user()->name,
-                        'purpose' => 'Pengembalian Kelebihan Material Instalasi Pelanggan ' . $customer->name,
-                        'user_id' => auth()->id(),
-                    ]);
-=======
             $schedules = $customer->technicianSchedules()->where('type', 'installation')->whereIn('status', ['scheduled', 'done'])->get();
             
             // Restore previous usage from old notes if this is an edit to prevent double-deduction
@@ -1364,7 +1322,47 @@ class CustomerController extends Controller
                     }
                 }
             }
->>>>>>> theirs
+
+            // Handle excess returned material
+            if ($request->has('materials_returned') && is_array($request->materials_returned)) {
+                $returnedItems = $request->materials_returned;
+                if (count($returnedItems) > 0) {
+                    $transaction = \App\Models\MaterialTransaction::create([
+                        'transaction_number' => 'RTR-EXCESS-' . date('YmdHis'),
+                        'type' => 'return',
+                        'date' => now(),
+                        'technician_name' => auth()->user()->name,
+                        'purpose' => 'Pengembalian Kelebihan Material Instalasi Pelanggan ' . $customer->name,
+                        'user_id' => auth()->id(),
+                    ]);
+
+                    foreach ($returnedItems as $item) {
+                        if (!empty($item['returned_qty']) && $item['returned_qty'] > 0) {
+                            $nameLower = strtolower($item['name']);
+                            $material = \App\Models\Material::where('name', 'like', "%{$nameLower}%")->first();
+                            if (!$material && str_contains($nameLower, 'kabel')) {
+                                $material = \App\Models\Material::where('category', 'Kabel Drop')
+                                    ->orWhere('category', 'Kabel')
+                                    ->orWhere('name', 'like', '%kabel%')->first();
+                            }
+
+                            if ($material) {
+                                \App\Models\MaterialTransactionItem::create([
+                                    'material_transaction_id' => $transaction->id,
+                                    'material_id' => $material->id,
+                                    'quantity' => $item['returned_qty'],
+                                    'unit' => str_contains($nameLower, 'kabel') ? 'm' : 'pcs',
+                                    'price_per_unit' => $material->price_per_unit ?? 0,
+                                    'total_price' => ($material->price_per_unit ?? 0) * $item['returned_qty'],
+                                ]);
+                                
+                                // Retur langsung ke Gudang Utama (bukan ke Stok Area)
+                                $material->increment('stock', $item['returned_qty']);
+                            }
+                        }
+                    }
+                }
+            }
 
             // Handle material usage (deduct from Area Stock)
             $usageDetails = [];
@@ -1384,19 +1382,6 @@ class CustomerController extends Controller
                             }
 
                             if ($material) {
-<<<<<<< ours
-                                \App\Models\MaterialTransactionItem::create([
-                                    'material_transaction_id' => $transaction->id,
-                                    'material_id' => $material->id,
-                                    'quantity' => $item['returned_qty'],
-                                    'unit' => str_contains($nameLower, 'kabel') ? 'm' : 'pcs',
-                                    'price_per_unit' => $material->price_per_unit ?? 0,
-                                    'total_price' => ($material->price_per_unit ?? 0) * $item['returned_qty'],
-                                ]);
-                                
-                                // Retur langsung ke Gudang Utama (bukan ke Stok Area)
-                                $material->increment('stock', $item['returned_qty']);
-=======
                                 // Deduct from Area Stock
                                 $materialStock = \App\Models\MaterialStock::where('material_id', $material->id)
                                     ->where('area_id', $customer->area_id)
@@ -1408,7 +1393,6 @@ class CustomerController extends Controller
 
                                 $unitStr = str_contains($nameLower, 'kabel') ? 'meter' : 'pcs';
                                 $usageDetails[] = $item['name'] . ' (' . $item['actual_qty'] . ' ' . $unitStr . ')';
->>>>>>> theirs
                             }
                         }
                     }
