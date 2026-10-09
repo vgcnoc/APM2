@@ -180,10 +180,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('material-transactions/{item}/reset-ont', [MaterialTransactionController::class, 'resetOnt'])->name('material-transactions.reset-ont');
     Route::post('material-transactions/{material_transaction}/delete', [MaterialTransactionController::class, 'destroy'])->name('material-transactions.destroy');
 
-    // ── Retur Material (Area → Gudang Utama) ────────────────────
-    Route::get('material-returns', [MaterialReturnController::class, 'index'])->name('material-returns.index');
-    Route::post('material-returns', [MaterialReturnController::class, 'store'])->name('material-returns.store');
-    Route::post('material-returns/{material_return}/delete', [MaterialReturnController::class, 'destroy'])->name('material-returns.destroy');
+
 
     // ── Permintaan Material (Teknisi -> Gudang Utama) ────────────────────
     Route::get('material-requests', [\App\Http\Controllers\MaterialRequestController::class, 'index'])->name('material-requests.index');
