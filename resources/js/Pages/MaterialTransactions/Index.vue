@@ -208,7 +208,9 @@
                                                 {{ detail.material ? detail.material.name : 'Unknown' }}
                                             </span>
                                             <span class="text-[10px] text-gray-500 mt-0.5">
-                                                Stok Awal: <span class="font-semibold text-gray-700">{{ detail.stock_before !== null ? formatNumber(detail.stock_before) : '-' }}</span>
+                                                Stok Awal: <span class="font-semibold text-gray-700">
+                                                    {{ detail.stock_before !== null ? formatNumber(detail.stock_before) + ' ' + (detail.material ? (detail.material.category === 'Kabel' ? 'meter' : (detail.material.category === 'Isolasi' ? 'cm' : (detail.material.category === 'Paku Klem' ? 'pcs' : (detail.material.unit || '')))) : '') : '-' }}
+                                                </span>
                                             </span>
                                         </div>
                                     </div>
@@ -240,7 +242,7 @@
                                         <div v-for="detail in item.items" :key="'sisa-'+detail.id" class="flex flex-col h-10 justify-center">
                                             <template v-if="item.type === 'out'">
                                                 <span class="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 inline-block w-fit mx-auto">
-                                                    {{ detail.stock_after !== null ? formatNumber(detail.stock_after) : '-' }}
+                                                    {{ detail.stock_after !== null ? formatNumber(detail.stock_after) + ' ' + (detail.material ? (detail.material.category === 'Kabel' ? 'meter' : (detail.material.category === 'Isolasi' ? 'cm' : (detail.material.category === 'Paku Klem' ? 'pcs' : (detail.material.unit || '')))) : '') : '-' }}
                                                 </span>
                                             </template>
                                             <span v-else class="text-gray-300">-</span>
