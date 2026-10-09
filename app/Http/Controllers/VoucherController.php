@@ -11,6 +11,33 @@ use Illuminate\Support\Str;
 
 class VoucherController extends Controller
 {
+    public function free(Request $request)
+    {
+        $query = \App\Models\Customer::with('ont')
+            ->where('status', 'active')
+            ->whereHas('ont', function($q) {
+                $q->where('free_hotspot', true);
+            });
+            
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('customer_id', 'like', "%{$search}%")
+                  ->orWhereHas('ont', function($subQ) use ($search) {
+                      $subQ->where('hotspot_user', 'like', "%{$search}%");
+                  });
+            });
+        }
+        
+        $customers = $query->latest()->paginate(15)->withQueryString();
+        
+        return Inertia::render('Vouchers/Free/Index', [
+            'customers' => $customers,
+            'filters' => $request->only('search')
+        ]);
+    }
+
     public function index(Request $request)
     {
         $query = Voucher::with('profile');

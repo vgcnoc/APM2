@@ -200,6 +200,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/vouchers/profiles/{voucherProfile}/update', [\App\Http\Controllers\VoucherProfileController::class, 'update'])->name('vouchers.profiles.update.post');
     Route::post('/vouchers/profiles/{voucherProfile}/delete', [\App\Http\Controllers\VoucherProfileController::class, 'destroy'])->name('vouchers.profiles.destroy.post');
 
+    Route::get('/vouchers/free', [\App\Http\Controllers\VoucherController::class, 'free'])->name('vouchers.free');
     Route::get('/vouchers', [\App\Http\Controllers\VoucherController::class, 'index'])->name('vouchers.index');
     Route::get('/vouchers/online', [\App\Http\Controllers\VoucherController::class, 'online'])->name('vouchers.online');
     Route::get('/vouchers/offline', [\App\Http\Controllers\VoucherController::class, 'offline'])->name('vouchers.offline');
