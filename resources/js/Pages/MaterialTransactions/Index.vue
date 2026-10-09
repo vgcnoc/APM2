@@ -209,7 +209,7 @@
                                             </span>
                                             <span class="text-[10px] text-gray-500 mt-0.5">
                                                 Stok Awal: <span class="font-semibold text-gray-700">
-                                                    {{ detail.stock_before !== null ? formatNumber(detail.stock_before) + ' ' + (detail.material ? (detail.material.category === 'Kabel' ? 'meter' : (detail.material.category === 'Isolasi' ? 'cm' : (detail.material.category === 'Paku Klem' ? 'pcs' : (detail.material.unit || '')))) : '') : '-' }}
+                                                    {{ isOrder(item) ? formatNumber(detail.quantity) + ' ' + (detail.unit || (detail.material ? detail.material.unit : '')) : (detail.stock_before !== null ? formatNumber(detail.stock_before) + ' ' + (detail.material ? (detail.material.category === 'Kabel' ? 'meter' : (detail.material.category === 'Isolasi' ? 'cm' : (detail.material.category === 'Paku Klem' ? 'pcs' : (detail.material.unit || '')))) : '') : '-') }}
                                                 </span>
                                             </span>
                                         </div>
@@ -218,7 +218,7 @@
                                 <td class="py-4 px-6 align-top text-center bg-emerald-50/30 border-l border-gray-100">
                                     <div class="space-y-3">
                                         <div v-for="detail in item.items" :key="'in-'+detail.id" class="flex flex-col h-10 justify-center">
-                                            <template v-if="item.type === 'in'">
+                                            <template v-if="isReturn(item)">
                                                 <span class="text-xs font-black text-emerald-600">+{{ detail.quantity }}</span>
                                                 <span class="text-[10px] text-gray-400 font-medium">{{ detail.unit || (detail.material ? detail.material.unit : 'pcs') }}</span>
                                             </template>
@@ -229,7 +229,7 @@
                                 <td class="py-4 px-6 align-top text-center bg-orange-50/30 border-r border-gray-100">
                                     <div class="space-y-3">
                                         <div v-for="detail in item.items" :key="'out-'+detail.id" class="flex flex-col h-10 justify-center">
-                                            <template v-if="item.type === 'out'">
+                                            <template v-if="isInstall(item)">
                                                 <span class="text-xs font-black text-orange-600">-{{ detail.quantity }}</span>
                                                 <span class="text-[10px] text-gray-400 font-medium">{{ detail.unit || (detail.material ? detail.material.unit : 'pcs') }}</span>
                                             </template>
@@ -240,7 +240,7 @@
                                 <td class="py-4 px-6 align-top text-center">
                                     <div class="space-y-3">
                                         <div v-for="detail in item.items" :key="'sisa-'+detail.id" class="flex flex-col h-10 justify-center">
-                                            <template v-if="item.type === 'out'">
+                                            <template v-if="isInstall(item) || isReturn(item)">
                                                 <span class="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 inline-block w-fit mx-auto">
                                                     {{ detail.stock_after !== null ? formatNumber(detail.stock_after) + ' ' + (detail.material ? (detail.material.category === 'Kabel' ? 'meter' : (detail.material.category === 'Isolasi' ? 'cm' : (detail.material.category === 'Paku Klem' ? 'pcs' : (detail.material.unit || '')))) : '') : '-' }}
                                                 </span>
@@ -415,6 +415,17 @@ const toggleAll = (e) => {
     } else {
         selectedItems.value = [];
     }
+};
+
+// Helpers for transaction types
+const isReturn = (item) => {
+    return item.type === 'in' && item.purpose && item.purpose.toLowerCase().includes('pengembalian');
+};
+const isOrder = (item) => {
+    return item.type === 'in' && !isReturn(item);
+};
+const isInstall = (item) => {
+    return item.type === 'out';
 };
 
 const deleteItem = (item) => {
