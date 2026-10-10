@@ -72,14 +72,14 @@
                                         <div v-if="material.stocks && material.stocks.length > 0" class="flex flex-wrap gap-2">
                                             <div v-for="stock in material.stocks" :key="stock.id" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-indigo-50 border border-indigo-100 text-indigo-700">
                                                 <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                                <span>{{ stock.area?.name || 'Area ?' }}: <strong class="text-indigo-900">{{ formatNum(stock.stock) }}</strong> {{ material.unit }}</span>
+                                                <span>{{ stock.area?.name || 'Area ?' }}: <strong class="text-indigo-900">{{ formatNum(stock.stock) }}</strong> {{ material.unit }} <span class="font-bold text-[9px] text-indigo-500">{{ formatSecondaryUnit(material, stock.stock) }}</span></span>
                                             </div>
                                         </div>
                                         <span v-else class="text-xs text-gray-400 italic">Belum ada distribusi area</span>
                                     </td>
                                     <td class="px-6 py-4 text-right">
                                         <span class="text-sm font-black text-slate-800">{{ formatNum(material.stocks?.reduce((a, b) => a + Number(b.stock), 0) || 0) }}</span>
-                                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">{{ material.unit }}</span>
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">{{ material.unit }} <span class="text-slate-400 normal-case">{{ formatSecondaryUnit(material, material.stocks?.reduce((a, b) => a + Number(b.stock), 0)) }}</span></span>
                                     </td>
                                 </tr>
                                 <tr v-if="!materials.data || materials.data.length === 0">
@@ -127,6 +127,8 @@
     </AppLayout>
 </template>
 
+
+
 <script setup>
 import { ref } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
@@ -150,5 +152,33 @@ const debouncedSearch = debounce(() => {
 
 const formatNum = (n) => {
     return new Intl.NumberFormat('id-ID').format(Number(n) || 0);
+};
+
+const formatSecondaryUnit = (material, stockQty) => {
+    stockQty = Number(stockQty) || 0;
+    if (stockQty <= 0) return '';
+    
+    if ((material.category || '').toLowerCase().includes('isolasi') || (material.name || '').toLowerCase().includes('isolasi')) {
+        const ppp = material.pcs_per_pack > 0 ? Number(material.pcs_per_pack) : 1;
+        const cpp = material.cm_per_pcs > 0 ? Number(material.cm_per_pcs) : 50;
+        const cmPerPack = ppp * cpp;
+        if (cmPerPack > 0 && stockQty >= cmPerPack) {
+            const packs = stockQty / cmPerPack;
+            return ` (~${formatNum(parseFloat(packs.toFixed(2)))} Pack)`;
+        }
+    } else if (Number(material.meter_per_roll) > 0 && material.unit === 'meter') {
+        const mpr = Number(material.meter_per_roll);
+        if (stockQty >= mpr) {
+            const rolls = stockQty / mpr;
+            return ` (~${formatNum(parseFloat(rolls.toFixed(2)))} Roll)`;
+        }
+    } else if (Number(material.pcs_per_pack) > 0 && material.unit === 'pcs') {
+        const ppp = Number(material.pcs_per_pack);
+        if (stockQty >= ppp) {
+            const packs = stockQty / ppp;
+            return ` (~${formatNum(parseFloat(packs.toFixed(2)))} Pack)`;
+        }
+    }
+    return '';
 };
 </script>
