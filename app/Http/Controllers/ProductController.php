@@ -96,10 +96,18 @@ class ProductController extends Controller
 
     public function destroy($id)
     {
-        $product = Material::findOrFail($id);
-        $product->delete();
+        try {
+            $product = Material::findOrFail($id);
+            $product->delete();
 
-        return redirect()->back()->with('success', 'Produk berhasil dihapus.');
+            return redirect()->back()->with('success', 'Produk berhasil dihapus.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Error code 23000 usually means foreign key constraint violation
+            if ($e->getCode() == '23000') {
+                return redirect()->back()->with('error', 'Produk tidak dapat dihapus karena sudah digunakan dalam transaksi atau riwayat stok. Anda dapat menonaktifkan produk ini alih-alih menghapusnya.');
+            }
+            return redirect()->back()->with('error', 'Gagal menghapus produk: ' . $e->getMessage());
+        }
     }
 
     public function show($id)
