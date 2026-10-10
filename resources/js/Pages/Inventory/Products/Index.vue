@@ -70,8 +70,8 @@
                                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center whitespace-nowrap">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                <tr v-for="product in products.data" :key="product.id" class="hover:bg-slate-50/50 transition-colors group">
+                            <tbody class="divide-y divide-gray-200">
+                                <tr v-for="product in products.data" :key="product.id" class="border-b border-gray-200 last:border-0 hover:bg-slate-50/50 transition-colors group">
                                     <td class="px-6 py-4">
                                         <div class="flex flex-col">
                                             <span class="text-sm font-bold text-gray-900 group-hover:text-emerald-600 transition-colors">{{ product.name }}</span>
