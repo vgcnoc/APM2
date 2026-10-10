@@ -224,6 +224,44 @@
                                         </div>
                                     </div>
 
+                                    <!-- Kalkulator Isolasi (Pack → CM) -->
+                                    <div v-else-if="isIsolasi" class="bg-amber-50/50 rounded-2xl border border-amber-200 overflow-hidden shadow-sm">
+                                        <div class="bg-amber-100/50 px-5 py-3 border-b border-amber-200 flex items-center justify-between gap-2">
+                                            <div class="flex items-center gap-2">
+                                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                                <h4 class="text-sm font-bold text-amber-800">Kalkulator Isolasi (Pack → CM)</h4>
+                                            </div>
+                                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white text-amber-700 border border-amber-200">Satuan stok: CM</span>
+                                        </div>
+                                        <div class="p-5 space-y-4">
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                                <div>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Isi per Pack</label>
+                                                    <div class="relative">
+                                                        <input id="isolasi-pcs-per-pack" type="number" step="0.01" min="0" v-model="form.pcs_per_pack" class="w-full pl-4 pr-16 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white" placeholder="Cth: 10">
+                                                        <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-xs font-bold text-gray-400 pointer-events-none">gulung</span>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Panjang per Gulung</label>
+                                                    <div class="relative">
+                                                        <input id="isolasi-cm-per-pcs" type="number" step="0.01" min="0" v-model="form.cm_per_pcs" class="w-full pl-4 pr-12 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white" placeholder="Cth: 1000">
+                                                        <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-xs font-bold text-gray-400 pointer-events-none">cm</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center justify-between rounded-xl bg-white border border-amber-200 px-4 py-2.5">
+                                                <span class="text-sm text-gray-600">1 Pack =</span>
+                                                <span class="text-base font-black text-amber-700">{{ formatNum(cmPerPack) }} cm</span>
+                                            </div>
+                                            <div v-if="!form.id">
+                                                <label class="block text-sm font-bold text-gray-700 mb-1">Jumlah Pack (Stok Awal)</label>
+                                                <input id="isolasi-initial-packs" type="number" step="0.01" min="0" v-model="initialPacks" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white" placeholder="0">
+                                                <p class="text-xs text-amber-700 mt-1 font-medium">Otomatis terkonversi: {{ formatNum((Number(initialPacks) || 0) * cmPerPack) }} cm</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- Konfigurasi Satuan Generik (Untuk kategori lain) -->
                                     <div v-else>
                                         <div class="flex gap-4 mb-4">
@@ -273,7 +311,7 @@
                                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Manajemen Harga & Status</h4>
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1">{{ ['Kabel', 'Patchcord'].includes(form.category) ? 'Harga Modal (per roll)' : 'Harga Modal / Beli' }}</label>
+                                            <label class="block text-sm font-bold text-gray-700 mb-1">{{ ['Kabel', 'Patchcord'].includes(form.category) ? 'Harga Modal (per roll)' : (isIsolasi ? 'Harga Modal (per cm)' : 'Harga Modal / Beli') }}</label>
                                             <div class="relative">
                                                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                                     <span class="text-gray-500 sm:text-sm">Rp</span>
@@ -282,7 +320,7 @@
                                             </div>
                                         </div>
                                         <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1">{{ ['Kabel', 'Patchcord'].includes(form.category) ? 'Harga Jual (per roll)' : 'Harga Jual' }}</label>
+                                            <label class="block text-sm font-bold text-gray-700 mb-1">{{ ['Kabel', 'Patchcord'].includes(form.category) ? 'Harga Jual (per roll)' : (isIsolasi ? 'Harga Jual (per cm)' : 'Harga Jual') }}</label>
                                             <div class="relative">
                                                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                                     <span class="text-gray-500 sm:text-sm">Rp</span>
@@ -395,12 +433,23 @@ const search = ref(props.filters.search || '');
 const category = ref(props.filters.category || 'all');
 const isNewCategory = ref(false);
 const initialRolls = ref(0);
+const initialPacks = ref(0);
+
+const isIsolasi = computed(() => (form.category || '').toLowerCase().includes('isolasi'));
+
+const cmPerPack = computed(() => {
+    const ppp = Number(form.pcs_per_pack) > 0 ? Number(form.pcs_per_pack) : 1;
+    const cpp = Number(form.cm_per_pcs) > 0 ? Number(form.cm_per_pcs) : 0;
+    return ppp * cpp;
+});
+
+const formatNum = (n) => new Intl.NumberFormat('id-ID').format(n || 0);
 
 const isPackCategory = computed(() => {
     if (!form.category) return false;
     if (isNewCategory.value) return true;
     const cat = form.category.toLowerCase();
-    return ['aksesoris', 'klem', 'konektor', 'splitter', 'isolasi', 'fast', 'adapter'].some(k => cat.includes(k));
+    return ['aksesoris', 'klem', 'konektor', 'splitter', 'fast', 'adapter'].some(k => cat.includes(k));
 });
 
 const checkNewCategory = (e) => {
@@ -450,6 +499,11 @@ const form = useForm({
 
 const formatSmartUnit = (product) => {
     let html = [];
+    if ((product.category || '').toLowerCase().includes('isolasi')) {
+        const ppp = product.pcs_per_pack > 0 ? Number(product.pcs_per_pack) : 1;
+        const cpp = product.cm_per_pcs > 0 ? Number(product.cm_per_pcs) : 50;
+        return `1 Pack = <b>${formatNum(ppp * cpp)} CM</b>`;
+    }
     if (product.meter_per_roll > 0) html.push(`1 Roll = <b>${product.meter_per_roll} M</b>`);
     if (product.pcs_per_pack > 0) html.push(`1 Pack = <b>${product.pcs_per_pack} Pcs</b>`);
     if (product.cm_per_pcs > 0) html.push(`1 Pcs = <b>${product.cm_per_pcs} CM</b>`);
@@ -479,6 +533,8 @@ const openModal = (product = null) => {
         form.reset();
         form.id = null;
         isNewCategory.value = false;
+        initialRolls.value = 0;
+        initialPacks.value = 0;
     }
     isModalOpen.value = true;
 };
@@ -494,6 +550,14 @@ const submitForm = () => {
         form.unit = 'meter';
         if (initialRolls.value > 0 && form.meter_per_roll > 0) {
             form.stock = parseFloat(initialRolls.value) * parseFloat(form.meter_per_roll);
+        }
+    }
+
+    // Isolasi: satuan stok selalu CM, stok awal dihitung dari jumlah pack
+    if (isIsolasi.value) {
+        form.unit = 'cm';
+        if (!form.id && Number(initialPacks.value) > 0 && cmPerPack.value > 0) {
+            form.stock = Number(initialPacks.value) * cmPerPack.value;
         }
     }
 
