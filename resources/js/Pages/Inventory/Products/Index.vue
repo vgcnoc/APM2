@@ -505,14 +505,14 @@ const form = useForm({
 
 const formatSmartUnit = (product) => {
     let html = [];
-    if ((product.category || '').toLowerCase().includes('isolasi')) {
+    if ((product.category || '').toLowerCase().includes('isolasi') || (product.name || '').toLowerCase().includes('isolasi')) {
         const ppp = product.pcs_per_pack > 0 ? Number(product.pcs_per_pack) : 1;
         const cpp = product.cm_per_pcs > 0 ? Number(product.cm_per_pcs) : 50;
         return `1 Pack = <b>${formatNum(ppp * cpp)} CM</b>`;
     }
-    if (product.meter_per_roll > 0) html.push(`1 Roll = <b>${product.meter_per_roll} M</b>`);
-    if (product.pcs_per_pack > 0) html.push(`1 Pack = <b>${product.pcs_per_pack} Pcs</b>`);
-    if (product.cm_per_pcs > 0) html.push(`1 Pcs = <b>${product.cm_per_pcs} CM</b>`);
+    if (product.meter_per_roll > 0) html.push(`1 Roll = <b>${formatNum(product.meter_per_roll)} M</b>`);
+    if (product.pcs_per_pack > 0) html.push(`1 Pack = <b>${formatNum(product.pcs_per_pack)} Pcs</b>`);
+    if (product.cm_per_pcs > 0) html.push(`1 Pcs = <b>${formatNum(product.cm_per_pcs)} CM</b>`);
     
     if (html.length === 0) return `1:1 (${product.unit})`;
     return html.join(' <span class="mx-1 text-slate-300">|</span> ');
