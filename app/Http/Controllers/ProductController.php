@@ -24,7 +24,9 @@ class ProductController extends Controller
 
         $products = $query->latest()->paginate(10)->withQueryString();
 
-        $categories = Material::select('category')->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category');
+        $dbCategories = Material::select('category')->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category')->toArray();
+        $defaultCategories = ['Kabel', 'ONT', 'Splitter', 'Aksesoris', 'Peralatan'];
+        $categories = array_values(array_unique(array_merge($defaultCategories, $dbCategories)));
 
         return Inertia::render('Inventory/Products/Index', [
             'products' => $products,
