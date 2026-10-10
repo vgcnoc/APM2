@@ -1,5 +1,5 @@
 <template>
-    <AppLayout title="Stok Masuk & Keluar">
+    <AppLayout title="Stock Opname Per Area">
         <div class="min-h-screen bg-slate-50/50 pb-20">
             <!-- Header Section -->
             <div class="relative bg-white/70 backdrop-blur-xl border-b border-gray-100 shadow-sm z-20">
@@ -15,9 +15,9 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
                             </div>
-                            <h1 class="text-3xl font-black text-gray-900 tracking-tight">Mutasi Stok (Masuk & Keluar)</h1>
+                            <h1 class="text-3xl font-black text-gray-900 tracking-tight">Stock Opname Per Area</h1>
                             <p class="mt-2 text-sm text-gray-500 max-w-xl">
-                                Catat pengeluaran barang sebagai Bekal Teknisi atau penerimaan barang Retur (sisa) dari Teknisi.
+                                Catat pengeluaran dan penerimaan barang untuk stock opname di masing-masing area.
                             </p>
                         </div>
 
@@ -64,6 +64,7 @@
                                     <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Jenis & Tujuan</th>
                                     <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Penerima / Pengirim</th>
                                     <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Detail Barang</th>
+                                    <th scope="col" class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Total Stock</th>
                                     <th scope="col" class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
@@ -104,6 +105,11 @@
                                             </div>
                                         </div>
                                     </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="text-sm font-black text-gray-900">
+                                            {{ trx.items.reduce((sum, item) => sum + Number(item.quantity), 0) }}
+                                        </div>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <button @click="confirmDelete(trx.id)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Batalkan Mutasi">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -111,7 +117,7 @@
                                     </td>
                                 </tr>
                                 <tr v-if="transactions.data.length === 0">
-                                    <td colspan="5" class="px-6 py-12 text-center text-gray-500">Belum ada riwayat Mutasi (Masuk/Keluar).</td>
+                                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">Belum ada riwayat Mutasi / Stock Opname.</td>
                                 </tr>
                             </tbody>
                         </table>
