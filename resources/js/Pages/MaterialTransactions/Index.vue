@@ -420,13 +420,13 @@ const toggleAll = (e) => {
 
 // Helpers for transaction types
 const isReturn = (item) => {
-    return item.type === 'in' && item.purpose && item.purpose.toLowerCase().includes('pengembalian');
+    return item.purpose && item.purpose.toLowerCase().includes('pengembalian');
 };
 const isOrder = (item) => {
     return item.type === 'in' && !isReturn(item);
 };
 const isInstall = (item) => {
-    return item.type === 'out';
+    return item.type === 'out' && !isReturn(item);
 };
 
 const getOrderDetailedUnit = (detail) => {
