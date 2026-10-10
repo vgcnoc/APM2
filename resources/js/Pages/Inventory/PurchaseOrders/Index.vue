@@ -292,7 +292,7 @@ const unitOptions = (mat) => {
     if (!mat) return [{ value: 'base', label: 'pcs' }];
     const base = { value: 'base', label: mat.unit || 'pcs' };
     if (mat.category === 'Isolasi' || mat.name.toLowerCase().includes('isolasi')) {
-        return [{ value: 'pack', label: 'Pack/Bungkus' }, { value: 'base', label: mat.unit === 'cm' ? 'cm' : 'cm' }];
+        return [{ value: 'pcs', label: 'Pcs' }, { value: 'base', label: mat.unit === 'cm' ? 'cm' : 'cm' }];
     }
     if (mat.category === 'Paku Klem' || mat.name.toLowerCase().includes('klem')) {
         return [{ value: 'pack', label: 'Bungkus' }, { value: 'base', label: mat.unit || 'pcs' }];
@@ -307,10 +307,9 @@ const convertedQty = (item) => {
     const qty = Number(item.quantity) || 0;
     if (!mat) return qty;
     if (item.purchase_unit === 'roll' && Number(mat.meter_per_roll) > 0) return qty * Number(mat.meter_per_roll);
-    if (mat.category === 'Isolasi' && item.purchase_unit === 'pack') {
-        const ppp = Number(mat.pcs_per_pack) > 0 ? Number(mat.pcs_per_pack) : 1;
-        const cpp = Number(mat.cm_per_pcs) > 0 ? Number(mat.cm_per_pcs) : 50;
-        return qty * ppp * cpp;
+    if (mat.category === 'Isolasi' && item.purchase_unit === 'pcs') {
+        const cpp = Number(mat.cm_per_pcs) > 0 ? Number(mat.cm_per_pcs) : 0;
+        return qty * cpp;
     }
     if (item.purchase_unit === 'pack' && Number(mat.pcs_per_pack) > 0) return qty * Number(mat.pcs_per_pack);
     return qty;

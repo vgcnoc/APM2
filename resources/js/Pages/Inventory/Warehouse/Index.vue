@@ -159,12 +159,10 @@ const formatSecondaryUnit = (material, stockQty) => {
     if (stockQty <= 0) return '';
     
     if ((material.category || '').toLowerCase().includes('isolasi') || (material.name || '').toLowerCase().includes('isolasi')) {
-        const ppp = material.pcs_per_pack > 0 ? Number(material.pcs_per_pack) : 1;
-        const cpp = material.cm_per_pcs > 0 ? Number(material.cm_per_pcs) : 50;
-        const cmPerPack = ppp * cpp;
-        if (cmPerPack > 0 && stockQty >= cmPerPack) {
-            const packs = stockQty / cmPerPack;
-            return ` (~${formatNum(parseFloat(packs.toFixed(2)))} Pack)`;
+        const cpp = material.cm_per_pcs > 0 ? Number(material.cm_per_pcs) : 0;
+        if (cpp > 0 && stockQty >= cpp) {
+            const pcs = stockQty / cpp;
+            return ` (~${formatNum(parseFloat(pcs.toFixed(2)))} Pcs)`;
         }
     } else if (Number(material.meter_per_roll) > 0 && material.unit === 'meter') {
         const mpr = Number(material.meter_per_roll);

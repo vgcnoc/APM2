@@ -186,7 +186,7 @@
                                                 <div v-if="!isNewCategory">
                                                     <select v-model="form.category" @change="checkNewCategory" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" required>
                                                         <option value="" disabled>Pilih Kategori...</option>
-                                                        <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+                                                        <option v-for="cat in categoriesWithIsolasi" :key="cat" :value="cat">{{ cat }}</option>
                                                         <option value="new_category_option" class="font-bold text-emerald-600">+ Tambah Kategori Baru...</option>
                                                     </select>
                                                 </div>
@@ -230,40 +230,41 @@
                                         </div>
                                     </div>
 
-                                    <!-- Kalkulator Isolasi (Pack → CM) -->
+                                    <!-- Kalkulator Isolasi (Pcs ↔ CM) -->
                                     <div v-else-if="isIsolasi" class="bg-amber-50/50 rounded-2xl border border-amber-200 overflow-hidden shadow-sm">
                                         <div class="bg-amber-100/50 px-5 py-3 border-b border-amber-200 flex items-center justify-between gap-2">
                                             <div class="flex items-center gap-2">
                                                 <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                                <h4 class="text-sm font-bold text-amber-800">Kalkulator Isolasi (Pack → CM)</h4>
+                                                <h4 class="text-sm font-bold text-amber-800">Kalkulator Isolasi (Pcs ↔ Cm)</h4>
                                             </div>
                                             <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white text-amber-700 border border-amber-200">Satuan stok: CM</span>
                                         </div>
                                         <div class="p-5 space-y-4">
                                             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                 <div>
-                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Isi per Pack</label>
-                                                    <div class="relative">
-                                                        <input id="isolasi-pcs-per-pack" type="number" step="0.01" min="0" v-model="form.pcs_per_pack" class="w-full pl-4 pr-16 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white" placeholder="Cth: 10">
-                                                        <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-xs font-bold text-gray-400 pointer-events-none">gulung</span>
-                                                    </div>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Cm per Pcs</label>
+                                                    <input type="number" step="0.01" min="0" v-model="form.cm_per_pcs" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white" placeholder="0">
+                                                </div>
+                                                <div v-if="!form.id">
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Jumlah Pcs</label>
+                                                    <input type="number" step="0.01" min="0" v-model="initialPacks" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white" placeholder="0">
+                                                </div>
+                                                <div v-else>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Jumlah Pcs</label>
+                                                    <input type="number" step="0.01" min="0" class="w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-100 text-gray-500 cursor-not-allowed" placeholder="-" disabled>
                                                 </div>
                                                 <div>
-                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Panjang per Gulung</label>
-                                                    <div class="relative">
-                                                        <input id="isolasi-cm-per-pcs" type="number" step="0.01" min="0" v-model="form.cm_per_pcs" class="w-full pl-4 pr-12 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white" placeholder="Cth: 1000">
-                                                        <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-xs font-bold text-gray-400 pointer-events-none">cm</span>
-                                                    </div>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Harga Modal (per pcs)</label>
+                                                    <input type="number" step="0.01" min="0" v-model="form.price_per_unit" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white" placeholder="0">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Harga Jual (per pcs)</label>
+                                                    <input type="number" step="0.01" min="0" v-model="form.selling_price" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white" placeholder="0">
                                                 </div>
                                             </div>
-                                            <div class="flex items-center justify-between rounded-xl bg-white border border-amber-200 px-4 py-2.5">
-                                                <span class="text-sm text-gray-600">1 Pack =</span>
-                                                <span class="text-base font-black text-amber-700">{{ formatNum(cmPerPack) }} cm</span>
-                                            </div>
-                                            <div v-if="!form.id">
-                                                <label class="block text-sm font-bold text-gray-700 mb-1">Jumlah Pack (Stok Awal)</label>
-                                                <input id="isolasi-initial-packs" type="number" step="0.01" min="0" v-model="initialPacks" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white" placeholder="0">
-                                                <p class="text-xs text-amber-700 mt-1 font-medium">Otomatis terkonversi: {{ formatNum((Number(initialPacks) || 0) * cmPerPack) }} cm</p>
+                                            <div v-if="!form.id" class="flex items-center justify-between rounded-xl bg-white border border-amber-200 px-4 py-2.5">
+                                                <span class="text-sm text-gray-600">Total Stok Awal:</span>
+                                                <span class="text-base font-black text-amber-700">{{ formatNum((Number(initialPacks) || 0) * (Number(form.cm_per_pcs) || 0)) }} CM</span>
                                             </div>
                                         </div>
                                     </div>
@@ -316,8 +317,8 @@
                                 <div class="col-span-1 md:col-span-2 mt-4">
                                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Manajemen Harga & Status</h4>
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1">{{ ['Kabel', 'Patchcord'].includes(form.category) ? 'Harga Modal (per roll)' : (isIsolasi ? 'Harga Modal (per cm)' : 'Harga Modal / Beli') }}</label>
+                                        <div v-if="!isIsolasi">
+                                            <label class="block text-sm font-bold text-gray-700 mb-1">{{ ['Kabel', 'Patchcord'].includes(form.category) ? 'Harga Modal (per roll)' : 'Harga Modal / Beli' }}</label>
                                             <div class="relative">
                                                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                                     <span class="text-gray-500 sm:text-sm">Rp</span>
@@ -325,8 +326,8 @@
                                                 <input type="number" step="0.01" v-model="form.price_per_unit" class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all bg-white" placeholder="0">
                                             </div>
                                         </div>
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1">{{ ['Kabel', 'Patchcord'].includes(form.category) ? 'Harga Jual (per roll)' : (isIsolasi ? 'Harga Jual (per cm)' : 'Harga Jual') }}</label>
+                                        <div v-if="!isIsolasi">
+                                            <label class="block text-sm font-bold text-gray-700 mb-1">{{ ['Kabel', 'Patchcord'].includes(form.category) ? 'Harga Jual (per roll)' : 'Harga Jual' }}</label>
                                             <div class="relative">
                                                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                                     <span class="text-gray-500 sm:text-sm">Rp</span>
@@ -441,7 +442,15 @@ const isNewCategory = ref(false);
 const initialRolls = ref(0);
 const initialPacks = ref(0);
 
-const isIsolasi = computed(() => (form.category || '').toLowerCase().includes('isolasi') || (form.name || '').toLowerCase().includes('isolasi'));
+const categoriesWithIsolasi = computed(() => {
+    let cats = [...props.categories];
+    if (!cats.includes('Isolasi')) {
+        cats.push('Isolasi');
+    }
+    return cats.sort();
+});
+
+const isIsolasi = computed(() => (form.category || '').toLowerCase() === 'isolasi' || (form.category || '').toLowerCase().includes('isolasi') || (form.name || '').toLowerCase().includes('isolasi'));
 
 const cmPerPack = computed(() => {
     const ppp = Number(form.pcs_per_pack) > 0 ? Number(form.pcs_per_pack) : 1;
@@ -506,9 +515,8 @@ const form = useForm({
 const formatSmartUnit = (product) => {
     let html = [];
     if ((product.category || '').toLowerCase().includes('isolasi') || (product.name || '').toLowerCase().includes('isolasi')) {
-        const ppp = product.pcs_per_pack > 0 ? Number(product.pcs_per_pack) : 1;
-        const cpp = product.cm_per_pcs > 0 ? Number(product.cm_per_pcs) : 50;
-        return `1 Pack = <b>${formatNum(ppp * cpp)} CM</b>`;
+        const cpp = product.cm_per_pcs > 0 ? Number(product.cm_per_pcs) : 0;
+        return `1 Pcs = <b>${formatNum(cpp)} CM</b>`;
     }
     if (product.meter_per_roll > 0) html.push(`1 Roll = <b>${formatNum(product.meter_per_roll)} M</b>`);
     if (product.pcs_per_pack > 0) html.push(`1 Pack = <b>${formatNum(product.pcs_per_pack)} Pcs</b>`);
@@ -528,8 +536,20 @@ const openModal = (product = null) => {
         form.meter_per_roll = product.meter_per_roll ? Number(product.meter_per_roll) : null;
         form.pcs_per_pack = product.pcs_per_pack ? Number(product.pcs_per_pack) : null;
         form.cm_per_pcs = product.cm_per_pcs ? Number(product.cm_per_pcs) : null;
-        form.price_per_unit = product.price_per_unit ? Number(product.price_per_unit) : 0;
-        form.selling_price = product.selling_price ? Number(product.selling_price) : 0;
+        
+        let price = product.price_per_unit ? Number(product.price_per_unit) : 0;
+        let selling = product.selling_price ? Number(product.selling_price) : 0;
+        
+        if ((product.category || '').toLowerCase() === 'isolasi' || (product.category || '').toLowerCase().includes('isolasi') || (product.name || '').toLowerCase().includes('isolasi')) {
+            if (form.cm_per_pcs > 0) {
+                price = price * form.cm_per_pcs;
+                selling = selling * form.cm_per_pcs;
+            }
+        }
+        
+        form.price_per_unit = price;
+        form.selling_price = selling;
+        
         form.is_active = product.is_active ?? true;
         form.requires_sn = product.requires_sn || false;
         form.requires_mac = product.requires_mac || false;
@@ -559,20 +579,35 @@ const submitForm = () => {
         }
     }
 
-    // Isolasi: satuan stok selalu CM, stok awal dihitung dari jumlah pack
+    // Isolasi: satuan stok selalu CM, stok awal dihitung dari jumlah Pcs
     if (isIsolasi.value) {
         form.unit = 'cm';
-        if (!form.id && Number(initialPacks.value) > 0 && cmPerPack.value > 0) {
-            form.stock = Number(initialPacks.value) * cmPerPack.value;
+        form.pcs_per_pack = 1; // Pcs is the highest unit for Isolasi now
+        if (!form.id && Number(initialPacks.value) > 0 && Number(form.cm_per_pcs) > 0) {
+            form.stock = Number(initialPacks.value) * Number(form.cm_per_pcs);
         }
     }
 
     if (form.id) {
-        form.put(`/produk/${form.id}`, {
+        form.transform((data) => {
+            let transformed = { ...data };
+            if (isIsolasi.value && Number(transformed.cm_per_pcs) > 0) {
+                transformed.price_per_unit = Number(transformed.price_per_unit) / Number(transformed.cm_per_pcs);
+                transformed.selling_price = Number(transformed.selling_price) / Number(transformed.cm_per_pcs);
+            }
+            return transformed;
+        }).put(`/produk/${form.id}`, {
             onSuccess: () => closeModal(),
         });
     } else {
-        form.post('/produk', {
+        form.transform((data) => {
+            let transformed = { ...data };
+            if (isIsolasi.value && Number(transformed.cm_per_pcs) > 0) {
+                transformed.price_per_unit = Number(transformed.price_per_unit) / Number(transformed.cm_per_pcs);
+                transformed.selling_price = Number(transformed.selling_price) / Number(transformed.cm_per_pcs);
+            }
+            return transformed;
+        }).post('/produk', {
             onSuccess: () => closeModal(),
         });
     }
