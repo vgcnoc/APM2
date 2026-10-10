@@ -173,12 +173,12 @@
                                                         </div>
                                                         <ul class="max-h-60 overflow-y-auto py-1">
                                                             <li v-for="mat in filteredMaterials" :key="mat.id">
-                                                                <button type="button" @click="Number(mat.stock) > 0 ? selectMaterial(mat) : null" :disabled="Number(mat.stock) <= 0" class="w-full px-3 py-2 flex items-center justify-between gap-3 text-left transition-colors" :class="[inCart(mat.id) ? 'opacity-50' : '', Number(mat.stock) <= 0 ? 'opacity-50 cursor-not-allowed bg-slate-50 hover:bg-slate-50' : 'hover:bg-indigo-50']">
+                                                                <button type="button" @click="selectMaterial(mat)" class="w-full px-3 py-2 flex items-center justify-between gap-3 text-left transition-colors hover:bg-indigo-50" :class="[inCart(mat.id) ? 'opacity-50' : '']">
                                                                     <div class="min-w-0">
                                                                         <div class="text-sm font-medium text-gray-900 truncate">{{ mat.name }}</div>
-                                                                        <div class="text-[11px] text-slate-400">{{ mat.category || 'Umum' }} <span v-if="Number(mat.stock) <= 0" class="text-rose-500 font-semibold ml-1">(Stok Habis)</span></div>
+                                                                        <div class="text-[11px] text-slate-400">{{ mat.category || 'Umum' }}</div>
                                                                     </div>
-                                                                    <span class="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full" :class="Number(mat.stock) > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'">
+                                                                    <span class="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
                                                                         {{ formatNumber(mat.stock) }} {{ mat.unit }}
                                                                     </span>
                                                                 </button>
@@ -285,9 +285,13 @@ const materialById = (id) => props.materials.find(m => m.id === id);
 const inCart = (id) => form.items.some(i => i.material_id === id);
 
 const filteredMaterials = computed(() => {
+    // Only show materials that have stock > 0
+    const availableMaterials = props.materials.filter(m => Number(m.stock) > 0);
+    
     const q = search.value.trim().toLowerCase();
-    if (!q) return props.materials;
-    return props.materials.filter(m =>
+    if (!q) return availableMaterials;
+    
+    return availableMaterials.filter(m =>
         (m.name || '').toLowerCase().includes(q) || (m.category || '').toLowerCase().includes(q)
     );
 });
