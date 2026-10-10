@@ -398,7 +398,7 @@
                                                 <option value="pcs">Pcs</option><option value="bungkus">Bungkus</option>
                                             </select>
                                             <select v-else-if="item.is_isolasi" v-model="item.unit_mode" class="w-24 border-gray-200 rounded-lg text-sm py-1.5 focus:ring-blue-500">
-                                                <option value="cm">Cm</option><option value="pack">Pack</option>
+                                                <option value="cm">Cm</option><option value="pack">Pack/Bungkus</option>
                                             </select>
                                             <input v-else type="text" v-model="item.unit_manual" readonly class="w-24 border-gray-200 rounded-lg text-sm py-1.5 bg-gray-100 text-gray-500">
                                             

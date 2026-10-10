@@ -292,7 +292,7 @@ const unitOptions = (mat) => {
     if (!mat) return [{ value: 'base', label: 'pcs' }];
     const base = { value: 'base', label: mat.unit || 'pcs' };
     if (mat.category === 'Isolasi') {
-        return [{ value: 'pack', label: 'Pack' }, { value: 'base', label: mat.unit || 'cm' }];
+        return [{ value: 'pack', label: 'Pack/Bungkus' }, { value: 'base', label: mat.unit || 'cm' }];
     }
     if (Number(mat.meter_per_roll) > 0) return [{ value: 'roll', label: 'Roll' }, base];
     if (Number(mat.pcs_per_pack) > 0) return [{ value: 'pack', label: 'Pack' }, base];
