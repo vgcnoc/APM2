@@ -256,7 +256,7 @@
                                 <td class="py-4 px-6 text-right align-top">
                                     <div class="flex flex-col items-end gap-2">
                                         <div class="flex items-center justify-end gap-2">
-                                            <template v-if="item.type === 'in' && item.status === 'pending' && (hasPermission('menu_material_transactions') || $page.props.auth.user.roles.includes('admin') || $page.props.auth.user.roles.includes('super_admin'))">
+                                            <template v-if="item.status === 'pending' && (hasPermission('menu_material_transactions') || $page.props.auth.user.roles.includes('admin') || $page.props.auth.user.roles.includes('super_admin'))">
                                                 <button @click="approveItem(item)" class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg hover:bg-emerald-100 transition-colors">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />

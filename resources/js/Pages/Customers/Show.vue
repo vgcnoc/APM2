@@ -462,10 +462,6 @@
                                             </span>
                                         </div>
                                         <div class="flex items-center gap-2">
-                                            <div v-if="item.isInstalled && item.type === 'Material'" class="relative w-24">
-                                                <div class="text-[9px] text-slate-400 absolute -top-4 left-0 font-bold uppercase tracking-wider">Dikembalikan</div>
-                                                <input type="number" v-model="item.returned_qty" min="0" class="w-full px-2 py-1.5 text-sm border-2 border-slate-200 rounded-lg text-center font-bold focus:ring-emerald-500 focus:border-emerald-500 transition-colors" placeholder="Qty">
-                                            </div>
                                             <button type="button" 
                                                 :disabled="!ontForm.start_time" 
                                                 @click="openInstallModal(item)"
