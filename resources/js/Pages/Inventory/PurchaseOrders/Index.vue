@@ -173,10 +173,13 @@
                                                         </div>
                                                         <ul class="max-h-60 overflow-y-auto py-1">
                                                             <li v-for="mat in filteredMaterials" :key="mat.id">
-                                                                <button type="button" @click="selectMaterial(mat)" class="w-full px-3 py-2 flex items-center justify-between gap-3 text-left transition-colors hover:bg-indigo-50" :class="[inCart(mat.id) ? 'opacity-50' : '']">
+                                                                <button type="button" @click="selectMaterial(mat)" class="w-full px-3 py-2 flex items-center justify-between gap-3 text-left transition-colors hover:bg-indigo-50" :class="[inCart(mat.id) ? 'bg-slate-50' : '']">
                                                                     <div class="min-w-0">
                                                                         <div class="text-sm font-medium text-gray-900 truncate">{{ mat.name }}</div>
-                                                                        <div class="text-[11px] text-slate-400">{{ mat.category || 'Umum' }}</div>
+                                                                        <div class="text-[11px] text-slate-400">
+                                                                            {{ mat.category || 'Umum' }}
+                                                                            <span v-if="inCart(mat.id)" class="text-indigo-500 font-semibold ml-1">✓ Di Keranjang</span>
+                                                                        </div>
                                                                     </div>
                                                                     <span class="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
                                                                         {{ formatNumber(mat.stock) }} {{ mat.unit }}
