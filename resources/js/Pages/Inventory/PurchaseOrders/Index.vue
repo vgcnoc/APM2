@@ -173,10 +173,10 @@
                                                         </div>
                                                         <ul class="max-h-60 overflow-y-auto py-1">
                                                             <li v-for="mat in filteredMaterials" :key="mat.id">
-                                                                <button type="button" @click="selectMaterial(mat)" class="w-full px-3 py-2 flex items-center justify-between gap-3 text-left hover:bg-indigo-50 transition-colors" :class="inCart(mat.id) ? 'opacity-50' : ''">
+                                                                <button type="button" @click="Number(mat.stock) > 0 ? selectMaterial(mat) : null" :disabled="Number(mat.stock) <= 0" class="w-full px-3 py-2 flex items-center justify-between gap-3 text-left transition-colors" :class="[inCart(mat.id) ? 'opacity-50' : '', Number(mat.stock) <= 0 ? 'opacity-50 cursor-not-allowed bg-slate-50 hover:bg-slate-50' : 'hover:bg-indigo-50']">
                                                                     <div class="min-w-0">
                                                                         <div class="text-sm font-medium text-gray-900 truncate">{{ mat.name }}</div>
-                                                                        <div class="text-[11px] text-slate-400">{{ mat.category || 'Umum' }}</div>
+                                                                        <div class="text-[11px] text-slate-400">{{ mat.category || 'Umum' }} <span v-if="Number(mat.stock) <= 0" class="text-rose-500 font-semibold ml-1">(Stok Habis)</span></div>
                                                                     </div>
                                                                     <span class="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full" :class="Number(mat.stock) > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'">
                                                                         {{ formatNumber(mat.stock) }} {{ mat.unit }}
@@ -195,28 +195,33 @@
 
                                         <!-- Cart items -->
                                         <TransitionGroup tag="ul" name="cart" class="mt-3 space-y-2">
-                                            <li v-for="(item, index) in form.items" :key="item.material_id" class="group flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-200 hover:shadow-sm transition-all">
-                                                <div class="w-9 h-9 shrink-0 rounded-lg bg-gradient-to-br from-indigo-50 to-blue-100 text-indigo-600 flex items-center justify-center text-xs font-black uppercase">
-                                                    {{ (materialById(item.material_id)?.name || '?').slice(0, 2) }}
-                                                </div>
-                                                <div class="min-w-0 flex-1">
-                                                    <div class="text-sm font-semibold text-gray-900 truncate">{{ materialById(item.material_id)?.name }}</div>
-                                                    <div class="text-[11px] text-slate-400 truncate">
-                                                        <template v-if="conversionText(item)">= <span class="font-semibold text-emerald-600">{{ conversionText(item) }}</span> masuk stok</template>
-                                                        <template v-else>{{ materialById(item.material_id)?.category || 'Umum' }}</template>
+                                            <li v-for="(item, index) in form.items" :key="item.material_id" class="group flex flex-col gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-200 hover:shadow-sm transition-all">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="w-9 h-9 shrink-0 rounded-lg bg-gradient-to-br from-indigo-50 to-blue-100 text-indigo-600 flex items-center justify-center text-xs font-black uppercase">
+                                                        {{ (materialById(item.material_id)?.name || '?').slice(0, 2) }}
                                                     </div>
+                                                    <div class="min-w-0 flex-1">
+                                                        <div class="text-sm font-semibold text-gray-900 truncate">{{ materialById(item.material_id)?.name }}</div>
+                                                        <div class="text-[11px] text-slate-400 truncate">
+                                                            <template v-if="conversionText(item)">= <span class="font-semibold text-emerald-600">{{ conversionText(item) }}</span> masuk stok</template>
+                                                            <template v-else>{{ materialById(item.material_id)?.category || 'Umum' }}</template>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-center rounded-lg border border-slate-200 overflow-hidden" :class="{'border-rose-300 ring-1 ring-rose-200': convertedQty(item) > Number(materialById(item.material_id)?.stock)}">
+                                                        <button type="button" @click="decQty(item)" class="px-2 py-1.5 text-slate-500 hover:bg-slate-100">−</button>
+                                                        <input :id="`order-qty-${index}`" v-model.number="item.quantity" type="number" min="0.01" step="any" required class="w-14 py-1.5 text-center text-sm border-0 focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" :class="{'text-rose-600 font-bold': convertedQty(item) > Number(materialById(item.material_id)?.stock)}">
+                                                        <button type="button" @click="item.quantity = (Number(item.quantity) || 0) + 1" class="px-2 py-1.5 text-slate-500 hover:bg-slate-100">+</button>
+                                                    </div>
+                                                    <select :id="`order-unit-${index}`" v-model="item.purchase_unit" class="w-24 py-1.5 pl-2 pr-7 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500">
+                                                        <option v-for="u in unitOptions(materialById(item.material_id))" :key="u.value" :value="u.value">{{ u.label }}</option>
+                                                    </select>
+                                                    <button type="button" @click="form.items.splice(index, 1)" class="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Hapus">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </button>
                                                 </div>
-                                                <div class="flex items-center rounded-lg border border-slate-200 overflow-hidden">
-                                                    <button type="button" @click="decQty(item)" class="px-2 py-1.5 text-slate-500 hover:bg-slate-100">−</button>
-                                                    <input :id="`order-qty-${index}`" v-model.number="item.quantity" type="number" min="0.01" step="any" required class="w-14 py-1.5 text-center text-sm border-0 focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
-                                                    <button type="button" @click="item.quantity = (Number(item.quantity) || 0) + 1" class="px-2 py-1.5 text-slate-500 hover:bg-slate-100">+</button>
+                                                <div v-if="convertedQty(item) > Number(materialById(item.material_id)?.stock)" class="text-[11px] text-rose-500 font-semibold bg-rose-50 px-2 py-1 rounded-md ml-12">
+                                                    Ditolak: Order melebihi stok gudang (Tersedia: {{ formatNumber(materialById(item.material_id)?.stock) }} {{ materialById(item.material_id)?.unit }})
                                                 </div>
-                                                <select :id="`order-unit-${index}`" v-model="item.purchase_unit" class="w-24 py-1.5 pl-2 pr-7 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500">
-                                                    <option v-for="u in unitOptions(materialById(item.material_id))" :key="u.value" :value="u.value">{{ u.label }}</option>
-                                                </select>
-                                                <button type="button" @click="form.items.splice(index, 1)" class="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Hapus">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                </button>
                                             </li>
                                         </TransitionGroup>
                                         <p v-if="form.errors.items" class="mt-2 text-xs text-rose-500">{{ form.errors.items }}</p>
@@ -236,7 +241,7 @@
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <button id="btn-cancel-order" type="button" @click="closeModal" class="px-5 py-2.5 text-sm font-bold text-gray-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">Batal</button>
-                                        <button id="btn-submit-order" type="submit" :disabled="form.processing || form.items.length === 0 || !form.area_name" class="inline-flex items-center px-5 py-2.5 text-sm font-bold text-white rounded-xl bg-gradient-to-r from-indigo-700 to-blue-600 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all">
+                                        <button id="btn-submit-order" type="submit" :disabled="form.processing || form.items.length === 0 || !form.area_name || hasOverstockItems" class="inline-flex items-center px-5 py-2.5 text-sm font-bold text-white rounded-xl bg-gradient-to-r from-indigo-700 to-blue-600 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all">
                                             <svg v-if="form.processing" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                                             Kirim Order
                                         </button>
@@ -285,6 +290,14 @@ const filteredMaterials = computed(() => {
     return props.materials.filter(m =>
         (m.name || '').toLowerCase().includes(q) || (m.category || '').toLowerCase().includes(q)
     );
+});
+
+const hasOverstockItems = computed(() => {
+    return form.items.some(item => {
+        const mat = materialById(item.material_id);
+        if (!mat) return false;
+        return convertedQty(item) > Number(mat.stock);
+    });
 });
 
 // Satuan order yang tersedia per material (selaras dengan konversi di PurchaseOrderController)
