@@ -78,6 +78,9 @@
                                             <button @click="viewOrder(trx)" class="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors inline-flex items-center justify-center" title="Lihat Detail">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                             </button>
+                                            <button v-if="hasOnt(trx)" @click="sendOnt(trx.id)" class="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors inline-flex items-center justify-center" title="Kirim ke Data ONT">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                                            </button>
                                             <button @click="editOrder(trx)" class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex items-center justify-center" title="Edit Order">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                             </button>
@@ -431,6 +434,18 @@ const viewOrder = (trx) => {
     }));
     isViewing.value = true;
     isModalOpen.value = true;
+};
+
+const hasOnt = (trx) => {
+    return trx.items.some(item => item.material && item.material.category === 'ONT');
+};
+
+const sendOnt = (id) => {
+    if (confirm('Kirim semua barang ONT dari order ini ke Data ONT?')) {
+        router.post(route('order-toko.send-ont', id), {}, {
+            preserveScroll: true,
+        });
+    }
 };
 
 const editOrder = (trx) => {

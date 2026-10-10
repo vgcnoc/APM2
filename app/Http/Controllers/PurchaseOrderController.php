@@ -109,18 +109,6 @@ class PurchaseOrderController extends Controller
                     'total_price' => $itemTotal
                 ]);
 
-                // Auto-create ONT records
-                if ($material->category === 'ONT') {
-                    for ($i = 0; $i < $convertedQuantity; $i++) {
-                        \App\Models\Ont::create([
-                            'brand' => $material->name,
-                            'status' => 'Belum Set/Baru Input',
-                            'area_id' => $area ? $area->id : null,
-                            'material_transaction_item_id' => $transactionItem->id,
-                        ]);
-                    }
-                }
-
                 // Increase Stock globally
                 $material->stock += $convertedQuantity;
                 $material->save();
@@ -166,20 +154,10 @@ class PurchaseOrderController extends Controller
         try {
             $oldArea = \App\Models\Area::where('name', $transaction->technician_name)->first();
             
-            $oldOntsByMaterial = [];
             // Revert old stock
             foreach ($transaction->items as $item) {
                 $material = $item->material;
                 if ($material) {
-                    if ($material->category === 'ONT') {
-                        $oldOnts = \App\Models\Ont::where('material_transaction_item_id', $item->id)->get();
-                        if (!isset($oldOntsByMaterial[$material->id])) {
-                            $oldOntsByMaterial[$material->id] = collect();
-                        }
-                        $oldOntsByMaterial[$material->id] = $oldOntsByMaterial[$material->id]->concat($oldOnts);
-                        \App\Models\Ont::where('material_transaction_item_id', $item->id)->update(['material_transaction_item_id' => null]);
-                    }
-
                     $material->stock -= $item->quantity; // $item->quantity is already in base unit
                     $material->save();
                     
@@ -255,31 +233,6 @@ class PurchaseOrderController extends Controller
                     'total_price' => $itemTotal
                 ]);
 
-                if ($material->category === 'ONT') {
-                    $existingOnts = $oldOntsByMaterial[$material->id] ?? collect();
-                    
-                    for ($i = 0; $i < $convertedQuantity; $i++) {
-                        if ($existingOnts->isNotEmpty()) {
-                            $ont = $existingOnts->shift();
-                            $ont->update([
-                                'material_transaction_item_id' => $transactionItem->id,
-                                'area_id' => $newArea ? $newArea->id : null
-                            ]);
-                        } else {
-                            \App\Models\Ont::create([
-                                'brand' => $material->name, 
-                                'status' => 'Belum Set/Baru Input',
-                                'area_id' => $newArea ? $newArea->id : null,
-                                'material_transaction_item_id' => $transactionItem->id,
-                            ]);
-                        }
-                    }
-                    
-                    foreach ($existingOnts as $leftoverOnt) {
-                        $leftoverOnt->delete();
-                    }
-                }
-
                 // Increase Stock globally
                 $material->stock += $convertedQuantity;
                 $material->save();
@@ -339,6 +292,42 @@ class PurchaseOrderController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal menghapus order: ' . $e->getMessage());
+        }
+    }
+
+    public function sendOnt(Request $request, $id)
+    {
+        $transaction = MaterialTransaction::with('items.material')->findOrFail($id);
+        
+        $ontsCreated = 0;
+        DB::beginTransaction();
+        try {
+            foreach ($transaction->items as $item) {
+                if ($item->material && $item->material->category === 'ONT') {
+                    // Check how many ONTs already sent for this item
+                    $alreadySent = \App\Models\Ont::where('material_transaction_item_id', $item->id)->count();
+                    $needed = $item->quantity - $alreadySent;
+                    
+                    for ($i = 0; $i < $needed; $i++) {
+                        \App\Models\Ont::create([
+                            'brand' => $item->material->name,
+                            'status' => 'Belum Set/Baru Input',
+                            'area_id' => $transaction->area_id,
+                            'material_transaction_item_id' => $item->id,
+                        ]);
+                        $ontsCreated++;
+                    }
+                }
+            }
+            DB::commit();
+            if ($ontsCreated > 0) {
+                return redirect()->back()->with('success', "$ontsCreated data ONT berhasil dikirim ke tabel Data ONT.");
+            } else {
+                return redirect()->back()->with('success', 'Semua data ONT untuk order ini sudah terkirim.');
+            }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal mengirim data ONT: ' . $e->getMessage());
         }
     }
 }
