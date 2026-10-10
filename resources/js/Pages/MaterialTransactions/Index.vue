@@ -650,7 +650,7 @@ const addCartItem = () => {
     if (material) {
         const isCable = material.category === 'Kabel' || material.category === 'Kabel Drop / Frecon' || material.name.toLowerCase().includes('kabel');
         const isPack = material.category === 'Paku Klem';
-        const isIsolasi = material.category === 'Isolasi';
+        const isIsolasi = material.category === 'Isolasi' || material.name.toLowerCase().includes('isolasi');
         
         orderForm.items.push({
             material_id: material.id,
