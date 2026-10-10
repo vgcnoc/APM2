@@ -98,6 +98,7 @@ class MaterialTransactionController extends Controller
         $technicians = MaterialTransaction::select('technician_name')->distinct()->whereNotNull('technician_name')->pluck('technician_name');
         
         $areas = \App\Models\Area::orderBy('name')->get();
+        $materials = \App\Models\Material::with('stocks')->orderBy('name')->get();
 
         return Inertia::render('MaterialTransactions/Index', [
             'transactions' => $transactions,
@@ -109,6 +110,7 @@ class MaterialTransactionController extends Controller
             ],
             'technicians' => $technicians,
             'areas' => $areas,
+            'materials' => $materials,
         ]);
     }
 

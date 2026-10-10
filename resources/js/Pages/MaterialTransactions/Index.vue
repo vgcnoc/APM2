@@ -133,12 +133,12 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                             Reset
                         </button>
-                        <Link href="/material-transactions/create" class="btn-primary py-2.5 flex items-center gap-2 shadow-md hover:shadow-lg transition-all">
+                        <button @click="openModal" class="btn-primary py-2.5 flex items-center gap-2 shadow-md hover:shadow-lg transition-all">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                             </svg>
-                            Buat Order
-                        </Link>
+                            Buat Order Baru
+                        </button>
                     </div>
                 </div>
             </div>
@@ -341,13 +341,102 @@
                 </div>
             </div>
         </div>
+
+        <!-- Create Modal -->
+        <Dialog :open="isModalOpen" @close="closeModal" class="relative z-50">
+            <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" aria-hidden="true" />
+            <div class="fixed inset-0 flex items-center justify-center p-4">
+                <DialogPanel class="w-full max-w-xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <!-- Header -->
+                    <div class="px-6 py-4 flex items-center justify-between border-b border-gray-100">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                            <div>
+                                <DialogTitle class="text-base font-bold text-gray-900 leading-tight">Buat Order Baru</DialogTitle>
+                                <p class="text-[13px] text-gray-500">Order material dari cabang ke toko</p>
+                            </div>
+                        </div>
+                        <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    
+                    <form @submit.prevent="submitOrder">
+                        <!-- Body -->
+                        <div class="px-6 py-5 space-y-5 overflow-y-auto flex-1 text-sm">
+                            <div>
+                                <label class="block font-semibold text-gray-700 mb-1">Cabang *</label>
+                                <select v-model="orderForm.area_id" required @change="onAreaChange" class="w-full border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 text-sm py-2">
+                                    <option value="">Pilih cabang</option>
+                                    <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                                </select>
+                            </div>
+                            
+                            <div class="border border-gray-200 p-4 rounded-xl space-y-4">
+                                <label class="block font-semibold text-gray-700">Keranjang Belanja</label>
+                                <div class="flex gap-2">
+                                    <select v-model="tempMaterialId" :disabled="!orderForm.area_id" class="flex-1 border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 text-sm py-2 disabled:bg-gray-100 disabled:text-gray-400">
+                                        <option value="">Pilih produk...</option>
+                                        <option v-for="mat in materials" :key="mat.id" :value="mat.id">{{ mat.name }} (Stok Gudang: {{ mat.stock }} {{ mat.unit }})</option>
+                                    </select>
+                                    <button type="button" @click="addCartItem" :disabled="!tempMaterialId || !orderForm.area_id" class="px-4 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 disabled:opacity-50">Tambah</button>
+                                </div>
+                                
+                                <div v-if="orderForm.items.length > 0" class="space-y-3 mt-4 border-t border-gray-100 pt-4">
+                                    <div v-for="(item, idx) in orderForm.items" :key="idx" class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50 rounded-lg relative group">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="font-bold text-gray-900 truncate">{{ item.material_name }}</p>
+                                            <p class="text-[11px] text-emerald-600">Sisa stok: {{ (item.is_cable && item.unit_mode === 'roll') ? (item.max_stock / item.meter_per_roll).toFixed(2) + ' Roll' : (item.is_pack && item.unit_mode === 'bungkus' ? (item.max_stock / item.pcs_per_pack).toFixed(2) + ' Bungkus' : (item.is_isolasi && item.unit_mode === 'pcs' ? (item.max_stock / item.cm_per_pcs).toFixed(2) + ' Pcs' : item.max_stock + ' ' + item.unit_manual)) }}</p>
+                                        </div>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            <input type="number" step="0.01" min="0.01" :max="item.is_cable && item.unit_mode === 'roll' ? (item.max_stock / (item.meter_per_roll || 1)) : (item.is_pack && item.unit_mode === 'bungkus' ? (item.max_stock / (item.pcs_per_pack || 1)) : (item.is_isolasi && item.unit_mode === 'pcs' ? (item.max_stock / (item.cm_per_pcs || 1)) : item.max_stock))" v-model="item.input_quantity" class="w-20 border-gray-200 rounded-lg text-sm py-1.5 focus:ring-blue-500" placeholder="Jml" required>
+                                            
+                                            <select v-if="item.is_cable" v-model="item.unit_mode" class="w-24 border-gray-200 rounded-lg text-sm py-1.5 focus:ring-blue-500">
+                                                <option value="meter">Meter</option><option value="roll">Roll</option>
+                                            </select>
+                                            <select v-else-if="item.is_pack" v-model="item.unit_mode" class="w-24 border-gray-200 rounded-lg text-sm py-1.5 focus:ring-blue-500">
+                                                <option value="pcs">Pcs</option><option value="bungkus">Bungkus</option>
+                                            </select>
+                                            <select v-else-if="item.is_isolasi" v-model="item.unit_mode" class="w-24 border-gray-200 rounded-lg text-sm py-1.5 focus:ring-blue-500">
+                                                <option value="cm">Cm</option><option value="pcs">Pcs</option>
+                                            </select>
+                                            <input v-else type="text" v-model="item.unit_manual" readonly class="w-24 border-gray-200 rounded-lg text-sm py-1.5 bg-gray-100 text-gray-500">
+                                            
+                                            <button type="button" @click="orderForm.items.splice(idx, 1)" class="p-1.5 text-gray-400 hover:text-red-500 bg-white rounded-lg border border-gray-200">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block font-semibold text-gray-700 mb-1">Catatan</label>
+                                <textarea v-model="orderForm.notes" rows="3" class="w-full border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 text-sm"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="px-6 py-4 flex items-center justify-end gap-3 bg-gray-50 rounded-b-2xl border-t border-gray-100">
+                            <button type="button" @click="closeModal" class="px-5 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">Batal</button>
+                            <button type="submit" :disabled="orderForm.processing || orderForm.items.length === 0" class="px-5 py-2 text-sm font-bold text-white bg-[#1e40af] hover:bg-blue-800 rounded-xl disabled:opacity-50 transition-colors">
+                                {{ orderForm.processing ? 'Menyimpan...' : 'Kirim Order' }}
+                            </button>
+                        </div>
+                    </form>
+                </DialogPanel>
+            </div>
+        </Dialog>
     </AppLayout>
 </template>
 
 <script setup>
 import { ref, watch, computed } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue';
+
+const authUser = usePage().props.auth.user;
 
 const props = defineProps({
     transactions: Object,
@@ -364,6 +453,10 @@ const props = defineProps({
         default: () => []
     },
     areas: {
+        type: Array,
+        default: () => []
+    },
+    materials: {
         type: Array,
         default: () => []
     },
@@ -502,4 +595,96 @@ const rejectItem = (item) => {
         });
     }
 };
+
+// --- Modal Create Order ---
+const isModalOpen = ref(false);
+const tempMaterialId = ref('');
+
+const getTodayDate = () => {
+    const d = new Date();
+    let month = '' + (d.getMonth() + 1);
+    let day = '' + d.getDate();
+    const year = d.getFullYear();
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
+    return [year, month, day].join('-');
+};
+
+const orderForm = useForm({
+    date: getTodayDate(),
+    technician_name: authUser?.name || 'Administrator',
+    purpose: 'Order material dari cabang ke toko',
+    area_id: '',
+    notes: '',
+    items: []
+});
+
+const openModal = () => {
+    orderForm.reset();
+    orderForm.date = getTodayDate();
+    orderForm.technician_name = authUser?.name || 'Administrator';
+    orderForm.purpose = 'Order material dari cabang ke toko';
+    tempMaterialId.value = '';
+    isModalOpen.value = true;
+};
+
+const closeModal = () => {
+    isModalOpen.value = false;
+};
+
+const onAreaChange = () => {
+    // optional: clear cart if they change area to avoid confusion with max_stocks?
+    // for now just keep items, global stock doesn't change per area on CREATE.
+};
+
+const addCartItem = () => {
+    if (!tempMaterialId.value) return;
+    
+    // Check if already in cart
+    if (orderForm.items.find(i => i.material_id === tempMaterialId.value)) {
+        alert('Produk ini sudah ada di keranjang.');
+        return;
+    }
+    
+    const material = props.materials.find(m => m.id === tempMaterialId.value);
+    if (material) {
+        const isCable = material.category === 'Kabel' || material.category === 'Kabel Drop / Frecon' || material.name.toLowerCase().includes('kabel');
+        const isPack = material.category === 'Paku Klem';
+        const isIsolasi = material.category === 'Isolasi';
+        
+        orderForm.items.push({
+            material_id: material.id,
+            material_name: material.name,
+            input_quantity: 1,
+            unit_mode: isCable ? 'meter' : (isPack ? 'pcs' : (isIsolasi ? 'cm' : 'default')),
+            unit_manual: material.unit || 'pcs',
+            max_stock: material.stock,
+            is_cable: isCable,
+            is_pack: isPack,
+            is_isolasi: isIsolasi,
+            meter_per_roll: material.meter_per_roll || 1000,
+            pcs_per_pack: material.pcs_per_pack || 1,
+            cm_per_pcs: material.cm_per_pcs || 50
+        });
+        
+        tempMaterialId.value = '';
+    }
+};
+
+const submitOrder = () => {
+    orderForm.transform((data) => ({
+        ...data,
+        items: data.items.map(item => ({
+            material_id: item.material_id,
+            quantity: item.input_quantity,
+            unit: (item.is_cable || item.is_pack || item.is_isolasi) ? item.unit_mode : item.unit_manual
+        }))
+    })).post('/material-transactions', {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeModal();
+        }
+    });
+};
+
 </script>
