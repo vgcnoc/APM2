@@ -188,6 +188,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('produk', \App\Http\Controllers\ProductController::class);
     Route::resource('order-toko', \App\Http\Controllers\PurchaseOrderController::class);
     Route::resource('stok-in-out', \App\Http\Controllers\StockInOutController::class);
+    Route::get('warehouse-stocks', [\App\Http\Controllers\WarehouseStockController::class, 'index'])->name('warehouse-stocks.index');
 
     // ── Permintaan Material (Teknisi -> Gudang Utama) ────────────────────
 
