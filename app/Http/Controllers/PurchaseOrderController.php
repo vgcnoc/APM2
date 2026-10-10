@@ -36,6 +36,7 @@ class PurchaseOrderController extends Controller
             'area_name' => 'required|string|max:255',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
+            'items.*.id' => 'nullable|numeric',
             'items.*.material_id' => 'required|exists:materials,id',
             'items.*.purchase_unit' => 'required|string', // e.g., 'roll', 'pack', 'pcs', 'meter', 'cm'
             'items.*.quantity' => 'required|numeric|min:0.01',
@@ -105,13 +106,27 @@ class PurchaseOrderController extends Controller
                 }
                 $totalCost += $itemTotal;
 
-                $transactionItem = MaterialTransactionItem::create([
-                    'material_transaction_id' => $transaction->id,
-                    'material_id' => $material->id,
-                    'quantity' => $convertedQuantity, 
-                    'price_per_unit' => $pricePerBaseUnit,
-                    'total_price' => $itemTotal
-                ]);
+                if (isset($item['id']) && in_array($item['id'], $existingItemIds)) {
+                    $transactionItem = MaterialTransactionItem::find($item['id']);
+                    $transactionItem->update([
+                        'material_id' => $material->id,
+                        'quantity' => $convertedQuantity, 
+                        'unit' => $item['purchase_unit'] ?? null,
+                        'price_per_unit' => $pricePerBaseUnit,
+                        'total_price' => $itemTotal
+                    ]);
+                    // Remove from existingItemIds to track what's left to delete
+                    $existingItemIds = array_diff($existingItemIds, [$item['id']]);
+                } else {
+                    $transactionItem = MaterialTransactionItem::create([
+                        'material_transaction_id' => $transaction->id,
+                        'material_id' => $material->id,
+                        'quantity' => $convertedQuantity, 
+                        'unit' => $item['purchase_unit'] ?? null,
+                        'price_per_unit' => $pricePerBaseUnit,
+                        'total_price' => $itemTotal
+                    ]);
+                }
 
                 // Increase Stock globally
                 $material->stock += $convertedQuantity;
@@ -126,6 +141,11 @@ class PurchaseOrderController extends Controller
                     
                     $materialStock->increment('stock', $convertedQuantity);
                 }
+            }
+
+            // Delete items that were removed in the edit
+            if (!empty($existingItemIds)) {
+                MaterialTransactionItem::whereIn('id', $existingItemIds)->delete();
             }
 
             $transaction->update(['total_cost' => $totalCost]);
@@ -147,6 +167,7 @@ class PurchaseOrderController extends Controller
             'area_name' => 'required|string|max:255',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
+            'items.*.id' => 'nullable|numeric',
             'items.*.material_id' => 'required|exists:materials,id',
             'items.*.purchase_unit' => 'required|string', 
             'items.*.quantity' => 'required|numeric|min:0.01',
@@ -178,8 +199,7 @@ class PurchaseOrderController extends Controller
                 }
             }
 
-            // Delete old items
-            $transaction->items()->delete();
+            $existingItemIds = $transaction->items->pluck('id')->toArray();
 
             // Update transaction basic info
             $transaction->update([
@@ -229,13 +249,27 @@ class PurchaseOrderController extends Controller
                 }
                 $totalCost += $itemTotal;
 
-                $transactionItem = MaterialTransactionItem::create([
-                    'material_transaction_id' => $transaction->id,
-                    'material_id' => $material->id,
-                    'quantity' => $convertedQuantity, 
-                    'price_per_unit' => $pricePerBaseUnit,
-                    'total_price' => $itemTotal
-                ]);
+                if (isset($item['id']) && in_array($item['id'], $existingItemIds)) {
+                    $transactionItem = MaterialTransactionItem::find($item['id']);
+                    $transactionItem->update([
+                        'material_id' => $material->id,
+                        'quantity' => $convertedQuantity, 
+                        'unit' => $item['purchase_unit'] ?? null,
+                        'price_per_unit' => $pricePerBaseUnit,
+                        'total_price' => $itemTotal
+                    ]);
+                    // Remove from existingItemIds to track what's left to delete
+                    $existingItemIds = array_diff($existingItemIds, [$item['id']]);
+                } else {
+                    $transactionItem = MaterialTransactionItem::create([
+                        'material_transaction_id' => $transaction->id,
+                        'material_id' => $material->id,
+                        'quantity' => $convertedQuantity, 
+                        'unit' => $item['purchase_unit'] ?? null,
+                        'price_per_unit' => $pricePerBaseUnit,
+                        'total_price' => $itemTotal
+                    ]);
+                }
 
                 // Increase Stock globally
                 $material->stock += $convertedQuantity;
@@ -250,6 +284,11 @@ class PurchaseOrderController extends Controller
                     
                     $materialStock->increment('stock', $convertedQuantity);
                 }
+            }
+
+            // Delete items that were removed in the edit
+            if (!empty($existingItemIds)) {
+                MaterialTransactionItem::whereIn('id', $existingItemIds)->delete();
             }
 
             $transaction->update(['total_cost' => $totalCost]);

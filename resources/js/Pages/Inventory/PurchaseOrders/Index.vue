@@ -223,22 +223,19 @@
                                                             <template v-else>{{ materialById(item.material_id)?.category || 'Umum' }}</template>
                                                         </div>
                                                     </div>
-                                                    <div class="flex items-center rounded-lg border border-slate-200 overflow-hidden" :class="{'border-rose-300 ring-1 ring-rose-200': !isViewing && convertedQty(item) > Number(materialById(item.material_id)?.stock)}">
-                                                        <button v-if="!isViewing" type="button" @click="decQty(item)" class="px-2 py-1.5 text-slate-500 hover:bg-slate-100">−</button>
-                                                        <input :id="`order-qty-${index}`" v-model.number="item.quantity" type="number" min="0.01" step="any" required :disabled="isViewing" class="w-14 py-1.5 text-center text-sm border-0 focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" :class="{'text-rose-600 font-bold': !isViewing && convertedQty(item) > Number(materialById(item.material_id)?.stock)}">
-                                                        <button v-if="!isViewing" type="button" @click="item.quantity = (Number(item.quantity) || 0) + 1" class="px-2 py-1.5 text-slate-500 hover:bg-slate-100">+</button>
-                                                    </div>
-                                                    <select :id="`order-unit-${index}`" v-model="item.purchase_unit" :disabled="isViewing" class="w-24 py-1.5 pl-2 pr-7 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500" :class="{'opacity-75 cursor-not-allowed': isViewing}">
-                                                        <option v-for="u in unitOptions(materialById(item.material_id))" :key="u.value" :value="u.value">{{ u.label }}</option>
-                                                    </select>
-                                                    <button v-if="!isViewing" type="button" @click="form.items.splice(index, 1)" class="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Hapus">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                    </button>
+                                                <div class="flex items-center rounded-lg border border-slate-200 overflow-hidden">
+                                                    <button v-if="!isViewing" type="button" @click="decQty(item)" class="px-2 py-1.5 text-slate-500 hover:bg-slate-100">−</button>
+                                                    <input :id="`order-qty-${index}`" v-model.number="item.quantity" type="number" min="0.01" step="any" required :disabled="isViewing" class="w-14 py-1.5 text-center text-sm border-0 focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
+                                                    <button v-if="!isViewing" type="button" @click="item.quantity = (Number(item.quantity) || 0) + 1" class="px-2 py-1.5 text-slate-500 hover:bg-slate-100">+</button>
                                                 </div>
-                                                <div v-if="convertedQty(item) > Number(materialById(item.material_id)?.stock)" class="text-[11px] text-rose-500 font-semibold bg-rose-50 px-2 py-1 rounded-md ml-12">
-                                                    Ditolak: Order melebihi stok gudang (Tersedia: {{ formatNumber(materialById(item.material_id)?.stock) }} {{ materialById(item.material_id)?.unit }})
-                                                </div>
-                                            </li>
+                                                <select :id="`order-unit-${index}`" v-model="item.purchase_unit" :disabled="isViewing" class="w-24 py-1.5 pl-2 pr-7 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500" :class="{'opacity-75 cursor-not-allowed': isViewing}">
+                                                    <option v-for="u in unitOptions(materialById(item.material_id))" :key="u.value" :value="u.value">{{ u.label }}</option>
+                                                </select>
+                                                <button v-if="!isViewing" type="button" @click="form.items.splice(index, 1)" class="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Hapus">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
+                                            </div>
+                                        </li>
                                         </TransitionGroup>
                                         <p v-if="form.errors.items" class="mt-2 text-xs text-rose-500">{{ form.errors.items }}</p>
                                     </div>
@@ -257,7 +254,7 @@
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <button id="btn-cancel-order" type="button" @click="closeModal" class="px-5 py-2.5 text-sm font-bold text-gray-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">{{ isViewing ? 'Tutup' : 'Batal' }}</button>
-                                        <button v-if="!isViewing" id="btn-submit-order" type="submit" :disabled="form.processing || form.items.length === 0 || !form.area_name || hasOverstockItems" class="inline-flex items-center px-5 py-2.5 text-sm font-bold text-white rounded-xl bg-gradient-to-r from-indigo-700 to-blue-600 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all">
+                                        <button v-if="!isViewing" id="btn-submit-order" type="submit" :disabled="form.processing || form.items.length === 0 || !form.area_name" class="inline-flex items-center px-5 py-2.5 text-sm font-bold text-white rounded-xl bg-gradient-to-r from-indigo-700 to-blue-600 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all">
                                             <svg v-if="form.processing" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                                             {{ form.id ? 'Simpan Perubahan' : 'Kirim Order' }}
                                         </button>
@@ -315,13 +312,6 @@ const filteredMaterials = computed(() => {
     );
 });
 
-const hasOverstockItems = computed(() => {
-    return form.items.some(item => {
-        const mat = materialById(item.material_id);
-        if (!mat) return false;
-        return convertedQty(item) > Number(mat.stock);
-    });
-});
 
 // Satuan order yang tersedia per material (selaras dengan konversi di PurchaseOrderController)
 const unitOptions = (mat) => {
@@ -336,6 +326,21 @@ const unitOptions = (mat) => {
     if (Number(mat.meter_per_roll) > 0) return [{ value: 'roll', label: 'Roll' }, base];
     if (Number(mat.pcs_per_pack) > 0) return [{ value: 'pack', label: 'Pack' }, base];
     return [base];
+};
+
+const reverseQty = (item) => {
+    const mat = materialById(item.material_id);
+    const qty = Number(item.quantity) || 0;
+    if (!mat || item.purchase_unit === 'base' || !item.purchase_unit) return qty;
+    
+    if (item.purchase_unit === 'roll' && Number(mat.meter_per_roll) > 0) return qty / Number(mat.meter_per_roll);
+    if ((mat.category === 'Isolasi' || (mat.name && mat.name.toLowerCase().includes('isolasi'))) && item.purchase_unit === 'pack') {
+        const factor = (Number(mat.pcs_per_pack) > 0 ? Number(mat.pcs_per_pack) : 1) * (Number(mat.cm_per_pcs) > 0 ? Number(mat.cm_per_pcs) : 50);
+        return qty / factor;
+    }
+    if (item.purchase_unit === 'pack' && Number(mat.pcs_per_pack) > 0) return qty / Number(mat.pcs_per_pack);
+    if (item.purchase_unit === 'pcs' && Number(mat.cm_per_pcs) > 0) return qty / Number(mat.cm_per_pcs);
+    return qty;
 };
 
 const convertedQty = (item) => {
