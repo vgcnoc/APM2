@@ -44,6 +44,7 @@ class Ont extends Model
         'tx_power',
         'status',
         'description',
+        'material_transaction_item_id',
         'start_time',
         'end_time',
         'photo_odp',

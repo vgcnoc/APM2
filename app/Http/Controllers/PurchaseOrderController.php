@@ -101,13 +101,25 @@ class PurchaseOrderController extends Controller
                 }
                 $totalCost += $itemTotal;
 
-                MaterialTransactionItem::create([
+                $transactionItem = MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
                     'quantity' => $convertedQuantity, 
                     'price_per_unit' => $pricePerBaseUnit,
                     'total_price' => $itemTotal
                 ]);
+
+                // Auto-create ONT records
+                if ($material->category === 'ONT') {
+                    for ($i = 0; $i < $convertedQuantity; $i++) {
+                        \App\Models\Ont::create([
+                            'brand' => $material->name,
+                            'status' => 'Belum Set/Baru Input',
+                            'area_id' => $area ? $area->id : null,
+                            'material_transaction_item_id' => $transactionItem->id,
+                        ]);
+                    }
+                }
 
                 // Increase Stock globally
                 $material->stock += $convertedQuantity;
@@ -154,10 +166,20 @@ class PurchaseOrderController extends Controller
         try {
             $oldArea = \App\Models\Area::where('name', $transaction->technician_name)->first();
             
+            $oldOntsByMaterial = [];
             // Revert old stock
             foreach ($transaction->items as $item) {
                 $material = $item->material;
                 if ($material) {
+                    if ($material->category === 'ONT') {
+                        $oldOnts = \App\Models\Ont::where('material_transaction_item_id', $item->id)->get();
+                        if (!isset($oldOntsByMaterial[$material->id])) {
+                            $oldOntsByMaterial[$material->id] = collect();
+                        }
+                        $oldOntsByMaterial[$material->id] = $oldOntsByMaterial[$material->id]->concat($oldOnts);
+                        \App\Models\Ont::where('material_transaction_item_id', $item->id)->update(['material_transaction_item_id' => null]);
+                    }
+
                     $material->stock -= $item->quantity; // $item->quantity is already in base unit
                     $material->save();
                     
@@ -225,13 +247,38 @@ class PurchaseOrderController extends Controller
                 }
                 $totalCost += $itemTotal;
 
-                MaterialTransactionItem::create([
+                $transactionItem = MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
                     'quantity' => $convertedQuantity, 
                     'price_per_unit' => $pricePerBaseUnit,
                     'total_price' => $itemTotal
                 ]);
+
+                if ($material->category === 'ONT') {
+                    $existingOnts = $oldOntsByMaterial[$material->id] ?? collect();
+                    
+                    for ($i = 0; $i < $convertedQuantity; $i++) {
+                        if ($existingOnts->isNotEmpty()) {
+                            $ont = $existingOnts->shift();
+                            $ont->update([
+                                'material_transaction_item_id' => $transactionItem->id,
+                                'area_id' => $newArea ? $newArea->id : null
+                            ]);
+                        } else {
+                            \App\Models\Ont::create([
+                                'brand' => $material->name, 
+                                'status' => 'Belum Set/Baru Input',
+                                'area_id' => $newArea ? $newArea->id : null,
+                                'material_transaction_item_id' => $transactionItem->id,
+                            ]);
+                        }
+                    }
+                    
+                    foreach ($existingOnts as $leftoverOnt) {
+                        $leftoverOnt->delete();
+                    }
+                }
 
                 // Increase Stock globally
                 $material->stock += $convertedQuantity;
