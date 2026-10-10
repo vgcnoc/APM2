@@ -67,10 +67,11 @@ class PurchaseOrderController extends Controller
                 
                 if ($item['purchase_unit'] === 'roll' && $material->meter_per_roll > 0) {
                     $convertedQuantity = $item['quantity'] * $material->meter_per_roll;
+                } elseif ($material->category === 'Isolasi' && $item['purchase_unit'] === 'pack') {
+                    $convertedQuantity = $item['quantity'] * (($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50));
                 } elseif ($item['purchase_unit'] === 'pack' && $material->pcs_per_pack > 0) {
                     $convertedQuantity = $item['quantity'] * $material->pcs_per_pack;
-                } elseif ($item['purchase_unit'] === 'pcs_box' && $material->cm_per_pcs > 0) {
-                    // example mapping if purchased by pcs but base unit is cm
+                } elseif ($item['purchase_unit'] === 'pcs' && $material->cm_per_pcs > 0) {
                     $convertedQuantity = $item['quantity'] * $material->cm_per_pcs;
                 }
 

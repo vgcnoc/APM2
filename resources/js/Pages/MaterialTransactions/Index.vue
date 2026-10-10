@@ -386,10 +386,10 @@
                                     <div v-for="(item, idx) in orderForm.items" :key="idx" class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-gray-50 rounded-lg relative group">
                                         <div class="flex-1 min-w-0">
                                             <p class="font-bold text-gray-900 truncate">{{ item.material_name }}</p>
-                                            <p class="text-[11px] text-emerald-600">Sisa stok: {{ (item.is_cable && item.unit_mode === 'roll') ? (item.max_stock / item.meter_per_roll).toFixed(2) + ' Roll' : (item.is_pack && item.unit_mode === 'bungkus' ? (item.max_stock / item.pcs_per_pack).toFixed(2) + ' Bungkus' : (item.is_isolasi && item.unit_mode === 'pcs' ? (item.max_stock / item.cm_per_pcs).toFixed(2) + ' Pcs' : item.max_stock + ' ' + item.unit_manual)) }}</p>
+                                            <p class="text-[11px] text-emerald-600">Sisa stok: {{ (item.is_cable && item.unit_mode === 'roll') ? (item.max_stock / item.meter_per_roll).toFixed(2) + ' Roll' : (item.is_pack && item.unit_mode === 'bungkus' ? (item.max_stock / item.pcs_per_pack).toFixed(2) + ' Bungkus' : (item.is_isolasi && item.unit_mode === 'pack' ? (item.max_stock / ((item.cm_per_pcs || 1) * (item.pcs_per_pack || 1))).toFixed(2) + ' Pack' : item.max_stock + ' ' + item.unit_manual)) }}</p>
                                         </div>
                                         <div class="flex items-center gap-2 shrink-0">
-                                            <input type="number" step="0.01" min="0.01" :max="item.is_cable && item.unit_mode === 'roll' ? (item.max_stock / (item.meter_per_roll || 1)) : (item.is_pack && item.unit_mode === 'bungkus' ? (item.max_stock / (item.pcs_per_pack || 1)) : (item.is_isolasi && item.unit_mode === 'pcs' ? (item.max_stock / (item.cm_per_pcs || 1)) : item.max_stock))" v-model="item.input_quantity" class="w-20 border-gray-200 rounded-lg text-sm py-1.5 focus:ring-blue-500" placeholder="Jml" required>
+                                            <input type="number" step="0.01" min="0.01" :max="item.is_cable && item.unit_mode === 'roll' ? (item.max_stock / (item.meter_per_roll || 1)) : (item.is_pack && item.unit_mode === 'bungkus' ? (item.max_stock / (item.pcs_per_pack || 1)) : (item.is_isolasi && item.unit_mode === 'pack' ? (item.max_stock / ((item.cm_per_pcs || 1) * (item.pcs_per_pack || 1))) : item.max_stock))" v-model="item.input_quantity" class="w-20 border-gray-200 rounded-lg text-sm py-1.5 focus:ring-blue-500" placeholder="Jml" required>
                                             
                                             <select v-if="item.is_cable" v-model="item.unit_mode" class="w-24 border-gray-200 rounded-lg text-sm py-1.5 focus:ring-blue-500">
                                                 <option value="meter">Meter</option><option value="roll">Roll</option>
@@ -398,7 +398,7 @@
                                                 <option value="pcs">Pcs</option><option value="bungkus">Bungkus</option>
                                             </select>
                                             <select v-else-if="item.is_isolasi" v-model="item.unit_mode" class="w-24 border-gray-200 rounded-lg text-sm py-1.5 focus:ring-blue-500">
-                                                <option value="cm">Cm</option><option value="pcs">Pcs</option>
+                                                <option value="cm">Cm</option><option value="pack">Pack</option>
                                             </select>
                                             <input v-else type="text" v-model="item.unit_manual" readonly class="w-24 border-gray-200 rounded-lg text-sm py-1.5 bg-gray-100 text-gray-500">
                                             

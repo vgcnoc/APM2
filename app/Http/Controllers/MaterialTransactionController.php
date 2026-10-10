@@ -182,10 +182,10 @@ class MaterialTransactionController extends Controller
                     $pricePerUnit = $pricePerUnit / $pcsPerPack;
                 }
                 
-                // Jika barang adalah Isolasi, hitung harga jual per cm (harga 1 pcs dibagi panjang cm)
-                if ($material->category === 'Isolasi' && strtolower($itemData['unit'] ?? '') === 'cm') {
-                    $cmPerPcs = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50;
-                    $pricePerUnit = $pricePerUnit / $cmPerPcs;
+                // Jika barang adalah Isolasi, hitung harga jual per cm (harga 1 pack dibagi total cm)
+                if ($material->category === 'Isolasi' && strtolower($itemData['unit'] ?? '') === 'pack') {
+                    $cmPerPack = ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                    $pricePerUnit = $pricePerUnit / $cmPerPack;
                 }
 
                 $totalPrice = $itemData['quantity'] * $pricePerUnit;
@@ -201,8 +201,8 @@ class MaterialTransactionController extends Controller
                 if ($material->category === 'Paku Klem' && ($itemUnit === 'pack' || $itemUnit === 'bungkus')) {
                     $deduction = $itemData['quantity'] * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
                 }
-                if ($material->category === 'Isolasi' && ($itemUnit === 'pcs')) {
-                    $deduction = $itemData['quantity'] * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                if ($material->category === 'Isolasi' && ($itemUnit === 'pack')) {
+                    $deduction = $itemData['quantity'] * (($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50));
                 }
 
                 $stockBefore = $materialStock->stock;
@@ -336,8 +336,8 @@ class MaterialTransactionController extends Controller
                     if ($material->category === 'Paku Klem' && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
                         $addition = $item->quantity * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
                     }
-                    if ($material->category === 'Isolasi' && ($item->unit === 'pcs')) {
-                        $addition = $item->quantity * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                    if ($material->category === 'Isolasi' && ($item->unit === 'pack')) {
+                        $addition = $item->quantity * (($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50));
                     }
                     $material->stock += $addition;
                     if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
@@ -425,8 +425,8 @@ class MaterialTransactionController extends Controller
                 if ($material->category === 'Paku Klem' && ($itemData['unit'] === 'pack' || $itemData['unit'] === 'bungkus')) {
                     $deduction = $itemData['quantity'] * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
                 }
-                if ($material->category === 'Isolasi' && ($itemData['unit'] === 'pcs')) {
-                    $deduction = $itemData['quantity'] * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                if ($material->category === 'Isolasi' && ($itemData['unit'] === 'pack')) {
+                    $deduction = $itemData['quantity'] * (($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50));
                 }
                 
                 $material->stock -= $deduction;
@@ -538,8 +538,8 @@ class MaterialTransactionController extends Controller
                         if ($material->category === 'Paku Klem' && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
                             $addition = $item->quantity * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
                         }
-                        if ($material->category === 'Isolasi' && ($item->unit === 'pcs')) {
-                            $addition = $item->quantity * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                        if ($material->category === 'Isolasi' && ($item->unit === 'pack')) {
+                            $addition = $item->quantity * (($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50));
                         }
                         $material->stock += $addition;
                         if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
@@ -609,8 +609,8 @@ class MaterialTransactionController extends Controller
                             if ($material->category === 'Paku Klem' && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
                                 $addition = $item->quantity * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
                             }
-                            if ($material->category === 'Isolasi' && ($item->unit === 'pcs')) {
-                                $addition = $item->quantity * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                            if ($material->category === 'Isolasi' && ($item->unit === 'pack')) {
+                                $addition = $item->quantity * (($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50));
                             }
                             $material->stock += $addition;
                             if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
