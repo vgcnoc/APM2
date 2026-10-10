@@ -338,12 +338,24 @@ const menuItems = [
         ]
     },
 
+    {
+        type: 'dropdown',
+        icon: 'archive',
+        label: 'Inventaris & Logistik',
+        active: (url) => (url || '').startsWith('/produk') || (url || '').startsWith('/order-toko') || (url || '').startsWith('/stok-in-out'),
+        permission: 'menu_materials',
+        children: [
+            { href: '/produk', label: 'Data Produk', active: (url) => (url || '').startsWith('/produk'), permission: 'menu_materials' },
+            { href: '/order-toko', label: 'Order Toko (Restock)', active: (url) => (url || '').startsWith('/order-toko'), permission: 'menu_materials' },
+            { href: '/stok-in-out', label: 'Stok Masuk / Keluar', active: (url) => (url || '').startsWith('/stok-in-out'), permission: 'menu_materials' },
+        ]
+    },
+
     { type: 'group', label: 'LOGISTIK & HRD' },
 
     {
         type: 'dropdown',
         icon: 'users',
-        label: 'HR & Personalia',
         active: (url) => (url || '').startsWith('/employees') || (url || '').startsWith('/positions') || (url || '').startsWith('/payroll') || (url || '').startsWith('/insentif-potongan'),
         permission: 'menu_hr_employees',
         children: [

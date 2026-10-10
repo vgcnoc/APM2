@@ -184,6 +184,11 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('material-mutations', [\App\Http\Controllers\MaterialMutationController::class, 'index'])->name('material-mutations.index');
 
+    // ── INVENTORY & LOGISTIK (NEW SYSTEM) ─────────────────────
+    Route::resource('produk', \App\Http\Controllers\ProductController::class);
+    Route::resource('order-toko', \App\Http\Controllers\PurchaseOrderController::class);
+    Route::resource('stok-in-out', \App\Http\Controllers\StockInOutController::class);
+
     // ── Permintaan Material (Teknisi -> Gudang Utama) ────────────────────
 
 
