@@ -543,6 +543,7 @@ const openModal = (product = null) => {
         form.meter_per_roll = product.meter_per_roll ? Number(product.meter_per_roll) : null;
         form.pcs_per_pack = product.pcs_per_pack ? Number(product.pcs_per_pack) : null;
         form.cm_per_pcs = product.cm_per_pcs ? Number(product.cm_per_pcs) : null;
+        form.stock = product.stock ? Number(product.stock) : 0;
         
         let price = product.price_per_unit ? Number(product.price_per_unit) : 0;
         let selling = product.selling_price ? Number(product.selling_price) : 0;
