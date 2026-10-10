@@ -289,8 +289,8 @@
                                                     <option value="roll">Roll</option>
                                                 </select>
                                             </div>
-                                            <div v-if="!form.id" class="w-full md:w-1/2">
-                                                <label class="block text-sm font-bold text-gray-700 mb-1">Stok Awal ({{ form.unit }})</label>
+                                            <div class="w-full md:w-1/2">
+                                                <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.id ? 'Stok Saat Ini' : 'Stok Awal' }} ({{ form.unit }})</label>
                                                 <input type="number" step="0.01" v-model="form.stock" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-white" placeholder="0">
                                             </div>
                                         </div>
