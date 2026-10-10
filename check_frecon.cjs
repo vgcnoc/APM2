@@ -4,7 +4,7 @@ const conn = new Client();
 
 const script = `
 cd /var/www/APM2
-php artisan tinker --execute="\\$m = \\App\\Models\\Material::where('category', 'like', '%Klem%')->first(); echo \\$m->name . '|' . \\$m->pcs_per_pack;"
+php artisan tinker --execute="\\$m = \\App\\Models\\Material::where('category', 'like', '%Klem%')->first(); \\$items = \\App\\Models\\MaterialTransactionItem::where('material_id', \\$m->id)->get(); foreach(\\$items as \\$i) { echo 'TRX: ' . \\$i->transaction->type . ' | QTY: ' . \\$i->quantity . ' ' . \\$i->unit . ' | Before: ' . \\$i->stock_before . ' | After: ' . \\$i->stock_after . \\"\\\\n\\"; }"
 `;
 
 conn.on('ready', () => {

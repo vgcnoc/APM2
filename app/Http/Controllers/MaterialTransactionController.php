@@ -191,13 +191,15 @@ class MaterialTransactionController extends Controller
 
                 // Deduct Stock
                 $deduction = $itemData['quantity'];
-                if (str_contains(strtolower($material->category), 'kabel') && ($itemData['unit'] === 'roll' || $itemData['unit'] === 'rol')) {
+                $itemUnit = strtolower($itemData['unit'] ?? '');
+                
+                if (str_contains(strtolower($material->category), 'kabel') && ($itemUnit === 'roll' || $itemUnit === 'rol')) {
                     $deduction = $itemData['quantity'] * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
                 }
-                if ($material->category === 'Paku Klem' && ($itemData['unit'] === 'pack' || $itemData['unit'] === 'bungkus')) {
+                if ($material->category === 'Paku Klem' && ($itemUnit === 'pack' || $itemUnit === 'bungkus')) {
                     $deduction = $itemData['quantity'] * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
                 }
-                if ($material->category === 'Isolasi' && ($itemData['unit'] === 'pcs')) {
+                if ($material->category === 'Isolasi' && ($itemUnit === 'pcs')) {
                     $deduction = $itemData['quantity'] * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
                 }
 
