@@ -58,56 +58,54 @@
                     </div>
                 </div>
 
-                <!-- Products Grid -->
-                <div v-if="products.data.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    <div v-for="product in products.data" :key="product.id" class="group bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative flex flex-col">
-                        
-                        <!-- Top Banner / Category -->
-                        <div class="h-2 w-full bg-gradient-to-r from-emerald-400 to-teal-500"></div>
-                        
-                        <div class="p-5 flex-1 flex flex-col">
-                            <div class="flex justify-between items-start mb-4">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100 uppercase tracking-wider">
-                                    {{ product.category || 'Uncategorized' }}
-                                </span>
-                                
-                                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button @click="openModal(product)" class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit Produk">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <h3 class="text-lg font-bold text-gray-900 leading-tight mb-1 group-hover:text-emerald-600 transition-colors">{{ product.name }}</h3>
-                            <p class="text-xs text-gray-500 mb-4 flex items-center gap-1">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                                {{ product.supplier || 'Tidak ada info supplier' }}
-                            </p>
-
-                            <div class="mt-auto">
-                                <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-2">
-                                    <!-- Stock Info -->
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-xs font-medium text-slate-500">Total Stok</span>
-                                        <div class="text-right">
-                                            <span class="text-lg font-black text-slate-800">{{ formatNum(Number(product.stock)) }}</span>
-                                            <span class="text-xs font-bold text-slate-500 ml-1 uppercase">{{ product.unit }}</span>
+                <!-- Products List -->
+                <div v-if="products.data.length > 0" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-gray-100">
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Nama & Kategori</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap">Total Stok</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Smart Unit</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center whitespace-nowrap">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr v-for="product in products.data" :key="product.id" class="hover:bg-slate-50/50 transition-colors group">
+                                    <td class="px-6 py-4">
+                                        <div class="flex flex-col">
+                                            <span class="text-sm font-bold text-gray-900 group-hover:text-emerald-600 transition-colors">{{ product.name }}</span>
+                                            <div class="flex items-center gap-2 mt-1.5">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100 uppercase tracking-wider">
+                                                    {{ product.category || 'Uncategorized' }}
+                                                </span>
+                                                <span class="text-xs text-gray-500 flex items-center gap-1">
+                                                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                                                    {{ product.supplier || '-' }}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
-                                    
-                                    <div class="h-px w-full bg-slate-200/60"></div>
-                                    
-                                    <!-- Smart Unit Info -->
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                            Smart Unit
-                                        </span>
-                                        <span class="text-[11px] font-medium text-slate-600" v-html="formatSmartUnit(product)"></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <div class="flex flex-col items-end justify-center">
+                                            <span class="text-base font-black text-slate-800">{{ formatNum(Number(product.stock)) }}</span>
+                                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{{ product.unit }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center gap-1.5 text-emerald-600">
+                                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                            <span class="text-xs font-medium text-slate-600 leading-snug" v-html="formatSmartUnit(product)"></span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <button @click="openModal(product)" class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex items-center justify-center" title="Edit Produk">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
