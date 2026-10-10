@@ -305,8 +305,13 @@ const formatDate = (dateString) => {
 };
 
 const openModal = (type) => {
-    form.reset();
     form.type = type;
+    form.date = new Date().toISOString().split('T')[0];
+    form.technician_name = '';
+    form.notes = '';
+    form.items = [{ material_id: '', quantity: null }];
+    form.clearErrors();
+    
     // Set default purposes based on type
     if (type === 'out') {
         form.purpose = 'Bekal Teknisi';

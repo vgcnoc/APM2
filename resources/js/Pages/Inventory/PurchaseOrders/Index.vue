@@ -409,11 +409,12 @@ const formatDate = (dateString) => {
 };
 
 const openModal = () => {
-    form.reset();
-    form.clearErrors();
     form.id = null;
+    form.area_name = '';
     form.date = new Date().toISOString().slice(0, 10);
+    form.notes = '';
     form.items = [];
+    form.clearErrors();
     selectedMaterial.value = null;
     isViewing.value = false;
     isModalOpen.value = true;

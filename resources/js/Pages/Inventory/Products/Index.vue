@@ -575,8 +575,23 @@ const openModal = (product = null) => {
         form.description = product.description;
         isNewCategory.value = !props.categories.includes(product.category);
     } else {
-        form.reset();
         form.id = null;
+        form.name = '';
+        form.category = '';
+        form.supplier = '';
+        form.unit = 'pcs';
+        form.meter_per_roll = null;
+        form.pcs_per_pack = null;
+        form.cm_per_pcs = null;
+        form.stock = null;
+        form.price_per_unit = 0;
+        form.selling_price = 0;
+        form.is_active = true;
+        form.requires_sn = false;
+        form.requires_mac = false;
+        form.description = '';
+        form.clearErrors();
+        
         isNewCategory.value = false;
         initialRolls.value = 0;
         initialPacks.value = 0;
