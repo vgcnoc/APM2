@@ -219,14 +219,12 @@
                                     <div class="space-y-3">
                                         <div v-for="detail in item.items" :key="'in-'+detail.id" class="flex flex-col h-10 justify-center items-center">
                                             <template v-if="item.type === 'in'">
-                                                <div class="flex items-baseline gap-1">
-                                                    <span class="text-xs font-black text-emerald-600">+{{ formatNumber(detail.quantity) }}</span>
-                                                    <span class="text-[10px] text-gray-400 font-medium">{{ detail.unit || (detail.material ? detail.material.unit : 'pcs') }}</span>
+                                                <div class="flex items-baseline gap-1" v-if="detail.stock_after !== null && detail.stock_before !== null">
+                                                    <span class="text-xs font-black text-emerald-600">+{{ formatNumber(Math.abs(detail.stock_after - detail.stock_before)) }}</span>
+                                                    <span class="text-[10px] text-gray-500 font-medium">{{ detail.material ? (detail.material.category === 'Kabel' ? 'meter' : (detail.material.category === 'Isolasi' ? 'cm' : (detail.material.category === 'Paku Klem' ? 'pcs' : (detail.material.unit || 'pcs')))) : 'pcs' }}</span>
                                                 </div>
-                                                <span v-if="getEquivalentBaseUnit(detail)" 
-                                                      :class="['text-[9px] mt-0.5 leading-none', getEquivalentBaseUnit(detail).isWarning ? 'text-orange-500 font-semibold' : 'text-emerald-500/70']"
-                                                      :title="getEquivalentBaseUnit(detail).tooltip">
-                                                    {{ getEquivalentBaseUnit(detail).text }}
+                                                <span v-if="detail.unit && detail.unit.toLowerCase() !== (detail.material ? (detail.material.category === 'Kabel' ? 'meter' : (detail.material.category === 'Isolasi' ? 'cm' : (detail.material.category === 'Paku Klem' ? 'pcs' : detail.material.unit))) : 'pcs')" class="text-[9px] mt-0.5 text-gray-400">
+                                                    (Asli: {{ formatNumber(detail.quantity) }} {{ detail.unit }})
                                                 </span>
                                             </template>
                                             <span v-else class="text-gray-300">-</span>
@@ -237,14 +235,12 @@
                                     <div class="space-y-3">
                                         <div v-for="detail in item.items" :key="'out-'+detail.id" class="flex flex-col h-10 justify-center items-center">
                                             <template v-if="item.type === 'out'">
-                                                <div class="flex items-baseline gap-1">
-                                                    <span class="text-xs font-black text-orange-600">-{{ formatNumber(detail.quantity) }}</span>
-                                                    <span class="text-[10px] text-gray-400 font-medium">{{ detail.unit || (detail.material ? detail.material.unit : 'pcs') }}</span>
+                                                <div class="flex items-baseline gap-1" v-if="detail.stock_after !== null && detail.stock_before !== null">
+                                                    <span class="text-xs font-black text-orange-600">-{{ formatNumber(Math.abs(detail.stock_after - detail.stock_before)) }}</span>
+                                                    <span class="text-[10px] text-gray-500 font-medium">{{ detail.material ? (detail.material.category === 'Kabel' ? 'meter' : (detail.material.category === 'Isolasi' ? 'cm' : (detail.material.category === 'Paku Klem' ? 'pcs' : (detail.material.unit || 'pcs')))) : 'pcs' }}</span>
                                                 </div>
-                                                <span v-if="getEquivalentBaseUnit(detail)" 
-                                                      :class="['text-[9px] mt-0.5 leading-none', getEquivalentBaseUnit(detail).isWarning ? 'text-orange-500 font-semibold' : 'text-orange-400/70']"
-                                                      :title="getEquivalentBaseUnit(detail).tooltip">
-                                                    {{ getEquivalentBaseUnit(detail).text }}
+                                                <span v-if="detail.unit && detail.unit.toLowerCase() !== (detail.material ? (detail.material.category === 'Kabel' ? 'meter' : (detail.material.category === 'Isolasi' ? 'cm' : (detail.material.category === 'Paku Klem' ? 'pcs' : detail.material.unit))) : 'pcs')" class="text-[9px] mt-0.5 text-gray-400">
+                                                    (Asli: {{ formatNumber(detail.quantity) }} {{ detail.unit }})
                                                 </span>
                                             </template>
                                             <span v-else class="text-gray-300">-</span>
@@ -377,36 +373,6 @@ const formatNumber = (num) => {
     if (!num) return '0';
     return Number(num).toLocaleString('id-ID');
 };
-
-const getEquivalentBaseUnit = (detail) => {
-    if (!detail.material || detail.stock_before === null || detail.stock_after === null) return null;
-    
-    const diff = Math.abs(detail.stock_after - detail.stock_before);
-    const qty = Number(detail.quantity);
-    
-    const baseUnit = detail.material.category === 'Kabel' ? 'meter' : 
-                    (detail.material.category === 'Isolasi' ? 'cm' : 
-                    (detail.material.category === 'Paku Klem' ? 'pcs' : (detail.material.unit || 'pcs')));
-
-    const rawUnit = (detail.unit || '').toLowerCase();
-    const isPackUnit = ['roll', 'rol', 'pack', 'bungkus'].includes(rawUnit);
-
-    if (diff === 0) return null;
-
-    if (isPackUnit) {
-        if (diff === qty) {
-            return { text: `≈ ${formatNumber(diff)} ${baseUnit} (Lama)`, isWarning: true, tooltip: 'Data lama tanpa konversi otomatis' };
-        }
-        return { text: `≈ ${formatNumber(diff)} ${baseUnit}`, isWarning: false };
-    }
-
-    if (diff !== qty && diff > 0) {
-        return { text: `≈ ${formatNumber(diff)} ${baseUnit}`, isWarning: false };
-    }
-
-    return null;
-};
-
 
 const filterForm = ref({
     search: props.filters?.search || '',
