@@ -177,14 +177,19 @@
                                         <div class="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label class="block text-sm font-bold text-gray-700 mb-1">Kategori <span class="text-red-500">*</span></label>
-                                                <select v-model="form.category" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" required>
-                                                    <option value="" disabled>Pilih Kategori...</option>
-                                                    <option value="Kabel">Kabel FO / Drop Core</option>
-                                                    <option value="ONT">ONT / Modem</option>
-                                                    <option value="Splitter">Splitter / ODP</option>
-                                                    <option value="Aksesoris">Aksesoris (Klem, Isolasi, dll)</option>
-                                                    <option value="Peralatan">Peralatan Kerja</option>
-                                                </select>
+                                                <div v-if="!isNewCategory">
+                                                    <select v-model="form.category" @change="checkNewCategory" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" required>
+                                                        <option value="" disabled>Pilih Kategori...</option>
+                                                        <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+                                                        <option value="new_category_option" class="font-bold text-emerald-600">+ Tambah Kategori Baru...</option>
+                                                    </select>
+                                                </div>
+                                                <div v-else class="flex gap-2">
+                                                    <input type="text" v-model="form.category" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" placeholder="Ketik kategori baru..." required autofocus />
+                                                    <button type="button" @click="cancelNewCategory" class="px-3 py-2 bg-gray-100 border border-gray-300 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors">
+                                                        Batal
+                                                    </button>
+                                                </div>
                                                 <div v-if="form.errors.category" class="text-xs text-red-500 mt-1">{{ form.errors.category }}</div>
                                             </div>
                                             <div>
@@ -300,6 +305,19 @@ const props = defineProps({
 
 const search = ref(props.filters.search || '');
 const category = ref(props.filters.category || 'all');
+const isNewCategory = ref(false);
+
+const checkNewCategory = (e) => {
+    if (e.target.value === 'new_category_option') {
+        isNewCategory.value = true;
+        form.category = '';
+    }
+};
+
+const cancelNewCategory = () => {
+    isNewCategory.value = false;
+    form.category = '';
+};
 
 const debouncedSearch = debounce(() => {
     router.get('/produk', { search: search.value, category: category.value !== 'all' ? category.value : null }, {
@@ -349,9 +367,11 @@ const openModal = (product = null) => {
         form.pcs_per_pack = product.pcs_per_pack;
         form.cm_per_pcs = product.cm_per_pcs;
         form.description = product.description;
+        isNewCategory.value = !props.categories.includes(product.category);
     } else {
         form.reset();
         form.id = null;
+        isNewCategory.value = false;
     }
     isModalOpen.value = true;
 };
