@@ -62,6 +62,8 @@ class PurchaseOrderController extends Controller
 
             $totalCost = 0;
 
+            $area = \App\Models\Area::where('name', $validated['area_name'])->first();
+
             foreach ($validated['items'] as $item) {
                 $material = Material::findOrFail($item['material_id']);
                 
@@ -96,15 +98,25 @@ class PurchaseOrderController extends Controller
                     'total_price' => $itemTotal
                 ]);
 
-                // Increase Stock
+                // Increase Stock globally
                 $material->stock += $convertedQuantity;
                 $material->save();
+                
+                // Increase Stock in Area
+                if ($area) {
+                    $materialStock = \App\Models\MaterialStock::firstOrCreate([
+                        'material_id' => $material->id,
+                        'area_id' => $area->id,
+                    ], ['stock' => 0]);
+                    
+                    $materialStock->increment('stock', $convertedQuantity);
+                }
             }
 
             $transaction->update(['total_cost' => $totalCost]);
 
             DB::commit();
-            return redirect()->back()->with('success', 'Order Toko berhasil dicatat dan stok telah bertambah.');
+            return redirect()->back()->with('success', 'Order Toko berhasil dicatat dan stok telah bertambah ke inventory area.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal mencatat order: ' . $e->getMessage());
@@ -117,12 +129,25 @@ class PurchaseOrderController extends Controller
 
         DB::beginTransaction();
         try {
+            $area = \App\Models\Area::where('name', $transaction->technician_name)->first();
+            
             // Revert stock
             foreach ($transaction->items as $item) {
                 $material = $item->material;
                 if ($material) {
                     $material->stock -= $item->quantity;
                     $material->save();
+                    
+                    if ($area) {
+                        $materialStock = \App\Models\MaterialStock::where([
+                            'material_id' => $material->id,
+                            'area_id' => $area->id,
+                        ])->first();
+                        
+                        if ($materialStock) {
+                            $materialStock->decrement('stock', $item->quantity);
+                        }
+                    }
                 }
             }
 
