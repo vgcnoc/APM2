@@ -343,13 +343,12 @@ const menuItems = [
         type: 'dropdown',
         icon: 'archive',
         label: 'Material & Barang',
-        active: (url) => (url || '').startsWith('/materials') || (url || '').startsWith('/material-transactions') || (url || '').startsWith('/material-mutations') || (url || '').startsWith('/material-requests'),
+        active: (url) => (url || '').startsWith('/materials') || (url || '').startsWith('/material-transactions') || (url || '').startsWith('/material-mutations'),
         permission: 'menu_materials',
         children: [
             { href: '/materials', label: 'Stok Material', active: (url) => (url || '').startsWith('/materials'), permission: 'menu_materials' },
             { href: '/material-transactions', label: 'Order & Distribusi', active: (url) => (url || '').startsWith('/material-transactions'), permission: 'menu_material_transactions' },
             { href: '/material-mutations', label: 'Mutasi & Kondisi', active: (url) => (url || '').startsWith('/material-mutations'), permission: 'menu_material_transactions' },
-            { href: '/material-requests', label: 'Request Material', active: (url) => (url || '').startsWith('/material-requests'), permission: 'menu_material_transactions' },
         ]
     },
     {

@@ -185,9 +185,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('material-mutations', [\App\Http\Controllers\MaterialMutationController::class, 'index'])->name('material-mutations.index');
 
     // ── Permintaan Material (Teknisi -> Gudang Utama) ────────────────────
-    Route::get('material-requests', [\App\Http\Controllers\MaterialRequestController::class, 'index'])->name('material-requests.index');
-    Route::post('material-requests/{materialRequest}/approve', [\App\Http\Controllers\MaterialRequestController::class, 'approve'])->name('material-requests.approve');
-    Route::post('material-requests/{materialRequest}/reject', [\App\Http\Controllers\MaterialRequestController::class, 'reject'])->name('material-requests.reject');
+
 
     // ── Data Jaringan (Dashboard Topology) ─────────────────────
     Route::get('/network-data', [\App\Http\Controllers\NetworkDataController::class, 'index'])->name('network-data.index');
