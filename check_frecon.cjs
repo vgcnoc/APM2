@@ -4,7 +4,7 @@ const conn = new Client();
 
 const script = `
 cd /var/www/APM2
-php artisan tinker --execute="\\$m = \\App\\Models\\Material::where('category', 'like', '%Klem%')->first(); \\$stock = \\App\\Models\\MaterialStock::where('material_id', \\$m->id)->first(); \\$stock->stock = 20; \\$stock->save(); echo 'Fixed stock to 20';"
+php artisan tinker --execute="\\$t = \\App\\Models\\MaterialTransaction::where('transaction_number', 'OUT-20261008-MIJI5')->first(); echo json_encode(\\$t);"
 `;
 
 conn.on('ready', () => {
