@@ -10,18 +10,17 @@ class WarehouseStockController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Area::with(['stocks.material' => function($q) {
-            $q->orderBy('name');
-        }]);
+        $query = \App\Models\Material::with(['stocks.area']);
 
         if ($request->search) {
-            $query->where('name', 'like', "%{$request->search}%");
+            $query->where('name', 'like', "%{$request->search}%")
+                  ->orWhere('category', 'like', "%{$request->search}%");
         }
 
-        $areas = $query->orderBy('name')->get();
+        $materials = $query->orderBy('name')->paginate(15)->withQueryString();
 
         return Inertia::render('Inventory/Warehouse/Index', [
-            'areas' => $areas,
+            'materials' => $materials,
             'filters' => $request->only(['search'])
         ]);
     }

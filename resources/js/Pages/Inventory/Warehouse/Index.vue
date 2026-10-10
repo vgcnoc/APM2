@@ -39,67 +39,87 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 gap-8">
-                    <div v-for="area in areas" :key="area.id" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div class="px-6 py-5 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div class="flex items-center gap-3">
-                                <div class="p-2 bg-indigo-100 rounded-lg text-indigo-600">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h2 class="text-lg font-black text-gray-900">{{ area.name }}</h2>
-                                    <p class="text-xs text-gray-500 mt-0.5">Total {{ area.stocks?.length || 0 }} jenis barang</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-white border-b border-gray-100">
-                                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Barang / Material</th>
-                                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Total Stok Tersedia</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100">
-                                    <tr v-for="stock in area.stocks" :key="stock.id" class="hover:bg-slate-50/50 transition-colors group">
-                                        <td class="px-6 py-4">
-                                            <div class="flex items-center gap-3">
-                                                <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                                                </div>
-                                                <div>
-                                                    <div class="text-sm font-bold text-gray-900">{{ stock.material?.name || 'Unknown Item' }}</div>
-                                                    <div class="text-xs text-gray-500 mt-0.5 font-medium">{{ stock.material?.category || 'No Category' }}</div>
-                                                </div>
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50/50 border-b border-gray-100">
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Barang / Material</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Kategori</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Detail Stok per Area</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Total Stok (All Area)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr v-for="material in materials.data" :key="material.id" class="hover:bg-slate-50/50 transition-colors group">
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
                                             </div>
-                                        </td>
-                                        <td class="px-6 py-4 text-right">
-                                            <span class="text-sm font-black text-slate-800">{{ formatNum(stock.stock) }}</span>
-                                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">{{ stock.material?.unit || '' }}</span>
-                                        </td>
-                                    </tr>
-                                    <tr v-if="!area.stocks || area.stocks.length === 0">
-                                        <td colspan="2" class="px-6 py-8 text-center text-sm font-medium text-gray-400 italic">
-                                            Tidak ada stok tercatat di area ini.
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                                            <div>
+                                                <div class="text-sm font-bold text-gray-900">{{ material.name }}</div>
+                                                <div v-if="material.supplier" class="text-[11px] text-gray-500 mt-0.5">{{ material.supplier }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-700">
+                                            {{ material.category || '-' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div v-if="material.stocks && material.stocks.length > 0" class="flex flex-wrap gap-2">
+                                            <div v-for="stock in material.stocks" :key="stock.id" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-indigo-50 border border-indigo-100 text-indigo-700">
+                                                <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                <span>{{ stock.area?.name || 'Area ?' }}: <strong class="text-indigo-900">{{ formatNum(stock.stock) }}</strong> {{ material.unit }}</span>
+                                            </div>
+                                        </div>
+                                        <span v-else class="text-xs text-gray-400 italic">Belum ada distribusi area</span>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <span class="text-sm font-black text-slate-800">{{ formatNum(material.stocks?.reduce((a, b) => a + Number(b.stock), 0) || 0) }}</span>
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">{{ material.unit }}</span>
+                                    </td>
+                                </tr>
+                                <tr v-if="!materials.data || materials.data.length === 0">
+                                    <td colspan="4" class="px-6 py-12 text-center">
+                                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 text-gray-400 mb-4">
+                                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                        </div>
+                                        <h3 class="text-lg font-bold text-gray-900 mb-1">Barang tidak ditemukan</h3>
+                                        <p class="text-sm text-gray-500">Gunakan kata kunci lain atau pastikan data barang sudah ditambahkan.</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                     
-                    <div v-if="areas.length === 0" class="bg-white rounded-3xl shadow-sm border border-gray-100 p-12 text-center">
-                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 text-gray-400 mb-4">
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                            </svg>
+                    <!-- Pagination (if applicable) -->
+                    <div v-if="materials.links && materials.links.length > 3" class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+                        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                            <div>
+                                <p class="text-sm text-gray-700">
+                                    Menampilkan <span class="font-bold">{{ materials.from }}</span> - <span class="font-bold">{{ materials.to }}</span> dari <span class="font-bold">{{ materials.total }}</span> hasil
+                                </p>
+                            </div>
+                            <div>
+                                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                                    <template v-for="(link, i) in materials.links" :key="i">
+                                        <Component
+                                            :is="link.url ? 'Link' : 'span'"
+                                            :href="link.url"
+                                            v-html="link.label"
+                                            class="relative inline-flex items-center px-4 py-2 border text-sm font-medium"
+                                            :class="[
+                                                link.active ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50',
+                                                { 'rounded-l-md': i === 0, 'rounded-r-md': i === materials.links.length - 1 }
+                                            ]"
+                                        />
+                                    </template>
+                                </nav>
+                            </div>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-900 mb-1">Belum ada Area tercatat</h3>
-                        <p class="text-sm text-gray-500">Tambahkan area terlebih dahulu di menu pengaturan untuk melihat distribusi stok.</p>
                     </div>
                 </div>
             </div>
@@ -109,12 +129,12 @@
 
 <script setup>
 import { ref } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { debounce } from 'lodash';
 
 const props = defineProps({
-    areas: Array,
+    materials: Object,
     filters: Object
 });
 
