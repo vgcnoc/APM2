@@ -221,11 +221,22 @@
                                                     <label class="block text-sm font-bold text-gray-700 mb-1">Meter per Roll</label>
                                                     <input type="number" step="0.01" v-model="form.meter_per_roll" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white" placeholder="0">
                                                 </div>
-                                                <div v-if="!form.id">
-                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Jumlah Roll (Stok Awal)</label>
+                                                <div>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.id ? 'Jumlah Roll Saat Ini' : 'Jumlah Roll (Stok Awal)' }}</label>
                                                     <input type="number" step="0.01" v-model="initialRolls" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white" placeholder="0">
-                                                    <p class="text-xs text-blue-600 mt-1 font-medium">Otomatis terkonversi: {{ (form.meter_per_roll * initialRolls) || 0 }} Meter</p>
                                                 </div>
+                                                <div>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Harga Modal (per roll)</label>
+                                                    <input type="number" step="0.01" min="0" v-model="form.price_per_unit" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white" placeholder="0">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Harga Jual (per roll)</label>
+                                                    <input type="number" step="0.01" min="0" v-model="form.selling_price" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white" placeholder="0">
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center justify-between rounded-xl bg-white border border-blue-200 px-4 py-2.5 mt-5">
+                                                <span class="text-sm text-gray-600">Total Stok:</span>
+                                                <span class="text-base font-black text-blue-700">{{ formatNum((Number(form.meter_per_roll) || 0) * (Number(initialRolls) || 0)) }} Meter</span>
                                             </div>
                                         </div>
                                     </div>
@@ -313,8 +324,8 @@
                                 <div class="col-span-1 md:col-span-2 mt-4">
                                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Manajemen Harga & Status</h4>
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div v-if="!isIsolasi">
-                                            <label class="block text-sm font-bold text-gray-700 mb-1">{{ ['Kabel', 'Patchcord'].includes(form.category) ? 'Harga Modal (per roll)' : 'Harga Modal / Beli' }}</label>
+                                        <div v-if="!isIsolasi && !['Kabel', 'Patchcord'].includes(form.category)">
+                                            <label class="block text-sm font-bold text-gray-700 mb-1">Harga Modal / Beli</label>
                                             <div class="relative">
                                                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                                     <span class="text-gray-500 sm:text-sm">Rp</span>
@@ -322,8 +333,8 @@
                                                 <input type="number" step="0.01" v-model="form.price_per_unit" class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all bg-white" placeholder="0">
                                             </div>
                                         </div>
-                                        <div v-if="!isIsolasi">
-                                            <label class="block text-sm font-bold text-gray-700 mb-1">{{ ['Kabel', 'Patchcord'].includes(form.category) ? 'Harga Jual (per roll)' : 'Harga Jual' }}</label>
+                                        <div v-if="!isIsolasi && !['Kabel', 'Patchcord'].includes(form.category)">
+                                            <label class="block text-sm font-bold text-gray-700 mb-1">Harga Jual</label>
                                             <div class="relative">
                                                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                                     <span class="text-gray-500 sm:text-sm">Rp</span>
@@ -547,6 +558,12 @@ const openModal = (product = null) => {
         } else {
             initialPacks.value = 0;
         }
+
+        if (['Kabel', 'Patchcord'].includes(product.category)) {
+            initialRolls.value = (product.stock && form.meter_per_roll > 0) ? (Number(product.stock) / form.meter_per_roll) : 0;
+        } else {
+            initialRolls.value = 0;
+        }
         
         form.price_per_unit = price;
         form.selling_price = selling;
@@ -573,9 +590,9 @@ const closeModal = () => {
 
 const submitForm = () => {
     // If it's a cable and we are setting initial rolls, calculate the stock
-    if (!form.id && ['Kabel', 'Patchcord'].includes(form.category)) {
+    if (['Kabel', 'Patchcord'].includes(form.category)) {
         form.unit = 'meter';
-        if (initialRolls.value > 0 && form.meter_per_roll > 0) {
+        if (Number(initialRolls.value) >= 0 && Number(form.meter_per_roll) > 0) {
             form.stock = parseFloat(initialRolls.value) * parseFloat(form.meter_per_roll);
         }
     }
