@@ -1380,8 +1380,33 @@ class CustomerController extends Controller
                     }
                 }
 
+                // Tambahkan ONT ke dalam pemakaian (usedItems) agar terpotong dari Stok Area dan masuk log Riwayat Order
+                $customerOnts = $customer->onts()->where('status', 'active')->get();
+                foreach ($customerOnts as $cOnt) {
+                    if ($cOnt->material_transaction_item_id) {
+                        $mItem = \App\Models\MaterialTransactionItem::find($cOnt->material_transaction_item_id);
+                        if ($mItem && $mItem->material) {
+                            $usedItems[] = [
+                                'material' => $mItem->material,
+                                'qty' => 1,
+                                'unit' => 'pcs'
+                            ];
+                            $rincianNotesUsed[] = "- {$mItem->material->name}: 1 pcs (SN: {$cOnt->serial_number})";
+                        }
+                    }
+                }
+
                 // Proses Instalasi (Memotong Stok Area sesuai Pemakaian)
                 if (count($usedItems) > 0) {
+                    // Hapus transaksi lama agar tidak ada riwayat ganda saat edit pemasangan
+                    \App\Models\MaterialTransaction::where('customer_id', $customer->id)
+                        ->whereIn('type', ['out', 'in'])
+                        ->where(function($q) {
+                            $q->where('transaction_number', 'like', 'OUT-INSTALASI-%')
+                              ->orWhere('transaction_number', 'like', 'RTR-EXCESS-%');
+                        })
+                        ->delete();
+
                     $transactionOut = \App\Models\MaterialTransaction::create([
                         'transaction_number' => 'OUT-INSTALASI-' . date('YmdHis'),
                         'type' => 'out',
@@ -1948,42 +1973,6 @@ class CustomerController extends Controller
                 if (!empty($validated['material_items'])) {
                     foreach ($validated['material_items'] as $mItem) {
                         $trxNotes[] = "Material: " . $mItem['name'] . " (" . $mItem['qty'] . " " . $mItem['unit'] . ")";
-                        
-                        // Deduct Area Stock
-                        if (isset($mItem['id']) && is_numeric($mItem['id'])) {
-                            $transactionItem = \App\Models\MaterialTransactionItem::find($mItem['id']);
-                            if ($transactionItem && $transactionItem->material_id) {
-                                $materialStock = \App\Models\MaterialStock::where('material_id', $transactionItem->material_id)
-                                    ->where('area_id', $customer->area_id)
-                                    ->first();
-                                
-                                if ($materialStock) {
-                                    $qty = floatval($mItem['qty']);
-                                    $material = \App\Models\Material::find($transactionItem->material_id);
-                                    if ($material) {
-                                        $unitLower = strtolower($mItem['unit']);
-                                        if (in_array($material->category, ['Kabel Drop', 'Kabel Drop / Frecon', 'Kabel Frecon', 'Kabel'])) {
-                                            if ($unitLower === 'roll' || $unitLower === 'rol' || $unitLower === 'pcs') {
-                                                $mpr = floatval($material->meter_per_roll) > 0 ? floatval($material->meter_per_roll) : 1000;
-                                                $qty = $qty * $mpr;
-                                            }
-                                        } else if ($material->category === 'Paku Klem') {
-                                            if ($unitLower === 'pack' || $unitLower === 'bungkus') {
-                                                $ppp = floatval($material->pcs_per_pack) > 0 ? floatval($material->pcs_per_pack) : 1;
-                                                $qty = $qty * $ppp;
-                                            }
-                                        } else if ($material->category === 'Isolasi') {
-                                            if ($unitLower === 'pcs' || $unitLower === 'pcs (utuh)') {
-                                                $cpp = floatval($material->cm_per_pcs) > 0 ? floatval($material->cm_per_pcs) : 50;
-                                                $qty = $qty * $cpp;
-                                            }
-                                        }
-                                    }
-                                    $materialStock->stock -= $qty;
-                                    $materialStock->save();
-                                }
-                            }
-                        }
                     }
                 }
                 $customNotes[] = implode("\n", $trxNotes);
