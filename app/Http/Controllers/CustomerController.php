@@ -615,7 +615,7 @@ class CustomerController extends Controller
             ->whereNull('customer_id')
             ->get();
             
-        $materialTransactions = \App\Models\MaterialTransaction::where('type', 'out')
+        $materialTransactions = \App\Models\MaterialTransaction::where('type', 'in')
             ->with('items.material.stocks')
             ->latest()
             ->limit(100)
