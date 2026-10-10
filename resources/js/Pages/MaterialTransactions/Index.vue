@@ -656,7 +656,7 @@ const addCartItem = () => {
             material_id: material.id,
             material_name: material.name,
             input_quantity: 1,
-            unit_mode: isCable ? 'meter' : (isPack ? 'pcs' : (isIsolasi ? 'cm' : 'default')),
+            unit_mode: isCable ? 'meter' : (isPack ? 'pcs' : (isIsolasi ? 'pack' : 'default')),
             unit_manual: material.unit || 'pcs',
             max_stock: material.stock,
             is_cable: isCable,
