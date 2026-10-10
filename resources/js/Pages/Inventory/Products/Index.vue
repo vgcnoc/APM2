@@ -245,13 +245,9 @@
                                                     <label class="block text-sm font-bold text-gray-700 mb-1">Cm per Pcs</label>
                                                     <input type="number" step="0.01" min="0" v-model="form.cm_per_pcs" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white" placeholder="0">
                                                 </div>
-                                                <div v-if="!form.id">
-                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Jumlah Pcs (Stok Awal)</label>
+                                                <div>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.id ? 'Jumlah Pcs Saat Ini' : 'Jumlah Pcs (Stok Awal)' }}</label>
                                                     <input type="number" step="0.01" min="0" v-model="initialPacks" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white" placeholder="0">
-                                                </div>
-                                                <div v-else>
-                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Jumlah Pcs (Stok Awal)</label>
-                                                    <input type="number" step="0.01" min="0" class="w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-100 text-gray-500 cursor-not-allowed" placeholder="-" disabled title="Stok awal tidak bisa diubah setelah produk dibuat.">
                                                 </div>
                                                 <div>
                                                     <label class="block text-sm font-bold text-gray-700 mb-1">Harga Modal (per pcs)</label>
@@ -262,8 +258,8 @@
                                                     <input type="number" step="0.01" min="0" v-model="form.selling_price" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white" placeholder="0">
                                                 </div>
                                             </div>
-                                            <div v-if="!form.id" class="flex items-center justify-between rounded-xl bg-white border border-amber-200 px-4 py-2.5">
-                                                <span class="text-sm text-gray-600">Total Stok Awal:</span>
+                                            <div class="flex items-center justify-between rounded-xl bg-white border border-amber-200 px-4 py-2.5">
+                                                <span class="text-sm text-gray-600">Total Stok:</span>
                                                 <span class="text-base font-black text-amber-700">{{ formatNum((Number(initialPacks) || 0) * (Number(form.cm_per_pcs) || 0)) }} CM</span>
                                             </div>
                                         </div>
@@ -544,7 +540,12 @@ const openModal = (product = null) => {
             if (form.cm_per_pcs > 0) {
                 price = price * form.cm_per_pcs;
                 selling = selling * form.cm_per_pcs;
+                initialPacks.value = product.stock ? (Number(product.stock) / form.cm_per_pcs) : 0;
+            } else {
+                initialPacks.value = 0;
             }
+        } else {
+            initialPacks.value = 0;
         }
         
         form.price_per_unit = price;
@@ -583,7 +584,7 @@ const submitForm = () => {
     if (isIsolasi.value) {
         form.unit = 'cm';
         form.pcs_per_pack = 1; // Pcs is the highest unit for Isolasi now
-        if (!form.id && Number(initialPacks.value) > 0 && Number(form.cm_per_pcs) > 0) {
+        if (Number(initialPacks.value) >= 0 && Number(form.cm_per_pcs) > 0) {
             form.stock = Number(initialPacks.value) * Number(form.cm_per_pcs);
         }
     }
