@@ -55,40 +55,95 @@ class MaterialRequestController extends Controller
                 'approved_at' => now(),
             ]);
 
-            // 2. Create Surat Jalan (MaterialTransaction OUT)
+            // 2. Create Surat Jalan (MaterialTransaction IN)
             $transaction = MaterialTransaction::create([
                 'transaction_number' => 'SJ-REQ-' . date('YmdHis'),
-                'type' => 'out',
+                'type' => 'in',
                 'user_id' => auth()->id(),
-                'technician_id' => $materialRequest->user_id,
+                'technician_name' => $materialRequest->user ? $materialRequest->user->name : 'Teknisi',
                 'area_id' => $materialRequest->area_id,
                 'date' => now(),
-                'notes' => 'Persetujuan Request Material: ' . $materialRequest->request_number,
-                'status' => 'completed',
+                'purpose' => 'Persetujuan Request Material: ' . $materialRequest->request_number,
+                'notes' => 'Permintaan tambahan dari teknisi',
+                'status' => 'approved',
             ]);
 
             // 3. Process items
+            $totalCost = 0;
             foreach ($materialRequest->items as $item) {
-                // Potong stok utama
                 $material = $item->material;
-                $material->decrement('stock', $item->quantity);
+                
+                $areaStock = MaterialStock::firstOrCreate([
+                    'material_id' => $item->material_id,
+                    'area_id' => $materialRequest->area_id,
+                ], [
+                    'stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0
+                ]);
+                
+                $stockBefore = $areaStock->stock;
+                
+                // Convert requested quantity (usually in Roll/Pack) to base unit for stock deduction
+                $qty = $item->quantity;
+                $itemUnit = strtolower($material->unit ?? '');
+                $deduction = $qty;
+                
+                if (str_contains(strtolower($material->category), 'kabel') && ($itemUnit === 'roll' || $itemUnit === 'rol')) {
+                    $deduction = $qty * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
+                } elseif ($material->category === 'Paku Klem' && ($itemUnit === 'pack' || $itemUnit === 'bungkus')) {
+                    $deduction = $qty * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
+                } elseif ($material->category === 'Isolasi' && $itemUnit === 'pcs') {
+                    $deduction = $qty * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                }
+                
+                $material->stock -= $deduction;
+                $areaStock->stock += $deduction;
+                
+                $pricePerUnit = $material->selling_price ?? ($material->price_per_unit ?? 0);
+                
+                // Calculate unit price based on base unit to match stock
+                if (str_contains(strtolower($material->category), 'kabel') && ($itemUnit === 'roll' || $itemUnit === 'rol')) {
+                    $pricePerUnit = $pricePerUnit / ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
+                } elseif ($material->category === 'Paku Klem' && ($itemUnit === 'pack' || $itemUnit === 'bungkus')) {
+                    $pricePerUnit = $pricePerUnit / ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
+                } elseif ($material->category === 'Isolasi' && $itemUnit === 'pcs') {
+                    $pricePerUnit = $pricePerUnit / ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                }
+                
+                $totalPrice = $deduction * $pricePerUnit;
+                $totalCost += $totalPrice;
 
                 // Buat item transaksi
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $item->material_id,
-                    'quantity' => $item->quantity,
-                    'unit' => $material->unit,
-                    'price' => $material->price,
+                    'quantity' => $qty, // Store the requested quantity (e.g. 1 Roll)
+                    'unit' => $material->unit ?? 'pcs',
+                    'price_per_unit' => $pricePerUnit,
+                    'total_price' => $totalPrice,
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $areaStock->stock,
+                    'condition' => 'Layak Pakai'
                 ]);
-
-                // Tambah stok area teknisi
-                $areaStock = MaterialStock::firstOrCreate([
-                    'material_id' => $item->material_id,
-                    'area_id' => $materialRequest->area_id,
-                ]);
-                $areaStock->increment('stock', $item->quantity);
+                
+                // Recalculate helper columns
+                if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
+                    $material->total_rolls = $material->stock / $material->meter_per_roll;
+                    $areaStock->total_rolls = $areaStock->stock / $material->meter_per_roll;
+                }
+                if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
+                    $material->total_packs = $material->stock / $material->pcs_per_pack;
+                    $areaStock->total_packs = $areaStock->stock / $material->pcs_per_pack;
+                }
+                if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
+                    $material->total_pieces = $material->stock / $material->cm_per_pcs;
+                    $areaStock->total_pieces = $areaStock->stock / $material->cm_per_pcs;
+                }
+                
+                $material->save();
+                $areaStock->save();
             }
+            
+            $transaction->update(['total_cost' => $totalCost]);
         });
 
         return back()->with('success', 'Request disetujui. Material telah dikirim ke Area Teknisi.');
