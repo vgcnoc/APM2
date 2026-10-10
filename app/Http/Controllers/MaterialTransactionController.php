@@ -198,7 +198,7 @@ class MaterialTransactionController extends Controller
                 if (str_contains(strtolower($material->category), 'kabel') && ($itemUnit === 'roll' || $itemUnit === 'rol')) {
                     $deduction = $itemData['quantity'] * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
                 }
-                if ($material->category === 'Paku Klem' && ($itemUnit === 'pack' || $itemUnit === 'bungkus')) {
+                if (($material->category === 'Paku Klem' || stripos($material->name, 'klem') !== false) && ($itemUnit === 'pack' || $itemUnit === 'bungkus')) {
                     $deduction = $itemData['quantity'] * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
                 }
                 if ($material->category === 'Isolasi' && ($itemUnit === 'pack')) {
@@ -333,7 +333,7 @@ class MaterialTransactionController extends Controller
                     if (str_contains(strtolower($material->category), 'kabel') && ($item->unit === 'roll' || $item->unit === 'rol')) {
                         $addition = $item->quantity * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
                     }
-                    if ($material->category === 'Paku Klem' && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
+                    if (($material->category === 'Paku Klem' || stripos($material->name, 'klem') !== false) && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
                         $addition = $item->quantity * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
                     }
                     if ($material->category === 'Isolasi' && ($item->unit === 'pack')) {
@@ -422,7 +422,7 @@ class MaterialTransactionController extends Controller
                 if (str_contains(strtolower($material->category), 'kabel') && ($itemData['unit'] === 'roll' || $itemData['unit'] === 'rol')) {
                     $deduction = $itemData['quantity'] * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
                 }
-                if ($material->category === 'Paku Klem' && ($itemData['unit'] === 'pack' || $itemData['unit'] === 'bungkus')) {
+                if (($material->category === 'Paku Klem' || stripos($material->name, 'klem') !== false) && ($itemData['unit'] === 'pack' || $itemData['unit'] === 'bungkus')) {
                     $deduction = $itemData['quantity'] * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
                 }
                 if ($material->category === 'Isolasi' && ($itemData['unit'] === 'pack')) {
@@ -535,7 +535,7 @@ class MaterialTransactionController extends Controller
                         if (str_contains(strtolower($material->category), 'kabel') && ($item->unit === 'roll' || $item->unit === 'rol')) {
                             $addition = $item->quantity * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
                         }
-                        if ($material->category === 'Paku Klem' && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
+                        if (($material->category === 'Paku Klem' || stripos($material->name, 'klem') !== false) && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
                             $addition = $item->quantity * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
                         }
                         if ($material->category === 'Isolasi' && ($item->unit === 'pack')) {
@@ -606,7 +606,7 @@ class MaterialTransactionController extends Controller
                             if (str_contains(strtolower($material->category), 'kabel') && ($item->unit === 'roll' || $item->unit === 'rol')) {
                                 $addition = $item->quantity * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
                             }
-                            if ($material->category === 'Paku Klem' && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
+                            if (($material->category === 'Paku Klem' || stripos($material->name, 'klem') !== false) && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
                                 $addition = $item->quantity * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
                             }
                             if ($material->category === 'Isolasi' && ($item->unit === 'pack')) {

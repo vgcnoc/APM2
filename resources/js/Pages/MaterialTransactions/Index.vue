@@ -649,14 +649,14 @@ const addCartItem = () => {
     const material = props.materials.find(m => m.id === tempMaterialId.value);
     if (material) {
         const isCable = material.category === 'Kabel' || material.category === 'Kabel Drop / Frecon' || material.name.toLowerCase().includes('kabel');
-        const isPack = material.category === 'Paku Klem';
+        const isPack = material.category === 'Paku Klem' || material.name.toLowerCase().includes('klem');
         const isIsolasi = material.category === 'Isolasi' || material.name.toLowerCase().includes('isolasi');
         
         orderForm.items.push({
             material_id: material.id,
             material_name: material.name,
             input_quantity: 1,
-            unit_mode: isCable ? 'meter' : (isPack ? 'pcs' : (isIsolasi ? 'pack' : 'default')),
+            unit_mode: isCable ? 'meter' : (isPack ? 'bungkus' : (isIsolasi ? 'pack' : 'default')),
             unit_manual: material.unit || 'pcs',
             max_stock: material.stock,
             is_cable: isCable,
