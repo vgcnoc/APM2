@@ -104,7 +104,7 @@ class ProductController extends Controller
 
     public function show($id)
     {
-        $product = Material::findOrFail($id);
+        $product = Material::with('stocks.area')->findOrFail($id);
         
         return Inertia::render('Inventory/Products/Show', [
             'product' => $product

@@ -93,6 +93,38 @@
                                 </li>
                             </ul>
                         </div>
+
+                        <!-- Stok Gudang Per Area -->
+                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                            <h3 class="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                <div class="p-1.5 bg-amber-100 rounded-lg text-amber-600">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                </div>
+                                Distribusi Stok Gudang per Area
+                            </h3>
+                            <div v-if="product.stocks && product.stocks.length > 0" class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-slate-50 border-b border-gray-100">
+                                            <th class="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Area (Gudang)</th>
+                                            <th class="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Total Stok Tersedia</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        <tr v-for="stock in product.stocks" :key="stock.id" class="hover:bg-slate-50/50 transition-colors">
+                                            <td class="px-4 py-3 text-sm font-bold text-gray-900">{{ stock.area?.name || 'Area Tidak Diketahui' }}</td>
+                                            <td class="px-4 py-3 text-right">
+                                                <span class="text-sm font-black text-slate-800">{{ formatNum(stock.stock) }}</span>
+                                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">{{ product.unit }}</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div v-else class="text-center py-8 px-4 bg-slate-50 rounded-2xl border border-dashed border-gray-200">
+                                <p class="text-sm text-gray-500 font-medium">Belum ada distribusi stok ke gudang / area manapun.</p>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Right Column: Stock & Unit Info -->
