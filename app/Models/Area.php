@@ -7,4 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class Area extends Model
 {
     protected $fillable = ['name', 'description', 'address', 'latitude', 'longitude'];
+
+    public function stocks()
+    {
+        return $this->hasMany(MaterialStock::class);
+    }
 }
