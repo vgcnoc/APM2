@@ -354,7 +354,7 @@ class MaterialTransactionController extends Controller
                             ['material_id' => $material->id, 'area_id' => $materialTransaction->area_id],
                             ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
                         );
-                        $materialStock->stock += $addition;
+                        $materialStock->stock -= $addition; // Revert by subtracting what was added
                         if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
                             $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
                         }
