@@ -23,6 +23,9 @@ class Material extends Model
         'description',
         'cm_per_pcs',
         'total_pieces',
+        'is_active',
+        'requires_sn',
+        'requires_mac',
     ];
 
     public function stocks()

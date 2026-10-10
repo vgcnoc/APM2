@@ -256,8 +256,84 @@
                                         </div>
                                     </div>
                                 </div>
+                                <!-- Pricing & Status -->
+                                <div class="col-span-1 md:col-span-2 mt-4">
+                                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Manajemen Harga & Status</h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div>
+                                            <label class="block text-sm font-bold text-gray-700 mb-1">Harga Modal / Beli</label>
+                                            <div class="relative">
+                                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                                    <span class="text-gray-500 sm:text-sm">Rp</span>
+                                                </div>
+                                                <input type="number" step="0.01" v-model="form.price_per_unit" class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all bg-white" placeholder="0">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-bold text-gray-700 mb-1">Harga Jual</label>
+                                            <div class="relative">
+                                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                                    <span class="text-gray-500 sm:text-sm">Rp</span>
+                                                </div>
+                                                <input type="number" step="0.01" v-model="form.selling_price" class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all bg-white" placeholder="0">
+                                            </div>
+                                        </div>
+                                        <div class="flex items-end pb-2">
+                                            <label class="flex items-center cursor-pointer">
+                                                <div class="relative">
+                                                    <input type="checkbox" v-model="form.is_active" class="sr-only">
+                                                    <div :class="['block w-10 h-6 rounded-full transition-colors', form.is_active ? 'bg-emerald-500' : 'bg-gray-300']"></div>
+                                                    <div :class="['dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform', form.is_active ? 'transform translate-x-4' : '']"></div>
+                                                </div>
+                                                <div class="ml-3 text-sm font-bold text-gray-700">
+                                                    Produk Aktif
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Device Configuration (Tampil jika kategori berkaitan dengan perangkat) -->
+                                <div v-if="['ONT', 'Router', 'Switch', 'OLT'].includes(form.category)" class="col-span-1 md:col-span-2 mt-4">
+                                    <h4 class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-4 border-b border-blue-100 pb-2 flex items-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>
+                                        Konfigurasi Perangkat Lanjutan
+                                    </h4>
+                                    
+                                    <div class="bg-blue-50/50 rounded-2xl p-5 border border-blue-100">
+                                        <p class="text-xs text-blue-700 leading-relaxed mb-4">
+                                            Aktifkan fitur ini jika perangkat memerlukan pencatatan Serial Number (S/N) atau MAC Address saat transaksi (stok masuk/keluar) maupun saat instalasi pelanggan.
+                                        </p>
+                                        
+                                        <div class="flex flex-col sm:flex-row gap-6">
+                                            <label class="flex items-center cursor-pointer group">
+                                                <div class="relative">
+                                                    <input type="checkbox" v-model="form.requires_sn" class="sr-only">
+                                                    <div :class="['block w-12 h-7 rounded-full transition-colors', form.requires_sn ? 'bg-blue-600' : 'bg-gray-300']"></div>
+                                                    <div :class="['dot absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform', form.requires_sn ? 'transform translate-x-5' : '']"></div>
+                                                </div>
+                                                <div class="ml-3">
+                                                    <span class="block text-sm font-bold text-gray-800">Wajib Serial Number (S/N)</span>
+                                                    <span class="block text-xs text-gray-500">Lacak SN tiap unit</span>
+                                                </div>
+                                            </label>
+
+                                            <label class="flex items-center cursor-pointer group">
+                                                <div class="relative">
+                                                    <input type="checkbox" v-model="form.requires_mac" class="sr-only">
+                                                    <div :class="['block w-12 h-7 rounded-full transition-colors', form.requires_mac ? 'bg-blue-600' : 'bg-gray-300']"></div>
+                                                    <div :class="['dot absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform', form.requires_mac ? 'transform translate-x-5' : '']"></div>
+                                                </div>
+                                                <div class="ml-3">
+                                                    <span class="block text-sm font-bold text-gray-800">Wajib MAC Address</span>
+                                                    <span class="block text-xs text-gray-500">Lacak MAC tiap unit</span>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
                                 
-                                <div class="col-span-1 md:col-span-2">
+                                <div class="col-span-1 md:col-span-2 mt-4">
                                     <label class="block text-sm font-bold text-gray-700 mb-1">Keterangan / Catatan Tambahan</label>
                                     <textarea v-model="form.description" rows="2" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all"></textarea>
                                 </div>
@@ -343,6 +419,11 @@ const form = useForm({
     meter_per_roll: null,
     pcs_per_pack: null,
     cm_per_pcs: null,
+    price_per_unit: 0,
+    selling_price: 0,
+    is_active: true,
+    requires_sn: false,
+    requires_mac: false,
     description: '',
 });
 
@@ -366,6 +447,11 @@ const openModal = (product = null) => {
         form.meter_per_roll = product.meter_per_roll;
         form.pcs_per_pack = product.pcs_per_pack;
         form.cm_per_pcs = product.cm_per_pcs;
+        form.price_per_unit = product.price_per_unit || 0;
+        form.selling_price = product.selling_price || 0;
+        form.is_active = product.is_active ?? true;
+        form.requires_sn = product.requires_sn || false;
+        form.requires_mac = product.requires_mac || false;
         form.description = product.description;
         isNewCategory.value = !props.categories.includes(product.category);
     } else {

@@ -49,6 +49,9 @@ class ProductController extends Controller
             'meter_per_roll' => 'nullable|numeric|min:0',
             'pcs_per_pack' => 'nullable|numeric|min:0',
             'cm_per_pcs' => 'nullable|numeric|min:0',
+            'is_active' => 'boolean',
+            'requires_sn' => 'boolean',
+            'requires_mac' => 'boolean',
         ]);
 
         Material::create($validated);
@@ -71,6 +74,9 @@ class ProductController extends Controller
             'meter_per_roll' => 'nullable|numeric|min:0',
             'pcs_per_pack' => 'nullable|numeric|min:0',
             'cm_per_pcs' => 'nullable|numeric|min:0',
+            'is_active' => 'boolean',
+            'requires_sn' => 'boolean',
+            'requires_mac' => 'boolean',
         ]);
 
         $product->update($validated);
