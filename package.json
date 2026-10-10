@@ -23,6 +23,7 @@
         "apexcharts": "^3.45",
         "leaflet": "^1.9.4",
         "qrcode": "^1.5.4",
+        "ssh2": "^1.17.0",
         "sweetalert2": "^11.26.25",
         "vue3-apexcharts": "^1.5"
     }
