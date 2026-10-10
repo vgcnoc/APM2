@@ -90,7 +90,7 @@
                                     <div class="flex justify-between items-center">
                                         <span class="text-xs font-medium text-slate-500">Total Stok</span>
                                         <div class="text-right">
-                                            <span class="text-lg font-black text-slate-800">{{ product.stock }}</span>
+                                            <span class="text-lg font-black text-slate-800">{{ formatNum(Number(product.stock)) }}</span>
                                             <span class="text-xs font-bold text-slate-500 ml-1 uppercase">{{ product.unit }}</span>
                                         </div>
                                     </div>
