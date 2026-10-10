@@ -348,7 +348,7 @@ const menuItems = [
             { href: '/produk', label: 'Data Produk', active: (url) => (url || '').startsWith('/produk'), permission: 'menu_materials' },
             { href: '/order-toko', label: 'Order Toko (Restock)', active: (url) => (url || '').startsWith('/order-toko'), permission: 'menu_materials' },
             { href: '/stok-in-out', label: 'Stock Opname Per Area', active: (url) => (url || '').startsWith('/stok-in-out'), permission: 'menu_materials' },
-            { href: '/warehouse-stocks', label: 'Stok Per Area (Gudang)', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: 'menu_materials' },
+            { href: '/warehouse-stocks', label: 'Inventory', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: 'menu_materials' },
         ]
     },
 
