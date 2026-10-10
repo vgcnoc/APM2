@@ -65,12 +65,12 @@ class CustomerController extends Controller
 
         // 2. Fetch Data
         $customers = (clone $baseQuery)
-            ->with(['package', 'ont.odp', 'areaModel', 'user'])
+            ->with(['package', 'ont.odp', 'surveys.odp', 'areaModel', 'user'])
             ->search($request->search)
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
             ->when($request->area_id, fn ($q, $area) => $q->where('area_id', $area))
-            ->when($request->odp_id, fn ($q, $odp) => $q->whereHas('ont', fn ($oq) => $oq->where('odp_id', $odp)))
+            ->when($request->odp_id, fn ($q, $odp) => $q->whereHas('ont', fn ($oq) => $oq->where('odp_id', $odp))->orWhereHas('surveys', fn ($sq) => $sq->where('odp_id', $odp)))
             ->when($request->sort_by, function ($q, $sort) {
                 return match($sort) {
                     'terlama' => $q->orderBy('created_at', 'asc'),

@@ -253,8 +253,8 @@
                     </div>
                 </td>
                 <td>
-                    <span v-if="row.ont" class="px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded text-[10px] font-bold whitespace-nowrap uppercase">
-                        {{ row.ont.odp?.name || '-' }}
+                    <span v-if="row.ont?.odp?.name || (row.surveys && row.surveys.length > 0 && row.surveys[0].odp?.name)" class="px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded text-[10px] font-bold whitespace-nowrap uppercase">
+                        {{ row.ont?.odp?.name || (row.surveys && row.surveys.length > 0 ? row.surveys[0].odp?.name : '-') || '-' }}
                     </span>
                     <span v-else class="text-xs text-gray-400">-</span>
                 </td>
