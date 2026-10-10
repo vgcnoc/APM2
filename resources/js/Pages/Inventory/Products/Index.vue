@@ -435,7 +435,7 @@ const isNewCategory = ref(false);
 const initialRolls = ref(0);
 const initialPacks = ref(0);
 
-const isIsolasi = computed(() => (form.category || '').toLowerCase().includes('isolasi'));
+const isIsolasi = computed(() => (form.category || '').toLowerCase().includes('isolasi') || (form.name || '').toLowerCase().includes('isolasi'));
 
 const cmPerPack = computed(() => {
     const ppp = Number(form.pcs_per_pack) > 0 ? Number(form.pcs_per_pack) : 1;
