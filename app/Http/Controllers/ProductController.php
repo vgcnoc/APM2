@@ -101,4 +101,13 @@ class ProductController extends Controller
 
         return redirect()->back()->with('success', 'Produk berhasil dihapus.');
     }
+
+    public function show($id)
+    {
+        $product = Material::findOrFail($id);
+        
+        return Inertia::render('Inventory/Products/Show', [
+            'product' => $product
+        ]);
+    }
 }
