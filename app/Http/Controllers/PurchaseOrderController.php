@@ -310,6 +310,7 @@ class PurchaseOrderController extends Controller
                     
                     for ($i = 0; $i < $needed; $i++) {
                         \App\Models\Ont::create([
+                            'serial_number' => 'TBA-' . time() . '-' . uniqid(),
                             'brand' => $item->material->name,
                             'status' => 'Belum Set/Baru Input',
                             'area_id' => $transaction->area_id,
