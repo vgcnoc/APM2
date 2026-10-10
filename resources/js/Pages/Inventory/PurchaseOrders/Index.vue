@@ -74,9 +74,17 @@
                                         <div class="text-sm font-bold text-gray-900">Rp {{ formatNumber(trx.total_cost) }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button @click="confirmDelete(trx.id)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Batalkan Transaksi">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
+                                        <div class="flex items-center justify-end gap-2">
+                                            <button @click="viewOrder(trx)" class="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors inline-flex items-center justify-center" title="Lihat Detail">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                            </button>
+                                            <button @click="editOrder(trx)" class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex items-center justify-center" title="Edit Order">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                            </button>
+                                            <button @click="confirmDelete(trx.id)" class="text-gray-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Batalkan Transaksi">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 <tr v-if="transactions.data.length === 0">
@@ -116,12 +124,14 @@
                             <!-- Header -->
                             <div class="relative px-6 pt-6 pb-4 flex items-start justify-between shrink-0">
                                 <div class="flex items-start gap-3">
-                                    <div class="p-2.5 rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-500 text-white shadow-lg shadow-indigo-500/30">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                    <div class="p-2.5 rounded-2xl shadow-lg" :class="isViewing ? 'bg-gradient-to-br from-emerald-500 to-teal-400 text-white shadow-emerald-500/30' : (form.id ? 'bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-blue-500/30' : 'bg-gradient-to-br from-indigo-600 to-blue-500 text-white shadow-indigo-500/30')">
+                                        <svg v-if="isViewing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                        <svg v-else-if="form.id" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                        <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                                     </div>
                                     <div>
-                                        <DialogTitle class="text-lg font-black text-gray-900 tracking-tight">Buat Order Baru</DialogTitle>
-                                        <p class="text-sm text-slate-500">Order material dari area/wilayah ke toko</p>
+                                        <DialogTitle class="text-lg font-black text-gray-900 tracking-tight">{{ isViewing ? 'Detail Order Toko' : (form.id ? 'Edit Order Toko' : 'Buat Order Baru') }}</DialogTitle>
+                                        <p class="text-sm text-slate-500">{{ isViewing ? 'Informasi detail mengenai order ini' : 'Order material dari area/wilayah ke toko' }}</p>
                                     </div>
                                 </div>
                                 <button id="btn-close-order" type="button" @click="closeModal" class="p-2 -mr-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors">
@@ -210,15 +220,15 @@
                                                             <template v-else>{{ materialById(item.material_id)?.category || 'Umum' }}</template>
                                                         </div>
                                                     </div>
-                                                    <div class="flex items-center rounded-lg border border-slate-200 overflow-hidden" :class="{'border-rose-300 ring-1 ring-rose-200': convertedQty(item) > Number(materialById(item.material_id)?.stock)}">
-                                                        <button type="button" @click="decQty(item)" class="px-2 py-1.5 text-slate-500 hover:bg-slate-100">−</button>
-                                                        <input :id="`order-qty-${index}`" v-model.number="item.quantity" type="number" min="0.01" step="any" required class="w-14 py-1.5 text-center text-sm border-0 focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" :class="{'text-rose-600 font-bold': convertedQty(item) > Number(materialById(item.material_id)?.stock)}">
-                                                        <button type="button" @click="item.quantity = (Number(item.quantity) || 0) + 1" class="px-2 py-1.5 text-slate-500 hover:bg-slate-100">+</button>
+                                                    <div class="flex items-center rounded-lg border border-slate-200 overflow-hidden" :class="{'border-rose-300 ring-1 ring-rose-200': !isViewing && convertedQty(item) > Number(materialById(item.material_id)?.stock)}">
+                                                        <button v-if="!isViewing" type="button" @click="decQty(item)" class="px-2 py-1.5 text-slate-500 hover:bg-slate-100">−</button>
+                                                        <input :id="`order-qty-${index}`" v-model.number="item.quantity" type="number" min="0.01" step="any" required :disabled="isViewing" class="w-14 py-1.5 text-center text-sm border-0 focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" :class="{'text-rose-600 font-bold': !isViewing && convertedQty(item) > Number(materialById(item.material_id)?.stock)}">
+                                                        <button v-if="!isViewing" type="button" @click="item.quantity = (Number(item.quantity) || 0) + 1" class="px-2 py-1.5 text-slate-500 hover:bg-slate-100">+</button>
                                                     </div>
-                                                    <select :id="`order-unit-${index}`" v-model="item.purchase_unit" class="w-24 py-1.5 pl-2 pr-7 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500">
+                                                    <select :id="`order-unit-${index}`" v-model="item.purchase_unit" :disabled="isViewing" class="w-24 py-1.5 pl-2 pr-7 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500" :class="{'opacity-75 cursor-not-allowed': isViewing}">
                                                         <option v-for="u in unitOptions(materialById(item.material_id))" :key="u.value" :value="u.value">{{ u.label }}</option>
                                                     </select>
-                                                    <button type="button" @click="form.items.splice(index, 1)" class="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Hapus">
+                                                    <button v-if="!isViewing" type="button" @click="form.items.splice(index, 1)" class="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Hapus">
                                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                     </button>
                                                 </div>
@@ -233,7 +243,7 @@
                                     <!-- Catatan -->
                                     <div>
                                         <label for="order-notes" class="block text-sm font-semibold text-gray-800 mb-1.5">Catatan</label>
-                                        <textarea id="order-notes" v-model="form.notes" rows="3" placeholder="Tambahkan catatan untuk order ini (opsional)" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all resize-y"></textarea>
+                                        <textarea id="order-notes" v-model="form.notes" :disabled="isViewing" rows="3" placeholder="Tambahkan catatan untuk order ini (opsional)" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all resize-y"></textarea>
                                     </div>
                                 </div>
 
@@ -243,10 +253,10 @@
                                         <span v-if="form.items.length">{{ form.items.length }} produk di keranjang</span>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <button id="btn-cancel-order" type="button" @click="closeModal" class="px-5 py-2.5 text-sm font-bold text-gray-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">Batal</button>
-                                        <button id="btn-submit-order" type="submit" :disabled="form.processing || form.items.length === 0 || !form.area_name || hasOverstockItems" class="inline-flex items-center px-5 py-2.5 text-sm font-bold text-white rounded-xl bg-gradient-to-r from-indigo-700 to-blue-600 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all">
+                                        <button id="btn-cancel-order" type="button" @click="closeModal" class="px-5 py-2.5 text-sm font-bold text-gray-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">{{ isViewing ? 'Tutup' : 'Batal' }}</button>
+                                        <button v-if="!isViewing" id="btn-submit-order" type="submit" :disabled="form.processing || form.items.length === 0 || !form.area_name || hasOverstockItems" class="inline-flex items-center px-5 py-2.5 text-sm font-bold text-white rounded-xl bg-gradient-to-r from-indigo-700 to-blue-600 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all">
                                             <svg v-if="form.processing" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                                            Kirim Order
+                                            {{ form.id ? 'Simpan Perubahan' : 'Kirim Order' }}
                                         </button>
                                     </div>
                                 </div>
@@ -277,9 +287,12 @@ const search = ref('');
 const selectedMaterial = ref(null);
 const pickerRef = ref(null);
 const searchRef = ref(null);
+const isViewing = ref(false);
 
 const form = useForm({
+    id: null,
     area_name: '',
+    date: new Date().toISOString().slice(0, 10),
     notes: '',
     items: [],
 });
@@ -395,21 +408,74 @@ const formatDate = (dateString) => {
 const openModal = () => {
     form.reset();
     form.clearErrors();
+    form.id = null;
+    form.date = new Date().toISOString().slice(0, 10);
     form.items = [];
     selectedMaterial.value = null;
+    isViewing.value = false;
+    isModalOpen.value = true;
+};
+
+const viewOrder = (trx) => {
+    form.reset();
+    form.clearErrors();
+    form.id = trx.id;
+    form.area_name = trx.technician_name;
+    form.date = trx.date;
+    form.notes = trx.notes;
+    form.items = trx.items.map(item => ({
+        material_id: item.material_id,
+        purchase_unit: 'base',
+        quantity: item.quantity,
+        price: item.price_per_unit
+    }));
+    isViewing.value = true;
+    isModalOpen.value = true;
+};
+
+const editOrder = (trx) => {
+    form.reset();
+    form.clearErrors();
+    form.id = trx.id;
+    form.area_name = trx.technician_name;
+    form.date = trx.date;
+    form.notes = trx.notes;
+    form.items = trx.items.map(item => ({
+        material_id: item.material_id,
+        purchase_unit: 'base',
+        quantity: item.quantity,
+        price: item.price_per_unit
+    }));
+    isViewing.value = false;
     isModalOpen.value = true;
 };
 
 const closeModal = () => {
     isModalOpen.value = false;
-    pickerOpen.value = false;
+    isViewing.value = false;
+    setTimeout(() => {
+        form.reset();
+        form.id = null;
+        form.clearErrors();
+        search.value = '';
+        pickerOpen.value = false;
+    }, 200);
 };
 
 const submitForm = () => {
-    form.post('/order-toko', {
-        preserveScroll: true,
-        onSuccess: () => closeModal(),
-    });
+    if (form.items.length === 0) return;
+    
+    if (form.id) {
+        form.put(`/order-toko/${form.id}`, {
+            preserveScroll: true,
+            onSuccess: () => closeModal(),
+        });
+    } else {
+        form.post('/order-toko', {
+            preserveScroll: true,
+            onSuccess: () => closeModal(),
+        });
+    }
 };
 
 const confirmDelete = (id) => {

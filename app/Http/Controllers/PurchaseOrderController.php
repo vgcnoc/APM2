@@ -123,6 +123,118 @@ class PurchaseOrderController extends Controller
         }
     }
 
+    public function update(Request $request, $id)
+    {
+        $transaction = MaterialTransaction::findOrFail($id);
+
+        $validated = $request->validate([
+            'date' => 'nullable|date',
+            'area_name' => 'required|string|max:255',
+            'notes' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.material_id' => 'required|exists:materials,id',
+            'items.*.purchase_unit' => 'required|string', 
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.price' => 'nullable|numeric|min:0',
+        ]);
+        $validated['date'] = $validated['date'] ?? now()->toDateString();
+
+        DB::beginTransaction();
+        try {
+            $oldArea = \App\Models\Area::where('name', $transaction->technician_name)->first();
+            
+            // Revert old stock
+            foreach ($transaction->items as $item) {
+                $material = $item->material;
+                if ($material) {
+                    $material->stock -= $item->quantity; // $item->quantity is already in base unit
+                    $material->save();
+                    
+                    if ($oldArea) {
+                        $materialStock = \App\Models\MaterialStock::where([
+                            'material_id' => $material->id,
+                            'area_id' => $oldArea->id,
+                        ])->first();
+                        
+                        if ($materialStock) {
+                            $materialStock->decrement('stock', $item->quantity);
+                        }
+                    }
+                }
+            }
+
+            // Delete old items
+            $transaction->items()->delete();
+
+            // Update transaction basic info
+            $transaction->update([
+                'date' => $validated['date'],
+                'technician_name' => $validated['area_name'],
+                'notes' => $validated['notes'] ?? null,
+            ]);
+
+            $totalCost = 0;
+            $newArea = \App\Models\Area::where('name', $validated['area_name'])->first();
+
+            // Apply new stock
+            foreach ($validated['items'] as $item) {
+                $material = Material::findOrFail($item['material_id']);
+                
+                // Smart Unit Conversion Logic
+                $convertedQuantity = $item['quantity']; 
+                
+                if ($item['purchase_unit'] === 'roll' && $material->meter_per_roll > 0) {
+                    $convertedQuantity = $item['quantity'] * $material->meter_per_roll;
+                } elseif (($material->category === 'Isolasi' || stripos($material->name, 'isolasi') !== false) && $item['purchase_unit'] === 'pack') {
+                    $convertedQuantity = $item['quantity'] * (($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50));
+                } elseif ($item['purchase_unit'] === 'pack' && $material->pcs_per_pack > 0) {
+                    $convertedQuantity = $item['quantity'] * $material->pcs_per_pack;
+                } elseif ($item['purchase_unit'] === 'pcs' && $material->cm_per_pcs > 0) {
+                    $convertedQuantity = $item['quantity'] * $material->cm_per_pcs;
+                }
+
+                if (isset($item['price']) && $item['price'] !== null && $item['price'] !== '') {
+                    $pricePerUnit = $item['price'];
+                    $itemTotal = $item['quantity'] * $item['price'];
+                } else {
+                    $pricePerUnit = $material->price_per_unit ?? 0;
+                    $itemTotal = $convertedQuantity * $pricePerUnit;
+                }
+                $totalCost += $itemTotal;
+
+                MaterialTransactionItem::create([
+                    'material_transaction_id' => $transaction->id,
+                    'material_id' => $material->id,
+                    'quantity' => $convertedQuantity, 
+                    'price_per_unit' => $pricePerUnit,
+                    'total_price' => $itemTotal
+                ]);
+
+                // Increase Stock globally
+                $material->stock += $convertedQuantity;
+                $material->save();
+                
+                // Increase Stock in Area
+                if ($newArea) {
+                    $materialStock = \App\Models\MaterialStock::firstOrCreate([
+                        'material_id' => $material->id,
+                        'area_id' => $newArea->id,
+                    ], ['stock' => 0]);
+                    
+                    $materialStock->increment('stock', $convertedQuantity);
+                }
+            }
+
+            $transaction->update(['total_cost' => $totalCost]);
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Order Toko berhasil diupdate.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal mengupdate order: ' . $e->getMessage());
+        }
+    }
+
     public function destroy($id)
     {
         $transaction = MaterialTransaction::findOrFail($id);
