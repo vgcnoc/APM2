@@ -93,9 +93,9 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <div class="flex items-center gap-1.5 text-emerald-600">
-                                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                            <span class="text-xs font-medium text-slate-600 leading-snug" v-html="formatSmartUnit(product)"></span>
+                                        <div class="flex items-center gap-1.5" :class="formatSmartUnit(product).includes('Standar') ? 'text-slate-400' : 'text-emerald-600'">
+                                            <svg v-if="!formatSmartUnit(product).includes('Standar')" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                            <span class="text-xs font-medium leading-snug" :class="formatSmartUnit(product).includes('Standar') ? 'text-slate-400' : 'text-slate-600'" v-html="formatSmartUnit(product)"></span>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-center">
@@ -529,7 +529,7 @@ const formatSmartUnit = (product) => {
     if (product.pcs_per_pack > 0) html.push(`1 Pack = <b>${formatNum(product.pcs_per_pack)} Pcs</b>`);
     if (product.cm_per_pcs > 0) html.push(`1 Pcs = <b>${formatNum(product.cm_per_pcs)} CM</b>`);
     
-    if (html.length === 0) return `1:1 (${product.unit})`;
+    if (html.length === 0) return '<span class="text-slate-400">Standar</span>';
     return html.join(' <span class="mx-1 text-slate-300">|</span> ');
 };
 
