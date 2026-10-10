@@ -1061,7 +1061,13 @@ function getTransactionLabel(trx) {
                     }
                 }
                 
-                const unit = item.material ? item.material.unit : 'pcs';
+                let unit = item.material ? item.material.unit : 'pcs';
+                if (item.material && item.material.category) {
+                    const cat = item.material.category.toLowerCase();
+                    if (cat.includes('kabel')) unit = 'meter';
+                    else if (cat.includes('isolasi')) unit = 'cm';
+                    else if (cat.includes('klem')) unit = 'pcs';
+                }
                 
                 return `${name} (Stok Sisa: ${stock} ${unit})`;
             }).join(', ');

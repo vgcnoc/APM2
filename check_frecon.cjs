@@ -4,7 +4,7 @@ const conn = new Client();
 
 const script = `
 cd /var/www/APM2
-php artisan tinker --execute="\\$cats = \\App\\Models\\Material::pluck('category')->unique(); echo implode(',', \\$cats->toArray());"
+php artisan tinker --execute="\\$m = \\App\\Models\\Material::where('category', 'like', '%Klem%')->first(); echo \\$m->name . '|' . \\$m->pcs_per_pack;"
 `;
 
 conn.on('ready', () => {
