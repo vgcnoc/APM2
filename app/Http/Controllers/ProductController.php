@@ -45,6 +45,7 @@ class ProductController extends Controller
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
+            'stock' => 'nullable|numeric|min:0',
             // Smart conversion fields
             'meter_per_roll' => 'nullable|numeric|min:0',
             'pcs_per_pack' => 'nullable|numeric|min:0',
@@ -71,6 +72,7 @@ class ProductController extends Controller
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
+            'stock' => 'nullable|numeric|min:0',
             'meter_per_roll' => 'nullable|numeric|min:0',
             'pcs_per_pack' => 'nullable|numeric|min:0',
             'cm_per_pcs' => 'nullable|numeric|min:0',

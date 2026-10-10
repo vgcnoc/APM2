@@ -200,56 +200,87 @@
                                     </div>
                                 </div>
 
-                                <!-- Smart Unit Config -->
+                                <!-- Specialized Unit Configs based on Category -->
                                 <div class="col-span-1 md:col-span-2">
-                                    <h4 class="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-4 border-b border-emerald-100 pb-2 flex items-center gap-1">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                        Konfigurasi Satuan Cerdas (Smart Unit)
-                                    </h4>
                                     
-                                    <div class="bg-emerald-50/50 rounded-2xl p-5 border border-emerald-100 space-y-4">
-                                        <p class="text-xs text-emerald-700 leading-relaxed">
-                                            <b>Satuan Pemakaian (Base Unit)</b> adalah satuan terkecil yang digunakan teknisi saat instalasi (Misal: <b>Meter</b> untuk kabel, <b>Pcs</b> untuk konektor/Klem). Stok gudang akan otomatis dihitung dalam satuan ini.
-                                        </p>
-                                        
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1">Satuan Pemakaian (Base Unit) <span class="text-red-500">*</span></label>
-                                            <select v-model="form.unit" class="w-full md:w-1/2 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all bg-white" required>
-                                                <option value="pcs">Pcs (Satuan utuh)</option>
-                                                <option value="meter">Meter</option>
-                                                <option value="cm">Centimeter (CM)</option>
-                                            </select>
+                                    <!-- Kalkulator Kabel (Khusus Kabel & Patchcord) -->
+                                    <div v-if="['Kabel', 'Patchcord'].includes(form.category)" class="bg-blue-50/50 rounded-2xl border border-blue-200 overflow-hidden shadow-sm">
+                                        <div class="bg-blue-100/50 px-5 py-3 border-b border-blue-200 flex items-center gap-2">
+                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                            <h4 class="text-sm font-bold text-blue-800">Kalkulator Kabel (Roll ↔ Meter)</h4>
                                         </div>
+                                        <div class="p-5">
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                                <div>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Meter per Roll</label>
+                                                    <input type="number" step="0.01" v-model="form.meter_per_roll" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white" placeholder="0">
+                                                </div>
+                                                <div v-if="!form.id">
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Jumlah Roll (Stok Awal)</label>
+                                                    <input type="number" step="0.01" v-model="initialRolls" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white" placeholder="0">
+                                                    <p class="text-xs text-blue-600 mt-1 font-medium">Otomatis terkonversi: {{ (form.meter_per_roll * initialRolls) || 0 }} Meter</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                        <div class="h-px bg-emerald-200/50 my-2"></div>
+                                    <!-- Konfigurasi Satuan Generik (Untuk kategori lain) -->
+                                    <div v-else>
+                                        <h4 class="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-4 border-b border-emerald-100 pb-2 flex items-center gap-1">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                            Konfigurasi Satuan Cerdas (Smart Unit)
+                                        </h4>
                                         
-                                        <p class="text-xs text-emerald-700 font-medium">Jika barang ini dibeli dalam bentuk paketan besar (Roll / Pack), tentukan nilai konversinya agar saat Order Toko, sistem otomatis memecahnya menjadi Base Unit.</p>
-                                        
-                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-                                            <div>
-                                                <label class="block text-xs font-bold text-gray-600 mb-1">Jika beli per ROLL</label>
-                                                <div class="relative">
-                                                    <input type="number" step="0.01" v-model="form.meter_per_roll" class="w-full pl-3 pr-16 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all bg-white" placeholder="Cth: 1000">
-                                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                                        <span class="text-xs font-bold text-gray-400">Meter</span>
-                                                    </div>
+                                        <div class="bg-emerald-50/50 rounded-2xl p-5 border border-emerald-100 space-y-4">
+                                            <p class="text-xs text-emerald-700 leading-relaxed">
+                                                <b>Satuan Pemakaian (Base Unit)</b> adalah satuan terkecil yang digunakan teknisi saat instalasi.
+                                            </p>
+                                            
+                                            <div class="flex gap-4">
+                                                <div class="w-full md:w-1/2">
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Satuan Pemakaian <span class="text-red-500">*</span></label>
+                                                    <select v-model="form.unit" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-white" required>
+                                                        <option value="pcs">Pcs (Satuan utuh)</option>
+                                                        <option value="meter">Meter</option>
+                                                        <option value="cm">Centimeter (CM)</option>
+                                                        <option value="pack">Pack</option>
+                                                        <option value="roll">Roll</option>
+                                                    </select>
+                                                </div>
+                                                <div v-if="!form.id" class="w-full md:w-1/2">
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Stok Awal ({{ form.unit }})</label>
+                                                    <input type="number" step="0.01" v-model="form.stock" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-white" placeholder="0">
                                                 </div>
                                             </div>
-                                            <div>
-                                                <label class="block text-xs font-bold text-gray-600 mb-1">Jika beli per PACK</label>
-                                                <div class="relative">
-                                                    <input type="number" step="0.01" v-model="form.pcs_per_pack" class="w-full pl-3 pr-16 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all bg-white" placeholder="Cth: 50">
-                                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                                        <span class="text-xs font-bold text-gray-400">Pcs</span>
+
+                                            <div class="h-px bg-emerald-200/50 my-2"></div>
+                                            
+                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                                                <div>
+                                                    <label class="block text-xs font-bold text-gray-600 mb-1">Jika beli per ROLL</label>
+                                                    <div class="relative">
+                                                        <input type="number" step="0.01" v-model="form.meter_per_roll" class="w-full pl-3 pr-16 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-white" placeholder="Cth: 1000">
+                                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                                            <span class="text-xs font-bold text-gray-400">Meter</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <div>
-                                                <label class="block text-xs font-bold text-gray-600 mb-1">Jika beli per PCS</label>
-                                                <div class="relative">
-                                                    <input type="number" step="0.01" v-model="form.cm_per_pcs" class="w-full pl-3 pr-16 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all bg-white" placeholder="Cth: 500">
-                                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                                        <span class="text-xs font-bold text-gray-400">CM</span>
+                                                <div>
+                                                    <label class="block text-xs font-bold text-gray-600 mb-1">Jika beli per PACK</label>
+                                                    <div class="relative">
+                                                        <input type="number" step="0.01" v-model="form.pcs_per_pack" class="w-full pl-3 pr-16 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-white" placeholder="Cth: 50">
+                                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                                            <span class="text-xs font-bold text-gray-400">Pcs</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs font-bold text-gray-600 mb-1">Jika beli per PCS</label>
+                                                    <div class="relative">
+                                                        <input type="number" step="0.01" v-model="form.cm_per_pcs" class="w-full pl-3 pr-16 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-white" placeholder="Cth: 500">
+                                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                                            <span class="text-xs font-bold text-gray-400">CM</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -261,7 +292,7 @@
                                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Manajemen Harga & Status</h4>
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1">Harga Modal / Beli</label>
+                                            <label class="block text-sm font-bold text-gray-700 mb-1">{{ ['Kabel', 'Patchcord'].includes(form.category) ? 'Harga Modal (per roll)' : 'Harga Modal / Beli' }}</label>
                                             <div class="relative">
                                                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                                     <span class="text-gray-500 sm:text-sm">Rp</span>
@@ -270,7 +301,7 @@
                                             </div>
                                         </div>
                                         <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1">Harga Jual</label>
+                                            <label class="block text-sm font-bold text-gray-700 mb-1">{{ ['Kabel', 'Patchcord'].includes(form.category) ? 'Harga Jual (per roll)' : 'Harga Jual' }}</label>
                                             <div class="relative">
                                                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                                     <span class="text-gray-500 sm:text-sm">Rp</span>
@@ -382,6 +413,7 @@ const props = defineProps({
 const search = ref(props.filters.search || '');
 const category = ref(props.filters.category || 'all');
 const isNewCategory = ref(false);
+const initialRolls = ref(0);
 
 const checkNewCategory = (e) => {
     if (e.target.value === 'new_category_option') {
@@ -419,6 +451,7 @@ const form = useForm({
     meter_per_roll: null,
     pcs_per_pack: null,
     cm_per_pcs: null,
+    stock: null,
     price_per_unit: 0,
     selling_price: 0,
     is_active: true,
@@ -468,6 +501,14 @@ const closeModal = () => {
 };
 
 const submitForm = () => {
+    // If it's a cable and we are setting initial rolls, calculate the stock
+    if (!form.id && ['Kabel', 'Patchcord'].includes(form.category)) {
+        form.unit = 'meter';
+        if (initialRolls.value > 0 && form.meter_per_roll > 0) {
+            form.stock = parseFloat(initialRolls.value) * parseFloat(form.meter_per_roll);
+        }
+    }
+
     if (form.id) {
         form.put(`/produk/${form.id}`, {
             onSuccess: () => closeModal(),
