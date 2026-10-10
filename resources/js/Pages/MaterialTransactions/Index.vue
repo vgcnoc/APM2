@@ -207,9 +207,10 @@
                                             <span class="font-bold text-gray-800 text-xs truncate max-w-[200px]" :title="detail.material ? detail.material.name : 'Unknown'">
                                                 {{ detail.material ? detail.material.name : 'Unknown' }}
                                             </span>
-                                            <span class="text-[10px] text-gray-500 mt-0.5">
-                                                Stok Awal: <span class="font-semibold text-gray-700">
-                                                    {{ isOrder(item) ? getOrderDetailedUnit(detail) : (detail.stock_before !== null ? formatNumber(detail.stock_before) + ' ' + (detail.material ? (detail.material.category === 'Kabel' ? 'meter' : (detail.material.category === 'Isolasi' ? 'cm' : (detail.material.category === 'Paku Klem' ? 'pcs' : (detail.material.unit || '')))) : '') : '-') }}
+                                            <span class="text-[10px] text-gray-500 mt-0.5 leading-tight">
+                                                Stok Awal: <span class="font-semibold text-gray-700" v-if="isOrder(item)" v-html="getOrderDetailedUnit(detail)"></span>
+                                                <span class="font-semibold text-gray-700" v-else>
+                                                    {{ detail.stock_before !== null ? formatNumber(detail.stock_before) + ' ' + (detail.material ? (detail.material.category === 'Kabel' ? 'meter' : (detail.material.category === 'Isolasi' ? 'cm' : (detail.material.category === 'Paku Klem' ? 'pcs' : (detail.material.unit || '')))) : '') : '-' }}
                                                 </span>
                                             </span>
                                         </div>
@@ -432,23 +433,23 @@ const getOrderDetailedUnit = (detail) => {
     let text = formatNumber(detail.quantity) + ' ' + (detail.unit || (detail.material ? detail.material.unit : ''));
     if (!detail.material) return text;
     
-    let cat = detail.material.category;
+    let cat = (detail.material.category || '').toLowerCase();
     let unit = (detail.unit || '').toLowerCase();
     
-    if (cat === 'Kabel' && (unit === 'roll' || unit === 'rol')) {
+    if (cat.includes('kabel') && (unit === 'roll' || unit === 'rol')) {
         let mpr = detail.material.meter_per_roll || 1000;
         let meters = detail.quantity * mpr;
-        text += ` (${formatNumber(meters)} meter)`;
+        text += `<br><span class="text-blue-600 font-bold">(&asymp; ${formatNumber(meters)} meter)</span>`;
     }
-    else if (cat === 'Paku Klem' && (unit === 'pack' || unit === 'bungkus')) {
+    else if (cat.includes('klem') && (unit === 'pack' || unit === 'bungkus')) {
         let ppp = detail.material.pcs_per_pack || 1;
         let pcs = detail.quantity * ppp;
-        text += ` (${formatNumber(pcs)} pcs)`;
+        text += `<br><span class="text-blue-600 font-bold">(&asymp; ${formatNumber(pcs)} pcs)</span>`;
     }
-    else if (cat === 'Isolasi' && (unit === 'pcs')) {
+    else if (cat.includes('isolasi') && (unit === 'pcs')) {
         let cpp = detail.material.cm_per_pcs || 50;
         let cm = detail.quantity * cpp;
-        text += ` (${formatNumber(cm)} cm)`;
+        text += `<br><span class="text-blue-600 font-bold">(&asymp; ${formatNumber(cm)} cm)</span>`;
     }
     return text;
 };
