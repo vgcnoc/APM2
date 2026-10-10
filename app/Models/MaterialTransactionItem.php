@@ -29,4 +29,9 @@ class MaterialTransactionItem extends Model
     {
         return $this->belongsTo(Material::class);
     }
+
+    public function onts()
+    {
+        return $this->hasMany(Ont::class, 'material_transaction_item_id');
+    }
 }

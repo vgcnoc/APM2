@@ -15,7 +15,7 @@ class PurchaseOrderController extends Controller
     {
         // Only get transactions with purpose indicating it's a purchase
         $transactions = MaterialTransaction::where('purpose', 'Pembelian Toko / Supplier')
-                            ->with('items.material')
+                            ->with(['items.material', 'items.onts'])
                             ->latest()
                             ->paginate(15);
 

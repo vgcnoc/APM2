@@ -437,7 +437,13 @@ const viewOrder = (trx) => {
 };
 
 const hasOnt = (trx) => {
-    return trx.items.some(item => item.material && item.material.category === 'ONT');
+    return trx.items.some(item => {
+        if (item.material && item.material.category === 'ONT') {
+            const alreadySent = item.onts ? item.onts.length : 0;
+            return alreadySent < item.quantity;
+        }
+        return false;
+    });
 };
 
 const sendOnt = (id) => {
