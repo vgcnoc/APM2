@@ -81,20 +81,31 @@ class PurchaseOrderController extends Controller
                 }
 
                 if (isset($item['price']) && $item['price'] !== null && $item['price'] !== '') {
-                    $pricePerUnit = $item['price'];
-                    $itemTotal = $item['quantity'] * $item['price'];
+                    $pricePerPurchaseUnit = $item['price'];
+                    $itemTotal = $item['quantity'] * $pricePerPurchaseUnit;
+                    $pricePerBaseUnit = $convertedQuantity > 0 ? ($itemTotal / $convertedQuantity) : 0;
                 } else {
-                    // Fallback: harga dasar material per satuan stok
-                    $pricePerUnit = $material->price_per_unit ?? 0;
-                    $itemTotal = $convertedQuantity * $pricePerUnit;
+                    $pricingUnitPrice = $material->price_per_unit ?? 0;
+                    
+                    $baseUnitsPerPricingUnit = 1;
+                    if ($material->category === 'Kabel' || $material->category === 'Patchcord') {
+                        $baseUnitsPerPricingUnit = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1;
+                    } elseif ($material->category === 'Isolasi' || stripos($material->name, 'isolasi') !== false) {
+                        $baseUnitsPerPricingUnit = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 1;
+                    } elseif ($material->pcs_per_pack > 0) {
+                        $baseUnitsPerPricingUnit = $material->pcs_per_pack;
+                    }
+
+                    $pricePerBaseUnit = $baseUnitsPerPricingUnit > 0 ? ($pricingUnitPrice / $baseUnitsPerPricingUnit) : 0;
+                    $itemTotal = $convertedQuantity * $pricePerBaseUnit;
                 }
                 $totalCost += $itemTotal;
 
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
-                    'quantity' => $convertedQuantity, // The quantity in BASE UNIT
-                    'price_per_unit' => $pricePerUnit,
+                    'quantity' => $convertedQuantity, 
+                    'price_per_unit' => $pricePerBaseUnit,
                     'total_price' => $itemTotal
                 ]);
 
@@ -194,11 +205,23 @@ class PurchaseOrderController extends Controller
                 }
 
                 if (isset($item['price']) && $item['price'] !== null && $item['price'] !== '') {
-                    $pricePerUnit = $item['price'];
-                    $itemTotal = $item['quantity'] * $item['price'];
+                    $pricePerPurchaseUnit = $item['price'];
+                    $itemTotal = $item['quantity'] * $pricePerPurchaseUnit;
+                    $pricePerBaseUnit = $convertedQuantity > 0 ? ($itemTotal / $convertedQuantity) : 0;
                 } else {
-                    $pricePerUnit = $material->price_per_unit ?? 0;
-                    $itemTotal = $convertedQuantity * $pricePerUnit;
+                    $pricingUnitPrice = $material->price_per_unit ?? 0;
+                    
+                    $baseUnitsPerPricingUnit = 1;
+                    if ($material->category === 'Kabel' || $material->category === 'Patchcord') {
+                        $baseUnitsPerPricingUnit = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1;
+                    } elseif ($material->category === 'Isolasi' || stripos($material->name, 'isolasi') !== false) {
+                        $baseUnitsPerPricingUnit = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 1;
+                    } elseif ($material->pcs_per_pack > 0) {
+                        $baseUnitsPerPricingUnit = $material->pcs_per_pack;
+                    }
+
+                    $pricePerBaseUnit = $baseUnitsPerPricingUnit > 0 ? ($pricingUnitPrice / $baseUnitsPerPricingUnit) : 0;
+                    $itemTotal = $convertedQuantity * $pricePerBaseUnit;
                 }
                 $totalCost += $itemTotal;
 
@@ -206,7 +229,7 @@ class PurchaseOrderController extends Controller
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
                     'quantity' => $convertedQuantity, 
-                    'price_per_unit' => $pricePerUnit,
+                    'price_per_unit' => $pricePerBaseUnit,
                     'total_price' => $itemTotal
                 ]);
 
