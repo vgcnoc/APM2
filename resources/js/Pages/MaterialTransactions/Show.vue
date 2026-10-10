@@ -247,28 +247,3 @@ const submitOntRegistration = () => {
     });
 };
 </script>
-
-<style>
-@media print {
-    body * {
-        visibility: hidden;
-    }
-    .print\:block {
-        display: block !important;
-    }
-    .print\:hidden {
-        display: none !important;
-    }
-    .printable-area, .printable-area * {
-        visibility: visible;
-    }
-    .printable-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        margin: 0;
-        padding: 0;
-    }
-}
-</style>

@@ -3,7 +3,7 @@
         <div v-show="mobileMenuOpen" class="fixed inset-0 bg-gray-900/50 z-40 lg:hidden transition-opacity" @click="mobileMenuOpen = false"></div>
         <aside
             :class="[
-                'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-gray-200 bg-white shadow-sm transition-transform duration-300',
+                'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-gray-200 bg-white shadow-sm transition-transform duration-300 print:hidden',
                 mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
                 sidebarOpen ? 'w-64' : 'w-20 lg:w-20 w-64'
             ]"
@@ -88,10 +88,10 @@
 
         <!-- Main Content -->
         <main
-            :class="['flex-1 transition-all duration-300 min-w-0 flex flex-col', sidebarOpen ? 'lg:ml-64' : 'lg:ml-20']"
+            :class="['flex-1 transition-all duration-300 min-w-0 flex flex-col print:m-0 print:p-0 print:ml-0', sidebarOpen ? 'lg:ml-64' : 'lg:ml-20']"
         >
             <!-- Top Bar -->
-            <header class="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 shadow-sm flex items-center justify-between gap-4">
+            <header class="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 shadow-sm flex items-center justify-between gap-4 print:hidden">
                 <div class="flex items-center gap-3 min-w-0">
                     <button @click="mobileMenuOpen = true" class="lg:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -137,7 +137,7 @@
             </header>
 
             <!-- Flash Messages -->
-            <div v-if="$page.props.flash?.success" class="mx-6 mt-4">
+            <div v-if="$page.props.flash?.success" class="mx-6 mt-4 print:hidden">
                 <div class="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 animate-fade-in-up">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -147,7 +147,7 @@
             </div>
 
             <!-- Page Content -->
-            <div class="p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-full overflow-hidden">
+            <div class="p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-full overflow-hidden print:p-0 print:overflow-visible">
                 <slot />
             </div>
         </main>
