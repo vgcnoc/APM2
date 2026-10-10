@@ -55,6 +55,10 @@ class ProductController extends Controller
             'requires_mac' => 'boolean',
         ]);
 
+        if (array_key_exists('stock', $validated) && is_null($validated['stock'])) {
+            $validated['stock'] = 0;
+        }
+
         Material::create($validated);
 
         return redirect()->back()->with('success', 'Produk berhasil ditambahkan.');
@@ -80,6 +84,10 @@ class ProductController extends Controller
             'requires_sn' => 'boolean',
             'requires_mac' => 'boolean',
         ]);
+
+        if (array_key_exists('stock', $validated) && is_null($validated['stock'])) {
+            unset($validated['stock']);
+        }
 
         $product->update($validated);
 
