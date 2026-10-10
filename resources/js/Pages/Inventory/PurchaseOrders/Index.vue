@@ -254,7 +254,7 @@
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <button id="btn-cancel-order" type="button" @click="closeModal" class="px-5 py-2.5 text-sm font-bold text-gray-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">{{ isViewing ? 'Tutup' : 'Batal' }}</button>
-                                        <button v-if="!isViewing" id="btn-submit-order" type="submit" :disabled="form.processing || form.items.length === 0 || !form.area_name" class="inline-flex items-center px-5 py-2.5 text-sm font-bold text-white rounded-xl bg-gradient-to-r from-indigo-700 to-blue-600 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all">
+                                        <button v-if="!isViewing" id="btn-submit-order" type="submit" :disabled="form.processing || form.items.length === 0 || !form.area_name || hasOverstockItems" class="inline-flex items-center px-5 py-2.5 text-sm font-bold text-white rounded-xl bg-gradient-to-r from-indigo-700 to-blue-600 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all">
                                             <svg v-if="form.processing" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                                             {{ form.id ? 'Simpan Perubahan' : 'Kirim Order' }}
                                         </button>
@@ -342,6 +342,15 @@ const reverseQty = (item) => {
     if (item.purchase_unit === 'pcs' && Number(mat.cm_per_pcs) > 0) return qty / Number(mat.cm_per_pcs);
     return qty;
 };
+
+const hasOverstockItems = computed(() => {
+    return form.items.some(item => {
+        const mat = materialById(item.material_id);
+        if (!mat) return false;
+        const availableStock = Number(mat.stock) + (Number(item.original_qty) || 0);
+        return convertedQty(item) > availableStock;
+    });
+});
 
 const convertedQty = (item) => {
     const mat = materialById(item.material_id);

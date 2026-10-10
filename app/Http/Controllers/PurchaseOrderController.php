@@ -29,16 +29,15 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+        public function store(Request $request)
     {
         $validated = $request->validate([
             'date' => 'nullable|date',
             'area_name' => 'required|string|max:255',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
-            'items.*.id' => 'nullable|numeric',
             'items.*.material_id' => 'required|exists:materials,id',
-            'items.*.purchase_unit' => 'required|string', // e.g., 'roll', 'pack', 'pcs', 'meter', 'cm'
+            'items.*.purchase_unit' => 'required|string', 
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.price' => 'nullable|numeric|min:0',
         ]);
@@ -46,7 +45,6 @@ class PurchaseOrderController extends Controller
 
         DB::beginTransaction();
         try {
-            // Generate Transaction Number (PO)
             $count = MaterialTransaction::whereDate('created_at', today())->count() + 1;
             $transactionNumber = 'PO-' . now()->format('Ymd') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
 
@@ -66,8 +64,6 @@ class PurchaseOrderController extends Controller
             ]);
 
             $totalCost = 0;
-
-            $area = \App\Models\Area::where('name', $validated['area_name'])->first();
 
             foreach ($validated['items'] as $item) {
                 $material = Material::findOrFail($item['material_id']);
@@ -106,30 +102,21 @@ class PurchaseOrderController extends Controller
                 }
                 $totalCost += $itemTotal;
 
-                if (isset($item['id']) && in_array($item['id'], $existingItemIds)) {
-                    $transactionItem = MaterialTransactionItem::find($item['id']);
-                    $transactionItem->update([
-                        'material_id' => $material->id,
-                        'quantity' => $convertedQuantity, 
-                        'unit' => $item['purchase_unit'] ?? null,
-                        'price_per_unit' => $pricePerBaseUnit,
-                        'total_price' => $itemTotal
-                    ]);
-                    // Remove from existingItemIds to track what's left to delete
-                    $existingItemIds = array_diff($existingItemIds, [$item['id']]);
-                } else {
-                    $transactionItem = MaterialTransactionItem::create([
-                        'material_transaction_id' => $transaction->id,
-                        'material_id' => $material->id,
-                        'quantity' => $convertedQuantity, 
-                        'unit' => $item['purchase_unit'] ?? null,
-                        'price_per_unit' => $pricePerBaseUnit,
-                        'total_price' => $itemTotal
-                    ]);
+                if ($material->stock < $convertedQuantity) {
+                    throw new \Exception("Stok {$material->name} di Gudang tidak mencukupi (Tersedia: {$material->stock}).");
                 }
 
-                // Increase Stock globally
-                $material->stock += $convertedQuantity;
+                $transactionItem = MaterialTransactionItem::create([
+                    'material_transaction_id' => $transaction->id,
+                    'material_id' => $material->id,
+                    'quantity' => $convertedQuantity, 
+                    'unit' => $item['purchase_unit'] ?? null,
+                    'price_per_unit' => $pricePerBaseUnit,
+                    'total_price' => $itemTotal
+                ]);
+
+                // Decrease Stock globally
+                $material->stock -= $convertedQuantity;
                 $material->save();
                 
                 // Increase Stock in Area
@@ -143,15 +130,10 @@ class PurchaseOrderController extends Controller
                 }
             }
 
-            // Delete items that were removed in the edit
-            if (!empty($existingItemIds)) {
-                MaterialTransactionItem::whereIn('id', $existingItemIds)->delete();
-            }
-
             $transaction->update(['total_cost' => $totalCost]);
 
             DB::commit();
-            return redirect()->back()->with('success', 'Order Toko berhasil dicatat dan stok telah bertambah ke inventory area.');
+            return redirect()->back()->with('success', 'Order Toko berhasil dicatat dan stok telah didistribusikan ke area.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal mencatat order: ' . $e->getMessage());
@@ -180,21 +162,19 @@ class PurchaseOrderController extends Controller
             $oldArea = \App\Models\Area::where('name', $transaction->technician_name)->first();
             
             // Revert old stock
-            foreach ($transaction->items as $item) {
-                $material = $item->material;
-                if ($material) {
-                    $material->stock -= $item->quantity; // $item->quantity is already in base unit
-                    $material->save();
+            foreach ($transaction->items as $oldItem) {
+                $material = Material::findOrFail($oldItem->material_id);
+                $material->stock += $oldItem->quantity;
+                $material->save();
+                
+                if ($oldArea) {
+                    $materialStock = \App\Models\MaterialStock::where([
+                        'material_id' => $material->id,
+                        'area_id' => $oldArea->id,
+                    ])->first();
                     
-                    if ($oldArea) {
-                        $materialStock = \App\Models\MaterialStock::where([
-                            'material_id' => $material->id,
-                            'area_id' => $oldArea->id,
-                        ])->first();
-                        
-                        if ($materialStock) {
-                            $materialStock->decrement('stock', $item->quantity);
-                        }
+                    if ($materialStock) {
+                        $materialStock->decrement('stock', $oldItem->quantity);
                     }
                 }
             }
@@ -249,6 +229,14 @@ class PurchaseOrderController extends Controller
                 }
                 $totalCost += $itemTotal;
 
+                // CHECK IF OVERSTOCK (After reverting the old ones!)
+                // Note: material stock is the live stock now because we already reverted in the previous loop!
+                // But wait, the material model object might be cached, let's refresh it!
+                $material->refresh();
+                if ($material->stock < $convertedQuantity) {
+                    throw new \Exception("Stok {$material->name} di Gudang tidak mencukupi (Tersedia: {$material->stock}).");
+                }
+
                 if (isset($item['id']) && in_array($item['id'], $existingItemIds)) {
                     $transactionItem = MaterialTransactionItem::find($item['id']);
                     $transactionItem->update([
@@ -271,8 +259,8 @@ class PurchaseOrderController extends Controller
                     ]);
                 }
 
-                // Increase Stock globally
-                $material->stock += $convertedQuantity;
+                // Decrease Stock globally
+                $material->stock -= $convertedQuantity;
                 $material->save();
                 
                 // Increase Stock in Area
@@ -313,7 +301,7 @@ class PurchaseOrderController extends Controller
             foreach ($transaction->items as $item) {
                 $material = $item->material;
                 if ($material) {
-                    $material->stock -= $item->quantity;
+                    $material->stock += $item->quantity;
                     $material->save();
                     
                     if ($area) {
@@ -331,13 +319,12 @@ class PurchaseOrderController extends Controller
 
             $transaction->delete();
             DB::commit();
-            return redirect()->back()->with('success', 'Order Toko berhasil dihapus dan stok telah dikurangi.');
+            return redirect()->back()->with('success', 'Order Toko berhasil dihapus dan stok telah dikembalikan ke gudang.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal menghapus order: ' . $e->getMessage());
         }
     }
-
     public function sendOnt(Request $request, $id)
     {
         $transaction = MaterialTransaction::with('items.material')->findOrFail($id);
