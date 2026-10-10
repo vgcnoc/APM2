@@ -20,25 +20,28 @@ class PurchaseOrderController extends Controller
                             ->paginate(15);
 
         $materials = Material::orderBy('name')->get();
+        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Inventory/PurchaseOrders/Index', [
             'transactions' => $transactions,
-            'materials' => $materials
+            'materials' => $materials,
+            'areas' => $areas,
         ]);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'date' => 'required|date',
-            'supplier_name' => 'required|string|max:255',
+            'date' => 'nullable|date',
+            'area_name' => 'required|string|max:255',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
-            'items.*.purchase_unit' => 'required|string', // e.g., 'roll', 'pack', 'pcs'
+            'items.*.purchase_unit' => 'required|string', // e.g., 'roll', 'pack', 'pcs', 'meter', 'cm'
             'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.price' => 'required|numeric|min:0',
+            'items.*.price' => 'nullable|numeric|min:0',
         ]);
+        $validated['date'] = $validated['date'] ?? now()->toDateString();
 
         DB::beginTransaction();
         try {
@@ -51,8 +54,8 @@ class PurchaseOrderController extends Controller
                 'type' => 'in',
                 'date' => $validated['date'],
                 'purpose' => 'Pembelian Toko / Supplier',
-                'technician_name' => $validated['supplier_name'], // Reusing this column for supplier name
-                'notes' => $validated['notes'],
+                'technician_name' => $validated['area_name'], // Reusing this column for area/wilayah name
+                'notes' => $validated['notes'] ?? null,
                 'user_id' => auth()->id(),
                 'total_cost' => 0 // Will calculate below
             ]);
@@ -75,14 +78,21 @@ class PurchaseOrderController extends Controller
                     $convertedQuantity = $item['quantity'] * $material->cm_per_pcs;
                 }
 
-                $itemTotal = $item['quantity'] * $item['price'];
+                if (isset($item['price']) && $item['price'] !== null && $item['price'] !== '') {
+                    $pricePerUnit = $item['price'];
+                    $itemTotal = $item['quantity'] * $item['price'];
+                } else {
+                    // Fallback: harga dasar material per satuan stok
+                    $pricePerUnit = $material->price_per_unit ?? 0;
+                    $itemTotal = $convertedQuantity * $pricePerUnit;
+                }
                 $totalCost += $itemTotal;
 
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
                     'quantity' => $convertedQuantity, // The quantity in BASE UNIT
-                    'price_per_unit' => $item['price'], // Price per PURCHASE UNIT
+                    'price_per_unit' => $pricePerUnit,
                     'total_price' => $itemTotal
                 ]);
 
