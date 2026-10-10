@@ -49,12 +49,16 @@ class PurchaseOrderController extends Controller
             $count = MaterialTransaction::whereDate('created_at', today())->count() + 1;
             $transactionNumber = 'PO-' . now()->format('Ymd') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
 
+            $area = \App\Models\Area::where('name', $validated['area_name'])->first();
+
             $transaction = MaterialTransaction::create([
                 'transaction_number' => $transactionNumber,
                 'type' => 'in',
                 'date' => $validated['date'],
                 'purpose' => 'Pembelian Toko / Supplier',
                 'technician_name' => $validated['area_name'], // Reusing this column for area/wilayah name
+                'area_id' => $area ? $area->id : null,
+                'area' => $validated['area_name'],
                 'notes' => $validated['notes'] ?? null,
                 'user_id' => auth()->id(),
                 'total_cost' => 0 // Will calculate below

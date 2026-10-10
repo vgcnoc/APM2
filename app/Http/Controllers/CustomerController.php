@@ -883,7 +883,7 @@ class CustomerController extends Controller
             'user',
         ]);
 
-        $materialRequests = \App\Models\MaterialRequest::with('items.material')
+        $materialRequests = \App\Models\MaterialTransaction::with('items.material')
             ->where('customer_id', $customer->id)
             ->latest()
             ->get();
@@ -1915,60 +1915,70 @@ class CustomerController extends Controller
         \Log::info('assignInstall validated OK', ['customer_id' => $customer->id]);
 
         $customNotes = [];
+        $ontsToUpdate = [];
+        $transactionsToUpdate = [];
+
+        // 1. VALIDASI ONT
         if (!empty($validated['ont_models'])) {
             $ontIds = array_filter($validated['ont_models']);
             if (count($ontIds) > 0) {
-                $onts = Ont::whereIn('id', $ontIds)->get();
+                $ontsToUpdate = Ont::whereIn('id', $ontIds)->get();
                 
                 // VALIDASI AREA ONT
-                foreach ($onts as $ont) {
+                foreach ($ontsToUpdate as $ont) {
                     if ($ont->area_id !== $customer->area_id) {
                         return redirect()->back()->withErrors(['ont_models' => 'ONT ' . $ont->serial_number . ' tidak sesuai dengan Area/Wilayah pelanggan.'])->with('error', 'Data ONT/Material tidak sesuai dengan Area/Wilayah pelanggan.');
                     }
                 }
-                
-                $ontNames = [];
-                
-                // Update customer_id in onts table
-                DB::transaction(function () use ($onts, $customer) {
-                    foreach ($onts as $ont) {
-                        $ont->update([
-                            'customer_id' => $customer->id,
-                            'rx_power' => null,
-                            'start_time' => null,
-                            'end_time' => null,
-                            'photo_odp' => null,
-                            'photo_installation' => null,
-                            'photo_ont' => null,
-                            'photo_customer' => null,
-                            'photo_redaman' => null,
-                        ]);
-                    }
-                });
+            }
+        }
 
-                foreach ($onts as $ont) {
+        // 2. VALIDASI MATERIAL TRANSACTION
+        if (!empty($validated['material_transaction_ids'])) {
+            $trxs = array_filter($validated['material_transaction_ids']);
+            if (count($trxs) > 0) {
+                $transactionsToUpdate = \App\Models\MaterialTransaction::whereIn('transaction_number', $trxs)->get();
+                // VALIDASI AREA MATERIAL TRANSACTION
+                foreach ($transactionsToUpdate as $trx) {
+                    if ($trx->area_id !== $customer->area_id) {
+                        return redirect()->back()->withErrors(['material_transaction_ids' => 'Material/Surat Jalan ' . $trx->transaction_number . ' tidak sesuai dengan Area/Wilayah pelanggan.'])->with('error', 'Data ONT/Material tidak sesuai dengan Area/Wilayah pelanggan.');
+                    }
+                }
+            }
+        }
+
+        // 3. EXECUTE UPDATES
+        DB::transaction(function () use ($ontsToUpdate, $transactionsToUpdate, $validated, $customer, &$customNotes) {
+            
+            // Update ONT
+            if (count($ontsToUpdate) > 0) {
+                $ontNames = [];
+                foreach ($ontsToUpdate as $ont) {
+                    $ont->update([
+                        'customer_id' => $customer->id,
+                        'rx_power' => null,
+                        'start_time' => null,
+                        'end_time' => null,
+                        'photo_odp' => null,
+                        'photo_installation' => null,
+                        'photo_ont' => null,
+                        'photo_customer' => null,
+                        'photo_redaman' => null,
+                    ]);
+                    
                     $name = $ont->brand;
                     if ($ont->model) $name .= ' ' . $ont->model;
                     $name .= ' (SN: ' . $ont->serial_number . ')';
                     $ontNames[] = $name;
                 }
-                
                 if (count($ontNames) > 0) {
                     $customNotes[] = "ONT: " . implode(', ', $ontNames);
                 }
             }
-        }
-        if (!empty($validated['material_transaction_ids'])) {
-            $trxs = array_filter($validated['material_transaction_ids']);
-            if (count($trxs) > 0) {
-                $transactions = \App\Models\MaterialTransaction::whereIn('transaction_number', $trxs)->get();
-                // VALIDASI AREA MATERIAL TRANSACTION
-                foreach ($transactions as $trx) {
-                    if ($trx->area_id !== $customer->area_id) {
-                        return redirect()->back()->withErrors(['material_transaction_ids' => 'Material/Surat Jalan ' . $trx->transaction_number . ' tidak sesuai dengan Area/Wilayah pelanggan.'])->with('error', 'Data ONT/Material tidak sesuai dengan Area/Wilayah pelanggan.');
-                    }
-                }
 
+            // Material Transaction Notes
+            if (count($transactionsToUpdate) > 0) {
+                $trxs = array_filter($validated['material_transaction_ids']);
                 $trxNotes = ["Material diambil dari Surat Jalan / Order: " . implode(', ', $trxs)];
                 if (!empty($validated['material_items'])) {
                     foreach ($validated['material_items'] as $mItem) {
@@ -1977,25 +1987,27 @@ class CustomerController extends Controller
                 }
                 $customNotes[] = implode("\n", $trxNotes);
             }
-        }
-        if (!empty($validated['notes'])) {
-            $customNotes[] = "Catatan Tambahan: " . $validated['notes'];
-        }
-        $finalNotes = implode("\n\n", $customNotes);
 
-        foreach ($validated['technician_ids'] as $techId) {
-            TechnicianSchedule::create([
-                'customer_id' => $customer->id,
-                'technician_id' => $techId,
-                'scheduled_date' => $validated['scheduled_date'],
-                'scheduled_time' => $validated['scheduled_time'],
-                'type' => 'installation',
-                'status' => 'scheduled',
-                'notes' => $finalNotes,
-            ]);
-        }
+            if (!empty($validated['notes'])) {
+                $customNotes[] = "Catatan Tambahan: " . $validated['notes'];
+            }
+            $finalNotes = implode("\n\n", $customNotes);
 
-        \App\Models\AuditLog::createLog('Jadwal Instalasi', $customer, 'installing', 'installing', 'Menjadwalkan pemasangan');
+            // Create Technician Schedules
+            foreach ($validated['technician_ids'] as $techId) {
+                TechnicianSchedule::create([
+                    'customer_id' => $customer->id,
+                    'technician_id' => $techId,
+                    'scheduled_date' => $validated['scheduled_date'],
+                    'scheduled_time' => $validated['scheduled_time'],
+                    'type' => 'installation',
+                    'status' => 'scheduled',
+                    'notes' => $finalNotes,
+                ]);
+            }
+
+            \App\Models\AuditLog::createLog('Jadwal Instalasi', $customer, 'installing', 'installing', 'Menjadwalkan pemasangan');
+        });
 
         return redirect()->route('customers.installed')
             ->with('success', 'Jadwal pemasangan berhasil ditugaskan kepada teknisi.');
