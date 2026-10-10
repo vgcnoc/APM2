@@ -525,11 +525,11 @@ const openModal = (product = null) => {
         form.category = product.category;
         form.supplier = product.supplier;
         form.unit = product.unit;
-        form.meter_per_roll = product.meter_per_roll;
-        form.pcs_per_pack = product.pcs_per_pack;
-        form.cm_per_pcs = product.cm_per_pcs;
-        form.price_per_unit = product.price_per_unit || 0;
-        form.selling_price = product.selling_price || 0;
+        form.meter_per_roll = product.meter_per_roll ? Number(product.meter_per_roll) : null;
+        form.pcs_per_pack = product.pcs_per_pack ? Number(product.pcs_per_pack) : null;
+        form.cm_per_pcs = product.cm_per_pcs ? Number(product.cm_per_pcs) : null;
+        form.price_per_unit = product.price_per_unit ? Number(product.price_per_unit) : 0;
+        form.selling_price = product.selling_price ? Number(product.selling_price) : 0;
         form.is_active = product.is_active ?? true;
         form.requires_sn = product.requires_sn || false;
         form.requires_mac = product.requires_mac || false;

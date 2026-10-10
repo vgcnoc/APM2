@@ -66,7 +66,7 @@
                                                 <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
                                                 <span class="font-medium text-gray-900">{{ item.material ? item.material.name : 'Unknown' }}</span>
                                                 <span class="text-gray-400">&mdash;</span>
-                                                <span class="font-bold text-emerald-600">+{{ item.quantity }} {{ item.material ? item.material.unit : '' }}</span>
+                                                <span class="font-bold text-emerald-600">+{{ formatNumber(item.quantity) }} {{ item.material ? item.material.unit : '' }}</span>
                                             </div>
                                         </div>
                                     </td>
