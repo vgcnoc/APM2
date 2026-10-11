@@ -227,24 +227,28 @@
                                     </div>
 
                                     <!-- Ports List (Directly in Card) -->
-                                    <div class="space-y-1.5 mb-4 max-h-48 overflow-y-auto pr-1 text-xs">
-                                        <div v-for="portNum in odp.total_ports" :key="portNum" class="flex items-center gap-2">
-                                            <span class="text-gray-400 font-mono w-4 text-right">{{ portNum }}</span>
+                                    <div class="space-y-2 mb-4 max-h-48 overflow-y-auto pr-1 text-xs">
+                                        <div v-for="portNum in odp.total_ports" :key="portNum" class="flex items-start gap-2 py-0.5">
+                                            <span class="text-gray-400 font-mono w-4 text-right pt-0.5 shrink-0">{{ portNum }}</span>
                                             <template v-if="getPortData(odp, portNum)">
-                                                <div class="w-2 h-2 rounded-full shrink-0" :class="getCustomerStatusColor(getPortData(odp, portNum).customer?.status)"></div>
-                                                <div v-if="getPortData(odp, portNum).customer" class="flex flex-col">
-                                                    <span class="font-medium text-gray-700 truncate">
-                                                        {{ getPortData(odp, portNum).customer.customer_code }} - {{ getPortData(odp, portNum).customer.name }}
-                                                    </span>
-                                                    <!-- Update Tgl & Status -->
-                                                    <div class="flex items-center gap-1 mt-0.5 text-[9px] text-gray-500">
-                                                        <span v-if="getPortData(odp, portNum).customer.status === 'active'" class="text-emerald-600 font-bold">Aktif</span>
-                                                        <span v-else-if="getPortData(odp, portNum).customer.status === 'installing'" class="text-amber-600 font-bold">Proses Instalasi</span>
-                                                        <span v-else-if="getPortData(odp, portNum).customer.status === 'suspended'" class="text-red-600 font-bold">Isolir</span>
-                                                        <span v-else class="text-gray-600 font-bold">{{ getPortData(odp, portNum).customer.status }}</span>
-                                                        
-                                                        <span class="px-1">•</span>
-                                                        
+                                                <div class="w-2 h-2 rounded-full shrink-0 mt-1.5" :class="getCustomerStatusColor(getPortData(odp, portNum).customer?.status)"></div>
+                                                <div v-if="getPortData(odp, portNum).customer" class="flex flex-col min-w-0 flex-1">
+                                                    <!-- Status & Nama Pelanggan Sebelahan -->
+                                                    <div class="flex items-center gap-1.5 flex-wrap leading-tight">
+                                                        <span v-if="getPortData(odp, portNum).customer.status === 'active'" class="text-emerald-600 font-bold text-xs">Aktif</span>
+                                                        <span v-else-if="getPortData(odp, portNum).customer.status === 'installing'" class="text-amber-600 font-bold text-xs">Proses Instalasi</span>
+                                                        <span v-else-if="getPortData(odp, portNum).customer.status === 'suspended'" class="text-red-600 font-bold text-xs">Isolir</span>
+                                                        <span v-else class="text-gray-600 font-bold text-xs">{{ getPortData(odp, portNum).customer.status }}</span>
+
+                                                        <span class="text-gray-400 text-xs">•</span>
+
+                                                        <span class="font-bold text-gray-800 truncate text-xs">
+                                                            {{ getPortData(odp, portNum).customer.customer_code }} - {{ getPortData(odp, portNum).customer.name }}
+                                                        </span>
+                                                    </div>
+
+                                                    <!-- Tgl & VLAN Layanan -->
+                                                    <div class="flex items-center gap-2 mt-0.5 flex-wrap text-[9px] text-gray-500">
                                                         <span v-if="getPortData(odp, portNum).customer.status === 'active' && getPortData(odp, portNum).customer.activation_date">
                                                             Tgl: {{ getPortData(odp, portNum).customer.activation_date }}
                                                         </span>
@@ -254,11 +258,11 @@
                                                         <span v-else>
                                                             Tgl: {{ getPortData(odp, portNum).customer.created_at.substring(0, 10) }}
                                                         </span>
+
+                                                        <span v-if="getPortData(odp, portNum).vlan_id" class="bg-purple-100 text-purple-700 px-1 rounded font-bold border border-purple-200">VLAN: {{ getPortData(odp, portNum).vlan_id }}</span>
+                                                        <span v-if="getPortData(odp, portNum).hotspot_vlan_id" class="bg-orange-100 text-orange-700 px-1 rounded font-bold border border-orange-200">HS: {{ getPortData(odp, portNum).hotspot_vlan_id }}</span>
                                                     </div>
-                                                    <div class="flex flex-wrap gap-1 mt-0.5">
-                                                        <span v-if="getPortData(odp, portNum).vlan_id" class="text-[9px] bg-purple-100 text-purple-700 px-1 rounded font-bold border border-purple-200">VLAN: {{ getPortData(odp, portNum).vlan_id }}</span>
-                                                        <span v-if="getPortData(odp, portNum).hotspot_vlan_id" class="text-[9px] bg-orange-100 text-orange-700 px-1 rounded font-bold border border-orange-200">HS: {{ getPortData(odp, portNum).hotspot_vlan_id }}</span>
-                                                    </div>
+
                                                     <span v-if="getCbpForCustomer(getPortData(odp, portNum).customer.id)" class="text-[9px] text-red-600 font-bold flex items-center gap-1 mt-0.5">
                                                         <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                                         CBP Status: Proses ({{ getCbpForCustomer(getPortData(odp, portNum).customer.id).created_at ? getCbpForCustomer(getPortData(odp, portNum).customer.id).created_at.substring(0, 10) : 'Baru' }})
@@ -267,8 +271,8 @@
                                                 <span v-else class="font-medium text-gray-400 italic">ONT Inventori</span>
                                             </template>
                                             <template v-else>
-                                                <div class="w-2 h-2 rounded-full shrink-0 bg-gray-300"></div>
-                                                <span class="font-medium text-emerald-600/70 italic">Kosong / Available</span>
+                                                <div class="w-2 h-2 rounded-full shrink-0 mt-1 bg-gray-300"></div>
+                                                <span class="font-medium text-emerald-600/70 italic text-xs">Kosong / Available</span>
                                             </template>
                                         </div>
                                     </div>
