@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PgsTicket;
 use App\Models\PgsMaterial;
 use App\Models\Customer;
+use App\Models\Area;
 use App\Models\User;
 use App\Models\Material;
 use App\Models\MaterialTransaction;
@@ -32,6 +33,7 @@ class PgsController extends Controller
     public function index(Request $request)
     {
         $query = PgsTicket::with([
+            'area',
             'customer.areaModel',
             'customer.package',
             'customer.ont.odp.odc',
@@ -72,6 +74,16 @@ class PgsController extends Controller
             $query->where('priority', $request->priority);
         }
 
+        // Filter area
+        if ($request->filled('area_id')) {
+            $query->where(function($q) use ($request) {
+                $q->where('area_id', $request->area_id)
+                  ->orWhereHas('customer', function($cq) use ($request) {
+                      $cq->where('area_id', $request->area_id);
+                  });
+            });
+        }
+
         // Scoping for technician
         if (auth()->check() && auth()->user()->hasRole('teknisi') && !auth()->user()->hasRole('admin') && !auth()->user()->hasRole('kepala teknisi')) {
             $query->where(function($q) {
@@ -109,15 +121,17 @@ class PgsController extends Controller
         }
 
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get();
+        $areas = Area::select('id', 'name')->orderBy('name')->get();
 
         return Inertia::render('Pgs/Index', [
             'tickets' => $tickets,
             'counts' => $counts,
             'customers' => $customers,
+            'areas' => $areas,
             'technicians' => $technicians,
             'leadTechnicians' => $leadTechnicians,
             'materials' => $materials,
-            'filters' => $request->only(['search', 'status', 'priority']),
+            'filters' => $request->only(['search', 'status', 'priority', 'area_id']),
         ]);
     }
 
@@ -127,6 +141,7 @@ class PgsController extends Controller
     public function jadwal(Request $request)
     {
         $query = PgsTicket::with([
+            'area',
             'customer.areaModel',
             'customer.package',
             'customer.ont.odp',
@@ -148,6 +163,15 @@ class PgsController extends Controller
             });
         }
 
+        if ($request->filled('area_id')) {
+            $query->where(function($q) use ($request) {
+                $q->where('area_id', $request->area_id)
+                  ->orWhereHas('customer', function($cq) use ($request) {
+                      $cq->where('area_id', $request->area_id);
+                  });
+            });
+        }
+
         $tickets = $query->latest('id')->paginate($request->per_page ?? 15)->withQueryString();
 
         $technicians = User::role(['teknisi', 'kepala teknisi'])->select('id', 'name', 'phone')->get();
@@ -156,12 +180,14 @@ class PgsController extends Controller
         }
 
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get();
+        $areas = Area::select('id', 'name')->orderBy('name')->get();
 
         return Inertia::render('Pgs/Jadwal', [
             'tickets' => $tickets,
+            'areas' => $areas,
             'technicians' => $technicians,
             'materials' => $materials,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'area_id']),
         ]);
     }
 
@@ -171,6 +197,7 @@ class PgsController extends Controller
     public function laporan(Request $request)
     {
         $query = PgsTicket::with([
+            'area',
             'customer.areaModel',
             'customer.package',
             'customer.ont.odp',
@@ -200,14 +227,25 @@ class PgsController extends Controller
             });
         }
 
+        if ($request->filled('area_id')) {
+            $query->where(function($q) use ($request) {
+                $q->where('area_id', $request->area_id)
+                  ->orWhereHas('customer', function($cq) use ($request) {
+                      $cq->where('area_id', $request->area_id);
+                  });
+            });
+        }
+
         $tickets = $query->latest('id')->paginate($request->per_page ?? 15)->withQueryString();
 
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->get();
+        $areas = Area::select('id', 'name')->orderBy('name')->get();
 
         return Inertia::render('Pgs/Laporan', [
             'tickets' => $tickets,
+            'areas' => $areas,
             'materials' => $materials,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'area_id']),
         ]);
     }
 
@@ -217,12 +255,18 @@ class PgsController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'area_id' => 'nullable|exists:areas,id',
             'customer_id' => 'required|exists:customers,id',
             'category' => 'required|string|max:100',
             'priority' => 'required|in:low,medium,high,critical',
             'reported_issue' => 'required|string',
             'admin_notes' => 'nullable|string',
         ]);
+
+        if (empty($validated['area_id'])) {
+            $customer = Customer::find($validated['customer_id']);
+            $validated['area_id'] = $customer?->area_id;
+        }
 
         $validated['status'] = 'admin_handling';
         $validated['created_by'] = auth()->id();
@@ -506,6 +550,7 @@ class PgsController extends Controller
     public function print(PgsTicket $pgs)
     {
         $pgs->load([
+            'area',
             'customer.areaModel',
             'customer.package',
             'customer.ont.odp.odc',

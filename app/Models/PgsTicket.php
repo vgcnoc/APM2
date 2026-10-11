@@ -15,6 +15,7 @@ class PgsTicket extends Model
     protected $fillable = [
         'ticket_number',
         'customer_id',
+        'area_id',
         'category',
         'priority',
         'reported_issue',
@@ -55,6 +56,11 @@ class PgsTicket extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function area(): BelongsTo
+    {
+        return $this->belongsTo(Area::class, 'area_id');
     }
 
     public function creator(): BelongsTo

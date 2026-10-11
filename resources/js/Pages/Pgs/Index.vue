@@ -88,6 +88,11 @@
                         <option value="high">Tinggi (High)</option>
                         <option value="critical">Kritis (Critical)</option>
                     </select>
+
+                    <select v-model="filterArea" @change="performSearch" class="px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm bg-gray-50/50">
+                        <option value="">Semua Area / Wilayah</option>
+                        <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                    </select>
                 </div>
 
                 <button @click="openCreateModal" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 shrink-0">
@@ -128,7 +133,9 @@
                                     <div class="text-[11px] text-gray-500 flex flex-wrap items-center gap-1.5 mt-0.5">
                                         <span class="px-1.5 py-0.2 rounded bg-gray-100 border text-gray-700 font-mono text-[10px]">{{ ticket.customer?.customer_code }}</span>
                                         <span>· {{ ticket.customer?.phone || '-' }}</span>
-                                        <span v-if="ticket.customer?.area_model?.name" class="px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 font-medium text-[10px]">{{ ticket.customer.area_model.name }}</span>
+                                        <span v-if="ticket.area?.name || ticket.customer?.area_model?.name" class="px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 font-semibold text-[10px] border border-blue-200">
+                                            📍 {{ ticket.area?.name || ticket.customer?.area_model?.name }}
+                                        </span>
                                     </div>
                                 </td>
 
@@ -284,12 +291,32 @@
                 </div>
 
                 <form @submit.prevent="submitCreate" class="p-6 space-y-4">
+                    <!-- Area / Wilayah -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">
+                            Area / Wilayah <span class="text-[11px] font-normal text-gray-400 lowercase">(filter pilihan pelanggan)</span>
+                        </label>
+                        <select 
+                            v-model="createForm.area_id" 
+                            @change="onAreaChange" 
+                            class="w-full rounded-xl border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm bg-gray-50/50"
+                        >
+                            <option value="">-- Semua Area / Wilayah --</option>
+                            <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                        </select>
+                    </div>
+
                     <!-- Pilih Pelanggan -->
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Pelanggan Terganggu <span class="text-red-500">*</span></label>
-                        <select v-model="createForm.customer_id" class="w-full rounded-xl border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm" required>
-                            <option value="">-- Pilih Pelanggan --</option>
-                            <option v-for="c in customers" :key="c.id" :value="c.id">
+                        <select 
+                            v-model="createForm.customer_id" 
+                            @change="onCustomerChange"
+                            class="w-full rounded-xl border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm" 
+                            required
+                        >
+                            <option value="">-- Pilih Pelanggan ({{ filteredCustomers.length }} Pelanggan) --</option>
+                            <option v-for="c in filteredCustomers" :key="c.id" :value="c.id">
                                 {{ c.name }} ({{ c.customer_code }}) - {{ c.address || 'Alamat tidak ada' }}
                             </option>
                         </select>
@@ -299,7 +326,10 @@
                                 <span>Paket: {{ selectedCustomerInfo.package?.name || '-' }}</span>
                                 <span>Status ONT: {{ selectedCustomerInfo.ont?.status || 'N/A' }}</span>
                             </div>
-                            <div>ODP: {{ selectedCustomerInfo.ont?.odp?.name || '-' }} · SN: {{ selectedCustomerInfo.ont?.serial_number || '-' }}</div>
+                            <div class="flex flex-wrap items-center justify-between gap-1">
+                                <div>ODP: {{ selectedCustomerInfo.ont?.odp?.name || '-' }} · SN: {{ selectedCustomerInfo.ont?.serial_number || '-' }}</div>
+                                <div v-if="customerAreaName" class="font-semibold text-blue-700">📍 Area: {{ customerAreaName }}</div>
+                            </div>
                             <div v-if="selectedCustomerInfo.ont?.rx_power" class="text-amber-700 font-semibold">Redaman RX Terakhir: {{ selectedCustomerInfo.ont.rx_power }} dBm</div>
                         </div>
                     </div>
@@ -493,7 +523,7 @@
                         </div>
                         <div>
                             <span class="text-gray-400 block font-bold">ODP & AREA</span>
-                            <span class="text-gray-800">{{ selectedTicket?.customer?.ont?.odp?.name || '-' }} ({{ selectedTicket?.customer?.area_model?.name || '-' }})</span>
+                            <span class="text-gray-800">{{ selectedTicket?.customer?.ont?.odp?.name || '-' }} ({{ selectedTicket?.area?.name || selectedTicket?.customer?.area_model?.name || '-' }})</span>
                         </div>
                     </div>
 
@@ -616,6 +646,7 @@ const props = defineProps({
     tickets: Object,
     counts: Object,
     customers: Array,
+    areas: Array,
     technicians: Array,
     leadTechnicians: Array,
     materials: Array,
@@ -625,6 +656,7 @@ const props = defineProps({
 const search = ref(props.filters?.search || '');
 const activeStatus = ref(props.filters?.status || 'all');
 const filterPriority = ref(props.filters?.priority || '');
+const filterArea = ref(props.filters?.area_id || '');
 
 // Modals
 const showCreateModal = ref(false);
@@ -635,6 +667,7 @@ const selectedTicket = ref(null);
 
 // Forms
 const createForm = useForm({
+    area_id: '',
     customer_id: '',
     category: 'LOS / Kabel Putus',
     priority: 'medium',
@@ -651,15 +684,46 @@ const escalateForm = useForm({
     lead_technician_id: '',
 });
 
+const filteredCustomers = computed(() => {
+    if (!props.customers) return [];
+    if (!createForm.area_id) return props.customers;
+    return props.customers.filter(c => c.area_id == createForm.area_id);
+});
+
 const selectedCustomerInfo = computed(() => {
     return props.customers?.find(c => c.id === createForm.customer_id);
 });
+
+const customerAreaName = computed(() => {
+    if (!selectedCustomerInfo.value) return '';
+    const a = props.areas?.find(ar => ar.id === selectedCustomerInfo.value.area_id);
+    return a?.name || '';
+});
+
+function onAreaChange() {
+    if (createForm.customer_id && createForm.area_id) {
+        const cust = props.customers?.find(c => c.id === createForm.customer_id);
+        if (cust && cust.area_id != createForm.area_id) {
+            createForm.customer_id = '';
+        }
+    }
+}
+
+function onCustomerChange() {
+    if (createForm.customer_id) {
+        const cust = props.customers?.find(c => c.id === createForm.customer_id);
+        if (cust && cust.area_id && !createForm.area_id) {
+            createForm.area_id = cust.area_id;
+        }
+    }
+}
 
 function performSearch() {
     router.get('/pgs', {
         search: search.value,
         status: activeStatus.value,
         priority: filterPriority.value,
+        area_id: filterArea.value,
     }, { preserveState: true, replace: true });
 }
 

@@ -19,17 +19,24 @@
 
             <!-- Toolbar & Filter -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                <div class="relative flex-1 sm:w-80">
-                    <input 
-                        type="text" 
-                        v-model="search" 
-                        placeholder="Cari No. PGS, pelanggan, tindakan..." 
-                        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm transition-all"
-                        @keyup.enter="performSearch"
-                    >
-                    <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+                    <div class="relative flex-1 sm:w-80">
+                        <input 
+                            type="text" 
+                            v-model="search" 
+                            placeholder="Cari No. PGS, pelanggan, tindakan..." 
+                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm transition-all"
+                            @keyup.enter="performSearch"
+                        >
+                        <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+
+                    <select v-model="filterArea" @change="performSearch" class="px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm bg-gray-50/50">
+                        <option value="">Semua Area / Wilayah</option>
+                        <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                    </select>
                 </div>
                 
                 <div class="text-xs text-gray-500 font-medium">
@@ -71,7 +78,9 @@
                                     <div class="text-[11px] text-gray-500 flex flex-wrap items-center gap-1.5 mt-0.5">
                                         <span class="px-1.5 py-0.2 rounded bg-gray-100 border text-gray-700 font-mono text-[10px]">{{ ticket.customer?.customer_code }}</span>
                                         <span>· {{ ticket.customer?.phone || '-' }}</span>
-                                        <span>· {{ ticket.customer?.address || '-' }}</span>
+                                        <span v-if="ticket.area?.name || ticket.customer?.area_model?.name" class="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-semibold text-[10px] border border-emerald-200">
+                                            📍 {{ ticket.area?.name || ticket.customer?.area_model?.name }}
+                                        </span>
                                     </div>
                                 </td>
 
@@ -358,11 +367,13 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     tickets: Object,
+    areas: Array,
     materials: Array,
     filters: Object,
 });
 
 const search = ref(props.filters?.search || '');
+const filterArea = ref(props.filters?.area_id || '');
 const showReportModal = ref(false);
 const selectedTicket = ref(null);
 
@@ -381,6 +392,7 @@ const reportForm = useForm({
 function performSearch() {
     router.get('/pgs/laporan', {
         search: search.value,
+        area_id: filterArea.value,
     }, { preserveState: true, replace: true });
 }
 

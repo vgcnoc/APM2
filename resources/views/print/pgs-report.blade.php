@@ -94,7 +94,7 @@
             <tr>
                 <td class="label">Area / ODP</td>
                 <td class="value">
-                    {{ $ticket->customer?->areaModel?->name ?: '-' }} · 
+                    <strong>{{ $ticket->area?->name ?: ($ticket->customer?->areaModel?->name ?: '-') }}</strong> · 
                     ODP: {{ $ticket->customer?->ont?->odp?->name ?: '-' }} · 
                     SN ONT: {{ $ticket->customer?->ont?->serial_number ?: '-' }}
                 </td>
