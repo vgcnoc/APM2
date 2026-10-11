@@ -32,8 +32,9 @@
                     </div>
 
                     <!-- Balance Cards -->
+                    <!-- Balance Cards -->
                     <div class="flex flex-col sm:flex-row gap-5 w-full xl:w-auto">
-                        <!-- Total Pemasukan -->
+                        <!-- Total Pemasukan (Voucher Terjual / Aktif) -->
                         <div class="bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-3xl flex items-center gap-5 shadow-2xl flex-1 transform transition-all duration-300 hover:scale-[1.03] hover:bg-white/15 relative overflow-hidden group">
                             <div class="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                             <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
@@ -42,6 +43,7 @@
                             <div class="relative z-10">
                                 <p class="text-xs font-bold text-emerald-200/80 uppercase tracking-widest mb-1">Total Pemasukan</p>
                                 <p class="text-3xl font-black tracking-tight text-white drop-shadow-sm">Rp {{ Number(income || 0).toLocaleString('id-ID') }}</p>
+                                <p class="text-[11px] font-semibold text-emerald-300/80 mt-0.5">Voucher Terjual / Terpakai</p>
                             </div>
                         </div>
 
@@ -54,6 +56,20 @@
                             <div class="relative z-10">
                                 <p class="text-xs font-bold text-blue-200/80 uppercase tracking-widest mb-1">Sisa Saldo Modal</p>
                                 <p class="text-3xl font-black tracking-tight text-white drop-shadow-sm">Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}</p>
+                                <p class="text-[11px] font-semibold text-blue-300/80 mt-0.5">Saldo Tersedia</p>
+                            </div>
+                        </div>
+
+                        <!-- Stok Voucher Tersedia -->
+                        <div class="bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-3xl flex items-center gap-5 shadow-2xl flex-1 transform transition-all duration-300 hover:scale-[1.03] hover:bg-white/15 relative overflow-hidden group">
+                            <div class="absolute inset-0 bg-gradient-to-br from-amber-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/30">
+                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+                            </div>
+                            <div class="relative z-10">
+                                <p class="text-xs font-bold text-amber-200/80 uppercase tracking-widest mb-1">Stok Voucher</p>
+                                <p class="text-3xl font-black tracking-tight text-white drop-shadow-sm">{{ available_count || 0 }} <span class="text-sm font-semibold text-amber-200/80">Keping</span></p>
+                                <p class="text-[11px] font-semibold text-amber-300/80 mt-0.5">Siap Dijual ke User</p>
                             </div>
                         </div>
                     </div>
@@ -120,21 +136,21 @@
                                 <!-- Preview Total -->
                                 <div v-if="selectedProfile" class="mt-4 p-5 bg-gradient-to-br from-indigo-50/50 to-blue-50/50 rounded-2xl border border-indigo-100/50 space-y-3">
                                     <div class="flex justify-between items-center text-sm">
-                                        <span class="text-indigo-900/60 font-bold uppercase tracking-wider text-xs">Harga Jual (User)</span>
+                                        <span class="text-indigo-900/60 font-bold uppercase tracking-wider text-xs">Harga Voucher</span>
                                         <span class="font-bold text-gray-800">Rp {{ Number(selectedProfile.price).toLocaleString('id-ID') }}</span>
                                     </div>
                                     <div class="flex justify-between items-center text-sm">
-                                        <span class="text-indigo-900/60 font-bold uppercase tracking-wider text-xs">Harga Modal (Reseller)</span>
-                                        <span class="font-bold text-indigo-600">Rp {{ Number(selectedProfile.fee_reseller).toLocaleString('id-ID') }}</span>
+                                        <span class="text-indigo-900/60 font-bold uppercase tracking-wider text-xs">Jumlah Diminta</span>
+                                        <span class="font-bold text-indigo-700">{{ form.qty || 0 }} voucher</span>
                                     </div>
                                     <div class="h-px bg-indigo-100/60 w-full my-2"></div>
                                     <div class="flex justify-between items-center text-lg">
-                                        <span class="text-indigo-900 font-black">Total Potongan</span>
-                                        <span class="font-black text-indigo-600 bg-indigo-100/50 px-3 py-1 rounded-lg">Rp {{ Number(selectedProfile.fee_reseller * (form.qty || 0)).toLocaleString('id-ID') }}</span>
+                                        <span class="text-indigo-900 font-black">Total Potong Saldo</span>
+                                        <span class="font-black text-indigo-600 bg-indigo-100/50 px-3 py-1 rounded-lg">Rp {{ Number(selectedProfile.price * (form.qty || 0)).toLocaleString('id-ID') }}</span>
                                     </div>
-                                    <div v-if="(selectedProfile.fee_reseller * (form.qty || 0)) > reseller.balance" class="bg-red-50 text-red-600 p-3 rounded-xl text-sm font-bold mt-3 flex items-center gap-2 border border-red-100">
-                                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                        Saldo Anda tidak mencukupi!
+                                    <div v-if="(selectedProfile.price * (form.qty || 0)) > reseller.balance" class="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-bold mt-3 flex items-start gap-2 border border-red-100 leading-snug">
+                                        <svg class="w-5 h-5 shrink-0 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                        <span>Saldo Anda tidak mencukupi! Butuh Rp {{ Number(selectedProfile.price * (form.qty || 0)).toLocaleString('id-ID') }} (Saldo Anda: Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }})</span>
                                     </div>
                                 </div>
                             </div>
@@ -142,7 +158,7 @@
                             <button 
                                 type="submit" 
                                 class="w-full py-4 bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 bg-[length:200%_auto] hover:bg-[position:right_center] text-white rounded-2xl font-black text-lg transition-all duration-300 shadow-[0_10px_20px_rgba(79,_70,_229,_0.3)] disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-1 mt-auto flex justify-center items-center gap-2"
-                                :disabled="form.processing || !form.profile_id || !form.qty || ((selectedProfile?.fee_reseller * form.qty) > reseller.balance)"
+                                :disabled="form.processing || !form.profile_id || !form.qty || ((selectedProfile?.price * form.qty) > reseller.balance)"
                             >
                                 <svg v-if="form.processing" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 {{ form.processing ? 'Memproses...' : 'Generate Sekarang' }}
@@ -272,6 +288,8 @@ const props = defineProps({
     vouchers: Object,
     profiles: Array,
     income: Number,
+    total_margin: Number,
+    available_count: Number,
 });
 
 const form = useForm({

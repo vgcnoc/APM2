@@ -37,14 +37,21 @@ class ResellerClientController extends Controller
             $profiles = VoucherProfile::where('is_customer_free', false)->get();
         }
 
-        // Calculate Total Income & Margin Reseller
+        // Hitung Total Pemasukan hanya dari voucher yang SUDAH TERJUAL / DIGUNAKAN / EXPIRED
         $income = Voucher::where('reseller_id', $reseller->id)
+            ->where('status', '!=', 'available')
             ->join('voucher_profiles', 'vouchers.voucher_profile_id', '=', 'voucher_profiles.id')
             ->sum('voucher_profiles.price');
 
         $totalMargin = Voucher::where('reseller_id', $reseller->id)
+            ->where('status', '!=', 'available')
             ->join('voucher_profiles', 'vouchers.voucher_profile_id', '=', 'voucher_profiles.id')
             ->sum('voucher_profiles.fee_reseller');
+
+        // Hitung jumlah voucher yang masih di stok (tersedia)
+        $availableCount = Voucher::where('reseller_id', $reseller->id)
+            ->where('status', 'available')
+            ->count();
 
         return Inertia::render('ClientArea/Dashboard', [
             'reseller' => $reseller->load('customer'),
@@ -52,6 +59,7 @@ class ResellerClientController extends Controller
             'profiles' => $profiles,
             'income' => $income,
             'total_margin' => $totalMargin,
+            'available_count' => $availableCount,
         ]);
     }
 
@@ -75,17 +83,15 @@ class ResellerClientController extends Controller
 
         $profile = VoucherProfile::where('is_customer_free', false)->findOrFail($validated['profile_id']);
         
-        // Logika Voucher Reseller:
-        // Harga Modal Reseller (Potong Saldo) = Harga Jual - Reseller Margin
-        // Contoh: Harga Jual 5.000, Margin 1.000 -> Modal Rp 4.000
-        $sellPrice = (float) $profile->price;
-        $margin = (float) ($profile->fee_reseller ?? 0);
-        $costPerVoucher = max(0, $sellPrice - $margin);
+        // Logika Pemotongan Saldo Reseller:
+        // Potong saldo sebesar Harga Jual Voucher ($profile->price)
+        $costPerVoucher = (float) $profile->price;
         $totalCost = $costPerVoucher * $validated['qty'];
-        $totalProfit = $margin * $validated['qty'];
         
         if ($reseller->balance < $totalCost) {
-            return redirect()->back()->withErrors(['error' => 'Saldo tidak mencukupi untuk generate ' . $validated['qty'] . ' voucher. Butuh saldo Rp ' . number_format($totalCost, 0, ',', '.') . ' (Modal Rp ' . number_format($costPerVoucher, 0, ',', '.') . '/voucher). Saldo Anda: Rp ' . number_format($reseller->balance, 0, ',', '.')]);
+            return redirect()->back()->withErrors([
+                'error' => 'Saldo Anda tidak mencukupi untuk generate ' . $validated['qty'] . ' voucher. Butuh saldo Rp ' . number_format($totalCost, 0, ',', '.') . ' (Rp ' . number_format($costPerVoucher, 0, ',', '.') . '/voucher). Saldo Anda saat ini: Rp ' . number_format($reseller->balance, 0, ',', '.')
+            ]);
         }
 
         // Deduct balance
@@ -97,7 +103,7 @@ class ResellerClientController extends Controller
             'reseller_id' => $reseller->id,
             'type' => 'debit',
             'amount' => $totalCost,
-            'description' => "Pembelian {$validated['qty']} Voucher {$profile->name} (Modal: Rp " . number_format($costPerVoucher, 0, ',', '.') . "/voucher, Margin: Rp " . number_format($margin, 0, ',', '.') . "/voucher)",
+            'description' => "Pembelian {$validated['qty']} Voucher {$profile->name} (@ Rp " . number_format($costPerVoucher, 0, ',', '.') . ")",
             'reference_id' => 'VOUCHER-CLIENT-GEN',
         ]);
 
@@ -139,6 +145,6 @@ class ResellerClientController extends Controller
         $createdVouchers = Voucher::whereIn('code', array_column($vouchers, 'code'))->get();
         app(\App\Services\RadiusService::class)->syncVouchers($createdVouchers);
 
-        return redirect()->back()->with('success', $validated['qty'] . ' Voucher berhasil digenerate. Saldo terpotong Rp ' . number_format($totalCost, 0, ',', '.') . ' (Modal Rp ' . number_format($costPerVoucher, 0, ',', '.') . '/voucher, Estimasi Margin Keuntungan Rp ' . number_format($totalProfit, 0, ',', '.') . ').');
+        return redirect()->back()->with('success', $validated['qty'] . ' Voucher berhasil digenerate. Saldo terpotong Rp ' . number_format($totalCost, 0, ',', '.') . ' (@ Rp ' . number_format($costPerVoucher, 0, ',', '.') . '/voucher).');
     }
 }

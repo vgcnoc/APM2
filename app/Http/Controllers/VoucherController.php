@@ -368,10 +368,10 @@ class VoucherController extends Controller
         $reseller = null;
         if (!empty($validated['reseller_id'])) {
             $reseller = \App\Models\Reseller::find($validated['reseller_id']);
-            $totalPrice = $profile->fee_reseller * $validated['amount'];
+            $totalPrice = $profile->price * $validated['amount'];
             
             if ($reseller->balance < $totalPrice) {
-                return redirect()->back()->withErrors(['reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($totalPrice, 0, ',', '.') . ').'])->withInput();
+                return redirect()->back()->withErrors(['reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($totalPrice, 0, ',', '.') . ', Saldo: Rp ' . number_format($reseller->balance, 0, ',', '.') . ').'])->withInput();
             }
             
             // Potong saldo reseller
