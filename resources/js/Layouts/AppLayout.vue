@@ -294,12 +294,13 @@ const menuItems = [
         type: 'dropdown',
         icon: 'ticket',
         label: 'Sistem Voucher',
-        active: (url) => ['/vouchers', '/vouchers/profiles', '/vouchers/free'].some(path => (url || '') === path || (url || '').startsWith(path + '?')),
+        active: (url) => (url || '').startsWith('/vouchers'),
         permission: 'menu_vouchers',
         children: [
-            { href: '/vouchers', label: 'Data Voucher', active: (url) => (url || '').length > 0 && url === '/vouchers', permission: 'menu_vouchers' },
+            { href: '/vouchers', label: 'Data Voucher', active: (url) => (url || '') === '/vouchers' || (url || '').startsWith('/vouchers?'), permission: 'menu_vouchers' },
+            { href: '/vouchers/online', label: 'Voucher Online', active: (url) => (url || '').startsWith('/vouchers/online'), permission: 'menu_vouchers' },
             { href: '/vouchers/profiles', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers_profiles' },
-              { href: '/vouchers/free', label: 'Voucher Gratis', active: (url) => (url || '').startsWith('/vouchers/free'), permission: 'menu_vouchers' },
+            { href: '/vouchers/free', label: 'Voucher Gratis', active: (url) => (url || '').startsWith('/vouchers/free'), permission: 'menu_vouchers' },
         ]
     },
     { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },

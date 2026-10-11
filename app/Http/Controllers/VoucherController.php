@@ -149,15 +149,20 @@ class VoucherController extends Controller
 
         $vouchers = collect();
         if ($sessions->isNotEmpty()) {
+            $sessionKeys = $sessions->keys()->all();
             $vQuery = Voucher::with('profile', 'reseller.customer.areaModel')
-                ->whereIn('username', $sessions->keys()->all());
+                ->where(function ($q) use ($sessionKeys) {
+                    $q->whereIn('username', $sessionKeys)
+                      ->orWhereIn('code', $sessionKeys);
+                });
             $this->applyResellerFilter($vQuery);
             $vouchers = $vQuery->get();
         }
 
         // Map data
         $rows = $vouchers->map(function ($v) use ($sessions) {
-            $s = $sessions->get($v->username);
+            $s = $sessions->get($v->username) ?? $sessions->get($v->code);
+            if (!$s) return null;
             $resellerCustomer = $v->reseller?->customer;
             return [
                 'id' => $v->id,
@@ -169,13 +174,13 @@ class VoucherController extends Controller
                 'ip_address' => $s->framedipaddress,
                 'mac_address' => $s->callingstationid,
                 'nas_ip' => $s->nasipaddress,
-                'uptime' => $s->liveSessionTime(),
+                'uptime' => method_exists($s, 'liveSessionTime') ? $s->liveSessionTime() : ($s->acctsessiontime ?: 0),
                 'download' => $s->acctoutputoctets,
                 'upload' => $s->acctinputoctets,
                 'login_time' => $s->acctstarttime ? $s->acctstarttime->toIso8601String() : null,
                 'is_active' => $v->is_active,
             ];
-        });
+        })->filter();
 
         return Inertia::render('Vouchers/Online', [
             'onlineUsers' => $rows->values()
