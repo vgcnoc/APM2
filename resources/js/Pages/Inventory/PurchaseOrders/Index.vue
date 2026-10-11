@@ -321,7 +321,7 @@ const unitOptions = (mat) => {
     if (mat.category === 'Isolasi' || mat.name.toLowerCase().includes('isolasi')) {
         return [{ value: 'pcs', label: 'Pcs' }, { value: 'base', label: mat.unit === 'cm' ? 'cm' : 'cm' }];
     }
-    if (mat.category === 'Paku Klem' || mat.name.toLowerCase().includes('klem')) {
+    if (mat.category === 'Paku Klem' || mat.category === 'Klem' || (mat.name && mat.name.toLowerCase().includes('klem'))) {
         return [{ value: 'pack', label: 'Bungkus' }, { value: 'base', label: mat.unit || 'pcs' }];
     }
     if (Number(mat.meter_per_roll) > 0) return [{ value: 'roll', label: 'Roll' }, base];

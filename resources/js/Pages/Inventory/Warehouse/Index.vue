@@ -197,7 +197,8 @@ const formatSecondaryUnit = (material, stockQty) => {
         const ppp = Number(material.pcs_per_pack);
         if (stockQty >= ppp) {
             const packs = stockQty / ppp;
-            return ` (~${formatNum(parseFloat(packs.toFixed(2)))} Pack)`;
+            const unitLabel = ((material.category || '').toLowerCase().includes('klem') || (material.name || '').toLowerCase().includes('klem')) ? 'Bungkus' : 'Pack';
+            return ` (~${formatNum(parseFloat(packs.toFixed(2)))} ${unitLabel})`;
         }
     }
     return '';

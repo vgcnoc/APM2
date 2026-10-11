@@ -193,7 +193,7 @@
                                                 <div v-if="!isNewCategory">
                                                     <select v-model="form.category" @change="checkNewCategory" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" required>
                                                         <option value="" disabled>Pilih Kategori...</option>
-                                                        <option v-for="cat in categoriesWithIsolasi" :key="cat" :value="cat">{{ cat }}</option>
+                                                        <option v-for="cat in categoriesWithSpecial" :key="cat" :value="cat">{{ cat }}</option>
                                                         <option value="new_category_option" class="font-bold text-emerald-600">+ Tambah Kategori Baru...</option>
                                                     </select>
                                                 </div>
@@ -283,6 +283,47 @@
                                         </div>
                                     </div>
 
+                                    <!-- Kalkulator Klem (Bungkus ↔ Pcs) -->
+                                    <div v-else-if="isKlem" class="bg-indigo-50/50 rounded-2xl border border-indigo-200 overflow-hidden shadow-sm">
+                                        <div class="bg-indigo-100/50 px-5 py-3 border-b border-indigo-200 flex items-center justify-between gap-2">
+                                            <div class="flex items-center gap-2">
+                                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                                                <h4 class="text-sm font-bold text-indigo-800">Kalkulator Klem (Bungkus ↔ Pcs)</h4>
+                                            </div>
+                                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white text-indigo-700 border border-indigo-200">Satuan stok: PCS</span>
+                                        </div>
+                                        <div class="p-5 space-y-4">
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                                <div>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Isi Pcs per Bungkus <span class="text-red-500">*</span></label>
+                                                    <input type="number" step="1" min="1" v-model="form.pcs_per_pack" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white" placeholder="Cth: 50" required>
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.id ? 'Jumlah Bungkus Saat Ini' : 'Jumlah Bungkus (Stok Awal)' }}</label>
+                                                    <input type="number" step="0.01" min="0" v-model="initialBungkus" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white" placeholder="0">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Harga Modal (per bungkus)</label>
+                                                    <input type="number" step="0.01" min="0" v-model="form.price_per_unit" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white" placeholder="0">
+                                                    <p v-if="Number(form.pcs_per_pack) > 0 && Number(form.price_per_unit) > 0" class="text-[11px] text-gray-400 mt-1">
+                                                        &asymp; Rp {{ formatNum(Math.round(Number(form.price_per_unit) / Number(form.pcs_per_pack))) }} / pcs
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-bold text-gray-700 mb-1">Harga Jual (per bungkus)</label>
+                                                    <input type="number" step="0.01" min="0" v-model="form.selling_price" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white" placeholder="0">
+                                                    <p v-if="Number(form.pcs_per_pack) > 0 && Number(form.selling_price) > 0" class="text-[11px] text-gray-400 mt-1">
+                                                        &asymp; Rp {{ formatNum(Math.round(Number(form.selling_price) / Number(form.pcs_per_pack))) }} / pcs
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center justify-between rounded-xl bg-white border border-indigo-200 px-4 py-2.5">
+                                                <span class="text-sm text-gray-600">Total Stok:</span>
+                                                <span class="text-base font-black text-indigo-700">{{ formatNum((Number(initialBungkus) || 0) * (Number(form.pcs_per_pack) || 0)) }} PCS</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- Konfigurasi Satuan Generik (Untuk kategori lain) -->
                                     <div v-else>
                                         <div class="flex flex-col md:flex-row gap-4 mb-4">
@@ -335,7 +376,7 @@
                                 <div class="col-span-1 md:col-span-2 mt-4">
                                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Manajemen Harga & Status</h4>
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div v-if="!isIsolasi && !['Kabel', 'Patchcord'].includes(form.category)">
+                                        <div v-if="!isIsolasi && !isKlem && !['Kabel', 'Patchcord'].includes(form.category)">
                                             <label class="block text-sm font-bold text-gray-700 mb-1">Harga Modal / Beli</label>
                                             <div class="relative">
                                                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -344,7 +385,7 @@
                                                 <input type="number" step="0.01" v-model="form.price_per_unit" class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all bg-white" placeholder="0">
                                             </div>
                                         </div>
-                                        <div v-if="!isIsolasi && !['Kabel', 'Patchcord'].includes(form.category)">
+                                        <div v-if="!isIsolasi && !isKlem && !['Kabel', 'Patchcord'].includes(form.category)">
                                             <label class="block text-sm font-bold text-gray-700 mb-1">Harga Jual</label>
                                             <div class="relative">
                                                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -459,16 +500,21 @@ const category = ref(props.filters.category || 'all');
 const isNewCategory = ref(false);
 const initialRolls = ref(0);
 const initialPacks = ref(0);
+const initialBungkus = ref(0);
 
-const categoriesWithIsolasi = computed(() => {
+const categoriesWithSpecial = computed(() => {
     let cats = [...props.categories];
-    if (!cats.includes('Isolasi')) {
-        cats.push('Isolasi');
-    }
+    if (!cats.includes('Isolasi')) cats.push('Isolasi');
+    if (!cats.includes('Klem')) cats.push('Klem');
     return cats.sort();
 });
 
 const isIsolasi = computed(() => (form.category || '').toLowerCase() === 'isolasi' || (form.category || '').toLowerCase().includes('isolasi') || (form.name || '').toLowerCase().includes('isolasi'));
+
+const isKlem = computed(() => {
+    const cat = (form.category || '').toLowerCase();
+    return cat === 'klem' || cat === 'paku klem' || cat.includes('klem');
+});
 
 const cmPerPack = computed(() => {
     const ppp = Number(form.pcs_per_pack) > 0 ? Number(form.pcs_per_pack) : 1;
@@ -479,10 +525,10 @@ const cmPerPack = computed(() => {
 const formatNum = (n) => new Intl.NumberFormat('id-ID').format(n || 0);
 
 const isPackCategory = computed(() => {
-    if (!form.category) return false;
+    if (!form.category || isKlem.value) return false;
     if (isNewCategory.value) return true;
     const cat = form.category.toLowerCase();
-    return ['aksesoris', 'klem', 'konektor', 'splitter', 'fast', 'adapter'].some(k => cat.includes(k));
+    return ['aksesoris', 'konektor', 'splitter', 'fast', 'adapter'].some(k => cat.includes(k));
 });
 
 const checkNewCategory = (e) => {
@@ -540,9 +586,16 @@ const getInitialStock = (product) => {
 
 const formatSmartUnit = (product) => {
     let html = [];
-    if ((product.category || '').toLowerCase().includes('isolasi') || (product.name || '').toLowerCase().includes('isolasi')) {
+    const catLower = (product.category || '').toLowerCase();
+    const nameLower = (product.name || '').toLowerCase();
+
+    if (catLower.includes('isolasi') || nameLower.includes('isolasi')) {
         const cpp = product.cm_per_pcs > 0 ? Number(product.cm_per_pcs) : 0;
         return `1 Pcs = <b>${formatNum(cpp)} CM</b>`;
+    }
+    if (catLower.includes('klem') || nameLower.includes('klem')) {
+        const ppp = product.pcs_per_pack > 0 ? Number(product.pcs_per_pack) : 0;
+        if (ppp > 0) return `1 Bungkus = <b>${formatNum(ppp)} Pcs</b>`;
     }
     if (product.meter_per_roll > 0) html.push(`1 Roll = <b>${formatNum(product.meter_per_roll)} M</b>`);
     if (product.pcs_per_pack > 0) html.push(`1 Pack = <b>${formatNum(product.pcs_per_pack)} Pcs</b>`);
@@ -587,6 +640,16 @@ const openModal = (product = null) => {
         } else {
             initialRolls.value = 0;
         }
+
+        if ((product.category || '').toLowerCase().includes('klem') || (product.name || '').toLowerCase().includes('klem')) {
+            if (form.pcs_per_pack > 0) {
+                initialBungkus.value = product.stock ? (Number(product.stock) / form.pcs_per_pack) : 0;
+            } else {
+                initialBungkus.value = product.stock ? Number(product.stock) : 0;
+            }
+        } else {
+            initialBungkus.value = 0;
+        }
         
         form.price_per_unit = price;
         form.selling_price = selling;
@@ -618,13 +681,19 @@ const openModal = (product = null) => {
         isNewCategory.value = false;
         initialRolls.value = 0;
         initialPacks.value = 0;
+        initialBungkus.value = 0;
     }
     isModalOpen.value = true;
 };
 
 const closeModal = () => {
     isModalOpen.value = false;
-    setTimeout(() => form.reset(), 200);
+    setTimeout(() => {
+        form.reset();
+        initialRolls.value = 0;
+        initialPacks.value = 0;
+        initialBungkus.value = 0;
+    }, 200);
 };
 
 const submitForm = () => {
@@ -642,6 +711,16 @@ const submitForm = () => {
         form.pcs_per_pack = 1; // Pcs is the highest unit for Isolasi now
         if (Number(initialPacks.value) >= 0 && Number(form.cm_per_pcs) > 0) {
             form.stock = Number(initialPacks.value) * Number(form.cm_per_pcs);
+        }
+    }
+
+    // Klem: satuan stok selalu PCS, stok awal dihitung dari jumlah Bungkus * Pcs per bungkus
+    if (isKlem.value) {
+        form.unit = 'pcs';
+        if (Number(initialBungkus.value) >= 0 && Number(form.pcs_per_pack) > 0) {
+            form.stock = Number(initialBungkus.value) * Number(form.pcs_per_pack);
+        } else if (Number(initialBungkus.value) >= 0) {
+            form.stock = Number(initialBungkus.value);
         }
     }
 
