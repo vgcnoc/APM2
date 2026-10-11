@@ -233,18 +233,20 @@ class VoucherController extends Controller
 
     public function expired(Request $request)
     {
-        $vQuery = Voucher::with(['profile', 'reseller.customer'])
+        $vQuery = Voucher::with(['profile', 'reseller.customer.areaModel'])
             ->where('status', 'expired');
         $this->applyResellerFilter($vQuery);
         $vouchers = $vQuery->get();
 
         $rows = $vouchers->map(function ($v) {
+            $resellerCustomer = $v->reseller?->customer;
             return [
                 'id' => $v->id,
                 'code' => $v->code,
                 'username' => $v->username,
                 'profile' => $v->profile?->name,
-                'reseller' => $v->reseller?->customer?->name ?? 'Admin',
+                'reseller' => $resellerCustomer?->name ?? 'Admin',
+                'area' => $resellerCustomer?->areaModel?->name ?? ($resellerCustomer?->area ?: null),
                 'used_at' => $v->used_at ? $v->used_at->toIso8601String() : null,
                 'is_active' => $v->is_active,
             ];

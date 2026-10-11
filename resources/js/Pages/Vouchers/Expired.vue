@@ -45,7 +45,13 @@
                     <span class="inline-flex px-2 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded text-[10px] font-bold uppercase whitespace-nowrap">{{ row.profile || '-' }}</span>
                 </td>
                 <td>
-                    <span class="text-sm font-semibold text-gray-900">{{ row.reseller }}</span>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-semibold text-gray-900">{{ row.reseller }}</span>
+                        <span v-if="row.area" class="inline-flex items-center gap-1 text-[11px] text-gray-500 mt-0.5">
+                            <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            {{ row.area }}
+                        </span>
+                    </div>
                 </td>
                 <td>
                     <div class="flex flex-col">
@@ -94,7 +100,7 @@ const columns = [
     { key: 'index', label: '#' },
     { key: 'code', label: 'KODE VOUCHER' },
     { key: 'profile', label: 'PROFIL' },
-    { key: 'reseller', label: 'RESELLER' },
+    { key: 'reseller', label: 'RESELLER / AREA' },
     { key: 'used_at', label: 'STATUS EXPIRED' },
 ];
 
@@ -110,7 +116,8 @@ const filteredData = computed(() => {
         result = result.filter(v => 
             (v.code && v.code.toLowerCase().includes(query)) ||
             (v.profile && v.profile.toLowerCase().includes(query)) ||
-            (v.reseller && v.reseller.toLowerCase().includes(query))
+            (v.reseller && v.reseller.toLowerCase().includes(query)) ||
+            (v.area && v.area.toLowerCase().includes(query))
         );
     }
     return result;
