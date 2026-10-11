@@ -362,7 +362,7 @@ class CustomerController extends Controller
 
     public function canceled(Request $request): Response
     {
-        $query = Customer::where('status', 'canceled')
+        $query = Customer::whereIn('status', ['canceled', 'terminated'])
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_booking_view_all'), function($q) {
                 if (auth()->user()->can('customers_booking_view_area')) {
                     $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
@@ -374,12 +374,13 @@ class CustomerController extends Controller
                 $q->where(function ($sub) use ($search) {
                     $sub->where('name', 'like', "%{$search}%")
                         ->orWhere('customer_code', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%");
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%");
                 });
             });
 
         $customers = (clone $query)
-            ->with(['package', 'sales', 'areaModel', 'user'])
+            ->with(['package', 'sales', 'areaModel', 'user', 'surveys.odp'])
             ->orderByDesc('updated_at')
             ->paginate(15)
             ->withQueryString();
@@ -2176,10 +2177,14 @@ class CustomerController extends Controller
             return redirect()->route('customers.survey')
                 ->with('success', 'Hasil survey berhasil disimpan. Pelanggan kini siap untuk instalasi (Ready Install).');
         } else {
-            $customer->update(['status' => 'terminated']);
+            $customer->update([
+                'status' => 'terminated',
+                'cancel_reason' => 'Hasil Survey: Tidak Layak (' . ($validated['notes'] ?? 'Jaringan/port tidak mencukupi') . ')',
+                'cancel_date' => now()->toDateString(),
+            ]);
             \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'terminated', 'Mengisi laporan survey (not feasible)');
             return redirect()->route('customers.survey')
-                ->with('success', 'Hasil survey (not feasible) berhasil disimpan. Pelanggan dibatalkan.');
+                ->with('success', 'Hasil survey (not feasible) berhasil disimpan. Pelanggan dipindahkan ke menu Dibatalkan.');
         }
     }
 
@@ -2329,13 +2334,84 @@ class CustomerController extends Controller
             'cancel_date' => 'required|date',
         ]);
 
+        $oldStatus = $customer->status;
+
         $customer->update([
             'status' => 'canceled',
             'cancel_reason' => $request->cancel_reason,
             'cancel_date' => $request->cancel_date,
         ]);
 
+        // Lepaskan port ODP yang di-reservasi oleh survey jika ada
+        foreach ($customer->surveys as $survey) {
+            if ($survey->odp_id && $survey->port_number) {
+                \App\Models\OdpPort::where('odp_id', $survey->odp_id)
+                    ->where('port_number', $survey->port_number)
+                    ->where('status', 'reserved')
+                    ->update(['status' => 'available']);
+            }
+        }
+
+        // Lepaskan ONT jika terpasang
+        if ($customer->ont) {
+            $odp = $customer->ont->odp;
+            $portNumber = $customer->ont->port_number;
+            if ($odp && $portNumber) {
+                \App\Models\OdpPort::where('odp_id', $odp->id)
+                    ->where('port_number', $portNumber)
+                    ->where('status', 'reserved')
+                    ->update(['status' => 'available']);
+            }
+            $customer->ont->update([
+                'customer_id' => null,
+                'status' => 'inactive',
+                'port_number' => null,
+            ]);
+        }
+
+        // Batalkan jadwal teknisi
+        $customer->technicianSchedules()
+            ->whereIn('status', ['scheduled', 'in_progress'])
+            ->update(['status' => 'canceled']);
+
+        \App\Models\AuditLog::createLog('Pelanggan Dibatalkan', $customer, $oldStatus, 'canceled', "Pendaftaran dibatalkan: {$request->cancel_reason}");
+
         return redirect()->back()->with('success', 'Pendaftaran pelanggan berhasil dibatalkan.');
+    }
+
+    public function restore(Customer $customer): RedirectResponse
+    {
+        $oldStatus = $customer->status;
+        $customer->update([
+            'status' => 'booking',
+            'cancel_reason' => null,
+            'cancel_date' => null,
+        ]);
+
+        \App\Models\AuditLog::createLog('Restore Pelanggan', $customer, $oldStatus, 'booking', 'Mengembalikan pelanggan yang dibatalkan ke antrean booking');
+
+        return redirect()->back()->with('success', "Pelanggan {$customer->name} berhasil dikembalikan ke status Booking.");
+    }
+
+    public function bulkRestore(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:customers,id'
+        ]);
+
+        $customers = Customer::whereIn('id', $request->ids)->get();
+        foreach ($customers as $customer) {
+            $oldStatus = $customer->status;
+            $customer->update([
+                'status' => 'booking',
+                'cancel_reason' => null,
+                'cancel_date' => null,
+            ]);
+            \App\Models\AuditLog::createLog('Restore Pelanggan', $customer, $oldStatus, 'booking', 'Mengembalikan pelanggan yang dibatalkan ke antrean booking');
+        }
+
+        return redirect()->back()->with('success', count($request->ids) . ' data pelanggan berhasil dikembalikan ke status Booking.');
     }
 
     public function bulkDestroy(Request $request): RedirectResponse

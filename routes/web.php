@@ -105,6 +105,14 @@ Route::middleware(['auth'])->group(function () {
         // Batalkan Booking
         Route::post('/{customer}/cancel', [CustomerController::class, 'cancel'])
             ->name('cancel');
+
+        // Pulihkan Pelanggan Dibatalkan (Kembalikan ke Booking)
+        Route::post('/{customer}/restore', [CustomerController::class, 'restore'])
+            ->name('restore');
+
+        // Pulihkan Massal Pelanggan Dibatalkan
+        Route::post('/bulk-restore', [CustomerController::class, 'bulkRestore'])
+            ->name('bulk-restore');
             
         // Update ONT via Ajax
         Route::post('/{customer}/update-ont-inline', [CustomerController::class, 'updateOntInline'])

@@ -150,7 +150,7 @@ function toggleAll(e) {
     }
 }
 
-const searchQuery = ref('');
+const searchQuery = ref(typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || '') : '');
 let searchTimeout = null;
 
 function onSearch() {
