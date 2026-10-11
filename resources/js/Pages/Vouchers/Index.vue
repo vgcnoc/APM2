@@ -20,10 +20,9 @@
                     </svg>
                 </div>
                 <select v-model="statusFilter" @change="doFilter" class="border-gray-300 rounded-lg text-sm">
-                    <option value="">Semua Status</option>
+                    <option value="">Semua Status (Aktif & Tersedia)</option>
                     <option value="available">Tersedia</option>
                     <option value="used">Digunakan</option>
-                    <option value="expired">Expired</option>
                 </select>
                 <select v-if="layoutComponent === AppLayout" v-model="resellerFilter" @change="doFilter" class="border-gray-300 rounded-lg text-sm">
                     <option value="">Semua Pemilik / Reseller</option>

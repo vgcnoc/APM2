@@ -39,8 +39,107 @@ class VoucherController extends Controller
         ]);
     }
 
+    /**
+     * Otomatis deteksi voucher yang waktu durasi / masa aktifnya sudah habis,
+     * tandai sebagai expired, dan putuskan dari RADIUS.
+     */
+    public static function checkAndExpireVouchers(): int
+    {
+        try {
+            $vouchers = Voucher::with('profile')
+                ->where('status', '!=', 'expired')
+                ->whereHas('profile', function ($q) {
+                    $q->whereNotNull('duration')
+                      ->where('duration', '!=', '')
+                      ->where('duration', '!=', 'Mengikuti Pelanggan');
+                })
+                ->get();
+
+            if ($vouchers->isEmpty()) {
+                return 0;
+            }
+
+            $usernames = $vouchers->pluck('username')->filter()->unique()->toArray();
+            if (empty($usernames)) {
+                return 0;
+            }
+
+            $accts = \App\Models\Radius\RadAcct::whereIn('username', $usernames)->get()->groupBy('username');
+            $expiredCount = 0;
+            $radius = null;
+
+            foreach ($vouchers as $voucher) {
+                $userAccts = $accts->get($voucher->username);
+                if (!$userAccts || $userAccts->isEmpty()) {
+                    continue;
+                }
+
+                $durationLimit = RadiusService::parseDuration($voucher->profile->duration);
+                if (!$durationLimit) {
+                    continue;
+                }
+
+                $totalTime = 0;
+                $firstLogin = null;
+                $lastLogout = null;
+
+                foreach ($userAccts as $acct) {
+                    if (!$firstLogin || $acct->acctstarttime < $firstLogin) {
+                        $firstLogin = $acct->acctstarttime;
+                    }
+                    if (!$lastLogout || $acct->acctstoptime > $lastLogout) {
+                        $lastLogout = $acct->acctstoptime;
+                    }
+
+                    $totalTime += $acct->liveSessionTime();
+                }
+
+                $isExpired = false;
+                $expiredAt = null;
+
+                if ($totalTime >= $durationLimit) {
+                    $isExpired = true;
+                    $expiredAt = $lastLogout ?? now();
+                } elseif ($firstLogin) {
+                    $calcExpire = \Carbon\Carbon::parse($firstLogin)->addSeconds($durationLimit);
+                    if (now()->greaterThanOrEqualTo($calcExpire)) {
+                        $isExpired = true;
+                        $expiredAt = $calcExpire;
+                    }
+                }
+
+                if ($isExpired) {
+                    $voucher->status = 'expired';
+                    $voucher->used_at = $expiredAt ?? now();
+                    $voucher->save();
+
+                    if (!$radius) {
+                        $radius = app(RadiusService::class);
+                    }
+                    $radius->disconnect($voucher->username);
+                    $radius->removeUser($voucher->username);
+
+                    $expiredCount++;
+                } elseif ($voucher->status === 'available' && ($firstLogin || $totalTime > 0)) {
+                    // Jika voucher sudah mulai digunakan tetapi belum habis, set status used
+                    $voucher->status = 'used';
+                    $voucher->used_at = $firstLogin;
+                    $voucher->save();
+                }
+            }
+
+            return $expiredCount;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Failed checking expired vouchers: " . $e->getMessage());
+            return 0;
+        }
+    }
+
     public function index(Request $request)
     {
+        // 1. Jalankan pengecekan voucher expired terlebih dahulu
+        self::checkAndExpireVouchers();
+
         $query = Voucher::with(['profile', 'reseller.customer']);
 
         if ($request->filled('profile_id')) {
@@ -49,6 +148,10 @@ class VoucherController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        } else {
+            // Secara default di menu Data Voucher, kecualikan voucher yang expired
+            // (Voucher expired dipindahkan ke menu 'Voucher Expired')
+            $query->where('status', '!=', 'expired');
         }
         
         if ($request->filled('reseller_id')) {
@@ -115,12 +218,8 @@ class VoucherController extends Controller
                             $stats[$user]->first_login = $record->acctstarttime;
                         }
                         
-                        // Hitung total time (tambahkan durasi sesi aktif jika belum ditutup)
-                        if (is_null($record->acctstoptime) && $record->acctstarttime) {
-                            $stats[$user]->total_time += now()->diffInSeconds($record->acctstarttime);
-                        } else {
-                            $stats[$user]->total_time += $record->acctsessiontime;
-                        }
+                        // Hitung total time menggunakan liveSessionTime()
+                        $stats[$user]->total_time += $record->liveSessionTime();
                     }
                     
                     // Format dates for JS
@@ -234,27 +333,96 @@ class VoucherController extends Controller
 
     public function expired(Request $request)
     {
+        // 1. Jalankan pengecekan voucher expired terlebih dahulu
+        self::checkAndExpireVouchers();
+
         $vQuery = Voucher::with(['profile', 'reseller.customer.areaModel'])
             ->where('status', 'expired');
-        $this->applyResellerFilter($vQuery);
-        $vouchers = $vQuery->get();
 
-        $rows = $vouchers->map(function ($v) {
+        $this->applyResellerFilter($vQuery);
+
+        if ($request->filled('profile_id')) {
+            $vQuery->where('voucher_profile_id', $request->profile_id);
+        }
+
+        if ($request->filled('reseller_id')) {
+            if ($request->reseller_id === 'system') {
+                $vQuery->whereNull('reseller_id');
+            } else {
+                $vQuery->where('reseller_id', $request->reseller_id);
+            }
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $vQuery->where(function($q) use ($search) {
+                $q->where('code', 'like', "%{$search}%")
+                  ->orWhere('username', 'like', "%{$search}%")
+                  ->orWhereHas('reseller.customer', function($sq) use ($search) {
+                      $sq->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $vouchers = $vQuery->latest('updated_at')->get();
+
+        $usernames = $vouchers->pluck('username')->filter()->unique()->toArray();
+        $records = !empty($usernames) 
+            ? \App\Models\Radius\RadAcct::whereIn('username', $usernames)->get()->groupBy('username') 
+            : collect();
+
+        $rows = $vouchers->map(function ($v) use ($records) {
             $resellerCustomer = $v->reseller?->customer;
+            $userAccts = $records->get($v->username);
+
+            $totalTime = 0;
+            $firstLogin = null;
+            $lastLogout = null;
+            if ($userAccts) {
+                foreach ($userAccts as $acct) {
+                    if (!$firstLogin || $acct->acctstarttime < $firstLogin) {
+                        $firstLogin = $acct->acctstarttime;
+                    }
+                    if (!$lastLogout || $acct->acctstoptime > $lastLogout) {
+                        $lastLogout = $acct->acctstoptime;
+                    }
+                    $totalTime += $acct->liveSessionTime();
+                }
+            }
+
+            $expiredAt = $v->used_at ?: ($lastLogout ?: $v->updated_at);
+
             return [
                 'id' => $v->id,
                 'code' => $v->code,
                 'username' => $v->username,
+                'password' => $v->password,
                 'profile' => $v->profile?->name,
-                'reseller' => $resellerCustomer?->name ?? 'Admin',
+                'duration' => $v->profile?->duration,
+                'is_free' => (bool) $v->is_free,
+                'reseller' => $resellerCustomer?->name ?? 'Kantor / System',
                 'area' => $resellerCustomer?->areaModel?->name ?? ($resellerCustomer?->area ?: null),
-                'used_at' => $v->used_at ? $v->used_at->toIso8601String() : null,
+                'first_login' => $firstLogin ? \Carbon\Carbon::parse($firstLogin)->toIso8601String() : null,
+                'expired_at' => $expiredAt ? \Carbon\Carbon::parse($expiredAt)->toIso8601String() : null,
+                'used_at' => $expiredAt ? \Carbon\Carbon::parse($expiredAt)->toIso8601String() : null,
+                'total_time' => $totalTime,
                 'is_active' => $v->is_active,
             ];
         });
 
+        $user = auth()->user();
+        if ($user && $user->isAdmin()) {
+            $profiles = VoucherProfile::all();
+        } else {
+            $profiles = $user ? $user->voucherProfiles()->get() : collect();
+        }
+        $resellers = \App\Models\Reseller::with('customer')->get();
+
         return Inertia::render('Vouchers/Expired', [
-            'expiredUsers' => $rows->values()
+            'expiredUsers' => $rows->values(),
+            'profiles' => $profiles,
+            'resellers' => $resellers,
+            'filters' => $request->only(['search', 'profile_id', 'reseller_id']),
         ]);
     }
 
