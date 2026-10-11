@@ -67,6 +67,7 @@
                                                 <span class="font-medium text-gray-900">{{ item.material ? item.material.name : 'Unknown' }}</span>
                                                 <span class="text-gray-400">&mdash;</span>
                                                 <span class="font-bold text-emerald-600">+{{ formatNumber(item.quantity) }} {{ item.material ? item.material.unit : '' }}</span>
+                                                <span v-if="getItemOrderUnitLabel(item)" class="text-xs text-gray-500 font-medium">({{ getItemOrderUnitLabel(item) }})</span>
                                             </div>
                                         </div>
                                     </td>
@@ -328,6 +329,56 @@ const unitOptions = (mat) => {
     return [base];
 };
 
+const resolvePurchaseUnit = (mat, savedUnit) => {
+    if (!mat) return 'base';
+    const options = unitOptions(mat);
+    if (!savedUnit) return 'base';
+
+    const matchVal = options.find(o => o.value === savedUnit);
+    if (matchVal) return matchVal.value;
+
+    const sLower = String(savedUnit).toLowerCase().trim();
+    const matchValLower = options.find(o => o.value.toLowerCase() === sLower);
+    if (matchValLower) return matchValLower.value;
+
+    if (sLower === 'bungkus' || sLower === 'pack' || sLower === 'bks') {
+        const hasPack = options.find(o => o.value === 'pack');
+        if (hasPack) return 'pack';
+    }
+    if (sLower === 'roll' || sLower === 'rol') {
+        const hasRoll = options.find(o => o.value === 'roll');
+        if (hasRoll) return 'roll';
+    }
+    if (sLower === 'pcs' || sLower === 'pc' || sLower === 'biji') {
+        const hasPcs = options.find(o => o.value === 'pcs');
+        if (hasPcs) return 'pcs';
+    }
+
+    const matchLabel = options.find(o => o.label.toLowerCase() === sLower);
+    if (matchLabel) return matchLabel.value;
+
+    return 'base';
+};
+
+const getItemOrderUnitLabel = (item) => {
+    const mat = item.material || materialById(item.material_id);
+    if (!mat || !item.unit || item.unit === 'base') return '';
+    if (item.unit.toLowerCase() === (mat.unit || '').toLowerCase()) return '';
+
+    const pUnit = resolvePurchaseUnit(mat, item.unit);
+    if (pUnit === 'base') return '';
+
+    const qty = reverseQty({
+        material_id: item.material_id,
+        purchase_unit: pUnit,
+        quantity: item.quantity,
+    });
+
+    const opt = unitOptions(mat).find(o => o.value === pUnit);
+    const unitLabel = opt ? opt.label : item.unit;
+    return `${formatNumber(qty)} ${unitLabel}`;
+};
+
 const reverseQty = (item) => {
     const mat = materialById(item.material_id);
     const qty = Number(item.quantity) || 0;
@@ -357,7 +408,7 @@ const convertedQty = (item) => {
     const qty = Number(item.quantity) || 0;
     if (!mat) return qty;
     if (item.purchase_unit === 'roll' && Number(mat.meter_per_roll) > 0) return qty * Number(mat.meter_per_roll);
-    if (mat.category === 'Isolasi' && item.purchase_unit === 'pcs') {
+    if ((mat.category === 'Isolasi' || (mat.name && mat.name.toLowerCase().includes('isolasi'))) && item.purchase_unit === 'pcs') {
         const cpp = Number(mat.cm_per_pcs) > 0 ? Number(mat.cm_per_pcs) : 0;
         return qty * cpp;
     }
@@ -396,7 +447,12 @@ const addToCart = () => {
     if (existing) {
         existing.quantity = (Number(existing.quantity) || 0) + 1;
     } else {
-        form.items.push({ material_id: mat.id, purchase_unit: unitOptions(mat)[0].value, quantity: 1 });
+        form.items.push({
+            material_id: mat.id,
+            purchase_unit: unitOptions(mat)[0].value,
+            quantity: 1,
+            original_qty: 0,
+        });
     }
     selectedMaterial.value = null;
 };
@@ -441,12 +497,23 @@ const viewOrder = (trx) => {
     form.area_name = trx.technician_name;
     form.date = trx.date;
     form.notes = trx.notes;
-    form.items = trx.items.map(item => ({
-        material_id: item.material_id,
-        purchase_unit: 'base',
-        quantity: item.quantity,
-        price: item.price_per_unit
-    }));
+    form.items = trx.items.map(item => {
+        const mat = item.material || materialById(item.material_id);
+        const pUnit = resolvePurchaseUnit(mat, item.unit);
+        const qty = reverseQty({
+            material_id: item.material_id,
+            purchase_unit: pUnit,
+            quantity: item.quantity,
+        });
+        return {
+            id: item.id,
+            material_id: item.material_id,
+            purchase_unit: pUnit,
+            quantity: qty,
+            price: item.price_per_unit,
+            original_qty: Number(item.quantity) || 0,
+        };
+    });
     isViewing.value = true;
     isModalOpen.value = true;
 };
@@ -476,12 +543,23 @@ const editOrder = (trx) => {
     form.area_name = trx.technician_name;
     form.date = trx.date;
     form.notes = trx.notes;
-    form.items = trx.items.map(item => ({
-        material_id: item.material_id,
-        purchase_unit: 'base',
-        quantity: item.quantity,
-        price: item.price_per_unit
-    }));
+    form.items = trx.items.map(item => {
+        const mat = item.material || materialById(item.material_id);
+        const pUnit = resolvePurchaseUnit(mat, item.unit);
+        const qty = reverseQty({
+            material_id: item.material_id,
+            purchase_unit: pUnit,
+            quantity: item.quantity,
+        });
+        return {
+            id: item.id,
+            material_id: item.material_id,
+            purchase_unit: pUnit,
+            quantity: qty,
+            price: item.price_per_unit,
+            original_qty: Number(item.quantity) || 0,
+        };
+    });
     isViewing.value = false;
     isModalOpen.value = true;
 };
