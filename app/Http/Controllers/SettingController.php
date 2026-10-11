@@ -32,6 +32,7 @@ class SettingController extends Controller
         return Inertia::render('Settings/Billing', [
             'billing_type' => Setting::get('billing_type', 'prabayar'),
             'prorata_formula' => Setting::get('prorata_formula', 'exact_days'),
+            'prorata_first_month' => Setting::get('prorata_first_month', '1') === '1',
             'invoice_issue_date' => Setting::get('invoice_issue_date', '1'),
             'isolate_days' => Setting::get('isolate_days', '3'),
             'isolate_time' => Setting::get('isolate_time', '00:00'),
@@ -81,8 +82,9 @@ class SettingController extends Controller
     public function updateBilling(Request $request)
     {
         $request->validate([
-            'billing_type' => 'required|in:prabayar,pascabayar,prorata',
+            'billing_type' => 'required|in:prabayar,pascabayar',
             'prorata_formula' => 'nullable|in:exact_days,fixed_30,mid_month',
+            'prorata_first_month' => 'nullable|boolean',
             'invoice_issue_date' => 'required|integer|min:1|max:28',
             'isolate_days' => 'required|integer|min:0',
             'isolate_time' => 'required|date_format:H:i',
@@ -105,6 +107,7 @@ class SettingController extends Controller
         if ($request->has('prorata_formula')) {
             Setting::set('prorata_formula', $request->prorata_formula);
         }
+        Setting::set('prorata_first_month', $request->boolean('prorata_first_month') ? '1' : '0');
         Setting::set('invoice_issue_date', $request->invoice_issue_date);
         Setting::set('isolate_days', $request->isolate_days);
         Setting::set('isolate_time', $request->isolate_time);

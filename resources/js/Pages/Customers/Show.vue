@@ -801,7 +801,7 @@
                                     Default: {{ formatBillingName(defaultBillingType) }}
                                 </span>
                             </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <label :class="['relative flex flex-col p-3 rounded-xl border cursor-pointer transition-all', activationForm.billing_type === 'prabayar' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500' : 'border-gray-200 bg-white hover:border-gray-300']">
                                     <input type="radio" value="prabayar" v-model="activationForm.billing_type" class="sr-only">
                                     <div class="flex items-center justify-between mb-1">
@@ -810,7 +810,7 @@
                                             <div v-if="activationForm.billing_type === 'prabayar'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
                                         </div>
                                     </div>
-                                    <span class="text-[10px] text-gray-500">Bayar dulu baru pakai (Full 1 bulan)</span>
+                                    <span class="text-[10px] text-gray-500">Bayar dulu baru pakai (Full 1 bulan di muka)</span>
                                 </label>
                                 
                                 <label :class="['relative flex flex-col p-3 rounded-xl border cursor-pointer transition-all', activationForm.billing_type === 'pascabayar' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500' : 'border-gray-200 bg-white hover:border-gray-300']">
@@ -823,17 +823,25 @@
                                     </div>
                                     <span class="text-[10px] text-gray-500">Pakai dulu baru bayar (Postpaid)</span>
                                 </label>
-                                
-                                <label :class="['relative flex flex-col p-3 rounded-xl border cursor-pointer transition-all', activationForm.billing_type === 'prorata' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500' : 'border-gray-200 bg-white hover:border-gray-300']">
-                                    <input type="radio" value="prorata" v-model="activationForm.billing_type" class="sr-only">
-                                    <div class="flex items-center justify-between mb-1">
-                                        <span class="text-xs font-bold" :class="activationForm.billing_type === 'prorata' ? 'text-amber-900' : 'text-gray-900'">Prorata</span>
-                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center', activationForm.billing_type === 'prorata' ? 'border-amber-500 bg-amber-500' : 'border-gray-300']">
-                                            <div v-if="activationForm.billing_type === 'prorata'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
-                                        </div>
-                                    </div>
-                                    <span class="text-[10px] text-gray-500">Hitungan per hari (Cut-off date)</span>
-                                </label>
+                            </div>
+
+                            <!-- Pilihan Prorata saat Pascabayar -->
+                            <div v-if="activationForm.billing_type === 'pascabayar'" class="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2 animate-fade-in">
+                                <div class="flex items-center justify-between">
+                                    <label class="flex items-center gap-2.5 cursor-pointer">
+                                        <input type="checkbox" v-model="activationForm.is_prorata" class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500">
+                                        <span class="text-xs font-bold text-amber-950">
+                                            Hitung Tagihan Pertama secara Prorata
+                                        </span>
+                                    </label>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 bg-amber-200/80 text-amber-800 rounded-full">
+                                        Hanya 1 Kali
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-amber-700 leading-relaxed pl-6.5">
+                                    Tagihan pertama dihitung proporsional sisa hari aktif hingga tanggal cut-off. 
+                                    <strong>Setelah bulan depan, tagihan otomatis normal pascabayar (1 bulan penuh).</strong>
+                                </p>
                             </div>
                         </div>
 
@@ -1971,18 +1979,21 @@ function submitAudit() {
     });
 }
 
-const defaultBillingType = computed(() => usePage().props.billingSettings?.billing_type || 'prabayar');
+const defaultBillingType = computed(() => {
+    const t = usePage().props.billingSettings?.billing_type;
+    return (t === 'pascabayar') ? 'pascabayar' : 'prabayar';
+});
 
 const formatBillingName = (type) => {
     if (type === 'pascabayar') return 'Pasca Bayar';
-    if (type === 'prorata') return 'Prorata';
     return 'Prabayar';
 };
 
 const showActivationModal = ref(false);
 const activationForm = useForm({
     activation_date: new Date().toISOString().split('T')[0],
-    billing_type: props.customer?.billing_type || (usePage().props.billingSettings?.billing_type || 'prabayar'),
+    billing_type: (props.customer?.billing_type === 'pascabayar' || (usePage().props.billingSettings?.billing_type === 'pascabayar' && !props.customer?.billing_type)) ? 'pascabayar' : 'prabayar',
+    is_prorata: usePage().props.billingSettings?.prorata_first_month !== false,
     pppoe_user: props.customer?.ont?.pppoe_user || '',
     pppoe_password: props.customer?.ont?.pppoe_password || '',
     vlan_mode: props.customer?.ont?.vlan_mode || '',

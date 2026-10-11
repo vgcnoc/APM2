@@ -852,7 +852,7 @@ class CustomerController extends Controller
             'registration_date' => 'required|date',
             'installation_fee' => 'nullable|numeric|min:0',
             'sales_id' => 'nullable|exists:users,id',
-            'billing_type' => 'nullable|in:prabayar,pascabayar,prorata',
+            'billing_type' => 'nullable|in:prabayar,pascabayar',
             'is_reseller' => 'boolean',
             'service_status' => 'nullable|in:berbayar,gratis',
         ]);
@@ -1054,7 +1054,7 @@ class CustomerController extends Controller
             'registration_date' => 'nullable|date',
             'installation_fee' => 'nullable|numeric|min:0',
             'sales_id' => 'nullable|exists:users,id',
-            'billing_type' => 'nullable|in:prabayar,pascabayar,prorata',
+            'billing_type' => 'nullable|in:prabayar,pascabayar',
             'is_reseller' => 'boolean',
             'service_status' => 'nullable|in:berbayar,gratis',
             'tax_ppn' => 'nullable|numeric|min:0|max:100',
@@ -1677,7 +1677,8 @@ class CustomerController extends Controller
 
         $validated = $request->validate([
             'activation_date' => 'required|date',
-            'billing_type' => 'nullable|in:prabayar,pascabayar,prorata',
+            'billing_type' => 'nullable|in:prabayar,pascabayar',
+            'is_prorata' => 'nullable|boolean',
             'pppoe_user' => 'nullable|string',
             'pppoe_password' => 'nullable|string',
             'vlan_mode' => 'nullable|string',
@@ -1697,8 +1698,11 @@ class CustomerController extends Controller
         ]);
 
         if ($customer->status === 'installing' && $customer->is_audited && $customer->ont) {
-            DB::transaction(function () use ($customer, $validated) {
+            DB::transaction(function () use ($customer, $validated, $request) {
                 $billingType = $validated['billing_type'] ?? $customer->billing_type ?? \App\Models\Setting::get('billing_type', 'prabayar');
+                if (!in_array($billingType, ['prabayar', 'pascabayar'])) {
+                    $billingType = 'pascabayar';
+                }
 
                 $customer->update([
                     'status' => 'active',
@@ -1735,51 +1739,54 @@ class CustomerController extends Controller
                 $isolateDays = (int) \App\Models\Setting::get('isolate_days', '3');
                 $isolateTime = \App\Models\Setting::get('isolate_time', '00:00');
 
-                if ($billingType === 'prorata' && $amount > 0) {
+                $isProrataFirstMonth = $request->boolean('is_prorata');
+                $invoiceBillingType = $billingType;
+
+                if ($billingType === 'pascabayar') {
+                    // Pascabayar: Hitung tanggal cut-off / terbit berikutnya
                     $nextBillingDate = $activationDate->copy();
                     if ($activationDate->day >= $issueDateSetting) {
                         $nextBillingDate->addMonth()->day($issueDateSetting);
                     } else {
                         $nextBillingDate->day($issueDateSetting);
-                    }
-                    
-                    $prevBillingDate = $nextBillingDate->copy()->subMonth();
-                    $totalDaysInCycle = $nextBillingDate->diffInDays($prevBillingDate);
-                    $daysUsed = $nextBillingDate->diffInDays($activationDate);
-                    
-                    if ($daysUsed > 0 && $totalDaysInCycle > 0 && $daysUsed < $totalDaysInCycle) {
-                        if ($prorataFormula === 'fixed_30') {
-                            $amount = ($amount / 30) * $daysUsed;
-                        } elseif ($prorataFormula === 'mid_month') {
-                            $midPoint = $prevBillingDate->copy()->addDays(floor($totalDaysInCycle / 2));
-                            if ($activationDate->gt($midPoint)) {
-                                $amount = $amount / 2;
-                            } else {
-                                $amount = $amount; // Full price
-                            }
-                        } else {
-                            // default: exact_days
-                            $amount = ($amount / $totalDaysInCycle) * $daysUsed;
-                        }
-                        
-                        $amount = round($amount);
-                        $isProrata = true;
                     }
 
-                    $dueDateTime = $activationDate->copy()->addDays($isolateDays);
-                } elseif ($billingType === 'pascabayar') {
-                    // Pasca Bayar: Pakai dulu baru bayar.
-                    // Jatuh tempo dihitung saat tanggal terbit invoice berikutnya + masa tenggang isolir
-                    $nextBillingDate = $activationDate->copy();
-                    if ($activationDate->day >= $issueDateSetting) {
-                        $nextBillingDate->addMonth()->day($issueDateSetting);
+                    if ($isProrataFirstMonth && $amount > 0) {
+                        // Tagihan pertama dihitung prorata 1 kali saja
+                        $prevBillingDate = $nextBillingDate->copy()->subMonth();
+                        $totalDaysInCycle = $nextBillingDate->diffInDays($prevBillingDate);
+                        $daysUsed = $nextBillingDate->diffInDays($activationDate);
+
+                        if ($daysUsed > 0 && $totalDaysInCycle > 0 && $daysUsed < $totalDaysInCycle) {
+                            if ($prorataFormula === 'fixed_30') {
+                                $amount = ($amount / 30) * $daysUsed;
+                            } elseif ($prorataFormula === 'mid_month') {
+                                $midPoint = $prevBillingDate->copy()->addDays(floor($totalDaysInCycle / 2));
+                                if ($activationDate->gt($midPoint)) {
+                                    $amount = $amount / 2;
+                                }
+                            } else {
+                                // default: exact_days
+                                $amount = ($amount / $totalDaysInCycle) * $daysUsed;
+                            }
+                            $amount = round($amount);
+                            $isProrata = true;
+                        }
+
+                        $dueDateTime = $nextBillingDate->copy()->addDays($isolateDays);
+                        $invoiceBillingType = 'prorata';
+                        $invoiceNotes = 'Tagihan Pertama (Prorata - Pascabayar)';
                     } else {
-                        $nextBillingDate->day($issueDateSetting);
+                        // Pascabayar normal 1 bulan penuh
+                        $dueDateTime = $nextBillingDate->copy()->addDays($isolateDays);
+                        $invoiceBillingType = 'pascabayar';
+                        $invoiceNotes = 'Tagihan Pertama (Pascabayar)';
                     }
-                    $dueDateTime = $nextBillingDate->copy()->addDays($isolateDays);
                 } else {
                     // Prabayar: Bayar dulu baru pakai (Full 1 bulan di muka)
                     $dueDateTime = $activationDate->copy()->addDays($isolateDays);
+                    $invoiceBillingType = 'prabayar';
+                    $invoiceNotes = 'Tagihan Pertama (Prabayar)';
                 }
                 
                 $timeParts = explode(':', $isolateTime);
@@ -1811,8 +1818,8 @@ class CustomerController extends Controller
                     'issued_date' => $activationDate,
                     'status' => $status,
                     'is_prorata' => $isProrata,
-                    'billing_type' => $billingType,
-                    'notes' => 'Tagihan Awal Aktivasi (' . ucfirst($billingType) . ')',
+                    'billing_type' => $invoiceBillingType,
+                    'notes' => $invoiceNotes,
                 ]);
 
                 // Auto Incentives: Fee Market/Booking for Sales

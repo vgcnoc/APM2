@@ -16,7 +16,7 @@
                             </div>
                             <p class="text-xs text-gray-500 mb-4 ml-10">Tentukan standar jenis siklus penagihan sistem. Pilihan ini akan menjadi nilai default saat melakukan Aktivasi Pelanggan (dapat disesuaikan secara fleksibel per pelanggan).</p>
                             
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <label class="relative flex cursor-pointer rounded-xl border p-4 shadow-sm focus:outline-none transition-all duration-200 hover:border-indigo-300 hover:shadow-md" :class="form.billing_type === 'prabayar' ? 'border-indigo-600 bg-indigo-50/30 ring-1 ring-indigo-600' : 'border-gray-200 bg-white'">
                                     <input type="radio" name="billing_type" value="prabayar" v-model="form.billing_type" class="sr-only">
                                     <span class="flex flex-1">
@@ -46,39 +46,37 @@
                                         </div>
                                     </div>
                                 </label>
-                                
-                                <label class="relative flex cursor-pointer rounded-xl border p-4 shadow-sm focus:outline-none transition-all duration-200 hover:border-indigo-300 hover:shadow-md" :class="form.billing_type === 'prorata' ? 'border-indigo-600 bg-indigo-50/30 ring-1 ring-indigo-600' : 'border-gray-200 bg-white'">
-                                    <input type="radio" name="billing_type" value="prorata" v-model="form.billing_type" class="sr-only">
-                                    <span class="flex flex-1">
-                                        <span class="flex flex-col">
-                                            <span class="block text-sm font-bold" :class="form.billing_type === 'prorata' ? 'text-indigo-900' : 'text-gray-900'">Prorata</span>
-                                            <span class="mt-1 flex items-center text-xs" :class="form.billing_type === 'prorata' ? 'text-indigo-700' : 'text-gray-500'">Hitungan per hari (Cut-off date)</span>
-                                        </span>
-                                    </span>
-                                    <div class="flex items-center">
-                                        <div class="w-5 h-5 rounded-full border flex items-center justify-center transition-colors" :class="form.billing_type === 'prorata' ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'">
-                                            <svg v-if="form.billing_type === 'prorata'" class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                                        </div>
-                                    </div>
-                                </label>
                             </div>
                             <div v-if="form.errors.billing_type" class="mt-1 text-sm text-red-600">{{ form.errors.billing_type }}</div>
                         </div>
 
-                        <!-- Opsi Rumus Prorata -->
-                        <div v-if="form.billing_type === 'prorata'" class="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100">
-                            <h4 class="text-sm font-bold text-indigo-900 mb-3 flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
-                                Rumusan Prorata
-                            </h4>
-                            <div class="space-y-3">
+                        <!-- Opsi Prorata saat Pascabayar -->
+                        <div v-if="form.billing_type === 'pascabayar'" class="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100 space-y-4">
+                            <div class="flex items-start justify-between gap-4 pb-3 border-b border-indigo-100">
+                                <div>
+                                    <h4 class="text-sm font-bold text-indigo-900 flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        Prorata Tagihan Pertama (Pascabayar)
+                                    </h4>
+                                    <p class="text-xs text-indigo-700 mt-1">
+                                        Aktifkan prorata otomatis untuk tagihan pertama pelanggan baru. Pengaturan ini <strong>hanya berlaku 1 kali</strong> saat bulan aktivasi, bulan berikutnya otomatis normal pascabayar.
+                                    </p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                    <input type="checkbox" v-model="form.prorata_first_month" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+
+                            <div v-if="form.prorata_first_month" class="space-y-3">
+                                <label class="block text-xs font-bold text-indigo-900">Pilih Rumusan Prorata:</label>
                                 <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'exact_days' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
                                     <div class="flex items-center h-5">
                                         <input type="radio" v-model="form.prorata_formula" value="exact_days" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
                                     </div>
                                     <div class="ml-3 text-sm">
                                         <span class="font-bold text-gray-900 block">Sangat Akurat (Bulan Berjalan) <span class="ml-2 text-[10px] font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Disarankan</span></span>
-                                        <span class="text-gray-500 text-xs mt-1 block">Harga / Total Hari di Bulan Ini x Hari Pemakaian (Sangat adil untuk pelanggan)</span>
+                                        <span class="text-gray-500 text-xs mt-0.5 block">Harga / Total Hari di Bulan Ini x Hari Pemakaian (Adil untuk pelanggan)</span>
                                     </div>
                                 </label>
                                 
@@ -88,7 +86,7 @@
                                     </div>
                                     <div class="ml-3 text-sm">
                                         <span class="font-bold text-gray-900 block">Konstan 30 Hari</span>
-                                        <span class="text-gray-500 text-xs mt-1 block">Harga / 30 x Hari Pemakaian (Bulan apapun dianggap rata 30 hari)</span>
+                                        <span class="text-gray-500 text-xs mt-0.5 block">Harga / 30 x Hari Pemakaian (Bulan apapun dianggap rata 30 hari)</span>
                                     </div>
                                 </label>
 
@@ -98,7 +96,7 @@
                                     </div>
                                     <div class="ml-3 text-sm">
                                         <span class="font-bold text-gray-900 block">Paruh Bulan (Cut-Off Tengah)</span>
-                                        <span class="text-gray-500 text-xs mt-1 block">Aktivasi sebelum pertengahan siklus = Bayar Penuh. Lewat pertengahan = Diskon 50%</span>
+                                        <span class="text-gray-500 text-xs mt-0.5 block">Aktivasi sebelum pertengahan siklus = Bayar Penuh. Lewat pertengahan = Diskon 50%</span>
                                     </div>
                                 </label>
                             </div>
@@ -382,10 +380,10 @@
                         </div>
                     </div>
 
-                        <div v-if="form.billing_type === 'prorata'" class="bg-indigo-800/50 border border-indigo-500/50 rounded-xl p-4 mt-2">
+                        <div v-if="form.billing_type === 'pascabayar' && form.prorata_first_month" class="bg-indigo-800/50 border border-indigo-500/50 rounded-xl p-4 mt-2">
                             <div class="flex items-center gap-2 mb-3">
                                 <svg class="w-4 h-4 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                                <h4 class="text-xs font-bold text-indigo-200 uppercase tracking-wide">Kalkulator Prorata Aktif</h4>
+                                <h4 class="text-xs font-bold text-indigo-200 uppercase tracking-wide">Simulasi Prorata Tagihan Pertama</h4>
                             </div>
                             
                             <div class="space-y-2 text-xs text-indigo-100">
@@ -433,6 +431,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 const props = defineProps({
     billing_type: String,
     prorata_formula: String,
+    prorata_first_month: Boolean,
     invoice_issue_date: String,
     isolate_days: String,
     isolate_time: String,
@@ -451,6 +450,7 @@ const props = defineProps({
 const form = useForm({
     billing_type: props.billing_type || 'prabayar',
     prorata_formula: props.prorata_formula || 'exact_days',
+    prorata_first_month: props.prorata_first_month !== undefined ? props.prorata_first_month : true,
     invoice_issue_date: props.invoice_issue_date || '1',
     isolate_days: props.isolate_days || '3',
     isolate_time: props.isolate_time || '00:00',

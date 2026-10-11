@@ -249,7 +249,7 @@
 
                                 <div class="md:col-span-2 pt-2 border-t border-gray-100">
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Siklus Penagihan Tagihan (Billing Cycle)</label>
-                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <label :class="form.billing_type === 'prabayar' ? 'border-yellow-500 bg-yellow-50/50 text-yellow-900 ring-2 ring-yellow-200' : 'border-gray-200 hover:border-gray-300 text-gray-700'" class="flex items-center gap-2 p-3 border rounded-xl cursor-pointer transition-all">
                                             <input type="radio" v-model="form.billing_type" value="prabayar" class="text-yellow-600 focus:ring-yellow-500">
                                             <div>
@@ -262,13 +262,6 @@
                                             <div>
                                                 <span class="text-xs font-bold block">Pascabayar (Postpaid)</span>
                                                 <span class="text-[10px] text-gray-500">Pakai dulu, bayar di akhir</span>
-                                            </div>
-                                        </label>
-                                        <label :class="form.billing_type === 'prorata' ? 'border-yellow-500 bg-yellow-50/50 text-yellow-900 ring-2 ring-yellow-200' : 'border-gray-200 hover:border-gray-300 text-gray-700'" class="flex items-center gap-2 p-3 border rounded-xl cursor-pointer transition-all">
-                                            <input type="radio" v-model="form.billing_type" value="prorata" class="text-yellow-600 focus:ring-yellow-500">
-                                            <div>
-                                                <span class="text-xs font-bold block">Prorata (Prorated)</span>
-                                                <span class="text-[10px] text-gray-500">Hitung hari s.d tgl cut-off</span>
                                             </div>
                                         </label>
                                     </div>
@@ -461,7 +454,7 @@ const form = useForm({
     tax_ppn: props.customer.tax_ppn,
     tax_bhp: props.customer.tax_bhp,
     tax_uso: props.customer.tax_uso,
-    billing_type: props.customer.billing_type || page.props.billingSettings?.billing_type || 'prabayar',
+    billing_type: (props.customer.billing_type === 'pascabayar' || (!props.customer.billing_type && page.props.billingSettings?.billing_type === 'pascabayar')) ? 'pascabayar' : 'prabayar',
 });
 
 const registration_type = ref('customer');

@@ -72,6 +72,7 @@ class HandleInertiaRequests extends Middleware
             'billingSettings' => fn () => [
                 'billing_type' => \App\Models\Setting::get('billing_type', 'prabayar'),
                 'prorata_formula' => \App\Models\Setting::get('prorata_formula', 'exact_days'),
+                'prorata_first_month' => \App\Models\Setting::get('prorata_first_month', '1') === '1',
                 'invoice_issue_date' => (int) \App\Models\Setting::get('invoice_issue_date', '1'),
                 'isolate_days' => (int) \App\Models\Setting::get('isolate_days', '3'),
                 'isolate_time' => \App\Models\Setting::get('isolate_time', '00:00'),
