@@ -1507,7 +1507,7 @@ class CustomerController extends Controller
                 if (count($returnItems) > 0) {
                     $transactionReturn = \App\Models\MaterialTransaction::create([
                         'transaction_number' => 'RTR-EXCESS-' . date('YmdHis'),
-                        'type' => 'out',
+                        'type' => 'in',
                         'status' => 'pending',
                         'date' => now(),
                         'technician_name' => auth()->user()->name,
