@@ -257,7 +257,7 @@
                                 </label>
                                 <select v-model="singleForm.voucher_profile_id" class="w-full border-gray-300 rounded-xl text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all" required>
                                     <option value="" disabled>-- Pilih Profil Paket --</option>
-                                    <option v-for="prof in profiles" :key="prof.id" :value="prof.id">
+                                    <option v-for="prof in sellableProfiles" :key="prof.id" :value="prof.id">
                                         {{ prof.name }} • Durasi: {{ prof.duration || '-' }} • Tarif: Rp{{ Number(prof.price).toLocaleString('id-ID') }}
                                     </option>
                                 </select>
@@ -473,7 +473,7 @@
                                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Pilih Profil <span class="text-red-500">*</span></label>
                                 <select v-model="bulkForm.voucher_profile_id" class="w-full border-gray-300 rounded-xl text-sm focus:ring-indigo-500 focus:border-indigo-500" required>
                                     <option value="" disabled>-- Pilih Profil --</option>
-                                    <option v-for="prof in profiles" :key="prof.id" :value="prof.id">{{ prof.name }} (Rp{{ Number(prof.price).toLocaleString('id-ID') }})</option>
+                                    <option v-for="prof in sellableProfiles" :key="prof.id" :value="prof.id">{{ prof.name }} (Rp{{ Number(prof.price).toLocaleString('id-ID') }})</option>
                                 </select>
                             </div>
                             
@@ -638,6 +638,10 @@ const props = defineProps({
     filters: Object,
     onlineUsernames: Array,
     usageStats: Object,
+});
+
+const sellableProfiles = computed(() => {
+    return (props.profiles || []).filter(p => !p.is_customer_free);
 });
 
 const formatSeconds = (seconds) => {

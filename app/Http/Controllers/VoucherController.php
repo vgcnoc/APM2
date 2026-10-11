@@ -178,9 +178,9 @@ class VoucherController extends Controller
         $vouchers = $query->latest()->paginate(20)->withQueryString();
         $user = auth()->user();
         if ($user->isAdmin()) {
-            $profiles = VoucherProfile::all();
+            $profiles = VoucherProfile::where('is_customer_free', false)->get();
         } else {
-            $profiles = $user->voucherProfiles()->get();
+            $profiles = $user->voucherProfiles()->where('is_customer_free', false)->get();
         }
         $resellers = \App\Models\Reseller::with('customer')->get();
 
@@ -454,7 +454,7 @@ class VoucherController extends Controller
                 'reseller_payment' => 'nullable|in:balance,cash',
             ]);
 
-            $profile = VoucherProfile::findOrFail($validated['voucher_profile_id']);
+            $profile = VoucherProfile::where('is_customer_free', false)->findOrFail($validated['voucher_profile_id']);
             $isFree = $validated['cost_type'] === 'free';
             $paymentMethod = $isFree ? 'free' : 'system';
 
@@ -528,7 +528,7 @@ class VoucherController extends Controller
             'combination' => 'nullable|string|in:alphanumeric,numeric,alpha',
         ]);
 
-        $profile = VoucherProfile::findOrFail($validated['voucher_profile_id']);
+        $profile = VoucherProfile::where('is_customer_free', false)->findOrFail($validated['voucher_profile_id']);
         $isFree = ($validated['cost_type'] ?? 'paid') === 'free';
         $paymentMethod = $isFree ? 'free' : 'system';
 

@@ -82,7 +82,7 @@
                                     <div class="relative">
                                         <select v-model="form.profile_id" class="w-full appearance-none bg-gray-50/50 border border-gray-200 text-gray-900 text-sm font-bold rounded-2xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white block p-4 shadow-sm transition-all cursor-pointer">
                                             <option value="" disabled>-- Klik untuk memilih paket --</option>
-                                            <option v-for="profile in profiles" :key="profile.id" :value="profile.id">
+                                            <option v-for="profile in sellableProfiles" :key="profile.id" :value="profile.id">
                                                 {{ profile.name }} (Harga User: Rp {{ Number(profile.price).toLocaleString('id-ID') }})
                                             </option>
                                         </select>
@@ -251,6 +251,10 @@ const props = defineProps({
     income: Number,
 });
 
+const sellableProfiles = computed(() => {
+    return (props.profiles || []).filter(p => !p.is_customer_free);
+});
+
 const form = useForm({
     profile_id: '',
     qty: 1,
@@ -259,7 +263,7 @@ const form = useForm({
 
 const selectedProfile = computed(() => {
     if (!form.profile_id) return null;
-    return props.profiles.find(p => p.id === form.profile_id);
+    return sellableProfiles.value.find(p => p.id === form.profile_id);
 });
 
 const generateVoucher = () => {

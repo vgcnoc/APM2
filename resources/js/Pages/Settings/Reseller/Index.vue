@@ -80,7 +80,7 @@
                 <div class="p-6 overflow-y-auto flex-1">
                     <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Pilih Profil Voucher yang diizinkan:</p>
                     <div class="space-y-2">
-                        <label v-for="profile in voucherProfiles" :key="profile.id" class="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors" :class="form.voucher_profile_ids.includes(profile.id) ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'">
+                        <label v-for="profile in sellableProfiles" :key="profile.id" class="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors" :class="form.voucher_profile_ids.includes(profile.id) ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'">
                             <div class="flex items-center h-5">
                                 <input type="checkbox" :value="profile.id" v-model="form.voucher_profile_ids" class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
                             </div>
@@ -104,7 +104,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
@@ -125,6 +125,10 @@ const props = defineProps({
     users: Object,
     voucherProfiles: Array,
     filters: Object,
+});
+
+const sellableProfiles = computed(() => {
+    return (props.voucherProfiles || []).filter(p => !p.is_customer_free);
 });
 
 const search = ref(props.filters?.search || '');

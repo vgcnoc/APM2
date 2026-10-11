@@ -22,7 +22,7 @@ class ResellerSettingController extends Controller
         }
 
         $users = $query->paginate(20)->withQueryString();
-        $voucherProfiles = VoucherProfile::all();
+        $voucherProfiles = VoucherProfile::where('is_customer_free', false)->get();
 
         return Inertia::render('Settings/Reseller/Index', [
             'users' => $users,

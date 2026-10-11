@@ -32,7 +32,10 @@ class ResellerClientController extends Controller
             ->latest()
             ->paginate(10);
 
-        $profiles = VoucherProfile::all();
+        $profiles = $user->voucherProfiles()->where('is_customer_free', false)->get();
+        if ($profiles->isEmpty()) {
+            $profiles = VoucherProfile::where('is_customer_free', false)->get();
+        }
 
         // Calculate Total Income
         $income = Voucher::where('reseller_id', $reseller->id)
@@ -65,7 +68,7 @@ class ResellerClientController extends Controller
             'combination' => 'nullable|string|in:alphanumeric,numeric,alpha',
         ]);
 
-        $profile = VoucherProfile::find($validated['profile_id']);
+        $profile = VoucherProfile::where('is_customer_free', false)->findOrFail($validated['profile_id']);
         
         // Price for reseller calculation
         // Deduct fee_reseller * qty from reseller's balance
