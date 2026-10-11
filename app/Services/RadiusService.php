@@ -276,35 +276,102 @@ class RadiusService
             }
         }
 
+        // Jika tidak ada sesi di RadAcct atau belum berhasil, coba kirim ke NAS router terdaftar
+        if ($count === 0) {
+            $nases = Nas::whereNotNull('vpn_ip')
+                ->orWhere('nasname', '!=', '0.0.0.0/0')
+                ->get();
+            foreach ($nases as $nas) {
+                if ($this->sendDisconnectToNas($nas, $username)) {
+                    $count++;
+                    RadAcct::online()->where('username', $username)->update([
+                        'acctstoptime' => now(),
+                        'acctterminatecause' => 'Admin-Reset'
+                    ]);
+                }
+            }
+        }
+
         return $count;
     }
 
     public function disconnectSession(RadAcct $session): bool
     {
-        $nas = Nas::where('nasname', $session->nasipaddress)->first();
+        // 1. Cari NAS berdasarkan nasname atau vpn_ip
+        $nas = Nas::where('nasname', $session->nasipaddress)
+            ->orWhere('vpn_ip', $session->nasipaddress)
+            ->first();
+
+        // Fallback jika nasname adalah wildcard 0.0.0.0/0
+        if (!$nas) {
+            $nas = Nas::where('nasname', '0.0.0.0/0')->first() ?: Nas::first();
+        }
+
         if (!$nas) {
             Log::warning("[RADIUS] NAS {$session->nasipaddress} tidak terdaftar, tidak bisa disconnect {$session->username}");
             return false;
         }
 
-        $attrs = sprintf(
-            "User-Name = \"%s\"\nAcct-Session-Id = \"%s\"\n",
-            addslashes($session->username),
-            addslashes($session->acctsessionid)
-        );
-        if ($session->framedipaddress) {
-            $attrs .= "Framed-IP-Address = {$session->framedipaddress}\n";
+        // Tentukan IP tujuan pengiriman paket CoA (jangan kirim ke 0.0.0.0/0)
+        $targetIp = $session->nasipaddress;
+        if (!$targetIp || $targetIp === '0.0.0.0' || str_contains($targetIp, '/')) {
+            $targetIp = $nas->vpn_ip ?: $nas->nasname;
         }
 
-        $result = Process::timeout(15)->input($attrs)->run([
-            config('radius.radclient'), '-r', '2', '-t', '3',
-            $nas->nasname . ':' . ($nas->coa_port ?: 3799),
-            'disconnect', $nas->secret,
+        if (!$targetIp || str_contains($targetIp, '/')) {
+            Log::warning("[RADIUS] IP tujuan NAS tidak valid ({$targetIp}), tidak bisa disconnect {$session->username}");
+            return false;
+        }
+
+        return $this->sendDisconnectToNas($nas, $session->username, $session->framedipaddress, $targetIp);
+    }
+
+    /**
+     * Kirim paket Disconnect-Request ke NAS via radclient
+     */
+    public function sendDisconnectToNas(Nas $nas, string $username, ?string $framedIp = null, ?string $targetIp = null): bool
+    {
+        $ip = $targetIp ?: ($nas->vpn_ip ?: $nas->nasname);
+        if (!$ip || $ip === '0.0.0.0' || str_contains($ip, '/')) {
+            return false;
+        }
+
+        $port = $nas->coa_port ?: 3799;
+        $secret = $nas->secret;
+        $radclient = config('radius.radclient', '/usr/bin/radclient');
+
+        // CATATAN PENTING UNTUK MIKROTIK ROUTEROS:
+        // Jangan sertakan Acct-Session-Id! MikroTik RouterOS akan merespons
+        // dengan "Disconnect-NAK: Error-Cause = Unsupported-Extension".
+        // Gunakan User-Name dan (opsional) Framed-IP-Address.
+        $attrs = "User-Name = \"" . addslashes($username) . "\"\n";
+        if ($framedIp) {
+            $attrs .= "Framed-IP-Address = {$framedIp}\n";
+        }
+
+        $result = Process::timeout(10)->input($attrs)->run([
+            $radclient, '-r', '2', '-t', '3',
+            "{$ip}:{$port}",
+            'disconnect', $secret,
         ]);
 
         $ok = $result->successful() && str_contains($result->output(), 'Disconnect-ACK');
+
+        // Jika kombinasi gagal, coba kirim kembali hanya dengan User-Name
+        if (!$ok && $framedIp) {
+            $retryAttrs = "User-Name = \"" . addslashes($username) . "\"\n";
+            $retryResult = Process::timeout(10)->input($retryAttrs)->run([
+                $radclient, '-r', '2', '-t', '3',
+                "{$ip}:{$port}",
+                'disconnect', $secret,
+            ]);
+            $ok = $retryResult->successful() && str_contains($retryResult->output(), 'Disconnect-ACK');
+        }
+
         if (!$ok) {
-            Log::warning("[RADIUS] Disconnect {$session->username} gagal: " . trim($result->output() . ' ' . $result->errorOutput()));
+            Log::warning("[RADIUS] Disconnect {$username} pada NAS {$ip}:{$port} gagal: " . trim($result->output() . ' ' . $result->errorOutput()));
+        } else {
+            Log::info("[RADIUS] Disconnect {$username} pada NAS {$ip}:{$port} BERHASIL (Disconnect-ACK).");
         }
 
         return $ok;
