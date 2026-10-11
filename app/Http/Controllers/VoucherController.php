@@ -40,7 +40,7 @@ class VoucherController extends Controller
 
     public function index(Request $request)
     {
-        $query = Voucher::with('profile');
+        $query = Voucher::with(['profile', 'reseller.customer']);
 
         if ($request->filled('profile_id')) {
             $query->where('voucher_profile_id', $request->profile_id);
@@ -254,46 +254,137 @@ class VoucherController extends Controller
 
     public function store(Request $request)
     {
+        $mode = $request->input('mode', 'bulk');
+
+        if ($mode === 'single') {
+            $validated = $request->validate([
+                'voucher_profile_id' => 'required|exists:voucher_profiles,id',
+                'username' => 'required|string|min:3|max:50|unique:vouchers,username',
+                'password' => 'nullable|string|max:50',
+                'login_type' => 'required|in:username_only,username_password',
+                'cost_type' => 'required|in:paid,free',
+                'reseller_id' => 'nullable|exists:resellers,id',
+                'reseller_payment' => 'nullable|in:balance,cash',
+            ]);
+
+            $profile = VoucherProfile::findOrFail($validated['voucher_profile_id']);
+            $isFree = $validated['cost_type'] === 'free';
+            $paymentMethod = $isFree ? 'free' : 'system';
+
+            $reseller = null;
+            if (!empty($validated['reseller_id'])) {
+                $reseller = \App\Models\Reseller::findOrFail($validated['reseller_id']);
+                
+                if ($isFree) {
+                    $paymentMethod = 'free';
+                } else {
+                    $paymentOption = $validated['reseller_payment'] ?? 'balance';
+                    if ($paymentOption === 'balance') {
+                        $fee = $profile->fee_reseller;
+                        if ($reseller->balance < $fee) {
+                            return redirect()->back()->withErrors([
+                                'reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($fee, 0, ',', '.') . ').'
+                            ])->withInput();
+                        }
+                        $reseller->balance -= $fee;
+                        $reseller->save();
+
+                        \App\Models\ResellerTransaction::create([
+                            'reseller_id' => $reseller->id,
+                            'type' => 'debit',
+                            'amount' => $fee,
+                            'description' => 'Pembelian 1 Voucher ' . $profile->name . ' (' . $validated['username'] . ')',
+                            'reference_id' => 'VOUCHER-SINGLE',
+                        ]);
+                        $paymentMethod = 'balance';
+                    } else {
+                        // Bayar tunai di kantor / non-saldo
+                        $paymentMethod = 'cash';
+                    }
+                }
+            }
+
+            $username = trim($validated['username']);
+            $password = $validated['login_type'] === 'username_only'
+                ? $username
+                : (!empty($validated['password']) ? trim($validated['password']) : $username);
+
+            $voucher = Voucher::create([
+                'voucher_profile_id' => $profile->id,
+                'reseller_id' => $reseller ? $reseller->id : null,
+                'code' => $username,
+                'username' => $username,
+                'password' => $password,
+                'status' => 'available',
+                'is_free' => $isFree,
+                'payment_method' => $paymentMethod,
+                'is_active' => true,
+            ]);
+
+            // Sync ke RADIUS
+            app(RadiusService::class)->syncVouchers([$voucher]);
+
+            $typeLabel = $isFree ? 'Gratis' : 'Berbayar';
+            return redirect()->back()->with('success', "Single Voucher {$voucher->code} ({$typeLabel}) berhasil dibuat.");
+        }
+
+        // Mode Bulk
         $validated = $request->validate([
             'voucher_profile_id' => 'required|exists:voucher_profiles,id',
             'amount' => 'required|integer|min:1|max:500',
             'length' => 'required|integer|min:4|max:12',
             'prefix' => 'nullable|string|max:4',
             'type' => 'required|in:up,vc', // up = user & password, vc = code only (user=pass=code)
+            'cost_type' => 'nullable|in:paid,free',
             'reseller_id' => 'nullable|exists:resellers,id',
+            'reseller_payment' => 'nullable|in:balance,cash',
             'combination' => 'nullable|string|in:alphanumeric,numeric,alpha',
         ]);
 
-        $profile = VoucherProfile::find($validated['voucher_profile_id']);
-        
+        $profile = VoucherProfile::findOrFail($validated['voucher_profile_id']);
+        $isFree = ($validated['cost_type'] ?? 'paid') === 'free';
+        $paymentMethod = $isFree ? 'free' : 'system';
+
         $reseller = null;
         if (!empty($validated['reseller_id'])) {
-            $reseller = \App\Models\Reseller::find($validated['reseller_id']);
-            $totalPrice = $profile->fee_reseller * $validated['amount'];
+            $reseller = \App\Models\Reseller::findOrFail($validated['reseller_id']);
             
-            if ($reseller->balance < $totalPrice) {
-                return redirect()->back()->withErrors(['reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($totalPrice, 0, ',', '.') . ').'])->withInput();
+            if ($isFree) {
+                $paymentMethod = 'free';
+            } else {
+                $paymentOption = $validated['reseller_payment'] ?? 'balance';
+                if ($paymentOption === 'balance') {
+                    $totalPrice = $profile->fee_reseller * $validated['amount'];
+                    if ($reseller->balance < $totalPrice) {
+                        return redirect()->back()->withErrors([
+                            'reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($totalPrice, 0, ',', '.') . ').'
+                        ])->withInput();
+                    }
+
+                    // Potong saldo reseller
+                    $reseller->balance -= $totalPrice;
+                    $reseller->save();
+
+                    // Catat transaksi mutasi
+                    \App\Models\ResellerTransaction::create([
+                        'reseller_id' => $reseller->id,
+                        'type' => 'debit',
+                        'amount' => $totalPrice,
+                        'description' => 'Pembelian ' . $validated['amount'] . ' Voucher ' . $profile->name,
+                        'reference_id' => 'VOUCHER-GEN',
+                    ]);
+                    $paymentMethod = 'balance';
+                } else {
+                    // Bayar tunai di kantor / non-saldo
+                    $paymentMethod = 'cash';
+                }
             }
-            
-            // Potong saldo reseller
-            $reseller->balance -= $totalPrice;
-            $reseller->save();
-            
-            // Catat transaksi mutasi
-            \App\Models\ResellerTransaction::create([
-                'reseller_id' => $reseller->id,
-                'type' => 'debit',
-                'amount' => $totalPrice,
-                'description' => 'Pembelian ' . $validated['amount'] . ' Voucher ' . $profile->name,
-                'reference_id' => 'VOUCHER-GEN',
-            ]);
         }
-        
+
         $vouchers = [];
         $now = now();
-        
         $combination = $validated['combination'] ?? 'alphanumeric';
-        
+
         $generateString = function($len, $comb) {
             if ($comb === 'numeric') {
                 return substr(str_shuffle(str_repeat('0123456789', $len)), 0, $len);
@@ -307,14 +398,14 @@ class VoucherController extends Controller
         for ($i = 0; $i < $validated['amount']; $i++) {
             $prefix = $validated['prefix'] ?? '';
             $len = $validated['length'];
-            
+
             $code = strtoupper($prefix . $generateString($len, $combination));
-            
+
             // Ensure unique code
             while(Voucher::where('code', $code)->exists()) {
                 $code = strtoupper($prefix . $generateString($len, $combination));
             }
-            
+
             if ($validated['type'] === 'vc') {
                 $username = $code;
                 $password = $code;
@@ -330,20 +421,24 @@ class VoucherController extends Controller
                 'username' => $username,
                 'password' => $password,
                 'status' => 'available',
+                'is_free' => $isFree,
+                'payment_method' => $paymentMethod,
+                'is_active' => true,
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
         }
 
         Voucher::insert($vouchers);
-        
+
         // Sync ke RADIUS secara eksplisit karena insert() tidak memicu event
         if (!empty($vouchers)) {
             $createdVouchers = Voucher::whereIn('code', array_column($vouchers, 'code'))->get();
             app(RadiusService::class)->syncVouchers($createdVouchers);
         }
 
-        return redirect()->back()->with('success', $validated['amount'] . ' Voucher berhasil di-generate.');
+        $label = $isFree ? 'Gratis' : 'Berbayar';
+        return redirect()->back()->with('success', $validated['amount'] . " Voucher ({$label}) berhasil di-generate.");
     }
 
     public function destroy(Voucher $voucher)
@@ -393,7 +488,7 @@ class VoucherController extends Controller
             'ids.*' => 'exists:vouchers,id',
         ]);
         
-        $vouchers = Voucher::with('profile')->whereIn('id', $validated['ids'])->get();
+        $vouchers = Voucher::with(['profile', 'reseller.customer'])->whereIn('id', $validated['ids'])->get();
         
         return view('vouchers.print', compact('vouchers'));
     }

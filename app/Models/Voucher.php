@@ -8,10 +8,13 @@ class Voucher extends Model
 {
     protected $fillable = [
         'voucher_profile_id',
+        'reseller_id',
         'code',
         'username',
         'password',
         'status',
+        'is_free',
+        'payment_method',
         'is_active',
         'used_at',
     ];
@@ -19,6 +22,7 @@ class Voucher extends Model
     protected $casts = [
         'used_at' => 'datetime',
         'is_active' => 'boolean',
+        'is_free' => 'boolean',
     ];
 
     public function profile()
