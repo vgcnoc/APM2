@@ -22,8 +22,11 @@ class TaxReportController extends Controller
             });
         }
 
-        $customers = $query->paginate(20)->withQueryString()->through(function ($customer) {
-            return $this->resolveCustomerTaxData($customer);
+        $globalBhp = (float) \App\Models\Setting::get('tax_bhp', '1.25');
+        $globalUso = (float) \App\Models\Setting::get('tax_uso', '0.5');
+
+        $customers = $query->paginate(20)->withQueryString()->through(function ($customer) use ($globalBhp, $globalUso) {
+            return $this->resolveCustomerTaxData($customer, $globalBhp, $globalUso);
         });
         
         // Aggregate totals for active customers
@@ -35,13 +38,15 @@ class TaxReportController extends Controller
         $total_ppn = 0;
         $total_bhp = 0;
         $total_uso = 0;
+        $grand_total = 0;
         
         foreach ($activeCustomers as $cust) {
-            $data = $this->resolveCustomerTaxData($cust);
+            $data = $this->resolveCustomerTaxData($cust, $globalBhp, $globalUso);
             $total_base_price += $data['base_price'];
             $total_ppn += $data['ppn_amount'];
             $total_bhp += $data['bhp_amount'];
             $total_uso += $data['uso_amount'];
+            $grand_total += $data['total_price'];
         }
         
         $totals = [
@@ -49,7 +54,7 @@ class TaxReportController extends Controller
             'ppn' => $total_ppn,
             'bhp' => $total_bhp,
             'uso' => $total_uso,
-            'grand_total' => $total_base_price + $total_ppn + $total_bhp + $total_uso,
+            'grand_total' => $grand_total,
         ];
 
         return Inertia::render('Customers/TaxReport', [
@@ -73,10 +78,13 @@ class TaxReportController extends Controller
             });
         }
 
+        $globalBhp = (float) \App\Models\Setting::get('tax_bhp', '1.25');
+        $globalUso = (float) \App\Models\Setting::get('tax_uso', '0.5');
+
         $totals = ['base_price' => 0, 'ppn' => 0, 'bhp' => 0, 'uso' => 0, 'grand_total' => 0];
 
-        $rows = $query->get()->map(function ($customer) use (&$totals) {
-            $data = $this->resolveCustomerTaxData($customer);
+        $rows = $query->get()->map(function ($customer) use (&$totals, $globalBhp, $globalUso) {
+            $data = $this->resolveCustomerTaxData($customer, $globalBhp, $globalUso);
 
             $totals['base_price'] += $data['base_price'];
             $totals['ppn'] += $data['ppn_amount'];
@@ -94,11 +102,33 @@ class TaxReportController extends Controller
         ]);
     }
 
-    private function resolveCustomerTaxData(Customer $customer): array
+    private function resolveCustomerTaxData(Customer $customer, ?float $globalBhp = null, ?float $globalUso = null): array
     {
-        $ppn_percent = $customer->tax_ppn !== null ? (float) $customer->tax_ppn : 0;
-        $bhp_percent = $customer->tax_bhp !== null ? (float) $customer->tax_bhp : 0;
-        $uso_percent = $customer->tax_uso !== null ? (float) $customer->tax_uso : 0;
+        if ($globalBhp === null) {
+            $globalBhp = (float) \App\Models\Setting::get('tax_bhp', '1.25');
+        }
+        if ($globalUso === null) {
+            $globalUso = (float) \App\Models\Setting::get('tax_uso', '0.5');
+        }
+
+        $ppn_percent = $customer->tax_ppn !== null ? (float) $customer->tax_ppn : 0.0;
+
+        // Auto-calculate BHP & USO if customer has tax enabled (or customer custom override > 0)
+        if ($customer->tax_bhp !== null && (float) $customer->tax_bhp > 0) {
+            $bhp_percent = (float) $customer->tax_bhp;
+        } elseif ($customer->service_status !== 'gratis' && $ppn_percent > 0) {
+            $bhp_percent = $globalBhp;
+        } else {
+            $bhp_percent = 0.0;
+        }
+
+        if ($customer->tax_uso !== null && (float) $customer->tax_uso > 0) {
+            $uso_percent = (float) $customer->tax_uso;
+        } elseif ($customer->service_status !== 'gratis' && $ppn_percent > 0) {
+            $uso_percent = $globalUso;
+        } else {
+            $uso_percent = 0.0;
+        }
 
         $invoice = $customer->invoices->where('period_month', now()->month)->where('period_year', now()->year)->first()
             ?? $customer->invoices->first();
@@ -123,7 +153,7 @@ class TaxReportController extends Controller
         $uso_amount = round($basePrice * ($uso_percent / 100));
 
         $total_tax = $ppn_amount + $bhp_amount + $uso_amount;
-        $total_price = $basePrice + $total_tax;
+        $total_price = $basePrice + $ppn_amount; // Tagihan aktual pelanggan (DPP + PPN)
 
         return [
             'id' => $customer->id,
