@@ -12,7 +12,7 @@ use App\Services\RadiusService;
  */
 class OntObserver
 {
-    protected const WATCHED = ['pppoe_user', 'pppoe_password', 'customer_id'];
+    protected const WATCHED = ['pppoe_user', 'pppoe_password', 'customer_id', 'free_hotspot', 'hotspot_user', 'hotspot_password'];
 
     public function __construct(protected RadiusService $radius) {}
 
@@ -24,7 +24,7 @@ class OntObserver
 
         $this->radius->guard(function (RadiusService $radius) use ($ont) {
             // Pada event "saved", getOriginal() masih berisi nilai sebelum update
-            $stale = array_filter([$ont->getOriginal('pppoe_user')]);
+            $stale = array_filter([$ont->getOriginal('pppoe_user'), $ont->getOriginal('hotspot_user')]);
 
             $customer = $ont->customer_id ? Customer::with('ont')->find($ont->customer_id) : null;
 
@@ -32,8 +32,9 @@ class OntObserver
                 $customer->setRelation('ont', $ont);
                 $radius->syncCustomer($customer, $stale);
             } else {
-                foreach (array_merge($stale, array_filter([$ont->pppoe_user])) as $username) {
+                foreach (array_merge($stale, array_filter([$ont->pppoe_user, $ont->hotspot_user])) as $username) {
                     $radius->removeUser($username);
+                    $radius->disconnect($username);
                 }
             }
         });
@@ -42,8 +43,9 @@ class OntObserver
     public function deleted(Ont $ont): void
     {
         $this->radius->guard(function (RadiusService $radius) use ($ont) {
-            foreach (array_filter([$ont->pppoe_user]) as $username) {
+            foreach (array_filter([$ont->pppoe_user, $ont->hotspot_user]) as $username) {
                 $radius->removeUser($username);
+                $radius->disconnect($username);
             }
         });
     }

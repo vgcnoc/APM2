@@ -125,14 +125,19 @@ class RadiusService
 
     public function syncVoucherProfile(VoucherProfile $profile): void
     {
+        $checks = [
+            'Simultaneous-Use' => $profile->shared_users > 0 ? $profile->shared_users : 1,
+        ];
+
+        // Jika bukan profil khusus gratis pelanggan / durasi mengikuti pelanggan, terapkan batas durasi
+        if (!$profile->is_customer_free && $profile->duration !== 'Mengikuti Pelanggan') {
+            $checks['Max-All-Session'] = self::parseDuration($profile->duration);
+        }
+
         $this->writeGroup($this->voucherGroup($profile->id), [
             'Mikrotik-Rate-Limit' => $profile->limit_rate,
             'Acct-Interim-Interval' => config('radius.interim_interval'),
-        ], [
-            'Simultaneous-Use' => $profile->shared_users > 0 ? $profile->shared_users : null,
-            // Menggunakan sqlcounter 'noresetcounter' (Max-All-Session-Time) untuk total durasi
-            'Max-All-Session' => self::parseDuration($profile->duration),
-        ]);
+        ], $checks);
     }
 
     public function syncIsolirGroup(): void
@@ -176,15 +181,11 @@ class RadiusService
     {
         $ont = $customer->ont;
         $package = $customer->package;
-        if (!$ont || !$package) {
+        if (!$ont) {
             return [];
         }
 
         $accounts = [];
-        // Kita tidak memakai $ont->access_mode lagi untuk nge-cek mode RADIUS, tapi dari tipe paketnya
-        $accessMode = strtolower($package->access_mode ?? 'pppoe');
-        
-        // Baik Hotspot maupun PPPoE/Lainnya menggunakan kolom pppoe_user dan pppoe_password di DB
         if ($ont->pppoe_user && $ont->pppoe_password) {
             $accounts[$ont->pppoe_user] = $ont->pppoe_password;
         }
@@ -199,32 +200,98 @@ class RadiusService
 
     /**
      * Sinkronkan akun pelanggan berdasarkan status & paketnya.
+     * PPPoE mengikuti paket langganan / isolir.
+     * Hotspot gratis mengikuti VoucherProfile khusus (is_customer_free) dan aktif selama status pelanggan active.
      *
      * @param string[] $staleUsernames username lama yang harus dihapus (mis. setelah rename)
      */
     public function syncCustomer(Customer $customer, array $staleUsernames = []): void
     {
-        $customer->loadMissing('ont');
+        $customer->loadMissing('ont', 'package');
         $accounts = $this->customerAccounts($customer);
 
         foreach ($staleUsernames as $old) {
             if ($old && !array_key_exists($old, $accounts)) {
                 $this->removeUser($old);
+                $this->disconnect($old);
             }
         }
 
-        $group = match (true) {
-            $customer->status === 'suspended' => $this->isolirGroup(),
-            $customer->status === 'active' && $customer->package_id => $this->packageGroup($customer->package_id),
-            default => null,
-        };
+        $ont = $customer->ont;
 
-        foreach ($accounts as $username => $password) {
-            if ($group) {
-                $this->upsertUser($username, $password, $group);
+        // 1. Sinkronkan akun PPPoE / Primary Connection
+        if ($ont && $ont->pppoe_user && $ont->pppoe_password) {
+            $pppoeGroup = match (true) {
+                $customer->status === 'suspended' => $this->isolirGroup(),
+                $customer->status === 'active' && $customer->package_id => $this->packageGroup($customer->package_id),
+                default => null,
+            };
+
+            if ($pppoeGroup) {
+                $this->upsertUser($ont->pppoe_user, $ont->pppoe_password, $pppoeGroup);
             } else {
-                $this->removeUser($username);
+                $this->removeUser($ont->pppoe_user);
+                $this->disconnect($ont->pppoe_user);
             }
+        }
+
+        // 2. Sinkronkan akun Hotspot Gratis (1 user, masa aktif mengikuti data pelanggan)
+        if ($ont && $ont->free_hotspot && $ont->hotspot_user && $ont->hotspot_password) {
+            $freeProfile = \App\Models\VoucherProfile::where('is_customer_free', true)->first();
+            if (!$freeProfile) {
+                $freeProfile = \App\Models\VoucherProfile::firstOrCreate(
+                    ['name' => 'Hotspot Gratis Pelanggan'],
+                    [
+                        'price' => 0,
+                        'fee_admin' => 0,
+                        'fee_reseller' => 0,
+                        'fee_partner' => 0,
+                        'duration' => 'Mengikuti Pelanggan',
+                        'limit_rate' => '5M/5M',
+                        'shared_users' => 1,
+                        'description' => 'Voucher khusus gratis 1 user hotspot saat aktivasi pelanggan (masa aktif mengikuti data pelanggan)',
+                        'is_customer_free' => true,
+                    ]
+                );
+            }
+
+            if ($customer->status === 'active') {
+                $this->upsertUser($ont->hotspot_user, $ont->hotspot_password, $this->voucherGroup($freeProfile->id));
+
+                // Pastikan voucher record tersimpan di tabel vouchers
+                \App\Models\Voucher::updateOrCreate(
+                    [
+                        'customer_id' => $customer->id,
+                        'is_free' => true,
+                    ],
+                    [
+                        'voucher_profile_id' => $freeProfile->id,
+                        'code' => $ont->hotspot_user,
+                        'username' => $ont->hotspot_user,
+                        'password' => $ont->hotspot_password,
+                        'status' => 'used',
+                        'is_active' => true,
+                        'payment_method' => 'free',
+                        'used_at' => $customer->activation_date ?: now(),
+                    ]
+                );
+            } else {
+                // Pelanggan suspend/isolir atau tidak aktif -> nonaktifkan hotspot gratis
+                $this->removeUser($ont->hotspot_user);
+                $this->disconnect($ont->hotspot_user);
+
+                \App\Models\Voucher::where('customer_id', $customer->id)
+                    ->where('is_free', true)
+                    ->update([
+                        'is_active' => false,
+                        'status' => $customer->status === 'suspended' ? 'used' : 'expired',
+                    ]);
+            }
+        } elseif ($ont && !$ont->free_hotspot && $ont->hotspot_user) {
+            // Free hotspot dimatikan
+            $this->removeUser($ont->hotspot_user);
+            $this->disconnect($ont->hotspot_user);
+            \App\Models\Voucher::where('customer_id', $customer->id)->where('is_free', true)->delete();
         }
     }
 
@@ -232,7 +299,9 @@ class RadiusService
     {
         foreach (array_keys($this->customerAccounts($customer)) as $username) {
             $this->removeUser($username);
+            $this->disconnect($username);
         }
+        \App\Models\Voucher::where('customer_id', $customer->id)->delete();
     }
 
     /**

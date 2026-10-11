@@ -27,24 +27,32 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         <tr v-for="profile in profiles" :key="profile.id" class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4">
-                                <div class="text-sm font-bold text-gray-900">{{ profile.name }}</div>
-                                <div class="text-xs text-gray-500">{{ profile.description }}</div>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-sm font-bold text-gray-900">{{ profile.name }}</span>
+                                    <span v-if="profile.is_customer_free" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200 shadow-sm">
+                                        ⭐ Khusus Hotspot Pelanggan (Gratis)
+                                    </span>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-1">{{ profile.description }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-bold text-emerald-600">Rp {{ formatPrice(profile.price) }}</div>
+                                <div class="text-sm font-bold" :class="profile.is_customer_free ? 'text-purple-600' : 'text-emerald-600'">
+                                    {{ profile.is_customer_free ? 'Gratis (Rp 0)' : `Rp ${formatPrice(profile.price)}` }}
+                                </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-bold">
-                                {{ profile.duration }}
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold" :class="profile.is_customer_free ? 'text-indigo-600' : 'text-gray-700'">
+                                {{ profile.is_customer_free ? 'Mengikuti Pelanggan' : profile.duration }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-mono">
                                 {{ profile.limit_rate || 'Default' }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                {{ profile.shared_users }}
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold">
+                                {{ profile.shared_users }} {{ profile.shared_users === 1 ? 'User' : 'Users' }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <button @click="openEditModal(profile)" class="text-indigo-600 hover:text-indigo-900 mr-4 font-semibold">Edit</button>
-                                <button @click="deleteProfile(profile.id)" class="text-red-600 hover:text-red-900 font-semibold">Hapus</button>
+                                <button v-if="!profile.is_customer_free" @click="deleteProfile(profile.id)" class="text-red-600 hover:text-red-900 font-semibold">Hapus</button>
+                                <span v-else class="text-gray-400 text-xs italic font-medium cursor-not-allowed">Sistem</span>
                             </td>
                         </tr>
                         <tr v-if="profiles.length === 0">
@@ -69,18 +77,29 @@
 
                 <div class="p-6 overflow-y-auto max-h-[70vh]">
                     <form @submit.prevent="submitForm" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 mb-1">Nama Profil <span class="text-red-500">*</span></label>
-                            <input v-model="form.name" type="text" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required placeholder="Contoh: 1 Jam 2000">
-                            <p v-if="form.errors.name" class="text-xs text-red-500 mt-1">{{ form.errors.name }}</p>
+                        <!-- Switch Khusus Hotspot Pelanggan -->
+                        <div class="p-3.5 bg-purple-50/80 rounded-xl border border-purple-200">
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="checkbox" v-model="form.is_customer_free" @change="onToggleCustomerFree" class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 w-4 h-4">
+                                <div>
+                                    <span class="text-xs font-bold text-purple-950">Profil Khusus Hotspot Gratis Pelanggan</span>
+                                    <p class="text-[11px] text-purple-700 mt-0.5">Voucher khusus 1 user hotspot gratis yang diberikan saat aktivasi pelanggan. Masa aktif otomatis mengikuti status aktif pelanggan.</p>
+                                </div>
+                            </label>
                         </div>
 
                         <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Nama Profil <span class="text-red-500">*</span></label>
+                            <input v-model="form.name" type="text" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required placeholder="Contoh: Hotspot Gratis Pelanggan">
+                            <p v-if="form.errors.name" class="text-xs text-red-500 mt-1">{{ form.errors.name }}</p>
+                        </div>
+
+                        <div v-if="!form.is_customer_free">
                             <label class="block text-xs font-bold text-gray-700 mb-1">Harga (Rp) <span class="text-red-500">*</span></label>
                             <input v-model="form.price" type="number" min="0" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
                         </div>
 
-                        <div>
+                        <div v-if="!form.is_customer_free">
                             <label class="block text-xs font-bold text-gray-700 mb-1">Durasi (MikroTik Format) <span class="text-red-500">*</span></label>
                             <select v-model="durationChoice" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
                                 <option value="" disabled>-- Pilih Durasi --</option>
@@ -90,18 +109,22 @@
                             <input v-if="durationChoice === '__custom'" v-model="form.duration" type="text" class="mt-2 w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm" required placeholder="Contoh: 2h, 5d, 1w, 1d12h">
                             <p v-if="form.errors.duration" class="text-xs text-red-500 mt-1">{{ form.errors.duration }}</p>
                         </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 mb-1">Limit Rate</label>
-                            <LimitRateCalculator v-model="form.limit_rate" />
+                        <div v-else class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <p class="text-xs font-bold text-gray-700">Durasi Masa Aktif</p>
+                            <p class="text-xs text-gray-500 mt-0.5 font-medium">⚡ Mengikuti masa aktif pelanggan (selama status pelanggan aktif).</p>
                         </div>
 
                         <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Limit Rate (Kecepatan Download/Upload)</label>
+                            <LimitRateCalculator v-model="form.limit_rate" />
+                        </div>
+
+                        <div v-if="!form.is_customer_free">
                             <label class="block text-xs font-bold text-gray-700 mb-1">Shared Users <span class="text-red-500">*</span></label>
                             <input v-model="form.shared_users" type="number" min="1" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
                         </div>
 
-                        <div class="grid grid-cols-1 gap-4 bg-cyan-50/40 p-4 rounded-xl border border-cyan-100">
+                        <div v-if="!form.is_customer_free" class="grid grid-cols-1 gap-4 bg-cyan-50/40 p-4 rounded-xl border border-cyan-100">
                             <div v-for="fee in feeFields" :key="fee.key">
                                 <label class="flex items-center gap-1.5 text-[13px] font-bold text-slate-700 mb-2 whitespace-nowrap">
                                     {{ fee.label }}
@@ -202,8 +225,22 @@ const form = useForm({
     duration: '',
     limit_rate: '',
     shared_users: 1,
+    is_customer_free: false,
     description: '',
 });
+
+const onToggleCustomerFree = () => {
+    if (form.is_customer_free) {
+        form.price = 0;
+        form.duration = 'Mengikuti Pelanggan';
+        form.shared_users = 1;
+        form.fee_reseller = 0;
+        form.fee_admin = 0;
+        form.fee_partner = 0;
+    } else {
+        if (form.duration === 'Mengikuti Pelanggan') form.duration = '1d';
+    }
+};
 
 const openCreateModal = () => {
     editMode.value = false;
@@ -225,6 +262,7 @@ const openEditModal = (profile) => {
     form.duration = profile.duration;
     form.limit_rate = profile.limit_rate;
     form.shared_users = profile.shared_users;
+    form.is_customer_free = !!profile.is_customer_free;
     form.description = profile.description;
     showModal.value = true;
 };

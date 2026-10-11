@@ -9,6 +9,7 @@ class Voucher extends Model
     protected $fillable = [
         'voucher_profile_id',
         'reseller_id',
+        'customer_id',
         'code',
         'username',
         'password',
@@ -33,5 +34,10 @@ class Voucher extends Model
     public function reseller()
     {
         return $this->belongsTo(Reseller::class, 'reseller_id');
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 }

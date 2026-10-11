@@ -1880,6 +1880,12 @@ class CustomerController extends Controller
                 }
             });
 
+            try {
+                app(\App\Services\RadiusService::class)->syncCustomer($customer);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[RADIUS] Activation sync error: ' . $e->getMessage());
+            }
+
             \App\Models\AuditLog::createLog('Aktivasi Layanan', $customer, 'installing', 'active', 'Mengaktifkan layanan pelanggan');
 
             return redirect()->route('customers.installed')->with('success', 'Pelanggan berhasil diaktivasi!');
@@ -1919,6 +1925,11 @@ class CustomerController extends Controller
 
         if ($customer->ont) {
             $customer->ont->update($validated);
+            try {
+                app(\App\Services\RadiusService::class)->syncCustomer($customer);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[RADIUS] ONT update sync error: ' . $e->getMessage());
+            }
             return back()->with('success', 'Data konfigurasi ONT berhasil diperbarui.');
         }
         

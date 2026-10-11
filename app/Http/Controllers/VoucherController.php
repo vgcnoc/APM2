@@ -13,8 +13,7 @@ class VoucherController extends Controller
 {
     public function free(Request $request)
     {
-        $query = \App\Models\Customer::with('ont')
-            
+        $query = \App\Models\Customer::with(['ont', 'package', 'areaModel'])
             ->whereHas('ont', function($q) {
                 $q->where('free_hotspot', true);
             });
@@ -31,9 +30,11 @@ class VoucherController extends Controller
         }
         
         $customers = $query->latest()->paginate(15)->withQueryString();
+        $freeProfile = \App\Models\VoucherProfile::where('is_customer_free', true)->first();
         
         return Inertia::render('Vouchers/Free/Index', [
             'customers' => $customers,
+            'freeProfile' => $freeProfile,
             'filters' => $request->only('search')
         ]);
     }

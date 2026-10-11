@@ -15,7 +15,12 @@ class VoucherProfile extends Model
         'duration',
         'limit_rate',
         'shared_users',
+        'is_customer_free',
         'description',
+    ];
+
+    protected $casts = [
+        'is_customer_free' => 'boolean',
     ];
 
     public function vouchers()

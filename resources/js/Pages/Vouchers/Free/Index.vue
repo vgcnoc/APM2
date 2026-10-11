@@ -4,6 +4,29 @@
             <h1 class="text-2xl font-bold text-gray-900">Data Voucher Gratis</h1>
             <p class="text-sm text-gray-500">Daftar voucher gratis yang dibuat saat aktivasi pelanggan</p>
         </div>
+        <!-- INFO PROFILE VOUCHER KHUSUS -->
+        <div v-if="freeProfile" class="mb-6 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-purple-600 text-white rounded-lg shadow-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-gray-900">{{ freeProfile.name }}</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-200 text-purple-900">1 User Hotspot</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">Gratis (Rp 0)</span>
+                    </div>
+                    <p class="text-xs text-gray-600 mt-1">
+                        Kecepatan Limit Rate: <span class="font-mono font-bold text-purple-700">{{ freeProfile.limit_rate || 'Default' }}</span> &bull; 
+                        Masa Aktif: <span class="font-bold text-emerald-700">Mengikuti Data Pelanggan</span> (aktif selama status pelanggan aktif)
+                    </p>
+                </div>
+            </div>
+            <Link href="/vouchers/profiles" class="text-xs font-bold text-purple-700 hover:text-purple-900 bg-white px-3.5 py-2 rounded-lg border border-purple-200 shadow-xs hover:bg-purple-50 transition-colors whitespace-nowrap">
+                Atur Kecepatan di Profil Voucher &rarr;
+            </Link>
+        </div>
+
         <!-- HEADER -->
         <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div class="flex gap-2 w-full sm:w-auto">
@@ -33,7 +56,7 @@
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Hotspot User</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Hotspot Password</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">VLAN ID</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status & Masa Aktif</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal Aktivasi</th>
                         </tr>
                     </thead>
@@ -130,6 +153,7 @@ import ClientAreaLayout from '@/Layouts/ClientAreaLayout.vue';
 
 const props = defineProps({
     customers: Object,
+    freeProfile: Object,
     filters: Object,
     auth: Object
 });
