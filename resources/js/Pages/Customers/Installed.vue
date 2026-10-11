@@ -184,6 +184,12 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                         </svg>
                     </button>
+
+                    <button v-if="canDelete" @click="openCancelModal(row)" class="p-1.5 rounded-lg text-rose-400 hover:bg-rose-50 hover:text-rose-600 border border-transparent hover:border-rose-200 transition-all shadow-sm hover:shadow" title="Batalkan Pemasangan">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </button>
                     <!-- Modal Detail Pelanggan (Instalasi) -->
                     <Teleport to="body">
                         <div v-if="showDetailModal && detailCustomer" class="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -808,6 +814,39 @@
             </div>
         </div>
 
+        <!-- Modal Batal Pasang -->
+        <Teleport to="body">
+            <div v-if="showCancelModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-orange-900/60 backdrop-blur-sm cursor-pointer" @click="showCancelModal = false"></div>
+                <div class="relative bg-white border border-orange-200 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in-up">
+                    <div class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-orange-50">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-2 text-center">
+                        Batalkan Pemasangan?
+                    </h3>
+                    <p class="text-sm text-gray-500 mb-4 text-center">
+                        Pelanggan <strong>{{ cancelCustomer?.name }}</strong> akan dipindahkan ke menu "Dibatalkan" dengan status <span class="font-semibold text-rose-600">Batal Pasang</span>.
+                    </p>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pembatalan <span class="text-red-500">*</span></label>
+                        <input type="date" v-model="cancelDate" class="w-full rounded-xl border-gray-300 focus:border-orange-500 focus:ring focus:ring-orange-200 transition-all text-sm" required />
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Alasan Pembatalan <span class="text-red-500">*</span></label>
+                        <textarea v-model="cancelReason" rows="3" class="w-full rounded-xl border-gray-300 focus:border-orange-500 focus:ring focus:ring-orange-200 transition-all text-sm" placeholder="Masukkan alasan pembatalan pemasangan..." required></textarea>
+                    </div>
+                    <div class="flex items-center justify-center gap-3">
+                        <button @click="showCancelModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm rounded-xl transition-colors w-full">Kembali</button>
+                        <button @click="submitCancel" :disabled="!cancelReason || !cancelDate || isCanceling" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium text-sm rounded-xl transition-colors w-full flex justify-center items-center shadow-sm shadow-orange-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg v-if="isCanceling" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span v-else>Ya, Batalkan</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
     </AppLayout>
 </template>
 
@@ -1367,5 +1406,41 @@ const getAssignedTechnicians = (customer, type) => {
     if (schedules.length === 0) return '-';
     return schedules.map(s => s.technician?.name).filter(Boolean).join(', ') || '-';
 };
+
+// ── Batal Pasang ───────────────────────────────────────────────
+const showCancelModal = ref(false);
+const cancelCustomer = ref(null);
+const cancelReason = ref('');
+const cancelDate = ref(new Date().toISOString().split('T')[0]);
+const isCanceling = ref(false);
+
+function openCancelModal(row) {
+    cancelCustomer.value = row;
+    cancelReason.value = '';
+    cancelDate.value = new Date().toISOString().split('T')[0];
+    showCancelModal.value = true;
+}
+
+function submitCancel() {
+    if (!cancelCustomer.value || !cancelReason.value || !cancelDate.value) return;
+    
+    isCanceling.value = true;
+    router.post(`/customers/${cancelCustomer.value.id}/cancel`, {
+        cancel_stage: 'installing',
+        cancel_reason: cancelReason.value,
+        cancel_date: cancelDate.value
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showCancelModal.value = false;
+            cancelCustomer.value = null;
+            cancelReason.value = '';
+            selectedIds.value = [];
+        },
+        onFinish: () => {
+            isCanceling.value = false;
+        }
+    });
+}
 
 </script>

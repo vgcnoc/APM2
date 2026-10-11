@@ -40,6 +40,7 @@ class Customer extends Model
         'tax_bhp',
         'tax_uso',
         'cancel_reason',
+        'cancel_stage',
         'cancel_date',
         'suspend_start',
         'suspend_end',

@@ -340,10 +340,10 @@
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
                     <h3 class="text-lg font-bold text-gray-900 mb-2 text-center">
-                        Batalkan Pendaftaran?
+                        Batalkan Booking?
                     </h3>
                     <p class="text-sm text-gray-500 mb-4 text-center">
-                        Pelanggan <strong>{{ cancelCustomer?.name }}</strong> akan dipindahkan ke menu "Dibatalkan".
+                        Pelanggan <strong>{{ cancelCustomer?.name }}</strong> akan dipindahkan ke menu "Dibatalkan" dengan status <span class="font-semibold text-rose-600">Batal Booking</span>.
                     </p>
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pembatalan <span class="text-red-500">*</span></label>
@@ -351,7 +351,7 @@
                     </div>
                     <div class="mb-6">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Alasan Pembatalan <span class="text-red-500">*</span></label>
-                        <textarea v-model="cancelReason" rows="3" class="w-full rounded-xl border-gray-300 focus:border-orange-500 focus:ring focus:ring-orange-200 transition-all text-sm" placeholder="Masukkan alasan pembatalan..." required></textarea>
+                        <textarea v-model="cancelReason" rows="3" class="w-full rounded-xl border-gray-300 focus:border-orange-500 focus:ring focus:ring-orange-200 transition-all text-sm" placeholder="Masukkan alasan pembatalan booking..." required></textarea>
                     </div>
                     <div class="flex items-center justify-center gap-3">
                         <button @click="showCancelModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm rounded-xl transition-colors w-full">Kembali</button>
@@ -540,6 +540,7 @@ function submitCancel() {
     
     isCanceling.value = true;
     router.post(`/customers/${cancelCustomer.value.id}/cancel`, {
+        cancel_stage: 'booking',
         cancel_reason: cancelReason.value,
         cancel_date: cancelDate.value
     }, {

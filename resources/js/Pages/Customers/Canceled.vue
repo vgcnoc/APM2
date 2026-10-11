@@ -66,11 +66,12 @@
                             </button>
                             <div class="flex items-center gap-2 mt-0.5">
                                 <span class="text-xs font-mono text-gray-500">{{ row.customer_code }}</span>
+                                <span :class="['px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1', getCancelInfo(row).badgeClass]">
+                                    <span class="w-1.5 h-1.5 rounded-full" :class="getCancelInfo(row).dotClass"></span>
+                                    {{ getCancelInfo(row).label }}
+                                </span>
                                 <span v-if="row.status === 'terminated'" class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-700">
                                     Survey Tidak Layak
-                                </span>
-                                <span v-else class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700">
-                                    Dibatalkan
                                 </span>
                             </div>
                         </div>
@@ -107,9 +108,16 @@
                 </td>
 
                 <!-- 5. Alasan Batal -->
-                <td class="max-w-[260px]">
-                    <div class="px-2.5 py-1.5 bg-red-50 text-red-700 rounded-lg text-xs border border-red-100 line-clamp-2" :title="row.cancel_reason">
-                        {{ row.cancel_reason || (row.status === 'terminated' ? 'Hasil survey: Tidak layak' : 'Dibatalkan tanpa keterangan') }}
+                <td class="max-w-[280px]">
+                    <div class="p-2.5 bg-red-50/60 rounded-xl border border-red-100 space-y-1">
+                        <div class="flex items-center gap-1.5">
+                            <span :class="['px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase', getCancelInfo(row).badgeClass]">
+                                {{ getCancelInfo(row).label }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-red-900 line-clamp-2 font-medium" :title="row.cancel_reason">
+                            {{ row.cancel_reason || (row.status === 'terminated' ? 'Hasil survey: Tidak layak' : 'Dibatalkan tanpa keterangan') }}
+                        </p>
                     </div>
                 </td>
 
@@ -187,7 +195,12 @@
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                                 </div>
                                 <div>
-                                    <h4 class="text-sm font-bold text-red-900">Alasan Pembatalan</h4>
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="text-sm font-bold text-red-900">Alasan Pembatalan</h4>
+                                        <span :class="['px-2 py-0.5 rounded text-[10px] font-bold', getCancelInfo(selectedCustomer).badgeClass]">
+                                            {{ getCancelInfo(selectedCustomer).label }}
+                                        </span>
+                                    </div>
                                     <p class="text-sm text-red-700 mt-1 whitespace-pre-line">
                                         {{ selectedCustomer.cancel_reason || (selectedCustomer.status === 'terminated' ? 'Hasil survey: Tidak layak (Unfeasible)' : 'Dibatalkan tanpa keterangan.') }}
                                     </p>
@@ -445,6 +458,58 @@ function cleanPhone(phone) {
         cleaned = '62' + cleaned.substring(1);
     }
     return cleaned;
+}
+
+// Helper Deteksi Tahap Pembatalan
+function getCancelInfo(customer) {
+    if (!customer) return { stage: 'booking', label: 'Batal Booking', badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200', dotClass: 'bg-amber-500' };
+    
+    let stage = customer.cancel_stage;
+    const reason = (customer.cancel_reason || '').toLowerCase();
+    
+    if (!stage) {
+        if (customer.status === 'terminated' || reason.includes('survey')) {
+            stage = 'survey';
+        } else if (reason.includes('pasang') || reason.includes('instal')) {
+            stage = 'installing';
+        } else if (reason.includes('aktivasi')) {
+            stage = 'activation';
+        } else {
+            stage = 'booking';
+        }
+    }
+
+    switch (stage) {
+        case 'survey':
+            return {
+                stage: 'survey',
+                label: 'Batal Survey',
+                badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200',
+                dotClass: 'bg-blue-500',
+            };
+        case 'installing':
+            return {
+                stage: 'installing',
+                label: 'Batal Pasang',
+                badgeClass: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+                dotClass: 'bg-indigo-500',
+            };
+        case 'activation':
+            return {
+                stage: 'activation',
+                label: 'Batal Aktivasi',
+                badgeClass: 'bg-purple-50 text-purple-700 border border-purple-200',
+                dotClass: 'bg-purple-500',
+            };
+        case 'booking':
+        default:
+            return {
+                stage: 'booking',
+                label: 'Batal Booking',
+                badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
+                dotClass: 'bg-amber-500',
+            };
+    }
 }
 
 // Format Date

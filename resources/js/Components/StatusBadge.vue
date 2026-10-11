@@ -25,6 +25,13 @@ const statusMap = {
     active: { label: 'Aktif', color: 'green' },
     suspended: { label: 'Suspended', color: 'orange' },
     terminated: { label: 'Terminated', color: 'red' },
+    // Pembatalan
+    batal_booking: { label: 'Batal Booking', color: 'amber' },
+    batal_survey: { label: 'Batal Survey', color: 'blue' },
+    batal_pasang: { label: 'Batal Pasang', color: 'indigo' },
+    batal_instalasi: { label: 'Batal Instalasi', color: 'indigo' },
+    batal_aktivasi: { label: 'Batal Aktivasi', color: 'purple' },
+    canceled: { label: 'Dibatalkan', color: 'red' },
     // Infrastructure
     inactive: { label: 'Nonaktif', color: 'gray' },
     maintenance: { label: 'Maintenance', color: 'yellow' },

@@ -2264,6 +2264,7 @@ class CustomerController extends Controller
         } else {
             $customer->update([
                 'status' => 'terminated',
+                'cancel_stage' => 'survey',
                 'cancel_reason' => 'Hasil Survey: Tidak Layak (' . ($validated['notes'] ?? 'Jaringan/port tidak mencukupi') . ')',
                 'cancel_date' => now()->toDateString(),
             ]);
@@ -2417,13 +2418,42 @@ class CustomerController extends Controller
         $request->validate([
             'cancel_reason' => 'required|string|max:1000',
             'cancel_date' => 'required|date',
+            'cancel_stage' => 'nullable|string|max:50',
         ]);
 
         $oldStatus = $customer->status;
 
+        // Tentukan tahap pembatalan
+        $stage = $request->cancel_stage;
+        if (!$stage) {
+            if ($oldStatus === 'survey') {
+                $stage = 'survey';
+            } elseif ($oldStatus === 'installing') {
+                $stage = 'installing';
+            } elseif ($oldStatus === 'audit' || $oldStatus === 'menunggu_aktivasi') {
+                $stage = 'activation';
+            } else {
+                $stage = 'booking';
+            }
+        }
+
+        $stageLabels = [
+            'booking' => 'Batal Booking',
+            'survey' => 'Batal Survey',
+            'installing' => 'Batal Pasang',
+            'activation' => 'Batal Aktivasi',
+        ];
+
+        $prefix = $stageLabels[$stage] ?? 'Batal';
+        $reason = trim($request->cancel_reason);
+        if (!str_starts_with(strtolower($reason), strtolower($prefix))) {
+            $reason = "{$prefix}: {$reason}";
+        }
+
         $customer->update([
             'status' => 'canceled',
-            'cancel_reason' => $request->cancel_reason,
+            'cancel_stage' => $stage,
+            'cancel_reason' => $reason,
             'cancel_date' => $request->cancel_date,
         ]);
 
@@ -2459,9 +2489,9 @@ class CustomerController extends Controller
             ->whereIn('status', ['scheduled', 'in_progress'])
             ->update(['status' => 'canceled']);
 
-        \App\Models\AuditLog::createLog('Pelanggan Dibatalkan', $customer, $oldStatus, 'canceled', "Pendaftaran dibatalkan: {$request->cancel_reason}");
+        \App\Models\AuditLog::createLog('Pelanggan Dibatalkan', $customer, $oldStatus, 'canceled', "Pendaftaran dibatalkan: {$reason}");
 
-        return redirect()->back()->with('success', 'Pendaftaran pelanggan berhasil dibatalkan.');
+        return redirect()->back()->with('success', "Pendaftaran pelanggan berhasil dibatalkan ({$prefix}).");
     }
 
     public function restore(Customer $customer): RedirectResponse
@@ -2469,6 +2499,7 @@ class CustomerController extends Controller
         $oldStatus = $customer->status;
         $customer->update([
             'status' => 'booking',
+            'cancel_stage' => null,
             'cancel_reason' => null,
             'cancel_date' => null,
         ]);
@@ -2490,6 +2521,7 @@ class CustomerController extends Controller
             $oldStatus = $customer->status;
             $customer->update([
                 'status' => 'booking',
+                'cancel_stage' => null,
                 'cancel_reason' => null,
                 'cancel_date' => null,
             ]);
