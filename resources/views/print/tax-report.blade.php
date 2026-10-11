@@ -71,7 +71,7 @@
                 <tr>
                     <td>{{ $i + 1 }}</td>
                     <td>{{ $row->name }}<br><span class="muted">{{ $row->customer_code }}</span></td>
-                    <td>{{ $row->package_name }}</td>
+                    <td>{{ $row->package_name }} @if(!empty($row->is_prorata)) <br><span class="muted" style="color:#b45309;font-weight:bold;">(Prorata)</span> @endif</td>
                     <td class="num">{{ $rp($row->base_price) }}</td>
                     <td class="num">{{ $rp($row->ppn_amount) }}<br><span class="muted">{{ $row->ppn_percent }}%</span></td>
                     <td class="num">{{ $rp($row->bhp_amount) }}<br><span class="muted">{{ $row->bhp_percent }}%</span></td>

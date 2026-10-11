@@ -121,7 +121,12 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <p class="text-sm font-bold text-gray-900">{{ formatCurrency(customer.base_price) }}</p>
+                                    <div class="flex items-center gap-1.5">
+                                        <p class="text-sm font-bold text-gray-900">{{ formatCurrency(customer.base_price) }}</p>
+                                        <span v-if="customer.is_prorata" class="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200">
+                                            Prorata
+                                        </span>
+                                    </div>
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[10px] font-bold mt-1 border border-blue-100">
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                                         {{ customer.package_name }}
