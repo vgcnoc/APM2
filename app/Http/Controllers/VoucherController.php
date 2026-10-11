@@ -177,10 +177,15 @@ class VoucherController extends Controller
 
         $vouchers = $query->latest()->paginate(20)->withQueryString();
         $user = auth()->user();
-        if ($user->isAdmin()) {
-            $profiles = VoucherProfile::where('is_customer_free', false)->get();
-        } else {
+        $currentReseller = null;
+        if ($user && !$user->isAdmin()) {
+            $currentReseller = \App\Models\Reseller::where('user_id', $user->id)->with('customer')->first();
             $profiles = $user->voucherProfiles()->where('is_customer_free', false)->get();
+            if ($profiles->isEmpty()) {
+                $profiles = VoucherProfile::where('is_customer_free', false)->get();
+            }
+        } else {
+            $profiles = VoucherProfile::where('is_customer_free', false)->get();
         }
         $resellers = \App\Models\Reseller::with('customer')->get();
 
@@ -188,6 +193,7 @@ class VoucherController extends Controller
             'vouchers' => $vouchers,
             'profiles' => $profiles,
             'resellers' => $resellers,
+            'currentReseller' => $currentReseller,
             'filters' => $request->only(['search', 'profile_id', 'status', 'reseller_id']),
             'onlineUsernames' => (function() {
                 try {
@@ -441,6 +447,12 @@ class VoucherController extends Controller
 
     public function store(Request $request)
     {
+        $user = auth()->user();
+        $isUserReseller = $user && !$user->isAdmin();
+        $currentReseller = $isUserReseller 
+            ? \App\Models\Reseller::where('user_id', $user->id)->first() 
+            : null;
+
         $mode = $request->input('mode', 'bulk');
 
         if ($mode === 'single') {
@@ -453,6 +465,13 @@ class VoucherController extends Controller
                 'reseller_id' => 'nullable|exists:resellers,id',
                 'reseller_payment' => 'nullable|in:balance,cash',
             ]);
+
+            // Jika login sebagai reseller: paksa cost_type = 'paid', reseller_id = reseller saat ini, reseller_payment = 'balance'
+            if ($currentReseller) {
+                $validated['cost_type'] = 'paid';
+                $validated['reseller_id'] = $currentReseller->id;
+                $validated['reseller_payment'] = 'balance';
+            }
 
             $profile = VoucherProfile::where('is_customer_free', false)->findOrFail($validated['voucher_profile_id']);
             $isFree = $validated['cost_type'] === 'free';
@@ -467,10 +486,10 @@ class VoucherController extends Controller
                 } else {
                     $paymentOption = $validated['reseller_payment'] ?? 'balance';
                     if ($paymentOption === 'balance') {
-                        $fee = $profile->fee_reseller;
+                        $fee = ($profile->fee_reseller && $profile->fee_reseller > 0) ? $profile->fee_reseller : $profile->price;
                         if ($reseller->balance < $fee) {
                             return redirect()->back()->withErrors([
-                                'reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($fee, 0, ',', '.') . ').'
+                                'voucher_profile_id' => 'Saldo Anda tidak mencukupi untuk voucher ini (Saldo: Rp ' . number_format($reseller->balance, 0, ',', '.') . ', Butuh: Rp ' . number_format($fee, 0, ',', '.') . ').'
                             ])->withInput();
                         }
                         $reseller->balance -= $fee;
@@ -528,6 +547,13 @@ class VoucherController extends Controller
             'combination' => 'nullable|string|in:alphanumeric,numeric,alpha',
         ]);
 
+        // Jika login sebagai reseller: paksa cost_type = 'paid', reseller_id = reseller saat ini, reseller_payment = 'balance'
+        if ($currentReseller) {
+            $validated['cost_type'] = 'paid';
+            $validated['reseller_id'] = $currentReseller->id;
+            $validated['reseller_payment'] = 'balance';
+        }
+
         $profile = VoucherProfile::where('is_customer_free', false)->findOrFail($validated['voucher_profile_id']);
         $isFree = ($validated['cost_type'] ?? 'paid') === 'free';
         $paymentMethod = $isFree ? 'free' : 'system';
@@ -541,10 +567,11 @@ class VoucherController extends Controller
             } else {
                 $paymentOption = $validated['reseller_payment'] ?? 'balance';
                 if ($paymentOption === 'balance') {
-                    $totalPrice = $profile->fee_reseller * $validated['amount'];
+                    $fee = ($profile->fee_reseller && $profile->fee_reseller > 0) ? $profile->fee_reseller : $profile->price;
+                    $totalPrice = $fee * $validated['amount'];
                     if ($reseller->balance < $totalPrice) {
                         return redirect()->back()->withErrors([
-                            'reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($totalPrice, 0, ',', '.') . ').'
+                            'amount' => 'Saldo Anda tidak mencukupi untuk generate ' . $validated['amount'] . ' voucher (Saldo: Rp ' . number_format($reseller->balance, 0, ',', '.') . ', Butuh: Rp ' . number_format($totalPrice, 0, ',', '.') . ').'
                         ])->withInput();
                     }
 

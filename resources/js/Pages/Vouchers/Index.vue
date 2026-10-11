@@ -258,7 +258,7 @@
                                 <select v-model="singleForm.voucher_profile_id" class="w-full border-gray-300 rounded-xl text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all" required>
                                     <option value="" disabled>-- Pilih Profil Paket --</option>
                                     <option v-for="prof in sellableProfiles" :key="prof.id" :value="prof.id">
-                                        {{ prof.name }} • Durasi: {{ prof.duration || '-' }} • Tarif: Rp{{ Number(prof.price).toLocaleString('id-ID') }}
+                                        {{ prof.name }} • Durasi: {{ prof.duration || '-' }} • {{ isReseller ? 'Harga Reseller: Rp' + Number((prof.fee_reseller && prof.fee_reseller > 0) ? prof.fee_reseller : prof.price).toLocaleString('id-ID') : 'Tarif: Rp' + Number(prof.price).toLocaleString('id-ID') }}
                                     </option>
                                 </select>
                             </div>
@@ -268,7 +268,7 @@
                                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                                     Jenis Tarif Voucher <span class="text-red-500">*</span>
                                 </label>
-                                <div class="grid grid-cols-2 gap-3">
+                                <div :class="isReseller ? 'grid grid-cols-1' : 'grid grid-cols-2 gap-3'">
                                     <label 
                                         :class="singleForm.cost_type === 'paid' ? 'border-indigo-500 bg-indigo-50/50 ring-2 ring-indigo-500/20' : 'border-gray-200 bg-white hover:bg-gray-50'"
                                         class="border rounded-xl p-3 cursor-pointer flex items-center gap-3 transition-all"
@@ -282,7 +282,9 @@
                                         </div>
                                     </label>
 
+                                    <!-- KOTAK MERAH 1: Hilangkan untuk Reseller -->
                                     <label 
+                                        v-if="!isReseller"
                                         :class="singleForm.cost_type === 'free' ? 'border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-500/20' : 'border-gray-200 bg-white hover:bg-gray-50'"
                                         class="border rounded-xl p-3 cursor-pointer flex items-center gap-3 transition-all"
                                     >
@@ -391,8 +393,8 @@
                                 </div>
                             </div>
 
-                            <!-- 5. Kepemilikan Reseller & Opsi Pembayaran -->
-                            <div class="bg-indigo-50/40 p-4 rounded-xl border border-indigo-100 space-y-3">
+                            <!-- 5. Kepemilikan Reseller & Opsi Pembayaran (KOTAK MERAH 2: Khusus Admin/Kantor) -->
+                            <div v-if="!isReseller" class="bg-indigo-50/40 p-4 rounded-xl border border-indigo-100 space-y-3">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 mb-1">
                                         Peruntukan Reseller (Opsional)
@@ -400,7 +402,7 @@
                                     <select v-model="singleForm.reseller_id" class="w-full border-gray-300 rounded-xl text-sm focus:ring-indigo-500 focus:border-indigo-500">
                                         <option value="">-- System / Kantor (Bukan Reseller) --</option>
                                         <option v-for="reseller in resellers" :key="reseller.id" :value="reseller.id">
-                                            {{ reseller.customer.name }} (Saldo: Rp{{ Number(reseller.balance).toLocaleString('id-ID') }})
+                                            {{ reseller.customer?.name || ('Reseller #' + reseller.id) }} (Saldo: Rp{{ Number(reseller.balance).toLocaleString('id-ID') }})
                                         </option>
                                     </select>
                                     <div v-if="singleForm.errors.reseller_id" class="text-red-500 text-xs mt-1">{{ singleForm.errors.reseller_id }}</div>
@@ -431,6 +433,22 @@
                                         <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                         Voucher dicetak atas nama reseller tanpa memotong saldo akunnya (cocok untuk reseller yang bayar cash di kantor).
                                     </p>
+                                </div>
+                            </div>
+                            <!-- Info Akun Reseller (Tampil Khusus Login Reseller) -->
+                            <div v-else class="bg-indigo-50/60 border border-indigo-200/80 rounded-xl p-3.5 flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                                        💳
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold text-gray-800">Akun: {{ currentReseller?.customer?.name || $page.props.auth.user.name }}</p>
+                                        <p class="text-[11px] text-indigo-700 font-medium">Biaya voucher otomatis memotong Saldo Reseller Anda</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] uppercase font-bold text-gray-500">Saldo Anda</span>
+                                    <p class="text-sm font-extrabold text-indigo-700">Rp{{ Number(currentReseller?.balance || 0).toLocaleString('id-ID') }}</p>
                                 </div>
                             </div>
 
@@ -473,12 +491,14 @@
                                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Pilih Profil <span class="text-red-500">*</span></label>
                                 <select v-model="bulkForm.voucher_profile_id" class="w-full border-gray-300 rounded-xl text-sm focus:ring-indigo-500 focus:border-indigo-500" required>
                                     <option value="" disabled>-- Pilih Profil --</option>
-                                    <option v-for="prof in sellableProfiles" :key="prof.id" :value="prof.id">{{ prof.name }} (Rp{{ Number(prof.price).toLocaleString('id-ID') }})</option>
+                                    <option v-for="prof in sellableProfiles" :key="prof.id" :value="prof.id">
+                                        {{ prof.name }} ({{ isReseller ? 'Harga Reseller: Rp' + Number((prof.fee_reseller && prof.fee_reseller > 0) ? prof.fee_reseller : prof.price).toLocaleString('id-ID') : 'Rp' + Number(prof.price).toLocaleString('id-ID') }})
+                                    </option>
                                 </select>
                             </div>
                             
                             <!-- 2. Jenis Biaya Bulk -->
-                            <div class="grid grid-cols-2 gap-3">
+                            <div :class="isReseller ? 'grid grid-cols-1' : 'grid grid-cols-2 gap-3'">
                                 <label 
                                     :class="bulkForm.cost_type === 'paid' ? 'border-indigo-500 bg-indigo-50/50 ring-2 ring-indigo-500/20' : 'border-gray-200 bg-white hover:bg-gray-50'"
                                     class="border rounded-xl p-2.5 cursor-pointer flex items-center gap-2.5 transition-all text-xs"
@@ -487,6 +507,7 @@
                                     <span class="font-bold text-gray-900">💰 Harus Bayar (Normal)</span>
                                 </label>
                                 <label 
+                                    v-if="!isReseller"
                                     :class="bulkForm.cost_type === 'free' ? 'border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-500/20' : 'border-gray-200 bg-white hover:bg-gray-50'"
                                     class="border rounded-xl p-2.5 cursor-pointer flex items-center gap-2.5 transition-all text-xs"
                                 >
@@ -541,13 +562,13 @@
                             </div>
                             
                             <!-- 6. Reseller Assignment -->
-                            <div class="bg-gray-50 p-3.5 rounded-xl border border-gray-200 space-y-3">
+                            <div v-if="!isReseller" class="bg-gray-50 p-3.5 rounded-xl border border-gray-200 space-y-3">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 mb-1">Generate Untuk Reseller (Opsional)</label>
                                     <select v-model="bulkForm.reseller_id" class="w-full border-gray-300 rounded-xl text-sm">
                                         <option value="">-- System (Tanpa Reseller) --</option>
                                         <option v-for="reseller in resellers" :key="reseller.id" :value="reseller.id">
-                                            {{ reseller.customer.name }} (Saldo: Rp{{ Number(reseller.balance).toLocaleString('id-ID') }})
+                                            {{ reseller.customer?.name || ('Reseller #' + reseller.id) }} (Saldo: Rp{{ Number(reseller.balance).toLocaleString('id-ID') }})
                                         </option>
                                     </select>
                                     <div v-if="bulkForm.errors.reseller_id" class="text-red-500 text-xs mt-1">{{ bulkForm.errors.reseller_id }}</div>
@@ -572,6 +593,22 @@
                                     <p v-if="bulkForm.reseller_payment === 'cash'" class="text-[11px] text-emerald-700 font-medium mt-1">
                                         ✓ Saldo reseller tidak akan dipotong. Voucher tetap terhubung ke akun reseller ini.
                                     </p>
+                                </div>
+                            </div>
+                            <!-- Info Akun Reseller jika Reseller -->
+                            <div v-else class="bg-indigo-50/60 border border-indigo-200/80 rounded-xl p-3.5 flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                                        💳
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold text-gray-800">Akun: {{ currentReseller?.customer?.name || $page.props.auth.user.name }}</p>
+                                        <p class="text-[11px] text-indigo-700 font-medium">Pembayaran batch otomatis memotong Saldo Reseller Anda</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] uppercase font-bold text-gray-500">Saldo Anda</span>
+                                    <p class="text-sm font-extrabold text-indigo-700">Rp{{ Number(currentReseller?.balance || 0).toLocaleString('id-ID') }}</p>
                                 </div>
                             </div>
                             
@@ -635,9 +672,14 @@ const props = defineProps({
     vouchers: Object,
     profiles: Array,
     resellers: Array,
+    currentReseller: Object,
     filters: Object,
     onlineUsernames: Array,
     usageStats: Object,
+});
+
+const isReseller = computed(() => {
+    return page.props.auth?.user?.role === 'reseller' || !!props.currentReseller;
 });
 
 const sellableProfiles = computed(() => {
@@ -746,7 +788,12 @@ function generateRandomPassword() {
 function getSelectedProfilePrice(profileId) {
     if (!profileId) return '0';
     const prof = props.profiles.find(p => p.id === profileId);
-    return prof ? Number(prof.price).toLocaleString('id-ID') : '0';
+    if (!prof) return '0';
+    if (isReseller.value) {
+        const cost = (prof.fee_reseller && prof.fee_reseller > 0) ? prof.fee_reseller : prof.price;
+        return Number(cost).toLocaleString('id-ID');
+    }
+    return Number(prof.price).toLocaleString('id-ID');
 }
 
 function getSelectedProfileName(profileId) {
@@ -772,12 +819,22 @@ const doFilter = () => {
 const openGenerateModal = () => {
     singleForm.reset();
     singleForm.clearErrors();
-    singleForm.voucher_profile_id = props.profiles[0]?.id || '';
+    singleForm.voucher_profile_id = sellableProfiles.value[0]?.id || props.profiles[0]?.id || '';
+    if (isReseller.value) {
+        singleForm.cost_type = 'paid';
+        singleForm.reseller_id = props.currentReseller?.id || '';
+        singleForm.reseller_payment = 'balance';
+    }
     generateRandomUsername();
     
     bulkForm.reset();
     bulkForm.clearErrors();
-    bulkForm.voucher_profile_id = props.profiles[0]?.id || '';
+    bulkForm.voucher_profile_id = sellableProfiles.value[0]?.id || props.profiles[0]?.id || '';
+    if (isReseller.value) {
+        bulkForm.cost_type = 'paid';
+        bulkForm.reseller_id = props.currentReseller?.id || '';
+        bulkForm.reseller_payment = 'balance';
+    }
 
     showModal.value = true;
 };
@@ -787,6 +844,11 @@ const closeModal = () => {
 };
 
 const submitSingleForm = () => {
+    if (isReseller.value) {
+        singleForm.cost_type = 'paid';
+        singleForm.reseller_id = props.currentReseller?.id || '';
+        singleForm.reseller_payment = 'balance';
+    }
     singleForm.post(route('vouchers.store'), {
         preserveScroll: true,
         onSuccess: () => {
@@ -801,6 +863,11 @@ const submitSingleForm = () => {
 };
 
 const submitBulkForm = () => {
+    if (isReseller.value) {
+        bulkForm.cost_type = 'paid';
+        bulkForm.reseller_id = props.currentReseller?.id || '';
+        bulkForm.reseller_payment = 'balance';
+    }
     bulkForm.post(route('vouchers.store'), {
         preserveScroll: true,
         onSuccess: () => {
