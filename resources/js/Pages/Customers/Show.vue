@@ -330,6 +330,7 @@
                             <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
                             <InfoRow label="Teknisi" :value="getAssignedTechnicians('installation')" />
                             <InfoRow label="Tanggal Pasang" :value="formatDate(customer.technician_schedules.find(s => s.type === 'installation').scheduled_date)" />
+                            <InfoRow v-if="installationNotes" label="Catatan Khusus" :value="installationNotes" />
                         </div>
                         
                         <div v-if="hardwareItems.length > 0" class="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-6">
@@ -442,6 +443,15 @@
                             <!-- STEP 2: ONT & Material -->
                             <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-amber-50 p-4 rounded-xl border border-amber-100">
                                 <p class="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-3">2. Kebutuhan ONT & Material</p>
+                                
+                                <!-- Catatan Khusus dari Admin (jika ada) -->
+                                <div v-if="installationNotes" class="mb-3 p-3 bg-amber-100/80 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2.5">
+                                    <svg class="w-4 h-4 text-amber-700 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <div>
+                                        <strong class="font-bold text-amber-900 block mb-0.5">Catatan Tambahan:</strong>
+                                        <span class="whitespace-pre-line">{{ installationNotes }}</span>
+                                    </div>
+                                </div>
                                 
                                 <div v-if="hardwareItems.length === 0" class="text-sm text-gray-500 italic p-3 bg-white rounded-lg border border-amber-200">
                                     Tidak ada catatan kebutuhan khusus.
@@ -1368,16 +1378,19 @@ const getAssignedTechnicians = (type) => {
 const previewImage = ref(null);
 
 const hardwareItems = ref([]);
+const installationNotes = ref('');
 
 watch(() => props.customer, () => {
     const schedule = props.customer?.technician_schedules?.find(s => s.type === 'installation');
     if (!schedule || !schedule.notes) {
         hardwareItems.value = [];
+        installationNotes.value = '';
         return;
     }
     
     const lines = schedule.notes.split('\n');
     const items = [];
+    const notesList = [];
     let idCounter = 0;
     
     lines.forEach(line => {
@@ -1393,11 +1406,22 @@ watch(() => props.customer, () => {
             mats.forEach(mat => {
                 if(mat.trim()) items.push({ id: idCounter++, type: 'Material', name: mat.trim(), isInstalled: false });
             });
-        } else if (!text.startsWith('Material diambil dari Surat Jalan') && text !== 'ONT:') {
-            items.push({ id: idCounter++, type: 'Material', name: text, isInstalled: false });
+        } else if (text.startsWith('Catatan Tambahan:') || text.startsWith('Catatan:')) {
+            const cleanNote = text.replace(/^Catatan(\s+Tambahan)?:\s*/i, '').trim();
+            if (cleanNote) notesList.push(cleanNote);
+        } else if (text.startsWith('Material diambil dari Surat Jalan') || text === 'ONT:') {
+            // Abaikan header transaksi
+        } else {
+            if (text.toLowerCase().startsWith('catatan')) {
+                const cleanNote = text.replace(/^catatan[^:]*:\s*/i, '').trim();
+                if (cleanNote) notesList.push(cleanNote);
+            } else {
+                items.push({ id: idCounter++, type: 'Material', name: text, isInstalled: false });
+            }
         }
     });
     hardwareItems.value = items;
+    installationNotes.value = notesList.join('\n');
     
     // Restore hardware status from localStorage
     const savedHardware = localStorage.getItem(`apm_hardware_${props.customer.id}`);

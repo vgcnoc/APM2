@@ -264,6 +264,15 @@
                                                 </div>
                                             </div>
                                             
+                                            <!-- Catatan Tambahan Penugasan -->
+                                            <div v-if="installationNotes" class="bg-blue-50/70 p-3.5 rounded-xl border border-blue-100 flex items-start gap-2.5">
+                                                <svg class="w-4 h-4 text-blue-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                <div>
+                                                    <p class="text-xs font-bold text-blue-900 mb-0.5">Catatan Tambahan Penugasan</p>
+                                                    <p class="text-xs text-blue-800 whitespace-pre-line">{{ installationNotes }}</p>
+                                                </div>
+                                            </div>
+                                            
                                             <!-- Kebutuhan Material -->
                                             <div v-if="hardwareItems.length > 0" class="bg-amber-50/70 p-4 rounded-xl border border-amber-100">
                                                 <p class="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-3">Kebutuhan Material (Telah Dipasang)</p>
@@ -1296,6 +1305,25 @@ function formatDate(dateStr) {
     return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+const installationNotes = computed(() => {
+    if (!detailCustomer.value) return '';
+    const schedule = detailCustomer.value.technician_schedules?.find(s => s.type === 'installation');
+    if (!schedule || !schedule.notes) return '';
+    const lines = schedule.notes.split('\n');
+    const notesList = [];
+    lines.forEach(line => {
+        let text = line.trim();
+        if (text.startsWith('Catatan Tambahan:') || text.startsWith('Catatan:')) {
+            const cleanNote = text.replace(/^Catatan(\s+Tambahan)?:\s*/i, '').trim();
+            if (cleanNote) notesList.push(cleanNote);
+        } else if (text.toLowerCase().startsWith('catatan')) {
+            const cleanNote = text.replace(/^catatan[^:]*:\s*/i, '').trim();
+            if (cleanNote) notesList.push(cleanNote);
+        }
+    });
+    return notesList.join('\n');
+});
+
 const hardwareItems = computed(() => {
     if (!detailCustomer.value) return [];
     const schedule = detailCustomer.value.technician_schedules?.find(s => s.type === 'installation');
@@ -1318,7 +1346,9 @@ const hardwareItems = computed(() => {
             mats.forEach(mat => {
                 if(mat.trim()) items.push({ id: idCounter++, type: 'Material', name: mat.trim() });
             });
-        } else if (!text.startsWith('Material diambil dari Surat Jalan') && text !== 'ONT:') {
+        } else if (text.startsWith('Catatan Tambahan:') || text.startsWith('Catatan:')) {
+            // Note, not hardware
+        } else if (!text.startsWith('Material diambil dari Surat Jalan') && text !== 'ONT:' && !text.toLowerCase().startsWith('catatan')) {
             items.push({ id: idCounter++, type: 'Material', name: text });
         }
     });
