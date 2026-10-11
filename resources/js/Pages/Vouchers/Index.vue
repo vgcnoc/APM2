@@ -11,19 +11,26 @@
                     <input 
                         v-model="search" 
                         type="text" 
-                        placeholder="Cari kode/username..." 
-                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Cari kode/username/reseller..." 
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                         @keyup.enter="doFilter"
                     >
                     <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
                 </div>
-                <select v-model="statusFilter" @change="doFilter" class="border-gray-300 rounded-lg">
+                <select v-model="statusFilter" @change="doFilter" class="border-gray-300 rounded-lg text-sm">
                     <option value="">Semua Status</option>
                     <option value="available">Tersedia</option>
                     <option value="used">Digunakan</option>
                     <option value="expired">Expired</option>
+                </select>
+                <select v-if="layoutComponent === AppLayout" v-model="resellerFilter" @change="doFilter" class="border-gray-300 rounded-lg text-sm">
+                    <option value="">Semua Pemilik / Reseller</option>
+                    <option value="system">🏢 Kantor / System</option>
+                    <option v-for="res in resellers" :key="res.id" :value="res.id">
+                        👤 {{ res.customer?.name || ('Reseller #' + res.id) }}
+                    </option>
                 </select>
             </div>
             
@@ -55,6 +62,7 @@
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Kode / User</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Password</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Profil</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reseller</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Terpakai Sejak</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Aktif Sampai</th>
@@ -89,10 +97,31 @@
                                 {{ voucher.password }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                <div class="font-medium text-gray-900">{{ voucher.profile?.name }}</div>
-                                <div v-if="voucher.reseller?.customer?.name" class="text-xs text-indigo-600 font-medium flex items-center gap-1 mt-0.5" :title="`Reseller: ${voucher.reseller.customer.name}`">
-                                    <svg class="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                    <span class="truncate max-w-[120px]">{{ voucher.reseller.customer.name }}</span>
+                                <div class="font-bold text-gray-900">{{ voucher.profile?.name }}</div>
+                                <div v-if="voucher.profile?.duration" class="text-xs text-gray-500 font-medium">{{ voucher.profile.duration }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <div v-if="voucher.reseller?.customer?.name" class="flex flex-col items-start gap-1">
+                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
+                                        <svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                        </svg>
+                                        <span class="font-bold">{{ voucher.reseller.customer.name }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <span v-if="voucher.payment_method === 'cash'" class="text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200" title="Bayar Tunai di Kantor">
+                                            💵 Tunai (Kantor)
+                                        </span>
+                                        <span v-else-if="voucher.payment_method === 'balance'" class="text-[10px] font-medium text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200" title="Potong Saldo Reseller">
+                                            💳 Saldo Reseller
+                                        </span>
+                                    </div>
+                                </div>
+                                <div v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                    </svg>
+                                    <span>Kantor / System</span>
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -152,7 +181,7 @@
                             </td>
                         </tr>
                         <tr v-if="vouchers.data.length === 0">
-                            <td colspan="6" class="px-6 py-12 text-center">
+                            <td colspan="10" class="px-6 py-12 text-center">
                                 <p class="text-gray-500 text-base font-medium">Belum ada data voucher.</p>
                             </td>
                         </tr>
@@ -649,6 +678,7 @@ const calculateExpiration = (firstLoginIso, durationStr) => {
 
 const search = ref(props.filters.search || '');
 const statusFilter = ref(props.filters.status || '');
+const resellerFilter = ref(props.filters.reseller_id || '');
 const showModal = ref(false);
 const activeTab = ref('single');
 const showSinglePassword = ref(false);
@@ -729,7 +759,11 @@ function getSelectedProfileDuration(profileId) {
 }
 
 const doFilter = () => {
-    router.get(route('vouchers.index'), { search: search.value, status: statusFilter.value }, { preserveState: true, replace: true });
+    router.get(route('vouchers.index'), { 
+        search: search.value, 
+        status: statusFilter.value,
+        reseller_id: resellerFilter.value 
+    }, { preserveState: true, replace: true });
 };
 
 const openGenerateModal = () => {

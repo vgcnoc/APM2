@@ -50,11 +50,22 @@ class VoucherController extends Controller
             $query->where('status', $request->status);
         }
         
+        if ($request->filled('reseller_id')) {
+            if ($request->reseller_id === 'system') {
+                $query->whereNull('reseller_id');
+            } else {
+                $query->where('reseller_id', $request->reseller_id);
+            }
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('code', 'like', "%{$search}%")
-                  ->orWhere('username', 'like', "%{$search}%");
+                  ->orWhere('username', 'like', "%{$search}%")
+                  ->orWhereHas('reseller.customer', function($sq) use ($search) {
+                      $sq->where('name', 'like', "%{$search}%");
+                  });
             });
         }
         
@@ -73,7 +84,7 @@ class VoucherController extends Controller
             'vouchers' => $vouchers,
             'profiles' => $profiles,
             'resellers' => $resellers,
-            'filters' => $request->only(['search', 'profile_id', 'status']),
+            'filters' => $request->only(['search', 'profile_id', 'status', 'reseller_id']),
             'onlineUsernames' => (function() {
                 try {
                     return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
