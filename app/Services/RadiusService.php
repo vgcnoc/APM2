@@ -276,6 +276,14 @@ class RadiusService
             }
         }
 
+        // Jika berhasil disconnect, bersihkan sisa sesi stale/ghost untuk user ini di RadAcct
+        if ($count > 0) {
+            RadAcct::online()->where('username', $username)->update([
+                'acctstoptime' => now(),
+                'acctterminatecause' => 'Admin-Reset',
+            ]);
+        }
+
         // Jika tidak ada sesi di RadAcct atau belum berhasil, coba kirim ke NAS router terdaftar
         if ($count === 0) {
             $nases = Nas::whereNotNull('vpn_ip')
