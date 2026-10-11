@@ -24,6 +24,7 @@ class Invoice extends Model
             'due_date' => 'date',
             'issued_date' => 'date',
             'promise_date' => 'date',
+            'is_prorata' => 'boolean',
             'is_reseller_balance' => 'boolean',
         ];
     }

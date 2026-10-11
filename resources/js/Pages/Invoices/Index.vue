@@ -173,11 +173,13 @@
                 <td>
                     <div class="flex flex-col gap-1 items-start">
                         <span class="text-[11px] font-bold text-gray-700 uppercase">{{ row.customer?.package || '-' }}</span>
-                        <span v-if="row.billing_type" :class="[
+                        <span v-if="row.is_prorata || row.billing_type === 'prorata'" class="text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase border bg-blue-50 text-blue-700 border-blue-200">
+                            Prorata
+                        </span>
+                        <span v-else-if="row.billing_type" :class="[
                             'text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase border',
                             row.billing_type === 'prabayar' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
-                            row.billing_type === 'pascabayar' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                            'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            'bg-amber-50 text-amber-700 border-amber-200'
                         ]">
                             {{ row.billing_type }}
                         </span>

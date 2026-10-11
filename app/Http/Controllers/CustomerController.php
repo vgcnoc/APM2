@@ -1776,13 +1776,13 @@ class CustomerController extends Controller
                         $nextBillingDate->day($issueDateSetting);
                     }
 
-                    if ($isProrataFirstMonth && $amount > 0) {
+                    if ($isProrataFirstMonth) {
                         // Tagihan pertama dihitung prorata sampai akhir bulan berjalan
                         $endOfMonth = $activationDate->copy()->endOfMonth();
                         $totalDaysInCycle = (int) $activationDate->daysInMonth;
                         $daysUsed = (int) ($endOfMonth->day - $activationDate->day + 1);
 
-                        if ($daysUsed > 0 && $totalDaysInCycle > 0 && $daysUsed < $totalDaysInCycle) {
+                        if ($amount > 0 && $daysUsed > 0 && $totalDaysInCycle > 0 && $daysUsed < $totalDaysInCycle) {
                             if ($prorataFormula === 'fixed_30') {
                                 $amount = ($amount / 30) * $daysUsed;
                             } elseif ($prorataFormula === 'mid_month') {
@@ -1794,9 +1794,9 @@ class CustomerController extends Controller
                                 $amount = ($amount / $totalDaysInCycle) * $daysUsed;
                             }
                             $amount = round($amount);
-                            $isProrata = true;
                         }
 
+                        $isProrata = true;
                         $dueDateTime = $nextBillingDate->copy()->addDays($isolateDays);
                         $invoiceBillingType = 'prorata';
                         $invoiceNotes = 'Tagihan Pertama (Prorata s/d Akhir Bulan: ' . $activationDate->format('d M') . ' - ' . $endOfMonth->format('d M Y') . ')';

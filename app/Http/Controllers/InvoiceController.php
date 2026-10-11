@@ -33,7 +33,10 @@ class InvoiceController extends Controller
         } elseif ($tab === 'lunas') {
             $query->where('status', 'paid');
         } elseif ($tab === 'prorata') {
-            $query->where('is_prorata', true);
+            $query->where(function($q) {
+                $q->where('is_prorata', true)
+                  ->orWhere('billing_type', 'prorata');
+            });
         } elseif ($tab === 'upgrade') {
             $query->where('id', '<', 0); // Placeholder
         } elseif ($tab === 'janji_bayar') {
@@ -82,7 +85,10 @@ class InvoiceController extends Controller
             'jatuh_tempo' => (clone $baseQuery)->where('due_date', '<', now())->where('status', '!=', 'paid')->count(),
             'piutang' => (clone $baseQuery)->where('status', 'partial')->count(),
             'lunas' => (clone $baseQuery)->where('status', 'paid')->count(),
-            'prorata' => (clone $baseQuery)->where('is_prorata', true)->count(),
+            'prorata' => (clone $baseQuery)->where(function($q) {
+                $q->where('is_prorata', true)
+                  ->orWhere('billing_type', 'prorata');
+            })->count(),
             'upgrade' => 0, // Placeholder
             'janji_bayar' => (clone $baseQuery)->whereNotNull('promise_date')->where('status', '!=', 'paid')->count(),
             'stop_sementara' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'suspended'))->count(),
@@ -116,6 +122,7 @@ class InvoiceController extends Controller
                     ] : null,
                     'period_label' => $invoice->period_label,
                     'billing_type' => $invoice->billing_type ?? $invoice->customer?->billing_type,
+                    'is_prorata' => (bool) $invoice->is_prorata,
                     'amount' => $invoice->amount,
                     'total_paid' => $invoice->total_paid,
                     'remaining' => $invoice->remaining,
