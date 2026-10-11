@@ -1823,9 +1823,9 @@ class CustomerController extends Controller
                     $amount = 0;
                     $status = 'paid';
                 } else {
-                    $totalTaxPercent = $taxPpn + $taxBhp + $taxUso;
-                    if ($totalTaxPercent > 0) {
-                        $amount = $amount + ($amount * ($totalTaxPercent / 100));
+                    // Hanya PPN yang ditambahkan ke invoice tagihan pelanggan
+                    if ($taxPpn > 0) {
+                        $amount = $amount + ($amount * ($taxPpn / 100));
                     }
                 }
 

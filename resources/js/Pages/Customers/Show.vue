@@ -1094,34 +1094,18 @@
                                         ? 'bg-amber-100 text-amber-700 border-amber-200' 
                                         : 'bg-gray-100 text-gray-500 border-gray-200'"
                                 >
-                                    {{ activationForm.enable_tax ? 'Pajak Aktif' : 'Bebas Pajak (Nonaktif)' }}
+                                    {{ activationForm.enable_tax ? 'PPN Aktif (' + (activationForm.tax_ppn || 11) + '%)' : 'Bebas PPN (Nonaktif)' }}
                                 </span>
                             </div>
 
-                            <!-- Form Input Pajak (Muncul jika enable_tax aktif) -->
+                            <!-- Form Input PPN (Muncul jika enable_tax aktif) -->
                             <div v-if="activationForm.enable_tax" class="pt-2 border-t border-amber-100/60 space-y-2">
-                                <p class="text-[11px] text-gray-500">Pajak pertambahan nilai & regulasi yang dibebankan ke invoice pelanggan:</p>
-                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    <div>
-                                        <label class="block text-xs font-semibold text-gray-700 mb-1">PPN (%)</label>
-                                        <div class="relative">
-                                            <input v-model="activationForm.tax_ppn" type="number" step="0.01" min="0" max="100" class="w-full bg-white border border-gray-200 rounded-lg pr-7 pl-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm transition-all" placeholder="11" />
-                                            <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">%</span>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-semibold text-gray-700 mb-1">BHP (%)</label>
-                                        <div class="relative">
-                                            <input v-model="activationForm.tax_bhp" type="number" step="0.01" min="0" max="100" class="w-full bg-white border border-gray-200 rounded-lg pr-7 pl-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm transition-all" placeholder="0" />
-                                            <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">%</span>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-semibold text-gray-700 mb-1">USO (%)</label>
-                                        <div class="relative">
-                                            <input v-model="activationForm.tax_uso" type="number" step="0.01" min="0" max="100" class="w-full bg-white border border-gray-200 rounded-lg pr-7 pl-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm transition-all" placeholder="0" />
-                                            <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">%</span>
-                                        </div>
+                                <p class="text-[11px] text-gray-500">Pajak Pertambahan Nilai (PPN) yang ditambahkan ke invoice tagihan pelanggan:</p>
+                                <div class="max-w-xs">
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">PPN (%)</label>
+                                    <div class="relative">
+                                        <input v-model="activationForm.tax_ppn" type="number" step="0.01" min="0" max="100" class="w-full bg-white border border-gray-200 rounded-lg pr-7 pl-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm transition-all font-semibold text-amber-700" placeholder="11" />
+                                        <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">%</span>
                                     </div>
                                 </div>
                             </div>
@@ -1129,7 +1113,7 @@
                             <!-- Informasi ketika Bebas Pajak -->
                             <div v-else class="pt-1.5 flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-100">
                                 <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <span>Pelanggan ini <strong>bebas pajak</strong> (invoice tidak dikenakan tambahan PPN, BHP, maupun USO).</span>
+                                <span>Pelanggan ini <strong>bebas pajak</strong> (invoice tidak dikenakan PPN / 0%).</span>
                             </div>
                         </div>
 
@@ -2272,12 +2256,10 @@ const invoiceSimulation = computed(() => {
         badgeLabel = 'Layanan Gratis (Rp 0)';
     }
 
-    // Taxes
+    // Taxes (Hanya PPN yang ditagihkan ke invoice pelanggan)
     const isTaxEnabled = activationForm.enable_tax;
     const taxPpn = isTaxEnabled ? Number(activationForm.tax_ppn || 0) : 0;
-    const taxBhp = isTaxEnabled ? Number(activationForm.tax_bhp || 0) : 0;
-    const taxUso = isTaxEnabled ? Number(activationForm.tax_uso || 0) : 0;
-    const totalTaxPercent = taxPpn + taxBhp + taxUso;
+    const totalTaxPercent = taxPpn;
 
     let taxAmount = 0;
     let totalAmount = subtotal;
@@ -2292,11 +2274,7 @@ const invoiceSimulation = computed(() => {
     }
 
     // Tax breakdown text
-    const taxParts = [];
-    if (taxPpn > 0) taxParts.push(`PPN ${taxPpn}%`);
-    if (taxBhp > 0) taxParts.push(`BHP ${taxBhp}%`);
-    if (taxUso > 0) taxParts.push(`USO ${taxUso}%`);
-    const taxBreakdownText = taxParts.length > 0 ? taxParts.join(' + ') : `${totalTaxPercent}%`;
+    const taxBreakdownText = `PPN ${taxPpn}%`;
 
     // Next month preview (normal postpaid)
     let nextMonthNormalSubtotal = basePrice;
@@ -2335,19 +2313,15 @@ const invoiceSimulation = computed(() => {
 const showActivationModal = ref(false);
 
 const custPpn = props.customer?.tax_ppn !== null && props.customer?.tax_ppn !== undefined ? Number(props.customer.tax_ppn) : null;
-const custBhp = props.customer?.tax_bhp !== null && props.customer?.tax_bhp !== undefined ? Number(props.customer.tax_bhp) : null;
-const custUso = props.customer?.tax_uso !== null && props.customer?.tax_uso !== undefined ? Number(props.customer.tax_uso) : null;
-const globalPpn = Number(usePage().props.billingSettings?.tax_ppn || usePage().props.taxSettings?.tax_ppn || 0);
-const globalBhp = Number(usePage().props.billingSettings?.tax_bhp || usePage().props.taxSettings?.tax_bhp || 0);
-const globalUso = Number(usePage().props.billingSettings?.tax_uso || usePage().props.taxSettings?.tax_uso || 0);
+const globalPpn = Number(usePage().props.billingSettings?.tax_ppn || usePage().props.taxSettings?.tax_ppn || 11);
 
 let initialTaxEnabled = true;
-if (custPpn !== null && custPpn === 0 && (custBhp === 0 || custBhp === null) && (custUso === 0 || custUso === null)) {
+if (custPpn !== null && custPpn === 0) {
     initialTaxEnabled = false;
-} else if (custPpn !== null && (custPpn > 0 || (custBhp && custBhp > 0) || (custUso && custUso > 0))) {
+} else if (custPpn !== null && custPpn > 0) {
     initialTaxEnabled = true;
 } else {
-    initialTaxEnabled = (globalPpn > 0 || globalBhp > 0 || globalUso > 0);
+    initialTaxEnabled = (globalPpn > 0);
 }
 
 const activationForm = useForm({
@@ -2370,17 +2344,13 @@ const activationForm = useForm({
     login_password: props.customer?.ont?.login_password || 'admin',
     notes: '',
     tax_ppn: custPpn !== null ? custPpn : (globalPpn || 11),
-    tax_bhp: custBhp !== null ? custBhp : globalBhp,
-    tax_uso: custUso !== null ? custUso : globalUso,
+    tax_bhp: 0,
+    tax_uso: 0,
 });
 
 watch(() => activationForm.enable_tax, (val) => {
-    if (val) {
-        if (!activationForm.tax_ppn && !activationForm.tax_bhp && !activationForm.tax_uso) {
-            activationForm.tax_ppn = globalPpn || 11;
-            activationForm.tax_bhp = globalBhp || 0;
-            activationForm.tax_uso = globalUso || 0;
-        }
+    if (val && !activationForm.tax_ppn) {
+        activationForm.tax_ppn = globalPpn || 11;
     }
 });
 

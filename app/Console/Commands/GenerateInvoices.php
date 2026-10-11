@@ -76,13 +76,10 @@ class GenerateInvoices extends Command
                     $amount = 0;
                     $status = 'paid';
                 } else {
+                    // Hanya PPN yang ditambahkan ke invoice tagihan pelanggan
                     $taxPpn = (float) ($customer->tax_ppn ?? Setting::get('tax_ppn', '0'));
-                    $taxBhp = (float) ($customer->tax_bhp ?? Setting::get('tax_bhp', '0'));
-                    $taxUso = (float) ($customer->tax_uso ?? Setting::get('tax_uso', '0'));
-                    
-                    $totalTaxPercent = $taxPpn + $taxBhp + $taxUso;
-                    if ($totalTaxPercent > 0) {
-                        $amount = $amount + ($amount * ($totalTaxPercent / 100));
+                    if ($taxPpn > 0) {
+                        $amount = $amount + ($amount * ($taxPpn / 100));
                     }
                 }
 

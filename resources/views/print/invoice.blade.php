@@ -86,18 +86,14 @@
                     <th>Periode</th>
                     <th class="right">Total</th>
 @php
-    $taxPpn = (float) \App\Models\Setting::get('tax_ppn', '0');
-    $taxBhp = (float) \App\Models\Setting::get('tax_bhp', '0');
-    $taxUso = (float) \App\Models\Setting::get('tax_uso', '0');
+    $taxPpn = (float) ($invoice->customer->tax_ppn ?? \App\Models\Setting::get('tax_ppn', '0'));
     
-    $totalTaxPercent = $taxPpn + $taxBhp + $taxUso;
-    
-    // Asumsikan total tagihan ($invoice->amount) sudah termasuk pajak
+    // Asumsikan total tagihan ($invoice->amount) sudah termasuk PPN jika ada
     $subtotal = $invoice->amount;
     $taxAmount = 0;
     
-    if ($totalTaxPercent > 0) {
-        $subtotal = round($invoice->amount / (1 + ($totalTaxPercent / 100)));
+    if ($taxPpn > 0) {
+        $subtotal = round($invoice->amount / (1 + ($taxPpn / 100)));
         $taxAmount = $invoice->amount - $subtotal;
     }
 @endphp
@@ -117,7 +113,7 @@
                 </tr>
                 @if($taxAmount > 0)
                 <tr>
-                    <td>PPN & Pajak ({{ $totalTaxPercent }}%)</td>
+                    <td>PPN ({{ $taxPpn }}%)</td>
                     <td class="right">Rp {{ number_format($taxAmount, 0, ',', '.') }}</td>
                 </tr>
                 @endif

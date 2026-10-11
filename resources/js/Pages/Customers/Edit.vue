@@ -224,35 +224,19 @@
                                                 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' 
                                                 : 'bg-gray-100 text-gray-500 border-gray-200'"
                                         >
-                                            {{ form.enable_tax ? 'Pajak Aktif' : 'Bebas Pajak (Nonaktif)' }}
+                                            {{ form.enable_tax ? 'PPN Aktif (' + (form.tax_ppn || 11) + '%)' : 'Bebas PPN (Nonaktif)' }}
                                         </span>
                                     </div>
-                                    <div v-if="form.enable_tax" class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-                                        <div>
-                                            <label class="block text-[10px] font-bold text-gray-500 mb-1">PPN (%)</label>
-                                            <div class="relative">
-                                                <input v-model="form.tax_ppn" type="number" step="0.01" class="w-full pr-8 pl-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all" placeholder="11" />
-                                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="block text-[10px] font-bold text-gray-500 mb-1">BHP (%)</label>
-                                            <div class="relative">
-                                                <input v-model="form.tax_bhp" type="number" step="0.01" class="w-full pr-8 pl-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all" placeholder="0" />
-                                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="block text-[10px] font-bold text-gray-500 mb-1">USO (%)</label>
-                                            <div class="relative">
-                                                <input v-model="form.tax_uso" type="number" step="0.01" class="w-full pr-8 pl-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all" placeholder="0" />
-                                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                                            </div>
+                                    <div v-if="form.enable_tax" class="max-w-xs pt-1">
+                                        <label class="block text-[10px] font-bold text-gray-500 mb-1">PPN (%)</label>
+                                        <div class="relative">
+                                            <input v-model="form.tax_ppn" type="number" step="0.01" class="w-full pr-8 pl-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all font-semibold" placeholder="11" />
+                                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                                         </div>
                                     </div>
                                     <div v-else class="text-xs text-gray-500 flex items-center gap-1.5 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
                                         <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                        <span>Pelanggan ini bebas pajak (tagihan tanpa PPN, BHP, atau USO).</span>
+                                        <span>Pelanggan ini bebas pajak (tagihan tanpa PPN / 0%).</span>
                                     </div>
                                 </div>
 
