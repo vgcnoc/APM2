@@ -1325,6 +1325,7 @@ class CustomerController extends Controller
 
             // Update status jadwal teknisi ke done jika ada
             $schedules = $customer->technicianSchedules()->where('type', 'installation')->whereIn('status', ['scheduled', 'done'])->get();
+            $usageDetails = [];
             
             // Restore previous usage from old notes if this is an edit to prevent double-deduction
             $oldUsages = [];
@@ -1368,7 +1369,7 @@ class CustomerController extends Controller
                 }
             }
 
-                // Handle material usage
+            // Handle material usage
             if ($request->has('materials_returned') && is_array($request->materials_returned)) {
                 $items = $request->materials_returned;
                 $usedItems = [];
@@ -1393,7 +1394,14 @@ class CustomerController extends Controller
                     }
 
                     if ($material) {
-                        $unitStr = str_contains($nameLower, 'kabel') ? 'meter' : 'pcs';
+                        $unitStr = 'pcs';
+                        if (str_contains($nameLower, 'kabel') || str_contains($nameLower, 'meter')) {
+                            $unitStr = 'meter';
+                        } elseif (str_contains($nameLower, 'cm')) {
+                            $unitStr = 'cm';
+                        } elseif (preg_match('/\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)/', $item['name'], $uMatches)) {
+                            $unitStr = $uMatches[2];
+                        }
                         
                         // 1. Catat pemakaian asli (Instalasi)
                         if ($usedQty > 0) {
@@ -1528,12 +1536,41 @@ class CustomerController extends Controller
             foreach ($schedules as $schedule) {
                 $newNotes = $schedule->notes;
                 if (count($usageDetails) > 0) {
-                    // Remove old Material lines
                     $lines = explode("\n", $newNotes);
+                    
+                    // Ambil daftar material yang sudah tercatat sebelumnya agar tidak hilang jika tidak diubah
+                    $existingMaterials = [];
+                    foreach ($lines as $line) {
+                        if (str_starts_with(trim($line), 'Material:')) {
+                            $mats = explode(',', str_replace('Material:', '', $line));
+                            foreach ($mats as $m) {
+                                $m = trim($m);
+                                if ($m) $existingMaterials[] = $m;
+                            }
+                        }
+                    }
+
+                    $finalMaterials = $usageDetails;
+                    foreach ($existingMaterials as $oldMat) {
+                        $oldBase = trim(preg_replace('/\s*\(.*?\)/', '', $oldMat));
+                        $existsInFinal = false;
+                        foreach ($finalMaterials as $finMat) {
+                            $finBase = trim(preg_replace('/\s*\(.*?\)/', '', $finMat));
+                            if (stripos($finBase, $oldBase) !== false || stripos($oldBase, $finBase) !== false) {
+                                $existsInFinal = true;
+                                break;
+                            }
+                        }
+                        if (!$existsInFinal) {
+                            $finalMaterials[] = $oldMat;
+                        }
+                    }
+
+                    // Remove old Material lines
                     $lines = array_filter($lines, function($line) {
                         return !str_starts_with(trim($line), 'Material:');
                     });
-                    $lines[] = "Material: " . implode(', ', $usageDetails);
+                    $lines[] = "Material: " . implode(', ', $finalMaterials);
                     $newNotes = implode("\n", $lines);
                 }
                 $schedule->update([

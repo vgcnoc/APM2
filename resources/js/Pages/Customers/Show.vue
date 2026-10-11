@@ -1508,7 +1508,12 @@ function openInstallModal(item) {
     }
     installModalItem.value = item;
     installModalIsBroken.value = false;
-    installModalQty.value = 0;
+    
+    // Auto prefill default quantity from item.name (e.g. "Klem (50 pcs)" -> 50, "Kabel Frecon 150m (150 meter)" -> 150)
+    const match = item.name.match(/\((\d+(?:\.\d+)?)\s/);
+    const defaultQty = match ? parseFloat(match[1]) : 1;
+    installModalQty.value = item.actual_qty !== undefined ? item.actual_qty : defaultQty;
+    
     showInstallModal.value = true;
 }
 
@@ -1523,7 +1528,7 @@ function confirmInstall() {
     }
 
     if (item.type === 'Material') {
-        item.actual_qty = installModalQty.value;
+        item.actual_qty = parseFloat(installModalQty.value) || 0;
     }
 
     toggleInstallItem(item);
@@ -1817,58 +1822,60 @@ function setNow(field) {
 }
 
 function submitOnt() {
-    // Collect used materials
-    ontForm.materials_used = hardwareItems.value
-        .filter(item => item.type === 'Material' && item.isInstalled && item.actual_qty && item.actual_qty > 0)
-        .map(item => ({
-            name: item.name,
-            actual_qty: item.actual_qty
-        }));
-
-    // Auto-calculate returned (excess) materials to go back to Gudang Utama
-    const excessItems = [];
+    // Kumpulkan seluruh data pemakaian & sisa material yang ditugaskan
+    const materialPayload = [];
     hardwareItems.value.forEach(item => {
-        if (item.type === 'Material' && item.isInstalled) {
-            if (item.returned_qty && parseFloat(item.returned_qty) > 0) {
-                // If user explicitly inputted returned_qty (e.g. for Kabel)
-                const match = item.name.match(/\((\d+(?:\.\d+)?)\s/);
-                const originalQty = match ? parseFloat(match[1]) : parseFloat(item.returned_qty);
-                const actualQty = parseFloat(item.actual_qty) || (originalQty - parseFloat(item.returned_qty));
-                
-                excessItems.push({
-                    name: item.name,
-                    returned_qty: parseFloat(item.returned_qty),
-                    assigned_qty: originalQty,
-                    used_qty: actualQty
-                });
-            } else if (item.actual_qty !== undefined) {
-                // Auto-calculate for other materials based on actual_qty vs original qty
-                // Find original qty, example format: "Klem (10 pcs)" -> match "10"
-                const match = item.name.match(/\((\d+(?:\.\d+)?)\s/);
-                if (match) {
-                    const originalQty = parseFloat(match[1]);
-                    const actualQty = parseFloat(item.actual_qty) || 0;
-                    if (originalQty > actualQty) {
-                        excessItems.push({
-                            name: item.name,
-                            returned_qty: originalQty - actualQty,
-                            assigned_qty: originalQty,
-                            used_qty: actualQty
-                        });
-                    }
+        if (item.type === 'Material') {
+            const match = item.name.match(/\((\d+(?:\.\d+)?)\s/);
+            const originalQty = match ? parseFloat(match[1]) : 0;
+            
+            let usedQty = 0;
+            let returnedQty = 0;
+            
+            if (item.isInstalled) {
+                if (item.actual_qty !== undefined && item.actual_qty !== null) {
+                    usedQty = parseFloat(item.actual_qty);
+                } else if (item.returned_qty !== undefined && item.returned_qty !== null) {
+                    usedQty = Math.max(0, originalQty - parseFloat(item.returned_qty));
+                } else {
+                    // Jika dipasang tanpa edit jumlah, default terpakai semua
+                    usedQty = originalQty;
                 }
+                returnedQty = Math.max(0, originalQty - usedQty);
+            } else {
+                // Tidak dipasang sama sekali -> terpakai 0, dikembalikan semua
+                usedQty = 0;
+                returnedQty = originalQty;
             }
+            
+            materialPayload.push({
+                name: item.name,
+                assigned_qty: originalQty,
+                used_qty: usedQty,
+                returned_qty: returnedQty,
+                is_installed: item.isInstalled
+            });
         }
     });
-    ontForm.materials_returned = excessItems;
+
+    // materials_returned berisi seluruh material untuk diproses oleh backend (pemakaian & retur sisa)
+    ontForm.materials_returned = materialPayload;
+
+    // Collect used materials
+    ontForm.materials_used = materialPayload
+        .filter(i => i.is_installed && i.used_qty > 0)
+        .map(i => ({
+            name: i.name,
+            actual_qty: i.used_qty
+        }));
 
     // Collect material usage for updating schedule notes
-    ontForm.material_usage = hardwareItems.value
-        .filter(item => item.type === 'Material' && item.actual_qty !== undefined && item.actual_qty !== null)
-        .map(item => ({
-            name: item.name,
-            type: item.type,
-            actual_qty: item.actual_qty
+    ontForm.material_usage = materialPayload
+        .filter(i => i.is_installed && i.used_qty > 0)
+        .map(i => ({
+            name: i.name,
+            type: 'Material',
+            actual_qty: i.used_qty
         }));
         
     ontForm.post(`/customers/${props.customer.id}/assign-ont`, {
