@@ -2165,6 +2165,50 @@ const formatDateShort = (d) => {
     }
 };
 
+const showActivationModal = ref(false);
+
+const custPpn = props.customer?.tax_ppn !== null && props.customer?.tax_ppn !== undefined ? Number(props.customer.tax_ppn) : null;
+const globalPpn = Number(usePage().props.billingSettings?.tax_ppn || usePage().props.taxSettings?.tax_ppn || 11);
+
+let initialTaxEnabled = true;
+if (custPpn !== null && custPpn === 0) {
+    initialTaxEnabled = false;
+} else if (custPpn !== null && custPpn > 0) {
+    initialTaxEnabled = true;
+} else {
+    initialTaxEnabled = (globalPpn > 0);
+}
+
+const activationForm = useForm({
+    activation_date: new Date().toISOString().split('T')[0],
+    billing_type: (props.customer?.billing_type === 'pascabayar' || (usePage().props.billingSettings?.billing_type === 'pascabayar' && !props.customer?.billing_type)) ? 'pascabayar' : 'prabayar',
+    is_prorata: usePage().props.billingSettings?.prorata_first_month !== false,
+    service_status: props.customer?.service_status === 'gratis' ? 'gratis' : 'berbayar',
+    enable_tax: initialTaxEnabled,
+    pppoe_user: props.customer?.ont?.pppoe_user || '',
+    pppoe_password: props.customer?.ont?.pppoe_password || '',
+    vlan_mode: props.customer?.ont?.vlan_mode || '',
+    vlan_id: props.customer?.ont?.vlan_id || '',
+    access_mode: props.customer?.ont?.access_mode || 'PPPOE',
+    free_hotspot: props.customer?.ont?.free_hotspot || false,
+    hotspot_user: props.customer?.ont?.hotspot_user || '',
+    hotspot_password: props.customer?.ont?.hotspot_password || '',
+    hotspot_vlan_id: props.customer?.ont?.hotspot_vlan_id || '',
+    ip_login: props.customer?.ont?.ip_login || '192.168.1.1',
+    login_user: props.customer?.ont?.login_user || 'admin',
+    login_password: props.customer?.ont?.login_password || 'admin',
+    notes: '',
+    tax_ppn: custPpn !== null ? custPpn : (globalPpn || 11),
+    tax_bhp: 0,
+    tax_uso: 0,
+});
+
+watch(() => activationForm.enable_tax, (val) => {
+    if (val && !activationForm.tax_ppn) {
+        activationForm.tax_ppn = globalPpn || 11;
+    }
+});
+
 const invoiceSimulation = computed(() => {
     const cust = props.customer;
     if (!cust) return null;
@@ -2298,8 +2342,8 @@ const invoiceSimulation = computed(() => {
         periodText,
         dueDate: dueDate ? formatDateShort(dueDate) : null,
         taxPpn,
-        taxBhp,
-        taxUso,
+        taxBhp: 0,
+        taxUso: 0,
         totalTaxPercent,
         taxBreakdownText,
         taxAmount,
@@ -2308,50 +2352,6 @@ const invoiceSimulation = computed(() => {
         nextBillingMonthName,
         nextMonthNormalTotal,
     };
-});
-
-const showActivationModal = ref(false);
-
-const custPpn = props.customer?.tax_ppn !== null && props.customer?.tax_ppn !== undefined ? Number(props.customer.tax_ppn) : null;
-const globalPpn = Number(usePage().props.billingSettings?.tax_ppn || usePage().props.taxSettings?.tax_ppn || 11);
-
-let initialTaxEnabled = true;
-if (custPpn !== null && custPpn === 0) {
-    initialTaxEnabled = false;
-} else if (custPpn !== null && custPpn > 0) {
-    initialTaxEnabled = true;
-} else {
-    initialTaxEnabled = (globalPpn > 0);
-}
-
-const activationForm = useForm({
-    activation_date: new Date().toISOString().split('T')[0],
-    billing_type: (props.customer?.billing_type === 'pascabayar' || (usePage().props.billingSettings?.billing_type === 'pascabayar' && !props.customer?.billing_type)) ? 'pascabayar' : 'prabayar',
-    is_prorata: usePage().props.billingSettings?.prorata_first_month !== false,
-    service_status: props.customer?.service_status === 'gratis' ? 'gratis' : 'berbayar',
-    enable_tax: initialTaxEnabled,
-    pppoe_user: props.customer?.ont?.pppoe_user || '',
-    pppoe_password: props.customer?.ont?.pppoe_password || '',
-    vlan_mode: props.customer?.ont?.vlan_mode || '',
-    vlan_id: props.customer?.ont?.vlan_id || '',
-    access_mode: props.customer?.ont?.access_mode || 'PPPOE',
-    free_hotspot: props.customer?.ont?.free_hotspot || false,
-    hotspot_user: props.customer?.ont?.hotspot_user || '',
-    hotspot_password: props.customer?.ont?.hotspot_password || '',
-    hotspot_vlan_id: props.customer?.ont?.hotspot_vlan_id || '',
-    ip_login: props.customer?.ont?.ip_login || '192.168.1.1',
-    login_user: props.customer?.ont?.login_user || 'admin',
-    login_password: props.customer?.ont?.login_password || 'admin',
-    notes: '',
-    tax_ppn: custPpn !== null ? custPpn : (globalPpn || 11),
-    tax_bhp: 0,
-    tax_uso: 0,
-});
-
-watch(() => activationForm.enable_tax, (val) => {
-    if (val && !activationForm.tax_ppn) {
-        activationForm.tax_ppn = globalPpn || 11;
-    }
 });
 
 const isSavingOnt = ref(false);

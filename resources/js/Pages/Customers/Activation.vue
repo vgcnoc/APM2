@@ -881,7 +881,7 @@ function submitAssign() {
 }
 
 const defaultBillingType = computed(() => {
-    const t = usePage().props.billingSettings?.billing_type;
+    const t = page.props.billingSettings?.billing_type;
     return (t === 'pascabayar') ? 'pascabayar' : 'prabayar';
 });
 
@@ -904,6 +904,37 @@ const formatDateShort = (d) => {
     }
 };
 
+const showActivationModal = ref(false);
+const activationForm = useForm({
+    activation_date: '',
+    billing_type: 'prabayar',
+    is_prorata: true,
+    service_status: 'berbayar',
+    enable_tax: true,
+    pppoe_user: '',
+    pppoe_password: '',
+    vlan_mode: '',
+    vlan_id: '',
+    access_mode: 'PPPOE',
+    ip_login: '192.168.1.1',
+    login_user: 'admin',
+    login_password: 'admin',
+    notes: '',
+    free_hotspot: false,
+    hotspot_user: '',
+    hotspot_password: '',
+    hotspot_vlan_id: '',
+    tax_ppn: 11,
+    tax_bhp: 0,
+    tax_uso: 0,
+});
+
+watch(() => activationForm.enable_tax, (val) => {
+    if (val && !activationForm.tax_ppn) {
+        activationForm.tax_ppn = page.props.taxSettings?.tax_ppn || 11;
+    }
+});
+
 const invoiceSimulation = computed(() => {
     const cust = activeCustomer.value;
     if (!cust) return null;
@@ -913,7 +944,7 @@ const invoiceSimulation = computed(() => {
     const bType = activationForm.billing_type || 'prabayar';
     const isProrataChecked = bType === 'pascabayar' && Boolean(activationForm.is_prorata);
 
-    const bSettings = usePage().props.billingSettings || {};
+    const bSettings = page.props.billingSettings || {};
     const issueDateSetting = Math.max(1, Math.min(28, Number(bSettings.invoice_issue_date || 1)));
     const isolateDays = Number(bSettings.isolate_days || 3);
     const prorataFormula = bSettings.prorata_formula || 'exact_days';
@@ -1037,8 +1068,8 @@ const invoiceSimulation = computed(() => {
         periodText,
         dueDate: dueDate ? formatDateShort(dueDate) : null,
         taxPpn,
-        taxBhp,
-        taxUso,
+        taxBhp: 0,
+        taxUso: 0,
         totalTaxPercent,
         taxBreakdownText,
         taxAmount,
@@ -1049,37 +1080,6 @@ const invoiceSimulation = computed(() => {
     };
 });
 
-const showActivationModal = ref(false);
-const activationForm = useForm({
-    activation_date: '',
-    billing_type: 'prabayar',
-    is_prorata: true,
-    service_status: 'berbayar',
-    enable_tax: true,
-    pppoe_user: '',
-    pppoe_password: '',
-    vlan_mode: '',
-    vlan_id: '',
-    access_mode: 'PPPOE',
-    ip_login: '192.168.1.1',
-    login_user: 'admin',
-    login_password: 'admin',
-    notes: '',
-    free_hotspot: false,
-    hotspot_user: '',
-    hotspot_password: '',
-    hotspot_vlan_id: '',
-    tax_ppn: 11,
-    tax_bhp: 0,
-    tax_uso: 0,
-});
-
-watch(() => activationForm.enable_tax, (val) => {
-    if (val && !activationForm.tax_ppn) {
-        activationForm.tax_ppn = usePage().props.taxSettings?.tax_ppn || 11;
-    }
-});
-
 function openActivationModal(customer) {
     activeCustomer.value = customer;
     activationForm.reset();
@@ -1087,7 +1087,7 @@ function openActivationModal(customer) {
     let bType = customer.billing_type || defaultBillingType.value;
     if (bType !== 'pascabayar') bType = 'prabayar';
     activationForm.billing_type = bType;
-    activationForm.is_prorata = usePage().props.billingSettings?.prorata_first_month !== false;
+    activationForm.is_prorata = page.props.billingSettings?.prorata_first_month !== false;
     activationForm.service_status = customer.service_status === 'gratis' ? 'gratis' : 'berbayar';
     activationForm.pppoe_user = customer.ont?.pppoe_user || '';
     activationForm.pppoe_password = customer.ont?.pppoe_password || '';
@@ -1105,7 +1105,7 @@ function openActivationModal(customer) {
     
     // Default to customer's saved PPN or global tax settings (default 11%)
     const custPpn = customer.tax_ppn !== null && customer.tax_ppn !== undefined ? Number(customer.tax_ppn) : null;
-    const globalPpn = Number(usePage().props.taxSettings?.tax_ppn || 11);
+    const globalPpn = Number(page.props.taxSettings?.tax_ppn || 11);
 
     if (custPpn !== null && custPpn === 0) {
         activationForm.enable_tax = false;
