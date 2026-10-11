@@ -29,11 +29,14 @@ class VoucherProfile extends Model
     ];
 
     /**
-     * Harga beli / potong saldo reseller per voucher (Harga Jual).
+     * Harga modal / beli reseller (Harga Jual - Reseller Margin).
+     * Contoh: Harga Jual Rp 3.000, Margin Rp 1.000 -> Modal Rp 2.000.
      */
     public function getResellerBuyPriceAttribute(): float
     {
-        return (float) $this->price;
+        $sellPrice = (float) $this->price;
+        $margin = (float) ($this->fee_reseller ?? 0);
+        return max(0, $sellPrice - $margin);
     }
 
     /**

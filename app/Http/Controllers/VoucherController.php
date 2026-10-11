@@ -368,7 +368,8 @@ class VoucherController extends Controller
         $reseller = null;
         if (!empty($validated['reseller_id'])) {
             $reseller = \App\Models\Reseller::find($validated['reseller_id']);
-            $totalPrice = $profile->price * $validated['amount'];
+            $costPerVoucher = max(0, (float)$profile->price - (float)($profile->fee_reseller ?? 0));
+            $totalPrice = $costPerVoucher * $validated['amount'];
             
             if ($reseller->balance < $totalPrice) {
                 return redirect()->back()->withErrors(['reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($totalPrice, 0, ',', '.') . ', Saldo: Rp ' . number_format($reseller->balance, 0, ',', '.') . ').'])->withInput();
@@ -383,7 +384,7 @@ class VoucherController extends Controller
                 'reseller_id' => $reseller->id,
                 'type' => 'debit',
                 'amount' => $totalPrice,
-                'description' => 'Pembelian ' . $validated['amount'] . ' Voucher ' . $profile->name,
+                'description' => "Pembelian {$validated['amount']} Voucher {$profile->name} (Modal: Rp " . number_format($costPerVoucher, 0, ',', '.') . "/voucher, Margin: Rp " . number_format($profile->fee_reseller ?? 0, 0, ',', '.') . "/voucher)",
                 'reference_id' => 'VOUCHER-GEN',
             ]);
         }

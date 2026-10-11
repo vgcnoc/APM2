@@ -136,21 +136,29 @@
                                 <!-- Preview Total -->
                                 <div v-if="selectedProfile" class="mt-4 p-5 bg-gradient-to-br from-indigo-50/50 to-blue-50/50 rounded-2xl border border-indigo-100/50 space-y-3">
                                     <div class="flex justify-between items-center text-sm">
-                                        <span class="text-indigo-900/60 font-bold uppercase tracking-wider text-xs">Harga Voucher</span>
+                                        <span class="text-indigo-900/60 font-bold uppercase tracking-wider text-xs">Harga Jual (User)</span>
                                         <span class="font-bold text-gray-800">Rp {{ Number(selectedProfile.price).toLocaleString('id-ID') }}</span>
                                     </div>
                                     <div class="flex justify-between items-center text-sm">
-                                        <span class="text-indigo-900/60 font-bold uppercase tracking-wider text-xs">Jumlah Diminta</span>
-                                        <span class="font-bold text-indigo-700">{{ form.qty || 0 }} voucher</span>
+                                        <span class="text-indigo-900/60 font-bold uppercase tracking-wider text-xs">Keuntungan Reseller</span>
+                                        <span class="font-bold text-emerald-600">+Rp {{ Number(selectedProfile.fee_reseller || 0).toLocaleString('id-ID') }}/voucher</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-indigo-900/60 font-bold uppercase tracking-wider text-xs">Harga Modal Beli</span>
+                                        <span class="font-bold text-indigo-700">Rp {{ Number(getCostPerVoucher(selectedProfile)).toLocaleString('id-ID') }}/voucher</span>
                                     </div>
                                     <div class="h-px bg-indigo-100/60 w-full my-2"></div>
                                     <div class="flex justify-between items-center text-lg">
-                                        <span class="text-indigo-900 font-black">Total Potong Saldo</span>
-                                        <span class="font-black text-indigo-600 bg-indigo-100/50 px-3 py-1 rounded-lg">Rp {{ Number(selectedProfile.price * (form.qty || 0)).toLocaleString('id-ID') }}</span>
+                                        <span class="text-indigo-900 font-black">Total Potong Saldo Modal</span>
+                                        <span class="font-black text-indigo-600 bg-indigo-100/50 px-3 py-1 rounded-lg">Rp {{ Number(getTotalCost(selectedProfile, form.qty)).toLocaleString('id-ID') }}</span>
                                     </div>
-                                    <div v-if="(selectedProfile.price * (form.qty || 0)) > reseller.balance" class="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-bold mt-3 flex items-start gap-2 border border-red-100 leading-snug">
+                                    <div class="flex justify-between items-center text-xs text-emerald-700 font-bold bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                                        <span>Estimasi Keuntungan Anda</span>
+                                        <span>Rp {{ Number(getTotalProfit(selectedProfile, form.qty)).toLocaleString('id-ID') }}</span>
+                                    </div>
+                                    <div v-if="getTotalCost(selectedProfile, form.qty) > reseller.balance" class="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-bold mt-3 flex items-start gap-2 border border-red-100 leading-snug">
                                         <svg class="w-5 h-5 shrink-0 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                        <span>Saldo Anda tidak mencukupi! Butuh Rp {{ Number(selectedProfile.price * (form.qty || 0)).toLocaleString('id-ID') }} (Saldo Anda: Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }})</span>
+                                        <span>Saldo Anda tidak mencukupi! Butuh modal Rp {{ Number(getTotalCost(selectedProfile, form.qty)).toLocaleString('id-ID') }} (Saldo Anda: Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }})</span>
                                     </div>
                                 </div>
                             </div>
@@ -158,7 +166,7 @@
                             <button 
                                 type="submit" 
                                 class="w-full py-4 bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 bg-[length:200%_auto] hover:bg-[position:right_center] text-white rounded-2xl font-black text-lg transition-all duration-300 shadow-[0_10px_20px_rgba(79,_70,_229,_0.3)] disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-1 mt-auto flex justify-center items-center gap-2"
-                                :disabled="form.processing || !form.profile_id || !form.qty || ((selectedProfile?.price * form.qty) > reseller.balance)"
+                                :disabled="form.processing || !form.profile_id || !form.qty || (getTotalCost(selectedProfile, form.qty) > reseller.balance)"
                             >
                                 <svg v-if="form.processing" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 {{ form.processing ? 'Memproses...' : 'Generate Sekarang' }}
@@ -304,6 +312,21 @@ const selectedProfile = computed(() => {
     if (!form.profile_id) return null;
     return props.profiles.find(p => p.id === form.profile_id);
 });
+
+const getCostPerVoucher = (profile) => {
+    if (!profile) return 0;
+    const price = Number(profile.price || 0);
+    const fee = Number(profile.fee_reseller || 0);
+    return Math.max(0, price - fee);
+};
+
+const getTotalCost = (profile, qty) => {
+    return getCostPerVoucher(profile) * Number(qty || 0);
+};
+
+const getTotalProfit = (profile, qty) => {
+    return Number(profile?.fee_reseller || 0) * Number(qty || 0);
+};
 
 const isAllSelected = computed(() => {
     return props.vouchers.data.length > 0 && selectedVouchers.value.length === props.vouchers.data.length;
