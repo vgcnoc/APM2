@@ -321,6 +321,8 @@ class InvoiceController extends Controller
             'logo' => \App\Models\Setting::get('company_logo', null),
         ];
 
-        return view('print.invoice', compact('invoice', 'company'));
+        $banks = json_decode(\App\Models\Setting::get('payment_banks', '[]'), true) ?: [];
+
+        return view('print.invoice', compact('invoice', 'company', 'banks'));
     }
 }

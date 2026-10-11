@@ -24,7 +24,17 @@
         .items-table th { background-color: #f9fafb; border-bottom: 2px solid #e5e7eb; text-align: left; padding: 12px; color: #374151; font-weight: bold; }
         .items-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; color: #4b5563; }
         .items-table th.right, .items-table td.right { text-align: right; }
-        .total-section { display: flex; justify-content: flex-end; }
+        .total-section { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+        .payment-info { flex: 1; max-width: 420px; }
+        .payment-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .payment-title { font-size: 11px; font-weight: bold; color: #4b5563; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 10px 0; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+        .bank-list { display: flex; flex-direction: column; gap: 8px; }
+        .bank-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e5e7eb; }
+        .bank-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .bank-name { font-weight: bold; color: #4f46e5; font-size: 13px; }
+        .bank-holder { font-size: 11px; color: #6b7280; margin-top: 2px; }
+        .bank-account { font-family: Consolas, 'Courier New', Courier, monospace; font-size: 14px; font-weight: bold; color: #111827; letter-spacing: 0.5px; text-align: right; }
+        .payment-note { margin: 10px 0 0 0; font-size: 11px; color: #6b7280; line-height: 1.4; border-top: 1px dashed #e5e7eb; padding-top: 8px; }
         .total-table { width: 300px; border-collapse: collapse; }
         .total-table td { padding: 8px 12px; color: #4b5563; }
         .total-table td.right { text-align: right; }
@@ -85,6 +95,9 @@
                     <th>Deskripsi Layanan</th>
                     <th>Periode</th>
                     <th class="right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
 @php
     $taxPpn = (float) ($invoice->customer->tax_ppn ?? \App\Models\Setting::get('tax_ppn', '0'));
     
@@ -96,6 +109,8 @@
         $subtotal = round($invoice->amount / (1 + ($taxPpn / 100)));
         $taxAmount = $invoice->amount - $subtotal;
     }
+
+    $banks = $banks ?? (json_decode(\App\Models\Setting::get('payment_banks', '[]'), true) ?: []);
 @endphp
                 <tr>
                     <td>Tagihan Layanan Internet {{ $invoice->customer->package ? $invoice->customer->package->name : '' }}</td>
@@ -106,6 +121,28 @@
         </table>
 
         <div class="total-section">
+            <div class="payment-info">
+                <div class="payment-box">
+                    <div class="payment-title">Informasi Pembayaran / No. Rekening</div>
+                    @if(!empty($banks) && count($banks) > 0)
+                        <div class="bank-list">
+                            @foreach($banks as $b)
+                                <div class="bank-item">
+                                    <div>
+                                        <div class="bank-name">{{ $b['bank_name'] ?? '-' }}</div>
+                                        <div class="bank-holder">a.n. {{ $b['account_name'] ?? '-' }}</div>
+                                    </div>
+                                    <div class="bank-account">{{ $b['account_number'] ?? '-' }}</div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p style="margin: 0; font-size: 11px; color: #6b7280;">Silakan hubungi admin untuk informasi rekening pembayaran.</p>
+                    @endif
+                    <p class="payment-note">* Sertakan No. Tagihan <strong>{{ $invoice->invoice_number }}</strong> saat melakukan transfer.</p>
+                </div>
+            </div>
+
             <table class="total-table">
                 <tr>
                     <td>Subtotal</td>
