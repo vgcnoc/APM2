@@ -94,20 +94,22 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <div class="space-y-2">
+                                        <div class="space-y-1.5">
                                             <div v-for="item in trx.items" :key="item.id" class="flex items-center gap-2 text-sm">
-                                                <div :class="['w-1.5 h-1.5 rounded-full', trx.type === 'out' ? 'bg-rose-500' : 'bg-emerald-500']"></div>
+                                                <div :class="['w-1.5 h-1.5 rounded-full shrink-0', trx.type === 'out' ? 'bg-rose-500' : 'bg-emerald-500']"></div>
                                                 <span class="font-medium text-gray-900">{{ item.material ? item.material.name : 'Unknown' }}</span>
-                                                <span class="text-gray-400">&mdash;</span>
-                                                <span :class="['font-bold', trx.type === 'out' ? 'text-rose-600' : 'text-emerald-600']">
-                                                    {{ trx.type === 'out' ? '-' : '+' }}{{ item.quantity }} {{ item.material ? item.material.unit : '' }}
-                                                </span>
+                                                <span v-if="item.condition" class="text-xs text-gray-400">({{ item.condition }})</span>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-center">
-                                        <div class="text-sm font-black text-gray-900">
-                                            {{ trx.items.reduce((sum, item) => sum + Number(item.quantity), 0) }}
+                                        <div class="flex flex-col gap-1.5 items-center">
+                                            <div v-for="tot in getTransactionTotals(trx)" :key="tot.id" 
+                                                 :class="['text-xs font-bold px-2.5 py-1 rounded-lg w-fit whitespace-nowrap border flex items-center gap-1.5 shadow-sm', 
+                                                          trx.type === 'out' ? 'bg-rose-50 text-rose-700 border-rose-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100']">
+                                                <span class="text-gray-700 font-semibold">{{ tot.name }}:</span>
+                                                <span>{{ trx.type === 'out' ? '-' : '+' }}{{ formatQty(tot.quantity) }} {{ tot.unit }}</span>
+                                            </div>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -302,6 +304,35 @@ const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+};
+
+const formatQty = (qty) => {
+    if (qty === null || qty === undefined) return '0';
+    const num = Math.abs(Number(qty));
+    if (isNaN(num)) return qty;
+    return num % 1 === 0 
+        ? num.toLocaleString('id-ID') 
+        : num.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+};
+
+const getTransactionTotals = (trx) => {
+    if (!trx.items || !trx.items.length) return [];
+    const grouped = {};
+    trx.items.forEach(item => {
+        const key = item.material_id || item.id;
+        const name = item.material ? item.material.name : 'Unknown';
+        const unit = item.unit || (item.material ? item.material.unit : '');
+        if (!grouped[key]) {
+            grouped[key] = {
+                id: key,
+                name: name,
+                quantity: 0,
+                unit: unit
+            };
+        }
+        grouped[key].quantity += Math.abs(Number(item.quantity) || 0);
+    });
+    return Object.values(grouped);
 };
 
 const openModal = (type) => {
