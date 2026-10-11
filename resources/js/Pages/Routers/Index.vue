@@ -138,7 +138,7 @@
                                 <div>
                                     <div class="flex items-center justify-between mb-2">
                                         <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                            Area / Wilayah Coverage
+                                            Area / Kelompok Wilayah
                                         </label>
                                         <button 
                                             type="button" 
@@ -153,12 +153,12 @@
                                     <!-- Mode 1: Pilih dari daftar area -->
                                     <div v-if="!isCustomArea">
                                         <select v-model="form.area_id" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                            <option :value="null">-- Pilih Area / Wilayah --</option>
+                                            <option :value="null">-- Pilih Area / Kelompok --</option>
                                             <option v-for="area in areas" :key="area.id" :value="area.id">
                                                 📍 {{ area.name }}
                                             </option>
                                         </select>
-                                        <p class="text-xs text-gray-500 mt-1">Pilih area jaringan / coverage dari router ini atau klik "+ Buat Area Baru".</p>
+                                        <p class="text-xs text-gray-400 mt-1">Catatan pengelompokan wilayah router (opsional, tidak membatasi/mempengaruhi koneksi pelanggan).</p>
                                     </div>
 
                                     <!-- Mode 2: Ketik nama area baru -->
@@ -174,7 +174,7 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                             </svg>
                                         </div>
-                                        <p class="text-xs text-indigo-600 font-medium">Area baru ini akan otomatis dibuat di master data dan dihubungkan ke Router ini.</p>
+                                        <p class="text-xs text-indigo-600 font-medium">Area baru ini akan disimpan sebagai label kelompok wilayah router.</p>
                                     </div>
                                     <p v-if="form.errors.area_id" class="text-red-500 text-xs mt-1">{{ form.errors.area_id }}</p>
                                     <p v-if="form.errors.new_area_name" class="text-red-500 text-xs mt-1">{{ form.errors.new_area_name }}</p>
