@@ -205,9 +205,29 @@
                                     </div>
                                 </div>
                                 
-                                <div class="md:col-span-2 pt-2 border-t border-gray-100">
-                                    <h5 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Pengaturan Pajak / Pungutan</h5>
-                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div class="md:col-span-2 pt-2 border-t border-gray-100 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <label for="edit_enable_tax" class="flex items-center gap-2 cursor-pointer select-none">
+                                            <input 
+                                                type="checkbox" 
+                                                id="edit_enable_tax" 
+                                                v-model="form.enable_tax" 
+                                                class="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500 h-4 w-4 cursor-pointer" 
+                                            />
+                                            <span class="text-[11px] font-bold text-gray-700 uppercase tracking-wider">
+                                                Pengaturan Pajak Pelanggan
+                                            </span>
+                                        </label>
+                                        <span 
+                                            class="text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all"
+                                            :class="form.enable_tax 
+                                                ? 'bg-yellow-100 text-yellow-800 border-yellow-200' 
+                                                : 'bg-gray-100 text-gray-500 border-gray-200'"
+                                        >
+                                            {{ form.enable_tax ? 'Pajak Aktif' : 'Bebas Pajak (Nonaktif)' }}
+                                        </span>
+                                    </div>
+                                    <div v-if="form.enable_tax" class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
                                         <div>
                                             <label class="block text-[10px] font-bold text-gray-500 mb-1">PPN (%)</label>
                                             <div class="relative">
@@ -229,6 +249,10 @@
                                                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                                             </div>
                                         </div>
+                                    </div>
+                                    <div v-else class="text-xs text-gray-500 flex items-center gap-1.5 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                                        <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        <span>Pelanggan ini bebas pajak (tagihan tanpa PPN, BHP, atau USO).</span>
                                     </div>
                                 </div>
 
@@ -451,6 +475,9 @@ const form = useForm({
     notes: props.customer.notes || '',
     is_reseller: props.customer.is_reseller == 1 ? true : false,
     service_status: props.customer.service_status || 'berbayar',
+    enable_tax: (props.customer.tax_ppn !== null && props.customer.tax_ppn !== undefined)
+        ? (Number(props.customer.tax_ppn) > 0 || Number(props.customer.tax_bhp) > 0 || Number(props.customer.tax_uso) > 0)
+        : false,
     tax_ppn: props.customer.tax_ppn,
     tax_bhp: props.customer.tax_bhp,
     tax_uso: props.customer.tax_uso,

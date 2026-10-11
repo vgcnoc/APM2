@@ -1057,10 +1057,17 @@ class CustomerController extends Controller
             'billing_type' => 'nullable|in:prabayar,pascabayar',
             'is_reseller' => 'boolean',
             'service_status' => 'nullable|in:berbayar,gratis',
+            'enable_tax' => 'nullable|boolean',
             'tax_ppn' => 'nullable|numeric|min:0|max:100',
             'tax_bhp' => 'nullable|numeric|min:0|max:100',
             'tax_uso' => 'nullable|numeric|min:0|max:100',
         ]);
+
+        if ($request->has('enable_tax') && !$request->boolean('enable_tax')) {
+            $validated['tax_ppn'] = 0;
+            $validated['tax_bhp'] = 0;
+            $validated['tax_uso'] = 0;
+        }
 
         if (!auth()->user()->hasRole('admin')) {
             unset($validated['sales_id']);
@@ -1693,6 +1700,7 @@ class CustomerController extends Controller
             'login_user' => 'nullable|string',
             'login_password' => 'nullable|string',
             'notes' => 'nullable|string',
+            'enable_tax' => 'nullable|boolean',
             'tax_ppn' => 'nullable|numeric|min:0|max:100',
             'tax_bhp' => 'nullable|numeric|min:0|max:100',
             'tax_uso' => 'nullable|numeric|min:0|max:100',
@@ -1707,15 +1715,27 @@ class CustomerController extends Controller
 
                 $serviceStatus = $validated['service_status'] ?? $customer->service_status ?? 'berbayar';
 
+                $isTaxEnabled = $request->has('enable_tax') ? $request->boolean('enable_tax') : true;
+
+                if (!$isTaxEnabled) {
+                    $taxPpn = 0.0;
+                    $taxBhp = 0.0;
+                    $taxUso = 0.0;
+                } else {
+                    $taxPpn = (float) ($validated['tax_ppn'] ?? \App\Models\Setting::get('tax_ppn', '0'));
+                    $taxBhp = (float) ($validated['tax_bhp'] ?? \App\Models\Setting::get('tax_bhp', '0'));
+                    $taxUso = (float) ($validated['tax_uso'] ?? \App\Models\Setting::get('tax_uso', '0'));
+                }
+
                 $customer->update([
                     'status' => 'active',
                     'activation_date' => $validated['activation_date'],
                     'billing_type' => $billingType,
                     'service_status' => $serviceStatus,
                     'notes' => $validated['notes'] ? $customer->notes . "\n[Aktivasi]: " . $validated['notes'] : $customer->notes,
-                    'tax_ppn' => $validated['tax_ppn'] ?? null,
-                    'tax_bhp' => $validated['tax_bhp'] ?? null,
-                    'tax_uso' => $validated['tax_uso'] ?? null,
+                    'tax_ppn' => $taxPpn,
+                    'tax_bhp' => $taxBhp,
+                    'tax_uso' => $taxUso,
                 ]);
 
                 $customer->ont->update([
@@ -1803,10 +1823,6 @@ class CustomerController extends Controller
                     $amount = 0;
                     $status = 'paid';
                 } else {
-                    $taxPpn = (float) ($validated['tax_ppn'] ?? \App\Models\Setting::get('tax_ppn', '0'));
-                    $taxBhp = (float) ($validated['tax_bhp'] ?? \App\Models\Setting::get('tax_bhp', '0'));
-                    $taxUso = (float) ($validated['tax_uso'] ?? \App\Models\Setting::get('tax_uso', '0'));
-                    
                     $totalTaxPercent = $taxPpn + $taxBhp + $taxUso;
                     if ($totalTaxPercent > 0) {
                         $amount = $amount + ($amount * ($totalTaxPercent / 100));
