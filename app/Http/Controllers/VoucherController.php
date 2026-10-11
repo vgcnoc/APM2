@@ -38,8 +38,107 @@ class VoucherController extends Controller
         ]);
     }
 
+    /**
+     * Otomatis deteksi voucher yang waktu durasi / masa aktifnya sudah habis,
+     * tandai sebagai expired, dan putuskan dari RADIUS.
+     */
+    public static function checkAndExpireVouchers(): int
+    {
+        try {
+            $vouchers = Voucher::with('profile')
+                ->where('status', '!=', 'expired')
+                ->whereHas('profile', function ($q) {
+                    $q->whereNotNull('duration')
+                      ->where('duration', '!=', '')
+                      ->where('duration', '!=', 'Mengikuti Pelanggan');
+                })
+                ->get();
+
+            if ($vouchers->isEmpty()) {
+                return 0;
+            }
+
+            $usernames = $vouchers->pluck('username')->filter()->unique()->toArray();
+            if (empty($usernames)) {
+                return 0;
+            }
+
+            $accts = \App\Models\Radius\RadAcct::whereIn('username', $usernames)->get()->groupBy('username');
+            $expiredCount = 0;
+            $radius = null;
+
+            foreach ($vouchers as $voucher) {
+                $userAccts = $accts->get($voucher->username);
+                if (!$userAccts || $userAccts->isEmpty()) {
+                    continue;
+                }
+
+                $durationLimit = RadiusService::parseDuration($voucher->profile->duration);
+                if (!$durationLimit) {
+                    continue;
+                }
+
+                $totalTime = 0;
+                $firstLogin = null;
+                $lastLogout = null;
+
+                foreach ($userAccts as $acct) {
+                    if (!$firstLogin || $acct->acctstarttime < $firstLogin) {
+                        $firstLogin = $acct->acctstarttime;
+                    }
+                    if (!$lastLogout || $acct->acctstoptime > $lastLogout) {
+                        $lastLogout = $acct->acctstoptime;
+                    }
+
+                    $totalTime += $acct->liveSessionTime();
+                }
+
+                $isExpired = false;
+                $expiredAt = null;
+
+                if ($totalTime >= $durationLimit) {
+                    $isExpired = true;
+                    $expiredAt = $lastLogout ?? now();
+                } elseif ($firstLogin) {
+                    $calcExpire = \Carbon\Carbon::parse($firstLogin)->addSeconds($durationLimit);
+                    if (now()->greaterThanOrEqualTo($calcExpire)) {
+                        $isExpired = true;
+                        $expiredAt = $calcExpire;
+                    }
+                }
+
+                if ($isExpired) {
+                    $voucher->status = 'expired';
+                    $voucher->used_at = $expiredAt ?? now();
+                    $voucher->save();
+
+                    if (!$radius) {
+                        $radius = app(RadiusService::class);
+                    }
+                    $radius->disconnect($voucher->username);
+                    $radius->removeUser($voucher->username);
+
+                    $expiredCount++;
+                } elseif ($voucher->status === 'available' && ($firstLogin || $totalTime > 0)) {
+                    // Jika voucher sudah mulai digunakan tetapi belum habis, set status used
+                    $voucher->status = 'used';
+                    $voucher->used_at = $firstLogin;
+                    $voucher->save();
+                }
+            }
+
+            return $expiredCount;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Failed checking expired vouchers: " . $e->getMessage());
+            return 0;
+        }
+    }
+
     public function index(Request $request)
     {
+        // Jalankan pengecekan voucher expired terlebih dahulu
+        self::checkAndExpireVouchers();
+
         $query = Voucher::with('profile');
 
         if ($request->filled('profile_id')) {

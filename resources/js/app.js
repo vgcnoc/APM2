@@ -1,6 +1,14 @@
 import { createApp, h } from 'vue';
-import { createInertiaApp } from '@inertiajs/vue3';
+import { createInertiaApp, router } from '@inertiajs/vue3';
 import '../css/app.css';
+
+// Cegah modal popup 419 | PAGE EXPIRED dan refresh otomatis saat session/CSRF habis
+router.on('invalid', (event) => {
+    if (event.detail.response?.status === 419) {
+        event.preventDefault();
+        window.location.reload();
+    }
+});
 
 
 
