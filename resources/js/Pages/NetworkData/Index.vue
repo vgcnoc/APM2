@@ -142,6 +142,18 @@
                                     {{ odcGroup.odc.pon_port || 'PON ?' }}
                                 </span>
                             </div>
+
+                            <!-- VLAN & Mode Akses ODC dari OLT -->
+                            <div v-if="getPonVlans(odcGroup.odc).length > 0" class="flex flex-wrap items-center gap-1.5 mt-2.5">
+                                <span class="text-[10px] text-indigo-200 font-bold uppercase tracking-wider">VLAN OLT:</span>
+                                <div v-for="(vlan, vIdx) in getPonVlans(odcGroup.odc)" :key="vIdx" class="inline-flex items-center gap-1 bg-black/20 backdrop-blur-xs px-2 py-0.5 rounded text-[11px] font-medium border border-white/10 shadow-xs">
+                                    <span class="font-bold text-white">VLAN {{ vlan.vlan_id || vlan }}</span>
+                                    <span v-if="vlan.name" class="text-indigo-200 text-[10px]">({{ vlan.name }})</span>
+                                    <span :class="['px-1.5 py-0.2 text-[9px] font-bold rounded-full uppercase', getModeBadgeClass(getVlanAccessMode(vlan))]">
+                                        {{ getVlanAccessMode(vlan) }}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                         <div class="flex gap-3 relative z-10">
                             <div class="flex flex-col items-center justify-center bg-black/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 shadow-inner min-w-[75px]">
@@ -174,7 +186,7 @@
                                     </div>
 
                                     <!-- Address & Coord Pills -->
-                                    <div class="flex flex-wrap gap-2 mb-4">
+                                    <div class="flex flex-wrap gap-2 mb-3">
                                         <div class="bg-gray-50 border border-gray-200 text-gray-600 text-[10px] px-2 py-1 rounded-md flex items-center gap-1" :title="odp.address">
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                             <span class="truncate max-w-[150px]">{{ odp.address || '-' }}</span>
@@ -191,6 +203,27 @@
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                             {{ odp.area?.name || 'Belum ada area' }}
                                         </div>
+                                    </div>
+
+                                    <!-- VLAN Sinkron OLT PON -->
+                                    <div class="mb-4 p-2 bg-indigo-50/60 rounded-lg border border-indigo-100/80">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="text-[10px] font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1">
+                                                <svg class="w-3 h-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                                VLAN Sinkron OLT
+                                            </span>
+                                            <span v-if="odp.odc?.pon_port" class="text-[9px] font-bold text-indigo-600 bg-indigo-100 px-1.5 py-0.2 rounded">PON {{ odp.odc.pon_port }}</span>
+                                        </div>
+                                        <div v-if="getOdpPonVlans(odp).length > 0" class="flex flex-wrap gap-1.5">
+                                            <div v-for="(vlan, vIdx) in getOdpPonVlans(odp)" :key="vIdx" class="inline-flex items-center gap-1 bg-white border border-indigo-200 px-1.5 py-0.5 rounded text-[10px] shadow-xs">
+                                                <span class="font-bold text-indigo-700">VLAN {{ vlan.vlan_id || vlan }}</span>
+                                                <span v-if="vlan.name" class="text-gray-600 text-[9px]">({{ vlan.name }})</span>
+                                                <span :class="['px-1 py-0.2 text-[8px] font-bold rounded-full uppercase', getModeBadgeClass(getVlanAccessMode(vlan))]">
+                                                    {{ getVlanAccessMode(vlan) }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span v-else class="text-[10px] text-gray-400 italic">Tidak ada VLAN diset pada OLT</span>
                                     </div>
 
                                     <!-- Ports List (Directly in Card) -->
@@ -279,6 +312,7 @@
                             <tr>
                                 <th class="px-6 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">ODP / Kode</th>
                                 <th class="px-6 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">ODC / Server</th>
+                                <th class="px-6 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">VLAN & Mode Akses</th>
                                 <th class="px-6 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Area</th>
                                 <th class="px-6 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Kapasitas</th>
                                 <th class="px-6 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Terpakai</th>
@@ -295,7 +329,19 @@
                                 </td>
                                 <td class="px-6 py-3 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">{{ odp.odc?.name || '-' }}</div>
-                                    <div class="text-[11px] text-gray-500">{{ odp.odc?.olt?.name || '-' }}</div>
+                                    <div class="text-[11px] text-gray-500">{{ odp.odc?.olt?.name || '-' }} (PON {{ odp.odc?.pon_port || '?' }})</div>
+                                </td>
+                                <td class="px-6 py-3 whitespace-nowrap">
+                                    <div v-if="getOdpPonVlans(odp).length > 0" class="flex flex-wrap gap-1 max-w-xs">
+                                        <div v-for="(vlan, vIdx) in getOdpPonVlans(odp)" :key="vIdx" class="inline-flex items-center gap-1 bg-white border border-gray-200 px-1.5 py-0.5 rounded text-[10px] shadow-xs">
+                                            <span class="font-bold text-indigo-700">VLAN {{ vlan.vlan_id || vlan }}</span>
+                                            <span v-if="vlan.name" class="text-gray-600 text-[9px]">({{ vlan.name }})</span>
+                                            <span :class="['px-1.5 py-0.2 text-[8px] font-bold rounded-full uppercase', getModeBadgeClass(getVlanAccessMode(vlan))]">
+                                                {{ getVlanAccessMode(vlan) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <span v-else class="text-xs text-gray-400 italic">-</span>
                                 </td>
                                 <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900">{{ odp.area?.name || '-' }}</td>
                                 <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900 font-medium">{{ odp.total_ports }} Port</td>
@@ -315,7 +361,7 @@
                                 </td>
                             </tr>
                             <tr v-if="odps.length === 0">
-                                <td colspan="7" class="px-6 py-8 text-center text-sm text-gray-500">Tidak ada data</td>
+                                <td colspan="9" class="px-6 py-8 text-center text-sm text-gray-500">Tidak ada data</td>
                             </tr>
                         </tbody>
                     </table>
@@ -338,10 +384,10 @@
 <template v-for="odc in serverGroup.odcs" :key="odc.id">
    │
    ▼
-<span class="text-indigo-400 font-bold">ODC {{ odc.name }}</span> <span class="text-gray-500">[{{ getOdcTotalPorts(odc.odps).available }} Port Free]</span>
+<span class="text-indigo-400 font-bold">ODC {{ odc.name }}</span> <span class="text-gray-400 text-[11px]">[PON {{ odc.pon_port || '?' }}]</span> <span v-if="getPonVlans(odc.odc).length > 0" class="text-purple-300 text-[11px]">[VLAN: {{ getPonVlans(odc.odc).map(v => (v.vlan_id || v) + ' ' + getVlanAccessMode(v)).join(', ') }}]</span> <span class="text-gray-500">[{{ getOdcTotalPorts(odc.odps).available }} Port Free]</span>
    │
 <template v-for="(odp, odpIndex) in odc.odps" :key="odp.id">
-   {{ odpIndex === odc.odps.length - 1 ? '└' : '├' }}──────── <button @click="openOdpDetail(odp)" class="text-gray-200 hover:text-white font-bold bg-gray-800 hover:bg-gray-700 px-2 py-0.5 rounded transition-colors cursor-pointer">ODP {{ odp.name }}</button> <span class="text-gray-500 text-[10px]">{{ Math.max(0, odp.total_ports - odp.used_ports) }} Free / {{ odp.total_ports }} Cap</span>
+   {{ odpIndex === odc.odps.length - 1 ? '└' : '├' }}──────── <button @click="openOdpDetail(odp)" class="text-gray-200 hover:text-white font-bold bg-gray-800 hover:bg-gray-700 px-2 py-0.5 rounded transition-colors cursor-pointer">ODP {{ odp.name }}</button> <span v-if="getOdpPonVlans(odp).length > 0" class="text-indigo-300 text-[10px]">[VLAN: {{ getOdpPonVlans(odp).map(v => (v.vlan_id || v) + ' ' + getVlanAccessMode(v)).join(', ') }}]</span> <span class="text-gray-500 text-[10px]">{{ Math.max(0, odp.total_ports - odp.used_ports) }} Free / {{ odp.total_ports }} Cap</span>
 <template v-for="portNum in odp.total_ports" :key="portNum">
    │              {{ odpIndex === odc.odps.length - 1 ? ' ' : '│' }}
    │              {{ odpIndex === odc.odps.length - 1 ? ' ' : '│' }}  ├── Port {{ portNum.toString().padStart(2, '0') }} <span v-html="renderPortTopology(odp, portNum)"></span>
@@ -550,7 +596,15 @@ const groupedForTopology = computed(() => {
         if (!servers[serverName]) servers[serverName] = { id: serverName, name: serverName, odcs: {} };
         
         const odcName = odp.odc?.name || 'Tanpa ODC';
-        if (!servers[serverName].odcs[odcName]) servers[serverName].odcs[odcName] = { id: odcName, name: odcName, odps: [] };
+        if (!servers[serverName].odcs[odcName]) {
+            servers[serverName].odcs[odcName] = {
+                id: odcName,
+                name: odcName,
+                odc: odp.odc,
+                pon_port: odp.odc?.pon_port,
+                odps: []
+            };
+        }
         
         servers[serverName].odcs[odcName].odps.push(odp);
     });
@@ -561,6 +615,62 @@ const groupedForTopology = computed(() => {
         odcs: Object.values(s.odcs).sort((a, b) => a.name.localeCompare(b.name))
     })).sort((a, b) => a.name.localeCompare(b.name));
 });
+
+const getPonVlans = (odcItem) => {
+    if (!odcItem) return [];
+    let olt = odcItem.olt;
+    if (!olt && odcItem.olt_id && props.olts) {
+        olt = props.olts.find(o => String(o.id) === String(odcItem.olt_id));
+    }
+    if (!olt || !odcItem.pon_port) return [];
+    let pVlans = olt.pon_vlans;
+    if (typeof pVlans === 'string') {
+        try {
+            pVlans = JSON.parse(pVlans);
+        } catch (e) {
+            return [];
+        }
+    }
+    if (!Array.isArray(pVlans)) return [];
+    const found = pVlans.find(p => String(p.port) === String(odcItem.pon_port));
+    return found && Array.isArray(found.vlans) ? found.vlans : [];
+};
+
+const getOdpPonVlans = (odpItem) => {
+    if (!odpItem) return [];
+    return getPonVlans(odpItem.odc);
+};
+
+const getVlanAccessMode = (vlan) => {
+    if (vlan && vlan.access_mode) return vlan.access_mode;
+    const name = (vlan?.name || '').toUpperCase();
+    if (name.includes('HOTSPOT')) return 'Hotspot';
+    if (name.includes('PPPOE')) return 'PPPOE';
+    if (name.includes('STATIC')) return 'Static';
+    if (name.includes('DHCP')) return 'DHCP';
+    return 'PPPOE';
+};
+
+const getModeBadgeClass = (mode) => {
+    switch ((mode || '').toUpperCase()) {
+        case 'PPPOE':
+            return 'bg-purple-100 text-purple-800 border border-purple-200';
+        case 'HOTSPOT':
+            return 'bg-amber-100 text-amber-800 border border-amber-200';
+        case 'STATIC':
+            return 'bg-blue-100 text-blue-800 border border-blue-200';
+        case 'DHCP':
+            return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+        case 'BRIDGE':
+            return 'bg-teal-100 text-teal-800 border border-teal-200';
+        case 'TAGGED':
+            return 'bg-indigo-100 text-indigo-800 border border-indigo-200';
+        case 'UNTAGGED':
+            return 'bg-gray-100 text-gray-800 border border-gray-200';
+        default:
+            return 'bg-slate-100 text-slate-800 border border-slate-200';
+    }
+};
 
 const getOdcTotalPorts = (odpsArray) => {
     let available = 0;

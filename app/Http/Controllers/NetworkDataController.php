@@ -51,10 +51,15 @@ class NetworkDataController extends Controller
                   ->orWhere('address', 'like', "%{$search}%")
                   ->orWhere('kode_odp', 'like', "%{$search}%")
                   ->orWhereHas('onts', function ($oq) use ($search) {
-                      $oq->whereHas('customer', function ($cq) use ($search) {
-                          $cq->where('name', 'like', "%{$search}%")
-                             ->orWhere('customer_code', 'like', "%{$search}%");
-                      });
+                      $oq->where('vlan_id', 'like', "%{$search}%")
+                         ->orWhere('hotspot_vlan_id', 'like', "%{$search}%")
+                         ->orWhereHas('customer', function ($cq) use ($search) {
+                             $cq->where('name', 'like', "%{$search}%")
+                                ->orWhere('customer_code', 'like', "%{$search}%");
+                         });
+                  })
+                  ->orWhereHas('odc.olt', function ($olq) use ($search) {
+                      $olq->where('pon_vlans', 'like', "%{$search}%");
                   });
             });
         }

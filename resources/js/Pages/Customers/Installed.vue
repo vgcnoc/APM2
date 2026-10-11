@@ -307,6 +307,12 @@
                                                         <span class="text-sm font-semibold text-gray-900 text-right">Port {{ detailCustomer.ont?.port_number || '-' }}</span>
                                                     </div>
                                                     <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                                        <span class="text-sm text-gray-500 font-medium">VLAN Layanan</span>
+                                                        <span class="text-sm font-bold text-indigo-700 text-right">
+                                                            {{ detailCustomer.ont?.vlan_id ? 'VLAN ' + detailCustomer.ont.vlan_id : (detailCustomer.ont?.hotspot_vlan_id ? 'HS ' + detailCustomer.ont.hotspot_vlan_id : '-') }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
                                                         <span class="text-sm text-gray-500 font-medium">Serial Number (Auto)</span>
                                                         <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.ont?.serial_number || '-' }}</span>
                                                     </div>
