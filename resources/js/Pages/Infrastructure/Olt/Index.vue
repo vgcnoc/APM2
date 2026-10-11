@@ -35,7 +35,19 @@
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-600 font-mono">{{ olt.ip_address || '-' }}</td>
                             <td class="px-6 py-4 text-sm text-gray-600">{{ olt.brand || '-' }} {{ olt.model ? '('+olt.model+')' : '' }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-600">{{ olt.total_pon_ports }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">
+                                <div class="font-bold text-gray-900">{{ olt.total_pon_ports }} Port PON</div>
+                                <div v-if="getOltVlans(olt).length > 0" class="flex flex-wrap gap-1 mt-1">
+                                    <span v-for="(v, vi) in getOltVlans(olt).slice(0, 4)" :key="vi" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border" :class="getModeBadgeClass(v.access_mode)">
+                                        <span>{{ v.vlan_id }}</span>
+                                        <span class="opacity-75 text-[9px]">({{ v.access_mode }})</span>
+                                    </span>
+                                    <span v-if="getOltVlans(olt).length > 4" class="px-1 py-0.5 rounded text-[10px] bg-gray-100 text-gray-600 font-medium">
+                                        +{{ getOltVlans(olt).length - 4 }}
+                                    </span>
+                                </div>
+                                <div v-else class="text-[11px] text-gray-400 italic mt-0.5">Belum diset VLAN</div>
+                            </td>
                             <td class="px-6 py-4 text-sm">
                                 <span class="px-2.5 py-1 rounded-full text-xs font-medium" :class="olt.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'">
                                     {{ olt.status }}
@@ -179,12 +191,34 @@
                                     <div v-if="pon.vlans.length === 0" class="text-[10px] text-gray-500 italic mb-1">Belum ada VLAN.</div>
                                     
                                     <div class="space-y-2">
-                                        <div v-for="(vlan, vIndex) in pon.vlans" :key="vIndex" class="flex items-center gap-2">
-                                            <input v-model="vlan.name" type="text" placeholder="Nama (Cth: Hotspot)" class="flex-1 px-2 py-1.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                            <input v-model="vlan.vlan_id" type="number" placeholder="VLAN ID" class="w-24 px-2 py-1.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                            <button type="button" @click="pon.vlans.splice(vIndex, 1)" class="text-red-500 hover:text-red-700 p-1" title="Hapus VLAN">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                            </button>
+                                        <div v-for="(vlan, vIndex) in pon.vlans" :key="vIndex" class="bg-white p-2.5 rounded-lg border border-gray-200 shadow-2xs">
+                                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                                                <div class="sm:col-span-5">
+                                                    <label class="block text-[10px] font-bold text-gray-500 mb-0.5">Nama Layanan / VLAN</label>
+                                                    <input v-model="vlan.name" type="text" placeholder="Cth: PPPoE Internet" class="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                </div>
+                                                <div class="sm:col-span-3">
+                                                    <label class="block text-[10px] font-bold text-gray-500 mb-0.5">VLAN ID</label>
+                                                    <input v-model="vlan.vlan_id" type="number" placeholder="ID (Cth: 18)" class="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                </div>
+                                                <div class="sm:col-span-3">
+                                                    <label class="block text-[10px] font-bold text-gray-500 mb-0.5">Mode Akses</label>
+                                                    <select v-model="vlan.access_mode" class="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                        <option value="PPPOE">PPPOE</option>
+                                                        <option value="Hotspot">Hotspot</option>
+                                                        <option value="Static">Static IP</option>
+                                                        <option value="DHCP">DHCP</option>
+                                                        <option value="Bridge">Bridge</option>
+                                                        <option value="Tagged">Tagged (Trunk)</option>
+                                                        <option value="Untagged">Untagged (Access)</option>
+                                                    </select>
+                                                </div>
+                                                <div class="sm:col-span-1 flex justify-end sm:justify-center pt-2 sm:pt-4">
+                                                    <button type="button" @click="pon.vlans.splice(vIndex, 1)" class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded" title="Hapus VLAN">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -266,7 +300,7 @@ function addVlanToPon(ponIndex) {
     if (!form.pon_vlans[ponIndex].vlans) {
         form.pon_vlans[ponIndex].vlans = [];
     }
-    form.pon_vlans[ponIndex].vlans.push({ name: '', vlan_id: '' });
+    form.pon_vlans[ponIndex].vlans.push({ name: '', vlan_id: '', access_mode: 'PPPOE' });
 }
 
 function openCreateModal() {
@@ -289,7 +323,19 @@ function openEditModal(olt) {
     form.model = olt.model || '';
     form.total_pon_ports = olt.total_pon_ports;
     form.pon_capacity = 64; // Default
-    form.pon_vlans = olt.pon_vlans || [];
+    
+    let vlans = olt.pon_vlans || [];
+    if (typeof vlans === 'string') {
+        try { vlans = JSON.parse(vlans); } catch (e) { vlans = []; }
+    }
+    form.pon_vlans = JSON.parse(JSON.stringify(vlans)).map(p => ({
+        ...p,
+        vlans: (p.vlans || []).map(v => ({
+            ...v,
+            access_mode: v.access_mode || getVlanAccessMode(v)
+        }))
+    }));
+
     form.location = olt.location || '';
     form.latitude = olt.latitude || '';
     form.longitude = olt.longitude || '';
@@ -297,6 +343,65 @@ function openEditModal(olt) {
     form.description = olt.description || '';
     form.clearErrors();
     isModalOpen.value = true;
+}
+
+function getVlanAccessMode(vlan) {
+    if (vlan.access_mode) return vlan.access_mode;
+    const name = (vlan.name || '').toLowerCase();
+    if (name.includes('pppoe')) return 'PPPOE';
+    if (name.includes('hotspot')) return 'Hotspot';
+    if (name.includes('static')) return 'Static';
+    if (name.includes('dhcp')) return 'DHCP';
+    if (name.includes('bridge')) return 'Bridge';
+    if (name.includes('trunk') || name.includes('tagged')) return 'Tagged';
+    if (name.includes('access') || name.includes('untagged')) return 'Untagged';
+    return 'PPPOE';
+}
+
+function getModeBadgeClass(mode) {
+    switch ((mode || '').toUpperCase()) {
+        case 'PPPOE':
+            return 'bg-blue-50 text-blue-700 border-blue-200';
+        case 'HOTSPOT':
+            return 'bg-purple-50 text-purple-700 border-purple-200';
+        case 'STATIC':
+            return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        case 'DHCP':
+            return 'bg-amber-50 text-amber-700 border-amber-200';
+        case 'BRIDGE':
+            return 'bg-cyan-50 text-cyan-700 border-cyan-200';
+        case 'TAGGED':
+        case 'TRUNK':
+            return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+        case 'UNTAGGED':
+        case 'ACCESS':
+            return 'bg-gray-100 text-gray-700 border-gray-200';
+        default:
+            return 'bg-blue-50 text-blue-700 border-blue-200';
+    }
+}
+
+function getOltVlans(olt) {
+    if (!olt || !olt.pon_vlans) return [];
+    let vlans = olt.pon_vlans;
+    if (typeof vlans === 'string') {
+        try { vlans = JSON.parse(vlans); } catch (e) { return []; }
+    }
+    if (!Array.isArray(vlans)) return [];
+    const list = [];
+    vlans.forEach(p => {
+        (p.vlans || []).forEach(v => {
+            if (v && v.vlan_id) {
+                list.push({
+                    port: p.port,
+                    name: v.name,
+                    vlan_id: v.vlan_id,
+                    access_mode: getVlanAccessMode(v)
+                });
+            }
+        });
+    });
+    return list;
 }
 
 function closeModal() {

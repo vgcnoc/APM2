@@ -65,12 +65,24 @@
                                 <span v-else class="text-xs text-gray-400 italic">Belum diset</span>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-600">
-                                <div class="font-medium text-gray-900">{{ odc.olt ? odc.olt.name : '-' }}</div>
-                                <div v-if="odc.pon_port" class="text-xs text-indigo-600 font-semibold mt-0.5">
-                                    PON {{ odc.pon_port }}
-                                    <span v-if="getPonVlansText(odc)" class="text-gray-500 font-normal ml-1 bg-gray-100 px-1.5 py-0.5 rounded">
-                                        {{ getPonVlansText(odc) }}
+                                <div class="font-bold text-gray-900">{{ odc.olt ? odc.olt.name : '-' }}</div>
+                                <div v-if="odc.pon_port" class="mt-1">
+                                    <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-[11px] font-bold border border-indigo-200">
+                                        PON {{ odc.pon_port }}
                                     </span>
+                                    <div v-if="getPonVlans(odc).length > 0" class="flex flex-wrap gap-1 mt-1">
+                                        <span v-for="(v, vi) in getPonVlans(odc)" :key="vi" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border" :class="getModeBadgeClass(v.access_mode)">
+                                            <span>{{ v.vlan_id }}</span>
+                                            <span class="opacity-75">· {{ v.name }}</span>
+                                            <span class="px-1 py-0.2 rounded text-[9px] bg-white/70 font-bold uppercase">{{ v.access_mode }}</span>
+                                        </span>
+                                    </div>
+                                    <div v-else class="text-[11px] text-gray-400 italic mt-0.5">
+                                        (Belum diset VLAN di PON {{ odc.pon_port }})
+                                    </div>
+                                </div>
+                                <div v-else class="text-[11px] text-gray-400 italic mt-0.5">
+                                    Port PON belum dipilih
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-600">{{ odc.capacity }} Port</td>
@@ -143,6 +155,27 @@
                                         <option v-for="port in selectedOltPonPorts" :key="port" :value="port">PON {{ port }}</option>
                                     </select>
                                     <p v-if="form.errors.pon_port" class="text-red-500 text-xs mt-1">{{ form.errors.pon_port }}</p>
+                                </div>
+
+                                <!-- Preview Sinkronisasi VLAN & Mode Akses dari OLT -->
+                                <div v-if="form.olt_id && form.pon_port" class="col-span-1 sm:col-span-2 bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                            Sinkronisasi VLAN & Mode Akses dari OLT (PON {{ form.pon_port }})
+                                        </span>
+                                        <span class="text-[11px] text-blue-700 font-semibold">{{ currentModalPonVlans.length }} VLAN Terdeteksi</span>
+                                    </div>
+                                    <div v-if="currentModalPonVlans.length > 0" class="flex flex-wrap gap-1.5 pt-1">
+                                        <span v-for="(v, vi) in currentModalPonVlans" :key="vi" class="px-2 py-1 rounded-lg text-xs font-semibold border flex items-center gap-1.5 bg-white shadow-2xs" :class="getModeBadgeClass(v.access_mode)">
+                                            <span class="font-mono font-bold">{{ v.vlan_id }}</span>
+                                            <span class="text-gray-700">· {{ v.name }}</span>
+                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border bg-gray-50">{{ v.access_mode }}</span>
+                                        </span>
+                                    </div>
+                                    <div v-else class="text-xs text-blue-600/80 italic">
+                                        Belum ada VLAN diset di OLT untuk PON {{ form.pon_port }}. ODC ini akan otomatis tersinkron begitu VLAN diset di OLT.
+                                    </div>
                                 </div>
 
                                 <div>
@@ -513,18 +546,77 @@ function getLocationForSplit(tabIndex) {
     }
 }
 
-function getPonVlansText(odc) {
-    if (!odc.olt || !odc.pon_port || !odc.olt.pon_vlans) return '';
+function getVlanAccessMode(vlan) {
+    if (vlan.access_mode) return vlan.access_mode;
+    const name = (vlan.name || '').toLowerCase();
+    if (name.includes('pppoe')) return 'PPPOE';
+    if (name.includes('hotspot')) return 'Hotspot';
+    if (name.includes('static')) return 'Static';
+    if (name.includes('dhcp')) return 'DHCP';
+    if (name.includes('bridge')) return 'Bridge';
+    if (name.includes('trunk') || name.includes('tagged')) return 'Tagged';
+    if (name.includes('access') || name.includes('untagged')) return 'Untagged';
+    return 'PPPOE';
+}
+
+function getModeBadgeClass(mode) {
+    switch ((mode || '').toUpperCase()) {
+        case 'PPPOE':
+            return 'bg-blue-50 text-blue-700 border-blue-200';
+        case 'HOTSPOT':
+            return 'bg-purple-50 text-purple-700 border-purple-200';
+        case 'STATIC':
+        case 'STATIC IP':
+            return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        case 'DHCP':
+            return 'bg-amber-50 text-amber-700 border-amber-200';
+        case 'BRIDGE':
+            return 'bg-cyan-50 text-cyan-700 border-cyan-200';
+        case 'TAGGED':
+        case 'TRUNK':
+            return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+        case 'UNTAGGED':
+        case 'ACCESS':
+            return 'bg-gray-100 text-gray-700 border-gray-200';
+        default:
+            return 'bg-blue-50 text-blue-700 border-blue-200';
+    }
+}
+
+function getPonVlans(odc) {
+    if (!odc || !odc.olt || !odc.pon_port || !odc.olt.pon_vlans) return [];
     let vlans = odc.olt.pon_vlans;
     if (typeof vlans === 'string') {
-        try { vlans = JSON.parse(vlans); } catch (e) { return ''; }
+        try { vlans = JSON.parse(vlans); } catch (e) { return []; }
     }
-    if (!Array.isArray(vlans)) return '';
+    if (!Array.isArray(vlans)) return [];
     
     const ponData = vlans.find(p => p.port == odc.pon_port);
-    if (!ponData || !ponData.vlans || !Array.isArray(ponData.vlans) || ponData.vlans.length === 0) return '';
-    return ponData.vlans.map(v => `${v.name} (${v.vlan_id})`).join(', ');
+    if (!ponData || !ponData.vlans || !Array.isArray(ponData.vlans)) return [];
+    return ponData.vlans.map(v => ({
+        name: v.name,
+        vlan_id: v.vlan_id,
+        access_mode: getVlanAccessMode(v)
+    }));
 }
+
+const currentModalPonVlans = computed(() => {
+    if (!form.olt_id || !form.pon_port) return [];
+    const olt = props.olts.find(o => o.id === form.olt_id);
+    if (!olt || !olt.pon_vlans) return [];
+    let vlans = olt.pon_vlans;
+    if (typeof vlans === 'string') {
+        try { vlans = JSON.parse(vlans); } catch (e) { return []; }
+    }
+    if (!Array.isArray(vlans)) return [];
+    const ponData = vlans.find(p => p.port == form.pon_port);
+    if (!ponData || !ponData.vlans || !Array.isArray(ponData.vlans)) return [];
+    return ponData.vlans.map(v => ({
+        name: v.name,
+        vlan_id: v.vlan_id,
+        access_mode: getVlanAccessMode(v)
+    }));
+});
 
 function submit() {
     if (isEditing.value) {

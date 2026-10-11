@@ -37,7 +37,7 @@ class OdcController extends Controller
 
         return Inertia::render('Infrastructure/Odc/Index', [
             'odcs' => $odcs,
-            'olts' => Olt::where('status', 'active')->get(['id', 'name', 'total_pon_ports', 'area_id']),
+            'olts' => Olt::where('status', 'active')->get(['id', 'name', 'total_pon_ports', 'area_id', 'pon_vlans']),
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['search', 'olt_id', 'area_id', 'status']),
         ]);

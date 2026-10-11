@@ -56,6 +56,40 @@
                         </div>
                     </div>
 
+                    <!-- Sinkronisasi VLAN & Mode Akses dari OLT -->
+                    <div class="bg-indigo-50/70 rounded-xl shadow-sm border border-indigo-100 p-5">
+                        <div class="flex items-center justify-between border-b border-indigo-100 pb-3 mb-4">
+                            <h3 class="text-sm font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-2">
+                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                Sinkronisasi VLAN OLT
+                            </h3>
+                            <span v-if="odp.odc?.pon_port" class="px-2 py-0.5 text-xs font-semibold rounded bg-indigo-100 text-indigo-800">
+                                PON {{ odp.odc.pon_port }}
+                            </span>
+                        </div>
+
+                        <div v-if="getOdpPonVlans(odp).length > 0" class="space-y-2">
+                            <div v-for="(vlan, idx) in getOdpPonVlans(odp)" :key="idx" class="p-2.5 bg-white rounded-lg border border-indigo-100 flex items-center justify-between shadow-xs">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-0.5 text-xs font-mono font-bold bg-indigo-50 text-indigo-700 rounded border border-indigo-200">
+                                        VLAN {{ vlan.vlan_id || vlan }}
+                                    </span>
+                                    <span class="text-xs font-semibold text-gray-800">
+                                        {{ vlan.name || 'VLAN ' + (vlan.vlan_id || vlan) }}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span :class="['px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider', getModeBadgeClass(getVlanAccessMode(vlan))]">
+                                        {{ getVlanAccessMode(vlan) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="text-center py-4 bg-white/60 rounded-lg border border-dashed border-indigo-200">
+                            <p class="text-xs text-gray-500">Tidak ada konfigurasi VLAN pada PON {{ odp.odc?.pon_port || '-' }} di OLT.</p>
+                        </div>
+                    </div>
+
                     <!-- Informasi ODP -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
                         <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-3 flex items-center gap-2">
@@ -139,4 +173,53 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 const props = defineProps({
     odp: Object,
 });
+
+const getVlanAccessMode = (vlan) => {
+    if (vlan && vlan.access_mode) return vlan.access_mode;
+    const name = (vlan?.name || '').toUpperCase();
+    if (name.includes('HOTSPOT')) return 'Hotspot';
+    if (name.includes('PPPOE')) return 'PPPOE';
+    if (name.includes('STATIC')) return 'Static';
+    if (name.includes('DHCP')) return 'DHCP';
+    return 'PPPOE';
+};
+
+const getModeBadgeClass = (mode) => {
+    switch ((mode || '').toUpperCase()) {
+        case 'PPPOE':
+            return 'bg-purple-100 text-purple-800 border border-purple-200';
+        case 'HOTSPOT':
+            return 'bg-amber-100 text-amber-800 border border-amber-200';
+        case 'STATIC':
+            return 'bg-blue-100 text-blue-800 border border-blue-200';
+        case 'DHCP':
+            return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+        case 'BRIDGE':
+            return 'bg-teal-100 text-teal-800 border border-teal-200';
+        case 'TAGGED':
+            return 'bg-indigo-100 text-indigo-800 border border-indigo-200';
+        case 'UNTAGGED':
+            return 'bg-gray-100 text-gray-800 border border-gray-200';
+        default:
+            return 'bg-slate-100 text-slate-800 border border-slate-200';
+    }
+};
+
+const getOdpPonVlans = (odpItem) => {
+    if (!odpItem?.odc?.olt) return [];
+    const olt = odpItem.odc.olt;
+    const port = odpItem.odc.pon_port;
+    if (!olt.pon_vlans || !port) return [];
+    let pVlans = olt.pon_vlans;
+    if (typeof pVlans === 'string') {
+        try {
+            pVlans = JSON.parse(pVlans);
+        } catch (e) {
+            return [];
+        }
+    }
+    if (!Array.isArray(pVlans)) return [];
+    const found = pVlans.find(p => String(p.port) === String(port));
+    return found && Array.isArray(found.vlans) ? found.vlans : [];
+};
 </script>

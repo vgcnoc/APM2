@@ -73,7 +73,29 @@
                                 <span v-if="odp.area" class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-bold border border-blue-100">{{ odp.area.name }}</span>
                                 <span v-else class="text-xs text-gray-400 italic">Belum diset</span>
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-600">{{ odp.odc ? odp.odc.name : '-' }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">
+                                <div class="font-bold text-gray-900">{{ odp.odc ? odp.odc.name : '-' }}</div>
+                                <div v-if="odp.odc" class="mt-1">
+                                    <div class="text-[11px] text-gray-500 flex flex-wrap items-center gap-1.5">
+                                        <span class="font-medium text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-100">
+                                            OLT: {{ odp.odc.olt ? odp.odc.olt.name : '-' }}
+                                        </span>
+                                        <span v-if="odp.odc.pon_port" class="font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-100">
+                                            PON {{ odp.odc.pon_port }}
+                                        </span>
+                                    </div>
+                                    <div v-if="getOdpPonVlans(odp).length > 0" class="flex flex-wrap gap-1 mt-1">
+                                        <span v-for="(v, vi) in getOdpPonVlans(odp)" :key="vi" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border" :class="getModeBadgeClass(v.access_mode)">
+                                            <span>{{ v.vlan_id }}</span>
+                                            <span class="opacity-75">· {{ v.name }}</span>
+                                            <span class="px-1 py-0.2 rounded text-[9px] bg-white/70 font-bold uppercase">{{ v.access_mode }}</span>
+                                        </span>
+                                    </div>
+                                    <div v-else-if="odp.odc.pon_port" class="text-[10px] text-gray-400 italic mt-0.5">
+                                        (Belum diset VLAN di PON {{ odp.odc.pon_port }})
+                                    </div>
+                                </div>
+                            </td>
                             <td class="px-6 py-4 text-sm text-gray-600">{{ odp.used_ports }} / {{ odp.total_ports }}</td>
                             <td class="px-6 py-4 text-sm">
                                 <span class="px-2.5 py-1 rounded-full text-xs font-medium" :class="odp.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'">
@@ -136,6 +158,31 @@
                                         <option v-for="odc in filteredOdcs" :key="odc.id" :value="odc.id">{{ odc.name }} ({{ odc.capacity }} Port)</option>
                                     </select>
                                     <p v-if="form.errors.odc_id" class="text-red-500 text-xs mt-1">{{ form.errors.odc_id }}</p>
+                                </div>
+
+                                <!-- Preview Sinkronisasi VLAN & Mode Akses dari OLT melalui ODC -->
+                                <div v-if="selectedOdcInfo" class="col-span-1 sm:col-span-2 bg-purple-50/70 border border-purple-200 rounded-xl p-3.5 space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                                            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                            Sinkronisasi VLAN & Mode Akses dari OLT (via {{ selectedOdcInfo.name }})
+                                        </span>
+                                        <span class="text-[11px] text-purple-700 font-semibold">{{ currentModalOdpVlans.length }} VLAN Terdeteksi</span>
+                                    </div>
+                                    <div class="text-[11px] text-purple-800">
+                                        Induk OLT: <strong>{{ selectedOdcInfo.olt ? selectedOdcInfo.olt.name : '-' }}</strong>
+                                        <span v-if="selectedOdcInfo.pon_port"> · Port <strong>PON {{ selectedOdcInfo.pon_port }}</strong></span>
+                                    </div>
+                                    <div v-if="currentModalOdpVlans.length > 0" class="flex flex-wrap gap-1.5 pt-1">
+                                        <span v-for="(v, vi) in currentModalOdpVlans" :key="vi" class="px-2 py-1 rounded-lg text-xs font-semibold border flex items-center gap-1.5 bg-white shadow-2xs" :class="getModeBadgeClass(v.access_mode)">
+                                            <span class="font-mono font-bold">{{ v.vlan_id }}</span>
+                                            <span class="text-gray-700">· {{ v.name }}</span>
+                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border bg-gray-50">{{ v.access_mode }}</span>
+                                        </span>
+                                    </div>
+                                    <div v-else class="text-xs text-purple-600/80 italic">
+                                        Belum ada VLAN diset di OLT untuk ODC ini. ODP akan otomatis tersinkron begitu VLAN diset di OLT.
+                                    </div>
                                 </div>
                                 
                                 <div v-if="isBranchMismatch" class="col-span-2 bg-orange-50 border border-orange-200 rounded-lg p-3 flex gap-3">
@@ -536,6 +583,81 @@ function getLocationForSplit(tabIndex) {
         alert('Geolocation tidak didukung oleh browser Anda.');
     }
 }
+
+function getVlanAccessMode(vlan) {
+    if (vlan.access_mode) return vlan.access_mode;
+    const name = (vlan.name || '').toLowerCase();
+    if (name.includes('pppoe')) return 'PPPOE';
+    if (name.includes('hotspot')) return 'Hotspot';
+    if (name.includes('static')) return 'Static';
+    if (name.includes('dhcp')) return 'DHCP';
+    if (name.includes('bridge')) return 'Bridge';
+    if (name.includes('trunk') || name.includes('tagged')) return 'Tagged';
+    if (name.includes('access') || name.includes('untagged')) return 'Untagged';
+    return 'PPPOE';
+}
+
+function getModeBadgeClass(mode) {
+    switch ((mode || '').toUpperCase()) {
+        case 'PPPOE':
+            return 'bg-blue-50 text-blue-700 border-blue-200';
+        case 'HOTSPOT':
+            return 'bg-purple-50 text-purple-700 border-purple-200';
+        case 'STATIC':
+        case 'STATIC IP':
+            return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        case 'DHCP':
+            return 'bg-amber-50 text-amber-700 border-amber-200';
+        case 'BRIDGE':
+            return 'bg-cyan-50 text-cyan-700 border-cyan-200';
+        case 'TAGGED':
+        case 'TRUNK':
+            return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+        case 'UNTAGGED':
+        case 'ACCESS':
+            return 'bg-gray-100 text-gray-700 border-gray-200';
+        default:
+            return 'bg-blue-50 text-blue-700 border-blue-200';
+    }
+}
+
+function getOdpPonVlans(odp) {
+    if (!odp || !odp.odc || !odp.odc.pon_port || !odp.odc.olt || !odp.odc.olt.pon_vlans) return [];
+    let vlans = odp.odc.olt.pon_vlans;
+    if (typeof vlans === 'string') {
+        try { vlans = JSON.parse(vlans); } catch (e) { return []; }
+    }
+    if (!Array.isArray(vlans)) return [];
+    
+    const ponData = vlans.find(p => p.port == odp.odc.pon_port);
+    if (!ponData || !ponData.vlans || !Array.isArray(ponData.vlans)) return [];
+    return ponData.vlans.map(v => ({
+        name: v.name,
+        vlan_id: v.vlan_id,
+        access_mode: getVlanAccessMode(v)
+    }));
+}
+
+const selectedOdcInfo = computed(() => {
+    if (!form.odc_id) return null;
+    return props.odcs.find(o => o.id === form.odc_id);
+});
+
+const currentModalOdpVlans = computed(() => {
+    if (!selectedOdcInfo.value || !selectedOdcInfo.value.pon_port || !selectedOdcInfo.value.olt || !selectedOdcInfo.value.olt.pon_vlans) return [];
+    let vlans = selectedOdcInfo.value.olt.pon_vlans;
+    if (typeof vlans === 'string') {
+        try { vlans = JSON.parse(vlans); } catch (e) { return []; }
+    }
+    if (!Array.isArray(vlans)) return [];
+    const ponData = vlans.find(p => p.port == selectedOdcInfo.value.pon_port);
+    if (!ponData || !ponData.vlans || !Array.isArray(ponData.vlans)) return [];
+    return ponData.vlans.map(v => ({
+        name: v.name,
+        vlan_id: v.vlan_id,
+        access_mode: getVlanAccessMode(v)
+    }));
+});
 
 function submit() {
     if (isEditing.value) {

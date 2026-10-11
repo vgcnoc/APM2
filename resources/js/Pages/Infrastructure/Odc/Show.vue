@@ -46,12 +46,26 @@
                             </div>
                             <div v-if="odc.pon_port">
                                 <p class="text-xs text-indigo-500 mb-1">Port PON</p>
-                                <p class="text-sm font-bold text-indigo-700 flex items-center gap-2">
+                                <div class="text-sm font-bold text-indigo-700">
                                     PON {{ odc.pon_port }}
-                                    <span v-if="getPonVlansText(odc)" class="text-xs font-normal text-indigo-500 bg-indigo-100 px-1.5 py-0.5 rounded">
-                                        {{ getPonVlansText(odc) }}
-                                    </span>
-                                </p>
+                                </div>
+                                <div class="mt-2 pt-2 border-t border-purple-100">
+                                    <p class="text-[11px] font-bold text-indigo-900 uppercase tracking-wider mb-1.5">VLAN & Mode Akses dari OLT:</p>
+                                    <div v-if="getPonVlans(odc).length > 0" class="space-y-1.5">
+                                        <div v-for="(v, vi) in getPonVlans(odc)" :key="vi" class="p-2 rounded-lg bg-white border border-indigo-100 flex items-center justify-between shadow-2xs">
+                                            <div>
+                                                <span class="font-mono font-bold text-xs text-gray-900">VLAN {{ v.vlan_id }}</span>
+                                                <span class="text-xs text-gray-600 ml-1.5">· {{ v.name }}</span>
+                                            </div>
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border" :class="getModeBadgeClass(v.access_mode)">
+                                                {{ v.access_mode }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div v-else class="text-xs text-gray-400 italic">
+                                        Belum ada VLAN diset di OLT untuk PON {{ odc.pon_port }}.
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -114,6 +128,12 @@
                                             <div class="text-xs text-gray-500 mt-0.5">
                                                 {{ odp.address || 'Alamat tidak tersedia' }}
                                             </div>
+                                            <div v-if="getPonVlans(odc).length > 0" class="flex flex-wrap items-center gap-1 mt-1.5">
+                                                <span class="text-[10px] text-gray-400 font-medium">Sinkron VLAN:</span>
+                                                <span v-for="(v, vi) in getPonVlans(odc)" :key="vi" class="px-1.5 py-0.5 rounded text-[10px] font-semibold border" :class="getModeBadgeClass(v.access_mode)">
+                                                    {{ v.vlan_id }} · {{ v.name }} ({{ v.access_mode }})
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="text-right">
@@ -149,16 +169,57 @@ const props = defineProps({
     odc: Object,
 });
 
-function getPonVlansText(odc) {
-    if (!odc.olt || !odc.pon_port || !odc.olt.pon_vlans) return '';
+function getVlanAccessMode(vlan) {
+    if (vlan.access_mode) return vlan.access_mode;
+    const name = (vlan.name || '').toLowerCase();
+    if (name.includes('pppoe')) return 'PPPOE';
+    if (name.includes('hotspot')) return 'Hotspot';
+    if (name.includes('static')) return 'Static';
+    if (name.includes('dhcp')) return 'DHCP';
+    if (name.includes('bridge')) return 'Bridge';
+    if (name.includes('trunk') || name.includes('tagged')) return 'Tagged';
+    if (name.includes('access') || name.includes('untagged')) return 'Untagged';
+    return 'PPPOE';
+}
+
+function getModeBadgeClass(mode) {
+    switch ((mode || '').toUpperCase()) {
+        case 'PPPOE':
+            return 'bg-blue-50 text-blue-700 border-blue-200';
+        case 'HOTSPOT':
+            return 'bg-purple-50 text-purple-700 border-purple-200';
+        case 'STATIC':
+        case 'STATIC IP':
+            return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        case 'DHCP':
+            return 'bg-amber-50 text-amber-700 border-amber-200';
+        case 'BRIDGE':
+            return 'bg-cyan-50 text-cyan-700 border-cyan-200';
+        case 'TAGGED':
+        case 'TRUNK':
+            return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+        case 'UNTAGGED':
+        case 'ACCESS':
+            return 'bg-gray-100 text-gray-700 border-gray-200';
+        default:
+            return 'bg-blue-50 text-blue-700 border-blue-200';
+    }
+}
+
+function getPonVlans(odc) {
+    if (!odc || !odc.olt || !odc.pon_port || !odc.olt.pon_vlans) return [];
     let vlans = odc.olt.pon_vlans;
     if (typeof vlans === 'string') {
-        try { vlans = JSON.parse(vlans); } catch (e) { return ''; }
+        try { vlans = JSON.parse(vlans); } catch (e) { return []; }
     }
-    if (!Array.isArray(vlans)) return '';
+    if (!Array.isArray(vlans)) return [];
     
     const ponData = vlans.find(p => p.port == odc.pon_port);
-    if (!ponData || !ponData.vlans || !Array.isArray(ponData.vlans) || ponData.vlans.length === 0) return '';
-    return ponData.vlans.map(v => `${v.name} (${v.vlan_id})`).join(', ');
+    if (!ponData || !ponData.vlans || !Array.isArray(ponData.vlans)) return [];
+    return ponData.vlans.map(v => ({
+        name: v.name,
+        vlan_id: v.vlan_id,
+        access_mode: getVlanAccessMode(v)
+    }));
 }
 </script>
