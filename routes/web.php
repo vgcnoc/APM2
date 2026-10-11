@@ -190,6 +190,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('order-toko/{id}/send-ont', [\App\Http\Controllers\PurchaseOrderController::class, 'sendOnt'])->name('order-toko.send-ont');
     Route::resource('stok-in-out', \App\Http\Controllers\StockInOutController::class);
     Route::get('warehouse-stocks', [\App\Http\Controllers\WarehouseStockController::class, 'index'])->name('warehouse-stocks.index');
+    Route::delete('warehouse-stocks/{id}', [\App\Http\Controllers\WarehouseStockController::class, 'destroy'])->name('warehouse-stocks.destroy');
 
     // ── Permintaan Material (Teknisi -> Gudang Utama) ────────────────────
 
