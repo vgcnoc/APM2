@@ -39,7 +39,51 @@
         .total-table td { padding: 8px 12px; color: #4b5563; }
         .total-table td.right { text-align: right; }
         .total-table tr.grand-total td { font-weight: bold; color: #111827; font-size: 18px; border-top: 2px solid #e5e7eb; padding-top: 12px; }
-        .footer { text-align: center; margin-top: 50px; color: #9ca3af; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px; }
+
+        /* Signature & Stamp Section */
+        .signature-section { display: flex; justify-content: flex-end; margin-top: 35px; margin-bottom: 20px; page-break-inside: avoid; }
+        .signature-box { width: 230px; text-align: center; position: relative; }
+        .signature-date { margin: 0 0 4px 0; font-size: 12px; color: #4b5563; }
+        .signature-title { margin: 0 0 10px 0; font-size: 13px; font-weight: bold; color: #111827; }
+        .signature-space { height: 95px; position: relative; display: flex; align-items: center; justify-content: center; }
+        .signature-name { margin: 6px 0 0 0; font-size: 12px; font-weight: bold; color: #111827; border-top: 1px solid #374151; padding-top: 4px; }
+        .signature-role { margin: 2px 0 0 0; font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* Official Stamp */
+        .stamp-container { position: absolute; top: 50%; left: 45%; transform: translate(-50%, -50%) rotate(-10deg); z-index: 2; pointer-events: none; }
+        .official-stamp {
+            width: 155px;
+            height: 98px;
+            border: 2.5px solid #2563eb;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 10px;
+            box-sizing: border-box;
+            color: #2563eb;
+            position: relative;
+            background: rgba(255, 255, 255, 0.45);
+            opacity: 0.88;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .official-stamp::before {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            right: 3px;
+            bottom: 3px;
+            border: 1px dashed #2563eb;
+            border-radius: 50%;
+        }
+        .stamp-header { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; line-height: 1; margin-bottom: 2px; }
+        .stamp-logo { max-height: 40px; max-width: 85px; object-fit: contain; margin: 2px 0; }
+        .stamp-footer { font-size: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; line-height: 1; margin-top: 2px; }
+
+        .footer { text-align: center; margin-top: 35px; color: #9ca3af; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px; }
         @media print { body { padding: 0; } .invoice-box { border: none; box-shadow: none; max-width: 100%; } .no-print { display: none; } }
         .btn-print { background-color: #4f46e5; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 20px; }
     </style>
@@ -167,6 +211,26 @@
                     <td class="right">Rp {{ number_format($invoice->remaining, 0, ',', '.') }}</td>
                 </tr>
             </table>
+        </div>
+
+        <div class="signature-section">
+            <div class="signature-box">
+                <p class="signature-date">{{ $invoice->issued_date ? $invoice->issued_date->format('d M Y') : date('d M Y') }}</p>
+                <p class="signature-title">Finance,</p>
+                <div class="signature-space">
+                    @if(!empty($company['logo']))
+                        <div class="stamp-container">
+                            <div class="official-stamp">
+                                <div class="stamp-header">{{ $company['name'] }}</div>
+                                <img src="{{ asset('storage/' . $company['logo']) }}" class="stamp-logo" alt="Stempel">
+                                <div class="stamp-footer">★ FINANCE ★</div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+                <p class="signature-name">( Finance )</p>
+                <p class="signature-role">{{ $company['name'] }}</p>
+            </div>
         </div>
 
         <div class="footer">
