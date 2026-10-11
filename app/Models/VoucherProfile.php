@@ -23,6 +23,30 @@ class VoucherProfile extends Model
         'is_customer_free' => 'boolean',
     ];
 
+    protected $appends = [
+        'reseller_buy_price',
+        'reseller_margin',
+    ];
+
+    /**
+     * Harga modal / beli reseller (Harga Jual - Reseller Margin).
+     * Contoh: Harga Jual 5.000, Margin 1.000 -> Modal 4.000.
+     */
+    public function getResellerBuyPriceAttribute(): float
+    {
+        $sellPrice = (float) $this->price;
+        $margin = (float) ($this->fee_reseller ?? 0);
+        return max(0, $sellPrice - $margin);
+    }
+
+    /**
+     * Margin / keuntungan reseller per voucher.
+     */
+    public function getResellerMarginAttribute(): float
+    {
+        return (float) ($this->fee_reseller ?? 0);
+    }
+
     public function vouchers()
     {
         return $this->hasMany(Voucher::class);
