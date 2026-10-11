@@ -280,6 +280,18 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Ticketing & Gangguan ───────────────────────────────────
     Route::resource('tickets', TicketController::class);
+
+    // ── Penanganan Sigap (PGS) ──────────────────────────────────
+    Route::get('pgs', [\App\Http\Controllers\PgsController::class, 'index'])->name('pgs.index');
+    Route::get('pgs/jadwal', [\App\Http\Controllers\PgsController::class, 'jadwal'])->name('pgs.jadwal');
+    Route::get('pgs/laporan', [\App\Http\Controllers\PgsController::class, 'laporan'])->name('pgs.laporan');
+    Route::get('pgs/{pgs}/print', [\App\Http\Controllers\PgsController::class, 'print'])->name('pgs.print');
+    Route::post('pgs', [\App\Http\Controllers\PgsController::class, 'store'])->name('pgs.store');
+    Route::post('pgs/{pgs}/resolve-admin', [\App\Http\Controllers\PgsController::class, 'resolveByAdmin'])->name('pgs.resolve-admin');
+    Route::post('pgs/{pgs}/escalate', [\App\Http\Controllers\PgsController::class, 'escalateToLead'])->name('pgs.escalate');
+    Route::post('pgs/{pgs}/schedule', [\App\Http\Controllers\PgsController::class, 'schedule'])->name('pgs.schedule');
+    Route::post('pgs/{pgs}/report', [\App\Http\Controllers\PgsController::class, 'submitReport'])->name('pgs.report');
+    Route::delete('pgs/{pgs}', [\App\Http\Controllers\PgsController::class, 'destroy'])->name('pgs.destroy');
     
     // CBP / Cabut Perangkat
     Route::get('cbp', [\App\Http\Controllers\CbpRequestController::class, 'index'])->name('cbp.index');

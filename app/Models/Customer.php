@@ -151,6 +151,14 @@ class Customer extends Model
         return $this->hasOne(Reseller::class);
     }
 
+    /**
+     * Tiket Penanganan Sigap (PGS) untuk pelanggan ini
+     */
+    public function pgsTickets(): HasMany
+    {
+        return $this->hasMany(PgsTicket::class);
+    }
+
     // ── Computed ───────────────────────────────────────────────
 
     /**

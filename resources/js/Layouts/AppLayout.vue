@@ -231,6 +231,18 @@ const menuItems = [
     },
     {
         type: 'dropdown',
+        icon: 'zap',
+        label: 'Penanganan Sigap (PGS)',
+        active: (url) => (url || '').startsWith('/pgs'),
+        permission: 'menu_tickets',
+        children: [
+            { href: '/pgs', label: 'Temuan & Penanganan', active: (url) => (url || '').length > 0 && url === '/pgs', permission: 'menu_tickets' },
+            { href: '/pgs/jadwal', label: 'Jadwal & Material (Lead)', active: (url) => (url || '').startsWith('/pgs/jadwal'), permission: 'menu_tickets' },
+            { href: '/pgs/laporan', label: 'Laporan Penanganan', active: (url) => (url || '').startsWith('/pgs/laporan'), permission: 'menu_tickets' },
+        ]
+    },
+    {
+        type: 'dropdown',
         icon: 'alert-circle',
         label: 'Ticketing & CBP',
         active: (url) => ['/tickets', '/cbp'].some(path => (url || '').startsWith(path)),
