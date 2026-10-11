@@ -485,6 +485,30 @@ class CustomerController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        // Auto-heal ghost reserved ports (marked reserved but have no active customer in survey/installing)
+        \App\Models\OdpPort::where('status', 'reserved')
+            ->whereNotExists(function ($query) {
+                $query->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('surveys')
+                    ->join('customers', 'surveys.customer_id', '=', 'customers.id')
+                    ->whereColumn('surveys.odp_id', 'odp_ports.odp_id')
+                    ->whereColumn('surveys.port_number', 'odp_ports.port_number')
+                    ->whereIn('customers.status', ['survey', 'installing']);
+            })
+            ->update(['status' => 'available']);
+
+        // Auto-heal ghost used ports (marked used but have no active ONT)
+        \App\Models\OdpPort::where('status', 'used')
+            ->whereNotExists(function ($query) {
+                $query->select(\Illuminate\Support\Facades\DB::raw(1))
+                    ->from('onts')
+                    ->whereColumn('onts.odp_id', 'odp_ports.odp_id')
+                    ->whereColumn('onts.port_number', 'odp_ports.port_number')
+                    ->whereNotNull('onts.customer_id')
+                    ->where('onts.status', '!=', 'inactive');
+            })
+            ->update(['status' => 'available']);
+
         $availableOdps = Odp::active()
             ->with('odc.olt')
             ->get();
@@ -1131,6 +1155,16 @@ class CustomerController extends Controller
 
             // Hapus Material Transactions yang terkait
             \App\Models\MaterialTransaction::where('customer_id', $customer->id)->delete();
+
+            // Lepaskan port ODP yang di-reservasi oleh survey jika ada
+            foreach ($customer->surveys as $survey) {
+                if ($survey->odp_id && $survey->port_number) {
+                    \App\Models\OdpPort::where('odp_id', $survey->odp_id)
+                        ->where('port_number', $survey->port_number)
+                        ->where('status', 'reserved')
+                        ->update(['status' => 'available']);
+                }
+            }
 
             // Hapus data terkait
             $customer->technicianSchedules()->delete();
@@ -2245,6 +2279,13 @@ class CustomerController extends Controller
             \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'survey', 'Mengubah laporan survey (feasible)');
         } else {
             $customer->update(['status' => 'terminated']);
+            // Jika not feasible, lepaskan port yang mungkin tadinya di-reservasi
+            if ($survey->odp_id && $survey->port_number) {
+                \App\Models\OdpPort::where('odp_id', $survey->odp_id)
+                    ->where('port_number', $survey->port_number)
+                    ->where('status', 'reserved')
+                    ->update(['status' => 'available']);
+            }
             \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'terminated', 'Mengubah laporan survey (not feasible)');
         }
 
@@ -2340,6 +2381,16 @@ class CustomerController extends Controller
                     }
                 }
                 
+                // Lepaskan port ODP yang di-reservasi oleh survey jika ada
+                foreach ($customer->surveys as $survey) {
+                    if ($survey->odp_id && $survey->port_number) {
+                        \App\Models\OdpPort::where('odp_id', $survey->odp_id)
+                            ->where('port_number', $survey->port_number)
+                            ->where('status', 'reserved')
+                            ->update(['status' => 'available']);
+                    }
+                }
+
                 // Hapus data terkait
                 $customer->technicianSchedules()->delete();
                 $customer->surveys()->delete();
