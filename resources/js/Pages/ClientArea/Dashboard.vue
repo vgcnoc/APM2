@@ -82,7 +82,7 @@
                                     <div class="relative">
                                         <select v-model="form.profile_id" class="w-full appearance-none bg-gray-50/50 border border-gray-200 text-gray-900 text-sm font-bold rounded-2xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white block p-4 shadow-sm transition-all cursor-pointer">
                                             <option value="" disabled>-- Klik untuk memilih paket --</option>
-                                            <option v-for="profile in sellableProfiles" :key="profile.id" :value="profile.id">
+                                            <option v-for="profile in profiles" :key="profile.id" :value="profile.id">
                                                 {{ profile.name }} (Harga User: Rp {{ Number(profile.price).toLocaleString('id-ID') }})
                                             </option>
                                         </select>
@@ -159,16 +159,31 @@
                                 <h2 class="text-2xl font-black text-gray-900 tracking-tight">Riwayat Voucher</h2>
                                 <p class="text-sm text-gray-500 font-medium mt-1">Daftar voucher yang telah Anda generate sebelumnya.</p>
                             </div>
-                            <button @click="printAll" class="px-5 py-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-2xl text-sm text-gray-700 font-bold flex items-center gap-2 transition-all shadow-sm hover:shadow-md transform hover:-translate-y-0.5">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                                Print Voucher
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <button 
+                                    @click="printSelected" 
+                                    class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-2xl text-sm font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    :disabled="vouchers.data.length === 0"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                    {{ selectedVouchers.length > 0 ? `Print Voucher (${selectedVouchers.length})` : 'Print Semua Voucher' }}
+                                </button>
+                            </div>
                         </div>
                         
                         <div class="overflow-x-auto flex-1 p-2">
                             <table class="min-w-full border-separate" style="border-spacing: 0 0.5rem;">
                                 <thead>
                                     <tr>
+                                        <th class="px-4 py-3 text-center bg-white w-10">
+                                            <input 
+                                                type="checkbox" 
+                                                :checked="isAllSelected" 
+                                                @change="toggleSelectAll"
+                                                class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 cursor-pointer"
+                                                :disabled="vouchers.data.length === 0"
+                                            />
+                                        </th>
                                         <th class="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest bg-white">Kode</th>
                                         <th class="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest bg-white">Paket</th>
                                         <th class="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest bg-white">Harga Jual</th>
@@ -177,8 +192,16 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="voucher in vouchers.data" :key="voucher.id" class="group transition-all hover:-translate-y-0.5 hover:shadow-md bg-gray-50/50 hover:bg-white rounded-2xl">
-                                        <td class="px-6 py-5 whitespace-nowrap text-sm font-black text-gray-900 tracking-widest rounded-l-2xl border-y border-l border-transparent group-hover:border-gray-100">
+                                    <tr v-for="voucher in vouchers.data" :key="voucher.id" class="group transition-all hover:-translate-y-0.5 hover:shadow-md bg-gray-50/50 hover:bg-white rounded-2xl" :class="{ '!bg-indigo-50/40': selectedVouchers.includes(voucher.id) }">
+                                        <td class="px-4 py-5 whitespace-nowrap text-center rounded-l-2xl border-y border-l border-transparent group-hover:border-gray-100">
+                                            <input 
+                                                type="checkbox" 
+                                                :value="voucher.id" 
+                                                v-model="selectedVouchers"
+                                                class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 cursor-pointer"
+                                            />
+                                        </td>
+                                        <td class="px-6 py-5 whitespace-nowrap text-sm font-black text-gray-900 tracking-widest border-y border-transparent group-hover:border-gray-100">
                                             <div class="flex items-center gap-3">
                                                 <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
@@ -210,7 +233,7 @@
                                         </td>
                                     </tr>
                                     <tr v-if="vouchers.data.length === 0">
-                                        <td colspan="5" class="px-6 py-16 text-center">
+                                        <td colspan="6" class="px-6 py-16 text-center">
                                             <div class="flex flex-col items-center justify-center text-gray-400">
                                                 <svg class="w-16 h-16 mb-4 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                                                 <p class="text-lg font-bold text-gray-500">Belum ada voucher</p>
@@ -239,7 +262,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { Head, useForm, Link } from '@inertiajs/vue3';
 import ClientAreaLayout from '@/Layouts/ClientAreaLayout.vue';
 import Swal from 'sweetalert2';
@@ -251,20 +274,50 @@ const props = defineProps({
     income: Number,
 });
 
-const sellableProfiles = computed(() => {
-    return (props.profiles || []).filter(p => !p.is_customer_free);
-});
-
 const form = useForm({
     profile_id: '',
     qty: 1,
     combination: 'alphanumeric'
 });
 
+const selectedVouchers = ref([]);
+
 const selectedProfile = computed(() => {
     if (!form.profile_id) return null;
-    return sellableProfiles.value.find(p => p.id === form.profile_id);
+    return props.profiles.find(p => p.id === form.profile_id);
 });
+
+const isAllSelected = computed(() => {
+    return props.vouchers.data.length > 0 && selectedVouchers.value.length === props.vouchers.data.length;
+});
+
+const toggleSelectAll = (e) => {
+    if (e.target.checked) {
+        selectedVouchers.value = props.vouchers.data.map(v => v.id);
+    } else {
+        selectedVouchers.value = [];
+    }
+};
+
+const printSelected = () => {
+    let idsToPrint = [];
+    if (selectedVouchers.value.length > 0) {
+        idsToPrint = selectedVouchers.value;
+    } else if (props.vouchers.data.length > 0) {
+        idsToPrint = props.vouchers.data.map(v => v.id);
+    } else {
+        Swal.fire('Info', 'Belum ada voucher untuk dicetak.', 'info');
+        return;
+    }
+
+    const queryParams = new URLSearchParams();
+    idsToPrint.forEach(id => {
+        queryParams.append('ids[]', id);
+    });
+
+    const url = '/vouchers/print?' + queryParams.toString();
+    window.open(url, '_blank');
+};
 
 const generateVoucher = () => {
     form.post(route('client-area.generate-vouchers'), {
@@ -290,20 +343,23 @@ const generateVoucher = () => {
         }
     });
 };
-
-const printAll = () => {
-    window.print();
-};
 </script>
 
 <style>
 @media print {
-    nav, form, button, .bg-blue-50 {
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    nav, form, button, .no-print {
         display: none !important;
     }
     .shadow-sm, .shadow-2xl, .shadow-\[0_8px_30px_rgb\(0\,0\,0\,0\.04\)\] {
         box-shadow: none !important;
         border: none !important;
+    }
+    .overflow-x-auto {
+        overflow: visible !important;
     }
     main {
         padding: 0 !important;

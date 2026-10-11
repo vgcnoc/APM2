@@ -15,11 +15,16 @@ class PurchaseOrderController extends Controller
     {
         // Only get transactions with purpose indicating it's a purchase
         $transactions = MaterialTransaction::where('purpose', 'Pembelian Toko / Supplier')
-                            ->with(['items.material', 'items.onts'])
+                            ->with('items.material')
                             ->latest()
                             ->paginate(15);
 
-        $materials = Material::orderBy('name')->get();
+        // Hanya produk aktif dari menu Data Produk yang bisa diorder
+        $materials = Material::where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->orderBy('name')
+            ->get();
         $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Inventory/PurchaseOrders/Index', [
@@ -29,7 +34,7 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
-        public function store(Request $request)
+    public function store(Request $request)
     {
         $validated = $request->validate([
             'date' => 'nullable|date',
@@ -37,7 +42,7 @@ class PurchaseOrderController extends Controller
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
-            'items.*.purchase_unit' => 'required|string', 
+            'items.*.purchase_unit' => 'required|string', // e.g., 'roll', 'pack', 'pcs', 'meter', 'cm'
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.price' => 'nullable|numeric|min:0',
         ]);
@@ -45,10 +50,9 @@ class PurchaseOrderController extends Controller
 
         DB::beginTransaction();
         try {
+            // Generate Transaction Number (PO)
             $count = MaterialTransaction::whereDate('created_at', today())->count() + 1;
             $transactionNumber = 'PO-' . now()->format('Ymd') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
-
-            $area = \App\Models\Area::where('name', $validated['area_name'])->first();
 
             $transaction = MaterialTransaction::create([
                 'transaction_number' => $transactionNumber,
@@ -56,8 +60,6 @@ class PurchaseOrderController extends Controller
                 'date' => $validated['date'],
                 'purpose' => 'Pembelian Toko / Supplier',
                 'technician_name' => $validated['area_name'], // Reusing this column for area/wilayah name
-                'area_id' => $area ? $area->id : null,
-                'area' => $validated['area_name'],
                 'notes' => $validated['notes'] ?? null,
                 'user_id' => auth()->id(),
                 'total_cost' => 0 // Will calculate below
@@ -66,15 +68,22 @@ class PurchaseOrderController extends Controller
             $totalCost = 0;
 
             foreach ($validated['items'] as $item) {
-                $material = Material::findOrFail($item['material_id']);
+                $material = Material::lockForUpdate()->findOrFail($item['material_id']);
                 
                 // Smart Unit Conversion Logic
                 $convertedQuantity = $item['quantity']; // Default 1:1
                 
+                $isIsolasi = str_contains(strtolower($material->name), 'isolasi') || str_contains(strtolower($material->category), 'isolasi');
+
                 if ($item['purchase_unit'] === 'roll' && $material->meter_per_roll > 0) {
                     $convertedQuantity = $item['quantity'] * $material->meter_per_roll;
-                } elseif (($material->category === 'Isolasi' || stripos($material->name, 'isolasi') !== false) && $item['purchase_unit'] === 'pack') {
-                    $convertedQuantity = $item['quantity'] * (($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50));
+                } elseif ($isIsolasi && in_array(strtolower($item['purchase_unit']), ['pack', 'bungkus', 'base'])) {
+                    $pcsPerPack = $material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1;
+                    $cmPerPcs = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50;
+                    $convertedQuantity = $item['quantity'] * ($pcsPerPack * $cmPerPcs);
+                    if ($material->unit !== 'cm') {
+                        $material->unit = 'cm';
+                    }
                 } elseif ($item['purchase_unit'] === 'pack' && $material->pcs_per_pack > 0) {
                     $convertedQuantity = $item['quantity'] * $material->pcs_per_pack;
                 } elseif ($item['purchase_unit'] === 'pcs' && $material->cm_per_pcs > 0) {
@@ -82,210 +91,36 @@ class PurchaseOrderController extends Controller
                 }
 
                 if (isset($item['price']) && $item['price'] !== null && $item['price'] !== '') {
-                    $pricePerPurchaseUnit = $item['price'];
-                    $itemTotal = $item['quantity'] * $pricePerPurchaseUnit;
-                    $pricePerBaseUnit = $convertedQuantity > 0 ? ($itemTotal / $convertedQuantity) : 0;
+                    $pricePerUnit = $item['price'];
+                    $itemTotal = $item['quantity'] * $item['price'];
                 } else {
-                    $pricingUnitPrice = $material->price_per_unit ?? 0;
-                    
-                    $baseUnitsPerPricingUnit = 1;
-                    if ($material->category === 'Kabel' || $material->category === 'Patchcord') {
-                        $baseUnitsPerPricingUnit = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1;
-                    } elseif ($material->category === 'Isolasi' || stripos($material->name, 'isolasi') !== false) {
-                        $baseUnitsPerPricingUnit = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 1;
-                    } elseif ($material->pcs_per_pack > 0) {
-                        $baseUnitsPerPricingUnit = $material->pcs_per_pack;
-                    }
-
-                    $pricePerBaseUnit = $baseUnitsPerPricingUnit > 0 ? ($pricingUnitPrice / $baseUnitsPerPricingUnit) : 0;
-                    $itemTotal = $convertedQuantity * $pricePerBaseUnit;
+                    // Fallback: harga dasar material per satuan stok
+                    $pricePerUnit = $material->price_per_unit ?? 0;
+                    $itemTotal = $convertedQuantity * $pricePerUnit;
                 }
                 $totalCost += $itemTotal;
 
-                if ($material->stock < $convertedQuantity) {
-                    throw new \Exception("Stok {$material->name} di Gudang tidak mencukupi (Tersedia: {$material->stock}).");
-                }
-
-                $transactionItem = MaterialTransactionItem::create([
+                MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
-                    'quantity' => $convertedQuantity, 
-                    'unit' => $item['purchase_unit'] ?? null,
-                    'price_per_unit' => $pricePerBaseUnit,
+                    'quantity' => $convertedQuantity, // The quantity in BASE UNIT
+                    'unit' => $material->unit,
+                    'price_per_unit' => $pricePerUnit,
                     'total_price' => $itemTotal
                 ]);
 
-                // Decrease Stock globally
-                $material->stock -= $convertedQuantity;
-                $material->save();
-                
-                // Increase Stock in Area
-                if ($area) {
-                    $materialStock = \App\Models\MaterialStock::firstOrCreate([
-                        'material_id' => $material->id,
-                        'area_id' => $area->id,
-                    ], ['stock' => 0]);
-                    
-                    $materialStock->increment('stock', $convertedQuantity);
-                }
+                // Increase Stock & sinkronkan ke Data Produk
+                $material->stock += $convertedQuantity;
+                $material->recalcUnitTotals()->save();
             }
 
             $transaction->update(['total_cost' => $totalCost]);
 
             DB::commit();
-            return redirect()->back()->with('success', 'Order Toko berhasil dicatat dan stok telah didistribusikan ke area.');
+            return redirect()->back()->with('success', 'Order Toko berhasil dicatat dan stok telah bertambah.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal mencatat order: ' . $e->getMessage());
-        }
-    }
-
-    public function update(Request $request, $id)
-    {
-        $transaction = MaterialTransaction::findOrFail($id);
-
-        $validated = $request->validate([
-            'date' => 'nullable|date',
-            'area_name' => 'required|string|max:255',
-            'notes' => 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.id' => 'nullable|numeric',
-            'items.*.material_id' => 'required|exists:materials,id',
-            'items.*.purchase_unit' => 'required|string', 
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.price' => 'nullable|numeric|min:0',
-        ]);
-        $validated['date'] = $validated['date'] ?? now()->toDateString();
-
-        DB::beginTransaction();
-        try {
-            $oldArea = \App\Models\Area::where('name', $transaction->technician_name)->first();
-            
-            // Revert old stock
-            foreach ($transaction->items as $oldItem) {
-                $material = Material::findOrFail($oldItem->material_id);
-                $material->stock += $oldItem->quantity;
-                $material->save();
-                
-                if ($oldArea) {
-                    $materialStock = \App\Models\MaterialStock::where([
-                        'material_id' => $material->id,
-                        'area_id' => $oldArea->id,
-                    ])->first();
-                    
-                    if ($materialStock) {
-                        $materialStock->decrement('stock', $oldItem->quantity);
-                    }
-                }
-            }
-
-            $existingItemIds = $transaction->items->pluck('id')->toArray();
-
-            // Update transaction basic info
-            $transaction->update([
-                'date' => $validated['date'],
-                'technician_name' => $validated['area_name'],
-                'notes' => $validated['notes'] ?? null,
-            ]);
-
-            $totalCost = 0;
-            $newArea = \App\Models\Area::where('name', $validated['area_name'])->first();
-
-            // Apply new stock
-            foreach ($validated['items'] as $item) {
-                $material = Material::findOrFail($item['material_id']);
-                
-                // Smart Unit Conversion Logic
-                $convertedQuantity = $item['quantity']; 
-                
-                if ($item['purchase_unit'] === 'roll' && $material->meter_per_roll > 0) {
-                    $convertedQuantity = $item['quantity'] * $material->meter_per_roll;
-                } elseif (($material->category === 'Isolasi' || stripos($material->name, 'isolasi') !== false) && $item['purchase_unit'] === 'pack') {
-                    $convertedQuantity = $item['quantity'] * (($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50));
-                } elseif ($item['purchase_unit'] === 'pack' && $material->pcs_per_pack > 0) {
-                    $convertedQuantity = $item['quantity'] * $material->pcs_per_pack;
-                } elseif ($item['purchase_unit'] === 'pcs' && $material->cm_per_pcs > 0) {
-                    $convertedQuantity = $item['quantity'] * $material->cm_per_pcs;
-                }
-
-                if (isset($item['price']) && $item['price'] !== null && $item['price'] !== '') {
-                    $pricePerPurchaseUnit = $item['price'];
-                    $itemTotal = $item['quantity'] * $pricePerPurchaseUnit;
-                    $pricePerBaseUnit = $convertedQuantity > 0 ? ($itemTotal / $convertedQuantity) : 0;
-                } else {
-                    $pricingUnitPrice = $material->price_per_unit ?? 0;
-                    
-                    $baseUnitsPerPricingUnit = 1;
-                    if ($material->category === 'Kabel' || $material->category === 'Patchcord') {
-                        $baseUnitsPerPricingUnit = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1;
-                    } elseif ($material->category === 'Isolasi' || stripos($material->name, 'isolasi') !== false) {
-                        $baseUnitsPerPricingUnit = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 1;
-                    } elseif ($material->pcs_per_pack > 0) {
-                        $baseUnitsPerPricingUnit = $material->pcs_per_pack;
-                    }
-
-                    $pricePerBaseUnit = $baseUnitsPerPricingUnit > 0 ? ($pricingUnitPrice / $baseUnitsPerPricingUnit) : 0;
-                    $itemTotal = $convertedQuantity * $pricePerBaseUnit;
-                }
-                $totalCost += $itemTotal;
-
-                // CHECK IF OVERSTOCK (After reverting the old ones!)
-                // Note: material stock is the live stock now because we already reverted in the previous loop!
-                // But wait, the material model object might be cached, let's refresh it!
-                $material->refresh();
-                if ($material->stock < $convertedQuantity) {
-                    throw new \Exception("Stok {$material->name} di Gudang tidak mencukupi (Tersedia: {$material->stock}).");
-                }
-
-                if (isset($item['id']) && in_array($item['id'], $existingItemIds)) {
-                    $transactionItem = MaterialTransactionItem::find($item['id']);
-                    $transactionItem->update([
-                        'material_id' => $material->id,
-                        'quantity' => $convertedQuantity, 
-                        'unit' => $item['purchase_unit'] ?? null,
-                        'price_per_unit' => $pricePerBaseUnit,
-                        'total_price' => $itemTotal
-                    ]);
-                    // Remove from existingItemIds to track what's left to delete
-                    $existingItemIds = array_diff($existingItemIds, [$item['id']]);
-                } else {
-                    $transactionItem = MaterialTransactionItem::create([
-                        'material_transaction_id' => $transaction->id,
-                        'material_id' => $material->id,
-                        'quantity' => $convertedQuantity, 
-                        'unit' => $item['purchase_unit'] ?? null,
-                        'price_per_unit' => $pricePerBaseUnit,
-                        'total_price' => $itemTotal
-                    ]);
-                }
-
-                // Decrease Stock globally
-                $material->stock -= $convertedQuantity;
-                $material->save();
-                
-                // Increase Stock in Area
-                if ($newArea) {
-                    $materialStock = \App\Models\MaterialStock::firstOrCreate([
-                        'material_id' => $material->id,
-                        'area_id' => $newArea->id,
-                    ], ['stock' => 0]);
-                    
-                    $materialStock->increment('stock', $convertedQuantity);
-                }
-            }
-
-            // Delete items that were removed in the edit
-            if (!empty($existingItemIds)) {
-                MaterialTransactionItem::whereIn('id', $existingItemIds)->delete();
-            }
-
-            $transaction->update(['total_cost' => $totalCost]);
-
-            DB::commit();
-            return redirect()->back()->with('success', 'Order Toko berhasil diupdate.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->with('error', 'Gagal mengupdate order: ' . $e->getMessage());
         }
     }
 
@@ -295,70 +130,21 @@ class PurchaseOrderController extends Controller
 
         DB::beginTransaction();
         try {
-            $area = \App\Models\Area::where('name', $transaction->technician_name)->first();
-            
             // Revert stock
             foreach ($transaction->items as $item) {
                 $material = $item->material;
                 if ($material) {
-                    $material->stock += $item->quantity;
-                    $material->save();
-                    
-                    if ($area) {
-                        $materialStock = \App\Models\MaterialStock::where([
-                            'material_id' => $material->id,
-                            'area_id' => $area->id,
-                        ])->first();
-                        
-                        if ($materialStock) {
-                            $materialStock->decrement('stock', $item->quantity);
-                        }
-                    }
+                    $material->stock -= $item->quantity;
+                    $material->recalcUnitTotals()->save();
                 }
             }
 
             $transaction->delete();
             DB::commit();
-            return redirect()->back()->with('success', 'Order Toko berhasil dihapus dan stok telah dikembalikan ke gudang.');
+            return redirect()->back()->with('success', 'Order Toko berhasil dihapus dan stok telah dikurangi.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal menghapus order: ' . $e->getMessage());
-        }
-    }
-    public function sendOnt(Request $request, $id)
-    {
-        $transaction = MaterialTransaction::with('items.material')->findOrFail($id);
-        
-        $ontsCreated = 0;
-        DB::beginTransaction();
-        try {
-            foreach ($transaction->items as $item) {
-                if ($item->material && $item->material->category === 'ONT') {
-                    // Check how many ONTs already sent for this item
-                    $alreadySent = \App\Models\Ont::where('material_transaction_item_id', $item->id)->count();
-                    $needed = $item->quantity - $alreadySent;
-                    
-                    for ($i = 0; $i < $needed; $i++) {
-                        \App\Models\Ont::create([
-                            'serial_number' => 'TBA-' . time() . '-' . uniqid(),
-                            'brand' => $item->material->name,
-                            'status' => 'Belum Set/Baru Input',
-                            'area_id' => $transaction->area_id,
-                            'material_transaction_item_id' => $item->id,
-                        ]);
-                        $ontsCreated++;
-                    }
-                }
-            }
-            DB::commit();
-            if ($ontsCreated > 0) {
-                return redirect()->back()->with('success', "$ontsCreated data ONT berhasil dikirim ke tabel Data ONT.");
-            } else {
-                return redirect()->back()->with('success', 'Semua data ONT untuk order ini sudah terkirim.');
-            }
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->with('error', 'Gagal mengirim data ONT: ' . $e->getMessage());
         }
     }
 }

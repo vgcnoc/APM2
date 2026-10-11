@@ -193,34 +193,18 @@
                         </div>
                     @endif
                     <h3 class="voucher-title">{{ $voucher->profile->name }}</h3>
-                    @if($voucher->is_free)
-                        <p class="voucher-price" style="color: #059669;">GRATIS (FREE)</p>
-                    @else
-                        <p class="voucher-price">Rp {{ number_format($voucher->profile->price, 0, ',', '.') }}</p>
-                    @endif
-                    @if($voucher->reseller && $voucher->reseller->customer)
-                        <div style="font-size: 10px; color: #4f46e5; font-weight: 700; margin-top: 3px; text-transform: uppercase;">
-                            Reseller: {{ $voucher->reseller->customer->name }}
-                        </div>
-                    @endif
+                    <p class="voucher-price">Rp {{ number_format($voucher->profile->price, 0, ',', '.') }}</p>
                 </div>
                 
                 <div class="voucher-body">
-                    @if($voucher->username === $voucher->password)
-                        <div class="info-row">
-                            <span class="info-label">Kode Login:</span>
-                            <span class="info-value" style="font-family: monospace; font-size: 14px; color: #1e1b4b;">{{ $voucher->username }}</span>
-                        </div>
-                    @else
-                        <div class="info-row">
-                            <span class="info-label">Username:</span>
-                            <span class="info-value">{{ $voucher->username }}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Password:</span>
-                            <span class="info-value">{{ $voucher->password }}</span>
-                        </div>
-                    @endif
+                    <div class="info-row">
+                        <span class="info-label">Username:</span>
+                        <span class="info-value">{{ $voucher->username }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Password:</span>
+                        <span class="info-value">{{ $voucher->password }}</span>
+                    </div>
                     <div class="info-row">
                         <span class="info-label">Durasi:</span>
                         <span class="info-value">{{ $voucher->profile->duration }}</span>
@@ -237,7 +221,7 @@
     <script>
         // Auto print when page loads
         window.onload = function() {
-            // setTimeout(() => { window.print(); }, 500);
+            setTimeout(() => { window.print(); }, 400);
         };
     </script>
 </body>

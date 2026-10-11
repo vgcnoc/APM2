@@ -317,9 +317,8 @@ const filteredMaterials = computed(() => {
 // Satuan order yang tersedia per material (selaras dengan konversi di PurchaseOrderController)
 const unitOptions = (mat) => {
     if (!mat) return [{ value: 'base', label: 'pcs' }];
-    const base = { value: 'base', label: mat.unit || 'pcs' };
-    if (mat.category === 'Isolasi' || mat.name.toLowerCase().includes('isolasi')) {
-        return [{ value: 'pcs', label: 'Pcs' }, { value: 'base', label: mat.unit === 'cm' ? 'cm' : 'cm' }];
+    if (mat.category === 'Isolasi' || (mat.name && mat.name.toLowerCase().includes('isolasi'))) {
+        return [{ value: 'pack', label: 'Bungkus / Pack' }];
     }
     if (mat.category === 'Paku Klem' || mat.category === 'Klem' || (mat.name && mat.name.toLowerCase().includes('klem'))) {
         return [{ value: 'pack', label: 'Bungkus' }, { value: 'base', label: mat.unit || 'pcs' }];
@@ -407,18 +406,22 @@ const convertedQty = (item) => {
     const mat = materialById(item.material_id);
     const qty = Number(item.quantity) || 0;
     if (!mat) return qty;
-    if (item.purchase_unit === 'roll' && Number(mat.meter_per_roll) > 0) return qty * Number(mat.meter_per_roll);
-    if ((mat.category === 'Isolasi' || (mat.name && mat.name.toLowerCase().includes('isolasi'))) && item.purchase_unit === 'pcs') {
-        const cpp = Number(mat.cm_per_pcs) > 0 ? Number(mat.cm_per_pcs) : 0;
-        return qty * cpp;
+    if ((mat.category === 'Isolasi' || (mat.name && mat.name.toLowerCase().includes('isolasi'))) && (item.purchase_unit === 'pack' || item.purchase_unit === 'bungkus')) {
+        const ppp = Number(mat.pcs_per_pack) > 0 ? Number(mat.pcs_per_pack) : 1;
+        const cpp = Number(mat.cm_per_pcs) > 0 ? Number(mat.cm_per_pcs) : 50;
+        return qty * ppp * cpp;
     }
     if (item.purchase_unit === 'pack' && Number(mat.pcs_per_pack) > 0) return qty * Number(mat.pcs_per_pack);
     return qty;
 };
 
 const conversionText = (item) => {
-    if (item.purchase_unit === 'base') return '';
     const mat = materialById(item.material_id);
+    if (!mat) return '';
+    if (mat.category === 'Isolasi' || (mat.name && mat.name.toLowerCase().includes('isolasi'))) {
+        return `${formatNumber(convertedQty(item))} cm`;
+    }
+    if (item.purchase_unit === 'base') return '';
     return `${formatNumber(convertedQty(item))} ${mat?.unit || ''}`;
 };
 
