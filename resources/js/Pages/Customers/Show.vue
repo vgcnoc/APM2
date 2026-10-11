@@ -1214,8 +1214,9 @@
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-1">Total Pemakaian Aktual</label>
                             <p class="text-xs text-gray-500 mb-2">Sisa material yang tidak dipakai otomatis akan mengendap di Stok Area Anda untuk bisa di-retur nanti.</p>
-                            <div class="relative">
-                                <input type="number" v-model="installModalQty" min="0" step="0.01" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg font-bold">
+                            <div class="relative flex items-center">
+                                <input type="number" v-model="installModalQty" min="0" step="0.01" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg font-bold pr-16">
+                                <span class="absolute right-4 text-sm font-bold text-gray-500 uppercase">{{ installModalUnit }}</span>
                             </div>
                         </div>
                     </div>
@@ -1499,6 +1500,16 @@ const showInstallModal = ref(false);
 const installModalItem = ref(null);
 const installModalIsBroken = ref(false);
 const installModalQty = ref(0);
+
+const installModalUnit = computed(() => {
+    if (!installModalItem.value) return '';
+    const name = installModalItem.value.name;
+    const match = name.match(/\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)/);
+    if (match) return match[2];
+    if (name.toLowerCase().includes('kabel')) return 'meter';
+    if (name.toLowerCase().includes('isolasi')) return 'cm';
+    return 'pcs';
+});
 
 function openInstallModal(item) {
     if (item.isInstalled) {
