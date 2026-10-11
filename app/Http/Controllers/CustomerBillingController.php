@@ -19,10 +19,7 @@ class CustomerBillingController extends Controller
         $activeTab = $request->get('tab', 'unpaid');
         
         $query = Invoice::with(['customer', 'payments'])
-            ->whereHas('customer', function($q) {
-                $q->where('is_reseller', false);
-            })
-            ->where('is_reseller_balance', false); // Khusus pelanggan reguler
+            ->where('is_reseller_balance', false); // Khusus tagihan internet pelanggan
             
         if ($activeTab === 'paid') {
             $query->where('status', 'paid');
@@ -113,9 +110,6 @@ class CustomerBillingController extends Controller
         $activeTab = $request->get('tab', 'pending');
         
         $query = Payment::with(['invoice.payments', 'customer', 'collector'])
-            ->whereHas('customer', function($q) {
-                $q->where('is_reseller', false);
-            })
             ->whereHas('invoice', function($q) {
                 $q->where('is_reseller_balance', false);
             });

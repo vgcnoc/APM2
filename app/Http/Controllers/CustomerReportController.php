@@ -19,22 +19,16 @@ class CustomerReportController extends Controller
         $startDate = Carbon::create($year, $month, 1)->startOfMonth();
         $endDate = Carbon::create($year, $month, 1)->endOfMonth();
 
-        // 1. Total Pemasukan Bulan Ini (Hanya dari Pelanggan Reguler)
+        // 1. Total Pemasukan Bulan Ini (Hanya dari Pelanggan Internet)
         $pemasukanBulanIni = Payment::where('status', 'verified')
-            ->whereHas('customer', function($q) {
-                $q->where('is_reseller', false);
-            })
             ->whereHas('invoice', function($q) {
                 $q->where('is_reseller_balance', false);
             })
             ->whereBetween('payment_date', [$startDate, $endDate])
             ->sum('amount');
 
-        // 2. Total Piutang Keseluruhan (Hanya Pelanggan Reguler)
+        // 2. Total Piutang Keseluruhan (Hanya Pelanggan Internet)
         $piutangCustomer = Invoice::where('is_reseller_balance', false)
-            ->whereHas('customer', function($q) {
-                $q->where('is_reseller', false);
-            })
             ->whereIn('status', ['unpaid', 'partial'])
             ->get()
             ->sum(function($inv) {
@@ -48,9 +42,6 @@ class CustomerReportController extends Controller
             $mDate = now()->subMonths($i);
             
             $pBln = Payment::where('status', 'verified')
-                ->whereHas('customer', function($q) {
-                    $q->where('is_reseller', false);
-                })
                 ->whereHas('invoice', function($q) {
                     $q->where('is_reseller_balance', false);
                 })
@@ -67,9 +58,6 @@ class CustomerReportController extends Controller
         // 4. Riwayat Mutasi (Hanya Transaksi Pelanggan Bulan Ini)
         $ledger = Payment::with(['customer', 'collector', 'invoice'])
             ->where('status', 'verified')
-            ->whereHas('customer', function($q) {
-                $q->where('is_reseller', false);
-            })
             ->whereHas('invoice', function($q) {
                 $q->where('is_reseller_balance', false);
             })

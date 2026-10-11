@@ -21,9 +21,7 @@ class InvoiceController extends Controller
               }], 'amount');
         }, 'customer.areaModel', 'customer.package', 'payments' => function($q) {
             $q->latest('payment_date');
-        }])->whereHas('customer', function($q) {
-            $q->where('is_reseller', false);
-        })->where('is_reseller_balance', false);
+        }])->where('is_reseller_balance', false);
 
         $tab = $request->query('tab', 'semua');
         if ($tab === 'jatuh_tempo') {
@@ -76,9 +74,7 @@ class InvoiceController extends Controller
 
         // Get counts for tabs
         // Get counts for tabs
-        $baseQuery = Invoice::whereHas('customer', function($q) {
-            $q->where('is_reseller', false);
-        })->where('is_reseller_balance', false);
+        $baseQuery = Invoice::where('is_reseller_balance', false);
         
         $stats = [
             'semua' => (clone $baseQuery)->count(),
