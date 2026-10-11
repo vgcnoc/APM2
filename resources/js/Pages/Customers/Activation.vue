@@ -374,6 +374,85 @@
                             <input v-model="activationForm.activation_date" type="date" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" required />
                         </div>
 
+                        <!-- Simulasi Tagihan Invoice Pertama -->
+                        <div v-if="invoiceSimulation" class="bg-gradient-to-br from-slate-50 via-purple-50/40 to-slate-50 p-4 rounded-xl border border-purple-200/90 shadow-sm space-y-3">
+                            <div class="flex items-center justify-between border-b border-purple-100 pb-2.5">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center text-sm shadow-sm font-bold">
+                                        🧾
+                                    </div>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-gray-900 uppercase tracking-wider">Simulasi Tagihan Pertama</h4>
+                                        <p class="text-[10px] text-gray-500">Estimasi tagihan invoice yang langsung terbentuk</p>
+                                    </div>
+                                </div>
+                                <span :class="[
+                                    'text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs',
+                                    invoiceSimulation.isGratis ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                                    (invoiceSimulation.isProrata ? 'bg-amber-100 text-amber-900 border-amber-300' : 
+                                    (invoiceSimulation.billingType === 'prabayar' ? 'bg-purple-100 text-purple-900 border-purple-200' : 'bg-blue-100 text-blue-900 border-blue-200'))
+                                ]">
+                                    {{ invoiceSimulation.badgeLabel }}
+                                </span>
+                            </div>
+
+                            <!-- Rincian Biaya -->
+                            <div class="space-y-1.5 text-xs">
+                                <div class="flex justify-between items-center py-1 border-b border-gray-100">
+                                    <span class="text-gray-600">Paket Berlangganan</span>
+                                    <span class="font-semibold text-gray-900">{{ invoiceSimulation.packageName }} ({{ formatRupiah(invoiceSimulation.basePrice) }}/bln)</span>
+                                </div>
+                                
+                                <div class="flex justify-between items-start py-1 border-b border-gray-100">
+                                    <div>
+                                        <span class="text-gray-600 block">Periode Pemakaian</span>
+                                        <span v-if="invoiceSimulation.formulaDesc" class="text-[10px] text-purple-700 font-mono block mt-0.5">
+                                            Rumus: {{ invoiceSimulation.formulaDesc }}
+                                        </span>
+                                    </div>
+                                    <span class="font-semibold text-gray-900 text-right">{{ invoiceSimulation.periodText }}</span>
+                                </div>
+
+                                <div class="flex justify-between items-center py-1 border-b border-gray-100">
+                                    <span class="text-gray-600">Biaya Pokok</span>
+                                    <span class="font-bold text-gray-900">{{ formatRupiah(invoiceSimulation.subtotal) }}</span>
+                                </div>
+
+                                <div v-if="invoiceSimulation.totalTaxPercent > 0 && !invoiceSimulation.isGratis" class="flex justify-between items-center py-1 border-b border-gray-100 text-purple-700">
+                                    <span class="flex items-center gap-1">
+                                        Pajak ({{ invoiceSimulation.taxBreakdownText }})
+                                    </span>
+                                    <span class="font-semibold">+ {{ formatRupiah(invoiceSimulation.taxAmount) }}</span>
+                                </div>
+
+                                <div v-if="invoiceSimulation.isGratis" class="flex justify-between items-center py-1 border-b border-gray-100 text-emerald-600 font-semibold">
+                                    <span>Status Layanan</span>
+                                    <span>Gratis (Rp 0)</span>
+                                </div>
+
+                                <!-- Total Tagihan Pertama -->
+                                <div class="flex justify-between items-center pt-2">
+                                    <div>
+                                        <span class="text-xs font-bold text-gray-800 block">Total Tagihan Pertama</span>
+                                        <span class="text-[10px] text-gray-500">Jatuh Tempo: <strong class="text-rose-600 font-semibold">{{ invoiceSimulation.dueDate }}</strong></span>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-sm sm:text-base font-extrabold text-purple-700 bg-purple-100/70 px-3 py-1 rounded-lg border border-purple-200">
+                                            {{ formatRupiah(invoiceSimulation.totalAmount) }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Catatan Bulan Berikutnya jika Prorata -->
+                            <div v-if="invoiceSimulation.isProrata" class="bg-amber-50/80 border border-amber-200/80 rounded-lg p-2.5 text-[11px] text-amber-800 flex items-start gap-2">
+                                <svg class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <div class="leading-relaxed">
+                                    Prorata hanya berlaku <strong>1 kali</strong> pada invoice pertama ini. Bulan berikutnya (<span class="font-semibold">{{ invoiceSimulation.nextBillingMonthName }}</span>), tagihan otomatis normal pascabayar penuh sebesar <strong class="text-amber-950">{{ formatRupiah(invoiceSimulation.nextMonthNormalTotal) }}</strong> (terbit setiap tgl {{ invoiceSimulation.issueDateSetting }}).
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Username</label>
@@ -746,6 +825,166 @@ const formatBillingName = (type) => {
     if (type === 'pascabayar') return 'Pasca Bayar';
     return 'Prabayar';
 };
+
+const formatRupiah = (val) => {
+    return 'Rp ' + Number(val || 0).toLocaleString('id-ID');
+};
+
+const formatDateShort = (d) => {
+    if (!d) return '-';
+    try {
+        const dateObj = typeof d === 'string' ? new Date(d) : d;
+        return dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch (e) {
+        return String(d);
+    }
+};
+
+const invoiceSimulation = computed(() => {
+    const cust = activeCustomer.value;
+    if (!cust) return null;
+
+    const basePrice = Number(cust.base_amount || cust.package?.price || 0);
+    const isGratis = cust.service_status === 'gratis';
+    const bType = activationForm.billing_type || 'prabayar';
+    const isProrataChecked = bType === 'pascabayar' && Boolean(activationForm.is_prorata);
+
+    const bSettings = usePage().props.billingSettings || {};
+    const issueDateSetting = Math.max(1, Math.min(28, Number(bSettings.invoice_issue_date || 1)));
+    const isolateDays = Number(bSettings.isolate_days || 3);
+    const prorataFormula = bSettings.prorata_formula || 'exact_days';
+
+    // Parse activation date safely (local date)
+    let actDate = new Date();
+    if (activationForm.activation_date) {
+        const parts = activationForm.activation_date.split('-');
+        if (parts.length === 3) {
+            actDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        }
+    }
+
+    let subtotal = basePrice;
+    let daysUsed = 0;
+    let totalDaysInCycle = 0;
+    let nextCutOffDate = null;
+    let dueDate = null;
+    let formulaDesc = '';
+    let isProrataApplied = false;
+    let periodText = '';
+    let badgeLabel = 'Prabayar (Bayar di Muka)';
+
+    if (bType === 'pascabayar') {
+        const actYear = actDate.getFullYear();
+        const actMonth = actDate.getMonth();
+        const actDay = actDate.getDate();
+
+        if (actDay >= issueDateSetting) {
+            nextCutOffDate = new Date(actYear, actMonth + 1, issueDateSetting);
+        } else {
+            nextCutOffDate = new Date(actYear, actMonth, issueDateSetting);
+        }
+
+        const prevCutOffDate = new Date(nextCutOffDate.getFullYear(), nextCutOffDate.getMonth() - 1, issueDateSetting);
+        totalDaysInCycle = Math.round((nextCutOffDate.getTime() - prevCutOffDate.getTime()) / (1000 * 60 * 60 * 24));
+        daysUsed = Math.max(0, Math.round((nextCutOffDate.getTime() - actDate.getTime()) / (1000 * 60 * 60 * 24)));
+
+        if (isProrataChecked && basePrice > 0 && daysUsed > 0 && totalDaysInCycle > 0 && daysUsed < totalDaysInCycle) {
+            isProrataApplied = true;
+            badgeLabel = 'Pascabayar - Prorata (1x)';
+            if (prorataFormula === 'fixed_30') {
+                subtotal = Math.round((basePrice / 30) * daysUsed);
+                formulaDesc = `(${formatRupiah(basePrice)} / 30 hr) × ${daysUsed} hr`;
+            } else if (prorataFormula === 'mid_month') {
+                const midPoint = new Date(prevCutOffDate.getTime() + Math.floor(totalDaysInCycle / 2) * 24 * 60 * 60 * 1000);
+                if (actDate.getTime() > midPoint.getTime()) {
+                    subtotal = Math.round(basePrice / 2);
+                    formulaDesc = `Aktivasi > tengah bulan (50%)`;
+                } else {
+                    subtotal = basePrice;
+                    formulaDesc = `Aktivasi awal bulan (100% normal)`;
+                }
+            } else {
+                // exact_days
+                subtotal = Math.round((basePrice / totalDaysInCycle) * daysUsed);
+                formulaDesc = `(${formatRupiah(basePrice)} / ${totalDaysInCycle} hr) × ${daysUsed} hr`;
+            }
+            periodText = `${formatDateShort(actDate)} s/d ${formatDateShort(nextCutOffDate)} (${daysUsed} hari aktif)`;
+        } else {
+            badgeLabel = 'Pascabayar Normal (1 Bulan Penuh)';
+            subtotal = basePrice;
+            periodText = `1 Bulan Penuh (Cut-off ${formatDateShort(nextCutOffDate)})`;
+        }
+
+        dueDate = new Date(nextCutOffDate.getTime() + isolateDays * 24 * 60 * 60 * 1000);
+    } else {
+        badgeLabel = 'Prabayar (Bayar di Muka)';
+        subtotal = basePrice;
+        const endDate = new Date(actDate.getFullYear(), actDate.getMonth() + 1, actDate.getDate());
+        periodText = `${formatDateShort(actDate)} s/d ${formatDateShort(endDate)} (1 Bulan di Muka)`;
+        dueDate = new Date(actDate.getTime() + isolateDays * 24 * 60 * 60 * 1000);
+    }
+
+    if (isGratis) {
+        badgeLabel = 'Layanan Gratis (Rp 0)';
+    }
+
+    // Taxes
+    const taxPpn = Number(activationForm.tax_ppn || 0);
+    const taxBhp = Number(activationForm.tax_bhp || 0);
+    const taxUso = Number(activationForm.tax_uso || 0);
+    const totalTaxPercent = taxPpn + taxBhp + taxUso;
+
+    let taxAmount = 0;
+    let totalAmount = subtotal;
+
+    if (isGratis) {
+        subtotal = 0;
+        taxAmount = 0;
+        totalAmount = 0;
+    } else if (totalTaxPercent > 0) {
+        taxAmount = Math.round(subtotal * (totalTaxPercent / 100));
+        totalAmount = subtotal + taxAmount;
+    }
+
+    // Tax breakdown text
+    const taxParts = [];
+    if (taxPpn > 0) taxParts.push(`PPN ${taxPpn}%`);
+    if (taxBhp > 0) taxParts.push(`BHP ${taxBhp}%`);
+    if (taxUso > 0) taxParts.push(`USO ${taxUso}%`);
+    const taxBreakdownText = taxParts.length > 0 ? taxParts.join(' + ') : `${totalTaxPercent}%`;
+
+    // Next month preview (normal postpaid)
+    let nextMonthNormalSubtotal = basePrice;
+    let nextMonthNormalTax = totalTaxPercent > 0 ? Math.round(basePrice * (totalTaxPercent / 100)) : 0;
+    let nextMonthNormalTotal = isGratis ? 0 : (nextMonthNormalSubtotal + nextMonthNormalTax);
+    let nextBillingMonthName = nextCutOffDate ? nextCutOffDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) : '';
+
+    return {
+        billingType: bType,
+        isProrata: isProrataApplied,
+        isGratis,
+        badgeLabel,
+        packageName: cust.package?.name || 'Paket Internet',
+        basePrice,
+        subtotal,
+        formulaDesc,
+        daysUsed,
+        totalDaysInCycle,
+        nextCutOffDate: nextCutOffDate ? formatDateShort(nextCutOffDate) : null,
+        periodText,
+        dueDate: dueDate ? formatDateShort(dueDate) : null,
+        taxPpn,
+        taxBhp,
+        taxUso,
+        totalTaxPercent,
+        taxBreakdownText,
+        taxAmount,
+        totalAmount,
+        issueDateSetting,
+        nextBillingMonthName,
+        nextMonthNormalTotal,
+    };
+});
 
 const showActivationModal = ref(false);
 const activationForm = useForm({
