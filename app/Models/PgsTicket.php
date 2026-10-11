@@ -39,6 +39,10 @@ class PgsTicket extends Model
         'resolved_at',
     ];
 
+    protected $attributes = [
+        'status' => 'admin_handling',
+    ];
+
     protected function casts(): array
     {
         return [
