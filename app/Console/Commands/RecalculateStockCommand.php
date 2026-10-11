@@ -7,8 +7,6 @@ use App\Models\Material;
 use App\Models\MaterialStock;
 use App\Models\MaterialTransaction;
 use App\Models\MaterialTransactionItem;
-use App\Models\MaterialRequest;
-use App\Models\MaterialRequestItem;
 use Illuminate\Support\Facades\DB;
 
 class RecalculateStockCommand extends Command
@@ -94,11 +92,6 @@ class RecalculateStockCommand extends Command
                 }
                 $stockModel->save();
             }
-
-            // Also need to recalculate stock_before and stock_after for MaterialRequestItem?
-            // Yes! But only for APPROVED requests where it actually affected stock?
-            // Actually, MaterialRequestController@approve also modifies stock.
-            // Wait, this script is getting complex. I only need to fix OUT-20261008-MIJI5 for now!
         });
 
         $this->info("Stock recalculated successfully.");

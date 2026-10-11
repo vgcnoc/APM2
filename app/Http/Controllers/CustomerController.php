@@ -1153,8 +1153,12 @@ class CustomerController extends Controller
         }
 
         // Check if there are any pending material requests
-        $pendingRequest = \App\Models\MaterialRequest::where('customer_id', $customer->id)
+        $pendingRequest = \App\Models\MaterialTransaction::where('customer_id', $customer->id)
             ->where('status', 'pending')
+            ->where(function($q) {
+                $q->where('purpose', 'like', '%Request%')
+                  ->orWhere('transaction_number', 'like', 'REQ-%');
+            })
             ->first();
             
         if ($pendingRequest) {
@@ -1551,20 +1555,32 @@ class CustomerController extends Controller
         ]);
 
         DB::transaction(function () use ($customer, $validated) {
-            $materialRequest = \App\Models\MaterialRequest::create([
-                'request_number' => 'REQ-MAT-' . date('YmdHis') . '-' . strtoupper(\Illuminate\Support\Str::random(4)),
+            $count = \App\Models\MaterialTransaction::whereDate('created_at', today())->count() + 1;
+            $transactionNumber = 'REQ-MAT-' . date('Ymd') . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+
+            $materialTransaction = \App\Models\MaterialTransaction::create([
+                'transaction_number' => $transactionNumber,
                 'customer_id' => $customer->id,
                 'user_id' => auth()->id(),
+                'technician_name' => auth()->user()->name,
                 'area_id' => $customer->area_id,
+                'type' => 'out',
                 'status' => 'pending',
-                'notes' => $validated['notes'],
+                'purpose' => 'Request Material Tambahan Pelanggan ' . $customer->name,
+                'notes' => $validated['notes'] ?? null,
+                'date' => now(),
             ]);
 
             foreach ($validated['items'] as $item) {
-                \App\Models\MaterialRequestItem::create([
-                    'material_request_id' => $materialRequest->id,
+                $material = \App\Models\Material::find($item['material_id']);
+                \App\Models\MaterialTransactionItem::create([
+                    'material_transaction_id' => $materialTransaction->id,
                     'material_id' => $item['material_id'],
                     'quantity' => $item['quantity'],
+                    'unit' => $material ? $material->unit : 'pcs',
+                    'price_per_unit' => $material ? ($material->price_per_unit ?? 0) : 0,
+                    'total_price' => ($material ? ($material->price_per_unit ?? 0) : 0) * $item['quantity'],
+                    'condition' => 'Pengajuan'
                 ]);
             }
         });
@@ -1754,8 +1770,12 @@ class CustomerController extends Controller
     public function updateOntInline(Request $request, Customer $customer)
     {
         // Check if there are any pending material requests
-        $pendingRequest = \App\Models\MaterialRequest::where('customer_id', $customer->id)
+        $pendingRequest = \App\Models\MaterialTransaction::where('customer_id', $customer->id)
             ->where('status', 'pending')
+            ->where(function($q) {
+                $q->where('purpose', 'like', '%Request%')
+                  ->orWhere('transaction_number', 'like', 'REQ-%');
+            })
             ->first();
             
         if ($pendingRequest) {

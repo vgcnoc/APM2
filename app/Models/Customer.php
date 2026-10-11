@@ -97,6 +97,11 @@ class Customer extends Model
         return $this->hasOne(Ont::class);
     }
 
+    public function onts(): HasMany
+    {
+        return $this->hasMany(Ont::class);
+    }
+
     /**
      * Riwayat invoice pelanggan
      */
