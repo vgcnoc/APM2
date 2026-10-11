@@ -1679,6 +1679,7 @@ class CustomerController extends Controller
             'activation_date' => 'required|date',
             'billing_type' => 'nullable|in:prabayar,pascabayar',
             'is_prorata' => 'nullable|boolean',
+            'service_status' => 'nullable|in:berbayar,gratis',
             'pppoe_user' => 'nullable|string',
             'pppoe_password' => 'nullable|string',
             'vlan_mode' => 'nullable|string',
@@ -1704,10 +1705,13 @@ class CustomerController extends Controller
                     $billingType = 'pascabayar';
                 }
 
+                $serviceStatus = $validated['service_status'] ?? $customer->service_status ?? 'berbayar';
+
                 $customer->update([
                     'status' => 'active',
                     'activation_date' => $validated['activation_date'],
                     'billing_type' => $billingType,
+                    'service_status' => $serviceStatus,
                     'notes' => $validated['notes'] ? $customer->notes . "\n[Aktivasi]: " . $validated['notes'] : $customer->notes,
                     'tax_ppn' => $validated['tax_ppn'] ?? null,
                     'tax_bhp' => $validated['tax_bhp'] ?? null,
@@ -1731,7 +1735,8 @@ class CustomerController extends Controller
 
                 // Create initial invoice
                 $activationDate = \Carbon\Carbon::parse($validated['activation_date']);
-                $amount = $customer->package ? $customer->package->price : 0;
+                $basePrice = $customer->base_amount > 0 ? (float) $customer->base_amount : ($customer->package ? (float) $customer->package->price : 0);
+                $amount = $basePrice;
                 $isProrata = false;
 
                 $prorataFormula = \App\Models\Setting::get('prorata_formula', 'exact_days');
@@ -1752,17 +1757,16 @@ class CustomerController extends Controller
                     }
 
                     if ($isProrataFirstMonth && $amount > 0) {
-                        // Tagihan pertama dihitung prorata 1 kali saja
-                        $prevBillingDate = $nextBillingDate->copy()->subMonth();
-                        $totalDaysInCycle = $nextBillingDate->diffInDays($prevBillingDate);
-                        $daysUsed = $nextBillingDate->diffInDays($activationDate);
+                        // Tagihan pertama dihitung prorata sampai akhir bulan berjalan
+                        $endOfMonth = $activationDate->copy()->endOfMonth();
+                        $totalDaysInCycle = (int) $activationDate->daysInMonth;
+                        $daysUsed = (int) ($endOfMonth->day - $activationDate->day + 1);
 
                         if ($daysUsed > 0 && $totalDaysInCycle > 0 && $daysUsed < $totalDaysInCycle) {
                             if ($prorataFormula === 'fixed_30') {
                                 $amount = ($amount / 30) * $daysUsed;
                             } elseif ($prorataFormula === 'mid_month') {
-                                $midPoint = $prevBillingDate->copy()->addDays(floor($totalDaysInCycle / 2));
-                                if ($activationDate->gt($midPoint)) {
+                                if ($activationDate->day > 15) {
                                     $amount = $amount / 2;
                                 }
                             } else {
@@ -1775,7 +1779,7 @@ class CustomerController extends Controller
 
                         $dueDateTime = $nextBillingDate->copy()->addDays($isolateDays);
                         $invoiceBillingType = 'prorata';
-                        $invoiceNotes = 'Tagihan Pertama (Prorata - Pascabayar)';
+                        $invoiceNotes = 'Tagihan Pertama (Prorata s/d Akhir Bulan: ' . $activationDate->format('d M') . ' - ' . $endOfMonth->format('d M Y') . ')';
                     } else {
                         // Pascabayar normal 1 bulan penuh
                         $dueDateTime = $nextBillingDate->copy()->addDays($isolateDays);
@@ -1795,7 +1799,7 @@ class CustomerController extends Controller
                 }
 
                 $status = 'unpaid';
-                if ($customer->service_status === 'gratis') {
+                if ($serviceStatus === 'gratis') {
                     $amount = 0;
                     $status = 'paid';
                 } else {

@@ -790,6 +790,43 @@
                             </div>
                         </div>
 
+                        <!-- Status Layanan Pelanggan -->
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2">
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-between">
+                                <span class="flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Status Layanan Pelanggan <span class="text-red-500">*</span>
+                                </span>
+                            </label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', activationForm.service_status === 'berbayar' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <div class="flex items-center gap-2">
+                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center', activationForm.service_status === 'berbayar' ? 'border-amber-500 bg-amber-500' : 'border-gray-300']">
+                                            <div v-if="activationForm.service_status === 'berbayar'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs font-bold text-gray-900 block">Berbayar</span>
+                                            <span class="text-[10px] text-gray-500">Dikenakan tarif paket</span>
+                                        </div>
+                                    </div>
+                                    <input type="radio" value="berbayar" v-model="activationForm.service_status" class="sr-only">
+                                </label>
+                                
+                                <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', activationForm.service_status === 'gratis' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <div class="flex items-center gap-2">
+                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center', activationForm.service_status === 'gratis' ? 'border-amber-500 bg-amber-500' : 'border-gray-300']">
+                                            <div v-if="activationForm.service_status === 'gratis'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs font-bold text-gray-900 block">Gratis (Rp 0)</span>
+                                            <span class="text-[10px] text-gray-500">Bebas biaya langganan</span>
+                                        </div>
+                                    </div>
+                                    <input type="radio" value="gratis" v-model="activationForm.service_status" class="sr-only">
+                                </label>
+                            </div>
+                        </div>
+
                         <!-- Siklus Penagihan Invoice -->
                         <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
                             <div class="flex items-center justify-between">
@@ -2106,7 +2143,7 @@ const invoiceSimulation = computed(() => {
     if (!cust) return null;
 
     const basePrice = Number(cust.base_amount || cust.package?.price || 0);
-    const isGratis = cust.service_status === 'gratis';
+    const isGratis = activationForm.service_status === 'gratis';
     const bType = activationForm.billing_type || 'prabayar';
     const isProrataChecked = bType === 'pascabayar' && Boolean(activationForm.is_prorata);
 
@@ -2124,9 +2161,13 @@ const invoiceSimulation = computed(() => {
         }
     }
 
+    // Tanggal akhir bulan berjalan (misal 31 Okt 2026):
+    const endOfMonthDate = new Date(actDate.getFullYear(), actDate.getMonth() + 1, 0);
+    const totalDaysInMonth = endOfMonthDate.getDate();
+
     let subtotal = basePrice;
     let daysUsed = 0;
-    let totalDaysInCycle = 0;
+    let totalDaysInCycle = totalDaysInMonth;
     let nextCutOffDate = null;
     let dueDate = null;
     let formulaDesc = '';
@@ -2135,6 +2176,7 @@ const invoiceSimulation = computed(() => {
     let badgeLabel = 'Prabayar (Bayar di Muka)';
 
     if (bType === 'pascabayar') {
+        // Tanggal cut-off tagihan bulan berikutnya (misal 1 Nov 2026):
         const actYear = actDate.getFullYear();
         const actMonth = actDate.getMonth();
         const actDay = actDate.getDate();
@@ -2145,19 +2187,17 @@ const invoiceSimulation = computed(() => {
             nextCutOffDate = new Date(actYear, actMonth, issueDateSetting);
         }
 
-        const prevCutOffDate = new Date(nextCutOffDate.getFullYear(), nextCutOffDate.getMonth() - 1, issueDateSetting);
-        totalDaysInCycle = Math.round((nextCutOffDate.getTime() - prevCutOffDate.getTime()) / (1000 * 60 * 60 * 24));
-        daysUsed = Math.max(0, Math.round((nextCutOffDate.getTime() - actDate.getTime()) / (1000 * 60 * 60 * 24)));
+        // Hari aktif dihitung dari tanggal aktivasi sampai akhir bulan berjalan (inklusif):
+        daysUsed = Math.max(1, endOfMonthDate.getDate() - actDate.getDate() + 1);
 
-        if (isProrataChecked && basePrice > 0 && daysUsed > 0 && totalDaysInCycle > 0 && daysUsed < totalDaysInCycle) {
+        if (isProrataChecked && basePrice > 0 && daysUsed > 0 && daysUsed < totalDaysInCycle) {
             isProrataApplied = true;
             badgeLabel = 'Pascabayar - Prorata (1x)';
             if (prorataFormula === 'fixed_30') {
                 subtotal = Math.round((basePrice / 30) * daysUsed);
                 formulaDesc = `(${formatRupiah(basePrice)} / 30 hr) × ${daysUsed} hr`;
             } else if (prorataFormula === 'mid_month') {
-                const midPoint = new Date(prevCutOffDate.getTime() + Math.floor(totalDaysInCycle / 2) * 24 * 60 * 60 * 1000);
-                if (actDate.getTime() > midPoint.getTime()) {
+                if (actDate.getDate() > 15) {
                     subtotal = Math.round(basePrice / 2);
                     formulaDesc = `Aktivasi > tengah bulan (50%)`;
                 } else {
@@ -2165,15 +2205,15 @@ const invoiceSimulation = computed(() => {
                     formulaDesc = `Aktivasi awal bulan (100% normal)`;
                 }
             } else {
-                // exact_days
+                // exact_days: proporsional hari dalam bulan berjalan
                 subtotal = Math.round((basePrice / totalDaysInCycle) * daysUsed);
                 formulaDesc = `(${formatRupiah(basePrice)} / ${totalDaysInCycle} hr) × ${daysUsed} hr`;
             }
-            periodText = `${formatDateShort(actDate)} s/d ${formatDateShort(nextCutOffDate)} (${daysUsed} hari aktif)`;
+            periodText = `${formatDateShort(actDate)} s/d ${formatDateShort(endOfMonthDate)} (${daysUsed} hari aktif - Akhir Bulan)`;
         } else {
             badgeLabel = 'Pascabayar Normal (1 Bulan Penuh)';
             subtotal = basePrice;
-            periodText = `1 Bulan Penuh (Cut-off ${formatDateShort(nextCutOffDate)})`;
+            periodText = `1 Bulan Penuh (Cut-off tgl ${issueDateSetting} ${nextCutOffDate.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })})`;
         }
 
         dueDate = new Date(nextCutOffDate.getTime() + isolateDays * 24 * 60 * 60 * 1000);
@@ -2231,6 +2271,7 @@ const invoiceSimulation = computed(() => {
         formulaDesc,
         daysUsed,
         totalDaysInCycle,
+        endOfMonthText: formatDateShort(endOfMonthDate),
         nextCutOffDate: nextCutOffDate ? formatDateShort(nextCutOffDate) : null,
         periodText,
         dueDate: dueDate ? formatDateShort(dueDate) : null,
@@ -2252,6 +2293,7 @@ const activationForm = useForm({
     activation_date: new Date().toISOString().split('T')[0],
     billing_type: (props.customer?.billing_type === 'pascabayar' || (usePage().props.billingSettings?.billing_type === 'pascabayar' && !props.customer?.billing_type)) ? 'pascabayar' : 'prabayar',
     is_prorata: usePage().props.billingSettings?.prorata_first_month !== false,
+    service_status: props.customer?.service_status === 'gratis' ? 'gratis' : 'berbayar',
     pppoe_user: props.customer?.ont?.pppoe_user || '',
     pppoe_password: props.customer?.ont?.pppoe_password || '',
     vlan_mode: props.customer?.ont?.vlan_mode || '',
