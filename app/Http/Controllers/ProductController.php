@@ -46,6 +46,7 @@ class ProductController extends Controller
             'selling_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
             'stock' => 'nullable|numeric|min:0',
+            'initial_stock' => 'nullable|numeric|min:0',
             // Smart conversion fields
             'meter_per_roll' => 'nullable|numeric|min:0',
             'pcs_per_pack' => 'nullable|numeric|min:0',
@@ -57,6 +58,10 @@ class ProductController extends Controller
 
         if (array_key_exists('stock', $validated) && is_null($validated['stock'])) {
             $validated['stock'] = 0;
+        }
+
+        if (!isset($validated['initial_stock']) || is_null($validated['initial_stock'])) {
+            $validated['initial_stock'] = $validated['stock'] ?? 0;
         }
 
         Material::create($validated);
@@ -77,6 +82,7 @@ class ProductController extends Controller
             'selling_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
             'stock' => 'nullable|numeric|min:0',
+            'initial_stock' => 'nullable|numeric|min:0',
             'meter_per_roll' => 'nullable|numeric|min:0',
             'pcs_per_pack' => 'nullable|numeric|min:0',
             'cm_per_pcs' => 'nullable|numeric|min:0',

@@ -79,8 +79,17 @@
                                         <span v-else class="text-xs text-gray-400 italic">Belum ada distribusi area</span>
                                     </td>
                                     <td class="px-6 py-4 text-right">
-                                        <span class="text-sm font-black text-slate-800">{{ formatNum(material.stocks?.reduce((a, b) => a + Number(b.stock), 0) || 0) }}</span>
-                                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">{{ material.unit }} <span class="text-slate-400 normal-case">{{ formatSecondaryUnit(material, material.stocks?.reduce((a, b) => a + Number(b.stock), 0)) }}</span></span>
+                                        <div class="flex flex-col items-end justify-center">
+                                            <div>
+                                                <span class="text-sm font-black text-slate-800">{{ formatNum(material.stocks?.reduce((a, b) => a + Number(b.stock), 0) || 0) }}</span>
+                                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">{{ material.unit }} <span class="text-slate-400 normal-case">{{ formatSecondaryUnit(material, material.stocks?.reduce((a, b) => a + Number(b.stock), 0)) }}</span></span>
+                                            </div>
+                                            <div class="inline-flex items-center gap-1 text-[11px] text-slate-500 mt-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                                                <span class="text-slate-400 font-normal">Awal:</span>
+                                                <span class="font-bold text-slate-700">{{ formatNum(material.initial_stock && Number(material.initial_stock) > 0 ? material.initial_stock : (material.stock || 0)) }}</span>
+                                                <span class="text-[9px] uppercase font-bold text-slate-400">{{ material.unit }}</span>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 text-center">
                                         <div class="flex items-center justify-center gap-2">

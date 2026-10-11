@@ -88,8 +88,15 @@
                                     </td>
                                     <td class="px-6 py-4 text-right">
                                         <div class="flex flex-col items-end justify-center">
-                                            <span class="text-base font-black text-slate-800">{{ formatNum(Number(product.stock)) }}</span>
-                                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{{ product.unit }}</span>
+                                            <div class="flex items-baseline gap-1">
+                                                <span class="text-base font-black text-slate-800">{{ formatNum(Number(product.stock)) }}</span>
+                                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{{ product.unit }}</span>
+                                            </div>
+                                            <div class="inline-flex items-center gap-1 text-[11px] text-slate-500 mt-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                                                <span class="text-slate-400 font-normal">Awal:</span>
+                                                <span class="font-bold text-slate-700">{{ formatNum(getInitialStock(product)) }}</span>
+                                                <span class="text-[9px] uppercase font-bold text-slate-400">{{ product.unit }}</span>
+                                            </div>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">
@@ -278,8 +285,8 @@
 
                                     <!-- Konfigurasi Satuan Generik (Untuk kategori lain) -->
                                     <div v-else>
-                                        <div class="flex gap-4 mb-4">
-                                            <div class="w-full md:w-1/2">
+                                        <div class="flex flex-col md:flex-row gap-4 mb-4">
+                                            <div class="w-full md:w-1/3">
                                                 <label class="block text-sm font-bold text-gray-700 mb-1">Satuan Pemakaian <span class="text-red-500">*</span></label>
                                                 <select v-model="form.unit" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-white" required>
                                                     <option value="pcs">Pcs (Satuan utuh)</option>
@@ -289,8 +296,12 @@
                                                     <option value="roll">Roll</option>
                                                 </select>
                                             </div>
-                                            <div class="w-full md:w-1/2">
-                                                <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.id ? 'Stok Saat Ini' : 'Stok Awal' }} ({{ form.unit }})</label>
+                                            <div v-if="form.id" class="w-full md:w-1/3">
+                                                <label class="block text-sm font-bold text-gray-700 mb-1">Stok Awal ({{ form.unit }})</label>
+                                                <input type="number" step="0.01" v-model="form.initial_stock" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-white" placeholder="0">
+                                            </div>
+                                            <div :class="['w-full', form.id ? 'md:w-1/3' : 'md:w-2/3']">
+                                                <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.id ? 'Sisa Stok Saat Ini' : 'Stok Awal' }} ({{ form.unit }})</label>
                                                 <input type="number" step="0.01" v-model="form.stock" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-white" placeholder="0">
                                             </div>
                                         </div>
@@ -511,6 +522,7 @@ const form = useForm({
     pcs_per_pack: null,
     cm_per_pcs: null,
     stock: null,
+    initial_stock: null,
     price_per_unit: 0,
     selling_price: 0,
     is_active: true,
@@ -518,6 +530,13 @@ const form = useForm({
     requires_mac: false,
     description: '',
 });
+
+const getInitialStock = (product) => {
+    if (product.initial_stock !== null && product.initial_stock !== undefined && Number(product.initial_stock) > 0) {
+        return Number(product.initial_stock);
+    }
+    return Number(product.stock) || 0;
+};
 
 const formatSmartUnit = (product) => {
     let html = [];
@@ -544,6 +563,9 @@ const openModal = (product = null) => {
         form.pcs_per_pack = product.pcs_per_pack ? Number(product.pcs_per_pack) : null;
         form.cm_per_pcs = product.cm_per_pcs ? Number(product.cm_per_pcs) : null;
         form.stock = product.stock ? Number(product.stock) : 0;
+        form.initial_stock = (product.initial_stock !== null && product.initial_stock !== undefined && Number(product.initial_stock) > 0) 
+            ? Number(product.initial_stock) 
+            : (product.stock ? Number(product.stock) : 0);
         
         let price = product.price_per_unit ? Number(product.price_per_unit) : 0;
         let selling = product.selling_price ? Number(product.selling_price) : 0;
@@ -584,6 +606,7 @@ const openModal = (product = null) => {
         form.pcs_per_pack = null;
         form.cm_per_pcs = null;
         form.stock = null;
+        form.initial_stock = null;
         form.price_per_unit = 0;
         form.selling_price = 0;
         form.is_active = true;
@@ -620,6 +643,10 @@ const submitForm = () => {
         if (Number(initialPacks.value) >= 0 && Number(form.cm_per_pcs) > 0) {
             form.stock = Number(initialPacks.value) * Number(form.cm_per_pcs);
         }
+    }
+
+    if (!form.id && (form.initial_stock === null || form.initial_stock === undefined || form.initial_stock === '')) {
+        form.initial_stock = form.stock;
     }
 
     if (form.id) {
