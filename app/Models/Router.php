@@ -8,11 +8,17 @@ class Router extends Model
 {
     protected $fillable = [
         'name',
+        'area_id',
         'nas_id',
         'api_port',
         'winbox_port',
         'pic_id',
     ];
+
+    public function area()
+    {
+        return $this->belongsTo(Area::class, 'area_id');
+    }
 
     public function pic()
     {

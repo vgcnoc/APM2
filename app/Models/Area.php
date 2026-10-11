@@ -12,4 +12,9 @@ class Area extends Model
     {
         return $this->hasMany(MaterialStock::class);
     }
+
+    public function routers()
+    {
+        return $this->hasMany(Router::class);
+    }
 }

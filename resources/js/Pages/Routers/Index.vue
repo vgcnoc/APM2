@@ -2,21 +2,41 @@
     <AppLayout title="Data Router">
         <div class="p-6 max-w-6xl mx-auto">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                <!-- Header -->
+                <div class="px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                         <h2 class="text-xl font-bold text-gray-900">Data Router</h2>
-                        <p class="text-sm text-gray-500 mt-1">Kelola data router Mikrotik dan hak akses pengguna.</p>
+                        <p class="text-sm text-gray-500 mt-1">Kelola data router Mikrotik, coverage area, dan hak akses pengguna.</p>
                     </div>
-                    <button @click="openCreateModal" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
-                        Tambah Data Router
-                    </button>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <!-- Filter Area -->
+                        <div class="w-full sm:w-auto">
+                            <select 
+                                v-model="filterArea" 
+                                @change="applyFilter" 
+                                class="w-full sm:w-48 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value="">Semua Area</option>
+                                <option v-for="area in areas" :key="area.id" :value="area.id">
+                                    📍 {{ area.name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <button @click="openCreateModal" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                            <span>Tambah Data Router</span>
+                        </button>
+                    </div>
                 </div>
                 
+                <!-- Table -->
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50 border-b border-gray-100">
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Router</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Area</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Port API</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Port Winbox</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">PIC / Penanggung Jawab</th>
@@ -26,7 +46,19 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="router in routers.data" :key="router.id" class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ router.name }}</td>
+                                <td class="px-6 py-4 text-sm font-bold text-gray-900 font-mono">{{ router.name }}</td>
+                                <td class="px-6 py-4 text-sm">
+                                    <span v-if="router.area" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
+                                        <svg class="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                        {{ router.area.name }}
+                                    </span>
+                                    <span v-else class="text-xs text-gray-400 italic">
+                                        - Belum Ditentukan -
+                                    </span>
+                                </td>
                                 <td class="px-6 py-4 text-sm text-gray-600 font-mono">{{ router.api_port }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-600 font-mono">{{ router.winbox_port }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-600">
@@ -50,12 +82,20 @@
                                 </td>
                             </tr>
                             <tr v-if="routers.data.length === 0">
-                                <td colspan="6" class="px-6 py-8 text-center text-gray-500 text-sm">
+                                <td colspan="7" class="px-6 py-8 text-center text-gray-500 text-sm">
                                     Belum ada data Router.
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="px-6 py-4 border-t border-gray-100 flex justify-center gap-2" v-if="routers.links && routers.links.length > 3">
+                    <template v-for="(link, idx) in routers.links" :key="idx">
+                        <Link v-if="link.url" :href="link.url" v-html="link.label" class="px-3 py-1 border rounded text-sm" :class="link.active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'"></Link>
+                        <span v-else v-html="link.label" class="px-3 py-1 border rounded bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed text-sm"></span>
+                    </template>
                 </div>
             </div>
         </div>
@@ -66,7 +106,7 @@
                 <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900">{{ isEditing ? 'Edit Data Router' : 'Tambah Data Router' }}</h3>
-                        <p class="text-xs text-gray-500">Tambahkan router Mikrotik dan port akses yang digunakan.</p>
+                        <p class="text-xs text-gray-500">Konfigurasi data router Mikrotik, coverage area, dan port akses.</p>
                     </div>
                     <button @click="closeModal" class="text-gray-400 hover:text-gray-500">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -75,20 +115,70 @@
                 
                 <form @submit.prevent="submit">
                     <div class="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
-                        <!-- Informasi Router -->
+                        <!-- Informasi Router & Area -->
                         <div class="bg-gray-50 rounded-xl p-5 border border-gray-100">
                             <h4 class="font-bold text-sm text-indigo-700 flex items-center gap-2 mb-4">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                Informasi Router
+                                Informasi Router & Area
                             </h4>
                             <div class="bg-red-50 text-red-700 p-3 rounded-lg text-xs mb-4 border border-red-100">
                                 <span class="font-bold">Baca dulu sebelum lanjut.</span><br>
                                 Jangan mengganti Identity Mikrotik setelah data router dibuat agar relasi data tetap konsisten.
                             </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nama Router <span class="text-red-500">*Req</span></label>
-                                <input v-model="form.name" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase" placeholder="Gunakan HURUF BESAR" required />
-                                <p v-if="form.errors.name" class="text-red-500 text-xs mt-1">{{ form.errors.name }}</p>
+                            
+                            <div class="space-y-4">
+                                <!-- Nama Router -->
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nama Router <span class="text-red-500">*Req</span></label>
+                                    <input v-model="form.name" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase" placeholder="Gunakan HURUF BESAR" required />
+                                    <p v-if="form.errors.name" class="text-red-500 text-xs mt-1">{{ form.errors.name }}</p>
+                                </div>
+
+                                <!-- KOLOM PENAMBAHAN AREA -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                            Area / Wilayah Coverage
+                                        </label>
+                                        <button 
+                                            type="button" 
+                                            @click="toggleCustomArea" 
+                                            class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 transition-colors"
+                                        >
+                                            <span v-if="!isCustomArea">+ Buat Area Baru</span>
+                                            <span v-else>← Pilih dari Daftar Area</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Mode 1: Pilih dari daftar area -->
+                                    <div v-if="!isCustomArea">
+                                        <select v-model="form.area_id" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                            <option :value="null">-- Pilih Area / Wilayah --</option>
+                                            <option v-for="area in areas" :key="area.id" :value="area.id">
+                                                📍 {{ area.name }}
+                                            </option>
+                                        </select>
+                                        <p class="text-xs text-gray-500 mt-1">Pilih area jaringan / coverage dari router ini atau klik "+ Buat Area Baru".</p>
+                                    </div>
+
+                                    <!-- Mode 2: Ketik nama area baru -->
+                                    <div v-else class="space-y-1.5">
+                                        <div class="relative">
+                                            <input 
+                                                v-model="form.new_area_name" 
+                                                type="text" 
+                                                class="w-full pl-9 pr-4 py-2.5 bg-white border border-indigo-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                                placeholder="Ketik nama area baru (contoh: Area Barat, Desa Sukamaju, dll)..." 
+                                            />
+                                            <svg class="w-4 h-4 text-indigo-500 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                            </svg>
+                                        </div>
+                                        <p class="text-xs text-indigo-600 font-medium">Area baru ini akan otomatis dibuat di master data dan dihubungkan ke Router ini.</p>
+                                    </div>
+                                    <p v-if="form.errors.area_id" class="text-red-500 text-xs mt-1">{{ form.errors.area_id }}</p>
+                                    <p v-if="form.errors.new_area_name" class="text-red-500 text-xs mt-1">{{ form.errors.new_area_name }}</p>
+                                </div>
                             </div>
                         </div>
 
@@ -147,30 +237,49 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, Link } from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     routers: Object,
     users: Array,
+    areas: Array,
     filters: Object,
 });
 
 const isModalOpen = ref(false);
 const isEditing = ref(false);
 const editId = ref(null);
+const isCustomArea = ref(false);
+const filterArea = ref(props.filters?.area_id || '');
 
 const form = useForm({
     name: '',
+    area_id: null,
+    new_area_name: '',
     api_port: '',
     winbox_port: '',
     pic_id: null,
 });
 
+function toggleCustomArea() {
+    isCustomArea.value = !isCustomArea.value;
+    if (!isCustomArea.value) {
+        form.new_area_name = '';
+    } else {
+        form.area_id = null;
+    }
+}
+
+function applyFilter() {
+    router.get('/routers', { area_id: filterArea.value || undefined }, { preserveState: true, replace: true });
+}
+
 function openCreateModal() {
     isEditing.value = false;
     editId.value = null;
+    isCustomArea.value = false;
     form.reset();
     form.clearErrors();
     isModalOpen.value = true;
@@ -179,7 +288,10 @@ function openCreateModal() {
 function openEditModal(router) {
     isEditing.value = true;
     editId.value = router.id;
+    isCustomArea.value = false;
     form.name = router.name;
+    form.area_id = router.area_id || null;
+    form.new_area_name = '';
     form.api_port = router.api_port == 8728 ? '' : router.api_port;
     form.winbox_port = router.winbox_port == 8291 ? '' : router.winbox_port;
     form.pic_id = router.pic_id;
@@ -189,12 +301,13 @@ function openEditModal(router) {
 
 function closeModal() {
     isModalOpen.value = false;
-    setTimeout(() => form.reset(), 300);
+    setTimeout(() => {
+        form.reset();
+        isCustomArea.value = false;
+    }, 300);
 }
 
 function submit() {
-    // form.name = form.name.toUpperCase(); // Optional enforce uppercase
-    
     if (isEditing.value) {
         form.post(`/routers/${editId.value}/update`, {
             onSuccess: () => closeModal(),
@@ -215,6 +328,7 @@ function deleteRouter(id) {
 const connectionStatuses = ref({});
 
 function checkConnections() {
+    if (!props.routers?.data) return;
     props.routers.data.forEach(r => {
         connectionStatuses.value[r.id] = 'loading';
         axios.get(`/routers/${r.id}/ping`)
