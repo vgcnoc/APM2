@@ -97,6 +97,7 @@ class GenerateInvoices extends Command
 
                 Invoice::create([
                     'customer_id' => $customer->id,
+                    'billing_type' => $customer->billing_type ?? Setting::get('billing_type', 'prabayar'),
                     'period_month' => $today->month,
                     'period_year' => $today->year,
                     'amount' => $amount,

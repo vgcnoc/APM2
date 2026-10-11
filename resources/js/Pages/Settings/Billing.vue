@@ -8,12 +8,13 @@
                         
                         <!-- Tipe Billing -->
                         <div>
-                            <div class="flex items-center gap-2 mb-4">
+                            <div class="flex items-center gap-2 mb-1">
                                 <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                                 </div>
-                                <h3 class="text-lg font-bold text-gray-900">Siklus Penagihan</h3>
+                                <h3 class="text-lg font-bold text-gray-900">Siklus Penagihan Default</h3>
                             </div>
+                            <p class="text-xs text-gray-500 mb-4 ml-10">Tentukan standar jenis siklus penagihan sistem. Pilihan ini akan menjadi nilai default saat melakukan Aktivasi Pelanggan (dapat disesuaikan secara fleksibel per pelanggan).</p>
                             
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <label class="relative flex cursor-pointer rounded-xl border p-4 shadow-sm focus:outline-none transition-all duration-200 hover:border-indigo-300 hover:shadow-md" :class="form.billing_type === 'prabayar' ? 'border-indigo-600 bg-indigo-50/30 ring-1 ring-indigo-600' : 'border-gray-200 bg-white'">

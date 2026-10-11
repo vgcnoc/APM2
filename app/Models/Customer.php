@@ -24,6 +24,7 @@ class Customer extends Model
         'latitude',
         'longitude',
         'package_id',
+        'billing_type',
         'is_reseller',
         'status',
         'service_status',

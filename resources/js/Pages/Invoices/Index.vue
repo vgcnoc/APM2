@@ -170,7 +170,19 @@
                     <span v-else class="text-gray-400">-</span>
                 </td>
                 <td><span class="text-xs text-gray-600 truncate max-w-[150px] inline-block">{{ row.customer?.address || '-' }}</span></td>
-                <td><span class="text-[11px] font-bold text-gray-700 uppercase">{{ row.customer?.package || '-' }}</span></td>
+                <td>
+                    <div class="flex flex-col gap-1 items-start">
+                        <span class="text-[11px] font-bold text-gray-700 uppercase">{{ row.customer?.package || '-' }}</span>
+                        <span v-if="row.billing_type" :class="[
+                            'text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase border',
+                            row.billing_type === 'prabayar' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                            row.billing_type === 'pascabayar' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        ]">
+                            {{ row.billing_type }}
+                        </span>
+                    </div>
+                </td>
                 <td><span class="text-[11px] text-gray-600">{{ row.customer?.register_date || '-' }}</span></td>
                 <td>
                     <span v-if="row.last_payment_date" class="flex flex-col">

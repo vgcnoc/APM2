@@ -71,6 +71,7 @@ class GenerateMissingInvoices extends Command
 
                 Invoice::create([
                     'customer_id' => $customer->id,
+                    'billing_type' => $customer->billing_type ?? \App\Models\Setting::get('billing_type', 'prabayar'),
                     'period_month' => $activationDate->month,
                     'period_year' => $activationDate->year,
                     'amount' => $amount,

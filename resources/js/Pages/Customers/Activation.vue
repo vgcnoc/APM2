@@ -314,6 +314,53 @@
                             </div>
                         </div>
 
+                        <!-- Siklus Penagihan Invoice -->
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                                    Siklus Penagihan Invoice <span class="text-red-500">*</span>
+                                </label>
+                                <span class="text-[11px] text-purple-700 bg-purple-100/70 px-2 py-0.5 rounded-md font-semibold">
+                                    Default: {{ formatBillingName(defaultBillingType) }}
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <label :class="['relative flex flex-col p-3 rounded-xl border cursor-pointer transition-all', activationForm.billing_type === 'prabayar' ? 'border-purple-600 bg-purple-50/50 ring-1 ring-purple-600' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <input type="radio" value="prabayar" v-model="activationForm.billing_type" class="sr-only">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-xs font-bold" :class="activationForm.billing_type === 'prabayar' ? 'text-purple-900' : 'text-gray-900'">Prabayar</span>
+                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center', activationForm.billing_type === 'prabayar' ? 'border-purple-600 bg-purple-600' : 'border-gray-300']">
+                                            <div v-if="activationForm.billing_type === 'prabayar'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                        </div>
+                                    </div>
+                                    <span class="text-[10px] text-gray-500">Bayar dulu baru pakai (Full 1 bulan)</span>
+                                </label>
+                                
+                                <label :class="['relative flex flex-col p-3 rounded-xl border cursor-pointer transition-all', activationForm.billing_type === 'pascabayar' ? 'border-purple-600 bg-purple-50/50 ring-1 ring-purple-600' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <input type="radio" value="pascabayar" v-model="activationForm.billing_type" class="sr-only">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-xs font-bold" :class="activationForm.billing_type === 'pascabayar' ? 'text-purple-900' : 'text-gray-900'">Pasca Bayar</span>
+                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center', activationForm.billing_type === 'pascabayar' ? 'border-purple-600 bg-purple-600' : 'border-gray-300']">
+                                            <div v-if="activationForm.billing_type === 'pascabayar'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                        </div>
+                                    </div>
+                                    <span class="text-[10px] text-gray-500">Pakai dulu baru bayar (Postpaid)</span>
+                                </label>
+                                
+                                <label :class="['relative flex flex-col p-3 rounded-xl border cursor-pointer transition-all', activationForm.billing_type === 'prorata' ? 'border-purple-600 bg-purple-50/50 ring-1 ring-purple-600' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <input type="radio" value="prorata" v-model="activationForm.billing_type" class="sr-only">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-xs font-bold" :class="activationForm.billing_type === 'prorata' ? 'text-purple-900' : 'text-gray-900'">Prorata</span>
+                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center', activationForm.billing_type === 'prorata' ? 'border-purple-600 bg-purple-600' : 'border-gray-300']">
+                                            <div v-if="activationForm.billing_type === 'prorata'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                        </div>
+                                    </div>
+                                    <span class="text-[10px] text-gray-500">Hitungan per hari (Cut-off date)</span>
+                                </label>
+                            </div>
+                        </div>
+
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Aktivasi</label>
                             <input v-model="activationForm.activation_date" type="date" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" required />
@@ -682,9 +729,18 @@ function submitAssign() {
     });
 }
 
+const defaultBillingType = computed(() => usePage().props.billingSettings?.billing_type || 'prabayar');
+
+const formatBillingName = (type) => {
+    if (type === 'pascabayar') return 'Pasca Bayar';
+    if (type === 'prorata') return 'Prorata';
+    return 'Prabayar';
+};
+
 const showActivationModal = ref(false);
 const activationForm = useForm({
     activation_date: '',
+    billing_type: 'prabayar',
     pppoe_user: '',
     pppoe_password: '',
     vlan_mode: '',
@@ -707,6 +763,7 @@ function openActivationModal(customer) {
     activeCustomer.value = customer;
     activationForm.reset();
     activationForm.activation_date = new Date().toISOString().split('T')[0];
+    activationForm.billing_type = customer.billing_type || defaultBillingType.value;
     activationForm.pppoe_user = customer.ont?.pppoe_user || '';
     activationForm.pppoe_password = customer.ont?.pppoe_password || '';
     activationForm.vlan_mode = customer.ont?.vlan_mode || '';

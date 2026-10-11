@@ -115,6 +115,7 @@ class InvoiceController extends Controller
                         'total_unpaid' => $invoice->customer->total_unpaid_amount ?? 0,
                     ] : null,
                     'period_label' => $invoice->period_label,
+                    'billing_type' => $invoice->billing_type ?? $invoice->customer?->billing_type,
                     'amount' => $invoice->amount,
                     'total_paid' => $invoice->total_paid,
                     'remaining' => $invoice->remaining,

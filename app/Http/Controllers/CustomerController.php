@@ -852,6 +852,7 @@ class CustomerController extends Controller
             'registration_date' => 'required|date',
             'installation_fee' => 'nullable|numeric|min:0',
             'sales_id' => 'nullable|exists:users,id',
+            'billing_type' => 'nullable|in:prabayar,pascabayar,prorata',
             'is_reseller' => 'boolean',
             'service_status' => 'nullable|in:berbayar,gratis',
         ]);
@@ -1053,6 +1054,7 @@ class CustomerController extends Controller
             'registration_date' => 'nullable|date',
             'installation_fee' => 'nullable|numeric|min:0',
             'sales_id' => 'nullable|exists:users,id',
+            'billing_type' => 'nullable|in:prabayar,pascabayar,prorata',
             'is_reseller' => 'boolean',
             'service_status' => 'nullable|in:berbayar,gratis',
             'tax_ppn' => 'nullable|numeric|min:0|max:100',
@@ -1675,6 +1677,7 @@ class CustomerController extends Controller
 
         $validated = $request->validate([
             'activation_date' => 'required|date',
+            'billing_type' => 'nullable|in:prabayar,pascabayar,prorata',
             'pppoe_user' => 'nullable|string',
             'pppoe_password' => 'nullable|string',
             'vlan_mode' => 'nullable|string',
@@ -1695,9 +1698,12 @@ class CustomerController extends Controller
 
         if ($customer->status === 'installing' && $customer->is_audited && $customer->ont) {
             DB::transaction(function () use ($customer, $validated) {
+                $billingType = $validated['billing_type'] ?? $customer->billing_type ?? \App\Models\Setting::get('billing_type', 'prabayar');
+
                 $customer->update([
                     'status' => 'active',
                     'activation_date' => $validated['activation_date'],
+                    'billing_type' => $billingType,
                     'notes' => $validated['notes'] ? $customer->notes . "\n[Aktivasi]: " . $validated['notes'] : $customer->notes,
                     'tax_ppn' => $validated['tax_ppn'] ?? null,
                     'tax_bhp' => $validated['tax_bhp'] ?? null,
@@ -1724,7 +1730,6 @@ class CustomerController extends Controller
                 $amount = $customer->package ? $customer->package->price : 0;
                 $isProrata = false;
 
-                $billingType = \App\Models\Setting::get('billing_type', 'prabayar');
                 $prorataFormula = \App\Models\Setting::get('prorata_formula', 'exact_days');
                 $issueDateSetting = (int) \App\Models\Setting::get('invoice_issue_date', '1');
                 $isolateDays = (int) \App\Models\Setting::get('isolate_days', '3');
@@ -1760,9 +1765,23 @@ class CustomerController extends Controller
                         $amount = round($amount);
                         $isProrata = true;
                     }
+
+                    $dueDateTime = $activationDate->copy()->addDays($isolateDays);
+                } elseif ($billingType === 'pascabayar') {
+                    // Pasca Bayar: Pakai dulu baru bayar.
+                    // Jatuh tempo dihitung saat tanggal terbit invoice berikutnya + masa tenggang isolir
+                    $nextBillingDate = $activationDate->copy();
+                    if ($activationDate->day >= $issueDateSetting) {
+                        $nextBillingDate->addMonth()->day($issueDateSetting);
+                    } else {
+                        $nextBillingDate->day($issueDateSetting);
+                    }
+                    $dueDateTime = $nextBillingDate->copy()->addDays($isolateDays);
+                } else {
+                    // Prabayar: Bayar dulu baru pakai (Full 1 bulan di muka)
+                    $dueDateTime = $activationDate->copy()->addDays($isolateDays);
                 }
                 
-                $dueDateTime = $activationDate->copy()->addDays($isolateDays);
                 $timeParts = explode(':', $isolateTime);
                 if (count($timeParts) == 2) {
                     $dueDateTime->setTime((int)$timeParts[0], (int)$timeParts[1], 0);
@@ -1792,6 +1811,8 @@ class CustomerController extends Controller
                     'issued_date' => $activationDate,
                     'status' => $status,
                     'is_prorata' => $isProrata,
+                    'billing_type' => $billingType,
+                    'notes' => 'Tagihan Awal Aktivasi (' . ucfirst($billingType) . ')',
                 ]);
 
                 // Auto Incentives: Fee Market/Booking for Sales
