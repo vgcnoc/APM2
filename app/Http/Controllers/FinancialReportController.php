@@ -102,15 +102,54 @@ class FinancialReportController extends Controller
                 'amount' => $p->amount,
                 'description' => "Pembayaran {$type} ({$custName})" . ($p->notes ? " - {$p->notes}" : ""),
                 'person' => $custName,
-                'user' => $p->collector ? $p->collector->name : 'System'
+                'user' => $p->collector ? $p->collector->name : 'System',
+                'material_order' => null,
             ]);
         }
         
-        $expensesThisMonth = Expense::with(['creator', 'category'])->whereBetween('expense_date', [$startDate, $endDate])->get();
+        $expensesThisMonth = Expense::with(['creator', 'category', 'materialTransaction.items.material'])->whereBetween('expense_date', [$startDate, $endDate])->get();
         foreach ($expensesThisMonth as $e) {
             $catName = $e->category ? $e->category->name : 'Operasional';
             $catCode = $e->category ? $e->category->code : null;
             $catColor = $e->category ? $e->category->color : 'rose';
+
+            $po = $e->materialTransaction;
+            // Fallback cari berdasarkan No PO di deskripsi jika relasi belum terpasang
+            if (!$po && preg_match('/\[(PO-[^\]]+)\]/', $e->description, $matches)) {
+                $po = \App\Models\MaterialTransaction::with('items.material')->where('transaction_number', $matches[1])->first();
+                if ($po && !$po->expense_id) {
+                    $po->update(['expense_id' => $e->id]);
+                }
+            }
+
+            $materialDetails = null;
+            if ($po) {
+                $areaName = $po->technician_name ?: ($po->area ?: '-');
+                if (($areaName === '-' || empty($areaName)) && preg_match('/Wilayah\s+([^:]+)/', $e->description, $aMatch)) {
+                    $areaName = trim($aMatch[1]);
+                }
+
+                $materialDetails = [
+                    'id' => $po->id,
+                    'transaction_number' => $po->transaction_number,
+                    'area_name' => $areaName,
+                    'date' => $po->date ? Carbon::parse($po->date)->translatedFormat('d F Y') : Carbon::parse($po->created_at)->translatedFormat('d F Y'),
+                    'notes' => $po->notes,
+                    'total_cost' => (float)$po->total_cost,
+                    'items_count' => $po->items ? $po->items->count() : 0,
+                    'items' => $po->items ? $po->items->map(function($it) {
+                        return [
+                            'id' => $it->id,
+                            'material_name' => $it->material ? $it->material->name : 'Item Material',
+                            'category' => $it->material ? ($it->material->category ?: 'Umum') : 'Umum',
+                            'quantity' => (float)$it->quantity,
+                            'unit' => $it->unit ?: 'pcs',
+                            'price_per_unit' => (float)$it->price_per_unit,
+                            'total_price' => (float)$it->total_price,
+                        ];
+                    })->values()->all() : [],
+                ];
+            }
 
             $ledger->push([
                 'id' => 'e_'.$e->id,
@@ -123,7 +162,8 @@ class FinancialReportController extends Controller
                 'amount' => $e->amount,
                 'description' => $e->description,
                 'person' => '-',
-                'user' => $e->creator ? $e->creator->name : 'Unknown'
+                'user' => $e->creator ? $e->creator->name : 'Unknown',
+                'material_order' => $materialDetails,
             ]);
         }
         

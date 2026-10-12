@@ -154,10 +154,11 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50/80">
                             <tr>
-                                <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal & Waktu</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal &amp; Waktu</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tipe / Kategori</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Keterangan</th>
                                 <th scope="col" class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Mutasi</th>
+                                <th scope="col" class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-100">
@@ -170,22 +171,35 @@
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
                                         Pemasukan ({{ item.category === 'reseller' ? 'Reseller' : 'Pelanggan' }})
                                     </span>
-                                    <span v-else class="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-rose-200">
+                                    <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border" :class="item.category_code === 'MAT' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-rose-50 text-rose-700 border-rose-200'">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
                                         {{ item.category_name || 'Pengeluaran Kas' }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <p class="text-sm text-gray-900 font-medium">{{ item.description }}</p>
-                                    <p class="text-xs text-gray-500">Oleh: {{ item.user }}</p>
+                                    <div class="flex items-start gap-2 flex-wrap">
+                                        <p class="text-sm text-gray-900 font-medium">{{ item.description }}</p>
+                                        <button v-if="item.material_order" @click="openMaterialDetail(item.material_order)" type="button" class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded-md transition-colors cursor-pointer">
+                                            <svg class="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            {{ item.material_order.items_count }} Item Material
+                                        </button>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-0.5">Oleh: {{ item.user }}</p>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right">
                                     <p v-if="item.type === 'income'" class="text-sm font-black text-emerald-600">+ Rp {{ formatRupiah(item.amount) }}</p>
                                     <p v-else class="text-sm font-black text-rose-600">- Rp {{ formatRupiah(item.amount) }}</p>
                                 </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <button v-if="item.material_order" @click="openMaterialDetail(item.material_order)" class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-900 border border-indigo-200 rounded-xl transition-all shadow-xs cursor-pointer">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                                        Rincian
+                                    </button>
+                                    <span v-else class="text-xs text-gray-300">-</span>
+                                </td>
                             </tr>
                             <tr v-if="ledger.length === 0">
-                                <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                                <td colspan="5" class="px-6 py-12 text-center text-gray-500">
                                     <p class="font-medium">Belum ada transaksi di bulan ini.</p>
                                 </td>
                             </tr>
@@ -257,6 +271,110 @@
             </div>
         </div>
 
+        <!-- Modal Detail Rincian Material Order -->
+        <Teleport to="body">
+            <div v-if="showMaterialDetailModal && selectedMaterialOrder" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showMaterialDetailModal = false"></div>
+                <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
+                    
+                    <!-- Header Modal -->
+                    <div class="p-6 border-b border-gray-100 bg-gradient-to-r from-indigo-50/70 via-blue-50/50 to-white flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-black text-gray-900">Rincian Material Order Toko</h3>
+                                <p class="text-xs text-gray-500 font-mono">{{ selectedMaterialOrder.transaction_number }} &bull; Wilayah: <span class="font-bold text-indigo-700">{{ selectedMaterialOrder.area_name }}</span></p>
+                            </div>
+                        </div>
+                        <button @click="showMaterialDetailModal = false" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-xl hover:bg-gray-100 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Body Modal -->
+                    <div class="p-6 overflow-y-auto space-y-4 flex-1">
+                        <!-- Summary Cards -->
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100 text-xs">
+                            <div>
+                                <span class="text-gray-400 block text-[10px] uppercase font-bold">Tanggal Order</span>
+                                <span class="font-bold text-gray-800">{{ selectedMaterialOrder.date }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 block text-[10px] uppercase font-bold">Area / Wilayah</span>
+                                <span class="font-bold text-indigo-700">{{ selectedMaterialOrder.area_name }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 block text-[10px] uppercase font-bold">Jenis Barang</span>
+                                <span class="font-bold text-gray-800">{{ selectedMaterialOrder.items?.length || 0 }} Jenis</span>
+                            </div>
+                        </div>
+
+                        <!-- Catatan jika ada -->
+                        <div v-if="selectedMaterialOrder.notes" class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800">
+                            <span class="font-bold">Catatan:</span> {{ selectedMaterialOrder.notes }}
+                        </div>
+
+                        <!-- Tabel Rincian Barang -->
+                        <div class="border border-gray-100 rounded-2xl overflow-hidden shadow-2xs">
+                            <table class="min-w-full divide-y divide-gray-100">
+                                <thead class="bg-gray-50/80">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase">Barang / Kategori</th>
+                                        <th class="px-4 py-3 text-center text-[11px] font-bold text-gray-500 uppercase">Jumlah</th>
+                                        <th class="px-4 py-3 text-right text-[11px] font-bold text-gray-500 uppercase">Harga Satuan</th>
+                                        <th class="px-4 py-3 text-right text-[11px] font-bold text-gray-500 uppercase">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-100 text-xs">
+                                    <tr v-for="it in selectedMaterialOrder.items" :key="it.id" class="hover:bg-gray-50/50">
+                                        <td class="px-4 py-3">
+                                            <div class="font-bold text-gray-900">{{ it.material_name }}</div>
+                                            <span class="inline-block text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.2 rounded mt-0.5">{{ it.category }}</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-center font-bold text-emerald-600">
+                                            +{{ it.quantity }} {{ it.unit }}
+                                        </td>
+                                        <td class="px-4 py-3 text-right text-gray-600 font-mono">
+                                            Rp {{ formatRupiah(it.price_per_unit) }}
+                                        </td>
+                                        <td class="px-4 py-3 text-right font-black text-gray-900 font-mono">
+                                            Rp {{ formatRupiah(it.total_price) }}
+                                        </td>
+                                    </tr>
+                                    <tr v-if="!selectedMaterialOrder.items || selectedMaterialOrder.items.length === 0">
+                                        <td colspan="4" class="px-4 py-6 text-center text-gray-400 italic">
+                                            Tidak ada rincian item material pada order ini.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                <tfoot class="bg-gray-50/70 border-t-2 border-gray-200">
+                                    <tr>
+                                        <td colspan="3" class="px-4 py-3 text-right text-xs font-black text-gray-700 uppercase tracking-wider">Total Biaya Belanja:</td>
+                                        <td class="px-4 py-3 text-right font-black text-rose-600 text-sm font-mono">
+                                            Rp {{ formatRupiah(selectedMaterialOrder.total_cost) }}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Footer Modal -->
+                    <div class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
+                        <Link :href="route('order-toko.index')" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold underline flex items-center gap-1">
+                            Buka di Menu Order Toko &rarr;
+                        </Link>
+                        <button @click="showMaterialDetailModal = false" class="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer">
+                            Tutup
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </Teleport>
+
     </AppLayout>
 </template>
 
@@ -310,6 +428,15 @@ const expenseForm = useForm({
     description: '',
     expense_date: new Date().toISOString().split('T')[0],
 });
+
+// Modal Detail Material Order Toko
+const selectedMaterialOrder = ref(null);
+const showMaterialDetailModal = ref(false);
+
+const openMaterialDetail = (order) => {
+    selectedMaterialOrder.value = order;
+    showMaterialDetailModal.value = true;
+};
 
 const submitExpense = () => {
     expenseForm.post(route('expenses.store'), {
