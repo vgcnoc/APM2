@@ -156,6 +156,8 @@ class InvoiceController extends Controller
                     'last_payment_notes' => $lastPayment ? $lastPayment->notes : null,
                     'due_date' => $invoice->due_date ? $invoice->due_date->format('Y-m-d') : null,
                     'issued_date' => $invoice->issued_date ? $invoice->issued_date->format('Y-m-d') : null,
+                    'period_month' => $invoice->period_month,
+                    'period_year' => $invoice->period_year,
                     'promise_date' => $invoice->promise_date ? $invoice->promise_date->format('Y-m-d') : null,
                 ];
             });
@@ -163,6 +165,7 @@ class InvoiceController extends Controller
         return Inertia::render('Invoices/Index', [
             'invoices' => $invoices,
             'stats' => $stats,
+            'invoice_issue_date' => (int) \App\Models\Setting::get('invoice_issue_date', '1'),
             'packages' => \App\Models\InternetPackage::active()->orderBy('price')->get(['id', 'name', 'price', 'speed_mbps']),
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['search', 'status', 'start_date', 'end_date', 'area_id', 'tab']),
@@ -363,6 +366,7 @@ class InvoiceController extends Controller
         $request->validate([
             'new_package_id' => 'required|exists:internet_packages,id',
             'billing_action' => 'required|in:prorata_diff,replace_invoice,next_month_only',
+            'start_date' => 'nullable|date',
             'effective_date' => 'nullable|date',
             'sync_radius' => 'nullable|boolean',
             'notes' => 'nullable|string',
@@ -388,19 +392,40 @@ class InvoiceController extends Controller
         $actionLabel = $isUpgrade ? 'Upgrade' : 'Downgrade';
         $actionType = $isUpgrade ? 'upgrade' : 'downgrade';
 
+        $issueDateSetting = (int) \App\Models\Setting::get('invoice_issue_date', '1');
+
+        // 1. Tentukan tanggal awal terbit invoice / awal siklus penagihan ($startDate)
+        if ($request->filled('start_date')) {
+            $startDate = \Carbon\Carbon::parse($request->start_date);
+        } elseif ($invoice->issued_date) {
+            $startDate = \Carbon\Carbon::parse($invoice->issued_date);
+        } else {
+            $periodYear = $invoice->period_year ?: now()->year;
+            $periodMonth = $invoice->period_month ?: now()->month;
+            $startDate = \Carbon\Carbon::create($periodYear, $periodMonth, min(28, max(1, $issueDateSetting)));
+        }
+
+        // 2. Tanggal efektif perubahan / pembayaran ($effectiveDate)
         $effectiveDate = $request->effective_date ? \Carbon\Carbon::parse($request->effective_date) : now();
-        $daysInMonth = \Carbon\Carbon::create($invoice->period_year ?: $effectiveDate->year, $invoice->period_month ?: $effectiveDate->month, 1)->daysInMonth;
-        $effectiveDay = min($daysInMonth, max(1, $effectiveDate->day));
+
+        // 3. Akhir siklus penagihan ($cycleEndDate) = 1 bulan penuh sejak tanggal terbit
+        $cycleEndDate = $startDate->copy()->addMonth();
+        $totalCycleDays = max(1, (int) $startDate->diffInDays($cycleEndDate));
 
         // 1. Penyesuaian Billing
         if ($request->billing_action === 'prorata_diff') {
-            // Pemakaian ke belakang (Paket Lama): tanggal 1 s/d (effectiveDay - 1)
-            $pastDays = max(0, $effectiveDay - 1);
-            $pastAmount = $pastDays > 0 ? round(($oldPrice / $daysInMonth) * $pastDays) : 0;
+            // Pemakaian ke belakang (Paket Lama): Dari startDate s/d sebelum effectiveDate
+            $pastDays = 0;
+            if ($effectiveDate->gt($startDate)) {
+                $pastDays = min($totalCycleDays, (int) $startDate->diffInDays($effectiveDate));
+            }
 
-            // Pemakaian ke depan (Paket Baru): tanggal effectiveDay s/d akhir bulan (daysInMonth)
-            $futureDays = max(1, $daysInMonth - $effectiveDay + 1);
-            $futureAmount = round(($newPrice / $daysInMonth) * $futureDays);
+            // Pemakaian ke depan (Paket Baru): Dari effectiveDate s/d cycleEndDate
+            $futureDays = max(1, $totalCycleDays - $pastDays);
+
+            // Perhitungan Biaya Prorata
+            $pastAmount = $pastDays > 0 ? round(($oldPrice / $totalCycleDays) * $pastDays) : 0;
+            $futureAmount = round(($newPrice / $totalCycleDays) * $futureDays);
 
             // Terapkan PPN jika ada
             $taxPpn = (float) ($customer->tax_ppn ?? \App\Models\Setting::get('tax_ppn', '0'));
@@ -409,10 +434,12 @@ class InvoiceController extends Controller
                 $futureAmount = round($futureAmount + ($futureAmount * ($taxPpn / 100)));
             }
 
-            // Total tagihan prorata untuk satu periode bulan berjalan
+            // Total tagihan prorata untuk satu periode siklus penagihan
             $totalProrataAmount = $pastAmount + $futureAmount;
             $oldPackageName = $oldPackage?->name ?? 'Paket Lama';
-            $rincianStr = "Prorata {$actionLabel} ke {$newPackage->name} [Lama: {$pastDays} hari ({$oldPackageName} @ Rp " . number_format($pastAmount, 0, ',', '.') . ") + Baru: {$futureDays} hari ({$newPackage->name} @ Rp " . number_format($futureAmount, 0, ',', '.') . ") = Total Rp " . number_format($totalProrataAmount, 0, ',', '.') . "]";
+            $pastEndDateStr = $pastDays > 0 ? $effectiveDate->copy()->subDay()->translatedFormat('d M') : $startDate->translatedFormat('d M');
+            $futureEndDateStr = $cycleEndDate->copy()->subDay()->translatedFormat('d M Y');
+            $rincianStr = "Prorata {$actionLabel} ke {$newPackage->name} [Lama: {$startDate->translatedFormat('d M')} - {$pastEndDateStr} ({$pastDays} hari, {$oldPackageName}) @ Rp " . number_format($pastAmount, 0, ',', '.') . " + Baru: {$effectiveDate->translatedFormat('d M')} - {$futureEndDateStr} ({$futureDays} hari, {$newPackage->name}) @ Rp " . number_format($futureAmount, 0, ',', '.') . " = Total Rp " . number_format($totalProrataAmount, 0, ',', '.') . "]";
 
             if (in_array($invoice->status, ['unpaid', 'partial'])) {
                 $invoice->amount = $totalProrataAmount;

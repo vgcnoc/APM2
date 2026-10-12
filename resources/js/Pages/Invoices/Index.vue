@@ -590,20 +590,34 @@
                                 </div>
                             </div>
 
-                            <!-- Tanggal Efektif & Pembayaran -->
-                            <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
-                                <label class="block text-xs font-bold text-gray-800 mb-1">Tanggal Perubahan Paket / Pembayaran</label>
-                                <input type="date" v-model="upgradeForm.effective_date" required class="w-full px-3.5 py-2 border border-gray-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white" />
-                                <div class="flex items-center justify-between text-[11px] text-gray-500 mt-1.5">
-                                    <span>Total hari dalam bulan: <strong>{{ calculatedDaysInMonth }} hari</strong></span>
-                                    <span>Hari perubahan: <strong>Tanggal {{ calculatedEffectiveDay }}</strong></span>
+                            <!-- Input Tanggal Terbit & Tanggal Perubahan -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs font-bold text-gray-800">Tanggal Terbit Invoice</label>
+                                        <span class="text-[10px] text-indigo-600 font-semibold bg-indigo-100/70 px-1.5 py-0.5 rounded">Awal Siklus</span>
+                                    </div>
+                                    <input type="date" v-model="upgradeForm.start_date" required class="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white" />
+                                    <p class="text-[10px] text-gray-500 mt-1">
+                                        Default sesuai terbit invoice (Pengaturan: Tgl {{ props.invoice_issue_date || 1 }})
+                                    </p>
+                                </div>
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs font-bold text-gray-800">Tanggal Bayar / Ganti Paket</label>
+                                        <span class="text-[10px] text-purple-600 font-semibold bg-purple-100/70 px-1.5 py-0.5 rounded">Tanggal Efektif</span>
+                                    </div>
+                                    <input type="date" v-model="upgradeForm.effective_date" required class="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white" />
+                                    <p class="text-[10px] text-gray-500 mt-1">
+                                        Total siklus penagihan: <strong>{{ calculatedTotalCycleDays }} hari</strong>
+                                    </p>
                                 </div>
                             </div>
 
                             <!-- Rincian Prorata Dua Arah: Pemakaian Ke Belakang & Ke Depan -->
                             <div v-if="selectedNewPackage && upgradeForm.billing_action === 'prorata_diff'" class="space-y-3">
                                 <div class="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-between">
-                                    <span>Rincian Tagihan Prorata Bulan Berjalan</span>
+                                    <span>Rincian Tagihan Prorata Siklus Penagihan</span>
                                     <span class="text-[10px] font-normal text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">Ke Belakang + Ke Depan</span>
                                 </div>
 
@@ -616,14 +630,14 @@
                                                 {{ calculatedPastDays }} Hari
                                             </span>
                                         </div>
-                                        <div class="text-[11px] text-gray-600">
-                                            Tgl 1 s/d {{ calculatedPastDays > 0 ? (calculatedEffectiveDay - 1) : 1 }}
+                                        <div class="text-[11px] font-semibold text-gray-700">
+                                            {{ formatShortDate(calculatedStartDate) }} s/d {{ formatShortDate(calculatedPastEndDate) }}
                                         </div>
                                         <div class="text-xs font-bold text-gray-800 truncate mt-0.5">
                                             {{ selectedUpgradeInvoice?.customer?.package_name || 'Paket Lama' }}
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
-                                            ({{ calculatedPastDays }}/{{ calculatedDaysInMonth }}) &times; {{ formatCurrency(currentPackagePrice) }}
+                                            ({{ calculatedPastDays }}/{{ calculatedTotalCycleDays }}) &times; {{ formatCurrency(currentPackagePrice) }}
                                         </div>
                                         <div class="text-sm font-black text-amber-700 mt-1.5">
                                             {{ formatCurrency(calculatedPastAmount) }}
@@ -638,14 +652,14 @@
                                                 {{ calculatedFutureDays }} Hari
                                             </span>
                                         </div>
-                                        <div class="text-[11px] text-gray-600">
-                                            Tgl {{ calculatedEffectiveDay }} s/d {{ calculatedDaysInMonth }}
+                                        <div class="text-[11px] font-semibold text-gray-700">
+                                            {{ formatShortDate(calculatedEffectiveDate) }} s/d {{ formatShortDate(calculatedFutureEndDate) }}
                                         </div>
                                         <div class="text-xs font-bold text-emerald-900 truncate mt-0.5">
                                             {{ selectedNewPackage?.name }}
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
-                                            ({{ calculatedFutureDays }}/{{ calculatedDaysInMonth }}) &times; {{ formatCurrency(selectedNewPackage?.price) }}
+                                            ({{ calculatedFutureDays }}/{{ calculatedTotalCycleDays }}) &times; {{ formatCurrency(selectedNewPackage?.price) }}
                                         </div>
                                         <div class="text-sm font-black text-emerald-700 mt-1.5">
                                             {{ formatCurrency(calculatedFutureAmount) }}
@@ -792,6 +806,7 @@ const props = defineProps({
     areas: Array,
     filters: Object,
     payment_banks: Array,
+    invoice_issue_date: Number,
 });
 
 const columns = [
@@ -1052,12 +1067,22 @@ const selectedUpgradeInvoice = ref(null);
 const upgradeForm = useForm({
     new_package_id: '',
     billing_action: 'prorata_diff',
+    start_date: '',
     effective_date: new Date().toISOString().split('T')[0],
     sync_radius: true,
     notes: '',
     pay_now: false,
     payment_method: 'cash',
 });
+
+function formatShortDate(dateObj) {
+    if (!dateObj) return '';
+    const d = new Date(dateObj);
+    if (isNaN(d.getTime())) return '';
+    const day = String(d.getDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return `${day} ${months[d.getMonth()]}`;
+}
 
 const selectedNewPackage = computed(() => {
     if (!props.packages || !upgradeForm.new_package_id) return null;
@@ -1075,35 +1100,77 @@ const priceDiff = computed(() => {
 
 const isUpgrade = computed(() => priceDiff.value >= 0);
 
-const calculatedEffectiveDay = computed(() => {
-    if (!upgradeForm.effective_date) return 1;
-    const d = new Date(upgradeForm.effective_date);
-    return d.getDate();
+const defaultIssueDay = computed(() => {
+    return Number(props.invoice_issue_date || 1);
 });
 
-const calculatedDaysInMonth = computed(() => {
-    if (!upgradeForm.effective_date) return 30;
-    const d = new Date(upgradeForm.effective_date);
-    return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+const calculatedStartDate = computed(() => {
+    if (upgradeForm.start_date) {
+        return new Date(upgradeForm.start_date + 'T00:00:00');
+    }
+    if (selectedUpgradeInvoice.value?.issued_date) {
+        let idate = selectedUpgradeInvoice.value.issued_date;
+        if (idate.includes('/')) idate = idate.split('/').reverse().join('-');
+        return new Date(idate + 'T00:00:00');
+    }
+    const now = new Date();
+    const yr = selectedUpgradeInvoice.value?.period_year || now.getFullYear();
+    const mo = selectedUpgradeInvoice.value?.period_month ? selectedUpgradeInvoice.value.period_month - 1 : now.getMonth();
+    return new Date(yr, mo, defaultIssueDay.value);
+});
+
+const calculatedEffectiveDate = computed(() => {
+    if (!upgradeForm.effective_date) return new Date();
+    return new Date(upgradeForm.effective_date + 'T00:00:00');
+});
+
+const calculatedCycleEndDate = computed(() => {
+    const d = new Date(calculatedStartDate.value);
+    d.setMonth(d.getMonth() + 1);
+    return d;
+});
+
+const calculatedTotalCycleDays = computed(() => {
+    const start = calculatedStartDate.value.getTime();
+    const end = calculatedCycleEndDate.value.getTime();
+    const diff = Math.round((end - start) / (1000 * 60 * 60 * 24));
+    return Math.max(1, diff);
 });
 
 const calculatedPastDays = computed(() => {
-    return Math.max(0, calculatedEffectiveDay.value - 1);
+    const start = calculatedStartDate.value.getTime();
+    const eff = calculatedEffectiveDate.value.getTime();
+    if (eff <= start) return 0;
+    const diff = Math.round((eff - start) / (1000 * 60 * 60 * 24));
+    return Math.min(calculatedTotalCycleDays.value, Math.max(0, diff));
 });
 
 const calculatedFutureDays = computed(() => {
-    return Math.max(1, calculatedDaysInMonth.value - calculatedEffectiveDay.value + 1);
+    return Math.max(1, calculatedTotalCycleDays.value - calculatedPastDays.value);
+});
+
+const calculatedPastEndDate = computed(() => {
+    if (calculatedPastDays.value <= 0) return calculatedStartDate.value;
+    const d = new Date(calculatedEffectiveDate.value);
+    d.setDate(d.getDate() - 1);
+    return d;
+});
+
+const calculatedFutureEndDate = computed(() => {
+    const d = new Date(calculatedCycleEndDate.value);
+    d.setDate(d.getDate() - 1);
+    return d;
 });
 
 const calculatedPastAmount = computed(() => {
     if (!currentPackagePrice.value || calculatedPastDays.value <= 0) return 0;
-    return Math.round((currentPackagePrice.value / calculatedDaysInMonth.value) * calculatedPastDays.value);
+    return Math.round((currentPackagePrice.value / calculatedTotalCycleDays.value) * calculatedPastDays.value);
 });
 
 const calculatedFutureAmount = computed(() => {
     if (!selectedNewPackage.value) return 0;
     const newPrice = Number(selectedNewPackage.value.price || 0);
-    return Math.round((newPrice / calculatedDaysInMonth.value) * calculatedFutureDays.value);
+    return Math.round((newPrice / calculatedTotalCycleDays.value) * calculatedFutureDays.value);
 });
 
 const calculatedTotalProrata = computed(() => {
@@ -1114,6 +1181,21 @@ function openUpgradeModal(invoice) {
     selectedUpgradeInvoice.value = invoice;
     upgradeForm.new_package_id = '';
     upgradeForm.billing_action = 'prorata_diff';
+
+    // Tentukan tanggal terbit awal siklus
+    let sDate = '';
+    if (invoice.issued_date) {
+        let idate = invoice.issued_date;
+        if (idate.includes('/')) idate = idate.split('/').reverse().join('-');
+        sDate = idate;
+    } else {
+        const now = new Date();
+        const yr = invoice.period_year || now.getFullYear();
+        const mo = String(invoice.period_month || (now.getMonth() + 1)).padStart(2, '0');
+        const day = String(props.invoice_issue_date || 1).padStart(2, '0');
+        sDate = `${yr}-${mo}-${day}`;
+    }
+    upgradeForm.start_date = sDate;
     upgradeForm.effective_date = new Date().toISOString().split('T')[0];
     upgradeForm.sync_radius = true;
     upgradeForm.notes = '';
