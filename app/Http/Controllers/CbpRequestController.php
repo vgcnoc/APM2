@@ -10,7 +10,7 @@ class CbpRequestController extends Controller
 {
     public function index(Request $request)
     {
-        $query = CbpRequest::with(['customer', 'technicians', 'creator', 'auditLogs'])->where('status', 'pending');
+        $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'auditLogs'])->where('status', 'pending');
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -41,7 +41,7 @@ class CbpRequestController extends Controller
 
     public function jadwal(Request $request)
     {
-        $query = CbpRequest::with(['customer.areaModel', 'technicians', 'creator', 'auditLogs'])->whereIn('status', ['pending', 'assigned']);
+        $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'auditLogs'])->whereIn('status', ['pending', 'assigned']);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -67,7 +67,7 @@ class CbpRequestController extends Controller
 
     public function laporan(Request $request)
     {
-        $query = CbpRequest::with(['customer.ont', 'customer.technicianSchedules', 'technicians', 'creator', 'auditLogs'])->whereIn('status', ['assigned', 'completed']);
+        $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'customer.technicianSchedules', 'technicians', 'creator', 'auditLogs'])->whereIn('status', ['assigned', 'completed']);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);

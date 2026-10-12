@@ -247,7 +247,7 @@
                     <button v-if="row.customer && row.customer.status !== 'suspended'" @click="stopSementara(row)" class="p-1.5 text-gray-400 hover:text-orange-600 transition-colors" title="Stop Sementara">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </button>
-                    <button v-if="row.customer && row.customer.status !== 'terminated'" @click="stopPermanen(row)" class="p-1.5 text-gray-400 hover:text-red-800 transition-colors" title="Stop Permanen">
+                    <button v-if="row.customer && row.customer.status !== 'terminated'" @click="openStopPermanenModal(row)" class="p-1.5 text-gray-400 hover:text-red-800 transition-colors" title="Stop Permanen & Eskalasi CBP">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                     </button>
                     <button @click="deleteInvoice(row)" class="p-1.5 text-gray-400 hover:text-red-600 transition-colors" title="Hapus Tagihan">
@@ -790,6 +790,167 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- Modal Stop Permanen & Eskalasi Cabut Perangkat (CBP) -->
+        <Teleport to="body">
+            <div v-if="showStopPermanenModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0 overflow-y-auto">
+                <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeStopPermanenModal"></div>
+
+                <div class="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-lg relative z-10 animate-fade-in-up border border-slate-100 my-8">
+                    <!-- Header -->
+                    <div class="px-6 py-5 border-b border-rose-100 flex items-center justify-between bg-gradient-to-r from-rose-50 via-red-50 to-white">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center text-white shadow-lg shadow-rose-500/25 shrink-0">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-black text-slate-800 tracking-tight">Stop Permanen &amp; Cabut Perangkat</h3>
+                                <p class="text-xs font-medium text-rose-600 mt-0.5">Otomatis Terjadwal ke CBP &amp; Disposisi Kepala Teknisi</p>
+                            </div>
+                        </div>
+                        <button @click="closeStopPermanenModal" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-white/80 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitStopPermanen">
+                        <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                            <!-- Ringkasan Pelanggan -->
+                            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <div class="text-sm font-black text-slate-900">{{ selectedStopPermanenInvoice?.customer?.name }}</div>
+                                        <div class="text-xs text-slate-500 font-mono mt-0.5">
+                                            {{ selectedStopPermanenInvoice?.customer?.customer_code || '-' }} • {{ selectedStopPermanenInvoice?.customer?.phone || '-' }}
+                                        </div>
+                                    </div>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-200">
+                                        {{ selectedStopPermanenInvoice?.customer?.status || 'Active' }}
+                                    </span>
+                                </div>
+                                <div class="text-xs text-slate-600 leading-relaxed">
+                                    <span class="text-slate-400 font-semibold">Alamat:</span> {{ selectedStopPermanenInvoice?.customer?.address || '-' }}
+                                    <span v-if="selectedStopPermanenInvoice?.customer?.area"> ({{ selectedStopPermanenInvoice?.customer?.area }})</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 text-xs">
+                                    <div>
+                                        <span class="text-slate-400 text-[10px] uppercase font-bold block">Paket Saat Ini:</span>
+                                        <span class="font-bold text-slate-700">{{ selectedStopPermanenInvoice?.customer?.package || '-' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-slate-400 text-[10px] uppercase font-bold block">Tagihan Tertunggak:</span>
+                                        <span class="font-black text-rose-600">{{ formatCurrency(selectedStopPermanenInvoice?.remaining > 0 ? selectedStopPermanenInvoice?.remaining : selectedStopPermanenInvoice?.amount) }}</span>
+                                    </div>
+                                </div>
+                                <!-- Info ONT jika ada -->
+                                <div v-if="selectedStopPermanenInvoice?.customer?.ont" class="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-2">
+                                    <svg class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <div>
+                                        <strong class="font-bold">Perangkat Terpasang:</strong> 
+                                        {{ selectedStopPermanenInvoice.customer.ont.brand }} {{ selectedStopPermanenInvoice.customer.ont.model }}
+                                        (SN: {{ selectedStopPermanenInvoice.customer.ont.serial_number || '-' }})
+                                        <span v-if="selectedStopPermanenInvoice.customer.ont.odp"> • ODP: {{ selectedStopPermanenInvoice.customer.ont.odp }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Pilihan Alasan Stop -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Alasan Stop Permanen / Pencabutan <span class="text-rose-500">*</span></label>
+                                <select v-model="stopPermanenForm.reason_preset" class="w-full text-xs font-semibold px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                                    <option value="Menunggak Pembayaran">Menunggak Pembayaran Berkepanjangan</option>
+                                    <option value="Berhenti Berlangganan (Permintaan Pelanggan)">Berhenti Berlangganan (Permintaan Pelanggan)</option>
+                                    <option value="Pindah Rumah / Domisili Luar Jangkauan">Pindah Rumah / Domisili Luar Jangkauan</option>
+                                    <option value="Komplain Gangguan Berulang">Komplain Gangguan Berulang / Tidak Puas Layanan</option>
+                                    <option value="Lainnya">Lainnya (Ketik Manual)</option>
+                                </select>
+                                <input v-if="stopPermanenForm.reason_preset === 'Lainnya'" type="text" v-model="stopPermanenForm.custom_reason" placeholder="Tulis alasan spesifik..." class="w-full mt-2 px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 bg-white" required />
+                            </div>
+
+                            <!-- Tujukan ke Kepala Teknisi -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                    Disposisikan ke Kepala Teknisi <span class="text-slate-400 font-normal lowercase">(untuk jadwal cabut)</span>
+                                </label>
+                                <select v-model="stopPermanenForm.lead_technician_id" class="w-full text-xs font-semibold px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                                    <option value="">-- Semua / Default Kepala Teknisi --</option>
+                                    <option v-for="tech in (lead_technicians || [])" :key="tech.id" :value="tech.id">
+                                        {{ tech.name }} {{ tech.phone ? '(' + tech.phone + ')' : '' }}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- Catatan untuk Teknisi -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Catatan Tambahan untuk Tim Lapangan (Opsional)</label>
+                                <textarea v-model="stopPermanenForm.notes" rows="2" placeholder="Contoh: Titik lokasi dekat masjid, koordinasi dengan pemilik rumah sebelum cabut..." class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 bg-white"></textarea>
+                            </div>
+
+                            <!-- Alert Sistem Otomatis -->
+                            <div class="p-3.5 rounded-2xl bg-rose-50/70 border border-rose-200 text-xs text-rose-800 space-y-1">
+                                <div class="font-bold flex items-center gap-1.5">
+                                    <span>⚠️</span> Efek Tindakan:
+                                </div>
+                                <ul class="list-disc list-inside text-[11px] text-rose-700 space-y-0.5">
+                                    <li>Layanan RADIUS otomatis diisolir / dihapus seketika.</li>
+                                    <li>Pelanggan dipindahkan ke menu <strong>Stop Permanen</strong>.</li>
+                                    <li>Otomatis membuat nomor tiket di antrean <strong>CBP (Cabut Perangkat)</strong>.</li>
+                                    <li>Admin dapat langsung meneruskan disposisi ke WhatsApp Kepala Teknisi.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                            <button type="button" @click="closeStopPermanenModal" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200/60 rounded-xl transition-colors">
+                                Batal
+                            </button>
+                            <button type="submit" :disabled="stopPermanenForm.processing" class="bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md shadow-rose-500/25 transition-all disabled:opacity-50 flex items-center gap-2">
+                                <svg v-if="stopPermanenForm.processing" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>{{ stopPermanenForm.processing ? 'Memproses...' : 'Stop Permanen & Buat Tiket CBP' }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Modal Sukses Disposisi CBP & Tombol Kirim WhatsApp -->
+        <Teleport to="body">
+            <div v-if="showDispatchSuccessModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-0">
+                <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="showDispatchSuccessModal = false"></div>
+
+                <div class="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-md relative z-10 animate-fade-in-up border border-slate-100 p-6 text-center space-y-4">
+                    <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center text-3xl shadow-lg shadow-emerald-500/20">
+                        ✅
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-slate-800">Tiket CBP Berhasil Dibuat!</h3>
+                        <p class="text-xs font-semibold text-slate-500 mt-1">
+                            Nomor Tiket: <span class="font-mono text-rose-600 font-bold text-sm bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200">{{ activeDispatchData?.cbp_number }}</span>
+                        </p>
+                    </div>
+
+                    <p class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 text-left">
+                        Pelanggan <strong>{{ activeDispatchData?.customer_name }}</strong> telah di-Stop Permanen dan otomatis masuk antrean Cabut Perangkat. Silakan teruskan disposisi ke Kepala Teknisi untuk mengatur jadwal pencabutan.
+                    </p>
+
+                    <div class="space-y-2 pt-2">
+                        <button type="button" @click="sendWhatsAppToLead" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl text-sm shadow-md shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all">
+                            <span>📲</span> Kirim ke Kepala Teknisi via WhatsApp
+                        </button>
+
+                        <div class="flex gap-2">
+                            <Link :href="activeDispatchData?.schedule_url || '/cbp/jadwal'" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-3 rounded-xl text-xs transition-colors text-center">
+                                📅 Buka Jadwal CBP
+                            </Link>
+                            <button type="button" @click="showDispatchSuccessModal = false" class="px-5 bg-white hover:bg-slate-50 text-slate-500 font-semibold py-2.5 rounded-xl text-xs border border-slate-200 transition-colors">
+                                Selesai
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
 
@@ -804,6 +965,7 @@ const props = defineProps({
     stats: Object,
     packages: Array,
     areas: Array,
+    lead_technicians: Array,
     filters: Object,
     payment_banks: Array,
     invoice_issue_date: Number,
@@ -982,10 +1144,71 @@ function submitStopSementara() {
     });
 }
 
-function stopPermanen(row) {
-    if (confirm(`Apakah Anda yakin ingin Stop Permanen pelanggan ${row.customer.name}? Layanan akan dinonaktifkan secara permanen.`)) {
-        router.post(`/invoices/${row.id}/stop-permanen`, {}, { preserveScroll: true });
-    }
+// ── Stop Permanen & Eskalasi CBP Modal Logic ───────────────────
+const showStopPermanenModal = ref(false);
+const selectedStopPermanenInvoice = ref(null);
+const stopPermanenForm = useForm({
+    reason_preset: 'Menunggak Pembayaran',
+    custom_reason: '',
+    notes: '',
+    lead_technician_id: '',
+});
+
+const showDispatchSuccessModal = ref(false);
+const activeDispatchData = ref(null);
+
+function openStopPermanenModal(row) {
+    selectedStopPermanenInvoice.value = row;
+    stopPermanenForm.reason_preset = 'Menunggak Pembayaran';
+    stopPermanenForm.custom_reason = '';
+    stopPermanenForm.notes = '';
+    stopPermanenForm.lead_technician_id = '';
+    showStopPermanenModal.value = true;
+}
+
+function closeStopPermanenModal() {
+    showStopPermanenModal.value = false;
+    setTimeout(() => {
+        selectedStopPermanenInvoice.value = null;
+        stopPermanenForm.reset();
+    }, 200);
+}
+
+function submitStopPermanen() {
+    const finalReason = stopPermanenForm.reason_preset === 'Lainnya'
+        ? (stopPermanenForm.custom_reason || 'Stop Permanen')
+        : stopPermanenForm.reason_preset;
+
+    stopPermanenForm.transform((data) => ({
+        ...data,
+        reason: finalReason,
+    })).post(`/invoices/${selectedStopPermanenInvoice.value.id}/stop-permanen`, {
+        preserveScroll: true,
+        onSuccess: (page) => {
+            closeStopPermanenModal();
+            if (page.props.flash?.cbp_dispatch) {
+                activeDispatchData.value = page.props.flash.cbp_dispatch;
+                showDispatchSuccessModal.value = true;
+            }
+        },
+    });
+}
+
+function cleanPhone(phone) {
+    if (!phone) return '';
+    let p = String(phone).replace(/\D/g, '');
+    if (p.startsWith('0')) p = '62' + p.substring(1);
+    return p;
+}
+
+function sendWhatsAppToLead() {
+    if (!activeDispatchData.value) return;
+    const phone = cleanPhone(activeDispatchData.value.phone);
+    const text = activeDispatchData.value.whatsapp_text || '';
+    const url = phone
+        ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+        : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
 }
 
 function openPromiseModal(invoice) {

@@ -33,7 +33,7 @@ class InvoiceController extends Controller
                         ->where('is_reseller_balance', false)
                         ->where('due_date', '<', $today);
               }], 'amount');
-        }, 'customer.areaModel', 'customer.package', 'payments' => function($q) {
+        }, 'customer.areaModel', 'customer.package', 'customer.ont.odp', 'payments' => function($q) {
             $q->latest('payment_date');
         }])->where('is_reseller_balance', false);
 
@@ -130,6 +130,8 @@ class InvoiceController extends Controller
                     'customer' => $invoice->customer ? [
                         'id' => $invoice->customer->id,
                         'name' => $invoice->customer->name,
+                        'customer_code' => $invoice->customer->customer_code,
+                        'phone' => $invoice->customer->phone,
                         'address' => $invoice->customer->address,
                         'area' => $invoice->customer->areaModel?->name,
                         'package_id' => $invoice->customer->package_id,
@@ -142,6 +144,12 @@ class InvoiceController extends Controller
                         'total_unpaid' => $invoice->customer->total_unpaid_amount ?? 0,
                         'overdue_count' => $invoice->customer->overdue_invoices_count ?? 0,
                         'total_overdue' => $invoice->customer->total_overdue_amount ?? 0,
+                        'ont' => $invoice->customer->ont ? [
+                            'serial_number' => $invoice->customer->ont->serial_number,
+                            'brand' => $invoice->customer->ont->brand,
+                            'model' => $invoice->customer->ont->model,
+                            'odp' => $invoice->customer->ont->odp?->name,
+                        ] : null,
                     ] : null,
                     'period_label' => $invoice->period_label,
                     'billing_type' => $invoice->billing_type ?? $invoice->customer?->billing_type,
@@ -162,12 +170,20 @@ class InvoiceController extends Controller
                 ];
             });
 
+        $leadTechnicians = \App\Models\User::where(function($q) {
+            $q->whereHas('roles', function($rq) {
+                $rq->whereIn('name', ['kepala teknisi', 'teknisi', 'admin']);
+            })->orWhere('role', 'like', '%teknisi%')
+              ->orWhere('role', 'like', '%admin%');
+        })->where('is_active', true)->orderBy('name')->get(['id', 'name', 'phone']);
+
         return Inertia::render('Invoices/Index', [
             'invoices' => $invoices,
             'stats' => $stats,
             'invoice_issue_date' => (int) \App\Models\Setting::get('invoice_issue_date', '1'),
             'packages' => \App\Models\InternetPackage::active()->orderBy('price')->get(['id', 'name', 'price', 'speed_mbps']),
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'lead_technicians' => $leadTechnicians,
             'filters' => $request->only(['search', 'status', 'start_date', 'end_date', 'area_id', 'tab']),
             'payment_banks' => json_decode(\App\Models\Setting::get('payment_banks', '[]'), true),
         ]);
@@ -326,18 +342,130 @@ class InvoiceController extends Controller
         return redirect()->back()->with('success', 'Pelanggan berhasil di-Stop Sementara mulai ' . $request->start_date . ' sampai ' . $request->end_date . '.');
     }
 
-    public function stopPermanen(Invoice $invoice, \App\Services\RadiusService $radius)
+    public function stopPermanen(Request $request, Invoice $invoice, \App\Services\RadiusService $radius)
     {
+        $request->validate([
+            'reason' => 'nullable|string',
+            'notes' => 'nullable|string',
+            'lead_technician_id' => 'nullable|exists:users,id',
+        ]);
+
         $customer = $invoice->customer;
-        if ($customer && $customer->status !== 'terminated') {
-            $customer->update(['status' => 'terminated']);
-            $radius->guard(fn($r) => $r->syncCustomer($customer));
-            $accounts = $radius->customerAccounts($customer);
-            foreach (array_keys($accounts) as $username) {
-                $radius->guard(fn($r) => $r->disconnect($username));
+        if (!$customer) {
+            return redirect()->back()->with('error', 'Data pelanggan tidak ditemukan pada tagihan ini.');
+        }
+
+        $reason = $request->input('reason') ?: 'Stop Permanen dari Tagihan Invoice #' . $invoice->invoice_number;
+        $notes = $request->input('notes') ?: '';
+
+        // 1. Update status pelanggan menjadi terminated & putus RADIUS
+        if ($customer->status !== 'terminated') {
+            $customer->update([
+                'status' => 'terminated',
+                'cancel_date' => now()->toDateString(),
+                'cancel_reason' => $reason,
+                'notes' => $notes ? ($customer->notes ? $customer->notes . ' | ' . $notes : $notes) : $customer->notes,
+            ]);
+
+            $radius->guard(function($r) use ($customer) {
+                $r->syncCustomer($customer);
+                $accounts = $r->customerAccounts($customer);
+                foreach (array_keys($accounts) as $username) {
+                    $r->removeUser($username);
+                    $r->disconnect($username);
+                }
+            });
+        }
+
+        // 2. Otomatis buat data CBP / Cabut Perangkat
+        $existingCbp = \App\Models\CbpRequest::where('customer_id', $customer->id)
+            ->whereIn('status', ['pending', 'assigned'])
+            ->first();
+
+        $tunggakanNominal = $invoice->remaining > 0 ? $invoice->remaining : $invoice->amount;
+        $tunggakanStr = number_format($tunggakanNominal, 0, ',', '.');
+        $cbpNotes = "Eskalasi Stop Permanen dari Tagihan #{$invoice->invoice_number} (Tunggakan: Rp {$tunggakanStr})." . ($notes ? " Catatan: {$notes}" : "");
+
+        if (!$existingCbp) {
+            $cbp = \App\Models\CbpRequest::create([
+                'customer_id' => $customer->id,
+                'reason' => $reason,
+                'notes' => $cbpNotes,
+                'status' => 'pending',
+                'assigned_to' => $request->lead_technician_id ?: null,
+                'created_by' => auth()->id(),
+            ]);
+
+            \App\Models\AuditLog::createLog(
+                'Auto CBP dari Invoice Stop Permanen',
+                $cbp,
+                null,
+                'pending',
+                "Otomatis membuat tiket Cabut Perangkat untuk {$customer->name} ({$customer->customer_code}) saat Stop Permanen dari tagihan #{$invoice->invoice_number}."
+            );
+        } else {
+            $cbp = $existingCbp;
+        }
+
+        // 3. Susun teks disposisi WhatsApp untuk Kepala Teknisi
+        $customer->loadMissing(['ont.odp', 'areaModel']);
+        $ontText = '-';
+        if ($customer->ont) {
+            $ontText = ($customer->ont->brand ?: '') . ' ' . ($customer->ont->model ?: '') . ' (SN: ' . ($customer->ont->serial_number ?: '-') . ')';
+            if ($customer->ont->odp) {
+                $ontText .= ' | ODP: ' . $customer->ont->odp->name;
             }
         }
-        return redirect()->back()->with('success', 'Pelanggan berhasil di-Stop Permanen.');
+
+        $waText = "*DISPOSISI CABUT PERANGKAT (CBP)*\n";
+        $waText .= "--------------------------------------\n";
+        $waText .= "📌 *No. Tiket CBP:* " . $cbp->cbp_number . "\n";
+        $waText .= "👤 *Pelanggan:* " . $customer->name . " (" . ($customer->customer_code ?: '-') . ")\n";
+        $waText .= "📞 *No. HP:* " . ($customer->phone ?: '-') . "\n";
+        $waText .= "📍 *Alamat:* " . ($customer->address ?: '-') . "\n";
+        if ($customer->areaModel) {
+            $waText .= "🌐 *Wilayah:* " . $customer->areaModel->name . "\n";
+        }
+        if ($ontText !== '-') {
+            $waText .= "📟 *Perangkat ONT:* " . $ontText . "\n";
+        }
+        $waText .= "⚠️ *Alasan:* " . $reason . "\n";
+        $waText .= "💰 *Tunggakan:* Rp " . $tunggakanStr . " (Tagihan #" . $invoice->invoice_number . ")\n";
+        if ($notes) {
+            $waText .= "📝 *Catatan Admin:* " . $notes . "\n";
+        }
+        $waText .= "--------------------------------------\n";
+        $waText .= "Kepada: *Kepala Teknisi*\n";
+        $waText .= "Mohon untuk segera menjadwalkan tim teknisi untuk penarikan/pencabutan perangkat di lokasi pelanggan.\n";
+        $waText .= "Kelola jadwal di sistem: " . route('cbp.jadwal');
+
+        // Target telepon
+        $targetPhone = '';
+        if ($request->filled('lead_technician_id')) {
+            $targetUser = \App\Models\User::find($request->lead_technician_id);
+            if ($targetUser && $targetUser->phone) {
+                $targetPhone = $targetUser->phone;
+            }
+        }
+        if (!$targetPhone) {
+            $leadUser = \App\Models\User::whereHas('roles', fn($q) => $q->where('name', 'kepala teknisi'))->first();
+            if ($leadUser && $leadUser->phone) {
+                $targetPhone = $leadUser->phone;
+            }
+        }
+
+        return redirect()->back()->with([
+            'success' => "Pelanggan {$customer->name} berhasil di-Stop Permanen & otomatis masuk antrean Cabut Perangkat ({$cbp->cbp_number}).",
+            'cbp_dispatch' => [
+                'cbp_id' => $cbp->id,
+                'cbp_number' => $cbp->cbp_number,
+                'customer_name' => $customer->name,
+                'customer_code' => $customer->customer_code,
+                'phone' => $targetPhone,
+                'whatsapp_text' => $waText,
+                'schedule_url' => route('cbp.jadwal'),
+            ]
+        ]);
     }
 
     public function print(Invoice $invoice)
