@@ -148,16 +148,40 @@
                             :class="selectedCustomer?.id === cust.id ? 'border-indigo-600 bg-indigo-50/20 ring-2 ring-indigo-500/20' : 'border-gray-200 bg-white hover:border-gray-300'"
                         >
                             <!-- Info Pelanggan Header -->
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
-                                <div class="flex items-start sm:items-center gap-3">
-                                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+                                <div class="flex items-start gap-3.5">
+                                    <!-- Foto KTP Thumbnail / Avatar -->
+                                    <div v-if="cust.identity_photo_url" class="relative group shrink-0">
+                                        <img 
+                                            :src="cust.identity_photo_url" 
+                                            alt="Foto KTP" 
+                                            @click="openPhotoPreview(cust.identity_photo_url, cust.name + ' (' + cust.customer_code + ')')"
+                                            class="w-16 h-12 sm:w-20 sm:h-14 object-cover rounded-xl border-2 border-indigo-200 shadow-sm cursor-pointer transition transform group-hover:scale-105 group-hover:border-indigo-500 bg-gray-100"
+                                            title="Klik untuk memperbesar Foto KTP"
+                                        />
+                                        <div 
+                                            @click="openPhotoPreview(cust.identity_photo_url, cust.name + ' (' + cust.customer_code + ')')"
+                                            class="absolute -bottom-1 -right-1 bg-indigo-600 hover:bg-indigo-700 text-white p-1 rounded-full shadow cursor-pointer"
+                                            title="Perbesar KTP"
+                                        >
+                                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+                                        </div>
+                                    </div>
+                                    <div v-else class="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-black text-base flex items-center justify-center shrink-0 shadow-sm">
                                         {{ (cust.name || 'P').charAt(0).toUpperCase() }}
                                     </div>
-                                    <div>
+
+                                    <div class="space-y-1">
                                         <div class="flex items-center gap-2 flex-wrap">
-                                            <h4 class="text-base font-black text-gray-900">{{ cust.name }}</h4>
+                                            <h4 class="text-base sm:text-lg font-black text-gray-900">{{ cust.name }}</h4>
                                             <span class="px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-gray-100 text-gray-700">{{ cust.customer_code }}</span>
                                             
+                                            <!-- BADGE WILAYAH / AREA -->
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
+                                                <svg class="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                <span>Wilayah: {{ cust.area || 'Pusat' }}</span>
+                                            </span>
+
                                             <!-- Status Layanan -->
                                             <span v-if="cust.status === 'active'" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -170,18 +194,37 @@
                                             <span v-else class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700">
                                                 {{ cust.status }}
                                             </span>
+
+                                            <!-- Tombol Preview KTP -->
+                                            <button 
+                                                v-if="cust.identity_photo_url" 
+                                                @click="openPhotoPreview(cust.identity_photo_url, cust.name + ' (' + cust.customer_code + ')')"
+                                                type="button"
+                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition cursor-pointer"
+                                            >
+                                                <svg class="w-3 h-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                                <span>Foto KTP</span>
+                                            </button>
+                                            <span v-else class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-50 text-gray-400 border border-gray-200">
+                                                Belum Ada KTP
+                                            </span>
                                         </div>
-                                        <div class="flex items-center gap-3 text-xs text-gray-500 mt-1 flex-wrap">
-                                            <span>Paket: <strong class="text-indigo-600">{{ cust.package_name }}</strong> (Rp {{ Number(cust.package_price).toLocaleString('id-ID') }})</span>
+
+                                        <div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                                            <span class="font-semibold text-blue-700 flex items-center gap-1">
+                                                <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                Wilayah: <strong>{{ cust.area || '-' }}</strong>
+                                            </span>
+                                            <span>• Paket: <strong class="text-indigo-600">{{ cust.package_name }}</strong> (Rp {{ Number(cust.package_price).toLocaleString('id-ID') }})</span>
                                             <span v-if="cust.phone">• WhatsApp: <strong class="text-gray-700">{{ cust.phone }}</strong></span>
                                             <span v-if="cust.address">• {{ cust.address }}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="text-right shrink-0">
+                                <div class="text-left sm:text-right shrink-0 bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded-xl">
                                     <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">Total Tagihan Tertunggak</span>
-                                    <span class="text-lg font-black font-mono" :class="cust.total_unpaid > 0 ? 'text-rose-600' : 'text-emerald-600'">
+                                    <span class="text-xl sm:text-2xl font-black font-mono" :class="cust.total_unpaid > 0 ? 'text-rose-600' : 'text-emerald-600'">
                                         Rp {{ Number(cust.total_unpaid || 0).toLocaleString('id-ID') }}
                                     </span>
                                 </div>
@@ -284,7 +327,11 @@
                                 <!-- Pelanggan -->
                                 <td class="px-4 py-4 whitespace-nowrap">
                                     <div class="font-bold text-gray-900">{{ pay.customer?.name || '-' }}</div>
-                                    <div class="text-[11px] text-gray-500 font-mono">{{ pay.customer?.customer_code || '-' }}</div>
+                                    <div class="text-[11px] text-gray-500 font-mono flex items-center gap-1.5 mt-0.5">
+                                        <span>{{ pay.customer?.customer_code || '-' }}</span>
+                                        <span class="text-gray-300">•</span>
+                                        <span class="text-blue-600 font-sans font-semibold">Wilayah: {{ pay.customer?.areaModel?.name || pay.customer?.area || '-' }}</span>
+                                    </div>
                                 </td>
 
                                 <!-- Faktur Tagihan -->
@@ -392,6 +439,10 @@
                             <div class="flex justify-between">
                                 <span class="text-gray-500">Nama:</span>
                                 <span class="font-bold uppercase">{{ activeReceipt.customer_name }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Wilayah/Area:</span>
+                                <span class="font-bold">{{ activeReceipt.customer_area || '-' }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-500">Paket:</span>
@@ -553,6 +604,52 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- MODAL PREVIEW FOTO KTP PELANGGAN -->
+        <Teleport to="body">
+            <div v-if="previewPhotoModal" class="fixed inset-0 z-[150] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-gray-950/80 backdrop-blur-sm" @click="previewPhotoModal = false"></div>
+                
+                <div class="relative bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden animate-fade-in-up flex flex-col z-10 border border-gray-100">
+                    <!-- Header Modal KTP -->
+                    <div class="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-slate-50">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-gray-900">Verifikasi Dokumen KTP</h4>
+                                <p class="text-xs text-gray-500">{{ previewPhotoTitle }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <a :href="previewPhotoUrl" target="_blank" class="p-2 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded-xl transition" title="Buka Gambar Asli">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                            </a>
+                            <button @click="previewPhotoModal = false" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition cursor-pointer">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Body Image -->
+                    <div class="p-4 bg-slate-900 flex items-center justify-center min-h-[250px] max-h-[70vh] overflow-hidden">
+                        <img :src="previewPhotoUrl" alt="Foto KTP Pelanggan" class="max-h-[65vh] w-auto max-w-full rounded-xl object-contain shadow-2xl" />
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="p-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Identitas Sah Terdaftar di Sistem
+                        </span>
+                        <button @click="previewPhotoModal = false" class="px-4 py-1.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-bold text-xs cursor-pointer shadow-xs">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </ClientAreaLayout>
 </template>
 
@@ -582,6 +679,17 @@ let searchDebounce = null;
 // Biller Action State
 const payingInvoiceId = ref(null);
 const activeReceipt = ref(null);
+
+// Modal Preview Foto KTP
+const previewPhotoModal = ref(false);
+const previewPhotoUrl = ref('');
+const previewPhotoTitle = ref('');
+
+const openPhotoPreview = (url, title) => {
+    previewPhotoUrl.value = url;
+    previewPhotoTitle.value = title || 'Foto KTP';
+    previewPhotoModal.value = true;
+};
 
 // Cek apakah ada flash receipt setelah pembayaran berhasil
 watch(() => page.props.flash, (flash) => {
@@ -708,6 +816,7 @@ const openReceiptFromPayment = (pay) => {
         customer_name: pay.customer?.name || '-',
         customer_phone: pay.customer?.phone || '',
         customer_address: pay.customer?.address || '',
+        customer_area: pay.customer?.areaModel?.name || pay.customer?.area || '-',
         package_name: pay.customer?.package?.name || 'Internet Rumah',
         invoice_number: pay.invoice?.invoice_number || '-',
         period: (pay.invoice?.period_month && pay.invoice?.period_year) ? `${pay.invoice.period_month}/${pay.invoice.period_year}` : '-',
@@ -739,6 +848,7 @@ No. Faktur  : ${r.invoice_number}
 ---------------------------------------
 ID Pelanggan: ${r.customer_code}
 Nama        : ${r.customer_name}
+Wilayah     : ${r.customer_area || '-'}
 Paket       : ${r.package_name}
 Periode     : ${r.period}
 ---------------------------------------

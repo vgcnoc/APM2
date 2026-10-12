@@ -269,7 +269,7 @@ class ResellerClientController extends Controller
         }
 
         // Ambil riwayat pembayaran internet pelanggan yang diproses oleh reseller ini
-        $recentPayments = \App\Models\Payment::with(['customer.package', 'invoice'])
+        $recentPayments = \App\Models\Payment::with(['customer.package', 'customer.areaModel', 'invoice'])
             ->where('payment_method', 'reseller_balance')
             ->where('collected_by', $user->id)
             ->latest('payment_date')
@@ -304,7 +304,7 @@ class ResellerClientController extends Controller
             return response()->json(['success' => true, 'customers' => []]);
         }
 
-        $customers = \App\Models\Customer::with(['package'])
+        $customers = \App\Models\Customer::with(['package', 'areaModel'])
             ->where(function ($q) use ($query) {
                 $q->where('customer_code', 'like', "%{$query}%")
                   ->orWhere('name', 'like', "%{$query}%")
@@ -341,13 +341,23 @@ class ResellerClientController extends Controller
                 ->filter(fn($inv) => $inv['remaining'] > 0)
                 ->values();
 
+            $identityPhotoUrl = null;
+            if ($cust->identity_photo) {
+                $cleanPhoto = ltrim($cust->identity_photo, '/');
+                $identityPhotoUrl = \Illuminate\Support\Str::startsWith($cleanPhoto, ['http://', 'https://'])
+                    ? $cleanPhoto
+                    : asset('storage/' . $cleanPhoto);
+            }
+
             return [
                 'id' => $cust->id,
                 'customer_code' => $cust->customer_code,
                 'name' => $cust->name,
                 'phone' => $cust->phone,
                 'address' => $cust->address,
-                'area' => $cust->area,
+                'area' => $cust->areaModel?->name ?? $cust->area ?? '-',
+                'identity_photo' => $cust->identity_photo,
+                'identity_photo_url' => $identityPhotoUrl,
                 'status' => $cust->status,
                 'package_name' => $cust->package?->name ?? 'Internet Rumah',
                 'package_price' => (float) ($cust->package?->price ?? $cust->base_amount ?? 0),
@@ -386,6 +396,7 @@ class ResellerClientController extends Controller
         if (!$customer) {
             return back()->with('error', 'Data pelanggan untuk tagihan ini tidak ditemukan.');
         }
+        $customer->loadMissing('areaModel');
 
         // Hitung sisa tagihan yang harus dibayar
         $verifiedPaid = $invoice->payments()->where('status', 'verified')->sum('amount');
@@ -454,6 +465,14 @@ class ResellerClientController extends Controller
 
             \Illuminate\Support\Facades\DB::commit();
 
+            $receiptKtpUrl = null;
+            if ($customer->identity_photo) {
+                $cleanPhoto = ltrim($customer->identity_photo, '/');
+                $receiptKtpUrl = \Illuminate\Support\Str::startsWith($cleanPhoto, ['http://', 'https://'])
+                    ? $cleanPhoto
+                    : asset('storage/' . $cleanPhoto);
+            }
+
             return back()->with([
                 'success' => "Pembayaran tagihan {$customer->name} sebesar Rp " . number_format($invoiceRemaining, 0, ',', '.') . " BERHASIL! Saldo modal Anda telah terpotong dan layanan internet pelanggan langsung aktif.",
                 'billerReceipt' => [
@@ -465,6 +484,8 @@ class ResellerClientController extends Controller
                     'customer_name' => $customer->name,
                     'customer_phone' => $customer->phone,
                     'customer_address' => $customer->address,
+                    'customer_area' => $customer->areaModel?->name ?? $customer->area ?? '-',
+                    'identity_photo_url' => $receiptKtpUrl,
                     'package_name' => $customer->package?->name ?? 'Internet Rumah',
                     'invoice_number' => $invoice->invoice_number,
                     'period' => $invoice->period_label,
