@@ -34,7 +34,7 @@ class InvoiceController extends Controller
                         ->where('due_date', '<', $today);
               }], 'amount');
         }, 'customer.areaModel', 'customer.package', 'customer.ont.odp', 'payments' => function($q) {
-            $q->latest('payment_date');
+            $q->with('collector')->latest('payment_date');
         }])->where('is_reseller_balance', false);
 
         $tab = $request->query('tab', 'semua');
@@ -161,6 +161,8 @@ class InvoiceController extends Controller
                     'notes' => $invoice->notes,
                     'last_payment_date' => $lastPayment ? \Carbon\Carbon::parse($lastPayment->payment_date)->format('d M Y') : null,
                     'last_payment_method' => $lastPayment ? $lastPayment->payment_method : null,
+                    'last_payment_channel' => $lastPayment ? $lastPayment->payment_channel : null,
+                    'last_payment_collector' => $lastPayment?->collector?->name ?? null,
                     'last_payment_notes' => $lastPayment ? $lastPayment->notes : null,
                     'due_date' => $invoice->due_date ? $invoice->due_date->format('Y-m-d') : null,
                     'issued_date' => $invoice->issued_date ? $invoice->issued_date->format('Y-m-d') : null,

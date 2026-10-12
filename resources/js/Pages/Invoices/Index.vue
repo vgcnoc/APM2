@@ -192,10 +192,23 @@
                 <td>
                     <span v-if="row.last_payment_date" class="flex flex-col">
                         <span class="text-[11px] text-gray-600">{{ row.last_payment_date }}</span>
-                        <span class="text-[9px] font-bold text-indigo-500 uppercase mt-0.5">
-                            {{ formatPaymentMethod(row.last_payment_method) }}
+                        <span 
+                            class="text-[9px] font-bold uppercase mt-0.5 tracking-tight flex items-center gap-0.5 flex-wrap"
+                            :class="{
+                                'text-emerald-600': row.last_payment_method === 'reseller_balance',
+                                'text-indigo-600': row.last_payment_method === 'transfer' || row.last_payment_method === 'payment_gateway',
+                                'text-blue-600': row.last_payment_method === 'cash',
+                                'text-purple-600': row.last_payment_method === 'qris',
+                            }"
+                        >
+                            <span>{{ formatPaymentMethod(row.last_payment_method) }}</span>
                             <template v-if="row.last_payment_method === 'transfer' && extractBankName(row.last_payment_notes)">
-                                - {{ extractBankName(row.last_payment_notes) }}
+                                <span>- {{ extractBankName(row.last_payment_notes) }}</span>
+                            </template>
+                            <template v-else-if="row.last_payment_method === 'reseller_balance'">
+                                <span class="font-extrabold text-emerald-700">
+                                    - {{ row.last_payment_collector || extractResellerName(row.last_payment_notes) || 'Mitra' }}
+                                </span>
                             </template>
                         </span>
                     </span>
@@ -1026,7 +1039,17 @@ function formatPaymentMethod(method) {
     if (method === 'transfer') return 'Transfer';
     if (method === 'qris') return 'QRIS';
     if (method === 'payment_gateway') return 'Payment Gateway';
-    return method;
+    if (method === 'reseller_balance') return 'Loket Reseller';
+    return method.replace(/_/g, ' ');
+}
+
+function extractResellerName(notes) {
+    if (!notes) return null;
+    const match = notes.match(/Loket Mitra:\s*(.*?)(?:\s*\(|\s*via|$)/i);
+    if (match && match[1]) {
+        return match[1].trim();
+    }
+    return null;
 }
 
 function extractBankName(notes) {
