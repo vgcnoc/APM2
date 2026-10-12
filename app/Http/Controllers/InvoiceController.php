@@ -470,9 +470,9 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function print(Invoice $invoice)
+    public function print(Invoice $invoice, Request $request)
     {
-        $invoice->load('customer', 'payments');
+        $invoice->load('customer.package', 'payments');
         
         $company = [
             'name' => \App\Models\Setting::get('company_name', config('app.name', 'ISP Management')),
@@ -485,7 +485,9 @@ class InvoiceController extends Controller
 
         $banks = json_decode(\App\Models\Setting::get('payment_banks', '[]'), true) ?: [];
 
-        return view('print.invoice', compact('invoice', 'company', 'banks'));
+        $template = $request->query('template', \App\Models\Setting::get('invoice_template', 'modern'));
+
+        return view('print.invoice', compact('invoice', 'company', 'banks', 'template'));
     }
 
     /**

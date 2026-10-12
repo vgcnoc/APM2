@@ -46,6 +46,7 @@ class SettingController extends Controller
             'tax_ppn' => Setting::get('tax_ppn', '0'),
             'tax_bhp' => Setting::get('tax_bhp', '0'),
             'tax_uso' => Setting::get('tax_uso', '0'),
+            'invoice_template' => Setting::get('invoice_template', 'modern'),
         ]);
     }
 
@@ -134,6 +135,7 @@ class SettingController extends Controller
             'tax_ppn' => 'nullable|numeric|min:0|max:100',
             'tax_bhp' => 'nullable|numeric|min:0|max:100',
             'tax_uso' => 'nullable|numeric|min:0|max:100',
+            'invoice_template' => 'nullable|string|in:modern,classic,thermal,minimalist',
         ]);
 
         if ($request->has('billing_type')) {
@@ -153,6 +155,9 @@ class SettingController extends Controller
         }
         if ($request->has('isolate_time')) {
             Setting::set('isolate_time', $request->isolate_time);
+        }
+        if ($request->has('invoice_template')) {
+            Setting::set('invoice_template', $request->invoice_template);
         }
         
         if ($request->has('tax_ppn')) {
@@ -191,6 +196,69 @@ class SettingController extends Controller
         $message = $section ? "Pengaturan {$section} berhasil disimpan." : 'Pengaturan billing berhasil diperbarui.';
 
         return redirect()->back()->with('success', $message);
+    }
+
+    public function previewInvoiceTemplate(Request $request)
+    {
+        $template = $request->query('template', Setting::get('invoice_template', 'modern'));
+
+        $dummyCustomer = (object) [
+            'name' => 'Budi Santoso',
+            'customer_code' => 'CUST-0089',
+            'address' => 'Jl. Merdeka No. 45, RT 02/RW 04, Kel. Sukamaju',
+            'phone' => '0812-3456-7890',
+            'tax_ppn' => Setting::get('tax_ppn', '0'),
+            'package' => (object) [
+                'name' => 'Home Ultra 50 Mbps',
+                'price' => 250000,
+            ],
+        ];
+
+        $dummyInvoice = (object) [
+            'id' => 9999,
+            'invoice_number' => 'INV/' . date('Ym') . '/0089',
+            'issued_date' => now(),
+            'due_date' => now()->addDays((int) Setting::get('isolate_days', 3)),
+            'status' => 'unpaid',
+            'amount' => 250000,
+            'total_paid' => 0,
+            'remaining' => 250000,
+            'period_label' => now()->translatedFormat('F Y'),
+            'customer' => $dummyCustomer,
+            'payments' => collect([]),
+        ];
+
+        $company = [
+            'name' => Setting::get('company_name', config('app.name', 'ISP Management')),
+            'address' => Setting::get('company_address', 'Layanan Internet Cepat & Stabil'),
+            'phone' => Setting::get('company_phone', '0811-2233-4455'),
+            'email' => Setting::get('company_email', 'billing@ispmanagement.id'),
+            'website' => Setting::get('company_website', 'www.ispmanagement.id'),
+            'logo' => Setting::get('company_logo', null),
+        ];
+
+        $banks = json_decode(Setting::get('payment_banks', '[]'), true) ?: [
+            [
+                'bank_name' => 'BCA',
+                'account_name' => 'PT ISP NETWORK INDONESIA',
+                'account_number' => '8830123456',
+            ],
+            [
+                'bank_name' => 'Mandiri',
+                'account_name' => 'PT ISP NETWORK INDONESIA',
+                'account_number' => '1370009876543',
+            ]
+        ];
+
+        $isPreview = true;
+
+        return view('print.invoice', [
+            'invoice' => $dummyInvoice,
+            'company' => $company,
+            'banks' => $banks,
+            'template' => $template,
+            'isPreview' => $isPreview,
+        ]);
     }
 
     public function updateBranding(Request $request)

@@ -282,6 +282,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('invoices/{invoice}/stop-sementara', [\App\Http\Controllers\InvoiceController::class, 'stopSementara'])->name('invoices.stop-sementara');
     Route::post('invoices/{invoice}/stop-permanen', [\App\Http\Controllers\InvoiceController::class, 'stopPermanen'])->name('invoices.stop-permanen');
     Route::post('invoices/{invoice}/change-package', [\App\Http\Controllers\InvoiceController::class, 'changePackage'])->name('invoices.change-package');
+    Route::get('invoices/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->name('invoices.print');
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
     
     // ── Pantauan Pelanggan (Menunggak, Janji Bayar, Stop Sementara) ──────
@@ -365,6 +366,7 @@ Route::middleware(['auth'])->group(function () {
     
     Route::get('/settings/billing', [\App\Http\Controllers\SettingController::class, 'billing'])->name('settings.billing');
     Route::post('/settings/billing', [\App\Http\Controllers\SettingController::class, 'updateBilling'])->name('settings.billing.update');
+    Route::get('/settings/invoice-template/preview', [\App\Http\Controllers\SettingController::class, 'previewInvoiceTemplate'])->name('settings.invoice-template.preview');
 
     Route::get('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'payroll'])->name('settings.payroll');
     Route::post('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'updatePayroll'])->name('settings.payroll.update');
