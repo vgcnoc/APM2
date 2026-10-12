@@ -17,10 +17,10 @@
                         </span>
                     </div>
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
-                        Tagihan & Kasbon Reseller
+                        Tagihan Kasbon & Saldo Reseller
                     </h1>
                     <p class="text-sm text-gray-500 mt-1">
-                        Pantau rincian tagihan kasbon saldo modal voucher dan tagihan langganan internet Anda serta bayar online otomatis.
+                        Pantau rincian tagihan kasbon saldo modal voucher dan transaksi saldo Anda serta bayar online otomatis.
                     </p>
                 </div>
 
@@ -98,7 +98,7 @@
                         class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer"
                         :class="!filters.type ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'"
                     >
-                        Semua Tagihan
+                        Semua Faktur Saldo
                     </button>
                     <button 
                         @click="filterType('kasbon')" 
@@ -109,11 +109,11 @@
                         <span v-if="total_unpaid_kasbon > 0" class="w-2 h-2 rounded-full bg-rose-500"></span>
                     </button>
                     <button 
-                        @click="filterType('internet')" 
+                        @click="filterType('topup')" 
                         class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer"
-                        :class="filters.type === 'internet' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'"
+                        :class="filters.type === 'topup' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'"
                     >
-                        Tagihan Internet
+                        Top Up Mandiri
                     </button>
                 </div>
 
@@ -151,7 +151,7 @@
                         <thead class="bg-gray-50/75">
                             <tr>
                                 <th class="px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-gray-500">No. Invoice & Tanggal</th>
-                                <th class="px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-gray-500">Jenis Tagihan</th>
+                                <th class="px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-gray-500">Jenis Faktur</th>
                                 <th class="px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-gray-500">Jatuh Tempo</th>
                                 <th class="px-4 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-gray-500">Total Tagihan</th>
                                 <th class="px-4 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-gray-500">Sisa Tagihan</th>
@@ -172,13 +172,13 @@
 
                                 <!-- Jenis Tagihan -->
                                 <td class="px-4 py-4 whitespace-nowrap">
-                                    <span v-if="inv.is_reseller_balance" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200/70">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        Kasbon Saldo
+                                    <span v-if="(inv.notes || '').toLowerCase().includes('top up') || (inv.notes || '').toLowerCase().includes('isi saldo')" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/70">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                        Top Up Mandiri
                                     </span>
-                                    <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200/70">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                        Tagihan Internet
+                                    <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200/70">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        Kasbon Saldo Modal
                                     </span>
                                 </td>
 

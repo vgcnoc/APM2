@@ -115,7 +115,8 @@ class ResellerClientController extends Controller
         }
 
         $customer = $reseller->customer;
-        $invoicesQuery = Invoice::with('payments');
+        $invoicesQuery = Invoice::with('payments')
+            ->where('is_reseller_balance', true);
 
         if ($customer) {
             $invoicesQuery->where('customer_id', $customer->id);
@@ -125,9 +126,12 @@ class ResellerClientController extends Controller
 
         if ($request->filled('type')) {
             if ($request->type === 'kasbon') {
-                $invoicesQuery->where('is_reseller_balance', true);
-            } elseif ($request->type === 'internet') {
-                $invoicesQuery->where('is_reseller_balance', false);
+                $invoicesQuery->where(function ($q) {
+                    $q->where('notes', 'like', '%kasbon%')
+                      ->orWhere('notes', 'not like', '%top up%');
+                });
+            } elseif ($request->type === 'topup') {
+                $invoicesQuery->where('notes', 'like', '%top up%');
             }
         }
 

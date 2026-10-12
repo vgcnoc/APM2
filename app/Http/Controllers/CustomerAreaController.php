@@ -74,6 +74,7 @@ class CustomerAreaController extends Controller
         }
 
         $invoices = Invoice::where('customer_id', $customer->id)
+            ->where('is_reseller_balance', false)
             ->latest('due_date')
             ->paginate(10);
 
