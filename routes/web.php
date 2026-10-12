@@ -334,6 +334,11 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('settings/payroll-categories', \App\Http\Controllers\PayrollCategoryController::class);
     Route::get('api/payroll-categories/active', [\App\Http\Controllers\PayrollCategoryController::class, 'getActiveCategories'])->name('payroll-categories.active');
     
+    // Master Kategori Pengeluaran
+    Route::resource('settings/expense-categories', \App\Http\Controllers\ExpenseCategoryController::class);
+    Route::post('settings/expense-categories/{expenseCategory}/toggle', [\App\Http\Controllers\ExpenseCategoryController::class, 'toggleStatus'])->name('expense-categories.toggle');
+    Route::get('api/expense-categories/active', [\App\Http\Controllers\ExpenseCategoryController::class, 'getActiveCategories'])->name('expense-categories.active');
+
     // Master Fee
     Route::resource('settings/master-fees', \App\Http\Controllers\MasterFeeController::class);
 

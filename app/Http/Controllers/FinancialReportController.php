@@ -106,13 +106,20 @@ class FinancialReportController extends Controller
             ]);
         }
         
-        $expensesThisMonth = Expense::with('creator')->whereBetween('expense_date', [$startDate, $endDate])->get();
+        $expensesThisMonth = Expense::with(['creator', 'category'])->whereBetween('expense_date', [$startDate, $endDate])->get();
         foreach ($expensesThisMonth as $e) {
+            $catName = $e->category ? $e->category->name : 'Operasional';
+            $catCode = $e->category ? $e->category->code : null;
+            $catColor = $e->category ? $e->category->color : 'rose';
+
             $ledger->push([
                 'id' => 'e_'.$e->id,
                 'date' => Carbon::parse($e->expense_date)->format('Y-m-d H:i:s'),
                 'type' => 'expense',
                 'category' => 'operational',
+                'category_name' => $catName,
+                'category_code' => $catCode,
+                'category_color' => $catColor,
                 'amount' => $e->amount,
                 'description' => $e->description,
                 'person' => '-',
@@ -154,7 +161,8 @@ class FinancialReportController extends Controller
             ],
             'chartData' => $chartData,
             'ledger' => $ledger,
-            'kpi' => $collectorKpi
+            'kpi' => $collectorKpi,
+            'expense_categories' => \App\Models\ExpenseCategory::active()->orderBy('name')->get(['id', 'code', 'name', 'color']),
         ]);
     }
 }

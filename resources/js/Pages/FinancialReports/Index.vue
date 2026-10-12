@@ -138,10 +138,16 @@
                         </h3>
                         <p class="text-sm text-gray-500 mt-1">Rekapitulasi riwayat keluar masuk uang bulan ini</p>
                     </div>
-                    <button @click="showExpenseModal = true" class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl shadow-sm transition-all hover:shadow text-sm font-bold">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        Catat Pengeluaran
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <Link :href="route('expense-categories.index')" class="inline-flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-3.5 py-2 rounded-xl shadow-sm text-xs font-bold transition-all">
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                            Master Kategori
+                        </Link>
+                        <button @click="showExpenseModal = true" class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            Catat Pengeluaran
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="overflow-x-auto">
@@ -166,7 +172,7 @@
                                     </span>
                                     <span v-else class="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-rose-200">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                                        Pengeluaran Kas
+                                        {{ item.category_name || 'Pengeluaran Kas' }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4">
@@ -212,7 +218,21 @@
                         <form @submit.prevent="submitExpense" class="space-y-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Tanggal Pengeluaran</label>
-                                <input type="date" v-model="expenseForm.expense_date" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500" required>
+                                <input type="date" v-model="expenseForm.expense_date" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 text-sm" required>
+                            </div>
+                            <div>
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-sm font-medium text-gray-700">Kategori Pengeluaran</label>
+                                    <Link :href="route('expense-categories.index')" class="text-xs font-bold text-rose-600 hover:text-rose-800">
+                                        + Kelola Kategori
+                                    </Link>
+                                </div>
+                                <select v-model="expenseForm.expense_category_id" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 text-sm font-medium">
+                                    <option value="">-- Tanpa Kategori (Umum) --</option>
+                                    <option v-for="cat in expense_categories" :key="cat.id" :value="cat.id">
+                                        {{ cat.code ? '[' + cat.code + '] ' : '' }}{{ cat.name }}
+                                    </option>
+                                </select>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Nominal (Rp)</label>
@@ -242,7 +262,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { router, useForm } from '@inertiajs/vue3';
+import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import VueApexCharts from 'vue3-apexcharts';
 
@@ -252,7 +272,11 @@ const props = defineProps({
     summary: Object,
     chartData: Array,
     ledger: Array,
-    kpi: Array
+    kpi: Array,
+    expense_categories: {
+        type: Array,
+        default: () => []
+    }
 });
 
 const months = [
@@ -281,6 +305,7 @@ const formatRupiah = (number) => {
 
 const showExpenseModal = ref(false);
 const expenseForm = useForm({
+    expense_category_id: '',
     amount: '',
     description: '',
     expense_date: new Date().toISOString().split('T')[0],
@@ -292,6 +317,7 @@ const submitExpense = () => {
         onSuccess: () => {
             showExpenseModal.value = false;
             expenseForm.reset();
+            expenseForm.expense_category_id = '';
         }
     });
 };

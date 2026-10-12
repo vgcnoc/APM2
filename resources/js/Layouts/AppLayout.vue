@@ -413,10 +413,11 @@ const menuItems = [
         type: 'dropdown',
         icon: 'box',
         label: 'Master Data',
-        active: (url) => ['/settings/areas', '/settings/payroll-categories', '/settings/master-fees'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/settings/areas', '/settings/payroll-categories', '/settings/master-fees', '/settings/expense-categories'].some(path => (url || '').startsWith(path)),
         permission: 'menu_settings_areas',
         children: [
             { href: '/settings/areas', label: 'Master Area', active: (url) => (url || '').startsWith('/settings/areas'), permission: 'menu_settings_areas' },
+            { href: '/settings/expense-categories', label: 'Kategori Pengeluaran', active: (url) => (url || '').startsWith('/settings/expense-categories'), permission: 'menu_settings_areas' },
             { href: '/settings/master-fees', label: 'Master Fee', active: (url) => (url || '').startsWith('/settings/master-fees'), permission: 'menu_hr_employees' },
             { href: '/settings/payroll-categories', label: 'Kategori Insentif/Potongan', active: (url) => (url || '').startsWith('/settings/payroll-categories'), permission: 'menu_hr_employees' },
         ]
