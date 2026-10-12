@@ -17,11 +17,15 @@
                             </div>
                             <h1 class="text-3xl font-black text-gray-900 tracking-tight">Order Toko (Restock)</h1>
                             <p class="mt-2 text-sm text-gray-500 max-w-xl">
-                                Order material dari area/wilayah ke toko. Sistem otomatis mengkonversi satuan order menjadi stok gudang.
+                                Order material dari area/wilayah ke toko. Sistem otomatis mengkonversi satuan order menjadi stok gudang serta mencatat biaya pengeluaran ke <strong>Buku Kas Umum / Laporan Keuangan</strong>.
                             </p>
                         </div>
 
                         <div class="flex items-center gap-3">
+                            <Link :href="route('financial-reports.index')" class="inline-flex items-center gap-1.5 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-sm shadow-xs transition">
+                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                Buku Kas Umum
+                            </Link>
                             <button id="btn-open-order" @click="openModal" class="group relative inline-flex items-center justify-center px-6 py-3 text-sm font-bold text-white transition-all duration-200 bg-gradient-to-r from-indigo-600 to-blue-500 border border-transparent rounded-xl shadow-md hover:shadow-lg hover:from-indigo-500 hover:to-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 overflow-hidden">
                                 <span class="absolute inset-0 w-full h-full -mt-1 rounded-lg opacity-30 bg-gradient-to-b from-transparent via-transparent to-black"></span>
                                 <svg class="w-5 h-5 mr-2 -ml-1 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -44,7 +48,7 @@
                                     <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal &amp; No. Ref</th>
                                     <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Area / Wilayah</th>
                                     <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Detail Barang Masuk (Terkonversi)</th>
-                                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Total Biaya</th>
+                                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Total Biaya & Kas</th>
                                     <th scope="col" class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
@@ -72,7 +76,11 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-bold text-gray-900">Rp {{ formatNumber(trx.total_cost) }}</div>
+                                        <div class="text-sm font-black text-gray-900">Rp {{ formatNumber(trx.total_cost) }}</div>
+                                        <div class="mt-1 flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md w-fit">
+                                            <svg class="w-3 h-3 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            Buku Kas Umum
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div class="flex items-center justify-end gap-2">

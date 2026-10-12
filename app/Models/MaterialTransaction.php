@@ -22,7 +22,13 @@ class MaterialTransaction extends Model
         'total_cost',
         'user_id',
         'customer_id',
+        'expense_id',
     ];
+
+    public function expense(): BelongsTo
+    {
+        return $this->belongsTo(Expense::class);
+    }
 
     public function items(): HasMany
     {

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Material;
 use App\Models\MaterialTransaction;
 use App\Models\MaterialTransactionItem;
+use App\Models\Expense;
+use App\Models\ExpenseCategory;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +17,7 @@ class PurchaseOrderController extends Controller
     {
         // Only get transactions with purpose indicating it's a purchase
         $transactions = MaterialTransaction::where('purpose', 'Pembelian Toko / Supplier')
-                            ->with('items.material')
+                            ->with(['items.material', 'expense.category'])
                             ->latest()
                             ->paginate(15);
 
@@ -116,11 +118,111 @@ class PurchaseOrderController extends Controller
 
             $transaction->update(['total_cost' => $totalCost]);
 
+            // Sinkronkan otomatis ke Pengeluaran Kas (Buku Kas Umum)
+            $this->syncOrderExpense($transaction, $totalCost, $validated['date'], $validated['area_name']);
+
             DB::commit();
-            return redirect()->back()->with('success', 'Order Toko berhasil dicatat dan stok telah bertambah.');
+            return redirect()->back()->with('success', 'Order Toko berhasil dicatat, stok bertambah, dan tercatat otomatis di Laporan Keuangan.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal mencatat order: ' . $e->getMessage());
+        }
+    }
+
+    public function update(Request $request, $id)
+    {
+        $transaction = MaterialTransaction::with('items')->findOrFail($id);
+
+        $validated = $request->validate([
+            'date' => 'nullable|date',
+            'area_name' => 'required|string|max:255',
+            'notes' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.material_id' => 'required|exists:materials,id',
+            'items.*.purchase_unit' => 'required|string',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.price' => 'nullable|numeric|min:0',
+        ]);
+        $validated['date'] = $validated['date'] ?? now()->toDateString();
+
+        DB::beginTransaction();
+        try {
+            // 1. Revert stok lama terlebih dahulu
+            foreach ($transaction->items as $oldItem) {
+                $oldMaterial = Material::lockForUpdate()->find($oldItem->material_id);
+                if ($oldMaterial) {
+                    $oldMaterial->stock -= $oldItem->quantity;
+                    $oldMaterial->recalcUnitTotals()->save();
+                }
+            }
+
+            // Hapus items lama
+            $transaction->items()->delete();
+
+            // 2. Update info transaksi
+            $transaction->update([
+                'date' => $validated['date'],
+                'technician_name' => $validated['area_name'],
+                'notes' => $validated['notes'] ?? null,
+            ]);
+
+            $totalCost = 0;
+
+            // 3. Masukkan items baru
+            foreach ($validated['items'] as $item) {
+                $material = Material::lockForUpdate()->findOrFail($item['material_id']);
+                
+                $convertedQuantity = $item['quantity'];
+                $isIsolasi = str_contains(strtolower($material->name), 'isolasi') || str_contains(strtolower($material->category), 'isolasi');
+
+                if ($item['purchase_unit'] === 'roll' && $material->meter_per_roll > 0) {
+                    $convertedQuantity = $item['quantity'] * $material->meter_per_roll;
+                } elseif ($isIsolasi && in_array(strtolower($item['purchase_unit']), ['pack', 'bungkus', 'base'])) {
+                    $pcsPerPack = $material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1;
+                    $cmPerPcs = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50;
+                    $convertedQuantity = $item['quantity'] * ($pcsPerPack * $cmPerPcs);
+                    if ($material->unit !== 'cm') {
+                        $material->unit = 'cm';
+                    }
+                } elseif ($item['purchase_unit'] === 'pack' && $material->pcs_per_pack > 0) {
+                    $convertedQuantity = $item['quantity'] * $material->pcs_per_pack;
+                } elseif ($item['purchase_unit'] === 'pcs' && $material->cm_per_pcs > 0) {
+                    $convertedQuantity = $item['quantity'] * $material->cm_per_pcs;
+                }
+
+                if (isset($item['price']) && $item['price'] !== null && $item['price'] !== '') {
+                    $pricePerUnit = $item['price'];
+                    $itemTotal = $item['quantity'] * $item['price'];
+                } else {
+                    $pricePerUnit = $material->price_per_unit ?? 0;
+                    $itemTotal = $convertedQuantity * $pricePerUnit;
+                }
+                $totalCost += $itemTotal;
+
+                MaterialTransactionItem::create([
+                    'material_transaction_id' => $transaction->id,
+                    'material_id' => $material->id,
+                    'quantity' => $convertedQuantity,
+                    'unit' => $material->unit,
+                    'price_per_unit' => $pricePerUnit,
+                    'total_price' => $itemTotal
+                ]);
+
+                // Tambah stok baru
+                $material->stock += $convertedQuantity;
+                $material->recalcUnitTotals()->save();
+            }
+
+            $transaction->update(['total_cost' => $totalCost]);
+
+            // Sinkronkan perubahan ke Expense Buku Kas Umum
+            $this->syncOrderExpense($transaction, $totalCost, $validated['date'], $validated['area_name']);
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Perubahan Order Toko berhasil disimpan dan disinkronkan ke Keuangan.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal memperbarui order: ' . $e->getMessage());
         }
     }
 
@@ -139,12 +241,77 @@ class PurchaseOrderController extends Controller
                 }
             }
 
+            // Hapus pengeluaran terkait dari Buku Kas Umum
+            if ($transaction->expense_id) {
+                Expense::where('id', $transaction->expense_id)->delete();
+            }
+
             $transaction->delete();
             DB::commit();
-            return redirect()->back()->with('success', 'Order Toko berhasil dihapus dan stok telah dikurangi.');
+            return redirect()->back()->with('success', 'Order Toko berhasil dihapus, stok dikurangi, dan pengeluaran kas ditarik kembali.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal menghapus order: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Sinkronkan otomatis ke tabel expenses (Buku Kas Umum)
+     */
+    protected function syncOrderExpense(MaterialTransaction $transaction, float $totalCost, string $date, string $areaName): void
+    {
+        if ($totalCost <= 0) {
+            if ($transaction->expense_id) {
+                Expense::where('id', $transaction->expense_id)->delete();
+                $transaction->update(['expense_id' => null]);
+            }
+            return;
+        }
+
+        // Cari atau buat kategori Pembelian Material
+        $category = ExpenseCategory::firstOrCreate(
+            ['code' => 'MAT'],
+            [
+                'name' => 'Pembelian Material & Restock',
+                'description' => 'Pembelian kabel, ONT, dropcore, aksesoris dari toko/supplier',
+                'color' => 'indigo',
+                'is_active' => true,
+            ]
+        );
+
+        $transaction->loadMissing('items.material');
+        $itemNames = $transaction->items->map(function ($it) {
+            $mName = $it->material ? $it->material->name : 'Item';
+            return "{$mName} (" . (float)$it->quantity . " {$it->unit})";
+        })->take(3)->implode(', ');
+
+        if ($transaction->items->count() > 3) {
+            $itemNames .= ' +' . ($transaction->items->count() - 3) . ' lainnya';
+        }
+
+        $description = "Order Toko [{$transaction->transaction_number}] Wilayah {$areaName}: {$itemNames}";
+
+        if ($transaction->expense_id) {
+            $expense = Expense::find($transaction->expense_id);
+            if ($expense) {
+                $expense->update([
+                    'amount' => $totalCost,
+                    'expense_date' => $date,
+                    'description' => $description,
+                    'expense_category_id' => $category->id,
+                ]);
+                return;
+            }
+        }
+
+        $expense = Expense::create([
+            'amount' => $totalCost,
+            'expense_category_id' => $category->id,
+            'description' => $description,
+            'expense_date' => $date,
+            'user_id' => auth()->id() ?? $transaction->user_id,
+        ]);
+
+        $transaction->update(['expense_id' => $expense->id]);
     }
 }
