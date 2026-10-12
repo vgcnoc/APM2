@@ -4,17 +4,17 @@
             <!-- Form Section -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden lg:w-2/3">
                 <div class="p-6 sm:p-8">
-                    <form @submit.prevent="submit" class="space-y-8">
+                    <form @submit.prevent="saveAll" class="space-y-8">
                         
-                        <!-- Tipe Billing -->
-                        <div>
+                        <!-- 1. Tipe Billing -->
+                        <div class="space-y-4">
                             <div class="flex items-center gap-2 mb-1">
                                 <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                                 </div>
                                 <h3 class="text-lg font-bold text-gray-900">Siklus Penagihan Default</h3>
                             </div>
-                            <p class="text-xs text-gray-500 mb-4 ml-10">Tentukan standar jenis siklus penagihan sistem. Pilihan ini akan menjadi nilai default saat melakukan Aktivasi Pelanggan (dapat disesuaikan secara fleksibel per pelanggan).</p>
+                            <p class="text-xs text-gray-500 mb-2 ml-10">Tentukan standar jenis siklus penagihan sistem. Pilihan ini akan menjadi nilai default saat melakukan Aktivasi Pelanggan (dapat disesuaikan secara fleksibel per pelanggan).</p>
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <label class="relative flex cursor-pointer rounded-xl border p-4 shadow-sm focus:outline-none transition-all duration-200 hover:border-indigo-300 hover:shadow-md" :class="form.billing_type === 'prabayar' ? 'border-indigo-600 bg-indigo-50/30 ring-1 ring-indigo-600' : 'border-gray-200 bg-white'">
@@ -48,65 +48,84 @@
                                 </label>
                             </div>
                             <div v-if="form.errors.billing_type" class="mt-1 text-sm text-red-600">{{ form.errors.billing_type }}</div>
-                        </div>
 
-                        <!-- Opsi Prorata saat Pascabayar -->
-                        <div v-if="form.billing_type === 'pascabayar'" class="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100 space-y-4">
-                            <div class="flex items-start justify-between gap-4 pb-3 border-b border-indigo-100">
-                                <div>
-                                    <h4 class="text-sm font-bold text-indigo-900 flex items-center gap-2">
-                                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        Prorata Tagihan Pertama (Pascabayar)
-                                    </h4>
-                                    <p class="text-xs text-indigo-700 mt-1">
-                                        Aktifkan prorata otomatis untuk tagihan pertama pelanggan baru. Pengaturan ini <strong>hanya berlaku 1 kali</strong> saat bulan aktivasi, bulan berikutnya otomatis normal pascabayar.
-                                    </p>
+                            <!-- Opsi Prorata saat Pascabayar -->
+                            <div v-if="form.billing_type === 'pascabayar'" class="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100 space-y-4">
+                                <div class="flex items-start justify-between gap-4 pb-3 border-b border-indigo-100">
+                                    <div>
+                                        <h4 class="text-sm font-bold text-indigo-900 flex items-center gap-2">
+                                            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            Prorata Tagihan Pertama (Pascabayar)
+                                        </h4>
+                                        <p class="text-xs text-indigo-700 mt-1">
+                                            Aktifkan prorata otomatis untuk tagihan pertama pelanggan baru. Pengaturan ini <strong>hanya berlaku 1 kali</strong> saat bulan aktivasi, bulan berikutnya otomatis normal pascabayar.
+                                        </p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                        <input type="checkbox" v-model="form.prorata_first_month" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                    </label>
                                 </div>
-                                <label class="relative inline-flex items-center cursor-pointer shrink-0">
-                                    <input type="checkbox" v-model="form.prorata_first_month" class="sr-only peer">
-                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                                </label>
+
+                                <div v-if="form.prorata_first_month" class="space-y-3">
+                                    <label class="block text-xs font-bold text-indigo-900">Pilih Rumusan Prorata:</label>
+                                    <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'exact_days' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
+                                        <div class="flex items-center h-5">
+                                            <input type="radio" v-model="form.prorata_formula" value="exact_days" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
+                                        </div>
+                                        <div class="ml-3 text-sm">
+                                            <span class="font-bold text-gray-900 block">Sangat Akurat (Bulan Berjalan) <span class="ml-2 text-[10px] font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Disarankan</span></span>
+                                            <span class="text-gray-500 text-xs mt-0.5 block">Harga / Total Hari di Bulan Ini x Hari Pemakaian (Adil untuk pelanggan)</span>
+                                        </div>
+                                    </label>
+                                    
+                                    <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'fixed_30' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
+                                        <div class="flex items-center h-5">
+                                            <input type="radio" v-model="form.prorata_formula" value="fixed_30" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
+                                        </div>
+                                        <div class="ml-3 text-sm">
+                                            <span class="font-bold text-gray-900 block">Konstan 30 Hari</span>
+                                            <span class="text-gray-500 text-xs mt-0.5 block">Harga / 30 x Hari Pemakaian (Bulan apapun dianggap rata 30 hari)</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'mid_month' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
+                                        <div class="flex items-center h-5">
+                                            <input type="radio" v-model="form.prorata_formula" value="mid_month" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
+                                        </div>
+                                        <div class="ml-3 text-sm">
+                                            <span class="font-bold text-gray-900 block">Paruh Bulan (Cut-Off Tengah)</span>
+                                            <span class="text-gray-500 text-xs mt-0.5 block">Aktivasi sebelum pertengahan siklus = Bayar Penuh. Lewat pertengahan = Diskon 50%</span>
+                                        </div>
+                                    </label>
+                                </div>
                             </div>
 
-                            <div v-if="form.prorata_first_month" class="space-y-3">
-                                <label class="block text-xs font-bold text-indigo-900">Pilih Rumusan Prorata:</label>
-                                <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'exact_days' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
-                                    <div class="flex items-center h-5">
-                                        <input type="radio" v-model="form.prorata_formula" value="exact_days" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <span class="font-bold text-gray-900 block">Sangat Akurat (Bulan Berjalan) <span class="ml-2 text-[10px] font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Disarankan</span></span>
-                                        <span class="text-gray-500 text-xs mt-0.5 block">Harga / Total Hari di Bulan Ini x Hari Pemakaian (Adil untuk pelanggan)</span>
-                                    </div>
-                                </label>
-                                
-                                <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'fixed_30' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
-                                    <div class="flex items-center h-5">
-                                        <input type="radio" v-model="form.prorata_formula" value="fixed_30" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <span class="font-bold text-gray-900 block">Konstan 30 Hari</span>
-                                        <span class="text-gray-500 text-xs mt-0.5 block">Harga / 30 x Hari Pemakaian (Bulan apapun dianggap rata 30 hari)</span>
-                                    </div>
-                                </label>
-
-                                <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'mid_month' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
-                                    <div class="flex items-center h-5">
-                                        <input type="radio" v-model="form.prorata_formula" value="mid_month" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <span class="font-bold text-gray-900 block">Paruh Bulan (Cut-Off Tengah)</span>
-                                        <span class="text-gray-500 text-xs mt-0.5 block">Aktivasi sebelum pertengahan siklus = Bayar Penuh. Lewat pertengahan = Diskon 50%</span>
-                                    </div>
-                                </label>
+                            <!-- Tombol Simpan Siklus Penagihan -->
+                            <div class="flex items-center justify-between pt-2">
+                                <Transition name="fade">
+                                    <span v-if="savedSection === 'billing_type'" class="text-xs font-semibold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                                        <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                        Siklus penagihan tersimpan!
+                                    </span>
+                                    <span v-else></span>
+                                </Transition>
+                                <button type="button" @click="saveSection('billing_type', 'Siklus Penagihan')" :disabled="savingSection !== null" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-indigo-100 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer">
+                                    <svg v-if="savingSection === 'billing_type'" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <svg v-else class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    {{ savingSection === 'billing_type' ? 'Menyimpan...' : 'Simpan Siklus Penagihan' }}
+                                </button>
                             </div>
                         </div>
                         
                         <hr class="border-gray-100 border-dashed">
 
-                        <!-- Timeline Pengaturan -->
-                        <div>
-                            <div class="flex items-center gap-2 mb-6">
+                        <!-- 2. Timeline Pengaturan -->
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-2 mb-2">
                                 <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                 </div>
@@ -165,13 +184,32 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Tombol Simpan Timeline & Penjadwalan -->
+                            <div class="flex items-center justify-between pt-2">
+                                <Transition name="fade">
+                                    <span v-if="savedSection === 'timeline'" class="text-xs font-semibold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                                        <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                        Timeline & penjadwalan tersimpan!
+                                    </span>
+                                    <span v-else></span>
+                                </Transition>
+                                <button type="button" @click="saveSection('timeline', 'Timeline & Penjadwalan')" :disabled="savingSection !== null" class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-emerald-100 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 cursor-pointer">
+                                    <svg v-if="savingSection === 'timeline'" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <svg v-else class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    {{ savingSection === 'timeline' ? 'Menyimpan...' : 'Simpan Timeline & Penjadwalan' }}
+                                </button>
+                            </div>
                         </div>
                         
                         <hr class="border-gray-100 border-dashed">
 
-                        <!-- Pengaturan Pajak -->
-                        <div>
-                            <div class="flex items-center gap-2 mb-6">
+                        <!-- 3. Pengaturan Pajak -->
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-2 mb-2">
                                 <div class="w-8 h-8 rounded-lg bg-yellow-50 text-yellow-600 flex items-center justify-center">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 </div>
@@ -215,20 +253,39 @@
                                     <div v-if="form.errors.tax_uso" class="mt-1 text-sm text-red-600">{{ form.errors.tax_uso }}</div>
                                 </div>
                             </div>
+
+                            <!-- Tombol Simpan Pajak & Regulasi -->
+                            <div class="flex items-center justify-between pt-2">
+                                <Transition name="fade">
+                                    <span v-if="savedSection === 'tax'" class="text-xs font-semibold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                                        <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                        Pajak & regulasi tersimpan!
+                                    </span>
+                                    <span v-else></span>
+                                </Transition>
+                                <button type="button" @click="saveSection('tax', 'Pajak & Regulasi')" :disabled="savingSection !== null" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-amber-100 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 cursor-pointer">
+                                    <svg v-if="savingSection === 'tax'" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <svg v-else class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    {{ savingSection === 'tax' ? 'Menyimpan...' : 'Simpan Pajak & Regulasi' }}
+                                </button>
+                            </div>
                         </div>
 
                         <hr class="border-gray-100 border-dashed">
 
-                        <!-- Pengaturan Bank -->
-                        <div>
-                            <div class="flex items-center justify-between mb-6">
+                        <!-- 4. Pengaturan Bank -->
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between mb-2">
                                 <div class="flex items-center gap-2">
                                     <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                                     </div>
                                     <h3 class="text-lg font-bold text-gray-900">Rekening Pembayaran</h3>
                                 </div>
-                                <button type="button" @click="addBank" class="px-3 py-1.5 text-xs font-bold bg-blue-50 text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors flex items-center gap-1">
+                                <button type="button" @click="addBank" class="px-3 py-1.5 text-xs font-bold bg-blue-50 text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors flex items-center gap-1 cursor-pointer">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                     Tambah Rekening
                                 </button>
@@ -241,34 +298,53 @@
                                 
                                 <TransitionGroup name="fade" tag="div" class="space-y-4">
                                     <div v-for="(bank, index) in form.payment_banks" :key="index" class="p-4 bg-white border border-gray-200 shadow-sm rounded-xl flex flex-col md:flex-row gap-4 md:items-start relative">
-                                        <button type="button" @click="removeBank(index)" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors" title="Hapus Rekening">
+                                        <button type="button" @click="removeBank(index)" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors cursor-pointer" title="Hapus Rekening">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                         </button>
                                         
                                         <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 mr-6">
                                             <div>
                                                 <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Nama Bank</label>
-                                                <input type="text" v-model="bank.bank_name" placeholder="BCA / Mandiri / BRI" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
+                                                <input type="text" v-model="bank.bank_name" placeholder="BCA / Mandiri / BRI" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                             </div>
                                             <div>
                                                 <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Atas Nama</label>
-                                                <input type="text" v-model="bank.account_name" placeholder="PT Contoh Indo" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
+                                                <input type="text" v-model="bank.account_name" placeholder="PT Contoh Indo" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                             </div>
                                             <div>
                                                 <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Nomor Rekening</label>
-                                                <input type="text" v-model="bank.account_number" placeholder="123456789" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
+                                                <input type="text" v-model="bank.account_number" placeholder="123456789" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                             </div>
                                         </div>
                                     </div>
                                 </TransitionGroup>
                             </div>
+
+                            <!-- Tombol Simpan Rekening Pembayaran -->
+                            <div class="flex items-center justify-between pt-2">
+                                <Transition name="fade">
+                                    <span v-if="savedSection === 'banks'" class="text-xs font-semibold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                                        <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                        Rekening pembayaran tersimpan!
+                                    </span>
+                                    <span v-else></span>
+                                </Transition>
+                                <button type="button" @click="saveSection('banks', 'Rekening Bank')" :disabled="savingSection !== null" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-blue-100 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer">
+                                    <svg v-if="savingSection === 'banks'" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <svg v-else class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    {{ savingSection === 'banks' ? 'Menyimpan...' : 'Simpan Rekening Bank' }}
+                                </button>
+                            </div>
                         </div>
 
                         <hr class="border-gray-100 border-dashed">
 
-                        <!-- Pengaturan Payment Gateway -->
-                        <div>
-                            <div class="flex items-center gap-2 mb-6">
+                        <!-- 5. Pengaturan Payment Gateway -->
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-2 mb-2">
                                 <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                 </div>
@@ -319,25 +395,41 @@
                                     </div>
                                 </Transition>
                             </div>
+
+                            <!-- Tombol Simpan Payment Gateway -->
+                            <div class="flex items-center justify-between pt-2">
+                                <Transition name="fade">
+                                    <span v-if="savedSection === 'pg'" class="text-xs font-semibold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                                        <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                        Payment gateway tersimpan!
+                                    </span>
+                                    <span v-else></span>
+                                </Transition>
+                                <button type="button" @click="saveSection('pg', 'Payment Gateway')" :disabled="savingSection !== null" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-indigo-100 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer">
+                                    <svg v-if="savingSection === 'pg'" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <svg v-else class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    {{ savingSection === 'pg' ? 'Menyimpan...' : 'Simpan Payment Gateway' }}
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- Action Buttons -->
-                        <div class="pt-6 border-t border-gray-100 flex items-center justify-between">
-                            <Transition name="fade">
-                                <p v-if="form.recentlySuccessful" class="text-sm font-medium text-emerald-600 flex items-center gap-1.5">
-                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                                    Pengaturan berhasil disimpan.
-                                </p>
-                                <span v-else></span>
-                            </Transition>
+                        <!-- 6. Master Action Buttons: Simpan Semua Konfigurasi -->
+                        <div class="pt-6 border-t-2 border-dashed border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/60 -mx-6 -mb-6 sm:-mx-8 sm:-mb-8 p-6 rounded-b-2xl">
+                            <div>
+                                <p class="text-xs font-semibold text-gray-800">Simpan Seluruh Pengaturan Sekaligus</p>
+                                <p class="text-[11px] text-gray-500 mt-0.5">Semua perubahan pada setiap fitur di atas akan disimpan bersamaan.</p>
+                            </div>
                             
-                            <button type="submit" :disabled="form.processing" class="inline-flex items-center justify-center px-6 py-2.5 border border-transparent text-sm font-semibold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all shadow-sm shadow-indigo-200 disabled:opacity-75 disabled:cursor-wait">
-                                <svg v-if="form.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <button type="button" @click="saveAll" :disabled="savingSection !== null" class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 border border-transparent text-sm font-semibold rounded-xl text-white bg-slate-900 hover:bg-slate-800 active:scale-95 disabled:opacity-75 disabled:cursor-wait shadow-sm transition-all cursor-pointer">
+                                <svg v-if="savingSection === 'all'" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                <svg v-else class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                {{ form.processing ? 'Menyimpan...' : 'Simpan Konfigurasi' }}
+                                <svg v-else class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                                {{ savingSection === 'all' ? 'Menyimpan Semua...' : 'Simpan Semua Konfigurasi' }}
                             </button>
                         </div>
                     </form>
@@ -367,8 +459,6 @@
                             <p class="text-[10px] text-indigo-300 pl-5 mt-0.5">Sistem men-generate invoice pelanggan</p>
                         </div>
 
-                        <!-- Removed Jatuh Tempo Simulation -->
-
                         <div class="bg-white/10 backdrop-blur-md border border-red-500/30 rounded-xl p-4 relative overflow-hidden">
                             <div class="absolute right-0 top-0 w-16 h-16 bg-red-500/10 rounded-bl-full"></div>
                             <div class="flex items-center gap-3 mb-1">
@@ -380,37 +470,37 @@
                         </div>
                     </div>
 
-                        <div v-if="form.billing_type === 'pascabayar' && form.prorata_first_month" class="bg-indigo-800/50 border border-indigo-500/50 rounded-xl p-4 mt-2">
-                            <div class="flex items-center gap-2 mb-3">
-                                <svg class="w-4 h-4 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                                <h4 class="text-xs font-bold text-indigo-200 uppercase tracking-wide">Simulasi Prorata Tagihan Pertama</h4>
-                            </div>
-                            
-                            <div class="space-y-2 text-xs text-indigo-100">
-                                <div class="flex justify-between items-end border-b border-indigo-700/50 pb-1">
-                                    <span>Simulasi Harga Paket</span>
-                                    <span class="font-medium text-white">{{ formatCurrency(300000) }} / bln</span>
-                                </div>
-                                <div class="flex justify-between items-end border-b border-indigo-700/50 pb-1">
-                                    <span>Asumsi Aktivasi Hari Ini</span>
-                                    <span class="font-medium text-white">{{ todayFormatted }}</span>
-                                </div>
-                                <div class="flex justify-between items-end border-b border-indigo-700/50 pb-1">
-                                    <span>Siklus Penagihan ({{ totalDaysInCycle }} Hari)</span>
-                                    <span class="font-medium text-white">s/d {{ prevIssueDateFormatted }}</span>
-                                </div>
-                                <div class="flex justify-between items-end pt-1">
-                                    <span class="text-indigo-300">Tagihan Pertama (<span class="font-bold text-white">{{ daysUsed }}</span> hari pemakaian)</span>
-                                    <span class="font-bold text-lg text-emerald-400">{{ formatCurrency(prorataAmount) }}</span>
-                                </div>
-                            </div>
-                            <p class="text-[9px] text-indigo-400 mt-3 leading-tight italic">
-                                Rumus: 
-                                <span v-if="form.prorata_formula === 'fixed_30'">(Harga Paket ÷ 30) × Jumlah Hari Pemakaian</span>
-                                <span v-else-if="form.prorata_formula === 'mid_month'">Jika aktivasi lewat pertengahan bulan, diskon 50%. Jika tidak, bayar penuh.</span>
-                                <span v-else>(Harga Paket ÷ Total Hari Siklus Berjalan) × Jumlah Hari Pemakaian</span>
-                            </p>
+                    <div v-if="form.billing_type === 'pascabayar' && form.prorata_first_month" class="bg-indigo-800/50 border border-indigo-500/50 rounded-xl p-4 mt-2">
+                        <div class="flex items-center gap-2 mb-3">
+                            <svg class="w-4 h-4 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                            <h4 class="text-xs font-bold text-indigo-200 uppercase tracking-wide">Simulasi Prorata Tagihan Pertama</h4>
                         </div>
+                        
+                        <div class="space-y-2 text-xs text-indigo-100">
+                            <div class="flex justify-between items-end border-b border-indigo-700/50 pb-1">
+                                <span>Simulasi Harga Paket</span>
+                                <span class="font-medium text-white">{{ formatCurrency(300000) }} / bln</span>
+                            </div>
+                            <div class="flex justify-between items-end border-b border-indigo-700/50 pb-1">
+                                <span>Asumsi Aktivasi Hari Ini</span>
+                                <span class="font-medium text-white">{{ todayFormatted }}</span>
+                            </div>
+                            <div class="flex justify-between items-end border-b border-indigo-700/50 pb-1">
+                                <span>Siklus Penagihan ({{ totalDaysInCycle }} Hari)</span>
+                                <span class="font-medium text-white">s/d {{ prevIssueDateFormatted }}</span>
+                            </div>
+                            <div class="flex justify-between items-end pt-1">
+                                <span class="text-indigo-300">Tagihan Pertama (<span class="font-bold text-white">{{ daysUsed }}</span> hari pemakaian)</span>
+                                <span class="font-bold text-lg text-emerald-400">{{ formatCurrency(prorataAmount) }}</span>
+                            </div>
+                        </div>
+                        <p class="text-[9px] text-indigo-400 mt-3 leading-tight italic">
+                            Rumus: 
+                            <span v-if="form.prorata_formula === 'fixed_30'">(Harga Paket ÷ 30) × Jumlah Hari Pemakaian</span>
+                            <span v-else-if="form.prorata_formula === 'mid_month'">Jika aktivasi lewat pertengahan bulan, diskon 50%. Jika tidak, bayar penuh.</span>
+                            <span v-else>(Harga Paket ÷ Total Hari Siklus Berjalan) × Jumlah Hari Pemakaian</span>
+                        </p>
+                    </div>
 
                     <div class="mt-6 pt-5 border-t border-indigo-700/50">
                         <p class="text-[10px] text-indigo-300 leading-relaxed">
@@ -424,9 +514,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     billing_type: String,
@@ -454,7 +545,7 @@ const form = useForm({
     invoice_issue_date: props.invoice_issue_date || '1',
     isolate_days: props.isolate_days || '3',
     isolate_time: props.isolate_time || '00:00',
-    payment_banks: props.payment_banks || [],
+    payment_banks: props.payment_banks ? JSON.parse(JSON.stringify(props.payment_banks)) : [],
     pg_provider: props.pg_provider || 'none',
     pg_environment: props.pg_environment || 'sandbox',
     pg_merchant_id: props.pg_merchant_id || '',
@@ -465,6 +556,10 @@ const form = useForm({
     tax_bhp: props.tax_bhp || 0,
     tax_uso: props.tax_uso || 0,
 });
+
+const savingSection = ref(null);
+const savedSection = ref(null);
+
 function addBank() {
     form.payment_banks.push({
         bank_name: '',
@@ -477,10 +572,125 @@ function removeBank(index) {
     form.payment_banks.splice(index, 1);
 }
 
+function sanitizeBanks() {
+    // Drop completely empty bank rows
+    form.payment_banks = form.payment_banks.filter(b => {
+        return (b.bank_name && b.bank_name.trim() !== '') ||
+               (b.account_name && b.account_name.trim() !== '') ||
+               (b.account_number && b.account_number.trim() !== '');
+    });
+}
+
+function saveSection(sectionKey, sectionLabel) {
+    if (savingSection.value) return;
+
+    if (sectionKey === 'banks') {
+        // If specifically saving banks, ensure no partially filled rows
+        for (let i = 0; i < form.payment_banks.length; i++) {
+            const b = form.payment_banks[i];
+            const hasAny = (b.bank_name && b.bank_name.trim()) || (b.account_name && b.account_name.trim()) || (b.account_number && b.account_number.trim());
+            const hasAll = (b.bank_name && b.bank_name.trim()) && (b.account_name && b.account_name.trim()) && (b.account_number && b.account_number.trim());
+            if (hasAny && !hasAll) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Data Rekening Belum Lengkap',
+                    text: `Mohon lengkapi Nama Bank, Atas Nama, dan Nomor Rekening pada rekening baris ke-${i + 1}.`,
+                    confirmButtonColor: '#3b82f6'
+                });
+                return;
+            }
+        }
+    }
+
+    // Always strip blank rows so other sections never fail validation
+    sanitizeBanks();
+
+    savingSection.value = sectionKey;
+
+    form.transform(data => ({
+        ...data,
+        _section: sectionLabel
+    })).post('/settings/billing', {
+        preserveScroll: true,
+        onSuccess: () => {
+            savingSection.value = null;
+            savedSection.value = sectionKey;
+            setTimeout(() => {
+                if (savedSection.value === sectionKey) {
+                    savedSection.value = null;
+                }
+            }, 3500);
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Berhasil Disimpan!',
+                text: `Pengaturan ${sectionLabel} berhasil diperbarui.`,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        },
+        onError: (errors) => {
+            savingSection.value = null;
+            const firstError = Object.values(errors)[0] || 'Periksa kembali data yang dimasukkan.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menyimpan',
+                text: firstError,
+                confirmButtonColor: '#4f46e5'
+            });
+        }
+    });
+}
+
+function saveAll() {
+    if (savingSection.value) return;
+    sanitizeBanks();
+    savingSection.value = 'all';
+
+    form.transform(data => ({
+        ...data,
+        _section: 'Semua Konfigurasi Billing'
+    })).post('/settings/billing', {
+        preserveScroll: true,
+        onSuccess: () => {
+            savingSection.value = null;
+            savedSection.value = 'all';
+            setTimeout(() => {
+                if (savedSection.value === 'all') {
+                    savedSection.value = null;
+                }
+            }, 3500);
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Berhasil Disimpan!',
+                text: 'Semua pengaturan billing & invoice berhasil disimpan.',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        },
+        onError: (errors) => {
+            savingSection.value = null;
+            const firstError = Object.values(errors)[0] || 'Periksa kembali data yang dimasukkan.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menyimpan',
+                text: firstError,
+                confirmButtonColor: '#4f46e5'
+            });
+        }
+    });
+}
+
 // Simulation Logic
 const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const today = new Date();
-// We'll simulate for the next month
 const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
 
 const nextMonthName = computed(() => {
@@ -515,7 +725,6 @@ const prevIssueDateObj = computed(() => {
 });
 
 const prevIssueDateFormatted = computed(() => {
-    // We want the day before the issue date, e.g. if issue is 1st, then previous end of month.
     const d = new Date(issueDateObj.value);
     d.setDate(d.getDate() - 1);
     return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
@@ -527,10 +736,8 @@ const totalDaysInCycle = computed(() => {
 });
 
 const daysUsed = computed(() => {
-    // From today until the next issue date
     let start = today;
     let end = issueDateObj.value;
-    // If today is past the issue date, the "next" issue date is actually next month.
     if (today.getDate() >= (parseInt(form.invoice_issue_date) || 1)) {
         end = new Date(today.getFullYear(), today.getMonth() + 1, parseInt(form.invoice_issue_date) || 1);
     } else {
@@ -546,14 +753,13 @@ const prorataAmount = computed(() => {
         return Math.round((amount / 30) * daysUsed.value);
     } else if (form.prorata_formula === 'mid_month') {
         const midPointDays = Math.floor(totalDaysInCycle.value / 2);
-        const daysPassed = totalDaysInCycle.value - daysUsed.value; // Hari dari prevIssueDate ke today
+        const daysPassed = totalDaysInCycle.value - daysUsed.value;
         if (daysPassed > midPointDays) {
             return amount / 2;
         } else {
             return amount;
         }
     }
-    // default: exact_days
     const dailyRate = amount / totalDaysInCycle.value;
     return Math.round(dailyRate * daysUsed.value);
 });
@@ -565,12 +771,6 @@ function formatCurrency(value) {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
     }).format(value);
-}
-
-function submit() {
-    form.post('/settings/billing', {
-        preserveScroll: true,
-    });
 }
 </script>
 

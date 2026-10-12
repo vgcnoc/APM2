@@ -81,13 +81,46 @@ class SettingController extends Controller
 
     public function updateBilling(Request $request)
     {
+        // 1. Format isolate_time agar aman dari format detik browser (e.g. 23:59:00 -> 23:59)
+        if ($request->has('isolate_time') && is_string($request->isolate_time)) {
+            $time = trim($request->isolate_time);
+            if (preg_match('/^(\d{1,2}:\d{2})(:\d{2})?$/', $time, $matches)) {
+                $parts = explode(':', $matches[1]);
+                $formattedTime = sprintf('%02d:%02d', (int)$parts[0], (int)$parts[1]);
+                $request->merge(['isolate_time' => $formattedTime]);
+            }
+        }
+
+        // 2. Bersihkan payment_banks dari baris kosong agar tidak memicu error validasi
+        if ($request->has('payment_banks') && is_array($request->payment_banks)) {
+            $filteredBanks = array_values(array_filter($request->payment_banks, function ($b) {
+                if (!is_array($b)) return false;
+                $name = trim($b['bank_name'] ?? '');
+                $accName = trim($b['account_name'] ?? '');
+                $accNum = trim($b['account_number'] ?? '');
+                return ($name !== '' || $accName !== '' || $accNum !== '');
+            }));
+            $request->merge(['payment_banks' => $filteredBanks]);
+        }
+
+        // 3. Normalisasi nilai pajak jika kosong atau null
+        if ($request->has('tax_ppn') && ($request->tax_ppn === null || $request->tax_ppn === '')) {
+            $request->merge(['tax_ppn' => 0]);
+        }
+        if ($request->has('tax_bhp') && ($request->tax_bhp === null || $request->tax_bhp === '')) {
+            $request->merge(['tax_bhp' => 0]);
+        }
+        if ($request->has('tax_uso') && ($request->tax_uso === null || $request->tax_uso === '')) {
+            $request->merge(['tax_uso' => 0]);
+        }
+
         $request->validate([
-            'billing_type' => 'required|in:prabayar,pascabayar',
+            'billing_type' => 'sometimes|required|in:prabayar,pascabayar',
             'prorata_formula' => 'nullable|in:exact_days,fixed_30,mid_month',
             'prorata_first_month' => 'nullable|boolean',
-            'invoice_issue_date' => 'required|integer|min:1|max:28',
-            'isolate_days' => 'required|integer|min:0',
-            'isolate_time' => 'required|date_format:H:i',
+            'invoice_issue_date' => 'sometimes|required|integer|min:1|max:28',
+            'isolate_days' => 'sometimes|required|integer|min:0',
+            'isolate_time' => 'sometimes|required|date_format:H:i',
             'payment_banks' => 'nullable|array',
             'payment_banks.*.bank_name' => 'required|string',
             'payment_banks.*.account_name' => 'required|string',
@@ -103,28 +136,61 @@ class SettingController extends Controller
             'tax_uso' => 'nullable|numeric|min:0|max:100',
         ]);
 
-        Setting::set('billing_type', $request->billing_type);
+        if ($request->has('billing_type')) {
+            Setting::set('billing_type', $request->billing_type);
+        }
         if ($request->has('prorata_formula')) {
             Setting::set('prorata_formula', $request->prorata_formula);
         }
-        Setting::set('prorata_first_month', $request->boolean('prorata_first_month') ? '1' : '0');
-        Setting::set('invoice_issue_date', $request->invoice_issue_date);
-        Setting::set('isolate_days', $request->isolate_days);
-        Setting::set('isolate_time', $request->isolate_time);
+        if ($request->has('prorata_first_month')) {
+            Setting::set('prorata_first_month', $request->boolean('prorata_first_month') ? '1' : '0');
+        }
+        if ($request->has('invoice_issue_date')) {
+            Setting::set('invoice_issue_date', $request->invoice_issue_date);
+        }
+        if ($request->has('isolate_days')) {
+            Setting::set('isolate_days', $request->isolate_days);
+        }
+        if ($request->has('isolate_time')) {
+            Setting::set('isolate_time', $request->isolate_time);
+        }
         
-        Setting::set('tax_ppn', $request->tax_ppn ?? 0);
-        Setting::set('tax_bhp', $request->tax_bhp ?? 0);
-        Setting::set('tax_uso', $request->tax_uso ?? 0);
+        if ($request->has('tax_ppn')) {
+            Setting::set('tax_ppn', $request->tax_ppn ?? 0);
+        }
+        if ($request->has('tax_bhp')) {
+            Setting::set('tax_bhp', $request->tax_bhp ?? 0);
+        }
+        if ($request->has('tax_uso')) {
+            Setting::set('tax_uso', $request->tax_uso ?? 0);
+        }
 
-        Setting::set('payment_banks', json_encode($request->payment_banks ?? []));
-        Setting::set('pg_provider', $request->pg_provider ?? 'none');
-        Setting::set('pg_environment', $request->pg_environment ?? 'sandbox');
-        Setting::set('pg_merchant_id', $request->pg_merchant_id ?? '');
-        Setting::set('pg_api_key', $request->pg_api_key ?? '');
-        Setting::set('pg_private_key', $request->pg_private_key ?? '');
-        Setting::set('pg_callback_token', $request->pg_callback_token ?? '');
+        if ($request->has('payment_banks')) {
+            Setting::set('payment_banks', json_encode($request->payment_banks ?? []));
+        }
+        if ($request->has('pg_provider')) {
+            Setting::set('pg_provider', $request->pg_provider ?? 'none');
+        }
+        if ($request->has('pg_environment')) {
+            Setting::set('pg_environment', $request->pg_environment ?? 'sandbox');
+        }
+        if ($request->has('pg_merchant_id')) {
+            Setting::set('pg_merchant_id', $request->pg_merchant_id ?? '');
+        }
+        if ($request->has('pg_api_key')) {
+            Setting::set('pg_api_key', $request->pg_api_key ?? '');
+        }
+        if ($request->has('pg_private_key')) {
+            Setting::set('pg_private_key', $request->pg_private_key ?? '');
+        }
+        if ($request->has('pg_callback_token')) {
+            Setting::set('pg_callback_token', $request->pg_callback_token ?? '');
+        }
 
-        return redirect()->back()->with('success', 'Pengaturan billing berhasil diperbarui.');
+        $section = $request->input('_section');
+        $message = $section ? "Pengaturan {$section} berhasil disimpan." : 'Pengaturan billing berhasil diperbarui.';
+
+        return redirect()->back()->with('success', $message);
     }
 
     public function updateBranding(Request $request)
