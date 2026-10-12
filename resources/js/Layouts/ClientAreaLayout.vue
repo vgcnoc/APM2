@@ -27,8 +27,12 @@
                         </Link>
                     </div>
                     
-                    <div class="hidden md:flex items-center gap-8 flex-1 ml-10">
+                    <div class="hidden md:flex items-center gap-7 flex-1 ml-10">
                         <Link href="/client-area/dashboard" class="text-sm transition-colors" :class="$page.url === '/client-area/dashboard' ? 'text-blue-600 font-bold' : 'text-gray-600 hover:text-blue-600 font-medium'">Dashboard</Link>
+                        <Link href="/client-area/biller" class="text-sm transition-colors flex items-center gap-1.5" :class="$page.url.startsWith('/client-area/biller') ? 'text-blue-600 font-bold' : 'text-gray-600 hover:text-blue-600 font-medium'">
+                            <span>Loket Bayar</span>
+                            <span class="px-1.5 py-0.2 rounded-md text-[9px] font-black bg-emerald-100 text-emerald-800 uppercase tracking-tight">PPOB</span>
+                        </Link>
                         <Link href="/vouchers" class="text-sm transition-colors" :class="$page.url === '/vouchers' ? 'text-blue-600 font-bold' : 'text-gray-600 hover:text-blue-600 font-medium'">Semua Voucher</Link>
                         <Link href="/vouchers/online" class="text-sm transition-colors" :class="$page.url.startsWith('/vouchers/online') ? 'text-blue-600 font-bold' : 'text-gray-600 hover:text-blue-600 font-medium'">Online</Link>
                         <Link href="/vouchers/offline" class="text-sm transition-colors" :class="$page.url.startsWith('/vouchers/offline') ? 'text-blue-600 font-bold' : 'text-gray-600 hover:text-blue-600 font-medium'">Offline</Link>
@@ -64,6 +68,10 @@
             <div v-if="showMobileMenu" class="md:hidden border-t border-gray-100 bg-white">
                 <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
                     <Link href="/client-area/dashboard" class="block px-3 py-2 rounded-md text-base font-medium" :class="$page.url === '/client-area/dashboard' ? 'text-blue-600 bg-blue-50 font-bold' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'">Dashboard</Link>
+                    <Link href="/client-area/biller" class="block px-3 py-2 rounded-md text-base font-medium flex items-center justify-between" :class="$page.url.startsWith('/client-area/biller') ? 'text-blue-600 bg-blue-50 font-bold' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'">
+                        <span>Loket Bayar Internet</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">PPOB</span>
+                    </Link>
                     <Link href="/vouchers" class="block px-3 py-2 rounded-md text-base font-medium" :class="$page.url === '/vouchers' ? 'text-blue-600 bg-blue-50 font-bold' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'">Semua Voucher</Link>
                     <Link href="/vouchers/online" class="block px-3 py-2 rounded-md text-base font-medium" :class="$page.url.startsWith('/vouchers/online') ? 'text-blue-600 bg-blue-50 font-bold' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'">Online</Link>
                     <Link href="/vouchers/offline" class="block px-3 py-2 rounded-md text-base font-medium" :class="$page.url.startsWith('/vouchers/offline') ? 'text-blue-600 bg-blue-50 font-bold' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'">Offline</Link>

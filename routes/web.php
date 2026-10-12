@@ -33,6 +33,9 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:reseller|customer'])->prefix('client-area')->name('client-area.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\ResellerClientController::class, 'dashboard'])->name('dashboard');
         Route::get('/billing', [\App\Http\Controllers\ResellerClientController::class, 'billing'])->name('billing');
+        Route::get('/biller', [\App\Http\Controllers\ResellerClientController::class, 'biller'])->name('biller');
+        Route::get('/biller/search-customer', [\App\Http\Controllers\ResellerClientController::class, 'searchCustomer'])->name('biller.search-customer');
+        Route::post('/biller/pay/{invoice}', [\App\Http\Controllers\ResellerClientController::class, 'payCustomerInvoice'])->name('biller.pay');
         Route::post('/generate-vouchers', [\App\Http\Controllers\ResellerClientController::class, 'generateVouchers'])->name('generate-vouchers');
         Route::post('/top-up-balance', [\App\Http\Controllers\PaymentGatewayController::class, 'topUpReseller'])->name('top-up-balance');
     });
