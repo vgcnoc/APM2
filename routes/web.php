@@ -33,6 +33,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:reseller|customer'])->prefix('client-area')->name('client-area.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\ResellerClientController::class, 'dashboard'])->name('dashboard');
         Route::post('/generate-vouchers', [\App\Http\Controllers\ResellerClientController::class, 'generateVouchers'])->name('generate-vouchers');
+        Route::post('/top-up-balance', [\App\Http\Controllers\PaymentGatewayController::class, 'topUpReseller'])->name('top-up-balance');
     });
 
     // Customer Area (Pelanggan)
@@ -40,6 +41,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\CustomerAreaController::class, 'dashboard'])->name('dashboard');
         Route::get('/billing', [\App\Http\Controllers\CustomerAreaController::class, 'billing'])->name('billing');
         Route::get('/tickets', [\App\Http\Controllers\CustomerAreaController::class, 'tickets'])->name('tickets');
+    });
+
+    // Payment Gateway (Pelanggan & Reseller)
+    Route::prefix('payment-gateway')->name('payment-gateway.')->group(function () {
+        Route::post('/checkout', [\App\Http\Controllers\PaymentGatewayController::class, 'checkout'])->name('checkout');
+        Route::get('/pay/{invoice}', [\App\Http\Controllers\PaymentGatewayController::class, 'pay'])->name('pay');
+        Route::post('/simulate/{invoice}', [\App\Http\Controllers\PaymentGatewayController::class, 'simulateSuccess'])->name('simulate');
+        Route::get('/status/{invoice}', [\App\Http\Controllers\PaymentGatewayController::class, 'pay'])->name('status');
     });
 
     // ── Data Customers ─────────────────────────────────────────

@@ -52,12 +52,19 @@ const formatRupiah = (amount) => {
                                 {{ formatRupiah(invoice.amount) }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span v-if="invoice.status === 'paid'" class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Lunas</span>
-                                <span v-else-if="invoice.status === 'unpaid'" class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Belum Dibayar</span>
-                                <span v-else class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Jatuh Tempo</span>
+                                <span v-if="invoice.status === 'paid'" class="px-2.5 py-1 inline-flex text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Lunas</span>
+                                <span v-else-if="invoice.status === 'unpaid'" class="px-2.5 py-1 inline-flex text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200">Belum Dibayar</span>
+                                <span v-else class="px-2.5 py-1 inline-flex text-xs font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200">Jatuh Tempo</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <button class="text-indigo-600 hover:text-indigo-900">Bayar</button>
+                                <Link v-if="invoice.status !== 'paid'" :href="route('payment-gateway.pay', invoice.id)" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all hover:shadow-indigo-200">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                                    Bayar Otomatis
+                                </Link>
+                                <span v-else class="text-xs text-emerald-600 font-bold flex items-center justify-end gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    Lunas
+                                </span>
                             </td>
                         </tr>
                         <tr v-if="invoices.data.length === 0">

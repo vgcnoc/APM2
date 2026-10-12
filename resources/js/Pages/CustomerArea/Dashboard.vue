@@ -56,9 +56,15 @@ const formatRupiah = (amount) => {
                 <div v-if="latestInvoice" class="flex-1 relative">
                     <p class="text-sm text-gray-600 mb-1">Tagihan Bulan Ini</p>
                     <p class="text-2xl font-bold text-red-600 mb-2">{{ formatRupiah(latestInvoice.amount) }}</p>
-                    <div class="flex items-center justify-between mt-4">
+                    <div class="flex items-center justify-between mt-4 gap-2 flex-wrap">
                         <p class="text-sm text-gray-500">Jatuh Tempo: {{ new Date(latestInvoice.due_date).toLocaleDateString('id-ID') }}</p>
-                        <Link href="/my/billing" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors">Lihat Detail</Link>
+                        <div class="flex items-center gap-2">
+                            <Link href="/my/billing" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-200 transition-colors">Lihat Semua</Link>
+                            <Link :href="route('payment-gateway.pay', latestInvoice.id)" class="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-colors shadow-xs flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                                Bayar Sekarang
+                            </Link>
+                        </div>
                     </div>
                 </div>
                 <div v-else class="flex-1 flex flex-col items-center justify-center relative">
