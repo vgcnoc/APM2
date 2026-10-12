@@ -122,22 +122,22 @@
                     </p>
                 </div>
 
-                <!-- Total Pemasukan -->
-                <div class="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-all duration-200 group">
+                <!-- Keuntungan Bersih Voucher (Laba) -->
+                <div class="bg-gradient-to-br from-emerald-50/50 via-white to-white rounded-2xl border border-emerald-200/80 p-5 shadow-sm hover:shadow-md transition-all duration-200 group">
                     <div class="flex items-center justify-between mb-3">
-                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Total Pemasukan</span>
-                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 group-hover:scale-105 transition-transform">
+                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-800">Keuntungan Bersih Voucher</span>
+                        <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center border border-emerald-200 group-hover:scale-105 transition-transform shadow-xs">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </div>
                     </div>
                     <div class="flex items-baseline gap-1">
                         <span class="text-sm font-bold text-gray-400">Rp</span>
-                        <span class="text-2xl font-extrabold text-gray-900 tracking-tight">{{ Number(income || 0).toLocaleString('id-ID') }}</span>
+                        <span class="text-2xl font-black text-emerald-600 tracking-tight">{{ Number(total_margin || 0).toLocaleString('id-ID') }}</span>
                     </div>
-                    <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        Voucher terpakai/aktif
-                    </p>
+                    <div class="mt-2.5 pt-2 border-t border-emerald-100 flex items-center justify-between text-xs">
+                        <span class="text-gray-500">Omzet Voucher Terjual:</span>
+                        <span class="font-bold text-gray-800 font-mono">Rp {{ Number(income || 0).toLocaleString('id-ID') }}</span>
+                    </div>
                 </div>
             </div>
 

@@ -33,11 +33,12 @@
             </div>
 
             <!-- 3 Kartu KPI -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <!-- 4 Kartu KPI Loket -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <!-- Sisa Saldo Dompet Modal -->
                 <div class="bg-gradient-to-br from-blue-50/70 via-indigo-50/30 to-white rounded-2xl border border-blue-200/80 p-5 shadow-sm">
                     <div class="flex items-center justify-between mb-3">
-                        <span class="text-xs font-bold uppercase tracking-wider text-blue-700">Sisa Saldo Dompet Modal</span>
+                        <span class="text-xs font-bold uppercase tracking-wider text-blue-700">Sisa Saldo Modal</span>
                         <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                         </div>
@@ -54,32 +55,32 @@
                     </div>
                     <p class="text-xs text-blue-800 mt-2 flex items-center gap-1.5 font-medium">
                         <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-                        Saldo aktif untuk memproses pembayaran pelanggan
+                        Saldo aktif loket
                     </p>
                 </div>
 
                 <!-- Total Transaksi Loket -->
                 <div class="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm">
                     <div class="flex items-center justify-between mb-3">
-                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Total Transaksi Diproses</span>
-                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Total Transaksi</span>
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </div>
                     </div>
                     <div class="flex items-baseline gap-2">
                         <span class="text-2xl font-black text-gray-900 tracking-tight">{{ totalTransactionsCount || 0 }}</span>
-                        <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">Transaksi</span>
+                        <span class="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/60">Tagihan</span>
                     </div>
                     <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        Pelanggan sukses dibayar lewat loket Anda
+                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                        Pelanggan sukses dibayar
                     </p>
                 </div>
 
                 <!-- Perputaran Uang Loket -->
                 <div class="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm">
                     <div class="flex items-center justify-between mb-3">
-                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Perputaran Uang Tunai</span>
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Perputaran Uang</span>
                         <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </div>
@@ -90,7 +91,25 @@
                     </div>
                     <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
                         <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                        Total tagihan yang telah Anda bayarkan
+                        Total tagihan terbayar
+                    </p>
+                </div>
+
+                <!-- Keuntungan Tunai Loket -->
+                <div class="bg-gradient-to-br from-emerald-50/70 via-emerald-50/30 to-white rounded-2xl border border-emerald-200/80 p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">Keuntungan Tunai Loket</span>
+                        <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-sm font-bold text-gray-400">Rp</span>
+                        <span class="text-2xl font-black text-emerald-600 tracking-tight">{{ Number((totalTransactionsCount || 0) * 2500).toLocaleString('id-ID') }}</span>
+                    </div>
+                    <p class="text-xs text-emerald-700 mt-2 flex items-center gap-1.5 font-medium">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        Admin Rp 2.500/transaksi (Tunai)
                     </p>
                 </div>
             </div>
