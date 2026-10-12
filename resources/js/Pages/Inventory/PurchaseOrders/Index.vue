@@ -49,7 +49,7 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-100">
-                                <tr v-for="trx in transactions.data" :key="trx.id" class="hover:bg-slate-50/50 transition-colors">
+                                <tr v-for="trx in (transactions?.data || [])" :key="trx.id" class="hover:bg-slate-50/50 transition-colors">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm font-bold text-gray-900">{{ formatDate(trx.date) }}</div>
                                         <div class="text-xs text-gray-500 mt-1 font-mono">{{ trx.transaction_number }}</div>
@@ -91,7 +91,7 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr v-if="transactions.data.length === 0">
+                                <tr v-if="!transactions?.data || transactions.data.length === 0">
                                     <td colspan="5" class="px-6 py-12 text-center text-gray-500">Belum ada riwayat Order Toko.</td>
                                 </tr>
                             </tbody>
@@ -100,7 +100,7 @@
                 </div>
 
                 <!-- Pagination -->
-                <div v-if="transactions.links && transactions.links.length > 3" class="mt-6 flex justify-center">
+                <div v-if="transactions?.links && transactions.links.length > 3" class="mt-6 flex justify-center">
                     <div class="inline-flex bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <template v-for="(link, k) in transactions.links" :key="k">
                             <div v-if="link.url === null" class="px-4 py-2 text-sm text-gray-400 border-r border-gray-100 last:border-0 bg-gray-50" v-html="link.label"></div>
@@ -298,12 +298,12 @@ const form = useForm({
     items: [],
 });
 
-const materialById = (id) => props.materials.find(m => m.id === id);
+const materialById = (id) => (props.materials || []).find(m => m.id === id);
 const inCart = (id) => form.items.some(i => i.material_id === id);
 
 const filteredMaterials = computed(() => {
     // Only show materials that have stock > 0
-    const availableMaterials = props.materials.filter(m => Number(m.stock) > 0);
+    const availableMaterials = (props.materials || []).filter(m => Number(m.stock) > 0);
     
     const q = search.value.trim().toLowerCase();
     if (!q) return availableMaterials;
@@ -317,15 +317,16 @@ const filteredMaterials = computed(() => {
 // Satuan order yang tersedia per material (selaras dengan konversi di PurchaseOrderController)
 const unitOptions = (mat) => {
     if (!mat) return [{ value: 'base', label: 'pcs' }];
+    const baseOption = { value: 'base', label: mat.unit || 'pcs' };
     if (mat.category === 'Isolasi' || (mat.name && mat.name.toLowerCase().includes('isolasi'))) {
         return [{ value: 'pack', label: 'Bungkus / Pack' }];
     }
     if (mat.category === 'Paku Klem' || mat.category === 'Klem' || (mat.name && mat.name.toLowerCase().includes('klem'))) {
-        return [{ value: 'pack', label: 'Bungkus' }, { value: 'base', label: mat.unit || 'pcs' }];
+        return [{ value: 'pack', label: 'Bungkus' }, baseOption];
     }
-    if (Number(mat.meter_per_roll) > 0) return [{ value: 'roll', label: 'Roll' }, base];
-    if (Number(mat.pcs_per_pack) > 0) return [{ value: 'pack', label: 'Pack' }, base];
-    return [base];
+    if (Number(mat.meter_per_roll) > 0) return [{ value: 'roll', label: 'Roll' }, baseOption];
+    if (Number(mat.pcs_per_pack) > 0) return [{ value: 'pack', label: 'Pack' }, baseOption];
+    return [baseOption];
 };
 
 const resolvePurchaseUnit = (mat, savedUnit) => {
