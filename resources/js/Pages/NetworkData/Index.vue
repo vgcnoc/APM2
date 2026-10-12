@@ -11,7 +11,14 @@
                         <span>Data Jaringan</span>
                     </p>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <Link :href="route('network-data.terminated')" class="px-3.5 py-2 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 rounded-lg text-sm font-bold shadow-xs flex items-center gap-1.5 transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                        <span>Cabut Perangkat (Stop)</span>
+                        <span v-if="stats.proses_cbp > 0" class="bg-rose-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black">
+                            {{ stats.proses_cbp }}
+                        </span>
+                    </Link>
                     <Link href="/network-topology" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm flex items-center gap-2 transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
                         Lihat Topology
@@ -30,7 +37,7 @@
             </div>
 
             <!-- Stats Overview -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] relative overflow-hidden group hover:border-indigo-100 transition-colors">
                     <div class="absolute -right-4 -top-4 w-16 h-16 bg-blue-50/50 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total ODC</p>
@@ -65,6 +72,21 @@
                     <p class="text-xs text-amber-600 mt-2 font-medium flex items-center gap-1">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                         Online Users
+                    </p>
+                </div>
+                <div @click="showTerminated = true" class="bg-white p-5 rounded-xl border border-rose-100 shadow-[0_2px_10px_-3px_rgba(244,63,94,0.08)] relative overflow-hidden group hover:border-rose-300 transition-all cursor-pointer">
+                    <div class="absolute -right-4 -top-4 w-16 h-16 bg-rose-50 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
+                    <p class="text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+                        <span>Proses CBP & Stop</span>
+                        <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                    </p>
+                    <div class="flex items-baseline gap-1.5">
+                        <h3 class="text-3xl font-black text-rose-600">{{ formatNumber(stats.proses_cbp || 0) }}</h3>
+                        <span class="text-xs font-semibold text-gray-400">/ {{ formatNumber(stats.stop_permanen || 0) }} Stop</span>
+                    </div>
+                    <p class="text-xs text-rose-600 mt-2 font-medium flex items-center gap-1">
+                        <svg class="w-3 h-3 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Belum Cabut Perangkat
                     </p>
                 </div>
             </div>
@@ -203,6 +225,11 @@
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                             {{ odp.area?.name || 'Belum ada area' }}
                                         </div>
+                                        <!-- Pill Proses CBP jika ada port yang sedang dicabut -->
+                                        <div v-if="getOdpCbpCount(odp) > 0" class="bg-rose-50 border border-rose-300 text-rose-700 font-black text-[10px] px-2 py-1 rounded-md flex items-center gap-1 shadow-xs">
+                                            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                                            ⏳ {{ getOdpCbpCount(odp) }} Port Proses CBP
+                                        </div>
                                     </div>
 
                                     <!-- VLAN Sinkron OLT PON -->
@@ -227,17 +254,21 @@
                                     </div>
 
                                     <!-- Ports List (Directly in Card) -->
-                                    <div class="space-y-2 mb-4 max-h-48 overflow-y-auto pr-1 text-xs">
-                                        <div v-for="portNum in odp.total_ports" :key="portNum" class="flex items-start gap-2 py-0.5">
+                                    <div class="space-y-2 mb-4 max-h-56 overflow-y-auto pr-1 text-xs">
+                                        <div v-for="portNum in odp.total_ports" :key="portNum" class="flex items-start gap-2 py-1 border-b border-gray-50 last:border-b-0">
                                             <span class="text-gray-400 font-mono w-4 text-right pt-0.5 shrink-0">{{ portNum }}</span>
                                             <template v-if="getPortData(odp, portNum)">
-                                                <div class="w-2 h-2 rounded-full shrink-0 mt-1.5" :class="getCustomerStatusColor(getPortData(odp, portNum).customer?.status)"></div>
+                                                <div class="w-2.5 h-2.5 rounded-full shrink-0 mt-1" :class="getCustomerStatusColor(getPortData(odp, portNum).customer?.status, getCbpForCustomer(getPortData(odp, portNum).customer?.id))"></div>
                                                 <div v-if="getPortData(odp, portNum).customer" class="flex flex-col min-w-0 flex-1">
                                                     <!-- Status & Nama Pelanggan Sebelahan -->
                                                     <div class="flex items-center gap-1.5 flex-wrap leading-tight">
-                                                        <span v-if="getPortData(odp, portNum).customer.status === 'active'" class="text-emerald-600 font-bold text-xs">Aktif</span>
+                                                        <span v-if="getCbpForCustomer(getPortData(odp, portNum).customer.id)" class="text-rose-700 font-black text-[10px] bg-rose-100 px-1.5 py-0.2 rounded border border-rose-300 uppercase tracking-wider">
+                                                            ⏳ Proses CBP
+                                                        </span>
+                                                        <span v-else-if="getPortData(odp, portNum).customer.status === 'active'" class="text-emerald-600 font-bold text-xs">Aktif</span>
                                                         <span v-else-if="getPortData(odp, portNum).customer.status === 'installing'" class="text-amber-600 font-bold text-xs">Proses Instalasi</span>
-                                                        <span v-else-if="getPortData(odp, portNum).customer.status === 'suspended'" class="text-red-600 font-bold text-xs">Isolir</span>
+                                                        <span v-else-if="getPortData(odp, portNum).customer.status === 'suspended'" class="text-orange-600 font-bold text-xs">Isolir</span>
+                                                        <span v-else-if="getPortData(odp, portNum).customer.status === 'terminated'" class="text-rose-700 font-bold text-xs">Stop Permanen</span>
                                                         <span v-else class="text-gray-600 font-bold text-xs">{{ getPortData(odp, portNum).customer.status }}</span>
 
                                                         <span class="text-gray-400 text-xs">•</span>
@@ -256,17 +287,44 @@
                                                             Tgl: {{ getPortData(odp, portNum).updated_at ? getPortData(odp, portNum).updated_at.substring(0, 10) : '' }}
                                                         </span>
                                                         <span v-else>
-                                                            Tgl: {{ getPortData(odp, portNum).customer.created_at.substring(0, 10) }}
+                                                            Tgl: {{ getPortData(odp, portNum).customer.created_at?.substring(0, 10) }}
                                                         </span>
 
                                                         <span v-if="getPortData(odp, portNum).vlan_id" class="bg-purple-100 text-purple-700 px-1 rounded font-bold border border-purple-200">VLAN: {{ getPortData(odp, portNum).vlan_id }}</span>
                                                         <span v-if="getPortData(odp, portNum).hotspot_vlan_id" class="bg-orange-100 text-orange-700 px-1 rounded font-bold border border-orange-200">HS: {{ getPortData(odp, portNum).hotspot_vlan_id }}</span>
                                                     </div>
 
-                                                    <span v-if="getCbpForCustomer(getPortData(odp, portNum).customer.id)" class="text-[9px] text-red-600 font-bold flex items-center gap-1 mt-0.5">
-                                                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                                        CBP Status: Proses ({{ getCbpForCustomer(getPortData(odp, portNum).customer.id).created_at ? getCbpForCustomer(getPortData(odp, portNum).customer.id).created_at.substring(0, 10) : 'Baru' }})
-                                                    </span>
+                                                    <!-- Keterangan Proses CBP Sebelum Selesai Cabut Perangkat -->
+                                                    <div v-if="getCbpForCustomer(getPortData(odp, portNum).customer.id)" class="mt-1 p-2 rounded-xl bg-gradient-to-r from-rose-50 to-orange-50 border border-rose-200 text-[10px] space-y-1">
+                                                        <div class="flex items-center justify-between text-rose-800 font-black">
+                                                            <span class="flex items-center gap-1">
+                                                                <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                                                Proses Cabut Perangkat (CBP)
+                                                            </span>
+                                                            <span class="font-mono bg-white px-1.5 py-0.2 rounded border border-rose-200 text-rose-800 text-[9px] font-bold">
+                                                                {{ getCbpForCustomer(getPortData(odp, portNum).customer.id).cbp_number }}
+                                                            </span>
+                                                        </div>
+                                                        <div class="text-[9px] text-slate-700 flex items-center justify-between flex-wrap gap-1">
+                                                            <span>
+                                                                Status: <strong :class="getCbpForCustomer(getPortData(odp, portNum).customer.id).status === 'assigned' ? 'text-blue-700' : 'text-amber-700'">
+                                                                    {{ getCbpForCustomer(getPortData(odp, portNum).customer.id).status === 'assigned' ? '🔧 Teknisi Ditugaskan' : '⏳ Menunggu Jadwal' }}
+                                                                </strong>
+                                                            </span>
+                                                            <span v-if="getCbpForCustomer(getPortData(odp, portNum).customer.id).technicians?.length" class="text-slate-600 font-semibold truncate max-w-[130px]" :title="getCbpForCustomer(getPortData(odp, portNum).customer.id).technicians.map(t => t.name).join(', ')">
+                                                                {{ getCbpForCustomer(getPortData(odp, portNum).customer.id).technicians.map(t => t.name).join(', ') }}
+                                                            </span>
+                                                        </div>
+                                                        <div class="text-[9px] text-rose-800/90 italic flex items-center justify-between pt-1 border-t border-rose-100">
+                                                            <span>⚠️ Port belum dicabut / belum kosong</span>
+                                                            <Link :href="route('cbp.jadwal')" class="text-rose-700 hover:text-rose-900 font-bold underline">Kelola Jadwal &rarr;</Link>
+                                                        </div>
+                                                    </div>
+                                                    <!-- Jika Stop Permanen tapi belum dibuatkan tiket CBP -->
+                                                    <div v-else-if="getPortData(odp, portNum).customer.status === 'terminated'" class="mt-1 p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-[9px] text-amber-800 flex items-center justify-between">
+                                                        <span>⛔ Stop Permanen (Perlu Cabut Port)</span>
+                                                        <Link :href="route('cbp.index')" class="text-amber-900 font-bold underline">Buat CBP &rarr;</Link>
+                                                    </div>
                                                 </div>
                                                 <span v-else class="font-medium text-gray-400 italic">ONT Inventori</span>
                                             </template>
@@ -328,7 +386,13 @@
                         <tbody class="bg-white divide-y divide-gray-200">
                             <tr v-for="odp in odps" :key="odp.id" class="hover:bg-gray-50 transition-colors">
                                 <td class="px-6 py-3 whitespace-nowrap">
-                                    <div class="font-bold text-gray-900 text-sm">{{ odp.name }}</div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="font-bold text-gray-900 text-sm">{{ odp.name }}</div>
+                                        <span v-if="getOdpCbpCount(odp) > 0" class="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-100 text-rose-700 border border-rose-300 flex items-center gap-1">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                                            ⏳ {{ getOdpCbpCount(odp) }} CBP
+                                        </span>
+                                    </div>
                                     <div class="text-[11px] text-gray-500">{{ odp.kode_odp || '-' }}</div>
                                 </td>
                                 <td class="px-6 py-3 whitespace-nowrap">
@@ -378,6 +442,7 @@
                 <div class="absolute top-4 right-4 bg-gray-800/80 backdrop-blur border border-gray-700 p-3 rounded-lg text-[10px] text-gray-300 font-medium space-y-2 z-10">
                     <div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div> Online / Active</div>
                     <div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full bg-red-500"></div> Offline / Gangguan</div>
+                    <div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></div> ⏳ Proses CBP (Belum Dicabut)</div>
                     <div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div> Reservasi / Proses Pasang</div>
                     <div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full bg-gray-500"></div> Port Kosong</div>
                 </div>
@@ -465,8 +530,9 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Kode / Nama</th>
                                     <th class="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">ODP & Port</th>
-                                    <th class="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Tgl Pemasangan</th>
-                                    <th class="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Catatan Stop</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Status Proses CBP</th>
+                                    <th class="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Tgl / Catatan</th>
+                                    <th class="px-4 py-3 text-right text-[10px] font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
@@ -479,16 +545,47 @@
                                         <div class="text-sm font-medium text-gray-900" v-if="cust.ont">
                                             {{ cust.ont.odp?.name || '-' }}
                                         </div>
-                                        <div class="text-xs text-red-600 font-bold" v-if="cust.ont">
-                                            Port {{ cust.ont.port_number }} (Cabut/Kosongkan)
+                                        <div class="text-xs text-rose-600 font-bold" v-if="cust.ont">
+                                            Port {{ cust.ont.port_number }} (Belum dicabut)
                                         </div>
                                         <span v-else class="text-xs text-gray-400">Tidak ada ONT</span>
                                     </td>
-                                    <td class="px-4 py-3 text-sm text-gray-600">{{ cust.installation_date || '-' }}</td>
-                                    <td class="px-4 py-3 text-xs text-gray-500 max-w-xs truncate" :title="cust.notes">{{ cust.notes || '-' }}</td>
+                                    <td class="px-4 py-3">
+                                        <div v-if="cust.latest_cbp_request && ['pending', 'assigned'].includes(cust.latest_cbp_request.status)" class="space-y-1">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                                                ⏳ {{ cust.latest_cbp_request.cbp_number }}
+                                            </span>
+                                            <div class="text-[10px] text-slate-700 font-medium">
+                                                {{ cust.latest_cbp_request.status === 'assigned' ? '🔧 Teknisi Ditugaskan' : '⏳ Menunggu Jadwal' }}
+                                                <span v-if="cust.latest_cbp_request.technicians?.length" class="text-indigo-700 font-bold block">
+                                                    ({{ cust.latest_cbp_request.technicians.map(t => t.name).join(', ') }})
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div v-else-if="cust.latest_cbp_request && cust.latest_cbp_request.status === 'completed'">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                                ✅ Selesai Dicabut
+                                            </span>
+                                        </div>
+                                        <div v-else>
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                                ⚠️ Belum Ada Tiket CBP
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-xs text-gray-600">
+                                        <div class="font-medium text-gray-800">{{ cust.updated_at ? cust.updated_at.substring(0, 10) : '-' }}</div>
+                                        <div class="text-[11px] text-gray-500 max-w-xs truncate" :title="cust.notes">{{ cust.notes || '-' }}</div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <Link :href="route('cbp.jadwal')" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition">
+                                            Jadwal CBP &rarr;
+                                        </Link>
+                                    </td>
                                 </tr>
                                 <tr v-if="terminated_customers.length === 0">
-                                    <td colspan="4" class="px-4 py-8 text-center text-sm text-gray-500">Tidak ada pelanggan stop permanen.</td>
+                                    <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">Tidak ada pelanggan stop permanen.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -501,7 +598,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
@@ -781,14 +878,35 @@ const getPendingInstallationsForOdp = (odp) => {
     return customers;
 };
 
-const getCbpForCustomer = (customerId) => {
-    if (!props.cbp_requests) return null;
-    return props.cbp_requests.find(cbp => cbp.customer_id === customerId);
+const getCbpForCustomer = (custOrId) => {
+    if (!custOrId) return null;
+    const customerId = typeof custOrId === 'object' ? custOrId.id : custOrId;
+    if (typeof custOrId === 'object' && custOrId.latest_cbp_request && ['pending', 'assigned'].includes(custOrId.latest_cbp_request.status)) {
+        return custOrId.latest_cbp_request;
+    }
+    if (props.cbp_requests) {
+        return props.cbp_requests.find(cbp => cbp.customer_id === customerId && ['pending', 'assigned'].includes(cbp.status)) || null;
+    }
+    return null;
 };
 
-const getCustomerStatusColor = (status) => {
+const getOdpCbpCount = (odp) => {
+    if (!odp || !odp.onts) return 0;
+    let count = 0;
+    odp.onts.forEach(ont => {
+        if (ont.customer) {
+            const cbp = getCbpForCustomer(ont.customer);
+            if (cbp) count++;
+        }
+    });
+    return count;
+};
+
+const getCustomerStatusColor = (status, cbp) => {
+    if (cbp) return 'bg-rose-500 animate-pulse ring-2 ring-rose-300';
     if (status === 'active') return 'bg-emerald-500';
-    if (status === 'suspended' || status === 'terminated') return 'bg-red-500';
+    if (status === 'suspended') return 'bg-orange-500';
+    if (status === 'terminated') return 'bg-rose-600';
     if (status === 'installing' || status === 'booking' || status === 'survey') return 'bg-amber-500';
     return 'bg-gray-400';
 };
@@ -798,11 +916,14 @@ const renderPortTopology = (odp, portNum) => {
     if (!data) return `<span class="text-emerald-400 font-bold">➔ Available</span>`;
     
     if (data.customer) {
-        const cbp = getCbpForCustomer(data.customer.id);
+        const cbp = getCbpForCustomer(data.customer);
         const color = data.customer.status === 'active' ? 'text-indigo-300' : 'text-amber-400';
         let html = `<span class="${color}">➔ ${data.customer.customer_code} - ${data.customer.name}</span>`;
         if (cbp) {
-            html += ` <span class="text-red-500 font-bold text-[10px] ml-2">[CBP: Proses]</span>`;
+            const statusLabel = cbp.status === 'assigned' ? 'Teknisi Ditugaskan' : 'Menunggu Jadwal';
+            html += ` <span class="bg-rose-900/90 border border-rose-500 text-rose-200 font-black text-[10px] px-1.5 py-0.5 rounded ml-2">⏳ PROSES CBP (${cbp.cbp_number || 'CBP'} - ${statusLabel}) - Belum Selesai Cabut</span>`;
+        } else if (data.customer.status === 'terminated') {
+            html += ` <span class="bg-amber-900/90 border border-amber-500 text-amber-200 font-bold text-[10px] px-1.5 py-0.5 rounded ml-2">⛔ Stop Permanen (Perlu Cabut Port)</span>`;
         }
         return html;
     }

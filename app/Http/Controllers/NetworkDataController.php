@@ -25,7 +25,7 @@ class NetworkDataController extends Controller
         $search = $request->input('search');
 
         // Base ODP query with relations
-        $odpQuery = Odp::with(['odc.olt', 'area', 'onts.customer', 'surveys.customer']);
+        $odpQuery = Odp::with(['odc.olt', 'area', 'onts.customer.latestCbpRequest.technicians', 'surveys.customer']);
 
         // Apply filters
         if ($oltId) {
@@ -76,9 +76,10 @@ class NetworkDataController extends Controller
         $pelangganAktif = Customer::where('status', 'active')->count();
         $pelangganOffline = Customer::where('status', 'suspended')->count() + Customer::where('status', 'terminated')->count();
         $stopPermanen = Customer::where('status', 'terminated')->count();
+        $totalProsesCbp = \App\Models\CbpRequest::whereIn('status', ['pending', 'assigned'])->count();
         
-        $terminatedCustomers = Customer::where('status', 'terminated')->with('ont.odp')->get();
-        $cbpRequests = \App\Models\CbpRequest::whereIn('status', ['pending', 'assigned'])->with('customer')->get();
+        $terminatedCustomers = Customer::where('status', 'terminated')->with(['ont.odp', 'latestCbpRequest.technicians'])->get();
+        $cbpRequests = \App\Models\CbpRequest::whereIn('status', ['pending', 'assigned'])->with(['customer', 'technicians'])->get();
 
         return Inertia::render('NetworkData/Index', [
             'olts' => Olt::all(),
@@ -95,6 +96,7 @@ class NetworkDataController extends Controller
                 'pelanggan_aktif' => $pelangganAktif,
                 'pelanggan_offline' => $pelangganOffline,
                 'stop_permanen' => $stopPermanen,
+                'proses_cbp' => $totalProsesCbp,
             ],
             'terminated_customers' => $terminatedCustomers,
             'cbp_requests' => $cbpRequests,
@@ -106,7 +108,7 @@ class NetworkDataController extends Controller
     {
         $search = $request->input('search');
         
-        $query = Customer::where('status', 'terminated')->with('ont.odp.area', 'ont.odp.odc.olt');
+        $query = Customer::where('status', 'terminated')->with(['ont.odp.area', 'ont.odp.odc.olt', 'latestCbpRequest.technicians']);
         
         if ($search) {
             $query->where(function ($q) use ($search) {

@@ -160,6 +160,22 @@ class Customer extends Model
         return $this->hasMany(PgsTicket::class);
     }
 
+    /**
+     * Riwayat Permintaan CBP / Cabut Perangkat
+     */
+    public function cbpRequests(): HasMany
+    {
+        return $this->hasMany(CbpRequest::class);
+    }
+
+    /**
+     * Permintaan CBP terbaru untuk pelanggan ini
+     */
+    public function latestCbpRequest(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(CbpRequest::class)->latestOfMany();
+    }
+
     // ── Computed ───────────────────────────────────────────────
 
     /**
