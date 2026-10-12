@@ -50,7 +50,11 @@ class InvoiceController extends Controller
                   ->orWhere('billing_type', 'prorata');
             });
         } elseif ($tab === 'upgrade') {
-            $query->where('id', '<', 0); // Placeholder
+            $query->where(function($q) {
+                $q->whereIn('billing_type', ['upgrade', 'downgrade'])
+                  ->orWhere('notes', 'like', '%Upgrade%')
+                  ->orWhere('notes', 'like', '%Downgrade%');
+            });
         } elseif ($tab === 'janji_bayar') {
             $query->whereNotNull('promise_date')->where('status', '!=', 'paid');
         } elseif ($tab === 'stop_sementara') {
@@ -99,7 +103,11 @@ class InvoiceController extends Controller
                 $q->where('is_prorata', true)
                   ->orWhere('billing_type', 'prorata');
             })->count(),
-            'upgrade' => 0, // Placeholder
+            'upgrade' => (clone $baseQuery)->where(function($q) {
+                $q->whereIn('billing_type', ['upgrade', 'downgrade'])
+                  ->orWhere('notes', 'like', '%Upgrade%')
+                  ->orWhere('notes', 'like', '%Downgrade%');
+            })->count(),
             'janji_bayar' => (clone $baseQuery)->whereNotNull('promise_date')->where('status', '!=', 'paid')->count(),
             'stop_sementara' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'suspended'))->count(),
             'stop_permanen' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'terminated'))->count(),
@@ -124,7 +132,10 @@ class InvoiceController extends Controller
                         'name' => $invoice->customer->name,
                         'address' => $invoice->customer->address,
                         'area' => $invoice->customer->areaModel?->name,
+                        'package_id' => $invoice->customer->package_id,
                         'package' => $invoice->customer->package?->name,
+                        'package_price' => (float) ($invoice->customer->package?->price ?? 0),
+                        'package_speed' => $invoice->customer->package?->speed_mbps ?? 0,
                         'register_date' => $invoice->customer->created_at ? $invoice->customer->created_at->format('d M Y') : null,
                         'status' => $invoice->customer->status,
                         'unpaid_count' => $invoice->customer->unpaid_invoices_count ?? 0,
@@ -139,6 +150,7 @@ class InvoiceController extends Controller
                     'total_paid' => $invoice->total_paid,
                     'remaining' => $invoice->remaining,
                     'status' => $invoice->status,
+                    'notes' => $invoice->notes,
                     'last_payment_date' => $lastPayment ? \Carbon\Carbon::parse($lastPayment->payment_date)->format('d M Y') : null,
                     'last_payment_method' => $lastPayment ? $lastPayment->payment_method : null,
                     'last_payment_notes' => $lastPayment ? $lastPayment->notes : null,
@@ -151,6 +163,7 @@ class InvoiceController extends Controller
         return Inertia::render('Invoices/Index', [
             'invoices' => $invoices,
             'stats' => $stats,
+            'packages' => \App\Models\InternetPackage::active()->orderBy('price')->get(['id', 'name', 'price', 'speed_mbps']),
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['search', 'status', 'start_date', 'end_date', 'area_id', 'tab']),
             'payment_banks' => json_decode(\App\Models\Setting::get('payment_banks', '[]'), true),
@@ -340,5 +353,115 @@ class InvoiceController extends Controller
         $banks = json_decode(\App\Models\Setting::get('payment_banks', '[]'), true) ?: [];
 
         return view('print.invoice', compact('invoice', 'company', 'banks'));
+    }
+
+    /**
+     * Aksi Upgrade / Downgrade Paket Pelanggan dari Invoice
+     */
+    public function changePackage(Request $request, Invoice $invoice, \App\Services\RadiusService $radius)
+    {
+        $request->validate([
+            'new_package_id' => 'required|exists:internet_packages,id',
+            'billing_action' => 'required|in:prorata_diff,replace_invoice,next_month_only',
+            'effective_date' => 'nullable|date',
+            'sync_radius' => 'nullable|boolean',
+            'notes' => 'nullable|string',
+        ]);
+
+        $customer = $invoice->customer;
+        if (!$customer) {
+            return back()->withErrors(['error' => 'Pelanggan untuk tagihan ini tidak ditemukan.']);
+        }
+
+        $oldPackage = $customer->package;
+        $newPackage = \App\Models\InternetPackage::findOrFail($request->new_package_id);
+
+        if ($oldPackage && $oldPackage->id == $newPackage->id) {
+            return back()->withErrors(['error' => 'Paket baru sama dengan paket pelanggan saat ini.']);
+        }
+
+        $oldPrice = (float) ($oldPackage?->price ?? 0);
+        $newPrice = (float) $newPackage->price;
+        $isUpgrade = $newPrice >= $oldPrice;
+        $actionLabel = $isUpgrade ? 'Upgrade' : 'Downgrade';
+        $actionType = $isUpgrade ? 'upgrade' : 'downgrade';
+
+        $effectiveDate = $request->effective_date ? \Carbon\Carbon::parse($request->effective_date) : now();
+
+        // 1. Penyesuaian Billing
+        if ($request->billing_action === 'prorata_diff') {
+            $daysInMonth = $effectiveDate->daysInMonth;
+            $remainingDays = max(1, $daysInMonth - $effectiveDate->day + 1);
+            $diffPerMonth = $newPrice - $oldPrice;
+            $prorataDiff = round(($diffPerMonth / $daysInMonth) * $remainingDays, 2);
+
+            $diffFormat = ($prorataDiff >= 0 ? '+' : '-') . 'Rp ' . number_format(abs($prorataDiff), 0, ',', '.');
+
+            if (in_array($invoice->status, ['unpaid', 'partial'])) {
+                $invoice->amount = max(0, (float) $invoice->amount + $prorataDiff);
+                $invoice->billing_type = $actionType;
+                $invoice->is_prorata = true;
+                $noteAppend = "{$actionLabel} ke {$newPackage->name} (Prorata {$remainingDays} hari: {$diffFormat})";
+                $invoice->notes = $invoice->notes ? $invoice->notes . ' | ' . $noteAppend : $noteAppend;
+                if ($request->filled('notes')) {
+                    $invoice->notes .= ' (' . $request->notes . ')';
+                }
+                $invoice->save();
+            } else {
+                // Jika invoice berjalan sudah lunas dan ada tambahan biaya upgrade
+                if ($prorataDiff > 0) {
+                    Invoice::create([
+                        'customer_id' => $customer->id,
+                        'period_month' => $effectiveDate->month,
+                        'period_year' => $effectiveDate->year,
+                        'amount' => $prorataDiff,
+                        'due_date' => now()->addDays(7),
+                        'issued_date' => now(),
+                        'status' => 'unpaid',
+                        'is_prorata' => true,
+                        'billing_type' => $actionType,
+                        'is_reseller_balance' => false,
+                        'notes' => "Selisih {$actionLabel} ke {$newPackage->name} periode " . $effectiveDate->translatedFormat('F Y') . ($request->notes ? ' - ' . $request->notes : ''),
+                    ]);
+                }
+            }
+        } elseif ($request->billing_action === 'replace_invoice') {
+            if (in_array($invoice->status, ['unpaid', 'partial'])) {
+                $invoice->amount = $newPrice;
+                $invoice->billing_type = $actionType;
+                $noteAppend = "{$actionLabel} ke {$newPackage->name} (Nominal tagihan diubah ke paket baru)";
+                $invoice->notes = $invoice->notes ? $invoice->notes . ' | ' . $noteAppend : $noteAppend;
+                if ($request->filled('notes')) {
+                    $invoice->notes .= ' (' . $request->notes . ')';
+                }
+                $invoice->save();
+            }
+        } elseif ($request->billing_action === 'next_month_only') {
+            $invoice->billing_type = $actionType;
+            $noteAppend = "{$actionLabel} ke {$newPackage->name} (Efektif tagihan periode berikutnya)";
+            $invoice->notes = $invoice->notes ? $invoice->notes . ' | ' . $noteAppend : $noteAppend;
+            if ($request->filled('notes')) {
+                $invoice->notes .= ' (' . $request->notes . ')';
+            }
+            $invoice->save();
+        }
+
+        // 2. Update Paket Pelanggan
+        $customer->update([
+            'package_id' => $newPackage->id,
+        ]);
+
+        // 3. Sinkronisasi Profile RADIUS & Disconnect Session
+        if ($request->boolean('sync_radius', true)) {
+            $radius->guard(function($r) use ($customer) {
+                $r->syncCustomer($customer);
+                $accounts = $r->customerAccounts($customer);
+                foreach (array_keys($accounts) as $username) {
+                    $r->disconnect($username);
+                }
+            });
+        }
+
+        return redirect()->back()->with('success', "Pelanggan {$customer->name} berhasil di-{$actionLabel} ke paket {$newPackage->name}." . ($request->boolean('sync_radius', true) ? ' Profile kecepatan RADIUS telah disinkronkan.' : ''));
     }
 }

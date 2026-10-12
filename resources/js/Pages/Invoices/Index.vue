@@ -70,8 +70,8 @@
                 Pelanggan Prorata <span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.prorata }}</span>
             </button>
             <button @click="filterTab('upgrade')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'upgrade' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700']">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                Riwayat Upgrade <span class="bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.upgrade }}</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
+                Upgrade / Downgrade <span class="bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.upgrade || 0 }}</span>
             </button>
             <button @click="filterTab('janji_bayar')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'janji_bayar' ? 'text-yellow-600 border-b-2 border-yellow-600' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -240,6 +240,9 @@
                     </a>
                     <button @click="openEditModal(row)" class="p-1.5 text-gray-400 hover:text-blue-600 transition-colors" title="Edit Tagihan">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    </button>
+                    <button v-if="row.customer" @click="openUpgradeModal(row)" class="p-1.5 text-gray-400 hover:text-purple-600 transition-colors" title="Upgrade / Downgrade Paket">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
                     </button>
                     <button v-if="row.customer && row.customer.status !== 'suspended'" @click="stopSementara(row)" class="p-1.5 text-gray-400 hover:text-orange-600 transition-colors" title="Stop Sementara">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -530,11 +533,152 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- Upgrade / Downgrade Modal -->
+        <Teleport to="body">
+            <div v-if="showUpgradeModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0 overflow-y-auto">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closeUpgradeModal"></div>
+
+                <div class="relative bg-white rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden z-10 my-8">
+                    <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-purple-50 via-indigo-50 to-white">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-md shadow-purple-600/20">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-gray-900">Upgrade / Downgrade Paket</h3>
+                                <p class="text-xs text-gray-500 font-medium">Pelanggan: <span class="font-bold text-gray-700">{{ selectedUpgradeInvoice?.customer?.name }}</span></p>
+                            </div>
+                        </div>
+                        <button @click="closeUpgradeModal" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitUpgrade">
+                        <div class="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+                            <!-- Paket Saat Ini vs Paket Baru -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <!-- Paket Saat Ini -->
+                                <div class="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
+                                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Paket Saat Ini</div>
+                                    <div class="text-sm font-bold text-gray-900 truncate">{{ selectedUpgradeInvoice?.customer?.package_name || 'Tidak ada paket' }}</div>
+                                    <div class="text-xs text-gray-500 mt-1">Kecepatan: <span class="font-semibold text-gray-700">{{ selectedUpgradeInvoice?.customer?.package_speed || 0 }} Mbps</span></div>
+                                    <div class="text-xs text-indigo-600 font-bold mt-1">{{ formatCurrency(selectedUpgradeInvoice?.customer?.package_price || 0) }} / bln</div>
+                                </div>
+
+                                <!-- Paket Baru -->
+                                <div class="p-4 rounded-xl border border-purple-200 bg-purple-50/40">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-[10px] font-bold text-purple-700 uppercase tracking-wider">Pilih Paket Baru</span>
+                                        <span v-if="selectedNewPackage" :class="isUpgrade ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'" class="px-1.5 py-0.5 rounded text-[10px] font-black border">
+                                            {{ isUpgrade ? '⬆ Upgrade' : '⬇ Downgrade' }}
+                                        </span>
+                                    </div>
+                                    <select v-model="upgradeForm.new_package_id" required class="w-full text-xs font-semibold px-2.5 py-2 bg-white border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                        <option value="" disabled>-- Pilih Paket --</option>
+                                        <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
+                                            {{ pkg.name }} ({{ pkg.speed_mbps }} Mbps) - {{ formatCurrency(pkg.price) }}
+                                        </option>
+                                    </select>
+                                    <div v-if="selectedNewPackage" class="text-[11px] text-gray-600 mt-1.5 flex items-center justify-between">
+                                        <span>Selisih Harga:</span>
+                                        <span :class="priceDiff >= 0 ? 'text-emerald-600' : 'text-amber-600'" class="font-bold">
+                                            {{ priceDiff >= 0 ? '+' : '' }}{{ formatCurrency(priceDiff) }} / bln
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tanggal Efektif -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Efektif Perubahan</label>
+                                <input type="date" v-model="upgradeForm.effective_date" required class="w-full px-3.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none bg-gray-50 focus:bg-white" />
+                                <p class="text-[11px] text-gray-400 mt-1">Sisa hari periode bulan berjalan: <span class="font-bold text-gray-700">{{ calculatedRemainingDays }} hari</span></p>
+                            </div>
+
+                            <!-- Opsi Billing Action -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-2">Penyesuaian Biaya & Tagihan (Billing)</label>
+                                <div class="space-y-2.5">
+                                    <label class="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all" :class="upgradeForm.billing_action === 'prorata_diff' ? 'border-purple-500 bg-purple-50/50 ring-1 ring-purple-500' : 'border-gray-200 hover:bg-gray-50'">
+                                        <input type="radio" value="prorata_diff" v-model="upgradeForm.billing_action" class="mt-1 text-purple-600 focus:ring-purple-500" />
+                                        <div class="flex-1">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-xs font-bold text-gray-800">Hitung Prorata Selisih Sisa Hari</span>
+                                                <span v-if="selectedNewPackage" class="text-xs font-black px-2 py-0.5 rounded bg-white border" :class="calculatedProrata >= 0 ? 'text-emerald-600 border-emerald-200' : 'text-amber-600 border-amber-200'">
+                                                    {{ calculatedProrata >= 0 ? '+' : '' }}{{ formatCurrency(calculatedProrata) }}
+                                                </span>
+                                            </div>
+                                            <p class="text-[11px] text-gray-500 mt-0.5">
+                                                Nominal tagihan disesuaikan berdasarkan sisa {{ calculatedRemainingDays }} hari pada bulan ini. (Jika invoice sudah lunas, akan dibuat invoice selisih baru).
+                                            </p>
+                                        </div>
+                                    </label>
+
+                                    <label class="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all" :class="upgradeForm.billing_action === 'replace_invoice' ? 'border-purple-500 bg-purple-50/50 ring-1 ring-purple-500' : 'border-gray-200 hover:bg-gray-50'">
+                                        <input type="radio" value="replace_invoice" v-model="upgradeForm.billing_action" class="mt-1 text-purple-600 focus:ring-purple-500" />
+                                        <div class="flex-1">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-xs font-bold text-gray-800">Ubah Nominal Tagihan ke Tarif Paket Baru</span>
+                                                <span v-if="selectedNewPackage" class="text-xs font-black px-2 py-0.5 rounded bg-white border border-purple-200 text-purple-700">
+                                                    {{ formatCurrency(selectedNewPackage?.price) }}
+                                                </span>
+                                            </div>
+                                            <p class="text-[11px] text-gray-500 mt-0.5">
+                                                Mengganti total tagihan invoice ini menjadi tarif penuh dari paket baru (hanya jika invoice belum lunas).
+                                            </p>
+                                        </div>
+                                    </label>
+
+                                    <label class="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all" :class="upgradeForm.billing_action === 'next_month_only' ? 'border-purple-500 bg-purple-50/50 ring-1 ring-purple-500' : 'border-gray-200 hover:bg-gray-50'">
+                                        <input type="radio" value="next_month_only" v-model="upgradeForm.billing_action" class="mt-1 text-purple-600 focus:ring-purple-500" />
+                                        <div class="flex-1">
+                                            <span class="text-xs font-bold text-gray-800">Hanya Ubah Paket (Efektif Bulan Berikutnya)</span>
+                                            <p class="text-[11px] text-gray-500 mt-0.5">
+                                                Invoice saat ini tidak diubah nominalnya. Paket pelanggan langsung diupdate dan tarif baru berlaku saat generate invoice bulan depan.
+                                            </p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Opsi Sinkronisasi RADIUS -->
+                            <div class="p-3.5 bg-gray-50 rounded-xl border border-gray-200">
+                                <label class="flex items-center gap-2.5 cursor-pointer">
+                                    <input type="checkbox" v-model="upgradeForm.sync_radius" class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-gray-300" />
+                                    <div>
+                                        <span class="text-xs font-bold text-gray-800">Disconnect PPPoE & Sync RADIUS Sekarang</span>
+                                        <p class="text-[11px] text-gray-500">Putus sesi aktif agar router pelanggan reconnect seketika dengan profile kecepatan paket baru.</p>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Catatan -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Catatan Tambahan (Opsional)</label>
+                                <textarea v-model="upgradeForm.notes" rows="2" placeholder="Contoh: Upgrade kecepatan atas permintaan pelanggan via WA" class="w-full px-3.5 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none bg-gray-50 focus:bg-white"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-2">
+                            <button type="button" @click="closeUpgradeModal" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+                                Batal
+                            </button>
+                            <button type="submit" :disabled="upgradeForm.processing || !upgradeForm.new_package_id" class="bg-purple-600 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-sm shadow-purple-600/20 hover:bg-purple-700 transition-all disabled:opacity-50 flex items-center gap-2">
+                                <svg v-if="upgradeForm.processing" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>{{ upgradeForm.processing ? 'Menyimpan...' : 'Terapkan Paket Baru' }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
@@ -542,6 +686,7 @@ import DataTable from '@/Components/DataTable.vue';
 const props = defineProps({
     invoices: Object,
     stats: Object,
+    packages: Array,
     areas: Array,
     filters: Object,
     payment_banks: Array,
@@ -797,5 +942,86 @@ function deleteInvoice(invoice) {
             preserveScroll: true
         });
     }
+}
+
+// Upgrade / Downgrade Logic
+const showUpgradeModal = ref(false);
+const selectedUpgradeInvoice = ref(null);
+const upgradeForm = useForm({
+    new_package_id: '',
+    billing_action: 'prorata_diff',
+    effective_date: new Date().toISOString().split('T')[0],
+    sync_radius: true,
+    notes: '',
+});
+
+const selectedNewPackage = computed(() => {
+    if (!props.packages || !upgradeForm.new_package_id) return null;
+    return props.packages.find(p => p.id == upgradeForm.new_package_id) || null;
+});
+
+const currentPackagePrice = computed(() => {
+    return Number(selectedUpgradeInvoice.value?.customer?.package_price || 0);
+});
+
+const priceDiff = computed(() => {
+    if (!selectedNewPackage.value) return 0;
+    return Number(selectedNewPackage.value.price) - currentPackagePrice.value;
+});
+
+const isUpgrade = computed(() => priceDiff.value >= 0);
+
+const calculatedRemainingDays = computed(() => {
+    if (!upgradeForm.effective_date) return 0;
+    const d = new Date(upgradeForm.effective_date);
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return Math.max(1, lastDay - d.getDate() + 1);
+});
+
+const calculatedDaysInMonth = computed(() => {
+    if (!upgradeForm.effective_date) return 30;
+    const d = new Date(upgradeForm.effective_date);
+    return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+});
+
+const calculatedProrata = computed(() => {
+    if (!selectedNewPackage.value) return 0;
+    const diff = priceDiff.value;
+    const days = calculatedRemainingDays.value;
+    const totalDays = calculatedDaysInMonth.value || 30;
+    return Math.round((diff / totalDays) * days);
+});
+
+function openUpgradeModal(invoice) {
+    selectedUpgradeInvoice.value = invoice;
+    upgradeForm.new_package_id = '';
+    upgradeForm.billing_action = 'prorata_diff';
+    upgradeForm.effective_date = new Date().toISOString().split('T')[0];
+    upgradeForm.sync_radius = true;
+    upgradeForm.notes = '';
+    showUpgradeModal.value = true;
+}
+
+function closeUpgradeModal() {
+    showUpgradeModal.value = false;
+    setTimeout(() => {
+        selectedUpgradeInvoice.value = null;
+        upgradeForm.reset();
+    }, 200);
+}
+
+function submitUpgrade() {
+    if (!upgradeForm.new_package_id) {
+        alert('Silakan pilih paket baru terlebih dahulu.');
+        return;
+    }
+    upgradeForm.post(`/invoices/${selectedUpgradeInvoice.value.id}/change-package`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeUpgradeModal();
+        }
+    });
 }
 </script>
