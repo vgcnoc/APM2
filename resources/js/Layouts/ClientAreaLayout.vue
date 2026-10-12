@@ -33,6 +33,7 @@
                         <Link href="/vouchers/online" class="text-sm font-medium text-gray-600 hover:text-blue-600">Online</Link>
                         <Link href="/vouchers/offline" class="text-sm font-medium text-gray-600 hover:text-blue-600">Offline</Link>
                         <Link href="/vouchers/expired" class="text-sm font-medium text-gray-600 hover:text-blue-600">Expired</Link>
+                        <Link href="/my/billing" class="text-sm font-medium text-gray-600 hover:text-blue-600">Tagihan & Kasbon</Link>
                     </div>
 
                     <!-- User Menu -->
@@ -67,6 +68,7 @@
                     <Link href="/vouchers/online" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Online</Link>
                     <Link href="/vouchers/offline" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Offline</Link>
                     <Link href="/vouchers/expired" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Expired</Link>
+                    <Link href="/my/billing" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Tagihan & Kasbon</Link>
                 </div>
             </div>
         </nav>

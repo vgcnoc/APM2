@@ -32,10 +32,32 @@
                 </div>
             </div>
 
-            <!-- 3 Stat KPI Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <!-- Alert Banner Jika Ada Kasbon Belum Lunas -->
+            <div v-if="total_unpaid_kasbon > 0" class="bg-gradient-to-r from-rose-50 via-amber-50 to-orange-50 border border-rose-200/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs animate-fade-in-up">
+                <div class="flex items-start sm:items-center gap-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-rose-500/20">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-sm font-bold text-rose-950">Tagihan Kasbon Saldo Belum Lunas</h4>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-200 text-rose-800 uppercase tracking-wide">Perlu Disetor</span>
+                        </div>
+                        <p class="text-xs text-rose-800 mt-0.5">
+                            Total tagihan kasbon yang belum dibayar: <strong class="font-extrabold text-rose-950">Rp {{ Number(total_unpaid_kasbon).toLocaleString('id-ID') }}</strong>. Mohon segera setorkan ke kolektor atau kasir kantor.
+                        </p>
+                    </div>
+                </div>
+                <button @click="showKasbonModal = true" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                    Lihat Rincian Kasbon
+                </button>
+            </div>
+
+            <!-- 4 Stat KPI Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <!-- Sisa Saldo Modal -->
-                <div class="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200 group">
+                <div class="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-all duration-200 group">
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Sisa Saldo Modal</span>
                         <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 group-hover:scale-105 transition-transform">
@@ -44,16 +66,40 @@
                     </div>
                     <div class="flex items-baseline gap-1">
                         <span class="text-sm font-bold text-gray-400">Rp</span>
-                        <span class="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">{{ Number(reseller.balance || 0).toLocaleString('id-ID') }}</span>
+                        <span class="text-2xl font-extrabold text-gray-900 tracking-tight">{{ Number(reseller.balance || 0).toLocaleString('id-ID') }}</span>
                     </div>
                     <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
                         <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                        Saldo tersedia untuk cetak voucher
+                        Saldo aktif cetak voucher
+                    </p>
+                </div>
+
+                <!-- Tagihan Kasbon Saldo -->
+                <div :class="total_unpaid_kasbon > 0 ? 'bg-rose-50/40 border-rose-200/80 hover:border-rose-300' : 'bg-white border-gray-200/80'" class="rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all duration-200 group">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold uppercase tracking-wider" :class="total_unpaid_kasbon > 0 ? 'text-rose-700' : 'text-gray-500'">Hutang Kasbon</span>
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center border group-hover:scale-105 transition-transform" :class="total_unpaid_kasbon > 0 ? 'bg-rose-100 text-rose-600 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'">
+                            <svg v-if="total_unpaid_kasbon > 0" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline justify-between gap-1">
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-sm font-bold" :class="total_unpaid_kasbon > 0 ? 'text-rose-400' : 'text-gray-400'">Rp</span>
+                            <span class="text-2xl font-extrabold tracking-tight" :class="total_unpaid_kasbon > 0 ? 'text-rose-600' : 'text-emerald-600'">{{ Number(total_unpaid_kasbon || 0).toLocaleString('id-ID') }}</span>
+                        </div>
+                        <button v-if="total_unpaid_kasbon > 0" @click="showKasbonModal = true" class="text-[11px] font-bold text-rose-600 hover:text-rose-800 underline cursor-pointer">
+                            Rincian &rarr;
+                        </button>
+                    </div>
+                    <p class="text-xs mt-2 flex items-center gap-1.5" :class="total_unpaid_kasbon > 0 ? 'text-rose-600 font-semibold' : 'text-gray-500'">
+                        <span class="w-1.5 h-1.5 rounded-full" :class="total_unpaid_kasbon > 0 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'"></span>
+                        {{ total_unpaid_kasbon > 0 ? 'Belum lunas (wajib setor)' : 'Tidak ada tunggakan kasbon' }}
                     </p>
                 </div>
 
                 <!-- Stok Voucher -->
-                <div class="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200 group">
+                <div class="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-all duration-200 group">
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Stok Voucher</span>
                         <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 group-hover:scale-105 transition-transform">
@@ -61,17 +107,17 @@
                         </div>
                     </div>
                     <div class="flex items-baseline gap-2">
-                        <span class="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">{{ available_count || 0 }}</span>
+                        <span class="text-2xl font-extrabold text-gray-900 tracking-tight">{{ available_count || 0 }}</span>
                         <span class="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">Keping</span>
                     </div>
                     <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
                         <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                        Voucher siap dijual ke pelanggan
+                        Voucher siap dijual
                     </p>
                 </div>
 
                 <!-- Total Pemasukan -->
-                <div class="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200 group">
+                <div class="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-all duration-200 group">
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Total Pemasukan</span>
                         <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 group-hover:scale-105 transition-transform">
@@ -80,11 +126,11 @@
                     </div>
                     <div class="flex items-baseline gap-1">
                         <span class="text-sm font-bold text-gray-400">Rp</span>
-                        <span class="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">{{ Number(income || 0).toLocaleString('id-ID') }}</span>
+                        <span class="text-2xl font-extrabold text-gray-900 tracking-tight">{{ Number(income || 0).toLocaleString('id-ID') }}</span>
                     </div>
                     <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        Voucher yang telah aktif / terpakai
+                        Voucher terpakai/aktif
                     </p>
                 </div>
             </div>
@@ -296,6 +342,101 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal Rincian Tagihan Kasbon Saldo -->
+        <Teleport to="body">
+            <div v-if="showKasbonModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showKasbonModal = false"></div>
+                <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
+                    
+                    <!-- Header Modal -->
+                    <div class="p-6 border-b border-gray-100 bg-gradient-to-r from-rose-50/70 via-amber-50/50 to-white flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-500/20 shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-black text-gray-900">Rincian Tagihan Kasbon Saldo</h3>
+                                <p class="text-xs text-gray-500">Daftar invoice kasbon yang belum lunas atau masih memiliki sisa tagihan</p>
+                            </div>
+                        </div>
+                        <button @click="showKasbonModal = false" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Body Modal -->
+                    <div class="p-6 overflow-y-auto space-y-4 flex-1">
+                        <!-- Summary Ringkasan -->
+                        <div class="p-4 bg-rose-50/80 rounded-2xl border border-rose-100 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-rose-800 uppercase tracking-wider block">Total Tagihan Kasbon Belum Lunas</span>
+                                <span class="text-2xl font-black text-rose-600 font-mono">Rp {{ Number(total_unpaid_kasbon || 0).toLocaleString('id-ID') }}</span>
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                {{ unpaid_kasbon_invoices?.length || 0 }} Invoice
+                            </span>
+                        </div>
+
+                        <!-- Petunjuk Penyetoran -->
+                        <div class="p-3.5 bg-blue-50/70 rounded-xl border border-blue-100 text-xs text-blue-800 flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-blue-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>
+                                Penyetoran dapat dilakukan secara tunai kepada <strong>petugas kolektor lapangan</strong> atau langsung di kasir kantor APM. Pembayaran akan otomatis mengurangi tagihan ini setelah diverifikasi.
+                            </span>
+                        </div>
+
+                        <!-- Tabel Invoice Kasbon -->
+                        <div class="border border-gray-100 rounded-2xl overflow-hidden shadow-2xs">
+                            <table class="min-w-full divide-y divide-gray-100">
+                                <thead class="bg-gray-50/80">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase">No. Invoice & Tanggal</th>
+                                        <th class="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase">Jatuh Tempo</th>
+                                        <th class="px-4 py-3 text-right text-[11px] font-bold text-gray-500 uppercase">Total Kasbon</th>
+                                        <th class="px-4 py-3 text-right text-[11px] font-bold text-gray-500 uppercase">Sisa Tagihan</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-100 text-xs">
+                                    <tr v-for="inv in unpaid_kasbon_invoices" :key="inv.id" class="hover:bg-gray-50/50">
+                                        <td class="px-4 py-3">
+                                            <div class="font-bold text-gray-900 font-mono">{{ inv.invoice_number }}</div>
+                                            <div class="text-[10px] text-gray-400 mt-0.5">{{ inv.issued_date }}</div>
+                                            <div v-if="inv.notes" class="text-[10px] text-gray-500 italic mt-0.5 line-clamp-1">{{ inv.notes }}</div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span class="inline-block px-2 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[11px] border border-amber-200/60">
+                                                {{ inv.due_date }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right text-gray-600 font-mono">
+                                            Rp {{ Number(inv.amount).toLocaleString('id-ID') }}
+                                        </td>
+                                        <td class="px-4 py-3 text-right font-black text-rose-600 font-mono">
+                                            Rp {{ Number(inv.remaining).toLocaleString('id-ID') }}
+                                        </td>
+                                    </tr>
+                                    <tr v-if="!unpaid_kasbon_invoices || unpaid_kasbon_invoices.length === 0">
+                                        <td colspan="4" class="px-4 py-8 text-center text-gray-400 italic">
+                                            Tidak ada tagihan kasbon yang belum lunas.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Footer Modal -->
+                    <div class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
+                        <span class="text-xs text-gray-500">Status kasbon diperbarui secara otomatis.</span>
+                        <button @click="showKasbonModal = false" class="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer">
+                            Tutup
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </Teleport>
     </ClientAreaLayout>
 </template>
 
@@ -312,7 +453,17 @@ const props = defineProps({
     income: Number,
     total_margin: Number,
     available_count: Number,
+    total_unpaid_kasbon: {
+        type: Number,
+        default: 0
+    },
+    unpaid_kasbon_invoices: {
+        type: Array,
+        default: () => []
+    }
 });
+
+const showKasbonModal = ref(false);
 
 const form = useForm({
     profile_id: '',

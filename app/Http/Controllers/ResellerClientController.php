@@ -8,6 +8,8 @@ use App\Models\VoucherProfile;
 use App\Models\Voucher;
 use App\Models\Router;
 use App\Models\ResellerBalanceRequest;
+use App\Models\Invoice;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 class ResellerClientController extends Controller
@@ -53,6 +55,39 @@ class ResellerClientController extends Controller
             ->where('status', 'available')
             ->count();
 
+        // Hitung Tagihan Kasbon Saldo Belum Lunas
+        $customer = $reseller->customer;
+        $totalUnpaidKasbon = 0;
+        $unpaidKasbonInvoices = [];
+
+        if ($customer) {
+            $kasbonInvoices = Invoice::with('payments')
+                ->where('customer_id', $customer->id)
+                ->where('is_reseller_balance', true)
+                ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                ->latest('due_date')
+                ->get();
+
+            $totalUnpaidKasbon = (float) $kasbonInvoices->sum(function ($inv) {
+                $verifiedPaid = $inv->payments->where('status', 'verified')->sum('amount');
+                return max(0, $inv->amount - $verifiedPaid);
+            });
+
+            $unpaidKasbonInvoices = $kasbonInvoices->map(function ($inv) {
+                $verifiedPaid = $inv->payments->where('status', 'verified')->sum('amount');
+                return [
+                    'id' => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'issued_date' => $inv->issued_date ? Carbon::parse($inv->issued_date)->translatedFormat('d M Y') : '-',
+                    'due_date' => $inv->due_date ? Carbon::parse($inv->due_date)->translatedFormat('d M Y') : '-',
+                    'amount' => (float) $inv->amount,
+                    'remaining' => max(0, (float) ($inv->amount - $verifiedPaid)),
+                    'status' => $inv->status,
+                    'notes' => $inv->notes,
+                ];
+            })->values()->all();
+        }
+
         return Inertia::render('ClientArea/Dashboard', [
             'reseller' => $reseller->load('customer'),
             'vouchers' => $vouchers,
@@ -60,6 +95,8 @@ class ResellerClientController extends Controller
             'income' => $income,
             'total_margin' => $totalMargin,
             'available_count' => $availableCount,
+            'total_unpaid_kasbon' => $totalUnpaidKasbon,
+            'unpaid_kasbon_invoices' => $unpaidKasbonInvoices,
         ]);
     }
 
