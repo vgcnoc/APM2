@@ -260,8 +260,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('invoices/{invoice}/promise', [\App\Http\Controllers\InvoiceController::class, 'promise'])->name('invoices.promise');
     Route::post('invoices/{invoice}/stop-sementara', [\App\Http\Controllers\InvoiceController::class, 'stopSementara'])->name('invoices.stop-sementara');
     Route::post('invoices/{invoice}/stop-permanen', [\App\Http\Controllers\InvoiceController::class, 'stopPermanen'])->name('invoices.stop-permanen');
-    Route::get('invoices/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->name('invoices.print');
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
+    
+    // ── Pantauan Pelanggan (Menunggak, Janji Bayar, Stop Sementara) ──────
+    Route::get('/monitoring-pelanggan', [\App\Http\Controllers\CustomerMonitoringController::class, 'index'])->name('monitoring-pelanggan.index');
+    Route::post('/monitoring-pelanggan/{customer}/unsuspend', [\App\Http\Controllers\CustomerMonitoringController::class, 'unsuspend'])->name('monitoring-pelanggan.unsuspend');
+    Route::post('/monitoring-pelanggan/{customer}/suspend', [\App\Http\Controllers\CustomerMonitoringController::class, 'suspend'])->name('monitoring-pelanggan.suspend');
+    Route::post('/monitoring-pelanggan/{invoice}/set-promise', [\App\Http\Controllers\CustomerMonitoringController::class, 'setPromise'])->name('monitoring-pelanggan.set-promise');
     
     Route::get('tax-reports/print', [\App\Http\Controllers\TaxReportController::class, 'print'])->name('tax.reports.print');
     Route::get('tax-reports', [\App\Http\Controllers\TaxReportController::class, 'index'])->name('tax.reports.index');

@@ -231,6 +231,18 @@ const menuItems = [
     },
     {
         type: 'dropdown',
+        icon: 'calendar',
+        label: 'Pantauan Pelanggan',
+        active: (url) => (url || '').startsWith('/monitoring-pelanggan'),
+        permission: 'menu_customers_all',
+        children: [
+            { href: '/monitoring-pelanggan?tab=menunggak', label: 'Sering Menunggak', active: (url) => (url || '').startsWith('/monitoring-pelanggan') && ((url || '').includes('tab=menunggak') || !(url || '').includes('tab=')), permission: 'menu_customers_all' },
+            { href: '/monitoring-pelanggan?tab=janji_bayar', label: 'Janji Bayar', active: (url) => (url || '').startsWith('/monitoring-pelanggan') && (url || '').includes('tab=janji_bayar'), permission: 'menu_customers_all' },
+            { href: '/monitoring-pelanggan?tab=stop_sementara', label: 'Stop Sementara', active: (url) => (url || '').startsWith('/monitoring-pelanggan') && (url || '').includes('tab=stop_sementara'), permission: 'menu_customers_all' },
+        ]
+    },
+    {
+        type: 'dropdown',
         icon: 'zap',
         label: 'Penanganan Sigap (PGS)',
         active: (url) => (url || '').startsWith('/pgs'),
