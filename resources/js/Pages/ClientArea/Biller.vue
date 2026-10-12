@@ -9,7 +9,7 @@
                     <div class="flex items-center gap-2 mb-1.5">
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Loket Biller PPOB
+                            Loket Pembayaran Internet
                         </span>
                         <span class="text-xs text-gray-300">•</span>
                         <span class="text-xs font-medium text-gray-500">
