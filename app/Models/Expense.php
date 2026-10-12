@@ -40,4 +40,19 @@ class Expense extends Model
     {
         return $this->hasOne(MaterialTransaction::class, 'expense_id');
     }
+
+    /**
+     * Scope untuk mengecualikan pengeluaran Order Toko / Pembelian Material
+     */
+    public function scopeWithoutOrderToko($query)
+    {
+        return $query->whereDoesntHave('materialTransaction')
+            ->where(function ($q) {
+                $q->whereNull('expense_category_id')
+                  ->orWhereHas('category', function ($cat) {
+                      $cat->where('code', '!=', 'MAT');
+                  });
+            })
+            ->where('description', 'not like', '%Order Toko%');
+    }
 }

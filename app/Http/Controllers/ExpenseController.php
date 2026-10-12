@@ -29,6 +29,10 @@ class ExpenseController extends Controller
 
     public function destroy(Expense $expense)
     {
+        if ($expense->materialTransaction || str_contains($expense->description, 'Order Toko [')) {
+            return back()->with('error', 'Pengeluaran Order Toko terikat dengan inventori material. Harap hapus atau ubah melalui menu Order Toko.');
+        }
+
         $expense->delete();
         return back()->with('success', 'Catatan pengeluaran berhasil dihapus.');
     }

@@ -57,12 +57,13 @@ class ResellerReportController extends Controller
             ->take(15)
             ->get();
 
-        // 6. Total Pengeluaran dan Kas Bersih
-        $totalPengeluaran = \App\Models\Expense::sum('amount');
+        // 6. Total Pengeluaran dan Kas Bersih (Order Toko dikecualikan karena beban material perusahaan)
+        $totalPengeluaran = \App\Models\Expense::withoutOrderToko()->sum('amount');
         $kasBersih = $totalPemasukan - $totalPengeluaran;
 
-        // 7. Riwayat Pengeluaran Terakhir
+        // 7. Riwayat Pengeluaran Terakhir (Kecualikan Order Toko)
         $recentExpenses = \App\Models\Expense::with('user')
+            ->withoutOrderToko()
             ->latest('expense_date')
             ->latest('created_at')
             ->take(15)
