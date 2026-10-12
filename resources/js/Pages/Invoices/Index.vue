@@ -154,9 +154,12 @@
                             <Link :href="`/customers/${row.customer.id}`" class="text-gray-900 font-bold text-xs uppercase hover:underline">
                                 {{ row.customer.name }}
                             </Link>
-                            <span v-if="row.customer.unpaid_count > 1" class="inline-flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-md w-max border border-red-100" :title="'Total Tunggakan: ' + formatCurrency(row.customer.total_unpaid)">
+                            <span v-if="row.customer.overdue_count > 0" class="inline-flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-md w-max border border-red-100" :title="'Total Tunggakan: ' + formatCurrency(row.customer.total_overdue)">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                Nunggak {{ row.customer.unpaid_count }} Bulan
+                                Nunggak {{ row.customer.overdue_count }} Bulan
+                            </span>
+                            <span v-else-if="row.customer.unpaid_count > 1" class="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md w-max border border-amber-200" :title="'Total Tagihan: ' + formatCurrency(row.customer.total_unpaid)">
+                                {{ row.customer.unpaid_count }} Tagihan Berjalan
                             </span>
                         </div>
                     </div>
@@ -271,14 +274,23 @@
                         <div class="p-6 space-y-5">
                             
                             <!-- Info Tunggakan Smart Allocation -->
-                            <div v-if="selectedInvoice?.customer?.unpaid_count > 1" class="bg-rose-50 border border-rose-200 rounded-xl p-4 flex gap-3">
+                            <div v-if="selectedInvoice?.customer?.overdue_count > 0" class="bg-rose-50 border border-rose-200 rounded-xl p-4 flex gap-3">
                                 <div class="shrink-0 text-rose-500">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                                 </div>
                                 <div>
-                                    <h4 class="text-xs font-bold text-rose-800">Pelanggan memiliki {{ selectedInvoice?.customer?.unpaid_count }} tagihan menunggak!</h4>
-                                    <p class="text-[11px] text-rose-600 mt-1">Total seluruh tunggakan: <strong>{{ formatCurrency(selectedInvoice?.customer?.total_unpaid) }}</strong>.</p>
+                                    <h4 class="text-xs font-bold text-rose-800">Pelanggan memiliki {{ selectedInvoice?.customer?.overdue_count }} tagihan menunggak (lewat jatuh tempo)!</h4>
+                                    <p class="text-[11px] text-rose-600 mt-1">Total tunggakan: <strong>{{ formatCurrency(selectedInvoice?.customer?.total_overdue) }}</strong>.</p>
                                     <p class="text-[10px] text-rose-600/80 mt-1 leading-snug">Sistem Alokasi Cerdas: Jika nominal pembayaran lebih besar dari 1 tagihan, sistem otomatis melunasi tagihan yang paling lama terlebih dahulu.</p>
+                                </div>
+                            </div>
+                            <div v-else-if="selectedInvoice?.customer?.unpaid_count > 1" class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
+                                <div class="shrink-0 text-amber-500">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-amber-800">Pelanggan memiliki {{ selectedInvoice?.customer?.unpaid_count }} tagihan aktif berjalan.</h4>
+                                    <p class="text-[11px] text-amber-700 mt-1">Total seluruh tagihan: <strong>{{ formatCurrency(selectedInvoice?.customer?.total_unpaid) }}</strong>.</p>
                                 </div>
                             </div>
                             
@@ -293,7 +305,7 @@
                                 </div>
                                 <div class="flex justify-between mt-2">
                                     <span class="text-[10px] text-gray-500">Tagihan saat ini: {{ formatCurrency(selectedInvoice?.remaining || 0) }}</span>
-                                    <button v-if="selectedInvoice?.customer?.unpaid_count > 1" type="button" @click="paymentForm.amount = selectedInvoice?.customer?.total_unpaid" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800">Bayar Semua Tunggakan</button>
+                                    <button v-if="selectedInvoice?.customer?.unpaid_count > 1" type="button" @click="paymentForm.amount = selectedInvoice?.customer?.total_unpaid" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800">Bayar Semua Tagihan</button>
                                 </div>
                             </div>
 

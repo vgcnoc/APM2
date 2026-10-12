@@ -11,13 +11,27 @@ class InvoiceController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = Invoice::with(['customer' => function($q) {
+        $today = now()->startOfDay();
+
+        $query = Invoice::with(['customer' => function($q) use ($today) {
             $q->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id', 'created_at', 'status')
               ->withCount(['invoices as unpaid_invoices_count' => function ($query) {
-                  $query->whereIn('status', ['unpaid', 'partial']);
+                  $query->whereIn('status', ['unpaid', 'partial'])
+                        ->where('is_reseller_balance', false);
+              }])
+              ->withCount(['invoices as overdue_invoices_count' => function ($query) use ($today) {
+                  $query->whereIn('status', ['unpaid', 'partial'])
+                        ->where('is_reseller_balance', false)
+                        ->where('due_date', '<', $today);
               }])
               ->withSum(['invoices as total_unpaid_amount' => function ($query) {
-                  $query->whereIn('status', ['unpaid', 'partial']);
+                  $query->whereIn('status', ['unpaid', 'partial'])
+                        ->where('is_reseller_balance', false);
+              }], 'amount')
+              ->withSum(['invoices as total_overdue_amount' => function ($query) use ($today) {
+                  $query->whereIn('status', ['unpaid', 'partial'])
+                        ->where('is_reseller_balance', false)
+                        ->where('due_date', '<', $today);
               }], 'amount');
         }, 'customer.areaModel', 'customer.package', 'payments' => function($q) {
             $q->latest('payment_date');
@@ -115,6 +129,8 @@ class InvoiceController extends Controller
                         'status' => $invoice->customer->status,
                         'unpaid_count' => $invoice->customer->unpaid_invoices_count ?? 0,
                         'total_unpaid' => $invoice->customer->total_unpaid_amount ?? 0,
+                        'overdue_count' => $invoice->customer->overdue_invoices_count ?? 0,
+                        'total_overdue' => $invoice->customer->total_overdue_amount ?? 0,
                     ] : null,
                     'period_label' => $invoice->period_label,
                     'billing_type' => $invoice->billing_type ?? $invoice->customer?->billing_type,
