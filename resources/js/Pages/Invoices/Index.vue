@@ -590,28 +590,110 @@
                                 </div>
                             </div>
 
-                            <!-- Tanggal Efektif -->
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Efektif Perubahan</label>
-                                <input type="date" v-model="upgradeForm.effective_date" required class="w-full px-3.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none bg-gray-50 focus:bg-white" />
-                                <p class="text-[11px] text-gray-400 mt-1">Sisa hari periode bulan berjalan: <span class="font-bold text-gray-700">{{ calculatedRemainingDays }} hari</span></p>
+                            <!-- Tanggal Efektif & Pembayaran -->
+                            <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                                <label class="block text-xs font-bold text-gray-800 mb-1">Tanggal Perubahan Paket / Pembayaran</label>
+                                <input type="date" v-model="upgradeForm.effective_date" required class="w-full px-3.5 py-2 border border-gray-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white" />
+                                <div class="flex items-center justify-between text-[11px] text-gray-500 mt-1.5">
+                                    <span>Total hari dalam bulan: <strong>{{ calculatedDaysInMonth }} hari</strong></span>
+                                    <span>Hari perubahan: <strong>Tanggal {{ calculatedEffectiveDay }}</strong></span>
+                                </div>
+                            </div>
+
+                            <!-- Rincian Prorata Dua Arah: Pemakaian Ke Belakang & Ke Depan -->
+                            <div v-if="selectedNewPackage && upgradeForm.billing_action === 'prorata_diff'" class="space-y-3">
+                                <div class="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-between">
+                                    <span>Rincian Tagihan Prorata Bulan Berjalan</span>
+                                    <span class="text-[10px] font-normal text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">Ke Belakang + Ke Depan</span>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <!-- Pemakaian Ke Belakang (Paket Lama) -->
+                                    <div class="p-3.5 bg-amber-50/60 border border-amber-200 rounded-xl relative overflow-hidden">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="text-[10px] font-extrabold text-amber-800 uppercase tracking-wide">1. Pemakaian Ke Belakang</span>
+                                            <span class="text-[10px] font-bold bg-amber-200/80 text-amber-900 px-1.5 py-0.5 rounded">
+                                                {{ calculatedPastDays }} Hari
+                                            </span>
+                                        </div>
+                                        <div class="text-[11px] text-gray-600">
+                                            Tgl 1 s/d {{ calculatedPastDays > 0 ? (calculatedEffectiveDay - 1) : 1 }}
+                                        </div>
+                                        <div class="text-xs font-bold text-gray-800 truncate mt-0.5">
+                                            {{ selectedUpgradeInvoice?.customer?.package_name || 'Paket Lama' }}
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1">
+                                            ({{ calculatedPastDays }}/{{ calculatedDaysInMonth }}) &times; {{ formatCurrency(currentPackagePrice) }}
+                                        </div>
+                                        <div class="text-sm font-black text-amber-700 mt-1.5">
+                                            {{ formatCurrency(calculatedPastAmount) }}
+                                        </div>
+                                    </div>
+
+                                    <!-- Pemakaian Ke Depan (Paket Baru) -->
+                                    <div class="p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-xl relative overflow-hidden">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wide">2. Pemakaian Ke Depan</span>
+                                            <span class="text-[10px] font-bold bg-emerald-200/80 text-emerald-900 px-1.5 py-0.5 rounded">
+                                                {{ calculatedFutureDays }} Hari
+                                            </span>
+                                        </div>
+                                        <div class="text-[11px] text-gray-600">
+                                            Tgl {{ calculatedEffectiveDay }} s/d {{ calculatedDaysInMonth }}
+                                        </div>
+                                        <div class="text-xs font-bold text-emerald-900 truncate mt-0.5">
+                                            {{ selectedNewPackage?.name }}
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1">
+                                            ({{ calculatedFutureDays }}/{{ calculatedDaysInMonth }}) &times; {{ formatCurrency(selectedNewPackage?.price) }}
+                                        </div>
+                                        <div class="text-sm font-black text-emerald-700 mt-1.5">
+                                            {{ formatCurrency(calculatedFutureAmount) }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Box Ringkasan Total Tagihan Prorata -->
+                                <div class="p-3.5 bg-gradient-to-r from-purple-900 to-indigo-900 text-white rounded-xl shadow-md">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="text-[10px] uppercase font-bold text-purple-200 tracking-wider">Total Tagihan Prorata Bulan Ini</div>
+                                            <div class="text-[11px] text-purple-300 mt-0.5">
+                                                {{ formatCurrency(calculatedPastAmount) }} (Lama) + {{ formatCurrency(calculatedFutureAmount) }} (Baru)
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-lg font-black text-white">
+                                                {{ formatCurrency(calculatedTotalProrata) }}
+                                            </div>
+                                            <div class="text-[10px] text-purple-200">
+                                                <span v-if="selectedUpgradeInvoice?.status === 'paid'">
+                                                    Selisih tagihan: <span class="font-bold underline">{{ formatCurrency(calculatedTotalProrata - Number(selectedUpgradeInvoice?.amount || 0)) }}</span>
+                                                </span>
+                                                <span v-else>
+                                                    Tagihan awal: {{ formatCurrency(selectedUpgradeInvoice?.amount || 0) }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Opsi Billing Action -->
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 mb-2">Penyesuaian Biaya & Tagihan (Billing)</label>
+                                <label class="block text-xs font-bold text-gray-700 mb-2">Pilihan Penyesuaian Tagihan</label>
                                 <div class="space-y-2.5">
                                     <label class="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all" :class="upgradeForm.billing_action === 'prorata_diff' ? 'border-purple-500 bg-purple-50/50 ring-1 ring-purple-500' : 'border-gray-200 hover:bg-gray-50'">
                                         <input type="radio" value="prorata_diff" v-model="upgradeForm.billing_action" class="mt-1 text-purple-600 focus:ring-purple-500" />
                                         <div class="flex-1">
                                             <div class="flex items-center justify-between">
-                                                <span class="text-xs font-bold text-gray-800">Hitung Prorata Selisih Sisa Hari</span>
-                                                <span v-if="selectedNewPackage" class="text-xs font-black px-2 py-0.5 rounded bg-white border" :class="calculatedProrata >= 0 ? 'text-emerald-600 border-emerald-200' : 'text-amber-600 border-amber-200'">
-                                                    {{ calculatedProrata >= 0 ? '+' : '' }}{{ formatCurrency(calculatedProrata) }}
+                                                <span class="text-xs font-bold text-gray-800">Hitung Prorata Lengkap (Ke Belakang &amp; Ke Depan)</span>
+                                                <span v-if="selectedNewPackage" class="text-xs font-black px-2 py-0.5 rounded bg-white border border-purple-200 text-purple-700">
+                                                    {{ formatCurrency(calculatedTotalProrata) }}
                                                 </span>
                                             </div>
                                             <p class="text-[11px] text-gray-500 mt-0.5">
-                                                Nominal tagihan disesuaikan berdasarkan sisa {{ calculatedRemainingDays }} hari pada bulan ini. (Jika invoice sudah lunas, akan dibuat invoice selisih baru).
+                                                Membagi tagihan berdasarkan pemakaian paket lama (tgl 1 s/d saat bayar/ganti) + paket baru (saat ganti s/d akhir bulan).
                                             </p>
                                         </div>
                                     </label>
@@ -620,13 +702,13 @@
                                         <input type="radio" value="replace_invoice" v-model="upgradeForm.billing_action" class="mt-1 text-purple-600 focus:ring-purple-500" />
                                         <div class="flex-1">
                                             <div class="flex items-center justify-between">
-                                                <span class="text-xs font-bold text-gray-800">Ubah Nominal Tagihan ke Tarif Paket Baru</span>
+                                                <span class="text-xs font-bold text-gray-800">Ubah Nominal Penuh ke Tarif Paket Baru</span>
                                                 <span v-if="selectedNewPackage" class="text-xs font-black px-2 py-0.5 rounded bg-white border border-purple-200 text-purple-700">
                                                     {{ formatCurrency(selectedNewPackage?.price) }}
                                                 </span>
                                             </div>
                                             <p class="text-[11px] text-gray-500 mt-0.5">
-                                                Mengganti total tagihan invoice ini menjadi tarif penuh dari paket baru (hanya jika invoice belum lunas).
+                                                Mengabaikan prorata masa lalu; total tagihan invoice langsung diganti dengan tarif utuh paket baru.
                                             </p>
                                         </div>
                                     </label>
@@ -634,12 +716,32 @@
                                     <label class="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all" :class="upgradeForm.billing_action === 'next_month_only' ? 'border-purple-500 bg-purple-50/50 ring-1 ring-purple-500' : 'border-gray-200 hover:bg-gray-50'">
                                         <input type="radio" value="next_month_only" v-model="upgradeForm.billing_action" class="mt-1 text-purple-600 focus:ring-purple-500" />
                                         <div class="flex-1">
-                                            <span class="text-xs font-bold text-gray-800">Hanya Ubah Paket (Efektif Bulan Berikutnya)</span>
+                                            <span class="text-xs font-bold text-gray-800">Hanya Ubah Paket (Efektif Periode Bulan Depan)</span>
                                             <p class="text-[11px] text-gray-500 mt-0.5">
-                                                Invoice saat ini tidak diubah nominalnya. Paket pelanggan langsung diupdate dan tarif baru berlaku saat generate invoice bulan depan.
+                                                Tagihan bulan ini tetap tidak diubah. Tarif baru akan berlaku saat penerbitan tagihan bulan depan.
                                             </p>
                                         </div>
                                     </label>
+                                </div>
+                            </div>
+
+                            <!-- Opsi Sekaligus Bayar Lunas Sekarang -->
+                            <div class="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200 space-y-3">
+                                <label class="flex items-center gap-2.5 cursor-pointer">
+                                    <input type="checkbox" v-model="upgradeForm.pay_now" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300" />
+                                    <div>
+                                        <span class="text-xs font-bold text-emerald-900">Sekaligus Tandai Lunas / Bayar Sekarang</span>
+                                        <p class="text-[11px] text-emerald-700">Otomatis mencatat pembayaran lunas untuk tagihan hasil upgrade/downgrade ini saat disimpan.</p>
+                                    </div>
+                                </label>
+
+                                <div v-if="upgradeForm.pay_now" class="pt-2 border-t border-emerald-200 flex items-center gap-2">
+                                    <span class="text-[11px] font-bold text-emerald-900">Metode:</span>
+                                    <select v-model="upgradeForm.payment_method" class="text-xs font-semibold px-2.5 py-1.5 bg-white border border-emerald-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                        <option value="cash">Tunai / Cash</option>
+                                        <option value="transfer">Transfer Bank</option>
+                                        <option value="qris">Scan QRIS</option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -953,6 +1055,8 @@ const upgradeForm = useForm({
     effective_date: new Date().toISOString().split('T')[0],
     sync_radius: true,
     notes: '',
+    pay_now: false,
+    payment_method: 'cash',
 });
 
 const selectedNewPackage = computed(() => {
@@ -971,13 +1075,10 @@ const priceDiff = computed(() => {
 
 const isUpgrade = computed(() => priceDiff.value >= 0);
 
-const calculatedRemainingDays = computed(() => {
-    if (!upgradeForm.effective_date) return 0;
+const calculatedEffectiveDay = computed(() => {
+    if (!upgradeForm.effective_date) return 1;
     const d = new Date(upgradeForm.effective_date);
-    const year = d.getFullYear();
-    const month = d.getMonth();
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    return Math.max(1, lastDay - d.getDate() + 1);
+    return d.getDate();
 });
 
 const calculatedDaysInMonth = computed(() => {
@@ -986,12 +1087,27 @@ const calculatedDaysInMonth = computed(() => {
     return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
 });
 
-const calculatedProrata = computed(() => {
+const calculatedPastDays = computed(() => {
+    return Math.max(0, calculatedEffectiveDay.value - 1);
+});
+
+const calculatedFutureDays = computed(() => {
+    return Math.max(1, calculatedDaysInMonth.value - calculatedEffectiveDay.value + 1);
+});
+
+const calculatedPastAmount = computed(() => {
+    if (!currentPackagePrice.value || calculatedPastDays.value <= 0) return 0;
+    return Math.round((currentPackagePrice.value / calculatedDaysInMonth.value) * calculatedPastDays.value);
+});
+
+const calculatedFutureAmount = computed(() => {
     if (!selectedNewPackage.value) return 0;
-    const diff = priceDiff.value;
-    const days = calculatedRemainingDays.value;
-    const totalDays = calculatedDaysInMonth.value || 30;
-    return Math.round((diff / totalDays) * days);
+    const newPrice = Number(selectedNewPackage.value.price || 0);
+    return Math.round((newPrice / calculatedDaysInMonth.value) * calculatedFutureDays.value);
+});
+
+const calculatedTotalProrata = computed(() => {
+    return calculatedPastAmount.value + calculatedFutureAmount.value;
 });
 
 function openUpgradeModal(invoice) {
@@ -1001,6 +1117,8 @@ function openUpgradeModal(invoice) {
     upgradeForm.effective_date = new Date().toISOString().split('T')[0];
     upgradeForm.sync_radius = true;
     upgradeForm.notes = '';
+    upgradeForm.pay_now = false;
+    upgradeForm.payment_method = 'cash';
     showUpgradeModal.value = true;
 }
 

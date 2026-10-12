@@ -366,6 +366,8 @@ class InvoiceController extends Controller
             'effective_date' => 'nullable|date',
             'sync_radius' => 'nullable|boolean',
             'notes' => 'nullable|string',
+            'pay_now' => 'nullable|boolean',
+            'payment_method' => 'nullable|string',
         ]);
 
         $customer = $invoice->customer;
@@ -387,54 +389,131 @@ class InvoiceController extends Controller
         $actionType = $isUpgrade ? 'upgrade' : 'downgrade';
 
         $effectiveDate = $request->effective_date ? \Carbon\Carbon::parse($request->effective_date) : now();
+        $daysInMonth = \Carbon\Carbon::create($invoice->period_year ?: $effectiveDate->year, $invoice->period_month ?: $effectiveDate->month, 1)->daysInMonth;
+        $effectiveDay = min($daysInMonth, max(1, $effectiveDate->day));
 
         // 1. Penyesuaian Billing
         if ($request->billing_action === 'prorata_diff') {
-            $daysInMonth = $effectiveDate->daysInMonth;
-            $remainingDays = max(1, $daysInMonth - $effectiveDate->day + 1);
-            $diffPerMonth = $newPrice - $oldPrice;
-            $prorataDiff = round(($diffPerMonth / $daysInMonth) * $remainingDays, 2);
+            // Pemakaian ke belakang (Paket Lama): tanggal 1 s/d (effectiveDay - 1)
+            $pastDays = max(0, $effectiveDay - 1);
+            $pastAmount = $pastDays > 0 ? round(($oldPrice / $daysInMonth) * $pastDays) : 0;
 
-            $diffFormat = ($prorataDiff >= 0 ? '+' : '-') . 'Rp ' . number_format(abs($prorataDiff), 0, ',', '.');
+            // Pemakaian ke depan (Paket Baru): tanggal effectiveDay s/d akhir bulan (daysInMonth)
+            $futureDays = max(1, $daysInMonth - $effectiveDay + 1);
+            $futureAmount = round(($newPrice / $daysInMonth) * $futureDays);
+
+            // Terapkan PPN jika ada
+            $taxPpn = (float) ($customer->tax_ppn ?? \App\Models\Setting::get('tax_ppn', '0'));
+            if ($taxPpn > 0) {
+                $pastAmount = round($pastAmount + ($pastAmount * ($taxPpn / 100)));
+                $futureAmount = round($futureAmount + ($futureAmount * ($taxPpn / 100)));
+            }
+
+            // Total tagihan prorata untuk satu periode bulan berjalan
+            $totalProrataAmount = $pastAmount + $futureAmount;
+            $oldPackageName = $oldPackage?->name ?? 'Paket Lama';
+            $rincianStr = "Prorata {$actionLabel} ke {$newPackage->name} [Lama: {$pastDays} hari ({$oldPackageName} @ Rp " . number_format($pastAmount, 0, ',', '.') . ") + Baru: {$futureDays} hari ({$newPackage->name} @ Rp " . number_format($futureAmount, 0, ',', '.') . ") = Total Rp " . number_format($totalProrataAmount, 0, ',', '.') . "]";
 
             if (in_array($invoice->status, ['unpaid', 'partial'])) {
-                $invoice->amount = max(0, (float) $invoice->amount + $prorataDiff);
+                $invoice->amount = $totalProrataAmount;
                 $invoice->billing_type = $actionType;
                 $invoice->is_prorata = true;
-                $noteAppend = "{$actionLabel} ke {$newPackage->name} (Prorata {$remainingDays} hari: {$diffFormat})";
-                $invoice->notes = $invoice->notes ? $invoice->notes . ' | ' . $noteAppend : $noteAppend;
+                $invoice->notes = $invoice->notes ? $invoice->notes . ' | ' . $rincianStr : $rincianStr;
                 if ($request->filled('notes')) {
                     $invoice->notes .= ' (' . $request->notes . ')';
                 }
+                
+                $totalPaid = (float) $invoice->payments()->sum('amount');
+                $invoice->total_paid = $totalPaid;
+                $invoice->remaining = max(0, $totalProrataAmount - $totalPaid);
                 $invoice->save();
-            } else {
-                // Jika invoice berjalan sudah lunas dan ada tambahan biaya upgrade
-                if ($prorataDiff > 0) {
-                    Invoice::create([
+
+                // Jika dicentang opsi bayar lunas seketika
+                if ($request->boolean('pay_now') && $invoice->remaining > 0) {
+                    $payMethod = $request->payment_method ?: 'cash';
+                    $invoice->payments()->create([
                         'customer_id' => $customer->id,
-                        'period_month' => $effectiveDate->month,
-                        'period_year' => $effectiveDate->year,
-                        'amount' => $prorataDiff,
+                        'payment_date' => now(),
+                        'amount' => $invoice->remaining,
+                        'payment_method' => $payMethod,
+                        'notes' => 'Pembayaran lunas seketika saat ' . $actionLabel . ' paket',
+                        'processed_by' => auth()->id(),
+                    ]);
+                    $invoice->update([
+                        'status' => 'paid',
+                        'total_paid' => $totalProrataAmount,
+                        'remaining' => 0,
+                    ]);
+                }
+            } else {
+                // Jika invoice berjalan sudah lunas, hitung selisih dari nilai yang telah dibayar
+                $paidAmount = (float) $invoice->amount;
+                $diff = $totalProrataAmount - $paidAmount;
+
+                if ($diff > 0) {
+                    $newInv = Invoice::create([
+                        'customer_id' => $customer->id,
+                        'period_month' => $invoice->period_month ?: $effectiveDate->month,
+                        'period_year' => $invoice->period_year ?: $effectiveDate->year,
+                        'amount' => $diff,
                         'due_date' => now()->addDays(7),
                         'issued_date' => now(),
                         'status' => 'unpaid',
                         'is_prorata' => true,
                         'billing_type' => $actionType,
                         'is_reseller_balance' => false,
-                        'notes' => "Selisih {$actionLabel} ke {$newPackage->name} periode " . $effectiveDate->translatedFormat('F Y') . ($request->notes ? ' - ' . $request->notes : ''),
+                        'notes' => "Selisih {$actionLabel} ke {$newPackage->name} periode " . $effectiveDate->translatedFormat('F Y') . " [Prorata Baru: {$futureDays} hari (Rp " . number_format($futureAmount, 0, ',', '.') . ") - Sisa Lama: Rp " . number_format(max(0, $paidAmount - $pastAmount), 0, ',', '.') . " = Rp " . number_format($diff, 0, ',', '.') . "]" . ($request->notes ? ' - ' . $request->notes : ''),
                     ]);
+
+                    if ($request->boolean('pay_now')) {
+                        $payMethod = $request->payment_method ?: 'cash';
+                        $newInv->payments()->create([
+                            'customer_id' => $customer->id,
+                            'payment_date' => now(),
+                            'amount' => $diff,
+                            'payment_method' => $payMethod,
+                            'notes' => 'Pembayaran lunas selisih saat ' . $actionLabel . ' paket',
+                            'processed_by' => auth()->id(),
+                        ]);
+                        $newInv->update([
+                            'status' => 'paid',
+                            'total_paid' => $diff,
+                            'remaining' => 0,
+                        ]);
+                    }
+                } elseif ($diff < 0) {
+                    $noteAppend = "Kelebihan bayar {$actionLabel} sebesar Rp " . number_format(abs($diff), 0, ',', '.');
+                    $invoice->notes = $invoice->notes ? $invoice->notes . ' | ' . $noteAppend : $noteAppend;
+                    $invoice->save();
                 }
             }
         } elseif ($request->billing_action === 'replace_invoice') {
             if (in_array($invoice->status, ['unpaid', 'partial'])) {
                 $invoice->amount = $newPrice;
                 $invoice->billing_type = $actionType;
-                $noteAppend = "{$actionLabel} ke {$newPackage->name} (Nominal tagihan diubah ke paket baru)";
+                $noteAppend = "{$actionLabel} ke {$newPackage->name} (Nominal tagihan diubah ke tarif penuh paket baru)";
                 $invoice->notes = $invoice->notes ? $invoice->notes . ' | ' . $noteAppend : $noteAppend;
                 if ($request->filled('notes')) {
                     $invoice->notes .= ' (' . $request->notes . ')';
                 }
                 $invoice->save();
+
+                if ($request->boolean('pay_now')) {
+                    $payMethod = $request->payment_method ?: 'cash';
+                    $invoice->payments()->create([
+                        'customer_id' => $customer->id,
+                        'payment_date' => now(),
+                        'amount' => $newPrice,
+                        'payment_method' => $payMethod,
+                        'notes' => 'Pembayaran lunas seketika saat ' . $actionLabel . ' paket',
+                        'processed_by' => auth()->id(),
+                    ]);
+                    $invoice->update([
+                        'status' => 'paid',
+                        'total_paid' => $newPrice,
+                        'remaining' => 0,
+                    ]);
+                }
             }
         } elseif ($request->billing_action === 'next_month_only') {
             $invoice->billing_type = $actionType;
