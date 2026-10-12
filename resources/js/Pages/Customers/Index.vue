@@ -285,6 +285,11 @@
                     <button v-if="row.user_id" @click="openResetModal(row)" class="p-1.5 rounded-md border border-gray-200 text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-colors shadow-sm bg-white" title="Ubah Password Akun">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
                     </button>
+                    <button @click="openTerminateModal(row)" class="p-1.5 rounded-md border border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors shadow-sm bg-white ml-1" title="Stop Permanen">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                        </svg>
+                    </button>
                     <button @click="confirmDelete(row)" class="p-1.5 rounded-md border border-gray-200 text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm bg-white ml-1" title="Hapus">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -408,6 +413,56 @@
                             <button type="submit" :disabled="resetPasswordForm.processing" class="px-6 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
                                 <svg v-if="resetPasswordForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 {{ resetPasswordForm.processing ? 'Menyimpan...' : 'Ubah Password' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Stop Permanen Modal -->
+        <Teleport to="body">
+            <div v-if="showTerminateModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer" @click="showTerminateModal = false"></div>
+                <div class="relative bg-white border border-rose-200 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up">
+                    <div class="p-5 border-b border-rose-100 flex items-center justify-between bg-rose-50/50">
+                        <h3 class="text-base font-bold text-rose-900 flex items-center gap-2">
+                            <span class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center text-sm font-bold">⛔</span> Stop Permanen Pelanggan
+                        </h3>
+                        <button @click="showTerminateModal = false" class="text-gray-400 hover:text-gray-700">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    <form @submit.prevent="submitTerminate">
+                        <div class="p-6 space-y-4 text-xs">
+                            <div class="bg-rose-50 text-rose-800 p-3.5 rounded-xl border border-rose-200 shadow-sm leading-relaxed">
+                                Pelanggan <strong>{{ terminatingCustomer?.name }}</strong> ({{ terminatingCustomer?.customer_code }}) akan dipindahkan ke menu <strong>Stop Permanen</strong> dan dinonaktifkan dari sistem serta RADIUS.
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-gray-700 mb-1">Tanggal Berhenti <span class="text-rose-500">*</span></label>
+                                <input v-model="terminateForm.cancel_date" type="date" required class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-rose-500 focus:border-rose-500" />
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-gray-700 mb-1">Alasan Berhenti Berlangganan <span class="text-rose-500">*</span></label>
+                                <select v-model="terminateForm.cancel_reason" required class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-rose-500 focus:border-rose-500 mb-2">
+                                    <option value="">Pilih Alasan...</option>
+                                    <option value="Pindah Rumah / Domisili">Pindah Rumah / Domisili</option>
+                                    <option value="Kendala Finansial / Biaya">Kendala Finansial / Biaya</option>
+                                    <option value="Kecepatan / Gangguan Berulang">Kecepatan / Gangguan Berulang</option>
+                                    <option value="Beralih ke Provider Lain">Beralih ke Provider Lain</option>
+                                    <option value="Tidak Lagi Membutuhkan Internet">Tidak Lagi Membutuhkan Internet</option>
+                                    <option value="Lainnya">Alasan Lainnya</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-gray-700 mb-1">Catatan Tambahan</label>
+                                <textarea v-model="terminateForm.notes" rows="2" placeholder="Catatan opsional..." class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-rose-500 focus:border-rose-500"></textarea>
+                            </div>
+                        </div>
+                        <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2 rounded-b-2xl">
+                            <button type="button" @click="showTerminateModal = false" class="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg">Batal</button>
+                            <button type="submit" :disabled="terminateForm.processing" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
+                                <span>{{ terminateForm.processing ? 'Menyimpan...' : 'Stop Permanen Sekarang' }}</span>
                             </button>
                         </div>
                     </form>
@@ -597,6 +652,30 @@ function submitResetPassword() {
     });
 }
 
-// ── WhatsApp Notification ───────────────────────────────────────────
-// Removed as requested
+// ── Stop Permanen Modal ───────────────────────────────────────────
+const showTerminateModal = ref(false);
+const terminatingCustomer = ref(null);
+const terminateForm = useForm({
+    cancel_date: new Date().toISOString().split('T')[0],
+    cancel_reason: '',
+    notes: '',
+});
+
+function openTerminateModal(customer) {
+    terminatingCustomer.value = customer;
+    terminateForm.cancel_date = new Date().toISOString().split('T')[0];
+    terminateForm.cancel_reason = '';
+    terminateForm.notes = '';
+    showTerminateModal.value = true;
+}
+
+function submitTerminate() {
+    if (!terminatingCustomer.value) return;
+    terminateForm.post(`/customers/${terminatingCustomer.value.id}/terminate`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showTerminateModal.value = false;
+        }
+    });
+}
 </script>

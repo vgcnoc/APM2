@@ -9,6 +9,9 @@ use App\Models\Ont;
 use App\Models\Survey;
 use App\Models\TechnicianSchedule;
 use App\Models\User;
+use App\Models\Invoice;
+use App\Models\Setting;
+use App\Services\RadiusService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +27,7 @@ class CustomerController extends Controller
     public function index(Request $request): Response
     {
         $baseQuery = Customer::query()
+            ->where('status', '!=', 'terminated')
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
                     $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
@@ -58,8 +62,8 @@ class CustomerController extends Controller
         $pendingGrowth = $lastMonthPending > 0 ? round((($pendingCustomers - $lastMonthPending) / $lastMonthPending) * 100, 1) : ($pendingCustomers > 0 ? 100 : 0);
         $pendingPercentage = $totalCustomers > 0 ? round(($pendingCustomers / $totalCustomers) * 100, 1) : 0;
 
-        $inactiveCustomers = (clone $baseQuery)->whereIn('status', ['suspended', 'terminated'])->count();
-        $lastMonthInactive = (clone $baseQuery)->whereIn('status', ['suspended', 'terminated'])->where('created_at', '<', $now->copy()->startOfMonth())->count();
+        $inactiveCustomers = (clone $baseQuery)->where('status', 'suspended')->count();
+        $lastMonthInactive = (clone $baseQuery)->where('status', 'suspended')->where('created_at', '<', $now->copy()->startOfMonth())->count();
         $inactiveGrowth = $lastMonthInactive > 0 ? round((($inactiveCustomers - $lastMonthInactive) / $lastMonthInactive) * 100, 1) : ($inactiveCustomers > 0 ? 100 : 0);
         $inactivePercentage = $totalCustomers > 0 ? round(($inactiveCustomers / $totalCustomers) * 100, 1) : 0;
 
@@ -101,7 +105,6 @@ class CustomerController extends Controller
                 'installing' => 'Proses Pasang',
                 'active' => 'Aktif',
                 'suspended' => 'Suspended',
-                'terminated' => 'Terminated',
             ],
             'onlineUsernames' => (function() {
                 try {
@@ -362,7 +365,7 @@ class CustomerController extends Controller
 
     public function canceled(Request $request): Response
     {
-        $query = Customer::whereIn('status', ['canceled', 'terminated'])
+        $query = Customer::where('status', 'canceled')
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_booking_view_all'), function($q) {
                 if (auth()->user()->can('customers_booking_view_area')) {
                     $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
@@ -804,6 +807,209 @@ class CustomerController extends Controller
                 }
             })(),
         ]);
+    }
+
+    /**
+     * Halaman Pelanggan Stop Permanen (terminated)
+     */
+    public function terminated(Request $request): Response
+    {
+        $baseQuery = Customer::where('status', 'terminated');
+
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all')) {
+            if (auth()->user()->can('customers_all_view_area')) {
+                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+            } else {
+                $baseQuery->where('sales_id', auth()->id());
+            }
+        }
+
+        // Stats
+        $totalTerminated = (clone $baseQuery)->count();
+        $thisMonthTerminated = (clone $baseQuery)->whereMonth('cancel_date', now()->month)
+                                                 ->whereYear('cancel_date', now()->year)->count();
+        
+        $pendingOntCount = (clone $baseQuery)->whereHas('ont')->count();
+
+        $totalPiutang = (float) Invoice::whereHas('customer', function($q) {
+            $q->where('status', 'terminated');
+        })->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false)->sum('amount');
+
+        $stats = [
+            'total' => $totalTerminated,
+            'this_month' => $thisMonthTerminated,
+            'pending_ont' => $pendingOntCount,
+            'total_piutang' => $totalPiutang,
+        ];
+
+        // Query
+        $customers = (clone $baseQuery)
+            ->with([
+                'package', 
+                'areaModel', 
+                'ont.odp', 
+                'sales:id,name',
+                'invoices' => function($q) {
+                    $q->whereIn('status', ['unpaid', 'partial'])
+                      ->where('is_reseller_balance', false)
+                      ->orderBy('due_date', 'asc');
+                }
+            ])
+            ->withCount(['invoices as unpaid_invoices_count' => function ($q) {
+                $q->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false);
+            }])
+            ->withSum(['invoices as total_unpaid_amount' => function ($q) {
+                $q->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false);
+            }], 'amount')
+            ->search($request->search)
+            ->when($request->area_id, fn($q, $area) => $q->where('area_id', $area))
+            ->when($request->package_id, fn($q, $pkg) => $q->where('package_id', $pkg))
+            ->when($request->ont_status === 'pending', fn($q) => $q->whereHas('ont'))
+            ->when($request->ont_status === 'returned', fn($q) => $q->whereDoesntHave('ont'))
+            ->when($request->billing_status === 'unpaid', fn($q) => $q->has('invoices'))
+            ->when($request->billing_status === 'paid', fn($q) => $q->doesntHave('invoices'))
+            ->orderByDesc('cancel_date')
+            ->orderByDesc('updated_at')
+            ->paginate($request->per_page ?? 15)
+            ->withQueryString();
+
+        return Inertia::render('Customers/Terminated', [
+            'customers' => $customers,
+            'packages' => InternetPackage::active()->get(['id', 'name', 'price']),
+            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'area_id', 'package_id', 'ont_status', 'billing_status']),
+            'company' => [
+                'name' => Setting::get('company_name', config('app.name', 'ISP Provider')),
+                'phone' => Setting::get('company_phone', ''),
+            ]
+        ]);
+    }
+
+    /**
+     * Stop Permanen Pelanggan (dari menu manapun)
+     */
+    public function terminate(Request $request, Customer $customer, RadiusService $radius)
+    {
+        $request->validate([
+            'cancel_reason' => 'required|string',
+            'cancel_date' => 'nullable|date',
+            'notes' => 'nullable|string',
+        ]);
+
+        $cancelDate = $request->cancel_date ?: now()->toDateString();
+
+        $customer->update([
+            'status' => 'terminated',
+            'cancel_date' => $cancelDate,
+            'cancel_reason' => $request->cancel_reason,
+            'notes' => $request->notes ? ($customer->notes ? $customer->notes . ' | ' . $request->notes : $request->notes) : $customer->notes,
+        ]);
+
+        // Putus koneksi dan hapus user RADIUS
+        $radius->guard(function($r) use ($customer) {
+            $r->syncCustomer($customer);
+            $accounts = $r->customerAccounts($customer);
+            foreach (array_keys($accounts) as $username) {
+                $r->removeUser($username);
+                $r->disconnect($username);
+            }
+        });
+
+        return back()->with('success', "Pelanggan {$customer->name} ({$customer->customer_code}) berhasil di-Stop Permanen dan dipindahkan ke menu Stop Permanen.");
+    }
+
+    /**
+     * Reaktivasi Pelanggan Stop Permanen
+     */
+    public function reactivate(Request $request, Customer $customer, RadiusService $radius)
+    {
+        $request->validate([
+            'package_id' => 'nullable|exists:internet_packages,id',
+            'activation_date' => 'nullable|date',
+            'target_status' => 'nullable|in:active,installing,survey',
+        ]);
+
+        $targetStatus = $request->target_status ?: 'active';
+        $packageId = $request->package_id ?: $customer->package_id;
+        $actDate = $request->activation_date ?: now()->toDateString();
+
+        $customer->update([
+            'status' => $targetStatus,
+            'package_id' => $packageId,
+            'activation_date' => $targetStatus === 'active' ? $actDate : $customer->activation_date,
+            'cancel_date' => null,
+            'cancel_reason' => null,
+            'suspend_start' => null,
+            'suspend_end' => null,
+        ]);
+
+        if ($targetStatus === 'active') {
+            $radius->guard(function($r) use ($customer) {
+                $r->syncCustomer($customer);
+            });
+        }
+
+        return back()->with('success', "Pelanggan {$customer->name} ({$customer->customer_code}) berhasil direaktivasi (Status: {$customer->status_label}).");
+    }
+
+    /**
+     * Tarik ONT dari Pelanggan ke Stok Gudang
+     */
+    public function pullOnt(Request $request, Customer $customer)
+    {
+        $ont = $customer->ont;
+        if (!$ont) {
+            return back()->withErrors(['error' => 'Pelanggan ini tidak memiliki perangkat ONT yang terpasang.']);
+        }
+
+        $sn = $ont->serial_number;
+
+        $ont->update([
+            'customer_id' => null,
+            'status' => 'in_stock',
+            'description' => 'Ditarik dari pelanggan ' . $customer->name . ' (' . $customer->customer_code . ') pada ' . now()->format('d/m/Y'),
+        ]);
+
+        return back()->with('success', "Perangkat ONT {$sn} berhasil dilepas dan dikembalikan ke stok gudang.");
+    }
+
+    /**
+     * Pemutihan / Penghapusan Sisa Tagihan Pelanggan Stop Permanen
+     */
+    public function writeOffInvoices(Request $request, Customer $customer)
+    {
+        $invoices = $customer->invoices()->whereIn('status', ['unpaid', 'partial'])->get();
+        if ($invoices->isEmpty()) {
+            return back()->with('info', 'Tidak ada tagihan tertunggak untuk pelanggan ini.');
+        }
+
+        foreach ($invoices as $inv) {
+            $inv->update([
+                'status' => 'cancelled',
+                'notes' => ($inv->notes ? $inv->notes . ' | ' : '') . 'Pemutihan tagihan stop permanen pada ' . now()->format('d/m/Y'),
+            ]);
+        }
+
+        return back()->with('success', "Sebanyak {$invoices->count()} tagihan pelanggan {$customer->name} berhasil dihapuskan (pemutihan).");
+    }
+
+    /**
+     * Cetak Berita Acara Berhenti Berlangganan (BAB)
+     */
+    public function printTermination(Customer $customer)
+    {
+        $customer->load(['package', 'areaModel', 'ont', 'sales']);
+
+        $company = [
+            'name' => Setting::get('company_name', config('app.name', 'ISP Management')),
+            'address' => Setting::get('company_address', 'Layanan Internet Cepat & Stabil'),
+            'phone' => Setting::get('company_phone', ''),
+            'email' => Setting::get('company_email', ''),
+            'logo' => Setting::get('company_logo', null),
+        ];
+
+        return view('print.termination', compact('customer', 'company'));
     }
 
     /**

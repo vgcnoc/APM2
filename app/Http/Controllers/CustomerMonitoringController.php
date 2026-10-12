@@ -25,22 +25,25 @@ class CustomerMonitoringController extends Controller
         $stopReason = $request->query('stop_reason', 'all');
 
         // ── 1. STATS RINGKASAN GLOBAL ─────────────────────────────
-        // Pelanggan menunggak (memiliki invoice belum lunas yang telah lewat jatuh tempo)
-        $menunggakCustomersCount = Customer::whereHas('invoices', function ($q) use ($today) {
-            $q->whereIn('status', ['unpaid', 'partial'])
-              ->where('is_reseller_balance', false)
-              ->where('due_date', '<', $today);
-        })->count();
+        // Pelanggan menunggak (memiliki invoice belum lunas yang telah lewat jatuh tempo dan belum terminated)
+        $menunggakCustomersCount = Customer::where('status', '!=', 'terminated')
+            ->whereHas('invoices', function ($q) use ($today) {
+                $q->whereIn('status', ['unpaid', 'partial'])
+                  ->where('is_reseller_balance', false)
+                  ->where('due_date', '<', $today);
+            })->count();
 
         $totalNominalMenunggak = (float) Invoice::whereIn('status', ['unpaid', 'partial'])
             ->where('is_reseller_balance', false)
             ->where('due_date', '<', $today)
+            ->whereHas('customer', fn($c) => $c->where('status', '!=', 'terminated'))
             ->sum('amount');
 
-        // Janji bayar
+        // Janji bayar (hanya pelanggan yang belum terminated)
         $janjiBayarQuery = Invoice::whereIn('status', ['unpaid', 'partial'])
             ->where('is_reseller_balance', false)
-            ->whereNotNull('promise_date');
+            ->whereNotNull('promise_date')
+            ->whereHas('customer', fn($c) => $c->where('status', '!=', 'terminated'));
 
         $totalJanjiBayarCount = (clone $janjiBayarQuery)->count();
         $totalNominalJanjiBayar = (float) (clone $janjiBayarQuery)->sum('amount');
@@ -83,7 +86,8 @@ class CustomerMonitoringController extends Controller
             ])
             ->where('is_reseller_balance', false)
             ->whereIn('status', ['unpaid', 'partial'])
-            ->whereNotNull('promise_date');
+            ->whereNotNull('promise_date')
+            ->whereHas('customer', fn($c) => $c->where('status', '!=', 'terminated'));
 
             if ($search) {
                 $q->where(function ($sub) use ($search) {
@@ -156,7 +160,8 @@ class CustomerMonitoringController extends Controller
 
         } else {
             // TAB: SERING MENUNGGAK (DEFAULT)
-            $q = Customer::with([
+            $q = Customer::where('status', '!=', 'terminated')
+            ->with([
                 'areaModel:id,name',
                 'package:id,name,price',
                 'invoices' => function ($inv) {

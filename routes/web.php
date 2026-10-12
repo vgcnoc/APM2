@@ -53,6 +53,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/online', [CustomerController::class, 'online'])->name('online');
         Route::get('/offline', [CustomerController::class, 'offline'])->name('offline');
         Route::get('/canceled', [CustomerController::class, 'canceled'])->name('canceled');
+        Route::get('/terminated', [CustomerController::class, 'terminated'])->name('terminated');
+
+        // Aksi Pelanggan Stop Permanen
+        Route::post('/{customer}/terminate', [CustomerController::class, 'terminate'])->name('terminate');
+        Route::post('/{customer}/reactivate', [CustomerController::class, 'reactivate'])->name('reactivate');
+        Route::post('/{customer}/pull-ont', [CustomerController::class, 'pullOnt'])->name('pull-ont');
+        Route::post('/{customer}/write-off-invoices', [CustomerController::class, 'writeOffInvoices'])->name('write-off-invoices');
+        Route::get('/{customer}/print-termination', [CustomerController::class, 'printTermination'])->name('print-termination');
 
         // Assign ONT ke pelanggan
         Route::post('/{customer}/assign-ont', [CustomerController::class, 'assignOnt'])
