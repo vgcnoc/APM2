@@ -14,17 +14,27 @@ class CustomerAreaController extends Controller
      */
     private function getCustomer()
     {
-        return auth()->user()->customer;
+        $user = auth()->user();
+        if ($user->customer) {
+            return $user->customer;
+        }
+        $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+        if ($reseller && $reseller->customer) {
+            return $reseller->customer;
+        }
+        return null;
     }
 
     public function dashboard()
     {
+        $user = auth()->user();
+        if ($user->role === 'reseller' || \App\Models\Reseller::where('user_id', $user->id)->exists()) {
+            return redirect()->route('client-area.dashboard');
+        }
+
         $customer = $this->getCustomer();
 
         if (!$customer) {
-            if (auth()->user()->reseller) {
-                return redirect()->route('client-area.dashboard');
-            }
             abort(403, 'Akun pelanggan tidak ditemukan.');
         }
 
@@ -52,12 +62,14 @@ class CustomerAreaController extends Controller
 
     public function billing()
     {
+        $user = auth()->user();
+        if ($user->role === 'reseller' || \App\Models\Reseller::where('user_id', $user->id)->exists()) {
+            return redirect()->route('client-area.billing');
+        }
+
         $customer = $this->getCustomer();
 
         if (!$customer) {
-            if (auth()->user()->reseller) {
-                return redirect()->route('client-area.dashboard');
-            }
             abort(403, 'Akun pelanggan tidak ditemukan.');
         }
 

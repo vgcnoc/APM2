@@ -28,12 +28,12 @@
                     </div>
                     
                     <div class="hidden md:flex items-center gap-8 flex-1 ml-10">
-                        <Link href="/client-area/dashboard" class="text-sm font-medium text-gray-600 hover:text-blue-600">Dashboard</Link>
-                        <Link href="/vouchers" class="text-sm font-medium text-gray-600 hover:text-blue-600">Semua Voucher</Link>
-                        <Link href="/vouchers/online" class="text-sm font-medium text-gray-600 hover:text-blue-600">Online</Link>
-                        <Link href="/vouchers/offline" class="text-sm font-medium text-gray-600 hover:text-blue-600">Offline</Link>
-                        <Link href="/vouchers/expired" class="text-sm font-medium text-gray-600 hover:text-blue-600">Expired</Link>
-                        <Link href="/my/billing" class="text-sm font-medium text-gray-600 hover:text-blue-600">Tagihan & Kasbon</Link>
+                        <Link href="/client-area/dashboard" class="text-sm transition-colors" :class="$page.url === '/client-area/dashboard' ? 'text-blue-600 font-bold' : 'text-gray-600 hover:text-blue-600 font-medium'">Dashboard</Link>
+                        <Link href="/vouchers" class="text-sm transition-colors" :class="$page.url === '/vouchers' ? 'text-blue-600 font-bold' : 'text-gray-600 hover:text-blue-600 font-medium'">Semua Voucher</Link>
+                        <Link href="/vouchers/online" class="text-sm transition-colors" :class="$page.url.startsWith('/vouchers/online') ? 'text-blue-600 font-bold' : 'text-gray-600 hover:text-blue-600 font-medium'">Online</Link>
+                        <Link href="/vouchers/offline" class="text-sm transition-colors" :class="$page.url.startsWith('/vouchers/offline') ? 'text-blue-600 font-bold' : 'text-gray-600 hover:text-blue-600 font-medium'">Offline</Link>
+                        <Link href="/vouchers/expired" class="text-sm transition-colors" :class="$page.url.startsWith('/vouchers/expired') ? 'text-blue-600 font-bold' : 'text-gray-600 hover:text-blue-600 font-medium'">Expired</Link>
+                        <Link href="/client-area/billing" class="text-sm transition-colors" :class="$page.url.startsWith('/client-area/billing') ? 'text-blue-600 font-bold' : 'text-gray-600 hover:text-blue-600 font-medium'">Tagihan & Kasbon</Link>
                     </div>
 
                     <!-- User Menu -->
@@ -63,12 +63,12 @@
             <!-- Mobile menu, show/hide based on menu state. -->
             <div v-if="showMobileMenu" class="md:hidden border-t border-gray-100 bg-white">
                 <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                    <Link href="/client-area/dashboard" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Dashboard</Link>
-                    <Link href="/vouchers" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Semua Voucher</Link>
-                    <Link href="/vouchers/online" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Online</Link>
-                    <Link href="/vouchers/offline" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Offline</Link>
-                    <Link href="/vouchers/expired" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Expired</Link>
-                    <Link href="/my/billing" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Tagihan & Kasbon</Link>
+                    <Link href="/client-area/dashboard" class="block px-3 py-2 rounded-md text-base font-medium" :class="$page.url === '/client-area/dashboard' ? 'text-blue-600 bg-blue-50 font-bold' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'">Dashboard</Link>
+                    <Link href="/vouchers" class="block px-3 py-2 rounded-md text-base font-medium" :class="$page.url === '/vouchers' ? 'text-blue-600 bg-blue-50 font-bold' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'">Semua Voucher</Link>
+                    <Link href="/vouchers/online" class="block px-3 py-2 rounded-md text-base font-medium" :class="$page.url.startsWith('/vouchers/online') ? 'text-blue-600 bg-blue-50 font-bold' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'">Online</Link>
+                    <Link href="/vouchers/offline" class="block px-3 py-2 rounded-md text-base font-medium" :class="$page.url.startsWith('/vouchers/offline') ? 'text-blue-600 bg-blue-50 font-bold' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'">Offline</Link>
+                    <Link href="/vouchers/expired" class="block px-3 py-2 rounded-md text-base font-medium" :class="$page.url.startsWith('/vouchers/expired') ? 'text-blue-600 bg-blue-50 font-bold' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'">Expired</Link>
+                    <Link href="/client-area/billing" class="block px-3 py-2 rounded-md text-base font-medium" :class="$page.url.startsWith('/client-area/billing') ? 'text-blue-600 bg-blue-50 font-bold' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'">Tagihan & Kasbon</Link>
                 </div>
             </div>
         </nav>

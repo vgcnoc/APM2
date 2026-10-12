@@ -101,6 +101,70 @@ class ResellerClientController extends Controller
     }
 
     /**
+     * Tampilkan halaman Tagihan & Kasbon untuk Reseller.
+     */
+    public function billing(Request $request)
+    {
+        $user = auth()->user();
+        $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+        if (!$reseller) {
+            if ($user->customer) {
+                return redirect()->route('customer-area.billing');
+            }
+            abort(403, 'Akses ditolak.');
+        }
+
+        $customer = $reseller->customer;
+        $invoicesQuery = Invoice::with('payments');
+
+        if ($customer) {
+            $invoicesQuery->where('customer_id', $customer->id);
+        } else {
+            $invoicesQuery->whereRaw('1 = 0');
+        }
+
+        if ($request->filled('type')) {
+            if ($request->type === 'kasbon') {
+                $invoicesQuery->where('is_reseller_balance', true);
+            } elseif ($request->type === 'internet') {
+                $invoicesQuery->where('is_reseller_balance', false);
+            }
+        }
+
+        if ($request->filled('status')) {
+            if ($request->status === 'unpaid') {
+                $invoicesQuery->whereIn('status', ['unpaid', 'partial', 'overdue']);
+            } elseif ($request->status === 'paid') {
+                $invoicesQuery->where('status', 'paid');
+            }
+        }
+
+        $invoices = $invoicesQuery->latest('due_date')->paginate(10)->withQueryString();
+
+        // Hitung total kasbon belum lunas
+        $totalUnpaidKasbon = 0;
+        if ($customer) {
+            $kasbonInvoices = Invoice::with('payments')
+                ->where('customer_id', $customer->id)
+                ->where('is_reseller_balance', true)
+                ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                ->get();
+
+            $totalUnpaidKasbon = (float) $kasbonInvoices->sum(function ($inv) {
+                $verifiedPaid = $inv->payments->where('status', 'verified')->sum('amount');
+                return max(0, $inv->amount - $verifiedPaid);
+            });
+        }
+
+        return Inertia::render('ClientArea/Billing', [
+            'reseller' => $reseller->load('customer'),
+            'invoices' => $invoices,
+            'total_unpaid_kasbon' => $totalUnpaidKasbon,
+            'filters' => $request->only(['type', 'status']),
+        ]);
+    }
+
+    /**
      * Generate vouchers for the reseller.
      */
     public function generateVouchers(Request $request)
