@@ -215,58 +215,57 @@ class CustomerBillingController extends Controller
         }
         $areas = $areasQuery->get(['id', 'name']);
 
-        // Daftar Desa / Kelurahan wilayah operasional & yang terdeteksi dari pelanggan
-        $defaultDesas = [
-            'Bantargadung',
-            'Bantarkalong',
-            'Boyongsari',
-            'Cigombong',
-            'Cikembar',
-            'Cimanggu',
-            'Girijaya',
-            'Hegarmanah',
-            'Kertamukti',
-            'Sirnajaya',
-            'Sukamanah',
-            'Sukamulya',
-            'Tarisi',
-            'Ubrug',
-            'Warungkiara',
+        // Mapping master desa default per nama area operasional
+        $defaultAreaDesas = [
+            'BC 1' => ['Bantarkalong', 'Girijaya', 'Hegarmanah', 'Sirnajaya', 'Warungkiara'],
+            'BC 2' => ['Cikembar', 'Cimanggu', 'Kertamukti', 'Sukamulya', 'Ubrug'],
+            'BC 3' => ['Bantargadung', 'Boyongsari', 'Cigombong', 'Hegarmanah', 'Sukamanah', 'Tarisi', 'Warungkiara'],
+            'Gratis BC 3' => ['Bantargadung', 'Warungkiara'],
         ];
 
-        $desasList = collect($defaultDesas);
+        $areaDesasMap = [];
+        $allDesasCollection = collect();
 
-        $addresses = Customer::whereNotNull('address')->where('address', '!=', '')->pluck('address');
-        foreach ($addresses as $addr) {
-            // Ekstraksi pola: Kel. / Kelurahan / Desa <nama_desa> dengan batasan kata yang bersih
-            if (preg_match_all('/(?:Kel\.?|Kelurahan|Desa)\s*([a-zA-Z\s]+?)(?=\s+(?:Kec|Kab|RT|RW|No|\d)|[,\n\r\.\-]|$)/i', $addr, $matches)) {
-                foreach ($matches[1] as $m) {
-                    $val = trim($m);
-                    if (strlen($val) >= 3 && strlen($val) <= 30 && !in_array(strtolower($val), ['kec', 'kab', 'rt', 'rw', 'jalan', 'jl'])) {
-                        $desasList->push(ucwords(strtolower($val)));
+        foreach ($areas as $areaItem) {
+            $areaId = $areaItem->id;
+            $dList = collect($defaultAreaDesas[$areaItem->name] ?? []);
+
+            // Pindai juga pelanggan yang terdaftar di area ini
+            $areaCustAddrs = Customer::where('area_id', $areaId)->whereNotNull('address')->pluck('address');
+            foreach ($areaCustAddrs as $addr) {
+                if (preg_match_all('/(?:Kel\.?|Kelurahan|Desa)\s*([a-zA-Z\s]+?)(?=\s+(?:Kec|Kab|RT|RW|No|\d)|[,\n\r\.\-]|$)/i', $addr, $matches)) {
+                    foreach ($matches[1] as $m) {
+                        $val = trim($m);
+                        if (strlen($val) >= 3 && strlen($val) <= 30 && !in_array(strtolower($val), ['kec', 'kab', 'rt', 'rw', 'jalan', 'jl'])) {
+                            $dList->push(ucwords(strtolower($val)));
+                        }
                     }
                 }
             }
-            foreach ($defaultDesas as $known) {
-                $cleanKnown = str_replace(' ', '', strtolower($known));
-                $cleanAddr = str_replace(' ', '', strtolower($addr));
-                if (str_contains($cleanAddr, $cleanKnown)) {
-                    $desasList->push($known);
-                }
-            }
+
+            $cleanList = $dList->map(fn($d) => ucwords(strtolower(trim($d))))
+                ->unique()
+                ->sort()
+                ->values()
+                ->all();
+
+            $areaDesasMap[$areaId] = $cleanList;
+            $allDesasCollection = $allDesasCollection->merge($cleanList);
         }
 
-        $desas = $desasList->map(fn($d) => ucwords(strtolower(trim($d))))
-            ->unique()
-            ->sort()
-            ->values()
-            ->all();
+        $allDesas = $allDesasCollection->unique()->sort()->values()->all();
+
+        // Jika ada filter area_id aktif, opsi desa disesuaikan dengan area tersebut
+        $activeDesas = $request->filled('area_id') && isset($areaDesasMap[$request->area_id])
+            ? $areaDesasMap[$request->area_id]
+            : $allDesas;
 
         return Inertia::render('CustomerBilling/Index', [
             'invoices' => $invoices,
             'activeTab' => $activeTab,
             'areas' => $areas,
-            'desas' => $desas,
+            'desas' => $activeDesas,
+            'area_desas' => $areaDesasMap,
             'filters' => [
                 'tab' => $activeTab,
                 'area_id' => $request->area_id ?? '',

@@ -147,8 +147,8 @@
                             </label>
                             <select 
                                 v-model="filterForm.area_id" 
-                                @change="executeFilter"
-                                class="block w-full text-xs rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 transition-colors"
+                                @change="onAreaChange"
+                                class="block w-full text-xs rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 transition-colors cursor-pointer"
                             >
                                 <option value="">Semua Wilayah / Area</option>
                                 <option v-for="area in areas" :key="area.id" :value="area.id">
@@ -157,10 +157,13 @@
                             </select>
                         </div>
 
-                        <!-- Filter Desa / Kelurahan -->
+                        <!-- Filter Desa / Kelurahan (Mengikuti Wilayah / Area yang dipilih) -->
                         <div>
-                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
-                                Desa / Kelurahan
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1 flex items-center justify-between">
+                                <span>Desa / Kelurahan</span>
+                                <span v-if="filterForm.area_id" class="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-200">
+                                    Sesuai Area
+                                </span>
                             </label>
                             <select 
                                 v-model="filterForm.desa" 
@@ -168,7 +171,7 @@
                                 class="block w-full text-xs rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 transition-colors cursor-pointer"
                             >
                                 <option value="">Semua Desa / Kelurahan</option>
-                                <option v-for="d in desas" :key="d" :value="d">
+                                <option v-for="d in availableDesas" :key="d" :value="d">
                                     {{ d }}
                                 </option>
                             </select>
@@ -778,6 +781,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    area_desas: {
+        type: Object,
+        default: () => ({}),
+    },
     filters: {
         type: Object,
         default: () => ({}),
@@ -811,6 +818,14 @@ const hasActiveFilters = computed(() => {
     return !!(filterForm.area_id || filterForm.desa || filterForm.start_date || filterForm.end_date || filterForm.search);
 });
 
+// Daftar Desa dinamis mengikuti Area yang dipilih
+const availableDesas = computed(() => {
+    if (filterForm.area_id && props.area_desas && props.area_desas[filterForm.area_id]) {
+        return props.area_desas[filterForm.area_id];
+    }
+    return props.desas || [];
+});
+
 const executeFilter = () => {
     router.get(route('customer-billing.index'), {
         tab: filterForm.tab,
@@ -824,6 +839,17 @@ const executeFilter = () => {
         preserveScroll: true,
         replace: true,
     });
+};
+
+const onAreaChange = () => {
+    // Jika desa yang sedang dipilih tidak tersedia di area yang baru dipilih, reset pilihan desa
+    if (filterForm.desa && filterForm.area_id) {
+        const validList = props.area_desas?.[filterForm.area_id] || [];
+        if (!validList.includes(filterForm.desa)) {
+            filterForm.desa = '';
+        }
+    }
+    executeFilter();
 };
 
 const switchTab = (tab) => {
