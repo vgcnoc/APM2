@@ -320,6 +320,18 @@ Route::middleware(['auth'])->group(function () {
     Route::post('pgs/{pgs}/schedule', [\App\Http\Controllers\PgsController::class, 'schedule'])->name('pgs.schedule');
     Route::post('pgs/{pgs}/report', [\App\Http\Controllers\PgsController::class, 'submitReport'])->name('pgs.report');
     Route::delete('pgs/{pgs}', [\App\Http\Controllers\PgsController::class, 'destroy'])->name('pgs.destroy');
+
+    // ── Penanganan Gangguan Komplain (PGK) ───────────────────────
+    Route::get('pgk', [\App\Http\Controllers\PgkController::class, 'index'])->name('pgk.index');
+    Route::get('pgk/jadwal', [\App\Http\Controllers\PgkController::class, 'jadwal'])->name('pgk.jadwal');
+    Route::get('pgk/laporan', [\App\Http\Controllers\PgkController::class, 'laporan'])->name('pgk.laporan');
+    Route::get('pgk/{pgk}/print', [\App\Http\Controllers\PgkController::class, 'print'])->name('pgk.print');
+    Route::post('pgk', [\App\Http\Controllers\PgkController::class, 'store'])->name('pgk.store');
+    Route::post('pgk/{pgk}/resolve-admin', [\App\Http\Controllers\PgkController::class, 'resolveByAdmin'])->name('pgk.resolve-admin');
+    Route::post('pgk/{pgk}/escalate', [\App\Http\Controllers\PgkController::class, 'escalateToLead'])->name('pgk.escalate');
+    Route::post('pgk/{pgk}/schedule', [\App\Http\Controllers\PgkController::class, 'schedule'])->name('pgk.schedule');
+    Route::post('pgk/{pgk}/report', [\App\Http\Controllers\PgkController::class, 'submitReport'])->name('pgk.report');
+    Route::delete('pgk/{pgk}', [\App\Http\Controllers\PgkController::class, 'destroy'])->name('pgk.destroy');
     
     // CBP / Cabut Perangkat
     Route::get('cbp', [\App\Http\Controllers\CbpRequestController::class, 'index'])->name('cbp.index');
