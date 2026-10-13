@@ -10,13 +10,13 @@
                 ❌ {{ $page.props.flash.error }}
             </div>
 
-            <!-- ── 4 SYNCHRONIZED STATS CARDS ── -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- ── 6 SYNCHRONIZED STATS CARDS ── -->
+            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
                 
                 <!-- Card 1: Belum Lunas (Klik untuk aktifkan tab Belum Lunas) -->
                 <div 
                     @click="switchTab('unpaid')"
-                    class="cursor-pointer rounded-2xl p-5 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
+                    class="cursor-pointer rounded-2xl p-4 sm:p-5 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
                     :class="[
                         activeTab === 'unpaid'
                             ? 'bg-amber-50/90 border-amber-300 ring-2 ring-amber-500 shadow-md'
@@ -24,30 +24,83 @@
                     ]"
                 >
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5 truncate">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
                             Belum Lunas
                         </span>
-                        <span v-if="activeTab === 'unpaid'" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 border border-amber-300">
-                            Tab Aktif
-                        </span>
-                        <span v-else class="text-[10px] text-gray-400 font-medium">
-                            Klik Tab
+                        <span v-if="activeTab === 'unpaid'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-200/80 text-amber-900 border border-amber-300 shrink-0">
+                            Aktif
                         </span>
                     </div>
-                    <div class="text-2xl font-black text-gray-900 truncate">
+                    <div class="text-xl sm:text-2xl font-black text-gray-900 truncate">
                         Rp {{ formatRupiah(stats?.unpaid?.total || 0) }}
                     </div>
-                    <div class="mt-2.5 flex items-center justify-between text-xs text-amber-700 font-medium">
-                        <span>{{ stats?.unpaid?.count || 0 }} Tagihan Menunggu</span>
-                        <span class="text-[11px] font-bold underline">Buka Data &rarr;</span>
+                    <div class="mt-2 flex items-center justify-between text-xs text-amber-700 font-medium">
+                        <span>{{ stats?.unpaid?.count || 0 }} Tagihan</span>
+                        <span class="text-[10px] font-bold underline">&rarr;</span>
                     </div>
                 </div>
 
-                <!-- Card 2: Jatuh Tempo (Klik untuk aktifkan tab Jatuh Tempo) -->
+                <!-- Card 2: Bayar Sebagian (Klik untuk aktifkan tab Bayar Sebagian) -->
+                <div 
+                    @click="switchTab('partial')"
+                    class="cursor-pointer rounded-2xl p-4 sm:p-5 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
+                    :class="[
+                        activeTab === 'partial'
+                            ? 'bg-sky-50/90 border-sky-300 ring-2 ring-sky-500 shadow-md'
+                            : 'bg-white border-gray-200/80 hover:border-sky-200 hover:bg-sky-50/20 shadow-xs'
+                    ]"
+                >
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-sky-800 flex items-center gap-1.5 truncate">
+                            <span class="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0"></span>
+                            Bayar Sebagian
+                        </span>
+                        <span v-if="activeTab === 'partial'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-sky-200/80 text-sky-900 border border-sky-300 shrink-0">
+                            Aktif
+                        </span>
+                    </div>
+                    <div class="text-xl sm:text-2xl font-black text-sky-700 truncate">
+                        Rp {{ formatRupiah(stats?.partial?.total || 0) }}
+                    </div>
+                    <div class="mt-2 flex items-center justify-between text-xs text-sky-700 font-medium">
+                        <span>{{ stats?.partial?.count || 0 }} Tagihan</span>
+                        <span class="text-[10px] font-bold underline">&rarr;</span>
+                    </div>
+                </div>
+
+                <!-- Card 3: Janji Bayar (Klik untuk aktifkan tab Janji Bayar) -->
+                <div 
+                    @click="switchTab('promise')"
+                    class="cursor-pointer rounded-2xl p-4 sm:p-5 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
+                    :class="[
+                        activeTab === 'promise'
+                            ? 'bg-purple-50/90 border-purple-300 ring-2 ring-purple-500 shadow-md'
+                            : 'bg-white border-gray-200/80 hover:border-purple-200 hover:bg-purple-50/20 shadow-xs'
+                    ]"
+                >
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-purple-800 flex items-center gap-1.5 truncate">
+                            <span class="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0"></span>
+                            Janji Bayar
+                        </span>
+                        <span v-if="activeTab === 'promise'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-purple-200/80 text-purple-900 border border-purple-300 shrink-0">
+                            Aktif
+                        </span>
+                    </div>
+                    <div class="text-xl sm:text-2xl font-black text-purple-700 truncate">
+                        Rp {{ formatRupiah(stats?.promise?.total || 0) }}
+                    </div>
+                    <div class="mt-2 flex items-center justify-between text-xs text-purple-700 font-medium">
+                        <span>{{ stats?.promise?.count || 0 }} Pelanggan</span>
+                        <span class="text-[10px] font-bold underline">&rarr;</span>
+                    </div>
+                </div>
+
+                <!-- Card 4: Jatuh Tempo (Klik untuk aktifkan tab Jatuh Tempo) -->
                 <div 
                     @click="switchTab('overdue')"
-                    class="cursor-pointer rounded-2xl p-5 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
+                    class="cursor-pointer rounded-2xl p-4 sm:p-5 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
                     :class="[
                         activeTab === 'overdue'
                             ? 'bg-rose-50/90 border-rose-300 ring-2 ring-rose-500 shadow-md'
@@ -55,30 +108,27 @@
                     ]"
                 >
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold uppercase tracking-wider text-rose-800 flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-rose-800 flex items-center gap-1.5 truncate">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse shrink-0"></span>
                             Jatuh Tempo
                         </span>
-                        <span v-if="activeTab === 'overdue'" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-200/80 text-rose-900 border border-rose-300">
-                            Tab Aktif
-                        </span>
-                        <span v-else class="text-[10px] text-gray-400 font-medium">
-                            Klik Tab
+                        <span v-if="activeTab === 'overdue'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-rose-200/80 text-rose-900 border border-rose-300 shrink-0">
+                            Aktif
                         </span>
                     </div>
-                    <div class="text-2xl font-black text-rose-700 truncate">
+                    <div class="text-xl sm:text-2xl font-black text-rose-700 truncate">
                         Rp {{ formatRupiah(stats?.overdue?.total || 0) }}
                     </div>
-                    <div class="mt-2.5 flex items-center justify-between text-xs text-rose-700 font-medium">
-                        <span>{{ stats?.overdue?.count || 0 }} Tagihan Lewat Tempo</span>
-                        <span class="text-[11px] font-bold underline">Buka Data &rarr;</span>
+                    <div class="mt-2 flex items-center justify-between text-xs text-rose-700 font-medium">
+                        <span>{{ stats?.overdue?.count || 0 }} Lewat Tempo</span>
+                        <span class="text-[10px] font-bold underline">&rarr;</span>
                     </div>
                 </div>
 
-                <!-- Card 3: Sudah Lunas (Klik untuk aktifkan tab Sudah Lunas) -->
+                <!-- Card 5: Sudah Lunas (Klik untuk aktifkan tab Sudah Lunas) -->
                 <div 
                     @click="switchTab('paid')"
-                    class="cursor-pointer rounded-2xl p-5 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
+                    class="cursor-pointer rounded-2xl p-4 sm:p-5 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
                     :class="[
                         activeTab === 'paid'
                             ? 'bg-emerald-50/90 border-emerald-300 ring-2 ring-emerald-500 shadow-md'
@@ -86,47 +136,44 @@
                     ]"
                 >
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5 truncate">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
                             Sudah Lunas
                         </span>
-                        <span v-if="activeTab === 'paid'" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-900 border border-emerald-300">
-                            Tab Aktif
-                        </span>
-                        <span v-else class="text-[10px] text-gray-400 font-medium">
-                            Klik Tab
+                        <span v-if="activeTab === 'paid'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-200/80 text-emerald-900 border border-emerald-300 shrink-0">
+                            Aktif
                         </span>
                     </div>
-                    <div class="text-2xl font-black text-emerald-700 truncate">
+                    <div class="text-xl sm:text-2xl font-black text-emerald-700 truncate">
                         Rp {{ formatRupiah(stats?.paid?.total || 0) }}
                     </div>
-                    <div class="mt-2.5 flex items-center justify-between text-xs text-emerald-700 font-medium">
-                        <span>{{ stats?.paid?.count || 0 }} Tagihan Lunas</span>
-                        <span class="text-[11px] font-bold underline">Buka Data &rarr;</span>
+                    <div class="mt-2 flex items-center justify-between text-xs text-emerald-700 font-medium">
+                        <span>{{ stats?.paid?.count || 0 }} Lunas</span>
+                        <span class="text-[10px] font-bold underline">&rarr;</span>
                     </div>
                 </div>
 
-                <!-- Card 4: Uang Diterima Hari Ini (Permanen / Real-time Today Metric) -->
-                <div class="rounded-2xl p-5 border bg-gradient-to-br from-indigo-50/90 via-blue-50/80 to-white border-indigo-200/80 shadow-xs">
+                <!-- Card 6: Uang Diterima Hari Ini (Permanen / Real-time Today Metric) -->
+                <div class="rounded-2xl p-4 sm:p-5 border bg-gradient-to-br from-indigo-50/90 via-blue-50/80 to-white border-indigo-200/80 shadow-xs">
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
-                            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5 truncate">
+                            <svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            Diterima Hari Ini
+                            Hari Ini
                         </span>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
+                        <span class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 shrink-0">
                             {{ new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) }}
                         </span>
                     </div>
-                    <div class="text-2xl font-black text-indigo-900 truncate">
+                    <div class="text-xl sm:text-2xl font-black text-indigo-900 truncate">
                         Rp {{ formatRupiah(stats?.today?.verified_amount || 0) }}
                     </div>
-                    <div class="mt-2.5 flex flex-col gap-1 text-xs text-indigo-700 font-medium">
+                    <div class="mt-2 flex flex-col gap-0.5 text-xs text-indigo-700 font-medium">
                         <div class="flex items-center justify-between">
-                            <span>{{ stats?.today?.verified_count || 0 }} Transaksi Lunas</span>
-                            <span v-if="stats?.today?.pending_amount > 0" class="text-[10px] text-amber-800 font-bold bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">
-                                + Rp {{ formatRupiah(stats.today.pending_amount) }} Pending
+                            <span>{{ stats?.today?.verified_count || 0 }} Lunas</span>
+                            <span v-if="stats?.today?.pending_amount > 0" class="text-[9px] text-amber-800 font-bold bg-amber-100 px-1 py-0.2 rounded border border-amber-200">
+                                +{{ formatRupiah(stats.today.pending_amount) }}
                             </span>
                         </div>
                     </div>
@@ -183,7 +230,7 @@
                         <!-- Filter Tanggal Mulai -->
                         <div>
                             <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
-                                {{ activeTab === 'paid' ? 'Tgl Bayar Dari' : 'Jatuh Tempo Dari' }}
+                                {{ activeTab === 'paid' ? 'Tgl Bayar Dari' : (activeTab === 'promise' ? 'Tgl Janji Dari' : 'Jatuh Tempo Dari') }}
                             </label>
                             <input 
                                 type="date" 
@@ -246,19 +293,26 @@
             <!-- ── TABLE SECTION ── -->
             <div class="bg-white rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 overflow-hidden">
                 <!-- Table Header with Tabs -->
-                <div class="p-5 sm:p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="p-5 sm:p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
                     <div>
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
                             Daftar Tagihan Pelanggan
                             <span 
-                                class="text-xs font-bold px-2 py-0.5 rounded-full"
+                                class="text-xs font-bold px-2.5 py-0.5 rounded-full"
                                 :class="{
                                     'bg-amber-100 text-amber-800': activeTab === 'unpaid',
+                                    'bg-sky-100 text-sky-800': activeTab === 'partial',
+                                    'bg-purple-100 text-purple-800': activeTab === 'promise',
                                     'bg-red-100 text-red-800': activeTab === 'overdue',
                                     'bg-emerald-100 text-emerald-800': activeTab === 'paid',
                                 }"
                             >
-                                {{ activeTab === 'unpaid' ? 'Belum Lunas' : (activeTab === 'overdue' ? 'Jatuh Tempo' : 'Sudah Lunas') }}
+                                {{ 
+                                    activeTab === 'unpaid' ? 'Belum Lunas' : 
+                                    activeTab === 'partial' ? 'Bayar Sebagian' :
+                                    activeTab === 'promise' ? 'Janji Bayar' :
+                                    activeTab === 'overdue' ? 'Jatuh Tempo' : 'Sudah Lunas' 
+                                }}
                             </span>
                         </h3>
                         <p class="text-xs text-gray-500 mt-0.5">
@@ -267,11 +321,11 @@
                     </div>
                     
                     <!-- Tabs Switcher -->
-                    <div class="flex bg-gray-200/70 p-1 rounded-xl self-stretch sm:self-auto overflow-x-auto">
+                    <div class="flex bg-gray-200/70 p-1 rounded-xl self-stretch lg:self-auto overflow-x-auto gap-1">
                         <button 
                             type="button"
                             @click="switchTab('unpaid')" 
-                            class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
+                            class="px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
                             :class="activeTab === 'unpaid' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
                             <span>Belum Lunas</span>
                             <span class="px-1.5 py-0.2 rounded-full text-[10px]" :class="activeTab === 'unpaid' ? 'bg-amber-100 text-amber-800' : 'bg-gray-300/80 text-gray-700'">
@@ -280,8 +334,28 @@
                         </button>
                         <button 
                             type="button"
+                            @click="switchTab('partial')" 
+                            class="px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+                            :class="activeTab === 'partial' ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
+                            <span>Bayar Sebagian</span>
+                            <span class="px-1.5 py-0.2 rounded-full text-[10px]" :class="activeTab === 'partial' ? 'bg-sky-100 text-sky-800' : 'bg-gray-300/80 text-gray-700'">
+                                {{ stats?.partial?.count || 0 }}
+                            </span>
+                        </button>
+                        <button 
+                            type="button"
+                            @click="switchTab('promise')" 
+                            class="px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+                            :class="activeTab === 'promise' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
+                            <span>Janji Bayar</span>
+                            <span class="px-1.5 py-0.2 rounded-full text-[10px]" :class="activeTab === 'promise' ? 'bg-purple-100 text-purple-800' : 'bg-gray-300/80 text-gray-700'">
+                                {{ stats?.promise?.count || 0 }}
+                            </span>
+                        </button>
+                        <button 
+                            type="button"
                             @click="switchTab('overdue')" 
-                            class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
+                            class="px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
                             :class="activeTab === 'overdue' ? 'bg-red-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'">
                             <span>Jatuh Tempo</span>
                             <span class="px-1.5 py-0.2 rounded-full text-[10px]" :class="activeTab === 'overdue' ? 'bg-white text-red-600' : 'bg-gray-300/80 text-gray-700'">
@@ -291,8 +365,8 @@
                         <button 
                             type="button"
                             @click="switchTab('paid')" 
-                            class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
-                            :class="activeTab === 'paid' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
+                            class="px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+                            :class="activeTab === 'paid' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
                             <span>Sudah Lunas</span>
                             <span class="px-1.5 py-0.2 rounded-full text-[10px]" :class="activeTab === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-300/80 text-gray-700'">
                                 {{ stats?.paid?.count || 0 }}
@@ -311,6 +385,7 @@
                                 <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Total / Sisa</th>
                                 <th scope="col" class="px-6 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                     <span v-if="activeTab === 'paid'">Tgl Bayar Lunas</span>
+                                    <span v-else-if="activeTab === 'promise'">Tgl Janji Bayar</span>
                                     <span v-else>Jatuh Tempo</span>
                                 </th>
                                 <th scope="col" class="px-6 py-3.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
@@ -369,13 +444,22 @@
                                             {{ inv.payments?.length ? new Date(Math.max(...inv.payments.map(p => new Date(p.payment_date)))).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) : '-' }}
                                         </div>
                                     </template>
+                                    <template v-else-if="activeTab === 'promise'">
+                                        <div class="font-bold text-purple-700 flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                            {{ inv.promise_date ? new Date(inv.promise_date).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) : '-' }}
+                                        </div>
+                                        <div class="text-[11px] text-gray-500 mt-0.5">
+                                            Tempo: {{ new Date(inv.due_date).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) }}
+                                        </div>
+                                    </template>
                                     <template v-else>
                                         <div class="font-medium text-gray-900">{{ new Date(inv.due_date).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) }}</div>
                                         <div v-if="inv.status !== 'paid'" :class="getDueDuration(inv.due_date).class" class="text-[11px] font-bold mt-1">
                                             {{ getDueDuration(inv.due_date).text }}
                                         </div>
-                                        <div v-if="inv.promise_date && inv.status !== 'paid'" class="mt-1 flex items-center gap-1 bg-amber-50 text-amber-800 px-2 py-0.5 rounded-md text-[10px] font-bold border border-amber-200 w-max">
-                                            <svg class="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        <div v-if="inv.promise_date && inv.status !== 'paid'" class="mt-1 flex items-center gap-1 bg-purple-50 text-purple-800 px-2 py-0.5 rounded-md text-[10px] font-bold border border-purple-200 w-max">
+                                            <svg class="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                             Janji: {{ new Date(inv.promise_date).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) }}
                                         </div>
                                     </template>
@@ -980,6 +1064,8 @@ const props = defineProps({
         type: Object,
         default: () => ({
             unpaid: { total: 0, count: 0 },
+            partial: { total: 0, count: 0 },
+            promise: { total: 0, count: 0 },
             overdue: { total: 0, count: 0 },
             paid: { total: 0, count: 0 },
             today: { verified_amount: 0, verified_count: 0, pending_amount: 0, total_amount: 0 },

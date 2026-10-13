@@ -18,7 +18,7 @@ class ResellerBillingController extends Controller
     public function index(Request $request)
     {
         $activeTab = $request->get('tab', 'unpaid');
-        if (!in_array($activeTab, ['unpaid', 'overdue', 'paid'])) {
+        if (!in_array($activeTab, ['unpaid', 'partial', 'promise', 'overdue', 'paid'])) {
             $activeTab = 'unpaid';
         }
 
@@ -68,6 +68,22 @@ class ResellerBillingController extends Controller
                 }
                 $q->whereIn('status', ['unpaid', 'partial'])
                   ->where('due_date', '<', Carbon::today());
+            } elseif ($tabType === 'partial') {
+                if ($request->filled('start_date')) {
+                    $q->whereDate('due_date', '>=', $request->start_date);
+                }
+                if ($request->filled('end_date')) {
+                    $q->whereDate('due_date', '<=', $request->end_date);
+                }
+                $q->where('status', 'partial');
+            } elseif ($tabType === 'promise') {
+                if ($request->filled('start_date')) {
+                    $q->whereDate('promise_date', '>=', $request->start_date);
+                }
+                if ($request->filled('end_date')) {
+                    $q->whereDate('promise_date', '<=', $request->end_date);
+                }
+                $q->whereNotNull('promise_date')->where('status', '!=', 'paid');
             } else { // unpaid
                 if ($request->filled('start_date')) {
                     $q->whereDate('due_date', '>=', $request->start_date);
@@ -81,10 +97,24 @@ class ResellerBillingController extends Controller
             return $q;
         };
 
-        // Hitung statistik untuk ketiga tab sesuai filter aktif
+        // Hitung statistik untuk kelima tab sesuai filter aktif
         $unpaidItems = $buildFilteredQuery('unpaid')->with('payments')->get(['id', 'amount', 'status']);
         $unpaidCount = $unpaidItems->count();
         $unpaidTotal = (float) $unpaidItems->sum(function($inv) {
+            $paid = $inv->payments->where('status', 'verified')->sum('amount');
+            return max(0, $inv->amount - $paid);
+        });
+
+        $partialItems = $buildFilteredQuery('partial')->with('payments')->get(['id', 'amount', 'status']);
+        $partialCount = $partialItems->count();
+        $partialTotal = (float) $partialItems->sum(function($inv) {
+            $paid = $inv->payments->where('status', 'verified')->sum('amount');
+            return max(0, $inv->amount - $paid);
+        });
+
+        $promiseItems = $buildFilteredQuery('promise')->with('payments')->get(['id', 'amount', 'status']);
+        $promiseCount = $promiseItems->count();
+        $promiseTotal = (float) $promiseItems->sum(function($inv) {
             $paid = $inv->payments->where('status', 'verified')->sum('amount');
             return max(0, $inv->amount - $paid);
         });
@@ -157,6 +187,14 @@ class ResellerBillingController extends Controller
                 'unpaid' => [
                     'total' => $unpaidTotal,
                     'count' => $unpaidCount,
+                ],
+                'partial' => [
+                    'total' => $partialTotal,
+                    'count' => $partialCount,
+                ],
+                'promise' => [
+                    'total' => $promiseTotal,
+                    'count' => $promiseCount,
                 ],
                 'overdue' => [
                     'total' => $overdueTotal,
