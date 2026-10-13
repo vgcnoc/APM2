@@ -62,7 +62,7 @@ class ResellerReportController extends Controller
         $kasBersih = $totalPemasukan - $totalPengeluaran;
 
         // 7. Riwayat Pengeluaran Terakhir (Kecualikan Order Toko)
-        $recentExpenses = \App\Models\Expense::with('user')
+        $recentExpenses = \App\Models\Expense::with(['user', 'category'])
             ->withoutOrderToko()
             ->latest('expense_date')
             ->latest('created_at')
@@ -79,7 +79,8 @@ class ResellerReportController extends Controller
             ],
             'resellers' => $resellers,
             'recent_transactions' => $recentTransactions,
-            'recent_expenses' => $recentExpenses
+            'recent_expenses' => $recentExpenses,
+            'expense_categories' => \App\Models\ExpenseCategory::active()->orderBy('name')->get(['id', 'code', 'name', 'color']),
         ]);
     }
 }

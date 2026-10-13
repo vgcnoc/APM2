@@ -131,10 +131,16 @@
                 <div class="bg-white rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 p-6 flex flex-col h-full">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-bold text-gray-900">Buku Kas Pengeluaran</h3>
-                        <button @click="showExpenseModal = true" class="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg shadow-sm transition-all hover:shadow text-xs font-bold">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            Catat Pengeluaran
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <Link :href="route('expense-categories.index')" class="inline-flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded-xl shadow-sm text-xs font-bold transition-all">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                                Master Kategori
+                            </Link>
+                            <button @click="showExpenseModal = true" class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                Catat Pengeluaran
+                            </button>
+                        </div>
                     </div>
                     
                     <div v-if="recent_expenses.length" class="space-y-3 flex-1">
@@ -144,12 +150,17 @@
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-bold text-gray-900 line-clamp-1 max-w-[150px] sm:max-w-[200px]">{{ exp.description }}</p>
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-sm font-bold text-gray-900 line-clamp-1 max-w-[150px] sm:max-w-[200px]">{{ exp.description }}</p>
+                                        <span v-if="exp.category" class="text-[10px] font-bold px-2 py-0.5 rounded-md border" :class="exp.category?.code === 'MAT' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-rose-50 text-rose-700 border-rose-200'">
+                                            {{ exp.category.name }}
+                                        </span>
+                                    </div>
                                     <p class="text-[10px] text-gray-400 mt-0.5">{{ new Date(exp.expense_date).toLocaleDateString('id-ID') }} &middot; Oleh: {{ exp.user?.name || 'Sistem' }}</p>
                                 </div>
                             </div>
                             <div class="text-right flex items-center gap-3">
-                                <p class="text-sm font-black text-red-600 whitespace-nowrap">
+                                <p class="text-sm font-black text-rose-600 whitespace-nowrap">
                                     - Rp {{ formatRupiah(exp.amount) }}
                                 </p>
                                 <button @click="deleteExpense(exp.id)" class="text-gray-400 hover:text-red-600 transition-colors" title="Hapus Pengeluaran">
@@ -173,12 +184,12 @@
                     <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full border border-gray-100">
                         <div class="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex items-center justify-between">
                             <h3 class="text-lg leading-6 font-bold text-gray-900 flex items-center gap-2">
-                                <span class="bg-red-100 text-red-600 p-1.5 rounded-lg">
+                                <span class="bg-rose-100 text-rose-600 p-1.5 rounded-lg">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                                 </span>
                                 Catat Pengeluaran Baru
                             </h3>
-                            <button @click="showExpenseModal = false" class="text-gray-400 hover:text-gray-500">
+                            <button @click="showExpenseModal = false" class="text-gray-400 hover:text-gray-500 cursor-pointer">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                             </button>
                         </div>
@@ -187,23 +198,37 @@
                             <form @submit.prevent="submitExpense" class="space-y-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Tanggal Pengeluaran</label>
-                                    <input type="date" v-model="expenseForm.expense_date" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-red-500 focus:border-red-500" required>
+                                    <input type="date" v-model="expenseForm.expense_date" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 text-sm" required>
+                                </div>
+                                <div>
+                                    <div class="flex items-center justify-between">
+                                        <label class="block text-sm font-medium text-gray-700">Kategori Pengeluaran</label>
+                                        <Link :href="route('expense-categories.index')" class="text-xs font-bold text-rose-600 hover:text-rose-800">
+                                            + Kelola Kategori
+                                        </Link>
+                                    </div>
+                                    <select v-model="expenseForm.expense_category_id" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 text-sm font-medium">
+                                        <option value="">-- Tanpa Kategori (Umum) --</option>
+                                        <option v-for="cat in expense_categories" :key="cat.id" :value="cat.id">
+                                            {{ cat.code ? '[' + cat.code + '] ' : '' }}{{ cat.name }}
+                                        </option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Nominal (Rp)</label>
-                                    <input type="number" v-model="expenseForm.amount" min="1" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-red-500 focus:border-red-500 font-bold text-lg" placeholder="Contoh: 150000" required>
+                                    <input type="number" v-model="expenseForm.amount" min="1" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 font-bold text-lg" placeholder="Contoh: 150000" required>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Keterangan / Tujuan Pengeluaran</label>
-                                    <textarea v-model="expenseForm.description" rows="2" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-red-500 focus:border-red-500" placeholder="Contoh: Beli kabel LAN, bensin teknisi, dll" required></textarea>
+                                    <textarea v-model="expenseForm.description" rows="2" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500" placeholder="Contoh: Beli kabel LAN, bensin teknisi, dll" required></textarea>
                                 </div>
                                 
-                                <div class="mt-6 flex justify-end gap-3">
-                                    <button type="button" @click="showExpenseModal = false" class="px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm">
+                                <div class="pt-4 flex justify-end gap-3">
+                                    <button type="button" @click="showExpenseModal = false" class="bg-white py-2.5 px-5 border border-gray-300 rounded-xl shadow-sm text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all cursor-pointer">
                                         Batal
                                     </button>
-                                    <button type="submit" :disabled="expenseForm.processing" class="px-4 py-2 bg-red-600 border border-transparent rounded-xl text-sm font-medium text-white hover:bg-red-700 shadow-sm disabled:opacity-50">
-                                        Simpan Pengeluaran
+                                    <button type="submit" :disabled="expenseForm.processing" class="inline-flex justify-center py-2.5 px-5 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-all disabled:opacity-50 cursor-pointer">
+                                        {{ expenseForm.processing ? 'Menyimpan...' : 'Simpan Pengeluaran' }}
                                     </button>
                                 </div>
                             </form>
@@ -218,14 +243,15 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     stats: Object,
     resellers: Array,
     recent_transactions: Array,
-    recent_expenses: Array
+    recent_expenses: Array,
+    expense_categories: Array
 });
 
 const formatRupiah = (number) => {
@@ -236,6 +262,7 @@ const showExpenseModal = ref(false);
 
 const expenseForm = useForm({
     amount: '',
+    expense_category_id: '',
     description: '',
     expense_date: new Date().toISOString().split('T')[0],
 });
