@@ -409,7 +409,7 @@ const menuItems = [
         type: 'dropdown',
         icon: 'users',
         label: 'Kepegawaian & HRD',
-        active: (url) => (url || '').startsWith('/employees') || (url || '').startsWith('/positions') || (url || '').startsWith('/shifts') || (url || '').startsWith('/work-schedules') || (url || '').startsWith('/attendances') || (url || '').startsWith('/settings/attendance') || (url || '').startsWith('/payroll') || (url || '').startsWith('/insentif-potongan'),
+        active: (url) => (url || '').startsWith('/employees') || (url || '').startsWith('/positions') || (url || '').startsWith('/shifts') || (url || '').startsWith('/work-schedules') || (url || '').startsWith('/attendances') || (url || '').startsWith('/absen-khusus') || (url || '').startsWith('/settings/attendance') || (url || '').startsWith('/payroll') || (url || '').startsWith('/insentif-potongan'),
         permission: 'menu_hr_employees',
         children: [
             { href: '/employees', label: 'Data Karyawan', active: (url) => (url || '').startsWith('/employees'), permission: 'menu_hr_employees' },
@@ -417,6 +417,7 @@ const menuItems = [
             { href: '/shifts', label: 'Shift Kerja', active: (url) => (url || '').startsWith('/shifts'), permission: 'menu_hr_employees' },
             { href: '/work-schedules', label: 'Jadwal Kerja', active: (url) => (url || '').startsWith('/work-schedules'), permission: 'menu_hr_employees' },
             { href: '/attendances', label: 'Absensi', active: (url) => (url || '').startsWith('/attendances'), permission: 'menu_hr_employees' },
+            { href: '/absen-khusus', label: 'Absen Khusus', active: (url) => (url || '').startsWith('/absen-khusus'), permission: 'menu_hr_employees' },
             { href: '/settings/attendance', label: 'Pengaturan Absensi', active: (url) => (url || '').startsWith('/settings/attendance'), permission: 'menu_hr_employees' },
             { href: '/payroll', label: 'Gaji & Insentif', active: (url) => (url || '').length > 0 && url === '/payroll', permission: 'menu_hr_employees' },
             { href: '/insentif-potongan', label: 'Histori Insentif', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: 'menu_hr_employees' },

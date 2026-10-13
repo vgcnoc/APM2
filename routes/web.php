@@ -206,8 +206,18 @@ Route::middleware(['auth'])->group(function () {
     Route::post('attendances/clock-in', [\App\Http\Controllers\AttendanceController::class, 'clockIn'])->name('attendances.clock-in');
     Route::post('attendances/clock-out', [\App\Http\Controllers\AttendanceController::class, 'clockOut'])->name('attendances.clock-out');
     Route::post('attendances/quick-assign-shift', [\App\Http\Controllers\AttendanceController::class, 'quickAssignShift'])->name('attendances.quick-assign-shift');
-    Route::post('attendances/sync-payroll', [\App\Http\Controllers\AttendanceController::class, 'syncToPayroll'])->name('attendances.sync-payroll');
     Route::post('attendances/update-location', [\App\Http\Controllers\AttendanceController::class, 'updateAreaLocation'])->name('attendances.update-location');
+
+    // Absen Tim Khusus (Absensi Lapangan, Tanpa Radius, Grup & Potongan)
+    Route::get('absen-khusus', [\App\Http\Controllers\SpecialAttendanceController::class, 'index'])->name('special-attendances.index');
+    Route::post('absen-khusus/clock-in', [\App\Http\Controllers\SpecialAttendanceController::class, 'clockIn'])->name('special-attendances.clock-in');
+    Route::post('absen-khusus/clock-out', [\App\Http\Controllers\SpecialAttendanceController::class, 'clockOut'])->name('special-attendances.clock-out');
+    Route::post('absen-khusus/teams', [\App\Http\Controllers\SpecialAttendanceController::class, 'storeTeam'])->name('special-attendances.teams.store');
+    Route::put('absen-khusus/teams/{team}', [\App\Http\Controllers\SpecialAttendanceController::class, 'updateTeam'])->name('special-attendances.teams.update');
+    Route::delete('absen-khusus/teams/{team}', [\App\Http\Controllers\SpecialAttendanceController::class, 'destroyTeam'])->name('special-attendances.teams.destroy');
+    Route::post('absen-khusus/admin-store', [\App\Http\Controllers\SpecialAttendanceController::class, 'adminStoreAttendance'])->name('special-attendances.admin.store');
+    Route::delete('absen-khusus/attendances/{attendance}', [\App\Http\Controllers\SpecialAttendanceController::class, 'adminDeleteAttendance'])->name('special-attendances.admin.destroy');
+    Route::post('absen-khusus/sync-payroll', [\App\Http\Controllers\SpecialAttendanceController::class, 'syncToPayroll'])->name('special-attendances.sync-payroll');
     Route::post('materials/bulk-destroy', [MaterialController::class, 'bulkDestroy'])->name('materials.bulk-destroy');
     Route::post('materials/{material}/update', [MaterialController::class, 'update'])->name('materials.update.post');
     Route::post('materials/{material}/add-stock', [MaterialController::class, 'addStock'])->name('materials.add-stock');
