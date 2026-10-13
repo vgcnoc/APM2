@@ -218,6 +218,15 @@ Route::middleware(['auth'])->group(function () {
     Route::post('absen-khusus/admin-store', [\App\Http\Controllers\SpecialAttendanceController::class, 'adminStoreAttendance'])->name('special-attendances.admin.store');
     Route::delete('absen-khusus/attendances/{attendance}', [\App\Http\Controllers\SpecialAttendanceController::class, 'adminDeleteAttendance'])->name('special-attendances.admin.destroy');
     Route::post('absen-khusus/sync-payroll', [\App\Http\Controllers\SpecialAttendanceController::class, 'syncToPayroll'])->name('special-attendances.sync-payroll');
+
+    // Absen Tugas Luar (Pengganti Absen Masuk & Pulang Reguler)
+    Route::get('absen-tugas-luar', [\App\Http\Controllers\FieldDutyController::class, 'index'])->name('field-duties.index');
+    Route::post('absen-tugas-luar', [\App\Http\Controllers\FieldDutyController::class, 'store'])->name('field-duties.store');
+    Route::post('absen-tugas-luar/settings', [\App\Http\Controllers\FieldDutyController::class, 'updateSettings'])->name('field-duties.settings.update');
+    Route::post('absen-tugas-luar/bulk-delete', [\App\Http\Controllers\FieldDutyController::class, 'bulkDestroy'])->name('field-duties.bulk-delete');
+    Route::post('absen-tugas-luar/{fieldDuty}/check-in', [\App\Http\Controllers\FieldDutyController::class, 'checkIn'])->name('field-duties.check-in');
+    Route::post('absen-tugas-luar/{fieldDuty}/check-out', [\App\Http\Controllers\FieldDutyController::class, 'checkOut'])->name('field-duties.check-out');
+    Route::delete('absen-tugas-luar/{fieldDuty}', [\App\Http\Controllers\FieldDutyController::class, 'destroy'])->name('field-duties.destroy');
     Route::post('materials/bulk-destroy', [MaterialController::class, 'bulkDestroy'])->name('materials.bulk-destroy');
     Route::post('materials/{material}/update', [MaterialController::class, 'update'])->name('materials.update.post');
     Route::post('materials/{material}/add-stock', [MaterialController::class, 'addStock'])->name('materials.add-stock');
