@@ -214,11 +214,21 @@
                             <template v-if="row.last_payment_method === 'transfer' && extractBankName(row.last_payment_notes)">
                                 <span>- {{ extractBankName(row.last_payment_notes) }}</span>
                             </template>
-                            <template v-else-if="row.last_payment_method === 'reseller_balance'">
+                            <template v-else-if="row.last_payment_method === 'reseller_balance' && !row.last_payment_collector && extractResellerName(row.last_payment_notes)">
                                 <span class="font-extrabold text-emerald-700">
-                                    - {{ row.last_payment_collector || extractResellerName(row.last_payment_notes) || 'Mitra' }}
+                                    - {{ extractResellerName(row.last_payment_notes) }}
                                 </span>
                             </template>
+                        </span>
+
+                        <!-- Akun / Petugas yang Memproses Invoice -->
+                        <span v-if="row.last_payment_collector || extractResellerName(row.last_payment_notes)" class="text-[9px] text-slate-500 font-medium flex items-center gap-1 mt-0.5" :title="'Diproses oleh akun: ' + (row.last_payment_collector || extractResellerName(row.last_payment_notes))">
+                            <svg class="w-2.5 h-2.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <span class="truncate">Oleh: <strong class="text-slate-700 font-semibold">{{ row.last_payment_collector || extractResellerName(row.last_payment_notes) }}</strong></span>
+                        </span>
+                        <span v-else-if="row.last_payment_method === 'payment_gateway'" class="text-[9px] text-indigo-500 font-medium flex items-center gap-1 mt-0.5" title="Diproses otomatis oleh sistem payment gateway">
+                            <svg class="w-2.5 h-2.5 text-indigo-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            <span>Oleh: <strong class="font-semibold">Sistem Otomatis</strong></span>
                         </span>
                     </span>
                     <span v-else class="text-[11px] text-gray-600">-</span>
@@ -343,6 +353,10 @@
                             <span class="font-bold text-indigo-600">#{{ activeDropdownRow.invoice_number }}</span>
                             <span>&bull;</span>
                             <span class="font-semibold text-gray-700">{{ formatCurrency(activeDropdownRow.amount) }}</span>
+                        </div>
+                        <div v-if="activeDropdownRow.last_payment_collector" class="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+                            <svg class="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <span>Diproses: <strong class="text-slate-800 font-bold">{{ activeDropdownRow.last_payment_collector }}</strong></span>
                         </div>
                     </div>
 

@@ -229,7 +229,7 @@ class InvoiceController extends Controller
                 'amount' => $payForThis,
                 'payment_method' => $request->method,
                 'notes' => $request->notes,
-                'processed_by' => auth()->id(),
+                'collected_by' => auth()->id(),
             ]);
 
             $totalPaid = $inv->payments()->sum('amount');
@@ -251,7 +251,7 @@ class InvoiceController extends Controller
                 'amount' => $remainingPayment,
                 'payment_method' => $request->method,
                 'notes' => ($request->notes ? $request->notes . ' | ' : '') . 'Kelebihan Pembayaran (Overpaid)',
-                'processed_by' => auth()->id(),
+                'collected_by' => auth()->id(),
             ]);
             $totalPaid = $invoice->payments()->sum('amount');
             $invoice->update(['status' => 'paid', 'total_paid' => $totalPaid, 'remaining' => 0]);
@@ -493,7 +493,7 @@ class InvoiceController extends Controller
 
     public function print(Invoice $invoice, Request $request)
     {
-        $invoice->load('customer.package', 'payments');
+        $invoice->load('customer.package', 'payments.collector');
         
         $company = [
             'name' => \App\Models\Setting::get('company_name', config('app.name', 'ISP Management')),
@@ -617,7 +617,7 @@ class InvoiceController extends Controller
                         'amount' => $invoice->remaining,
                         'payment_method' => $payMethod,
                         'notes' => 'Pembayaran lunas seketika saat ' . $actionLabel . ' paket',
-                        'processed_by' => auth()->id(),
+                        'collected_by' => auth()->id(),
                     ]);
                     $invoice->update([
                         'status' => 'paid',
@@ -653,7 +653,7 @@ class InvoiceController extends Controller
                             'amount' => $diff,
                             'payment_method' => $payMethod,
                             'notes' => 'Pembayaran lunas selisih saat ' . $actionLabel . ' paket',
-                            'processed_by' => auth()->id(),
+                            'collected_by' => auth()->id(),
                         ]);
                         $newInv->update([
                             'status' => 'paid',
@@ -686,7 +686,7 @@ class InvoiceController extends Controller
                         'amount' => $newPrice,
                         'payment_method' => $payMethod,
                         'notes' => 'Pembayaran lunas seketika saat ' . $actionLabel . ' paket',
-                        'processed_by' => auth()->id(),
+                        'collected_by' => auth()->id(),
                     ]);
                     $invoice->update([
                         'status' => 'paid',
