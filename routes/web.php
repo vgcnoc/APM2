@@ -208,6 +208,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('attendances/quick-assign-shift', [\App\Http\Controllers\AttendanceController::class, 'quickAssignShift'])->name('attendances.quick-assign-shift');
     Route::post('attendances/update-location', [\App\Http\Controllers\AttendanceController::class, 'updateAreaLocation'])->name('attendances.update-location');
 
+    // Absen Terbaik (Papan Peringkat Kedisiplinan & Penghargaan Juara Top 3)
+    Route::get('absen-terbaik', [\App\Http\Controllers\BestAttendanceController::class, 'index'])->name('best-attendances.index');
+    Route::get('absen-terbaik/employee-detail/{employee}', [\App\Http\Controllers\BestAttendanceController::class, 'employeeDetail'])->name('best-attendances.employee-detail');
+    Route::post('absen-terbaik/sync-payroll', [\App\Http\Controllers\BestAttendanceController::class, 'syncPayroll'])->name('best-attendances.sync-payroll');
+
     // Absen Tim Khusus (Absensi Lapangan, Tanpa Radius, Grup & Potongan)
     Route::get('absen-khusus', [\App\Http\Controllers\SpecialAttendanceController::class, 'index'])->name('special-attendances.index');
     Route::post('absen-khusus/clock-in', [\App\Http\Controllers\SpecialAttendanceController::class, 'clockIn'])->name('special-attendances.clock-in');

@@ -447,10 +447,11 @@ const menuItems = [
         type: 'dropdown',
         icon: 'badge-check',
         label: 'Sistem Presensi & Absensi',
-        active: (url) => ['/attendances', '/absen-khusus', '/absen-tugas-luar'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/attendances', '/absen-terbaik', '/absen-khusus', '/absen-tugas-luar'].some(path => (url || '').startsWith(path)),
         permission: 'menu_hr_employees',
         children: [
             { href: '/attendances', label: 'Absensi Reguler', active: (url) => (url || '').startsWith('/attendances'), permission: 'menu_hr_employees' },
+            { href: '/absen-terbaik', label: 'Absen Terbaik', active: (url) => (url || '').startsWith('/absen-terbaik'), permission: 'menu_hr_employees' },
             { href: '/absen-khusus', label: 'Absen Tim Khusus', active: (url) => (url || '').startsWith('/absen-khusus'), permission: 'menu_hr_employees' },
             { href: '/absen-tugas-luar', label: 'Absen Tugas Luar', active: (url) => (url || '').startsWith('/absen-tugas-luar'), permission: 'menu_hr_employees' },
             { href: '/settings/attendance', label: 'Pengaturan Absensi', active: (url) => (url || '').startsWith('/settings/attendance'), permission: 'menu_hr_employees' },
