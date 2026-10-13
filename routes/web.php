@@ -363,6 +363,7 @@ Route::middleware(['auth'])->group(function () {
     
     Route::get('/reseller-settlements', [\App\Http\Controllers\ResellerBillingController::class, 'settlements'])->name('reseller-settlements.index');
     Route::post('/reseller-settlements/{payment}/approve', [\App\Http\Controllers\ResellerBillingController::class, 'approve'])->name('reseller-settlements.approve');
+    Route::post('/reseller-settlements/{payment}/cancel', [\App\Http\Controllers\ResellerBillingController::class, 'cancel'])->name('reseller-settlements.cancel');
 
     Route::get('/reseller-reports', [\App\Http\Controllers\ResellerReportController::class, 'index'])->name('reseller-reports.index');
     Route::post('/expenses', [\App\Http\Controllers\ExpenseController::class, 'store'])->name('expenses.store');
@@ -400,6 +401,7 @@ Route::middleware(['auth'])->group(function () {
     
     Route::get('/customer-settlements', [\App\Http\Controllers\CustomerBillingController::class, 'settlements'])->name('customer-settlements.index');
     Route::post('/customer-settlements/{payment}/approve', [\App\Http\Controllers\CustomerBillingController::class, 'approve'])->name('customer-settlements.approve');
+    Route::post('/customer-settlements/{payment}/cancel', [\App\Http\Controllers\CustomerBillingController::class, 'cancel'])->name('customer-settlements.cancel');
 
     // ── Laporan Keuangan Global & Pelanggan ────────────────────────────────
     Route::get('/financial-reports', [\App\Http\Controllers\FinancialReportController::class, 'index'])->name('financial-reports.index');

@@ -68,14 +68,24 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button v-if="pay.status === 'pending'" @click="approve(pay.id)" class="inline-flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white px-3.5 py-2 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold ring-1 ring-green-600/50">
-                                        ✓ Validasi
-                                    </button>
-                                    <span v-else class="inline-flex items-center gap-1.5 text-green-700 font-bold text-xs bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                        Tervalidasi
-                                    </span>
-                                </td>
+                                     <div v-if="pay.status === 'pending'" class="flex items-center justify-end gap-2">
+                                         <button @click="approve(pay.id)" class="inline-flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white px-3.5 py-2 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold ring-1 ring-green-600/50">
+                                             ✓ Validasi
+                                         </button>
+                                         <button @click="cancel(pay.id, pay.amount)" class="inline-flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 px-3.5 py-2 rounded-xl border border-rose-200 transition-all text-xs font-bold shadow-sm">
+                                             ✕ Cancel
+                                         </button>
+                                     </div>
+                                     <div v-else class="flex items-center justify-end gap-2">
+                                         <span class="inline-flex items-center gap-1.5 text-green-700 font-bold text-xs bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                             Tervalidasi
+                                         </span>
+                                         <button @click="cancel(pay.id, pay.amount)" title="Batalkan validasi setoran ini" class="inline-flex items-center gap-1 bg-gray-50 hover:bg-rose-50 text-gray-500 hover:text-rose-600 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-rose-200 text-xs font-semibold transition-all">
+                                             ✕ Cancel
+                                         </button>
+                                     </div>
+                                 </td>
                             </tr>
                             <tr v-if="!payments.data.length">
                                 <td colspan="5" class="px-6 py-12 text-center text-gray-500">
@@ -106,6 +116,12 @@ const formatRupiah = (number) => {
 const approve = (id) => {
     if (confirm('Uang sudah diterima? Memproses ini akan melunasi atau mengurangi tagihan invoice Reseller.')) {
         router.post(route('reseller-settlements.approve', id), {}, { preserveScroll: true });
+    }
+};
+
+const cancel = (id, amount) => {
+    if (confirm(`Yakin ingin membatalkan setoran ini (Rp ${formatRupiah(amount)})? Pembayaran akan dihapus dan tagihan kembali ke status semula.`)) {
+        router.post(route('reseller-settlements.cancel', id), {}, { preserveScroll: true });
     }
 };
 </script>

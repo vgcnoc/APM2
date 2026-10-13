@@ -316,4 +316,43 @@ class ResellerBillingController extends Controller
             return back()->with('error', 'Gagal memproses pelunasan: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Admin membatalkan setoran reseller
+     */
+    public function cancel(Request $request, Payment $payment)
+    {
+        DB::beginTransaction();
+        try {
+            $invoice = $payment->invoice;
+
+            // Hapus insentif pending jika ada yang terhubung
+            \App\Models\Incentive::where('reference_id', 'payment_' . $payment->id)
+                ->where('status', 'pending')
+                ->delete();
+
+            $isVerified = ($payment->status === 'verified');
+
+            // Hapus record pembayaran
+            $payment->delete();
+
+            // Jika pembayaran tadinya sudah verified, sinkronkan ulang status invoice
+            if ($isVerified && $invoice) {
+                $totalPaid = $invoice->payments()->where('status', 'verified')->sum('amount');
+                if ($totalPaid >= $invoice->amount) {
+                    $invoice->update(['status' => 'paid']);
+                } elseif ($totalPaid > 0) {
+                    $invoice->update(['status' => 'partial']);
+                } else {
+                    $invoice->update(['status' => 'unpaid']);
+                }
+            }
+
+            DB::commit();
+            return back()->with('success', 'Setoran penagih reseller berhasil dibatalkan/dihapus.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal membatalkan setoran: ' . $e->getMessage());
+        }
+    }
 }
