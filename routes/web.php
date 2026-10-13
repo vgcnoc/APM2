@@ -189,6 +189,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('shifts/{shift}/update', [\App\Http\Controllers\ShiftController::class, 'update'])->name('shifts.update.post');
     Route::post('shifts/{shift}/delete', [\App\Http\Controllers\ShiftController::class, 'destroy'])->name('shifts.destroy.post');
     Route::post('shifts/{shift}/assign', [\App\Http\Controllers\ShiftController::class, 'assignEmployees'])->name('shifts.assign');
+
+    // Jadwal Kerja & Roster Shift
+    Route::get('work-schedules', [\App\Http\Controllers\WorkScheduleController::class, 'index'])->name('work-schedules.index');
+    Route::post('work-schedules/save-batch', [\App\Http\Controllers\WorkScheduleController::class, 'saveBatch'])->name('work-schedules.save-batch');
+    Route::post('work-schedules/generate', [\App\Http\Controllers\WorkScheduleController::class, 'generate'])->name('work-schedules.generate');
+    Route::post('work-schedules/continue-previous-month', [\App\Http\Controllers\WorkScheduleController::class, 'continuePreviousMonth'])->name('work-schedules.continue-previous-month');
+    Route::post('work-schedules/copy-month', [\App\Http\Controllers\WorkScheduleController::class, 'copyMonth'])->name('work-schedules.copy-month');
+    Route::post('work-schedules/reset-month', [\App\Http\Controllers\WorkScheduleController::class, 'resetMonth'])->name('work-schedules.reset-month');
+    Route::post('work-schedules/patterns', [\App\Http\Controllers\WorkScheduleController::class, 'storePattern'])->name('work-schedules.patterns.store');
+    Route::delete('work-schedules/patterns/{id}', [\App\Http\Controllers\WorkScheduleController::class, 'destroyPattern'])->name('work-schedules.patterns.destroy');
+    Route::post('work-schedules/quick-shift', [\App\Http\Controllers\WorkScheduleController::class, 'quickStoreShift'])->name('work-schedules.quick-shift');
     Route::post('materials/bulk-destroy', [MaterialController::class, 'bulkDestroy'])->name('materials.bulk-destroy');
     Route::post('materials/{material}/update', [MaterialController::class, 'update'])->name('materials.update.post');
     Route::post('materials/{material}/add-stock', [MaterialController::class, 'addStock'])->name('materials.add-stock');

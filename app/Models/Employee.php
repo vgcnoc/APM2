@@ -17,4 +17,9 @@ class Employee extends Model
     {
         return $this->belongsTo(Shift::class);
     }
+
+    public function schedules()
+    {
+        return $this->hasMany(WorkSchedule::class);
+    }
 }

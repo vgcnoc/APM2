@@ -39,6 +39,14 @@ class Shift extends Model
     }
 
     /**
+     * Jadwal kerja yang menggunakan shift ini
+     */
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(WorkSchedule::class);
+    }
+
+    /**
      * Format jam kerja: "08:00 - 17:00"
      */
     public function getFormattedTimeAttribute(): string

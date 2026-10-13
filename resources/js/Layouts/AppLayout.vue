@@ -409,12 +409,13 @@ const menuItems = [
         type: 'dropdown',
         icon: 'users',
         label: 'Kepegawaian & HRD',
-        active: (url) => (url || '').startsWith('/employees') || (url || '').startsWith('/positions') || (url || '').startsWith('/shifts') || (url || '').startsWith('/payroll') || (url || '').startsWith('/insentif-potongan'),
+        active: (url) => (url || '').startsWith('/employees') || (url || '').startsWith('/positions') || (url || '').startsWith('/shifts') || (url || '').startsWith('/work-schedules') || (url || '').startsWith('/payroll') || (url || '').startsWith('/insentif-potongan'),
         permission: 'menu_hr_employees',
         children: [
             { href: '/employees', label: 'Data Karyawan', active: (url) => (url || '').startsWith('/employees'), permission: 'menu_hr_employees' },
             { href: '/positions', label: 'Posisi / Jabatan', active: (url) => (url || '').startsWith('/positions'), permission: 'menu_hr_positions' },
             { href: '/shifts', label: 'Shift Kerja', active: (url) => (url || '').startsWith('/shifts'), permission: 'menu_hr_employees' },
+            { href: '/work-schedules', label: 'Jadwal Kerja', active: (url) => (url || '').startsWith('/work-schedules'), permission: 'menu_hr_employees' },
             { href: '/payroll', label: 'Gaji & Insentif', active: (url) => (url || '').length > 0 && url === '/payroll', permission: 'menu_hr_employees' },
             { href: '/insentif-potongan', label: 'Histori Insentif', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: 'menu_hr_employees' },
         ]
