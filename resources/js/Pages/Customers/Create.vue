@@ -102,8 +102,22 @@
                                     <input v-model="form.district" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: Sukasari" />
                                 </div>
                                 <div>
-                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Desa / Kelurahan</label>
-                                    <input v-model="form.village" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: Sukamaju" />
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center justify-between">
+                                        <span>Desa / Kelurahan</span>
+                                        <span v-if="suggestedVillages.length > 0" class="text-[9px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                                            {{ suggestedVillages.length }} Sesuai Area
+                                        </span>
+                                    </label>
+                                    <input 
+                                        v-model="form.village" 
+                                        list="village-suggestions" 
+                                        type="text" 
+                                        class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" 
+                                        placeholder="Pilih atau ketik desa..." 
+                                    />
+                                    <datalist id="village-suggestions">
+                                        <option v-for="v in suggestedVillages" :key="v" :value="v" />
+                                    </datalist>
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">RT / RW</label>
@@ -269,12 +283,24 @@ const props = defineProps({
     packages: Array,
     sales: Array,
     areas: Array,
+    area_villages: {
+        type: Object,
+        default: () => ({}),
+    },
 });
 
 const isNewArea = ref(false);
 const page = usePage();
 const isAdmin = computed(() => page.props.auth.user?.role === 'admin' || page.props.auth.user?.role === 'super-admin');
 const registration_type = ref('customer');
+
+// Rekomendasi desa yang pernah di-input di area yang dipilih
+const suggestedVillages = computed(() => {
+    if (form.area && props.area_villages && props.area_villages[form.area]) {
+        return props.area_villages[form.area];
+    }
+    return [];
+});
 
 onMounted(() => {
     if (!props.areas || props.areas.length === 0) {

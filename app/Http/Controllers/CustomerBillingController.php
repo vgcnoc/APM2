@@ -215,42 +215,48 @@ class CustomerBillingController extends Controller
         }
         $areas = $areasQuery->get(['id', 'name']);
 
-        // Mapping master desa default per nama area operasional
-        $defaultAreaDesas = [
-            'BC 1' => ['Bantarkalong', 'Girijaya', 'Hegarmanah', 'Sirnajaya', 'Warungkiara'],
-            'BC 2' => ['Cikembar', 'Cimanggu', 'Kertamukti', 'Sukamulya', 'Ubrug'],
-            'BC 3' => ['Bantargadung', 'Boyongsari', 'Cigombong', 'Hegarmanah', 'Sukamanah', 'Tarisi', 'Warungkiara'],
-            'Gratis BC 3' => ['Bantargadung', 'Warungkiara'],
-        ];
-
+        // Mapping desa dinamis mengikuti data pelanggan yang di-input saat booking per area
         $areaDesasMap = [];
         $allDesasCollection = collect();
 
         foreach ($areas as $areaItem) {
             $areaId = $areaItem->id;
-            $dList = collect($defaultAreaDesas[$areaItem->name] ?? []);
+            $dList = collect();
 
-            // Pindai juga pelanggan yang terdaftar di area ini
-            $areaCustAddrs = Customer::where('area_id', $areaId)->whereNotNull('address')->pluck('address');
+            // Pindai data pelanggan hasil booking di area ini (cocokkan via area_id atau nama area)
+            $areaCustAddrs = Customer::where(function($q) use ($areaId, $areaItem) {
+                $q->where('area_id', $areaId)
+                  ->orWhere('area', $areaItem->name);
+            })->whereNotNull('address')->pluck('address');
+
             foreach ($areaCustAddrs as $addr) {
-                if (preg_match_all('/(?:Kel\.?|Kelurahan|Desa)\s*([a-zA-Z\s]+?)(?=\s+(?:Kec|Kab|RT|RW|No|\d)|[,\n\r\.\-]|$)/i', $addr, $matches)) {
+                // Ekstraksi pola desa yang diinput saat booking: Kel. / Kelurahan / Desa <nama_desa>
+                if (preg_match_all('/(?:Kel\.?|Kelurahan|Desa)\s*([a-zA-Z0-9\s]+?)(?=\s+(?:Kec|Kab|RT|RW|No|\d)|[,\n\r\.\-]|$)/i', $addr, $matches)) {
                     foreach ($matches[1] as $m) {
                         $val = trim($m);
-                        if (strlen($val) >= 3 && strlen($val) <= 30 && !in_array(strtolower($val), ['kec', 'kab', 'rt', 'rw', 'jalan', 'jl'])) {
+                        if (strlen($val) >= 2 && strlen($val) <= 40 && !in_array(strtolower($val), ['kec', 'kab', 'rt', 'rw', 'jalan', 'jl'])) {
                             $dList->push(ucwords(strtolower($val)));
                         }
                     }
                 }
             }
 
-            $cleanList = $dList->map(fn($d) => ucwords(strtolower(trim($d))))
-                ->unique()
-                ->sort()
-                ->values()
-                ->all();
-
+            $cleanList = $dList->unique()->sort()->values()->all();
             $areaDesasMap[$areaId] = $cleanList;
             $allDesasCollection = $allDesasCollection->merge($cleanList);
+        }
+
+        // Pindai juga semua pelanggan lain untuk pilihan "Semua Wilayah"
+        $allCustAddrs = Customer::whereNotNull('address')->pluck('address');
+        foreach ($allCustAddrs as $addr) {
+            if (preg_match_all('/(?:Kel\.?|Kelurahan|Desa)\s*([a-zA-Z0-9\s]+?)(?=\s+(?:Kec|Kab|RT|RW|No|\d)|[,\n\r\.\-]|$)/i', $addr, $matches)) {
+                foreach ($matches[1] as $m) {
+                    $val = trim($m);
+                    if (strlen($val) >= 2 && strlen($val) <= 40 && !in_array(strtolower($val), ['kec', 'kab', 'rt', 'rw', 'jalan', 'jl'])) {
+                        $allDesasCollection->push(ucwords(strtolower($val)));
+                    }
+                }
+            }
         }
 
         $allDesas = $allDesasCollection->unique()->sort()->values()->all();

@@ -1027,10 +1027,32 @@ class CustomerController extends Controller
             }
         }
 
+        // Kumpulkan desa yang pernah di-input saat booking per area untuk saran autocomplete
+        $areaVillagesMap = [];
+        foreach (\App\Models\Area::all() as $a) {
+            $vList = collect();
+            $custAddrs = Customer::where(function($q) use ($a) {
+                $q->where('area_id', $a->id)->orWhere('area', $a->name);
+            })->whereNotNull('address')->pluck('address');
+
+            foreach ($custAddrs as $addr) {
+                if (preg_match_all('/(?:Kel\.?|Kelurahan|Desa)\s*([a-zA-Z0-9\s]+?)(?=\s+(?:Kec|Kab|RT|RW|No|\d)|[,\n\r\.\-]|$)/i', $addr, $matches)) {
+                    foreach ($matches[1] as $m) {
+                        $val = trim($m);
+                        if (strlen($val) >= 2 && strlen($val) <= 40 && !in_array(strtolower($val), ['kec', 'kab', 'rt', 'rw', 'jalan', 'jl'])) {
+                            $vList->push(ucwords(strtolower($val)));
+                        }
+                    }
+                }
+            }
+            $areaVillagesMap[$a->name] = $vList->unique()->sort()->values()->all();
+        }
+
         return Inertia::render('Customers/Create', [
             'packages' => InternetPackage::active()->get(),
             'sales' => $sales,
             'areas' => $areas,
+            'area_villages' => $areaVillagesMap,
         ]);
     }
 
