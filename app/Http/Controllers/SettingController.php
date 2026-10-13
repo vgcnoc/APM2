@@ -108,6 +108,18 @@ class SettingController extends Controller
                 'attendance_cron_enabled' => Setting::get('attendance_cron_enabled', '1') === '1',
                 'attendance_cron_hour' => (int) Setting::get('attendance_cron_hour', 23),
                 'attendance_cron_minute' => (int) Setting::get('attendance_cron_minute', 30),
+
+                // REWARD ABSEN TERBAIK
+                'attendance_reward_enabled' => Setting::get('attendance_reward_enabled', '1') === '1',
+                'attendance_reward_branch_enabled' => Setting::get('attendance_reward_branch_enabled', '1') === '1',
+                'attendance_reward_global_enabled' => Setting::get('attendance_reward_global_enabled', '1') === '1',
+                'attendance_reward_branch_1' => (int) Setting::get('attendance_reward_branch_1', 200000),
+                'attendance_reward_branch_2' => (int) Setting::get('attendance_reward_branch_2', 150000),
+                'attendance_reward_branch_3' => (int) Setting::get('attendance_reward_branch_3', 100000),
+                'attendance_reward_global_1' => (int) Setting::get('attendance_reward_global_1', 200000),
+                'attendance_reward_global_2' => (int) Setting::get('attendance_reward_global_2', 150000),
+                'attendance_reward_global_3' => (int) Setting::get('attendance_reward_global_3', 100000),
+                'attendance_reward_note' => Setting::get('attendance_reward_note', 'Reward diberikan setiap akhir bulan bersama gaji'),
             ]
         ]);
     }
@@ -139,6 +151,18 @@ class SettingController extends Controller
             'attendance_cron_enabled' => 'nullable|boolean',
             'attendance_cron_hour' => 'required|integer|min:0|max:23',
             'attendance_cron_minute' => 'required|integer|min:0|max:59',
+
+            // Reward Validation
+            'attendance_reward_enabled' => 'nullable|boolean',
+            'attendance_reward_branch_enabled' => 'nullable|boolean',
+            'attendance_reward_global_enabled' => 'nullable|boolean',
+            'attendance_reward_branch_1' => 'nullable|numeric|min:0',
+            'attendance_reward_branch_2' => 'nullable|numeric|min:0',
+            'attendance_reward_branch_3' => 'nullable|numeric|min:0',
+            'attendance_reward_global_1' => 'nullable|numeric|min:0',
+            'attendance_reward_global_2' => 'nullable|numeric|min:0',
+            'attendance_reward_global_3' => 'nullable|numeric|min:0',
+            'attendance_reward_note' => 'nullable|string',
         ]);
 
         Setting::set('attendance_late_enabled', $request->boolean('attendance_late_enabled') ? '1' : '0');
@@ -166,7 +190,19 @@ class SettingController extends Controller
         Setting::set('attendance_cron_hour', $request->attendance_cron_hour);
         Setting::set('attendance_cron_minute', $request->attendance_cron_minute);
 
-        return redirect()->back()->with('success', 'Pengaturan absensi & potongan otomatis berhasil disimpan.');
+        // Save Reward Settings
+        Setting::set('attendance_reward_enabled', $request->boolean('attendance_reward_enabled') ? '1' : '0');
+        Setting::set('attendance_reward_branch_enabled', $request->boolean('attendance_reward_branch_enabled') ? '1' : '0');
+        Setting::set('attendance_reward_global_enabled', $request->boolean('attendance_reward_global_enabled') ? '1' : '0');
+        Setting::set('attendance_reward_branch_1', $request->attendance_reward_branch_1 ?? 200000);
+        Setting::set('attendance_reward_branch_2', $request->attendance_reward_branch_2 ?? 150000);
+        Setting::set('attendance_reward_branch_3', $request->attendance_reward_branch_3 ?? 100000);
+        Setting::set('attendance_reward_global_1', $request->attendance_reward_global_1 ?? 200000);
+        Setting::set('attendance_reward_global_2', $request->attendance_reward_global_2 ?? 150000);
+        Setting::set('attendance_reward_global_3', $request->attendance_reward_global_3 ?? 100000);
+        Setting::set('attendance_reward_note', $request->attendance_reward_note ?? '');
+
+        return redirect()->back()->with('success', 'Pengaturan absensi & reward terbaik berhasil disimpan.');
     }
 
     public function updateBilling(Request $request)

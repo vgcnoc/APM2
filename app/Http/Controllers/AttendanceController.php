@@ -6,7 +6,9 @@ use App\Models\Area;
 use App\Models\Attendance;
 use App\Models\Deduction;
 use App\Models\Employee;
+use App\Models\Incentive;
 use App\Models\Position;
+use App\Models\Setting;
 use App\Models\Shift;
 use App\Models\User;
 use App\Models\WorkSchedule;
@@ -481,7 +483,6 @@ class AttendanceController extends Controller
                 $totalDeductionAmount = ($totalMinutes * $penaltyPerMinute) + ($lateCount * $fixedPenalty);
 
                 if ($totalDeductionAmount > 0) {
-                    // Cek apakah sudah pernah dibuat deduction auto untuk bulan ini
                     $desc = "Potongan Terlambat Absensi Periode {$month} ({$lateCount}x telat, total {$totalMinutes} menit)";
                     
                     Deduction::updateOrCreate(
@@ -502,9 +503,102 @@ class AttendanceController extends Controller
                     $syncedCount++;
                 }
             }
+
+            // PROSES REWARD ABSEN TERBAIK JIKA DIAKTIFKAN
+            if (Setting::get('attendance_reward_enabled', '1') === '1') {
+                $allMonthAtts = Attendance::with('employee')
+                    ->whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+                    ->get()
+                    ->groupBy('employee_id');
+
+                // Hitung Skor & Disiplin: Hadir banyak, late_minutes paling kecil
+                $performance = [];
+                foreach ($allMonthAtts as $empId => $atts) {
+                    $emp = $atts->first()->employee;
+                    if (!$emp || !$emp->email) continue;
+                    $usr = User::where('email', $emp->email)->first();
+                    if (!$usr) continue;
+
+                    $presents = $atts->whereNotNull('clock_in')->count();
+                    $lates = $atts->where('status', 'late')->count();
+                    $lateMins = $atts->sum('late_minutes');
+
+                    if ($presents > 0) {
+                        $performance[] = [
+                            'user' => $usr,
+                            'employee' => $emp,
+                            'area_id' => $emp->area_id,
+                            'presents' => $presents,
+                            'late_minutes' => $lateMins,
+                            'score' => ($presents * 100) - ($lateMins * 2),
+                        ];
+                    }
+                }
+
+                // Reward Per Cabang
+                if (Setting::get('attendance_reward_branch_enabled', '1') === '1') {
+                    $byArea = collect($performance)->groupBy('area_id');
+                    $branchNominals = [
+                        1 => (float) Setting::get('attendance_reward_branch_1', 200000),
+                        2 => (float) Setting::get('attendance_reward_branch_2', 150000),
+                        3 => (float) Setting::get('attendance_reward_branch_3', 100000),
+                    ];
+
+                    foreach ($byArea as $areaId => $areaPerformers) {
+                        $sorted = $areaPerformers->sortByDesc('score')->values();
+                        for ($rank = 1; $rank <= min(3, $sorted->count()); $rank++) {
+                            $item = $sorted[$rank - 1];
+                            $nominal = $branchNominals[$rank] ?? 0;
+                            if ($nominal > 0) {
+                                Incentive::updateOrCreate(
+                                    [
+                                        'user_id' => $item['user']->id,
+                                        'type' => 'auto',
+                                        'description' => "Reward Absen Terbaik (Juara {$rank} Cabang) Periode {$month}",
+                                    ],
+                                    [
+                                        'amount' => $nominal,
+                                        'incentive_date' => $monthEnd->format('Y-m-d'),
+                                        'status' => 'pending',
+                                    ]
+                                );
+                            }
+                        }
+                    }
+                }
+
+                // Reward Global (Top 3 Perusahaan)
+                if (Setting::get('attendance_reward_global_enabled', '1') === '1') {
+                    $globalSorted = collect($performance)->sortByDesc('score')->values();
+                    $globalNominals = [
+                        1 => (float) Setting::get('attendance_reward_global_1', 200000),
+                        2 => (float) Setting::get('attendance_reward_global_2', 150000),
+                        3 => (float) Setting::get('attendance_reward_global_3', 100000),
+                    ];
+
+                    for ($rank = 1; $rank <= min(3, $globalSorted->count()); $rank++) {
+                        $item = $globalSorted[$rank - 1];
+                        $nominal = $globalNominals[$rank] ?? 0;
+                        if ($nominal > 0) {
+                            Incentive::updateOrCreate(
+                                [
+                                    'user_id' => $item['user']->id,
+                                    'type' => 'auto',
+                                    'description' => "Reward Absen Terbaik (Juara {$rank} Global) Periode {$month}",
+                                ],
+                                [
+                                    'amount' => $nominal,
+                                    'incentive_date' => $monthEnd->format('Y-m-d'),
+                                    'status' => 'pending',
+                                ]
+                            );
+                        }
+                    }
+                }
+            }
         });
 
-        return back()->with('success', "Berhasil menyinkronkan data keterlambatan {$syncedCount} karyawan ke modul Penggajian (Payroll)!");
+        return back()->with('success', "Berhasil menyinkronkan data potongan & reward absen terbaik ke modul Penggajian (Payroll)!");
     }
 
     /**
