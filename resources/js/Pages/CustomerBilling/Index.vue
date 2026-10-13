@@ -139,7 +139,7 @@
                 <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
                     
                     <!-- Filters Grid -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 flex-1">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 flex-1">
                         <!-- Filter Area / Wilayah -->
                         <div>
                             <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
@@ -155,6 +155,27 @@
                                     {{ area.name }}
                                 </option>
                             </select>
+                        </div>
+
+                        <!-- Filter Desa / Kelurahan -->
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                                Desa / Kelurahan
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    list="desa-options"
+                                    v-model="filterForm.desa" 
+                                    @change="executeFilter"
+                                    @keyup.enter="executeFilter"
+                                    placeholder="Pilih atau cari desa..."
+                                    class="block w-full text-xs rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 transition-colors"
+                                />
+                                <datalist id="desa-options">
+                                    <option v-for="d in desas" :key="d" :value="d">{{ d }}</option>
+                                </datalist>
+                            </div>
                         </div>
 
                         <!-- Filter Tanggal Mulai -->
@@ -308,7 +329,19 @@
 
                                 <!-- Pelanggan / Wilayah -->
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-bold text-gray-900">{{ inv.customer?.name || 'Unknown' }}</div>
+                                    <button 
+                                        type="button" 
+                                        @click="openCustomerModal(inv.customer_details || inv.customer)"
+                                        class="group text-left inline-flex items-center gap-1.5 focus:outline-hidden hover:opacity-90"
+                                        title="Klik untuk melihat koordinat GPS, foto KTP, dan foto rumah pelanggan"
+                                    >
+                                        <span class="text-sm font-bold text-indigo-600 group-hover:text-indigo-800 group-hover:underline">
+                                            {{ inv.customer?.name || 'Unknown' }}
+                                        </span>
+                                        <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-indigo-50 group-hover:bg-indigo-100 text-[10px] text-indigo-600 font-bold border border-indigo-200 transition-colors shadow-2xs">
+                                            ℹ️
+                                        </span>
+                                    </button>
                                     <div class="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
                                         <span>{{ inv.customer?.phone || '-' }}</span>
                                         <span v-if="inv.customer?.area_model?.name || inv.customer?.area" class="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-medium border border-slate-200/60">
@@ -471,6 +504,258 @@
                 </div>
             </div>
         </div>
+
+        <!-- ── CUSTOMER DETAIL MODAL (Koordinat GPS, Foto KTP, & Foto Rumah) ── -->
+        <div v-if="showCustomerModal && selectedCustomer" class="fixed inset-0 z-50 overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity" @click="showCustomerModal = false"></div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+                
+                <div class="inline-block align-bottom sm:align-middle bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:max-w-2xl w-full border border-gray-100 z-10 my-8">
+                    <!-- Modal Header -->
+                    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 relative">
+                        <button 
+                            type="button" 
+                            @click="showCustomerModal = false"
+                            class="absolute top-5 right-5 text-gray-400 hover:text-white bg-white/10 hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-2xl shadow-inner">
+                                👤
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-lg font-bold text-white tracking-tight">{{ selectedCustomer.name }}</h3>
+                                    <span v-if="selectedCustomer.customer_code" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
+                                        {{ selectedCustomer.customer_code }}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-gray-300 mt-0.5 flex items-center gap-2">
+                                    <span v-if="selectedCustomer.area">📍 {{ selectedCustomer.area }}</span>
+                                    <span v-if="selectedCustomer.package">• Paket: {{ selectedCustomer.package }}</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Body -->
+                    <div class="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+                        
+                        <!-- 1. Lokasi & Titik Koordinat GPS -->
+                        <div class="bg-gray-50/80 rounded-2xl p-4 border border-gray-200/80">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold uppercase tracking-wider text-gray-600 flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    Titik Koordinat & Alamat Pelanggan
+                                </span>
+                                <span v-if="selectedCustomer.latitude && selectedCustomer.longitude" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    GPS Aktif
+                                </span>
+                            </div>
+
+                            <!-- Alamat Lengkap -->
+                            <p class="text-xs text-gray-700 font-medium mb-3 bg-white p-2.5 rounded-xl border border-gray-200/60">
+                                {{ selectedCustomer.address || 'Alamat tidak terdata' }}
+                            </p>
+
+                            <!-- Titik Koordinat GPS & Action Button -->
+                            <div v-if="selectedCustomer.latitude && selectedCustomer.longitude" class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-indigo-50/60 p-3 rounded-xl border border-indigo-100">
+                                <div>
+                                    <div class="text-[11px] font-semibold text-indigo-900">Koordinat GPS:</div>
+                                    <div class="font-mono text-xs font-bold text-indigo-700">
+                                        {{ selectedCustomer.latitude }}, {{ selectedCustomer.longitude }}
+                                    </div>
+                                </div>
+                                <a 
+                                    :href="`https://www.google.com/maps?q=${selectedCustomer.latitude},${selectedCustomer.longitude}`" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs hover:shadow transition-all"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                    Buka di Google Maps 📍
+                                </a>
+                            </div>
+                            <div v-else class="text-xs text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200 flex items-center gap-2">
+                                <span>⚠️ Titik koordinat GPS belum tersimpan untuk pelanggan ini.</span>
+                            </div>
+                        </div>
+
+                        <!-- 2. Foto KTP & Foto Rumah Pelanggan -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            
+                            <!-- Foto KTP -->
+                            <div class="bg-gray-50/80 rounded-2xl p-4 border border-gray-200/80 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between mb-2.5">
+                                        <span class="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
+                                            🪪 Foto KTP
+                                        </span>
+                                        <span v-if="selectedCustomer.identity_photo_url" class="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full border border-green-200">
+                                            Tersedia
+                                        </span>
+                                    </div>
+
+                                    <div v-if="selectedCustomer.identity_photo_url" class="relative group rounded-xl overflow-hidden border border-gray-200 bg-black aspect-4/3 cursor-pointer" @click="openImagePreview('Foto KTP - ' + selectedCustomer.name, selectedCustomer.identity_photo_url)">
+                                        <img 
+                                            :src="selectedCustomer.identity_photo_url" 
+                                            alt="Foto KTP Pelanggan" 
+                                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1.5">
+                                            <span>🔍 Perbesar Foto</span>
+                                        </div>
+                                    </div>
+                                    <div v-else class="aspect-4/3 rounded-xl border-2 border-dashed border-gray-200 bg-white flex flex-col items-center justify-center text-gray-400 p-4 text-center">
+                                        <svg class="w-8 h-8 mb-1.5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                                        </svg>
+                                        <span class="text-xs font-medium">Foto KTP belum diunggah</span>
+                                    </div>
+                                </div>
+
+                                <div v-if="selectedCustomer.identity_photo_url" class="mt-3">
+                                    <button 
+                                        type="button"
+                                        @click="openImagePreview('Foto KTP - ' + selectedCustomer.name, selectedCustomer.identity_photo_url)"
+                                        class="w-full text-center py-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-white hover:bg-indigo-50/50 rounded-xl border border-gray-200 transition-colors"
+                                    >
+                                        Lihat Foto Penuh &rarr;
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Foto Rumah -->
+                            <div class="bg-gray-50/80 rounded-2xl p-4 border border-gray-200/80 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between mb-2.5">
+                                        <span class="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
+                                            🏠 Foto Rumah
+                                        </span>
+                                        <span v-if="selectedCustomer.house_photo_url" class="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full border border-green-200">
+                                            Tersedia
+                                        </span>
+                                    </div>
+
+                                    <div v-if="selectedCustomer.house_photo_url" class="relative group rounded-xl overflow-hidden border border-gray-200 bg-black aspect-4/3 cursor-pointer" @click="openImagePreview('Foto Rumah - ' + selectedCustomer.name, selectedCustomer.house_photo_url)">
+                                        <img 
+                                            :src="selectedCustomer.house_photo_url" 
+                                            alt="Foto Rumah Pelanggan" 
+                                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1.5">
+                                            <span>🔍 Perbesar Foto</span>
+                                        </div>
+                                    </div>
+                                    <div v-else class="aspect-4/3 rounded-xl border-2 border-dashed border-gray-200 bg-white flex flex-col items-center justify-center text-gray-400 p-4 text-center">
+                                        <svg class="w-8 h-8 mb-1.5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                        </svg>
+                                        <span class="text-xs font-medium">Foto rumah belum tersedia</span>
+                                    </div>
+                                </div>
+
+                                <div v-if="selectedCustomer.house_photo_url" class="mt-3">
+                                    <button 
+                                        type="button"
+                                        @click="openImagePreview('Foto Rumah - ' + selectedCustomer.name, selectedCustomer.house_photo_url)"
+                                        class="w-full text-center py-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-white hover:bg-indigo-50/50 rounded-xl border border-gray-200 transition-colors"
+                                    >
+                                        Lihat Foto Penuh &rarr;
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- 3. Hubungi Kontak Cepat -->
+                        <div v-if="selectedCustomer.phone" class="bg-emerald-50/70 rounded-2xl p-4 border border-emerald-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <div>
+                                <div class="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                                    <span>📞 Kontak Pelanggan</span>
+                                </div>
+                                <div class="text-xs font-bold text-emerald-700 mt-0.5">
+                                    {{ selectedCustomer.phone }}
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 w-full sm:w-auto">
+                                <a 
+                                    :href="`https://wa.me/${cleanPhone(selectedCustomer.phone)}?text=Halo%20Bapak%2FIbu%20${encodeURIComponent(selectedCustomer.name)},%20kami%20dari%20petugas%20layanan%20internet...`" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors"
+                                >
+                                    💬 WhatsApp
+                                </a>
+                                <a 
+                                    :href="`tel:${selectedCustomer.phone}`" 
+                                    class="inline-flex items-center justify-center px-3.5 py-2 rounded-xl bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 text-xs font-bold shadow-xs transition-colors"
+                                >
+                                    Telepon
+                                </a>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div class="bg-gray-50 px-6 py-4 flex justify-end border-t border-gray-100">
+                        <button 
+                            type="button" 
+                            @click="showCustomerModal = false" 
+                            class="px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-bold rounded-xl transition-colors"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── LIGHTBOX IMAGE PREVIEW MODAL ── -->
+        <div v-if="previewImageModal.show" class="fixed inset-0 z-60 overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen p-4 text-center">
+                <div class="fixed inset-0 bg-black/85 backdrop-blur-sm transition-opacity" @click="previewImageModal.show = false"></div>
+                <div class="relative bg-black rounded-2xl overflow-hidden max-w-4xl max-h-[90vh] shadow-2xl z-10 border border-white/10">
+                    <div class="flex items-center justify-between px-4 py-3 bg-gray-900/90 text-white border-b border-white/10">
+                        <h4 class="text-sm font-bold truncate">{{ previewImageModal.title }}</h4>
+                        <div class="flex items-center gap-2">
+                            <a 
+                                :href="previewImageModal.url" 
+                                target="_blank" 
+                                class="text-xs text-indigo-300 hover:text-white px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors"
+                            >
+                                Buka di Tab Baru ↗
+                            </a>
+                            <button 
+                                type="button" 
+                                @click="previewImageModal.show = false"
+                                class="text-gray-400 hover:text-white rounded-lg p-1 transition-colors"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-2 flex items-center justify-center bg-black">
+                        <img 
+                            :src="previewImageModal.url" 
+                            alt="Preview" 
+                            class="max-w-full max-h-[80vh] object-contain rounded-lg"
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </AppLayout>
 </template>
 
@@ -490,6 +775,10 @@ const props = defineProps({
         default: 'unpaid',
     },
     areas: {
+        type: Array,
+        default: () => [],
+    },
+    desas: {
         type: Array,
         default: () => [],
     },
@@ -516,19 +805,21 @@ const formatRupiah = (number) => {
 const filterForm = reactive({
     tab: props.filters?.tab || props.activeTab || 'unpaid',
     area_id: props.filters?.area_id || '',
+    desa: props.filters?.desa || '',
     start_date: props.filters?.start_date || '',
     end_date: props.filters?.end_date || '',
     search: props.filters?.search || '',
 });
 
 const hasActiveFilters = computed(() => {
-    return !!(filterForm.area_id || filterForm.start_date || filterForm.end_date || filterForm.search);
+    return !!(filterForm.area_id || filterForm.desa || filterForm.start_date || filterForm.end_date || filterForm.search);
 });
 
 const executeFilter = () => {
     router.get(route('customer-billing.index'), {
         tab: filterForm.tab,
         area_id: filterForm.area_id || undefined,
+        desa: filterForm.desa || undefined,
         start_date: filterForm.start_date || undefined,
         end_date: filterForm.end_date || undefined,
         search: filterForm.search || undefined,
@@ -550,15 +841,45 @@ const handleSearchInput = debounce(() => {
 
 const resetFilters = () => {
     filterForm.area_id = '';
+    filterForm.desa = '';
     filterForm.start_date = '';
     filterForm.end_date = '';
     filterForm.search = '';
     executeFilter();
 };
 
-// ── Modal State ──
+// ── Collect Modal State ──
 const showModal = ref(false);
 const selectedInvoice = ref(null);
+
+// ── Customer Detail Modal State ──
+const showCustomerModal = ref(false);
+const selectedCustomer = ref(null);
+const previewImageModal = ref({ show: false, title: '', url: '' });
+
+const openCustomerModal = (customer) => {
+    if (!customer) return;
+    selectedCustomer.value = customer;
+    showCustomerModal.value = true;
+};
+
+const openImagePreview = (title, url) => {
+    if (!url) return;
+    previewImageModal.value = {
+        show: true,
+        title,
+        url
+    };
+};
+
+const cleanPhone = (phone) => {
+    if (!phone) return '';
+    let p = String(phone).replace(/[^0-9]/g, '');
+    if (p.startsWith('0')) {
+        p = '62' + p.substring(1);
+    }
+    return p;
+};
 
 const form = useForm({
     amount: '',

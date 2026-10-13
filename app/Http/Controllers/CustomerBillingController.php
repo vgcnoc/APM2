@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Area;
+use App\Models\Customer;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,7 @@ class CustomerBillingController extends Controller
 
         $userAccessibleAreaIds = auth()->user()->getAccessibleAreaIds();
 
-        // Helper untuk membangun query dengan filter area, tanggal, dan search
+        // Helper untuk membangun query dengan filter area, desa, tanggal, dan search
         $buildFilteredQuery = function ($tabType) use ($request, $userAccessibleAreaIds) {
             $q = Invoice::where('is_reseller_balance', false);
 
@@ -35,6 +36,14 @@ class CustomerBillingController extends Controller
             if ($request->filled('area_id')) {
                 $areaId = $request->area_id;
                 $q->whereHas('customer', fn($c) => $c->where('area_id', $areaId));
+            }
+
+            // Filter Desa / Kelurahan berdasarkan alamat pelanggan
+            if ($request->filled('desa')) {
+                $desa = trim($request->desa);
+                $q->whereHas('customer', function($cq) use ($desa) {
+                    $cq->where('address', 'like', "%{$desa}%");
+                });
             }
 
             if ($request->filled('search')) {
@@ -111,26 +120,82 @@ class CustomerBillingController extends Controller
             $todayPaymentsQuery->whereHas('customer', fn($c) => $c->where('area_id', $request->area_id));
         }
 
+        if ($request->filled('desa')) {
+            $desa = trim($request->desa);
+            $todayPaymentsQuery->whereHas('customer', function($cq) use ($desa) {
+                $cq->where('address', 'like', "%{$desa}%");
+            });
+        }
+
         $todayVerifiedAmount = (float) (clone $todayPaymentsQuery)->where('status', 'verified')->sum('amount');
         $todayVerifiedCount = (clone $todayPaymentsQuery)->where('status', 'verified')->count();
         $todayPendingAmount = (float) (clone $todayPaymentsQuery)->where('status', 'pending')->sum('amount');
         $todayPendingCount = (clone $todayPaymentsQuery)->where('status', 'pending')->count();
 
-        // Data Invoice dengan pagination
+        // Data Invoice dengan pagination dan eager loading customer detail
         $invoices = $buildFilteredQuery($activeTab)
-            ->with(['customer.areaModel', 'payments'])
+            ->with(['customer.areaModel', 'customer.package', 'customer.surveys', 'customer.ont', 'payments'])
             ->latest('id')
             ->paginate(15)
             ->withQueryString()
             ->through(function ($invoice) {
                 $verifiedPaid = $invoice->payments->where('status', 'verified')->sum('amount');
                 $pendingPaid = $invoice->payments->where('status', 'pending')->sum('amount');
+                $customer = $invoice->customer;
+
+                // Ekstraksi Foto KTP
+                $identityPhotoUrl = null;
+                if ($customer?->identity_photo) {
+                    $identityPhotoUrl = str_starts_with($customer->identity_photo, 'http')
+                        ? $customer->identity_photo
+                        : asset('storage/' . $customer->identity_photo);
+                }
+
+                // Ekstraksi Foto Rumah (dari survey atau ONT)
+                $housePhotoUrl = null;
+                if ($customer?->surveys) {
+                    foreach ($customer->surveys as $survey) {
+                        if (is_array($survey->photos)) {
+                            foreach ($survey->photos as $p) {
+                                $label = is_array($p) ? ($p['label'] ?? '') : '';
+                                $path = is_array($p) ? ($p['path'] ?? '') : (is_string($p) ? $p : '');
+                                if (stripos($label, 'rumah') !== false && !empty($path)) {
+                                    $housePhotoUrl = str_starts_with($path, 'http') ? $path : asset('storage/' . $path);
+                                    break 2;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!$housePhotoUrl && $customer?->ont?->photo_customer) {
+                    $path = $customer->ont->photo_customer;
+                    $housePhotoUrl = str_starts_with($path, 'http') ? $path : asset('storage/' . $path);
+                }
+                if (!$housePhotoUrl && $customer?->ont?->photo_installation) {
+                    $path = $customer->ont->photo_installation;
+                    $housePhotoUrl = str_starts_with($path, 'http') ? $path : asset('storage/' . $path);
+                }
+
+                $customerDetails = [
+                    'id' => $customer?->id,
+                    'customer_code' => $customer?->customer_code,
+                    'name' => $customer?->name,
+                    'phone' => $customer?->phone,
+                    'address' => $customer?->address,
+                    'area' => $customer?->areaModel?->name ?? $customer?->area,
+                    'package' => $customer?->package?->name,
+                    'latitude' => $customer?->latitude,
+                    'longitude' => $customer?->longitude,
+                    'identity_photo_url' => $identityPhotoUrl,
+                    'house_photo_url' => $housePhotoUrl,
+                ];
                 
                 return array_merge($invoice->toArray(), [
                     'remaining' => max(0, $invoice->amount - $verifiedPaid),
                     'total_paid' => $verifiedPaid,
                     'pending_amount' => $pendingPaid,
-                    'effective_remaining' => max(0, $invoice->amount - $verifiedPaid - $pendingPaid)
+                    'effective_remaining' => max(0, $invoice->amount - $verifiedPaid - $pendingPaid),
+                    'customer_details' => $customerDetails,
                 ]);
             });
 
@@ -141,13 +206,30 @@ class CustomerBillingController extends Controller
         }
         $areas = $areasQuery->get(['id', 'name']);
 
+        // Daftar Desa yang terdeteksi dari alamat pelanggan
+        $addresses = Customer::whereNotNull('address')->where('address', '!=', '')->pluck('address');
+        $desasList = collect();
+        foreach ($addresses as $addr) {
+            if (preg_match_all('/(?:Kel\.?|Kelurahan|Desa)\s*([^,\n\r]+)/i', $addr, $matches)) {
+                foreach ($matches[1] as $m) {
+                    $val = trim($m);
+                    if ($val !== '') {
+                        $desasList->push(ucwords(strtolower($val)));
+                    }
+                }
+            }
+        }
+        $desas = $desasList->unique()->sort()->values()->all();
+
         return Inertia::render('CustomerBilling/Index', [
             'invoices' => $invoices,
             'activeTab' => $activeTab,
             'areas' => $areas,
+            'desas' => $desas,
             'filters' => [
                 'tab' => $activeTab,
                 'area_id' => $request->area_id ?? '',
+                'desa' => $request->desa ?? '',
                 'start_date' => $request->start_date ?? '',
                 'end_date' => $request->end_date ?? '',
                 'search' => $request->search ?? '',
