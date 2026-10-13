@@ -95,21 +95,21 @@
                     </p>
                 </div>
 
-                <!-- Keuntungan Tunai Loket -->
+                <!-- Keuntungan Tunai Loket & Fee Mitra -->
                 <div class="bg-gradient-to-br from-emerald-50/70 via-emerald-50/30 to-white rounded-2xl border border-emerald-200/80 p-5 shadow-sm">
                     <div class="flex items-center justify-between mb-3">
-                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">Keuntungan Tunai Loket</span>
+                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">Keuntungan Loket & Fee Mitra</span>
                         <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                         </div>
                     </div>
                     <div class="flex items-baseline gap-1">
                         <span class="text-sm font-bold text-gray-400">Rp</span>
-                        <span class="text-2xl font-black text-emerald-600 tracking-tight">{{ Number((totalTransactionsCount || 0) * 2500).toLocaleString('id-ID') }}</span>
+                        <span class="text-2xl font-black text-emerald-600 tracking-tight">{{ Number((total_fee_profit || 0) + ((totalTransactionsCount || 0) * 2500)).toLocaleString('id-ID') }}</span>
                     </div>
-                    <p class="text-xs text-emerald-700 mt-2 flex items-center gap-1.5 font-medium">
+                    <p class="text-[11px] text-emerald-700 mt-2 flex items-center gap-1.5 font-medium">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        Admin Rp 2.500/transaksi (Tunai)
+                        Fee Paket: Rp {{ Number(total_fee_profit || 0).toLocaleString('id-ID') }} + Admin Tunai
                     </p>
                 </div>
             </div>
@@ -273,25 +273,35 @@
                                             </div>
                                         </div>
 
-                                        <div class="pt-3 border-t border-gray-200/60 flex items-center justify-between gap-3">
+                                        <div class="pt-3 border-t border-gray-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                             <div>
-                                                <span class="text-[10px] uppercase font-bold text-gray-400 block">Nominal Tagihan</span>
-                                                <span class="text-base font-black text-rose-600 font-mono">
-                                                    Rp {{ Number(inv.remaining).toLocaleString('id-ID') }}
-                                                </span>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-[10px] uppercase font-bold text-gray-400 block">Nominal Tagihan:</span>
+                                                    <span class="text-sm font-black text-rose-600 font-mono">
+                                                        Rp {{ Number(inv.remaining).toLocaleString('id-ID') }}
+                                                    </span>
+                                                </div>
+                                                <div v-if="inv.fee_reseller > 0" class="flex flex-wrap items-center gap-2 mt-1">
+                                                    <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-extrabold border border-emerald-200">
+                                                        Fee Mitra: +Rp {{ Number(inv.fee_reseller).toLocaleString('id-ID') }}
+                                                    </span>
+                                                    <span class="text-[11px] font-bold text-gray-600">
+                                                        Potong Saldo Modal: <strong class="text-indigo-700 font-mono font-black">Rp {{ Number(inv.modal_cost).toLocaleString('id-ID') }}</strong>
+                                                    </span>
+                                                </div>
                                             </div>
 
                                             <!-- Tombol Bayar Potong Saldo -->
                                             <button 
                                                 @click="confirmPayInvoice(cust, inv)"
-                                                :disabled="payingInvoiceId === inv.id || reseller.balance < inv.remaining"
-                                                class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                                :class="reseller.balance >= inv.remaining ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-emerald-500/20' : 'bg-gray-200 text-gray-500'"
-                                                :title="reseller.balance < inv.remaining ? 'Saldo Anda kurang untuk bayar tagihan ini' : 'Bayar via Saldo Dompet Reseller'"
+                                                :disabled="payingInvoiceId === inv.id || reseller.balance < (inv.modal_cost !== undefined ? inv.modal_cost : inv.remaining)"
+                                                class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap self-end sm:self-auto"
+                                                :class="reseller.balance >= (inv.modal_cost !== undefined ? inv.modal_cost : inv.remaining) ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-emerald-500/20' : 'bg-gray-200 text-gray-500'"
+                                                :title="reseller.balance < (inv.modal_cost !== undefined ? inv.modal_cost : inv.remaining) ? 'Saldo Anda kurang untuk bayar modal tagihan ini' : 'Bayar via Saldo Dompet Reseller'"
                                             >
                                                 <svg v-if="payingInvoiceId === inv.id" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                                 <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                                <span>{{ reseller.balance >= inv.remaining ? 'Bayar Potong Saldo' : 'Saldo Kurang' }}</span>
+                                                <span>{{ reseller.balance >= (inv.modal_cost !== undefined ? inv.modal_cost : inv.remaining) ? 'Bayar Potong Saldo' : 'Saldo Kurang' }}</span>
                                             </button>
                                         </div>
                                     </div>
@@ -684,6 +694,7 @@ const props = defineProps({
     recentPayments: Object,
     totalTransactionsAmount: Number,
     totalTransactionsCount: Number,
+    total_fee_profit: Number,
 });
 
 const page = usePage();
@@ -760,13 +771,15 @@ const clearSearch = () => {
 // Konfirmasi & Bayar Tagihan
 const confirmPayInvoice = (customer, invoice) => {
     const remaining = Number(invoice.remaining);
+    const feeReseller = Number(invoice.fee_reseller || customer.package_fee_reseller || 0);
+    const modalCost = Number(invoice.modal_cost !== undefined ? invoice.modal_cost : Math.max(0, remaining - feeReseller));
     const balance = Number(props.reseller.balance || 0);
 
-    if (balance < remaining) {
+    if (balance < modalCost) {
         Swal.fire({
             icon: 'warning',
-            title: 'Saldo Tidak Cukup',
-            text: `Saldo dompet modal Anda (Rp ${balance.toLocaleString('id-ID')}) tidak mencukupi untuk membayar tagihan Rp ${remaining.toLocaleString('id-ID')}. Silakan isi saldo terlebih dahulu.`,
+            title: 'Saldo Modal Tidak Cukup',
+            text: `Saldo dompet modal Anda (Rp ${balance.toLocaleString('id-ID')}) tidak mencukupi untuk membayar harga modal tagihan Rp ${modalCost.toLocaleString('id-ID')}. Silakan isi saldo terlebih dahulu.`,
             confirmButtonText: 'Isi Saldo Sekarang',
             showCancelButton: true,
             cancelButtonText: 'Tutup'
@@ -787,10 +800,19 @@ const confirmPayInvoice = (customer, invoice) => {
                     <div class="flex justify-between"><span>ID Pelanggan:</span> <span class="font-mono">${customer.customer_code}</span></div>
                     <div class="flex justify-between"><span>No. Faktur:</span> <span class="font-mono">${invoice.invoice_number}</span></div>
                     <div class="flex justify-between"><span>Periode:</span> <strong>${invoice.period_label}</strong></div>
-                    <div class="flex justify-between text-rose-600 font-bold border-t pt-1"><span>Potong Saldo Reseller:</span> <strong>Rp ${remaining.toLocaleString('id-ID')}</strong></div>
+                    <div class="flex justify-between text-gray-700"><span>Tagihan Internet:</span> <strong>Rp ${remaining.toLocaleString('id-ID')}</strong></div>
+                    ${feeReseller > 0 ? `
+                        <div class="flex justify-between text-emerald-600 font-bold"><span>Fee Reseller/Mitra:</span> <span>-Rp ${feeReseller.toLocaleString('id-ID')}</span></div>
+                    ` : ''}
+                    <div class="flex justify-between text-indigo-700 font-extrabold border-t pt-1">
+                        <span>Potong Saldo Modal:</span> <strong>Rp ${modalCost.toLocaleString('id-ID')}</strong>
+                    </div>
                 </div>
-                <div class="p-2.5 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200">
-                    💡 <strong>Tips Biller:</strong> Tarik uang tunai dari pelanggan sebesar <strong>Rp ${(remaining + 2500).toLocaleString('id-ID')}</strong> (termasuk biaya admin loket Rp 2.500 untuk keuntungan Anda).
+                <div class="p-2.5 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 space-y-1">
+                    <div>💡 <strong>Uang Diterima Tunai:</strong> Tarik tunai dari pelanggan sebesar <strong>Rp ${(remaining + 2500).toLocaleString('id-ID')}</strong> (termasuk admin Rp 2.500).</div>
+                    ${feeReseller > 0 ? `
+                        <div class="text-[11px] text-emerald-700 font-semibold">🎉 <strong>Keuntungan Anda:</strong> Rp ${feeReseller.toLocaleString('id-ID')} (Fee Mitra Paket) + Rp 2.500 (Admin Tunai) = <strong>Rp ${(feeReseller + 2500).toLocaleString('id-ID')}</strong></div>
+                    ` : ''}
                 </div>
             </div>
         `,

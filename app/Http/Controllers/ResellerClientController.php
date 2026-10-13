@@ -286,11 +286,22 @@ class ResellerClientController extends Controller
             ->where('status', 'verified')
             ->count();
 
+        // Hitung total keuntungan tunai / fee reseller yang didapatkan reseller dari loket internet
+        $totalFeeProfit = (float) \App\Models\Payment::with('customer.package')
+            ->where('payment_method', 'reseller_balance')
+            ->where('collected_by', $user->id)
+            ->where('status', 'verified')
+            ->get()
+            ->sum(function($p) {
+                return (float) ($p->customer?->package?->fee_reseller ?? 0);
+            });
+
         return Inertia::render('ClientArea/Biller', [
             'reseller' => $reseller->load('customer'),
             'recentPayments' => $recentPayments,
             'totalTransactionsAmount' => $totalTransactionsAmount,
             'totalTransactionsCount' => $totalTransactionsCount,
+            'total_fee_profit' => $totalFeeProfit,
         ]);
     }
 
@@ -314,6 +325,8 @@ class ResellerClientController extends Controller
             ->get();
 
         $result = $customers->map(function ($cust) {
+            $packageFee = (float) ($cust->package?->fee_reseller ?? 0);
+
             // Ambil invoice internet bulanan yang belum lunas
             $unpaidInvoices = \App\Models\Invoice::with('payments')
                 ->where('customer_id', $cust->id)
@@ -321,9 +334,10 @@ class ResellerClientController extends Controller
                 ->whereIn('status', ['unpaid', 'partial', 'overdue'])
                 ->latest('due_date')
                 ->get()
-                ->map(function ($inv) {
+                ->map(function ($inv) use ($packageFee) {
                     $verifiedPaid = $inv->payments->where('status', 'verified')->sum('amount');
                     $remaining = max(0, (float) ($inv->amount - $verifiedPaid));
+                    $modalCost = max(0, $remaining - $packageFee);
                     return [
                         'id' => $inv->id,
                         'invoice_number' => $inv->invoice_number,
@@ -334,6 +348,8 @@ class ResellerClientController extends Controller
                         'due_date' => $inv->due_date ? Carbon::parse($inv->due_date)->translatedFormat('d M Y') : '-',
                         'amount' => (float) $inv->amount,
                         'remaining' => $remaining,
+                        'fee_reseller' => $packageFee,
+                        'modal_cost' => $modalCost,
                         'status' => $inv->status,
                         'notes' => $inv->notes,
                     ];
@@ -361,6 +377,7 @@ class ResellerClientController extends Controller
                 'status' => $cust->status,
                 'package_name' => $cust->package?->name ?? 'Internet Rumah',
                 'package_price' => (float) ($cust->package?->price ?? $cust->base_amount ?? 0),
+                'package_fee_reseller' => $packageFee,
                 'unpaid_invoices' => $unpaidInvoices,
                 'total_unpaid' => (float) $unpaidInvoices->sum('remaining'),
             ];
@@ -396,9 +413,9 @@ class ResellerClientController extends Controller
         if (!$customer) {
             return back()->with('error', 'Data pelanggan untuk tagihan ini tidak ditemukan.');
         }
-        $customer->loadMissing('areaModel');
+        $customer->loadMissing(['areaModel', 'package']);
 
-        // Hitung sisa tagihan yang harus dibayar
+        // Hitung sisa tagihan yang harus dibayar pelanggan
         $verifiedPaid = $invoice->payments()->where('status', 'verified')->sum('amount');
         $invoiceRemaining = max(0, (float) ($invoice->amount - $verifiedPaid));
 
@@ -407,16 +424,21 @@ class ResellerClientController extends Controller
             return back()->with('info', 'Tagihan ini sudah lunas.');
         }
 
-        // Validasi kecukupan saldo reseller
-        if ((float) $reseller->balance < $invoiceRemaining) {
-            $kurang = $invoiceRemaining - (float) $reseller->balance;
-            return back()->with('error', 'Saldo dompet Anda tidak mencukupi! Saldo saat ini: Rp ' . number_format($reseller->balance, 0, ',', '.') . '. Kurang Rp ' . number_format($kurang, 0, ',', '.') . '. Silakan isi saldo terlebih dahulu.');
+        // Ambil Fee Reseller/Mitra dari paket internet (Hanya berfungsi saat pembayaran via reseller)
+        $feeReseller = (float) ($customer->package?->fee_reseller ?? 0);
+        // Reseller hanya membayar harga modal: Tagihan - Fee Reseller
+        $costToDeduct = max(0, $invoiceRemaining - $feeReseller);
+
+        // Validasi kecukupan saldo modal reseller
+        if ((float) $reseller->balance < $costToDeduct) {
+            $kurang = $costToDeduct - (float) $reseller->balance;
+            return back()->with('error', 'Saldo dompet Anda tidak mencukupi! Butuh modal Rp ' . number_format($costToDeduct, 0, ',', '.') . ' (Tagihan Rp ' . number_format($invoiceRemaining, 0, ',', '.') . ' - Fee Reseller Rp ' . number_format($feeReseller, 0, ',', '.') . '). Saldo saat ini: Rp ' . number_format($reseller->balance, 0, ',', '.') . '. Kurang Rp ' . number_format($kurang, 0, ',', '.') . '. Silakan isi saldo terlebih dahulu.');
         }
 
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
-            // 1. Potong saldo modal reseller
-            $reseller->balance -= $invoiceRemaining;
+            // 1. Potong saldo modal reseller seharga modal (Tagihan - Fee Reseller)
+            $reseller->balance -= $costToDeduct;
             $reseller->save();
 
             $refNumber = 'LOKET-' . date('YmdHis') . '-' . $reseller->id;
@@ -425,12 +447,12 @@ class ResellerClientController extends Controller
             \App\Models\ResellerTransaction::create([
                 'reseller_id' => $reseller->id,
                 'type' => 'debit',
-                'amount' => $invoiceRemaining,
-                'description' => "Bayar Tagihan Internet Pelanggan: {$customer->name} ({$customer->customer_code}) - Faktur: {$invoice->invoice_number}",
+                'amount' => $costToDeduct,
+                'description' => "Bayar Tagihan Internet: {$customer->name} ({$customer->customer_code}) - Faktur: {$invoice->invoice_number} (Tagihan: Rp " . number_format($invoiceRemaining, 0, ',', '.') . ", Fee Mitra: Rp " . number_format($feeReseller, 0, ',', '.') . ", Modal Terpotong: Rp " . number_format($costToDeduct, 0, ',', '.') . ")",
                 'reference_id' => $invoice->invoice_number,
             ]);
 
-            // 3. Buat data pembayaran terverifikasi
+            // 3. Buat data pembayaran terverifikasi untuk invoice pelanggan dengan nominal penuh tagihan
             $payment = \App\Models\Payment::create([
                 'invoice_id' => $invoice->id,
                 'customer_id' => $customer->id,
@@ -440,7 +462,7 @@ class ResellerClientController extends Controller
                 'payment_date' => Carbon::now(),
                 'reference_number' => $refNumber,
                 'status' => 'verified',
-                'notes' => "Dibayar di Loket Mitra: {$reseller->name} (User: {$user->name}) via Potong Saldo Modal",
+                'notes' => "Dibayar di Loket Mitra: {$reseller->name} (User: {$user->name}) via Potong Saldo Modal [Tagihan: Rp " . number_format($invoiceRemaining, 0, ',', '.') . ", Modal: Rp " . number_format($costToDeduct, 0, ',', '.') . ", Fee: Rp " . number_format($feeReseller, 0, ',', '.') . "]",
                 'collected_by' => $user->id,
             ]);
 
@@ -474,7 +496,7 @@ class ResellerClientController extends Controller
             }
 
             return back()->with([
-                'success' => "Pembayaran tagihan {$customer->name} sebesar Rp " . number_format($invoiceRemaining, 0, ',', '.') . " BERHASIL! Saldo modal Anda telah terpotong dan layanan internet pelanggan langsung aktif.",
+                'success' => "Pembayaran tagihan {$customer->name} sebesar Rp " . number_format($invoiceRemaining, 0, ',', '.') . " BERHASIL! Saldo modal terpotong Rp " . number_format($costToDeduct, 0, ',', '.') . " (Fee Keuntungan Mitra: Rp " . number_format($feeReseller, 0, ',', '.') . "). Layanan internet langsung aktif.",
                 'billerReceipt' => [
                     'payment_id' => $payment->id,
                     'reference_number' => $refNumber,
@@ -490,6 +512,8 @@ class ResellerClientController extends Controller
                     'invoice_number' => $invoice->invoice_number,
                     'period' => $invoice->period_label,
                     'amount' => $invoiceRemaining,
+                    'fee_reseller' => $feeReseller,
+                    'modal_cost' => $costToDeduct,
                     'admin_fee' => 2500,
                     'total_collected' => $invoiceRemaining + 2500,
                     'remaining_balance' => (float) $reseller->balance,
