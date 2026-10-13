@@ -595,6 +595,78 @@ class AttendanceController extends Controller
                         }
                     }
                 }
+
+                // Reward Maintenance (Top 3 Global)
+                if (Setting::get('attendance_reward_maintenance_enabled', '1') === '1') {
+                    $maintNominals = [
+                        1 => (float) Setting::get('attendance_reward_maint_1', 200000),
+                        2 => (float) Setting::get('attendance_reward_maint_2', 150000),
+                        3 => (float) Setting::get('attendance_reward_maint_3', 100000),
+                    ];
+
+                    $maintSorted = collect($performance)->filter(function ($item) {
+                        $pos = strtolower($item['employee']->position ?? '');
+                        return str_contains($pos, 'maint') || str_contains($pos, 'teknisi') || str_contains($pos, 'field');
+                    })->sortByDesc('score')->values();
+
+                    for ($rank = 1; $rank <= min(3, $maintSorted->count()); $rank++) {
+                        $item = $maintSorted[$rank - 1];
+                        $nominal = $maintNominals[$rank] ?? 0;
+                        if ($nominal > 0) {
+                            Incentive::updateOrCreate(
+                                [
+                                    'user_id' => $item['user']->id,
+                                    'type' => 'auto',
+                                    'description' => "Reward Absen Maintenance (Juara {$rank} Global) Periode {$month}",
+                                ],
+                                [
+                                    'amount' => $nominal,
+                                    'incentive_date' => $monthEnd->format('Y-m-d'),
+                                    'status' => 'pending',
+                                ]
+                            );
+                        }
+                    }
+                }
+
+                // Reward Tim Khusus (Top 3 per Grup)
+                if (Setting::get('attendance_reward_special_team_enabled', '1') === '1') {
+                    $specialNominals = [
+                        1 => (float) Setting::get('attendance_reward_special_1', 200000),
+                        2 => (float) Setting::get('attendance_reward_special_2', 150000),
+                        3 => (float) Setting::get('attendance_reward_special_3', 100000),
+                    ];
+
+                    $specialGrouped = collect($performance)->filter(function ($item) {
+                        $pos = strtolower($item['employee']->position ?? '');
+                        $type = strtolower($item['employee']->employee_type ?? '');
+                        return str_contains($pos, 'khusus') || str_contains($pos, 'special') || str_contains($type, 'khusus');
+                    })->groupBy(function ($item) {
+                        return $item['employee']->position ?: 'Tim Khusus';
+                    });
+
+                    foreach ($specialGrouped as $groupName => $groupMembers) {
+                        $specialSorted = $groupMembers->sortByDesc('score')->values();
+                        for ($rank = 1; $rank <= min(3, $specialSorted->count()); $rank++) {
+                            $item = $specialSorted[$rank - 1];
+                            $nominal = $specialNominals[$rank] ?? 0;
+                            if ($nominal > 0) {
+                                Incentive::updateOrCreate(
+                                    [
+                                        'user_id' => $item['user']->id,
+                                        'type' => 'auto',
+                                        'description' => "Reward Tim Khusus (Juara {$rank} - {$groupName}) Periode {$month}",
+                                    ],
+                                    [
+                                        'amount' => $nominal,
+                                        'incentive_date' => $monthEnd->format('Y-m-d'),
+                                        'status' => 'pending',
+                                    ]
+                                );
+                            }
+                        }
+                    }
+                }
             }
         });
 

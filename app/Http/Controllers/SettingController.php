@@ -120,6 +120,24 @@ class SettingController extends Controller
                 'attendance_reward_global_2' => (int) Setting::get('attendance_reward_global_2', 150000),
                 'attendance_reward_global_3' => (int) Setting::get('attendance_reward_global_3', 100000),
                 'attendance_reward_note' => Setting::get('attendance_reward_note', 'Reward diberikan setiap akhir bulan bersama gaji'),
+
+                // REWARD ABSEN MAINTENANCE
+                'attendance_reward_maintenance_enabled' => Setting::get('attendance_reward_maintenance_enabled', '1') === '1',
+                'attendance_reward_maint_1' => (int) Setting::get('attendance_reward_maint_1', 200000),
+                'attendance_reward_maint_2' => (int) Setting::get('attendance_reward_maint_2', 150000),
+                'attendance_reward_maint_3' => (int) Setting::get('attendance_reward_maint_3', 100000),
+
+                // REWARD TIM KHUSUS
+                'attendance_reward_special_team_enabled' => Setting::get('attendance_reward_special_team_enabled', '1') === '1',
+                'attendance_reward_special_1' => (int) Setting::get('attendance_reward_special_1', 200000),
+                'attendance_reward_special_2' => (int) Setting::get('attendance_reward_special_2', 150000),
+                'attendance_reward_special_3' => (int) Setting::get('attendance_reward_special_3', 100000),
+
+                // AUTO GENERATE REWARD CRON
+                'attendance_reward_auto_generate_enabled' => Setting::get('attendance_reward_auto_generate_enabled', '1') === '1',
+                'attendance_reward_auto_date' => (int) Setting::get('attendance_reward_auto_date', 1),
+                'attendance_reward_auto_hour' => (int) Setting::get('attendance_reward_auto_hour', 0),
+                'attendance_reward_auto_minute' => (int) Setting::get('attendance_reward_auto_minute', 6),
             ]
         ]);
     }
@@ -152,7 +170,7 @@ class SettingController extends Controller
             'attendance_cron_hour' => 'required|integer|min:0|max:23',
             'attendance_cron_minute' => 'required|integer|min:0|max:59',
 
-            // Reward Validation
+            // Reward Cabang & Global
             'attendance_reward_enabled' => 'nullable|boolean',
             'attendance_reward_branch_enabled' => 'nullable|boolean',
             'attendance_reward_global_enabled' => 'nullable|boolean',
@@ -163,6 +181,24 @@ class SettingController extends Controller
             'attendance_reward_global_2' => 'nullable|numeric|min:0',
             'attendance_reward_global_3' => 'nullable|numeric|min:0',
             'attendance_reward_note' => 'nullable|string',
+
+            // Reward Maintenance
+            'attendance_reward_maintenance_enabled' => 'nullable|boolean',
+            'attendance_reward_maint_1' => 'nullable|numeric|min:0',
+            'attendance_reward_maint_2' => 'nullable|numeric|min:0',
+            'attendance_reward_maint_3' => 'nullable|numeric|min:0',
+
+            // Reward Tim Khusus
+            'attendance_reward_special_team_enabled' => 'nullable|boolean',
+            'attendance_reward_special_1' => 'nullable|numeric|min:0',
+            'attendance_reward_special_2' => 'nullable|numeric|min:0',
+            'attendance_reward_special_3' => 'nullable|numeric|min:0',
+
+            // Auto Generate Reward
+            'attendance_reward_auto_generate_enabled' => 'nullable|boolean',
+            'attendance_reward_auto_date' => 'nullable|integer|min:1|max:28',
+            'attendance_reward_auto_hour' => 'nullable|integer|min:0|max:23',
+            'attendance_reward_auto_minute' => 'nullable|integer|min:0|max:59',
         ]);
 
         Setting::set('attendance_late_enabled', $request->boolean('attendance_late_enabled') ? '1' : '0');
@@ -202,7 +238,24 @@ class SettingController extends Controller
         Setting::set('attendance_reward_global_3', $request->attendance_reward_global_3 ?? 100000);
         Setting::set('attendance_reward_note', $request->attendance_reward_note ?? '');
 
-        return redirect()->back()->with('success', 'Pengaturan absensi & reward terbaik berhasil disimpan.');
+        // Save Maintenance & Tim Khusus Settings
+        Setting::set('attendance_reward_maintenance_enabled', $request->boolean('attendance_reward_maintenance_enabled') ? '1' : '0');
+        Setting::set('attendance_reward_maint_1', $request->attendance_reward_maint_1 ?? 200000);
+        Setting::set('attendance_reward_maint_2', $request->attendance_reward_maint_2 ?? 150000);
+        Setting::set('attendance_reward_maint_3', $request->attendance_reward_maint_3 ?? 100000);
+
+        Setting::set('attendance_reward_special_team_enabled', $request->boolean('attendance_reward_special_team_enabled') ? '1' : '0');
+        Setting::set('attendance_reward_special_1', $request->attendance_reward_special_1 ?? 200000);
+        Setting::set('attendance_reward_special_2', $request->attendance_reward_special_2 ?? 150000);
+        Setting::set('attendance_reward_special_3', $request->attendance_reward_special_3 ?? 100000);
+
+        // Save Auto Generate Reward Settings
+        Setting::set('attendance_reward_auto_generate_enabled', $request->boolean('attendance_reward_auto_generate_enabled') ? '1' : '0');
+        Setting::set('attendance_reward_auto_date', $request->attendance_reward_auto_date ?? 1);
+        Setting::set('attendance_reward_auto_hour', $request->attendance_reward_auto_hour ?? 0);
+        Setting::set('attendance_reward_auto_minute', $request->attendance_reward_auto_minute ?? 6);
+
+        return redirect()->back()->with('success', 'Pengaturan absensi & reward terbaik berhasil diperbarui.');
     }
 
     public function updateBilling(Request $request)

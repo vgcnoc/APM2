@@ -16,3 +16,6 @@ Schedule::command('app:generate-invoices')->dailyAt('00:05');
 
 // Pengecekan voucher expired setiap menit
 Schedule::command('vouchers:expire')->everyMinute();
+
+// Auto Generate Reward Absen Bulanan
+Schedule::command('attendance:generate-rewards')->hourly();
