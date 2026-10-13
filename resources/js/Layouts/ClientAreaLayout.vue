@@ -18,12 +18,15 @@
                             </button>
                         </div>
 
-                        <Link href="/client-area/dashboard" class="flex-shrink-0 flex items-center gap-2 group">
-                            <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/50 transition-all duration-300">
-                                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <!-- Logo Perusahaan dengan Badge Area Reseller -->
+                        <Link href="/client-area/dashboard" class="flex-shrink-0 flex items-center gap-2.5 sm:gap-3 group">
+                            <AppLogo context="navbar" :prefer-company-logo="true" />
+                            <div class="hidden sm:flex items-center pl-2.5 border-l border-gray-200">
+                                <span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/80 leading-none flex items-center gap-1.5 shadow-2xs">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    Area Mitra / Reseller
+                                </span>
                             </div>
-                            <span class="text-lg sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 hidden sm:block">Reseller Area</span>
-                            <span class="text-lg sm:text-xl font-bold text-gray-900 sm:hidden">Reseller</span>
                         </Link>
                     </div>
                     
@@ -85,6 +88,7 @@
 <script setup>
 import { ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import AppLogo from '@/Components/AppLogo.vue';
 
 const showUserMenu = ref(false);
 const showMobileMenu = ref(false);

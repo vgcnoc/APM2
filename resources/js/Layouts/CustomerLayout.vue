@@ -4,23 +4,40 @@
         <nav class="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
-                    <div class="flex items-center gap-8">
-                        <Link href="/my/dashboard" class="flex-shrink-0 flex items-center gap-2 group">
-                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 group-hover:shadow-indigo-500/50 transition-all duration-300">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    <div class="flex items-center gap-3 sm:gap-6">
+                        <!-- Mobile menu button -->
+                        <div class="flex items-center sm:hidden">
+                            <button @click="showMobileMenu = !showMobileMenu" type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
+                                <span class="sr-only">Open main menu</span>
+                                <svg v-if="!showMobileMenu" class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                                </svg>
+                                <svg v-else class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Logo Perusahaan dengan Badge Area Pelanggan -->
+                        <Link href="/my/dashboard" class="flex-shrink-0 flex items-center gap-2.5 sm:gap-3 group">
+                            <AppLogo context="navbar" :prefer-company-logo="true" />
+                            <div class="hidden sm:flex items-center pl-2.5 border-l border-gray-200">
+                                <span class="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200/80 leading-none flex items-center gap-1.5 shadow-2xs">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                                    Area Pelanggan
+                                </span>
                             </div>
-                            <span class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 hidden sm:block">Dashboard Pelanggan</span>
                         </Link>
                         
                         <!-- Desktop Navigation -->
-                        <div class="hidden sm:flex items-center gap-1 mt-1">
-                            <Link href="/my/dashboard" :class="[route().current('customer-area.dashboard') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', 'px-3 py-2 rounded-md text-sm font-medium transition-colors']">
+                        <div class="hidden sm:flex items-center gap-1 mt-0.5">
+                            <Link href="/my/dashboard" :class="[route().current('customer-area.dashboard') ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium', 'px-3 py-2 rounded-lg text-sm transition-colors']">
                                 Beranda
                             </Link>
-                            <Link href="/my/billing" :class="[route().current('customer-area.billing') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', 'px-3 py-2 rounded-md text-sm font-medium transition-colors']">
+                            <Link href="/my/billing" :class="[route().current('customer-area.billing') ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium', 'px-3 py-2 rounded-lg text-sm transition-colors']">
                                 Tagihan
                             </Link>
-                            <Link href="/my/tickets" :class="[route().current('customer-area.tickets') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', 'px-3 py-2 rounded-md text-sm font-medium transition-colors']">
+                            <Link href="/my/tickets" :class="[route().current('customer-area.tickets') ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium', 'px-3 py-2 rounded-lg text-sm transition-colors']">
                                 Bantuan
                             </Link>
                         </div>
@@ -36,20 +53,26 @@
                             </button>
 
                             <!-- Dropdown -->
-                            <div v-if="showUserMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-1 border border-gray-100">
+                            <div v-if="showUserMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-1 border border-gray-100 z-50">
                                 <div class="px-4 py-3 border-b border-gray-100">
                                     <p class="text-sm font-medium text-gray-900 truncate">{{ $page.props.auth.user.name }}</p>
                                     <p class="text-xs text-gray-500 truncate mt-0.5">{{ $page.props.auth.user.email }}</p>
                                 </div>
-                                
-
-                                
                                 <Link href="/logout" method="post" as="button" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors">
                                     Logout
                                 </Link>
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Mobile menu -->
+            <div v-if="showMobileMenu" class="sm:hidden border-t border-gray-100 bg-white">
+                <div class="px-3 pt-2 pb-3 space-y-1">
+                    <Link href="/my/dashboard" class="block px-3 py-2 rounded-lg text-base font-medium" :class="route().current('customer-area.dashboard') ? 'text-indigo-700 bg-indigo-50 font-bold' : 'text-gray-700 hover:bg-gray-50'">Beranda</Link>
+                    <Link href="/my/billing" class="block px-3 py-2 rounded-lg text-base font-medium" :class="route().current('customer-area.billing') ? 'text-indigo-700 bg-indigo-50 font-bold' : 'text-gray-700 hover:bg-gray-50'">Tagihan</Link>
+                    <Link href="/my/tickets" class="block px-3 py-2 rounded-lg text-base font-medium" :class="route().current('customer-area.tickets') ? 'text-indigo-700 bg-indigo-50 font-bold' : 'text-gray-700 hover:bg-gray-50'">Bantuan & Tiket</Link>
                 </div>
             </div>
         </nav>
@@ -64,6 +87,8 @@
 <script setup>
 import { ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import AppLogo from '@/Components/AppLogo.vue';
 
 const showUserMenu = ref(false);
+const showMobileMenu = ref(false);
 </script>
