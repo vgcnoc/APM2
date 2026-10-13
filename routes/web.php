@@ -417,6 +417,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'payroll'])->name('settings.payroll');
     Route::post('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'updatePayroll'])->name('settings.payroll.update');
+    Route::get('/settings/attendance', [\App\Http\Controllers\SettingController::class, 'attendance'])->name('settings.attendance');
+    Route::post('/settings/attendance', [\App\Http\Controllers\SettingController::class, 'updateAttendance'])->name('settings.attendance.update');
 
     Route::get('/settings/api', function () {
         return inertia('Settings/Api');

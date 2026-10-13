@@ -102,6 +102,14 @@
                     <span>🗺️</span>
                     <span>Pengaturan Geofence Area</span>
                 </button>
+
+                <Link
+                    href="/settings/attendance"
+                    class="bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200/80 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ml-auto"
+                >
+                    <span>⚙️</span>
+                    <span>Aturan Potongan & Cron</span>
+                </Link>
             </div>
 
             <!-- ============================================================== -->
@@ -1046,7 +1054,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({

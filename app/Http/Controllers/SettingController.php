@@ -80,6 +80,95 @@ class SettingController extends Controller
         return redirect()->back()->with('success', 'Pengaturan sistem gaji berhasil diperbarui.');
     }
 
+    public function attendance()
+    {
+        return Inertia::render('Settings/Attendance', [
+            'settings' => [
+                'attendance_late_enabled' => Setting::get('attendance_late_enabled', '1') === '1',
+                'attendance_late_amount' => (int) Setting::get('attendance_late_amount', 10000),
+                'attendance_late_mode' => Setting::get('attendance_late_mode', 'Per Kejadian'),
+                'attendance_late_tolerance' => (int) Setting::get('attendance_late_tolerance', 10),
+
+                'attendance_missing_out_enabled' => Setting::get('attendance_missing_out_enabled', '1') === '1',
+                'attendance_missing_out_amount' => (int) Setting::get('attendance_missing_out_amount', 10000),
+
+                'attendance_early_leave_enabled' => Setting::get('attendance_early_leave_enabled', '1') === '1',
+                'attendance_early_leave_amount' => (int) Setting::get('attendance_early_leave_amount', 10000),
+                'attendance_early_leave_tolerance' => (int) Setting::get('attendance_early_leave_tolerance', 0),
+
+                'attendance_sick_no_cert_enabled' => Setting::get('attendance_sick_no_cert_enabled', '1') === '1',
+                'attendance_sick_no_cert_amount' => (int) Setting::get('attendance_sick_no_cert_amount', 20000),
+
+                'attendance_permit_enabled' => Setting::get('attendance_permit_enabled', '1') === '1',
+                'attendance_permit_amount' => (int) Setting::get('attendance_permit_amount', 25000),
+
+                'attendance_alpha_enabled' => Setting::get('attendance_alpha_enabled', '1') === '1',
+                'attendance_alpha_amount' => (int) Setting::get('attendance_alpha_amount', 35000),
+
+                'attendance_cron_enabled' => Setting::get('attendance_cron_enabled', '1') === '1',
+                'attendance_cron_hour' => (int) Setting::get('attendance_cron_hour', 23),
+                'attendance_cron_minute' => (int) Setting::get('attendance_cron_minute', 30),
+            ]
+        ]);
+    }
+
+    public function updateAttendance(Request $request)
+    {
+        $request->validate([
+            'attendance_late_enabled' => 'nullable|boolean',
+            'attendance_late_amount' => 'required|numeric|min:0',
+            'attendance_late_mode' => 'required|string',
+            'attendance_late_tolerance' => 'required|integer|min:0',
+
+            'attendance_missing_out_enabled' => 'nullable|boolean',
+            'attendance_missing_out_amount' => 'required|numeric|min:0',
+
+            'attendance_early_leave_enabled' => 'nullable|boolean',
+            'attendance_early_leave_amount' => 'required|numeric|min:0',
+            'attendance_early_leave_tolerance' => 'required|integer|min:0',
+
+            'attendance_sick_no_cert_enabled' => 'nullable|boolean',
+            'attendance_sick_no_cert_amount' => 'required|numeric|min:0',
+
+            'attendance_permit_enabled' => 'nullable|boolean',
+            'attendance_permit_amount' => 'required|numeric|min:0',
+
+            'attendance_alpha_enabled' => 'nullable|boolean',
+            'attendance_alpha_amount' => 'required|numeric|min:0',
+
+            'attendance_cron_enabled' => 'nullable|boolean',
+            'attendance_cron_hour' => 'required|integer|min:0|max:23',
+            'attendance_cron_minute' => 'required|integer|min:0|max:59',
+        ]);
+
+        Setting::set('attendance_late_enabled', $request->boolean('attendance_late_enabled') ? '1' : '0');
+        Setting::set('attendance_late_amount', $request->attendance_late_amount);
+        Setting::set('attendance_late_mode', $request->attendance_late_mode);
+        Setting::set('attendance_late_tolerance', $request->attendance_late_tolerance);
+
+        Setting::set('attendance_missing_out_enabled', $request->boolean('attendance_missing_out_enabled') ? '1' : '0');
+        Setting::set('attendance_missing_out_amount', $request->attendance_missing_out_amount);
+
+        Setting::set('attendance_early_leave_enabled', $request->boolean('attendance_early_leave_enabled') ? '1' : '0');
+        Setting::set('attendance_early_leave_amount', $request->attendance_early_leave_amount);
+        Setting::set('attendance_early_leave_tolerance', $request->attendance_early_leave_tolerance);
+
+        Setting::set('attendance_sick_no_cert_enabled', $request->boolean('attendance_sick_no_cert_enabled') ? '1' : '0');
+        Setting::set('attendance_sick_no_cert_amount', $request->attendance_sick_no_cert_amount);
+
+        Setting::set('attendance_permit_enabled', $request->boolean('attendance_permit_enabled') ? '1' : '0');
+        Setting::set('attendance_permit_amount', $request->attendance_permit_amount);
+
+        Setting::set('attendance_alpha_enabled', $request->boolean('attendance_alpha_enabled') ? '1' : '0');
+        Setting::set('attendance_alpha_amount', $request->attendance_alpha_amount);
+
+        Setting::set('attendance_cron_enabled', $request->boolean('attendance_cron_enabled') ? '1' : '0');
+        Setting::set('attendance_cron_hour', $request->attendance_cron_hour);
+        Setting::set('attendance_cron_minute', $request->attendance_cron_minute);
+
+        return redirect()->back()->with('success', 'Pengaturan absensi & potongan otomatis berhasil disimpan.');
+    }
+
     public function updateBilling(Request $request)
     {
         // 1. Format isolate_time agar aman dari format detik browser (e.g. 23:59:00 -> 23:59)

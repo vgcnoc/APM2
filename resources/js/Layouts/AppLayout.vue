@@ -409,7 +409,7 @@ const menuItems = [
         type: 'dropdown',
         icon: 'users',
         label: 'Kepegawaian & HRD',
-        active: (url) => (url || '').startsWith('/employees') || (url || '').startsWith('/positions') || (url || '').startsWith('/shifts') || (url || '').startsWith('/work-schedules') || (url || '').startsWith('/attendances') || (url || '').startsWith('/payroll') || (url || '').startsWith('/insentif-potongan'),
+        active: (url) => (url || '').startsWith('/employees') || (url || '').startsWith('/positions') || (url || '').startsWith('/shifts') || (url || '').startsWith('/work-schedules') || (url || '').startsWith('/attendances') || (url || '').startsWith('/settings/attendance') || (url || '').startsWith('/payroll') || (url || '').startsWith('/insentif-potongan'),
         permission: 'menu_hr_employees',
         children: [
             { href: '/employees', label: 'Data Karyawan', active: (url) => (url || '').startsWith('/employees'), permission: 'menu_hr_employees' },
@@ -417,6 +417,7 @@ const menuItems = [
             { href: '/shifts', label: 'Shift Kerja', active: (url) => (url || '').startsWith('/shifts'), permission: 'menu_hr_employees' },
             { href: '/work-schedules', label: 'Jadwal Kerja', active: (url) => (url || '').startsWith('/work-schedules'), permission: 'menu_hr_employees' },
             { href: '/attendances', label: 'Absensi', active: (url) => (url || '').startsWith('/attendances'), permission: 'menu_hr_employees' },
+            { href: '/settings/attendance', label: 'Pengaturan Absensi', active: (url) => (url || '').startsWith('/settings/attendance'), permission: 'menu_hr_employees' },
             { href: '/payroll', label: 'Gaji & Insentif', active: (url) => (url || '').length > 0 && url === '/payroll', permission: 'menu_hr_employees' },
             { href: '/insentif-potongan', label: 'Histori Insentif', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: 'menu_hr_employees' },
         ]
@@ -427,12 +428,13 @@ const menuItems = [
         type: 'dropdown',
         icon: 'cog',
         label: 'Konfigurasi Sistem',
-        active: (url) => ['/settings/api', '/settings/branding', '/settings/billing', '/settings/payroll', '/settings/resellers'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/settings/api', '/settings/branding', '/settings/billing', '/settings/payroll', '/settings/attendance', '/settings/resellers'].some(path => (url || '').startsWith(path)),
         permission: 'menu_settings_roles',
         children: [
             { href: '/settings/branding', label: 'Branding', active: (url) => (url || '').startsWith('/settings/branding'), permission: 'menu_settings_branding' },
             { href: '/settings/billing', label: 'Billing / Invoice', active: (url) => (url || '').startsWith('/settings/billing'), permission: 'menu_settings_branding' },
             { href: '/settings/payroll', label: 'Sistem Gaji', active: (url) => (url || '').startsWith('/settings/payroll'), permission: 'menu_hr_employees' },
+            { href: '/settings/attendance', label: 'Pengaturan Absensi', active: (url) => (url || '').startsWith('/settings/attendance'), permission: 'menu_hr_employees' },
             { href: '/settings/resellers', label: 'Reseller', active: (url) => (url || '').startsWith('/settings/resellers'), permission: 'menu_settings_roles' },
             { href: '/settings/api', label: 'API & Integrasi', active: (url) => (url || '').startsWith('/settings/api'), permission: 'menu_settings_api' },
         ]
