@@ -89,6 +89,20 @@ class DashboardController extends Controller
             'unpaid_this_month' => Invoice::where('period_month', $currentMonth)->where('period_year', $currentYear)->whereIn('status', ['unpaid', 'overdue'])->count(),
         ];
 
+        // ── Reseller Voucher Belum Bayar ────────────────────
+        $resellerUnpaidInvoices = Invoice::where('is_reseller_balance', true)
+            ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+            ->with(['payments' => function ($q) {
+                $q->where('status', 'verified');
+            }])
+            ->get();
+
+        $resellerUnpaidCount = $resellerUnpaidInvoices->count();
+        $resellerUnpaidAmount = (float) $resellerUnpaidInvoices->sum(function ($inv) {
+            $paid = $inv->payments->sum('amount');
+            return max(0, (float) $inv->amount - (float) $paid);
+        });
+
         $monthlyRevenue = Invoice::where('period_month', $currentMonth)
             ->where('period_year', $currentYear)
             ->where('status', 'paid')
@@ -204,6 +218,8 @@ class DashboardController extends Controller
             'infraStats'           => $infraStats,
             'ticketStats'          => $ticketStats,
             'invoiceStats'         => $invoiceStats,
+            'resellerUnpaidCount'  => $resellerUnpaidCount,
+            'resellerUnpaidAmount' => $resellerUnpaidAmount,
             'monthlyRevenue'       => (float) $monthlyRevenue,
             'totalRevenue'         => (float) $totalRevenue,
             'avgMonthlyRevenue'    => (float) $avgMonthly,

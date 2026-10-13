@@ -74,26 +74,31 @@
                 </div>
             </div>
 
-            <!-- Pendapatan Bulan Ini -->
+            <!-- Reseller Voucher Belum Bayar -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <div class="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
-                                <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <div class="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center">
+                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                                </svg>
                             </div>
-                            <p class="text-sm font-medium text-gray-500">Pendapatan Bulan Ini</p>
+                            <p class="text-sm font-medium text-gray-500">Reseller Voucher Belum Bayar</p>
                         </div>
-                        <p class="text-3xl font-bold text-gray-900 mt-2">Rp {{ formatCurrency(monthlyRevenue) }}</p>
-                        <p class="text-xs text-gray-500 mt-1">Dari {{ totalInvoices }} transaksi</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-2">Rp {{ formatCurrency(resellerUnpaidAmount) }}</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ resellerUnpaidCount || 0 }} tagihan belum lunas</p>
                     </div>
-                    <span class="inline-flex items-center text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-lg">0%</span>
+                    <span class="inline-flex items-center text-xs font-bold px-2 py-1 rounded-lg"
+                        :class="(resellerUnpaidCount || 0) > 0 ? 'text-amber-700 bg-amber-50 border border-amber-200' : 'text-emerald-700 bg-emerald-50 border border-emerald-200'">
+                        {{ (resellerUnpaidCount || 0) > 0 ? (resellerUnpaidCount + ' Invoice') : 'Lunas' }}
+                    </span>
                 </div>
-                <div class="mt-3 h-8">
-                    <svg class="w-full h-full text-violet-200" viewBox="0 0 120 30" preserveAspectRatio="none">
-                        <path d="M0 22 Q15 18 30 20 T60 12 T90 18 T120 14 V30 H0Z" fill="currentColor" opacity="0.5"/>
-                        <path d="M0 22 Q15 18 30 20 T60 12 T90 18 T120 14" fill="none" stroke="rgb(139,92,246)" stroke-width="1.5"/>
-                    </svg>
+                <div class="mt-3 flex items-center justify-between pt-2 border-t border-gray-50 text-[11px]">
+                    <span class="text-gray-400 font-medium">Kasbon / Piutang</span>
+                    <a href="/reseller-billing" class="font-bold text-amber-600 hover:text-amber-700 flex items-center gap-0.5 transition-colors">
+                        Penagihan →
+                    </a>
                 </div>
             </div>
         </div>
@@ -302,6 +307,8 @@ const props = defineProps({
     infraStats: Object,
     ticketStats: Object,
     invoiceStats: Object,
+    resellerUnpaidCount: { type: Number, default: 0 },
+    resellerUnpaidAmount: { type: Number, default: 0 },
     monthlyRevenue: Number,
     totalRevenue: Number,
     avgMonthlyRevenue: Number,
