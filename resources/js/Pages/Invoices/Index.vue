@@ -214,7 +214,12 @@
                     </span>
                     <span v-else class="text-[11px] text-gray-600">-</span>
                 </td>
-                <td><span class="text-xs font-bold text-gray-900">{{ formatCurrency(row.amount) }}</span></td>
+                <td>
+                    <div class="text-xs font-bold text-gray-900">{{ formatCurrency(row.amount) }}</div>
+                    <div v-if="row.status === 'partial'" class="text-[10px] font-bold text-rose-600 mt-0.5">
+                        Sisa: {{ formatCurrency(row.remaining) }}
+                    </div>
+                </td>
                 <td>
                     <span v-if="row.customer" :class="['px-2 py-1 text-[10px] font-medium rounded-md text-white whitespace-nowrap', row.customer.status === 'aktif' ? 'bg-blue-500' : 'bg-gray-500']">
                         {{ row.customer.status }}
@@ -236,15 +241,26 @@
             </template>
 
             <template #rowActions="{ row }">
-                <div class="flex items-center justify-end gap-2">
-                    <button v-if="row.status === 'unpaid'" @click="openPaymentModal(row)" class="px-3 py-1.5 border border-amber-300 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-colors">
+                <div class="flex items-center justify-end gap-1.5 flex-wrap">
+                    <!-- Tombol Bayar Lunas jika status unpaid -->
+                    <button v-if="row.status === 'unpaid'" @click="openPaymentModal(row)" class="px-2.5 py-1.5 border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-colors shadow-2xs">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                         Bayar Lunas
                     </button>
-                    <button v-if="row.status === 'unpaid'" @click="openPromiseModal(row)" class="p-1.5 text-gray-400 hover:text-yellow-600 transition-colors" title="Set Janji Bayar">
+
+                    <!-- Tombol Lunasi Sisa jika status partial (Bayar Sebagian) -->
+                    <button v-else-if="row.status === 'partial'" @click="openPaymentModal(row)" class="px-2.5 py-1.5 border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-colors shadow-2xs" title="Bayar / Lunasi Sisa Tagihan">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Lunasi Sisa
+                    </button>
+
+                    <!-- Tombol Janji Bayar jika unpaid atau partial -->
+                    <button v-if="row.status === 'unpaid' || row.status === 'partial'" @click="openPromiseModal(row)" class="p-1.5 text-gray-400 hover:text-amber-600 rounded-md hover:bg-amber-50 transition-colors" title="Set Janji Bayar">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     </button>
-                    <button v-else-if="row.status === 'paid' || row.status === 'partial'" @click="rollbackInvoice(row)" class="px-3 py-1.5 border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-colors">
+
+                    <!-- Tombol Rollback jika paid atau partial -->
+                    <button v-if="row.status === 'paid' || row.status === 'partial'" @click="rollbackInvoice(row)" class="px-2.5 py-1.5 border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-colors shadow-2xs" title="Batalkan pembayaran / Rollback status tagihan">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
                         Rollback
                     </button>
