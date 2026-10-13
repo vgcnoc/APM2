@@ -152,10 +152,10 @@
                             <select
                                 v-model="filterBranch"
                                 @change="applyFilters"
-                                class="w-full text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 pr-7 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                class="w-full text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 pr-7 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                             >
                                 <option value="">🏢 Semua Cabang</option>
-                                <option v-for="br in branches" :key="br" :value="br">{{ br }}</option>
+                                <option v-for="br in branches" :key="br.id" :value="br.id">{{ br.name }}</option>
                             </select>
                         </div>
 
@@ -164,10 +164,10 @@
                             <select
                                 v-model="filterPosition"
                                 @change="applyFilters"
-                                class="w-full text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 pr-7 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                class="w-full text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 pr-7 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                             >
                                 <option value="">💼 Semua Jabatan</option>
-                                <option v-for="pos in positions" :key="pos" :value="pos">{{ pos }}</option>
+                                <option v-for="pos in positions" :key="pos.id" :value="pos.name">{{ pos.name }}</option>
                             </select>
                         </div>
 
@@ -352,8 +352,8 @@
                                     </div>
                                     <div class="text-[11px] text-slate-400 font-medium mt-0.5 truncate uppercase">
                                         <span>{{ emp.position || 'Staf' }}</span>
-                                        <span v-if="emp.branch" class="text-slate-300 mx-1">•</span>
-                                        <span v-if="emp.branch" class="text-slate-500 font-semibold">{{ emp.branch }}</span>
+                                        <span v-if="emp.area?.name || emp.branch" class="text-slate-300 mx-1">•</span>
+                                        <span v-if="emp.area?.name || emp.branch" class="text-slate-500 font-semibold">{{ emp.area?.name || emp.branch }}</span>
                                     </div>
                                 </td>
 
@@ -515,14 +515,37 @@
                                     @click="toggleSelectAllEmployees"
                                     class="text-[11px] font-bold text-blue-600 hover:underline"
                                 >
-                                    {{ selectedGenEmployees.length === employees.length ? 'Batal Semua' : 'Pilih Semua' }}
+                                    {{ selectedGenEmployees.length === filteredGenEmployees.length ? 'Batal Semua' : 'Pilih Semua' }}
                                 </button>
                             </div>
-                            <div class="max-h-36 overflow-y-auto border border-slate-200 rounded-xl p-2 space-y-1 text-xs">
+
+                            <!-- Filter Cabang & Jabatan di Modal Generate -->
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <div>
+                                    <select
+                                        v-model="modalFilterBranch"
+                                        class="w-full text-[11px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 cursor-pointer"
+                                    >
+                                        <option value="">🏢 Semua Cabang</option>
+                                        <option v-for="br in branches" :key="br.id" :value="br.id">{{ br.name }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <select
+                                        v-model="modalFilterPosition"
+                                        class="w-full text-[11px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 cursor-pointer"
+                                    >
+                                        <option value="">💼 Semua Jabatan</option>
+                                        <option v-for="pos in positions" :key="pos.id" :value="pos.name">{{ pos.name }}</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-2 space-y-1 text-xs">
                                 <label
-                                    v-for="emp in employees"
+                                    v-for="emp in filteredGenEmployees"
                                     :key="emp.id"
-                                    class="flex items-center gap-2 p-1 rounded-lg hover:bg-slate-50 cursor-pointer"
+                                    class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer"
                                 >
                                     <input
                                         type="checkbox"
@@ -530,9 +553,16 @@
                                         v-model="selectedGenEmployees"
                                         class="rounded text-blue-600 focus:ring-blue-500"
                                     />
-                                    <span class="font-medium text-slate-800">{{ emp.name }}</span>
-                                    <span class="text-[10px] text-slate-400">({{ emp.position || 'Staf' }})</span>
+                                    <div class="truncate">
+                                        <span class="font-semibold text-slate-800">{{ emp.name }}</span>
+                                        <span class="text-[11px] text-slate-400 ml-1.5">
+                                            ({{ emp.position || 'Staf' }}<span v-if="emp.area?.name || emp.branch"> • {{ emp.area?.name || emp.branch }}</span>)
+                                        </span>
+                                    </div>
                                 </label>
+                                <div v-if="filteredGenEmployees.length === 0" class="text-center py-3 text-slate-400 text-xs italic">
+                                    Tidak ada karyawan sesuai filter cabang/jabatan.
+                                </div>
                             </div>
                         </div>
 
@@ -1128,12 +1158,17 @@ const applyFiltersDebounced = () => {
 };
 
 const applyFilters = () => {
+    if (unsavedChangesCount.value > 0) {
+        if (!confirm('Anda memiliki perubahan yang belum disimpan. Menerapkan filter akan membatalkan perubahan tersebut. Lanjutkan?')) {
+            return;
+        }
+    }
     router.get(route('work-schedules.index'), {
         month: currentMonthStr.value,
         branch: filterBranch.value,
         position: filterPosition.value,
         search: searchQuery.value,
-    }, { preserveState: true });
+    }, { preserveState: false, preserveScroll: true });
 };
 
 // Print Schedule
@@ -1166,16 +1201,36 @@ const confirmResetMonth = () => {
 // ======================== MODAL GENERATE ========================
 const openGenerateModal = ref(false);
 const isGenerating = ref(false);
+const modalFilterBranch = ref('');
+const modalFilterPosition = ref('');
 const selectedGenEmployees = ref(props.employees.map(e => e.id));
 const selectedPatternId = ref('6-1');
 const genDefaultShiftId = ref(props.shifts[0]?.id || 1);
 const genStagger = ref(false);
 
+const filteredGenEmployees = computed(() => {
+    return props.employees.filter(emp => {
+        if (modalFilterBranch.value) {
+            const bVal = modalFilterBranch.value;
+            const matchArea = emp.area_id == bVal || emp.area?.name == bVal;
+            const matchBranch = emp.branch == bVal;
+            if (!matchArea && !matchBranch) return false;
+        }
+        if (modalFilterPosition.value) {
+            if (emp.position !== modalFilterPosition.value) return false;
+        }
+        return true;
+    });
+});
+
 const toggleSelectAllEmployees = () => {
-    if (selectedGenEmployees.value.length === props.employees.length) {
-        selectedGenEmployees.value = [];
+    const currentFilteredIds = filteredGenEmployees.value.map(e => e.id);
+    const allSelected = currentFilteredIds.length > 0 && currentFilteredIds.every(id => selectedGenEmployees.value.includes(id));
+    if (allSelected) {
+        selectedGenEmployees.value = selectedGenEmployees.value.filter(id => !currentFilteredIds.includes(id));
     } else {
-        selectedGenEmployees.value = props.employees.map(e => e.id);
+        const union = new Set([...selectedGenEmployees.value, ...currentFilteredIds]);
+        selectedGenEmployees.value = Array.from(union);
     }
 };
 

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Area;
 use App\Models\Employee;
+use App\Models\Position;
 use App\Models\RosterPattern;
 use App\Models\Shift;
 use App\Models\WorkSchedule;
@@ -51,11 +53,21 @@ class WorkScheduleController extends Controller
             ];
         }
 
-        // Query Employees dengan filter
-        $employeeQuery = Employee::query();
+        // Query Employees dengan eager load area & shift
+        $employeeQuery = Employee::with(['area', 'shift']);
 
         if ($request->filled('branch')) {
-            $employeeQuery->where('branch', $request->branch);
+            $branchVal = $request->branch;
+            if (is_numeric($branchVal)) {
+                $employeeQuery->where('area_id', $branchVal);
+            } else {
+                $employeeQuery->where(function ($q) use ($branchVal) {
+                    $q->where('branch', $branchVal)
+                      ->orWhereHas('area', function ($sq) use ($branchVal) {
+                          $sq->where('name', $branchVal);
+                      });
+                });
+            }
         }
 
         if ($request->filled('position')) {
@@ -67,7 +79,10 @@ class WorkScheduleController extends Controller
             $employeeQuery->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('position', 'like', "%{$search}%")
-                  ->orWhere('branch', 'like', "%{$search}%");
+                  ->orWhere('branch', 'like', "%{$search}%")
+                  ->orWhereHas('area', function ($sq) use ($search) {
+                      $sq->where('name', 'like', "%{$search}%");
+                  });
             });
         }
 
@@ -125,9 +140,43 @@ class WorkScheduleController extends Controller
         // Urutkan shift terbanyak menurun
         arsort($shiftCounts);
 
-        // Ambil daftar unik Branch dan Position untuk filter
-        $branches = Employee::whereNotNull('branch')->where('branch', '!=', '')->distinct()->pluck('branch')->values();
-        $positions = Employee::whereNotNull('position')->where('position', '!=', '')->distinct()->pluck('position')->values();
+        // Ambil daftar Master Cabang (Area) dan Jabatan (Position)
+        $branches = Area::orderBy('name')->get(['id', 'name'])->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'name' => $item->name,
+            ];
+        });
+
+        // Tambahkan branch custom yang tercatat di tabel employees jika ada
+        $extraBranches = Employee::whereNotNull('branch')
+            ->where('branch', '!=', '')
+            ->distinct()
+            ->pluck('branch');
+        foreach ($extraBranches as $eb) {
+            if (!$branches->contains('name', $eb)) {
+                $branches->push(['id' => $eb, 'name' => $eb]);
+            }
+        }
+
+        // Master Jabatan (Position)
+        $positions = Position::orderBy('name')->get(['id', 'name'])->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'name' => $item->name,
+            ];
+        });
+
+        // Tambahkan position custom yang ada di karyawan jika belum terdaftar di master
+        $extraPositions = Employee::whereNotNull('position')
+            ->where('position', '!=', '')
+            ->distinct()
+            ->pluck('position');
+        foreach ($extraPositions as $ep) {
+            if (!$positions->contains('name', $ep)) {
+                $positions->push(['id' => $ep, 'name' => $ep]);
+            }
+        }
 
         return Inertia::render('WorkSchedules/Index', [
             'month' => $month,
