@@ -187,6 +187,7 @@
                             {{ row.billing_type }}
                         </span>
                     </div>
+                </td>
                 <td>
                     <div class="flex flex-col">
                         <span class="text-[11px] font-bold text-gray-800" :title="'Tanggal Aktivasi Layanan: ' + (row.customer?.activation_date || '-')">
@@ -197,6 +198,7 @@
                         </span>
                     </div>
                 </td>
+                <td>
                     <span v-if="row.last_payment_date" class="flex flex-col">
                         <span class="text-[11px] text-gray-600">{{ row.last_payment_date }}</span>
                         <span 
