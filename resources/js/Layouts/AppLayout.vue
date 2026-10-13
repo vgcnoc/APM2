@@ -364,23 +364,11 @@ const menuItems = [
     {
         type: 'dropdown',
         icon: 'server',
-        label: 'Multi OLT Management',
-        active: (url) => (url || '').startsWith('/olts'),
+        label: 'Perangkat OSP',
+        active: (url) => ['/olts', '/odcs', '/odps', '/onts', '/find-onu'].some(path => (url || '').startsWith(path)),
         permission: 'menu_network_olt',
         children: [
-            { href: '/olts', label: '1. Data & List OLT', active: (url) => (url || '') === '/olts' || (url || '').startsWith('/olts?'), permission: 'menu_network_olt' },
-            { href: '/olts/pon-monitor', label: '2. Monitoring Port PON', active: (url) => (url || '').startsWith('/olts/pon-monitor'), permission: 'menu_network_olt' },
-            { href: '/olts/map', label: '3. Peta Sebaran OLT', active: (url) => (url || '').startsWith('/olts/map'), permission: 'menu_network_olt' },
-            { href: '/olts/capacity', label: '4. Kapasitas & Utilisasi', active: (url) => (url || '').startsWith('/olts/capacity'), permission: 'menu_network_olt' },
-        ]
-    },
-    {
-        type: 'dropdown',
-        icon: 'box',
-        label: 'Distribusi OSP (ODC/ODP)',
-        active: (url) => ['/odcs', '/odps', '/onts', '/find-onu'].some(path => (url || '').startsWith(path)),
-        permission: 'menu_network_odc',
-        children: [
+            { href: '/olts', label: 'Data OLT', active: (url) => (url || '').startsWith('/olts'), permission: 'menu_network_olt' },
             { href: '/odcs', label: 'Data ODC', active: (url) => (url || '').startsWith('/odcs'), permission: 'menu_network_odc' },
             { href: '/odps', label: 'Data ODP', active: (url) => (url || '').startsWith('/odps'), permission: 'menu_network_odp' },
             { href: '/onts', label: 'Data ONT', active: (url) => (url || '').startsWith('/onts'), permission: 'menu_network_ont' },

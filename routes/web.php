@@ -155,10 +155,7 @@ Route::middleware(['auth'])->group(function () {
     });
     Route::resource('customers', CustomerController::class);
 
-    // ── Multi OLT Management ──────────────────────────────────
-    Route::get('olts/pon-monitor', [\App\Http\Controllers\OltController::class, 'ponMonitor'])->name('olts.pon-monitor');
-    Route::get('olts/map', [\App\Http\Controllers\OltController::class, 'map'])->name('olts.map');
-    Route::get('olts/capacity', [\App\Http\Controllers\OltController::class, 'capacity'])->name('olts.capacity');
+    // ── Data OLT ──────────────────────────────────────────────
     Route::resource('olts', OltController::class);
     Route::post('olts/{olt}/update', [OltController::class, 'update'])->name('olts.update.post');
     Route::post('olts/{olt}/delete', [OltController::class, 'destroy'])->name('olts.destroy.post');
