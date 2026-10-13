@@ -461,10 +461,11 @@ const menuItems = [
         type: 'dropdown',
         icon: 'calculator',
         label: 'Penggajian & Insentif',
-        active: (url) => ['/payroll', '/insentif-potongan'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/payroll', '/bonus-target-market', '/insentif-potongan'].some(path => (url || '').startsWith(path)),
         permission: 'menu_hr_employees',
         children: [
             { href: '/payroll', label: 'Gaji & Payroll', active: (url) => (url || '').length > 0 && url === '/payroll', permission: 'menu_hr_employees' },
+            { href: '/bonus-target-market', label: 'Bonus Target Market', active: (url) => (url || '').startsWith('/bonus-target-market'), permission: 'menu_hr_employees' },
             { href: '/insentif-potongan', label: 'Histori Insentif', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: 'menu_hr_employees' },
         ]
     },

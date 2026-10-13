@@ -2123,6 +2123,13 @@ class CustomerController extends Controller
                 \Illuminate\Support\Facades\Log::warning('[RADIUS] Activation sync error: ' . $e->getMessage());
             }
 
+            // Hitung dan catat Bonus Target Market jika ada program aktif
+            try {
+                \App\Services\TargetMarketService::processCustomerActivation($customer);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[TargetMarket] Bonus calculation error: ' . $e->getMessage());
+            }
+
             \App\Models\AuditLog::createLog('Aktivasi Layanan', $customer, 'installing', 'active', 'Mengaktifkan layanan pelanggan');
 
             return redirect()->route('customers.installed')->with('success', 'Pelanggan berhasil diaktivasi!');
