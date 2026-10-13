@@ -232,59 +232,230 @@
                     </span>
                 </td>
                 <td>
-                    <span v-if="row.promise_date" class="px-2 py-1 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 w-max">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <button 
+                        v-if="row.promise_date" 
+                        type="button"
+                        @click="openPromiseModal(row)"
+                        class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 w-max transition-colors cursor-pointer shadow-2xs"
+                        title="Klik untuk ubah tanggal janji bayar"
+                    >
+                        <svg class="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                         {{ row.promise_date }}
-                    </span>
+                    </button>
+                    <button 
+                        v-else-if="row.status !== 'paid'" 
+                        type="button"
+                        @click="openPromiseModal(row)" 
+                        class="text-[10px] font-medium text-gray-400 hover:text-amber-600 hover:bg-amber-50 px-2 py-0.5 rounded-md border border-dashed border-gray-200 hover:border-amber-300 transition-colors flex items-center gap-1 cursor-pointer"
+                        title="Atur tanggal janji bayar"
+                    >
+                        <span>+ Janji</span>
+                    </button>
                     <span v-else class="text-gray-400 text-xs">-</span>
                 </td>
             </template>
 
             <template #rowActions="{ row }">
-                <div class="flex items-center justify-end gap-1.5 flex-wrap">
-                    <!-- Tombol Bayar Lunas jika status unpaid -->
-                    <button v-if="row.status === 'unpaid'" @click="openPaymentModal(row)" class="px-2.5 py-1.5 border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-colors shadow-2xs">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                        Bayar Lunas
+                <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                    <!-- Tombol Bayar Lunas (Unpaid) -->
+                    <button 
+                        v-if="row.status === 'unpaid'" 
+                        type="button"
+                        @click="openPaymentModal(row)" 
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm"
+                        title="Proses Pembayaran Lunas"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zM7 15h2m1 0h6"/></svg>
+                        <span>Bayar Lunas</span>
                     </button>
 
-                    <!-- Tombol Lunasi Sisa jika status partial (Bayar Sebagian) -->
-                    <button v-else-if="row.status === 'partial'" @click="openPaymentModal(row)" class="px-2.5 py-1.5 border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-colors shadow-2xs" title="Bayar / Lunasi Sisa Tagihan">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        Lunasi Sisa
+                    <!-- Tombol Lunasi Sisa (Bayar Sebagian) -->
+                    <button 
+                        v-else-if="row.status === 'partial'" 
+                        type="button"
+                        @click="openPaymentModal(row)" 
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm" 
+                        title="Bayar / Lunasi Sisa Tagihan"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Lunasi Sisa</span>
                     </button>
 
-                    <!-- Tombol Janji Bayar jika unpaid atau partial -->
-                    <button v-if="row.status === 'unpaid' || row.status === 'partial'" @click="openPromiseModal(row)" class="p-1.5 text-gray-400 hover:text-amber-600 rounded-md hover:bg-amber-50 transition-colors" title="Set Janji Bayar">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <!-- Tombol Rollback (Paid atau Partial) -->
+                    <button 
+                        v-if="row.status === 'paid' || row.status === 'partial'" 
+                        type="button"
+                        @click="rollbackInvoice(row)" 
+                        class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 hover:border-rose-300 rounded-lg text-xs font-bold transition-all shadow-2xs" 
+                        title="Batalkan pembayaran / Rollback status tagihan"
+                    >
+                        <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                        <span>Rollback</span>
                     </button>
 
-                    <!-- Tombol Rollback jika paid atau partial -->
-                    <button v-if="row.status === 'paid' || row.status === 'partial'" @click="rollbackInvoice(row)" class="px-2.5 py-1.5 border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-colors shadow-2xs" title="Batalkan pembayaran / Rollback status tagihan">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
-                        Rollback
-                    </button>
-                    <a :href="'/invoices/' + row.id + '/print'" target="_blank" class="p-1.5 text-gray-400 hover:text-indigo-600 transition-colors" title="Cetak Invoice">
+                    <!-- Tombol Cetak Cepat -->
+                    <a 
+                        :href="'/invoices/' + row.id + '/print'" 
+                        target="_blank" 
+                        class="inline-flex items-center justify-center p-1.5 bg-white hover:bg-indigo-50 text-gray-500 hover:text-indigo-600 border border-gray-200 hover:border-indigo-200 rounded-lg transition-colors shadow-2xs" 
+                        title="Cetak Invoice / Struk"
+                    >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                     </a>
-                    <button @click="openEditModal(row)" class="p-1.5 text-gray-400 hover:text-blue-600 transition-colors" title="Edit Tagihan">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                    </button>
-                    <button v-if="row.customer" @click="openUpgradeModal(row)" class="p-1.5 text-gray-400 hover:text-purple-600 transition-colors" title="Upgrade / Downgrade Paket">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
-                    </button>
-                    <button v-if="row.customer && row.customer.status !== 'suspended'" @click="stopSementara(row)" class="p-1.5 text-gray-400 hover:text-orange-600 transition-colors" title="Stop Sementara">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </button>
-                    <button v-if="row.customer && row.customer.status !== 'terminated'" @click="openStopPermanenModal(row)" class="p-1.5 text-gray-400 hover:text-red-800 transition-colors" title="Stop Permanen & Eskalasi CBP">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
-                    </button>
-                    <button @click="deleteInvoice(row)" class="p-1.5 text-gray-400 hover:text-red-600 transition-colors" title="Hapus Tagihan">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+
+                    <!-- Tombol Menu Aksi Lainnya (...) -->
+                    <button 
+                        type="button" 
+                        @click="toggleDropdown($event, row)" 
+                        class="inline-flex items-center justify-center p-1.5 bg-white hover:bg-gray-100 text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-lg transition-colors shadow-2xs cursor-pointer"
+                        :class="{ 'ring-2 ring-indigo-500 bg-gray-50 text-indigo-600': activeDropdownRow?.id === row.id }"
+                        title="Menu Aksi Lainnya"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                        </svg>
                     </button>
                 </div>
             </template>
         </DataTable>
+
+        <!-- Action Dropdown Menu Floating -->
+        <Teleport to="body">
+            <div v-if="activeDropdownRow" class="fixed inset-0 z-[120]" @click="closeDropdown" @contextmenu.prevent="closeDropdown">
+                <div 
+                    :style="{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px` }"
+                    class="fixed w-60 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[121] text-xs divide-y divide-gray-100 animate-fade-in-up"
+                    @click.stop
+                >
+                    <!-- Header Info -->
+                    <div class="px-4 py-2 bg-gray-50/70 -mt-2 rounded-t-2xl border-b border-gray-100 mb-1">
+                        <div class="font-bold text-gray-900 truncate">{{ activeDropdownRow.customer?.name || 'Pelanggan' }}</div>
+                        <div class="flex items-center gap-1.5 text-[10px] text-gray-500 font-mono mt-0.5">
+                            <span class="font-bold text-indigo-600">#{{ activeDropdownRow.invoice_number }}</span>
+                            <span>&bull;</span>
+                            <span class="font-semibold text-gray-700">{{ formatCurrency(activeDropdownRow.amount) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Grup 1: Penagihan & Keuangan -->
+                    <div class="py-1">
+                        <!-- Janji Bayar -->
+                        <button 
+                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial'"
+                            type="button" 
+                            @click="openPromiseModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-amber-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold">{{ activeDropdownRow.promise_date ? 'Ubah Janji Bayar' : 'Atur Janji Bayar' }}</span>
+                                <p class="text-[10px] text-gray-400 font-normal">Tentukan tanggal komitmen</p>
+                            </div>
+                        </button>
+
+                        <!-- Edit Tagihan -->
+                        <button 
+                            type="button" 
+                            @click="openEditModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-800 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold">Edit Tagihan</span>
+                                <p class="text-[10px] text-gray-400 font-normal">Ubah nominal / jatuh tempo</p>
+                            </div>
+                        </button>
+
+                        <!-- Cetak Tagihan -->
+                        <a 
+                            :href="'/invoices/' + activeDropdownRow.id + '/print'" 
+                            target="_blank"
+                            @click="closeDropdown"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-gray-700 hover:bg-indigo-50 hover:text-indigo-800 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-indigo-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold">Cetak Invoice PDF</span>
+                                <p class="text-[10px] text-gray-400 font-normal">Buka struk & cetak thermal</p>
+                            </div>
+                        </a>
+                    </div>
+
+                    <!-- Grup 2: Layanan & Paket Pelanggan -->
+                    <div v-if="activeDropdownRow.customer" class="py-1">
+                        <!-- Upgrade / Downgrade -->
+                        <button 
+                            type="button" 
+                            @click="openUpgradeModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-gray-700 hover:bg-purple-50 hover:text-purple-800 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-purple-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold">Upgrade / Downgrade</span>
+                                <p class="text-[10px] text-gray-400 font-normal">Ganti paket internet</p>
+                            </div>
+                        </button>
+
+                        <!-- Stop Sementara -->
+                        <button 
+                            v-if="activeDropdownRow.customer.status !== 'suspended'"
+                            type="button" 
+                            @click="stopSementara(activeDropdownRow); closeDropdown()"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-gray-700 hover:bg-orange-50 hover:text-orange-800 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-orange-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold">Stop Sementara</span>
+                                <p class="text-[10px] text-gray-400 font-normal">Isolir sementara layanan</p>
+                            </div>
+                        </button>
+
+                        <!-- Stop Permanen & CBP -->
+                        <button 
+                            v-if="activeDropdownRow.customer.status !== 'terminated'"
+                            type="button" 
+                            @click="openStopPermanenModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-rose-700 hover:bg-rose-50 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-rose-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold">Stop Permanen & CBP</span>
+                                <p class="text-[10px] text-rose-400 font-normal">Putus & tarik perangkat</p>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Grup 3: Hapus -->
+                    <div class="py-1">
+                        <button 
+                            type="button" 
+                            @click="deleteInvoice(activeDropdownRow); closeDropdown()"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-red-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold">Hapus Tagihan</span>
+                                <p class="text-[10px] text-red-400 font-normal">Hapus permanen invoice ini</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
 
         <!-- Payment Modal -->
         <Teleport to="body">
@@ -984,7 +1155,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
@@ -1094,6 +1265,53 @@ function statusDotClass(status) {
         default: return 'bg-gray-500';
     }
 }
+
+// Action Dropdown Floating Logic
+const activeDropdownRow = ref(null);
+const dropdownPos = ref({ top: 0, left: 0 });
+
+function toggleDropdown(event, row) {
+    if (activeDropdownRow.value && activeDropdownRow.value.id === row.id) {
+        activeDropdownRow.value = null;
+        return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const dropdownHeight = 310;
+    const dropdownWidth = 240;
+
+    let top = rect.bottom + 6;
+    if (top + dropdownHeight > window.innerHeight && rect.top > dropdownHeight) {
+        top = Math.max(10, rect.top - dropdownHeight - 6);
+    }
+
+    let left = rect.right - dropdownWidth;
+    if (left < 10) {
+        left = 10;
+    }
+
+    dropdownPos.value = { top, left };
+    activeDropdownRow.value = row;
+}
+
+function closeDropdown() {
+    activeDropdownRow.value = null;
+}
+
+function handleWindowChange() {
+    if (activeDropdownRow.value) {
+        activeDropdownRow.value = null;
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('scroll', handleWindowChange, { passive: true });
+    window.addEventListener('resize', handleWindowChange);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', handleWindowChange);
+    window.removeEventListener('resize', handleWindowChange);
+});
 
 // Payment Modal Logic
 const showPaymentModal = ref(false);
