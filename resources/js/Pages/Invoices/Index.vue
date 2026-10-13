@@ -187,9 +187,16 @@
                             {{ row.billing_type }}
                         </span>
                     </div>
-                </td>
-                <td><span class="text-[11px] text-gray-600">{{ row.customer?.register_date || '-' }}</span></td>
                 <td>
+                    <div class="flex flex-col">
+                        <span class="text-[11px] font-bold text-gray-800" :title="'Tanggal Aktivasi Layanan: ' + (row.customer?.activation_date || '-')">
+                            {{ row.customer?.activation_date || row.customer?.register_date || '-' }}
+                        </span>
+                        <span v-if="row.customer?.register_date && row.customer?.activation_date && row.customer?.register_date !== row.customer?.activation_date" class="text-[9px] text-gray-400 mt-0.5" :title="'Tanggal Booking/Registrasi: ' + row.customer?.register_date">
+                            Reg: {{ row.customer?.register_date }}
+                        </span>
+                    </div>
+                </td>
                     <span v-if="row.last_payment_date" class="flex flex-col">
                         <span class="text-[11px] text-gray-600">{{ row.last_payment_date }}</span>
                         <span 
@@ -1178,7 +1185,7 @@ const columns = [
     { key: 'area', label: 'AREA' },
     { key: 'address', label: 'ALAMAT' },
     { key: 'package', label: 'NAMA PAKET' },
-    { key: 'register_date', label: 'TANGGAL REGISTER' },
+    { key: 'activation_date', label: 'TANGGAL AKTIVASI' },
     { key: 'last_payment_date', label: 'PEMBAYARAN TERAKHIR' },
     { key: 'amount', label: 'TAGIHAN' },
     { key: 'customer_status', label: 'STATUS PELANGGAN' },
