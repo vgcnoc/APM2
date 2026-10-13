@@ -23,9 +23,13 @@
             <nav ref="sidebarNav" scroll-region class="flex-1 overflow-y-auto px-3 py-4 space-y-1 transition-opacity duration-100" :class="{ 'opacity-0': !isRestored, 'opacity-100': isRestored }" @scroll="saveScrollPosition">
                 <template v-for="(item, index) in filteredMenuItems" :key="index">
                     <!-- Group Label -->
-                    <div v-if="item.type === 'group' && sidebarOpen" class="pt-5 pb-2 px-4">
-                        <span class="text-[10px] font-bold text-gray-500 tracking-widest uppercase">{{ item.label }}</span>
+                    <div v-if="item.type === 'group' && sidebarOpen" class="pt-5 pb-2 px-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold text-gray-400 tracking-wider uppercase">{{ item.label }}</span>
+                            <div class="h-px bg-gray-200/60 flex-1"></div>
+                        </div>
                     </div>
+                    <div v-else-if="item.type === 'group' && !sidebarOpen" class="my-2 border-t border-gray-200/60 mx-3"></div>
 
                     <!-- Link -->
                     <Link v-if="item.type === 'link'" :href="item.href" @click="mobileMenuOpen = false" :class="['sidebar-link', { active: item.active($page.url), 'pl-11': item.indent }]">
@@ -155,8 +159,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { ref, computed, onMounted } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
 import AppLogo from '@/Components/AppLogo.vue';
 
 defineProps({
@@ -164,10 +168,12 @@ defineProps({
     subtitle: { type: String, default: '' },
 });
 
+const page = usePage();
 const sidebarOpen = ref(true);
 const mobileMenuOpen = ref(false);
 const sidebarNav = ref(null);
 const isRestored = ref(false);
+const openDropdowns = ref([]);
 
 const saveScrollPosition = () => {
     if (sidebarNav.value) {
@@ -175,46 +181,41 @@ const saveScrollPosition = () => {
     }
 };
 
-onMounted(() => {
-    // Restore open dropdowns first so the DOM height is correct BEFORE restoring scroll
-    const savedDropdowns = localStorage.getItem('sidebarOpenDropdowns');
-    if (savedDropdowns) {
-        openDropdowns.value = JSON.parse(savedDropdowns);
-    } else {
-        const currentUrl = page.url;
-        filteredMenuItems.value.forEach((item, index) => {
-            if (item.type === 'dropdown' && item.active(currentUrl)) {
-                if (!openDropdowns.value.includes(index)) {
-                    openDropdowns.value.push(index);
-                }
-            }
-        });
-    }
+const hasPermission = (permission) => {
+    if (!permission) return true;
+    try {
+        const user = page.props.auth?.user;
+        if (!user) return false;
+        
+        // Super admin bypass
+        if (user.role === 'admin' || user.role === 'Super Admin') return true;
 
-    // Restore sidebar scroll position aggressively to ensure it sticks after DOM mutations
-    const scrollPos = parseInt(localStorage.getItem('sidebarScrollPos'), 10);
-    if (!isNaN(scrollPos)) {
-        let attempts = 0;
-        // Run every 10ms for 150ms to ensure it overrides any browser scroll resets
-        const interval = setInterval(() => {
-            if (sidebarNav.value) {
-                sidebarNav.value.scrollTop = scrollPos;
-            }
-            attempts++;
-            if (attempts > 15) {
-                clearInterval(interval);
-                isRestored.value = true;
-            }
-        }, 10);
-    } else {
-        isRestored.value = true;
+        let roles = [];
+        if (Array.isArray(user.roles)) roles = user.roles;
+        else if (user.roles) roles = Object.values(user.roles);
+        if (roles.includes('admin') || roles.includes('Super Admin')) return true;
+
+        let perms = [];
+        if (Array.isArray(user.permissions)) perms = user.permissions;
+        else if (user.permissions) perms = Object.values(user.permissions);
+
+        if (Array.isArray(permission)) {
+            return permission.some(p => perms.includes(p));
+        }
+
+        return perms.includes(permission);
+    } catch (e) {
+        console.error("Error in hasPermission:", e);
+        return false;
     }
-});
+};
 
 const menuItems = [
+    // 1. DASHBOARD
     { type: 'link', href: '/', icon: 'dashboard', label: 'Dashboard', active: (url) => (url || '').length > 0 && url === '/', permission: 'menu_dashboard' },
     
-    { type: 'group', label: 'MANAJEMEN PELANGGAN' },
+    // 2. PELANGGAN & LAYANAN
+    { type: 'group', label: 'PELANGGAN & LAYANAN' },
     {
         type: 'dropdown',
         icon: 'users',
@@ -225,8 +226,8 @@ const menuItems = [
             { href: '/customers', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
             { href: '/customers/active', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: 'menu_customers_active' },
             { href: '/customers/isolir', label: 'Pelanggan Isolir', active: (url) => (url || '').startsWith('/customers/isolir'), permission: 'menu_customers_active' },
-            { href: '/customers/online', label: 'Online', active: (url) => (url || '').startsWith('/customers/online'), permission: 'menu_customers_online' },
-            { href: '/customers/offline', label: 'Offline', active: (url) => (url || '').startsWith('/customers/offline'), permission: 'menu_customers_online' },
+            { href: '/customers/online', label: 'Status Online', active: (url) => (url || '').startsWith('/customers/online'), permission: 'menu_customers_online' },
+            { href: '/customers/offline', label: 'Status Offline', active: (url) => (url || '').startsWith('/customers/offline'), permission: 'menu_customers_online' },
             { href: '/customers/terminated', label: 'Stop Permanen', active: (url) => (url || '').startsWith('/customers/terminated'), permission: 'menu_customers_all' },
         ]
     },
@@ -244,61 +245,21 @@ const menuItems = [
     },
     {
         type: 'dropdown',
-        icon: 'support',
-        label: 'Gangguan Komplain (PGK)',
-        active: (url) => (url || '').startsWith('/pgk'),
-        permission: 'menu_tickets',
+        icon: 'clipboard-check',
+        label: 'Pemasangan Baru (PSB)',
+        active: (url) => ['/customers/booking', '/customers/survey', '/customers/installed', '/customers/activation', '/customers/canceled'].some(path => (url || '').startsWith(path)),
+        permission: ['menu_customers_booking', 'menu_customers_survey', 'menu_customers_installed', 'menu_customers_activation'],
         children: [
-            { href: '/pgk', label: '1. Komplain Masuk (Admin)', active: (url) => (url || '').length > 0 && url === '/pgk', permission: 'menu_tickets' },
-            { href: '/pgk/jadwal', label: '2. Jadwal Teknisi (Lead)', active: (url) => (url || '').startsWith('/pgk/jadwal'), permission: 'menu_tickets' },
-            { href: '/pgk/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgk/laporan'), permission: 'menu_tickets' },
+            { href: '/customers/booking', label: '1. Booking Baru', active: (url) => (url || '').startsWith('/customers/booking'), permission: 'menu_customers_booking' },
+            { href: '/customers/survey', label: '2. Survey Lokasi', active: (url) => (url || '').startsWith('/customers/survey'), permission: 'menu_customers_survey' },
+            { href: '/customers/installed', label: '3. Instalasi Jaringan', active: (url) => (url || '').startsWith('/customers/installed'), permission: 'menu_customers_installed' },
+            { href: '/customers/activation', label: '4. Aktivasi Layanan', active: (url) => (url || '').startsWith('/customers/activation'), permission: 'menu_customers_activation' },
+            { href: '/customers/canceled', label: '5. Dibatalkan', active: (url) => (url || '').startsWith('/customers/canceled'), permission: 'menu_customers_booking' },
         ]
     },
-    {
-        type: 'dropdown',
-        icon: 'git-branch',
-        label: 'Gangguan Jalur (PGJ)',
-        active: (url) => (url || '').startsWith('/pgj'),
-        permission: 'menu_tickets',
-        children: [
-            { href: '/pgj', label: '1. Temuan Jalur (Admin)', active: (url) => (url || '').length > 0 && url === '/pgj', permission: 'menu_tickets' },
-            { href: '/pgj/jadwal', label: '2. Jadwal & Material (Lead)', active: (url) => (url || '').startsWith('/pgj/jadwal'), permission: 'menu_tickets' },
-            { href: '/pgj/laporan', label: '3. Laporan Restorasi', active: (url) => (url || '').startsWith('/pgj/laporan'), permission: 'menu_tickets' },
-        ]
-    },
-    {
-        type: 'dropdown',
-        icon: 'zap',
-        label: 'Penanganan Sigap (PGS)',
-        active: (url) => (url || '').startsWith('/pgs'),
-        permission: 'menu_tickets',
-        children: [
-            { href: '/pgs', label: 'Temuan & Penanganan', active: (url) => (url || '').length > 0 && url === '/pgs', permission: 'menu_tickets' },
-            { href: '/pgs/jadwal', label: 'Jadwal & Material (Lead)', active: (url) => (url || '').startsWith('/pgs/jadwal'), permission: 'menu_tickets' },
-            { href: '/pgs/laporan', label: 'Laporan Penanganan', active: (url) => (url || '').startsWith('/pgs/laporan'), permission: 'menu_tickets' },
-        ]
-    },
-    {
-        type: 'dropdown',
-        icon: 'alert-circle',
-        label: 'Ticketing & CBP',
-        active: (url) => ['/tickets', '/cbp'].some(path => (url || '').startsWith(path)),
-        permission: 'menu_tickets',
-        children: [
-            { href: '/tickets', label: 'Semua Gangguan', active: (url) => (url || '').length > 0 && url === '/tickets', permission: 'menu_tickets' },
-            { href: '/cbp', label: 'CBP / Cabut Perangkat', active: (url) => (url || '').length > 0 && url === '/cbp', permission: 'menu_tickets' },
-            { href: '/cbp/jadwal', label: 'Jadwal CBP', active: (url) => (url || '').startsWith('/cbp/jadwal'), permission: 'menu_tickets' },
-            { href: '/cbp/laporan', label: 'Laporan CBP', active: (url) => (url || '').startsWith('/cbp/laporan'), permission: 'menu_tickets' },
-        ]
-    },
+    { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
 
-    { type: 'group', label: 'PEMASANGAN BARU' },
-    { type: 'link', href: '/customers/booking', icon: 'document-add', label: 'Data Booking', active: (url) => (url || '').startsWith('/customers/booking'), permission: 'menu_customers_booking' },
-    { type: 'link', href: '/customers/survey', icon: 'clipboard-check', label: 'Survey Lokasi', active: (url) => (url || '').startsWith('/customers/survey'), permission: 'menu_customers_survey' },
-    { type: 'link', href: '/customers/installed', icon: 'cog', label: 'Instalasi Jaringan', active: (url) => (url || '').startsWith('/customers/installed'), permission: 'menu_customers_installed' },
-    { type: 'link', href: '/customers/activation', icon: 'key', label: 'Aktivasi Layanan', active: (url) => (url || '').startsWith('/customers/activation'), permission: 'menu_customers_activation' },
-    { type: 'link', href: '/customers/canceled', icon: 'x-circle', label: 'Dibatalkan', active: (url) => (url || '').startsWith('/customers/canceled'), permission: 'menu_customers_booking' },
-    
+    // 3. BILLING & KEUANGAN
     { type: 'group', label: 'BILLING & KEUANGAN' },
     { type: 'link', href: '/invoices', icon: 'document-text', label: 'Invoice Pelanggan', active: (url) => (url || '').length > 0 && url === '/invoices', permission: 'menu_customers_all' },
     {
@@ -325,8 +286,60 @@ const menuItems = [
         ]
     },
 
-    { type: 'group', label: 'PRODUK & RESELLER' },
-    { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
+    // 4. OPERASIONAL & GANGGUAN (TIKET)
+    { type: 'group', label: 'OPERASIONAL & GANGGUAN' },
+    {
+        type: 'dropdown',
+        icon: 'support',
+        label: 'Komplain Pelanggan (PGK)',
+        active: (url) => (url || '').startsWith('/pgk'),
+        permission: 'menu_tickets',
+        children: [
+            { href: '/pgk', label: '1. Komplain Masuk', active: (url) => (url || '').length > 0 && url === '/pgk', permission: 'menu_tickets' },
+            { href: '/pgk/jadwal', label: '2. Jadwal Teknisi', active: (url) => (url || '').startsWith('/pgk/jadwal'), permission: 'menu_tickets' },
+            { href: '/pgk/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgk/laporan'), permission: 'menu_tickets' },
+        ]
+    },
+    {
+        type: 'dropdown',
+        icon: 'git-branch',
+        label: 'Gangguan Jalur (PGJ)',
+        active: (url) => (url || '').startsWith('/pgj'),
+        permission: 'menu_tickets',
+        children: [
+            { href: '/pgj', label: '1. Temuan Jalur', active: (url) => (url || '').length > 0 && url === '/pgj', permission: 'menu_tickets' },
+            { href: '/pgj/jadwal', label: '2. Jadwal & Material', active: (url) => (url || '').startsWith('/pgj/jadwal'), permission: 'menu_tickets' },
+            { href: '/pgj/laporan', label: '3. Laporan Restorasi', active: (url) => (url || '').startsWith('/pgj/laporan'), permission: 'menu_tickets' },
+        ]
+    },
+    {
+        type: 'dropdown',
+        icon: 'zap',
+        label: 'Penanganan Sigap (PGS)',
+        active: (url) => (url || '').startsWith('/pgs'),
+        permission: 'menu_tickets',
+        children: [
+            { href: '/pgs', label: '1. Temuan & Tindakan', active: (url) => (url || '').length > 0 && url === '/pgs', permission: 'menu_tickets' },
+            { href: '/pgs/jadwal', label: '2. Jadwal & Material', active: (url) => (url || '').startsWith('/pgs/jadwal'), permission: 'menu_tickets' },
+            { href: '/pgs/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgs/laporan'), permission: 'menu_tickets' },
+        ]
+    },
+    {
+        type: 'dropdown',
+        icon: 'alert-circle',
+        label: 'Ticketing & CBP',
+        active: (url) => ['/tickets', '/cbp'].some(path => (url || '').startsWith(path)),
+        permission: 'menu_tickets',
+        children: [
+            { href: '/tickets', label: 'Semua Gangguan', active: (url) => (url || '').length > 0 && url === '/tickets', permission: 'menu_tickets' },
+            { href: '/cbp', label: 'CBP / Cabut Perangkat', active: (url) => (url || '').length > 0 && url === '/cbp', permission: 'menu_tickets' },
+            { href: '/cbp/jadwal', label: 'Jadwal CBP', active: (url) => (url || '').startsWith('/cbp/jadwal'), permission: 'menu_tickets' },
+            { href: '/cbp/laporan', label: 'Laporan CBP', active: (url) => (url || '').startsWith('/cbp/laporan'), permission: 'menu_tickets' },
+        ]
+    },
+
+    // 5. RESELLER & VOUCHER
+    { type: 'group', label: 'RESELLER & VOUCHER' },
     { 
         type: 'dropdown',
         icon: 'ticket',
@@ -344,7 +357,7 @@ const menuItems = [
     { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
     {
         type: 'dropdown',
-        icon: 'cash',
+        icon: 'credit-card',
         label: 'Keuangan Reseller',
         active: (url) => ['/reseller-requests', '/reseller-billing', '/reseller-settlements', '/reseller-reports'].some(path => (url || '').startsWith(path)),
         permission: 'menu_resellers',
@@ -356,15 +369,25 @@ const menuItems = [
         ]
     },
 
+    // 6. INFRASTRUKTUR JARINGAN
     { type: 'group', label: 'INFRASTRUKTUR JARINGAN' },
-    { type: 'link', href: '/network-topology', icon: 'globe', label: 'Network Topology', active: (url) => (url || '').startsWith('/network-topology'), permission: 'menu_network_topology' },
-    { type: 'link', href: '/network-radar', icon: 'map', label: 'Radar Tikor', active: (url) => (url || '').startsWith('/network-radar'), permission: 'menu_network_topology' },
-    { type: 'link', href: '/network-data', icon: 'globe', label: 'Data Jaringan', active: (url) => (url || '').startsWith('/network-data') && !(url || '').startsWith('/network-data/terminated'), permission: 'menu_network_data' },
-    { type: 'link', href: '/network-data/terminated', icon: 'scissors', label: 'Cabut Perangkat', active: (url) => (url || '').startsWith('/network-data/terminated'), permission: 'menu_network_data' },
+    {
+        type: 'dropdown',
+        icon: 'globe',
+        label: 'Peta & Topologi',
+        active: (url) => ['/network-topology', '/network-radar', '/network-data'].some(path => (url || '').startsWith(path)),
+        permission: ['menu_network_topology', 'menu_network_data'],
+        children: [
+            { href: '/network-topology', label: 'Network Topology', active: (url) => (url || '').startsWith('/network-topology'), permission: 'menu_network_topology' },
+            { href: '/network-radar', label: 'Radar Tikor', active: (url) => (url || '').startsWith('/network-radar'), permission: 'menu_network_topology' },
+            { href: '/network-data', label: 'Data Jaringan', active: (url) => (url || '').startsWith('/network-data') && !(url || '').startsWith('/network-data/terminated'), permission: 'menu_network_data' },
+            { href: '/network-data/terminated', label: 'Cabut Perangkat', active: (url) => (url || '').startsWith('/network-data/terminated'), permission: 'menu_network_data' },
+        ]
+    },
     {
         type: 'dropdown',
         icon: 'server',
-        label: 'Perangkat OSP',
+        label: 'Perangkat OSP / FTTH',
         active: (url) => ['/olts', '/odcs', '/odps', '/onts', '/find-onu'].some(path => (url || '').startsWith(path)),
         permission: 'menu_network_olt',
         children: [
@@ -377,8 +400,8 @@ const menuItems = [
     },
     {
         type: 'dropdown',
-        icon: 'server',
-        label: 'Mikrotik / RADIUS',
+        icon: 'wifi',
+        label: 'MikroTik & RADIUS',
         active: (url) => (url || '').startsWith('/routers') || (url || '').startsWith('/radius'),
         permission: 'menu_routers',
         children: [
@@ -389,55 +412,75 @@ const menuItems = [
         ]
     },
 
+    // 7. LOGISTIK & GUDANG
+    { type: 'group', label: 'LOGISTIK & GUDANG' },
     {
         type: 'dropdown',
         icon: 'archive',
-        label: 'Inventaris & Logistik',
+        label: 'Inventaris & Stok',
         active: (url) => (url || '').startsWith('/produk') || (url || '').startsWith('/order-toko') || (url || '').startsWith('/stok-in-out') || (url || '').startsWith('/warehouse-stocks'),
         permission: 'menu_materials',
         children: [
-            { href: '/produk', label: 'Data Produk', active: (url) => (url || '').startsWith('/produk'), permission: 'menu_materials' },
+            { href: '/produk', label: 'Data Produk & Material', active: (url) => (url || '').startsWith('/produk'), permission: 'menu_materials' },
             { href: '/order-toko', label: 'Order Toko (Restock)', active: (url) => (url || '').startsWith('/order-toko'), permission: 'menu_materials' },
             { href: '/stok-in-out', label: 'Stock Opname Per Area', active: (url) => (url || '').startsWith('/stok-in-out'), permission: 'menu_materials' },
-            { href: '/warehouse-stocks', label: 'Inventory', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: 'menu_materials' },
+            { href: '/warehouse-stocks', label: 'Inventory Gudang', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: 'menu_materials' },
         ]
     },
 
-    { type: 'group', label: 'LOGISTIK & HRD' },
-
+    // 8. KEPEGAWAIAN & HRD
+    { type: 'group', label: 'KEPEGAWAIAN & HRD' },
     {
         type: 'dropdown',
-        icon: 'users',
-        label: 'Kepegawaian & HRD',
-        active: (url) => (url || '').startsWith('/employees') || (url || '').startsWith('/positions') || (url || '').startsWith('/shifts') || (url || '').startsWith('/work-schedules') || (url || '').startsWith('/attendances') || (url || '').startsWith('/absen-khusus') || (url || '').startsWith('/absen-tugas-luar') || (url || '').startsWith('/settings/attendance') || (url || '').startsWith('/payroll') || (url || '').startsWith('/insentif-potongan'),
+        icon: 'briefcase',
+        label: 'Karyawan & Shift',
+        active: (url) => ['/employees', '/positions', '/shifts', '/work-schedules'].some(path => (url || '').startsWith(path)),
         permission: 'menu_hr_employees',
         children: [
             { href: '/employees', label: 'Data Karyawan', active: (url) => (url || '').startsWith('/employees'), permission: 'menu_hr_employees' },
             { href: '/positions', label: 'Posisi / Jabatan', active: (url) => (url || '').startsWith('/positions'), permission: 'menu_hr_positions' },
             { href: '/shifts', label: 'Shift Kerja', active: (url) => (url || '').startsWith('/shifts'), permission: 'menu_hr_employees' },
             { href: '/work-schedules', label: 'Jadwal Kerja', active: (url) => (url || '').startsWith('/work-schedules'), permission: 'menu_hr_employees' },
-            { href: '/attendances', label: 'Absensi', active: (url) => (url || '').startsWith('/attendances'), permission: 'menu_hr_employees' },
-            { href: '/absen-khusus', label: 'Absen Khusus', active: (url) => (url || '').startsWith('/absen-khusus'), permission: 'menu_hr_employees' },
+        ]
+    },
+    {
+        type: 'dropdown',
+        icon: 'badge-check',
+        label: 'Sistem Presensi & Absensi',
+        active: (url) => ['/attendances', '/absen-khusus', '/absen-tugas-luar'].some(path => (url || '').startsWith(path)),
+        permission: 'menu_hr_employees',
+        children: [
+            { href: '/attendances', label: 'Absensi Reguler', active: (url) => (url || '').startsWith('/attendances'), permission: 'menu_hr_employees' },
+            { href: '/absen-khusus', label: 'Absen Tim Khusus', active: (url) => (url || '').startsWith('/absen-khusus'), permission: 'menu_hr_employees' },
             { href: '/absen-tugas-luar', label: 'Absen Tugas Luar', active: (url) => (url || '').startsWith('/absen-tugas-luar'), permission: 'menu_hr_employees' },
             { href: '/settings/attendance', label: 'Pengaturan Absensi', active: (url) => (url || '').startsWith('/settings/attendance'), permission: 'menu_hr_employees' },
-            { href: '/payroll', label: 'Gaji & Insentif', active: (url) => (url || '').length > 0 && url === '/payroll', permission: 'menu_hr_employees' },
+        ]
+    },
+    {
+        type: 'dropdown',
+        icon: 'calculator',
+        label: 'Penggajian & Insentif',
+        active: (url) => ['/payroll', '/insentif-potongan'].some(path => (url || '').startsWith(path)),
+        permission: 'menu_hr_employees',
+        children: [
+            { href: '/payroll', label: 'Gaji & Payroll', active: (url) => (url || '').length > 0 && url === '/payroll', permission: 'menu_hr_employees' },
             { href: '/insentif-potongan', label: 'Histori Insentif', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: 'menu_hr_employees' },
         ]
     },
-    
-    { type: 'group', label: 'PENGATURAN' },
+
+    // 9. PENGATURAN SISTEM
+    { type: 'group', label: 'PENGATURAN SISTEM' },
     {
         type: 'dropdown',
         icon: 'cog',
         label: 'Konfigurasi Sistem',
-        active: (url) => ['/settings/api', '/settings/branding', '/settings/billing', '/settings/payroll', '/settings/attendance', '/settings/resellers'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/settings/branding', '/settings/billing', '/settings/payroll', '/settings/resellers', '/settings/api'].some(path => (url || '').startsWith(path)),
         permission: 'menu_settings_roles',
         children: [
-            { href: '/settings/branding', label: 'Branding', active: (url) => (url || '').startsWith('/settings/branding'), permission: 'menu_settings_branding' },
+            { href: '/settings/branding', label: 'Branding & Tampilan', active: (url) => (url || '').startsWith('/settings/branding'), permission: 'menu_settings_branding' },
             { href: '/settings/billing', label: 'Billing / Invoice', active: (url) => (url || '').startsWith('/settings/billing'), permission: 'menu_settings_branding' },
             { href: '/settings/payroll', label: 'Sistem Gaji', active: (url) => (url || '').startsWith('/settings/payroll'), permission: 'menu_hr_employees' },
-            { href: '/settings/attendance', label: 'Pengaturan Absensi', active: (url) => (url || '').startsWith('/settings/attendance'), permission: 'menu_hr_employees' },
-            { href: '/settings/resellers', label: 'Reseller', active: (url) => (url || '').startsWith('/settings/resellers'), permission: 'menu_settings_roles' },
+            { href: '/settings/resellers', label: 'Pengaturan Reseller', active: (url) => (url || '').startsWith('/settings/resellers'), permission: 'menu_settings_roles' },
             { href: '/settings/api', label: 'API & Integrasi', active: (url) => (url || '').startsWith('/settings/api'), permission: 'menu_settings_api' },
         ]
     },
@@ -450,14 +493,14 @@ const menuItems = [
         children: [
             { href: '/settings/areas', label: 'Master Area', active: (url) => (url || '').startsWith('/settings/areas'), permission: 'menu_settings_areas' },
             { href: '/settings/expense-categories', label: 'Kategori Pengeluaran', active: (url) => (url || '').startsWith('/settings/expense-categories'), permission: 'menu_settings_areas' },
-            { href: '/settings/master-fees', label: 'Master Fee', active: (url) => (url || '').startsWith('/settings/master-fees'), permission: 'menu_hr_employees' },
+            { href: '/settings/master-fees', label: 'Master Fee Teknisi/Sales', active: (url) => (url || '').startsWith('/settings/master-fees'), permission: 'menu_hr_employees' },
             { href: '/settings/payroll-categories', label: 'Kategori Insentif/Potongan', active: (url) => (url || '').startsWith('/settings/payroll-categories'), permission: 'menu_hr_employees' },
         ]
     },
     {
         type: 'dropdown',
         icon: 'lock-closed',
-        label: 'Hak Akses',
+        label: 'Hak Akses Pengguna',
         active: (url) => ['/users', '/settings/roles'].some(path => (url || '').startsWith(path)),
         permission: 'menu_users',
         children: [
@@ -466,77 +509,6 @@ const menuItems = [
         ]
     }
 ];
-
-const iconPaths = {
-    search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
-    'x-circle': 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
-    dashboard: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
-    globe: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-    users: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
-    'document-add': 'M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-    'clipboard-check': 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
-    'cog': 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
-    'key': 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z',
-    'badge-check': 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z',
-    server: 'M5 12H3l9-9 9 9h-2M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7',
-    box: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
-    'git-branch': 'M6 3v12M18 9a3 3 0 01-3 3H9m-3 0a3 3 0 003 3h0a3 3 0 003-3m0 0V3',
-    wifi: 'M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.858 15.355-5.858 21.213 0',
-    'file-text': 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-    'document-text': 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-    'credit-card': 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
-    'ticket': 'M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z',
-    'alert-circle': 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-    calendar: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
-    settings: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
-    'package': 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
-    zap: 'M13 10V3L4 14h7v7l9-11h-7z',
-    signal: 'M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z',
-    map: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
-    'color-swatch': 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01',
-    archive: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4',
-    'shopping-cart': 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
-    briefcase: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
-    code: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4',
-    'lock-closed': 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
-    'submenu-dot': 'M9 5l7 7-7 7',
-    calculator: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
-    support: 'M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z',
-};
-
-import { computed } from 'vue';
-import { usePage } from '@inertiajs/vue3';
-
-const page = usePage();
-
-const hasPermission = (permission) => {
-    try {
-        const user = page.props.auth?.user;
-        if (!user) return false; // Fallback jika user blm ter-load
-        
-        // Fallback legacy role column
-        if (user.role === 'admin' || user.role === 'Super Admin') return true;
-
-        // Cek super admin (spatie)
-        let roles = [];
-        if (Array.isArray(user.roles)) roles = user.roles;
-        else if (user.roles) roles = Object.values(user.roles);
-        
-        if (roles.includes('admin') || roles.includes('Super Admin')) return true;
-
-        // Cek permission spesifik
-        let perms = [];
-        if (Array.isArray(user.permissions)) perms = user.permissions;
-        else if (user.permissions) perms = Object.values(user.permissions);
-        
-        if (perms.includes(permission)) return true;
-        
-        return false;
-    } catch (e) {
-        console.error("Error in hasPermission:", e);
-        return false; // JANGAN tampilkan jika error agar strict
-    }
-};
 
 const filteredMenuItems = computed(() => {
     try {
@@ -547,7 +519,16 @@ const filteredMenuItems = computed(() => {
             if (item.type === 'group') {
                 currentGroup = item;
             } else {
-                if (!item.permission || hasPermission(item.permission)) {
+                let isAllowed = false;
+                if (item.type === 'dropdown' && item.children) {
+                    const hasChildAccess = item.children.some(c => !c.permission || hasPermission(c.permission));
+                    const hasParentAccess = !item.permission || hasPermission(item.permission);
+                    isAllowed = hasParentAccess && hasChildAccess;
+                } else {
+                    isAllowed = !item.permission || hasPermission(item.permission);
+                }
+
+                if (isAllowed) {
                     if (currentGroup) {
                         filtered.push(currentGroup);
                         currentGroup = null;
@@ -560,11 +541,10 @@ const filteredMenuItems = computed(() => {
         return filtered;
     } catch (e) {
         console.error("Error in filteredMenuItems:", e);
-        return menuItems; // Tampilkan semua jika error
+        return menuItems;
     }
 });
 
-const openDropdowns = ref([]);
 const toggleDropdown = (index) => {
     if (openDropdowns.value.includes(index)) {
         openDropdowns.value = openDropdowns.value.filter(i => i !== index);
@@ -575,11 +555,82 @@ const toggleDropdown = (index) => {
 };
 
 onMounted(() => {
-    // Buka dropdown yang sedang aktif secara otomatis
+    // 1. Restore open dropdowns state from storage
+    const savedDropdowns = localStorage.getItem('sidebarOpenDropdowns');
+    if (savedDropdowns) {
+        try {
+            openDropdowns.value = JSON.parse(savedDropdowns);
+        } catch (e) {
+            openDropdowns.value = [];
+        }
+    }
+
+    // 2. Automatically expand the dropdown that matches the current URL
+    const currentUrl = page.url;
     filteredMenuItems.value.forEach((item, index) => {
-        if (item.type === 'dropdown' && item.active(page.url)) {
-            openDropdowns.value.push(index);
+        if (item.type === 'dropdown' && item.active(currentUrl)) {
+            if (!openDropdowns.value.includes(index)) {
+                openDropdowns.value.push(index);
+            }
         }
     });
+
+    // 3. Restore sidebar scroll position smoothly
+    const scrollPos = parseInt(localStorage.getItem('sidebarScrollPos'), 10);
+    if (!isNaN(scrollPos)) {
+        let attempts = 0;
+        const interval = setInterval(() => {
+            if (sidebarNav.value) {
+                sidebarNav.value.scrollTop = scrollPos;
+            }
+            attempts++;
+            if (attempts > 15) {
+                clearInterval(interval);
+                isRestored.value = true;
+            }
+        }, 10);
+    } else {
+        isRestored.value = true;
+    }
 });
+
+const iconPaths = {
+    search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+    'x-circle': 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
+    dashboard: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+    globe: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    users: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
+    'document-add': 'M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    'clipboard-check': 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+    cog: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
+    key: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z',
+    'badge-check': 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z',
+    server: 'M5 12H3l9-9 9 9h-2M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7',
+    box: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+    'git-branch': 'M6 3v12M18 9a3 3 0 01-3 3H9m-3 0a3 3 0 003 3h0a3 3 0 003-3m0 0V3',
+    wifi: 'M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.858 15.355-5.858 21.213 0',
+    'file-text': 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    'document-text': 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    'credit-card': 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
+    ticket: 'M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z',
+    'alert-circle': 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    calendar: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+    settings: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
+    package: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+    zap: 'M13 10V3L4 14h7v7l9-11h-7z',
+    signal: 'M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z',
+    map: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
+    'color-swatch': 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01',
+    archive: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4',
+    'shopping-cart': 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
+    briefcase: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
+    code: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4',
+    'lock-closed': 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
+    'submenu-dot': 'M9 5l7 7-7 7',
+    calculator: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
+    support: 'M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z',
+    cash: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
+    'chart-pie': 'M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z',
+    scissors: 'M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879a3 3 0 11-1.414-1.414L10.586 12 7.707 9.121a3 3 0 111.414-1.414L12 10.586m0 0L19 12'
+};
 </script>
