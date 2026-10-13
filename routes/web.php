@@ -19,6 +19,58 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
+// ── Public Routes (Tanpa Login) ─────────────────────────────────
+Route::get('/public/check-bill', function (\Illuminate\Http\Request $request) {
+    $q = trim($request->input('q', ''));
+    if (strlen($q) < 3) {
+        return response()->json(['success' => false, 'message' => 'Masukkan minimal 3 karakter ID Pelanggan atau No WhatsApp.']);
+    }
+    $customer = \App\Models\Customer::with(['package', 'areaModel'])
+        ->where(function ($sub) use ($q) {
+            $sub->where('customer_code', 'like', "%{$q}%")
+                ->orWhere('phone', 'like', "%{$q}%");
+        })
+        ->first();
+
+    if (!$customer) {
+        return response()->json(['success' => false, 'message' => 'Data pelanggan tidak ditemukan. Pastikan ID Pelanggan atau No. WhatsApp sudah sesuai.']);
+    }
+
+    $unpaid = \App\Models\Invoice::with('payments')
+        ->where('customer_id', $customer->id)
+        ->where('is_reseller_balance', false)
+        ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+        ->latest('due_date')
+        ->get()
+        ->map(function ($inv) {
+            $verifiedPaid = $inv->payments->where('status', 'verified')->sum('amount');
+            return [
+                'invoice_number' => $inv->invoice_number,
+                'period_label' => $inv->period_label,
+                'due_date' => $inv->due_date ? \Carbon\Carbon::parse($inv->due_date)->translatedFormat('d M Y') : '-',
+                'amount' => (float) $inv->amount,
+                'remaining' => max(0, (float) ($inv->amount - $verifiedPaid)),
+                'status' => $inv->status,
+            ];
+        })
+        ->filter(fn($i) => $i['remaining'] > 0)
+        ->values();
+
+    return response()->json([
+        'success' => true,
+        'customer' => [
+            'name' => $customer->name,
+            'customer_code' => $customer->customer_code,
+            'package_name' => $customer->package?->name ?? 'Internet Rumah',
+            'package_price' => (float) ($customer->package?->price ?? 0),
+            'area' => $customer->areaModel?->name ?? $customer->area ?? '-',
+            'status' => $customer->status,
+        ],
+        'invoices' => $unpaid,
+        'total_unpaid' => (float) $unpaid->sum('remaining'),
+    ]);
+})->name('public.check-bill');
+
 // ── Auth Routes (dari Laravel Breeze) ──────────────────────────
 require __DIR__ . '/auth.php';
 
