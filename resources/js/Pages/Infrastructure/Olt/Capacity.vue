@@ -25,28 +25,28 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                     <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Slot Kapasitas OLT</div>
-                    <div class="text-2xl font-black text-gray-900 mt-1">{{ summary.total_capacity.toLocaleString() }} Port ONT</div>
-                    <div class="text-[11px] text-gray-400 mt-1">Dari {{ summary.total_pon }} Port PON Aktif</div>
+                    <div class="text-2xl font-black text-gray-900 mt-1">{{ (summary?.total_capacity || 0).toLocaleString() }} Port ONT</div>
+                    <div class="text-[11px] text-gray-400 mt-1">Dari {{ summary?.total_pon || 0 }} Port PON Aktif</div>
                 </div>
 
                 <div class="bg-white p-4 rounded-2xl border border-purple-100 shadow-sm">
                     <div class="text-[11px] font-bold text-purple-600 uppercase tracking-wider">ONT Terpasang / Terpakai</div>
-                    <div class="text-2xl font-black text-purple-700 mt-1">{{ summary.total_used.toLocaleString() }} Pelanggan</div>
+                    <div class="text-2xl font-black text-purple-700 mt-1">{{ (summary?.total_used || 0).toLocaleString() }} Pelanggan</div>
                     <div class="text-[11px] text-gray-400 mt-1">Perangkat ONT terhubung</div>
                 </div>
 
                 <div class="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm">
                     <div class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Sisa Slot Tersedia</div>
-                    <div class="text-2xl font-black text-emerald-700 mt-1">{{ summary.total_available.toLocaleString() }} Slot</div>
+                    <div class="text-2xl font-black text-emerald-700 mt-1">{{ (summary?.total_available || 0).toLocaleString() }} Slot</div>
                     <div class="text-[11px] text-gray-400 mt-1">Dapat diaktivasi langsung</div>
                 </div>
 
                 <div class="bg-white p-4 rounded-2xl border border-indigo-100 shadow-sm">
                     <div class="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">Utilisasi Jaringan Global</div>
-                    <div class="text-2xl font-black text-indigo-700 mt-1">{{ summary.overall_percentage }}%</div>
+                    <div class="text-2xl font-black text-indigo-700 mt-1">{{ summary?.overall_percentage || 0 }}%</div>
                     <!-- Mini Progress Bar -->
                     <div class="w-full h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden">
-                        <div class="h-full bg-indigo-600 rounded-full" :style="{ width: `${Math.min(100, summary.overall_percentage)}%` }"></div>
+                        <div class="h-full bg-indigo-600 rounded-full" :style="{ width: `${Math.min(100, summary?.overall_percentage || 0)}%` }"></div>
                     </div>
                 </div>
             </div>

@@ -428,13 +428,20 @@ class PgkController extends Controller
                         'notes' => $matItem['notes'] ?? null,
                     ]);
 
+                    $unit = $matItem['unit'] ?? $material->unit;
+                    $ppu = $material->selling_price ?: ($material->price_per_unit ?? 0);
+                    if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
+                        $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
+                        $ppu = $ppu / $mpr;
+                    }
+
                     MaterialTransactionItem::create([
                         'material_transaction_id' => $trans->id,
                         'material_id' => $material->id,
                         'quantity' => $qty,
-                        'unit' => $matItem['unit'] ?? $material->unit,
-                        'price_per_unit' => $material->price_per_unit ?? 0,
-                        'total_price' => ($material->price_per_unit ?? 0) * $qty,
+                        'unit' => $unit,
+                        'price_per_unit' => $ppu,
+                        'total_price' => $ppu * $qty,
                         'stock_before' => $stockBefore,
                         'stock_after' => $stockAfter,
                     ]);
@@ -519,13 +526,20 @@ class PgkController extends Controller
                                     'customer_id' => $pgk->customer_id,
                                 ]);
 
+                                $unitRet = $pgkMat->unit ?? $material->unit;
+                                $ppuRet = $material->selling_price ?: ($material->price_per_unit ?? 0);
+                                if (strtolower($material->category ?? '') === 'kabel' && strtolower($unitRet) === 'meter') {
+                                    $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
+                                    $ppuRet = $ppuRet / $mpr;
+                                }
+
                                 MaterialTransactionItem::create([
                                     'material_transaction_id' => $returnTrans->id,
                                     'material_id' => $material->id,
                                     'quantity' => $qtyReturned,
-                                    'unit' => $pgkMat->unit ?? $material->unit,
-                                    'price_per_unit' => $material->price_per_unit ?? 0,
-                                    'total_price' => ($material->price_per_unit ?? 0) * $qtyReturned,
+                                    'unit' => $unitRet,
+                                    'price_per_unit' => $ppuRet,
+                                    'total_price' => $ppuRet * $qtyReturned,
                                     'stock_before' => $stockBefore,
                                     'stock_after' => $stockAfter,
                                 ]);

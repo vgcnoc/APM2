@@ -125,22 +125,19 @@
                                 </div>
 
                                 <!-- Utilisasi Pelanggan -->
-                                @php
-                                const portInfo = getPonInfo(olt, portNum);
-                                @endphp
                                 <div class="mt-3">
                                     <div class="flex justify-between items-baseline text-xs mb-1">
                                         <span class="text-[10px] font-bold text-gray-500 uppercase">Pelanggan:</span>
-                                        <span class="font-black text-xs" :class="getUsageTextColor(portInfo.percentage)">
-                                            {{ portInfo.used }} / {{ portInfo.capacity }}
+                                        <span class="font-black text-xs" :class="getUsageTextColor(getPonInfo(olt, portNum).percentage)">
+                                            {{ getPonInfo(olt, portNum).used }} / {{ getPonInfo(olt, portNum).capacity }}
                                         </span>
                                     </div>
                                     <!-- Progress Bar -->
                                     <div class="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                         <div 
                                             class="h-full rounded-full transition-all duration-500" 
-                                            :class="getProgressBarClass(portInfo.percentage)" 
-                                            :style="{ width: `${Math.min(100, portInfo.percentage)}%` }"
+                                            :class="getProgressBarClass(getPonInfo(olt, portNum).percentage)" 
+                                            :style="{ width: `${Math.min(100, getPonInfo(olt, portNum).percentage)}%` }"
                                         ></div>
                                     </div>
                                 </div>
@@ -149,11 +146,11 @@
                                 <div class="mt-2.5 pt-2 border-t border-gray-100 text-[10px] space-y-0.5">
                                     <div class="flex justify-between text-gray-600">
                                         <span>ODC:</span>
-                                        <strong class="text-rose-700 truncate max-w-[70px]">{{ portInfo.odcName || 'Standby' }}</strong>
+                                        <strong class="text-rose-700 truncate max-w-[70px]">{{ getPonInfo(olt, portNum).odcName || 'Standby' }}</strong>
                                     </div>
                                     <div class="flex justify-between text-gray-600">
                                         <span>VLAN:</span>
-                                        <strong class="text-indigo-700 font-mono">{{ portInfo.vlan || '-' }}</strong>
+                                        <strong class="text-indigo-700 font-mono">{{ getPonInfo(olt, portNum).vlan || '-' }}</strong>
                                     </div>
                                 </div>
                             </div>

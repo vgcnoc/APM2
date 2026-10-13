@@ -95,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import L from 'leaflet';
@@ -188,6 +188,10 @@ const renderMarkers = () => {
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
     }
 };
+
+watch(selectedAreaId, () => {
+    renderMarkers();
+});
 
 const focusOlt = (olt) => {
     selectedOltId.value = olt.id;

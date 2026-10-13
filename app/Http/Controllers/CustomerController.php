@@ -1682,6 +1682,7 @@ class CustomerController extends Controller
                         'notes' => "Rincian Pemakaian Instalasi:\n" . implode("\n", $rincianNotesUsed)
                     ]);
 
+                    $totalCostOut = 0;
                     foreach ($usedItems as $ui) {
                         $materialStock = \App\Models\MaterialStock::where('material_id', $ui['material']->id)
                                         ->where('area_id', $customer->area_id)
@@ -1690,13 +1691,21 @@ class CustomerController extends Controller
                         $stockBefore = $materialStock ? $materialStock->stock : 0;
                         $stockAfter = $stockBefore - $ui['qty'];
 
+                        $ppuOut = $ui['material']->selling_price ?: ($ui['material']->price_per_unit ?? 0);
+                        if (strtolower($ui['material']->category ?? '') === 'kabel' && strtolower($ui['unit'] ?? '') === 'meter') {
+                            $mpr = $ui['material']->meter_per_roll > 0 ? $ui['material']->meter_per_roll : 1000;
+                            $ppuOut = $ppuOut / $mpr;
+                        }
+                        $totalItemPrice = $ppuOut * $ui['qty'];
+                        $totalCostOut += $totalItemPrice;
+
                         \App\Models\MaterialTransactionItem::create([
                             'material_transaction_id' => $transactionOut->id,
                             'material_id' => $ui['material']->id,
                             'quantity' => $ui['qty'],
                             'unit' => $ui['unit'],
-                            'price_per_unit' => $ui['material']->price_per_unit ?? 0,
-                            'total_price' => ($ui['material']->price_per_unit ?? 0) * $ui['qty'],
+                            'price_per_unit' => $ppuOut,
+                            'total_price' => $totalItemPrice,
                             'stock_before' => $stockBefore,
                             'stock_after' => $stockAfter,
                             'condition' => 'Terpasang/Digunakan'
@@ -1716,6 +1725,7 @@ class CustomerController extends Controller
                             ]);
                         }
                     }
+                    $transactionOut->update(['total_cost' => $totalCostOut]);
                 }
 
                 // Proses Pengembalian (Pending - belum menambah gudang atau memotong area)
@@ -1733,17 +1743,27 @@ class CustomerController extends Controller
                         'notes' => "Rincian Hitungan Sisa:\n" . implode("\n", $rincianNotesReturn)
                     ]);
 
+                    $totalCostReturn = 0;
                     foreach ($returnItems as $ri) {
+                        $ppuReturn = $ri['material']->selling_price ?: ($ri['material']->price_per_unit ?? 0);
+                        if (strtolower($ri['material']->category ?? '') === 'kabel' && strtolower($ri['unit'] ?? '') === 'meter') {
+                            $mpr = $ri['material']->meter_per_roll > 0 ? $ri['material']->meter_per_roll : 1000;
+                            $ppuReturn = $ppuReturn / $mpr;
+                        }
+                        $totalItemPriceReturn = $ppuReturn * $ri['qty'];
+                        $totalCostReturn += $totalItemPriceReturn;
+
                         \App\Models\MaterialTransactionItem::create([
                             'material_transaction_id' => $transactionReturn->id,
                             'material_id' => $ri['material']->id,
                             'quantity' => $ri['qty'],
                             'unit' => $ri['unit'],
-                            'price_per_unit' => $ri['material']->price_per_unit ?? 0,
-                            'total_price' => ($ri['material']->price_per_unit ?? 0) * $ri['qty'],
+                            'price_per_unit' => $ppuReturn,
+                            'total_price' => $totalItemPriceReturn,
                             'condition' => 'Layak Pakai'
                         ]);
                     }
+                    $transactionReturn->update(['total_cost' => $totalCostReturn]);
                 }
             }
             
@@ -1858,18 +1878,29 @@ class CustomerController extends Controller
                 'date' => now(),
             ]);
 
+            $totalCostReq = 0;
             foreach ($validated['items'] as $item) {
                 $material = \App\Models\Material::find($item['material_id']);
+                $ppu = $material ? ($material->selling_price ?: ($material->price_per_unit ?? 0)) : 0;
+                $unit = $material ? $material->unit : 'pcs';
+                if ($material && strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
+                    $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
+                    $ppu = $ppu / $mpr;
+                }
+                $itemTotal = $ppu * $item['quantity'];
+                $totalCostReq += $itemTotal;
+
                 \App\Models\MaterialTransactionItem::create([
                     'material_transaction_id' => $materialTransaction->id,
                     'material_id' => $item['material_id'],
                     'quantity' => $item['quantity'],
-                    'unit' => $material ? $material->unit : 'pcs',
-                    'price_per_unit' => $material ? ($material->price_per_unit ?? 0) : 0,
-                    'total_price' => ($material ? ($material->price_per_unit ?? 0) : 0) * $item['quantity'],
+                    'unit' => $unit,
+                    'price_per_unit' => $ppu,
+                    'total_price' => $itemTotal,
                     'condition' => 'Pengajuan'
                 ]);
             }
+            $materialTransaction->update(['total_cost' => $totalCostReq]);
         });
 
         return back()->with('success', 'Request tambahan material berhasil diajukan dan menunggu persetujuan Admin.');
