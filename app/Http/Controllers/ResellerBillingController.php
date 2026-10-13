@@ -275,6 +275,24 @@ class ResellerBillingController extends Controller
     {
         $activeTab = $request->get('tab', 'pending');
         
+        $baseQuery = Payment::whereHas('invoice', function($q) {
+            $q->where('is_reseller_balance', true);
+        })->whereHas('customer', function($q) {
+            $q->where('is_reseller', true);
+        });
+
+        $todayStr = now()->toDateString();
+        $stats = [
+            'pending_count' => (clone $baseQuery)->where('status', 'pending')->count(),
+            'pending_amount' => (float) (clone $baseQuery)->where('status', 'pending')->sum('amount'),
+            'today_verified_count' => (clone $baseQuery)->where('status', 'verified')->whereDate('updated_at', $todayStr)->count(),
+            'today_verified_amount' => (float) (clone $baseQuery)->where('status', 'verified')->whereDate('updated_at', $todayStr)->sum('amount'),
+            'month_verified_count' => (clone $baseQuery)->where('status', 'verified')->whereMonth('payment_date', now()->month)->whereYear('payment_date', now()->year)->count(),
+            'month_verified_amount' => (float) (clone $baseQuery)->where('status', 'verified')->whereMonth('payment_date', now()->month)->whereYear('payment_date', now()->year)->sum('amount'),
+            'total_verified_count' => (clone $baseQuery)->where('status', 'verified')->count(),
+            'total_verified_amount' => (float) (clone $baseQuery)->where('status', 'verified')->sum('amount'),
+        ];
+
         $query = Payment::with(['invoice.payments', 'customer', 'collector'])
             ->whereHas('invoice', function($q) {
                 $q->where('is_reseller_balance', true);
@@ -288,23 +306,66 @@ class ResellerBillingController extends Controller
         } else {
             $query->where('status', 'pending');
         }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->whereHas('customer', function($cq) use ($search) {
+                    $cq->where('name', 'like', "%{$search}%")
+                       ->orWhere('phone', 'like', "%{$search}%");
+                })->orWhereHas('invoice', function($iq) use ($search) {
+                    $iq->where('invoice_number', 'like', "%{$search}%");
+                })->orWhere('notes', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter Petugas Penagih
+        if ($request->filled('collector_id')) {
+            $query->where('collected_by', $request->collector_id);
+        }
+
+        // Filter Metode Pembayaran
+        if ($request->filled('payment_method')) {
+            $query->where('payment_method', $request->payment_method);
+        }
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('payment_date', [$request->start_date, $request->end_date]);
+        } elseif ($request->filled('start_date')) {
+            $query->where('payment_date', '>=', $request->start_date);
+        } elseif ($request->filled('end_date')) {
+            $query->where('payment_date', '<=', $request->end_date);
+        }
             
-        $payments = $query->latest()->paginate(10)
+        $payments = $query->latest('id')->paginate(10)
+            ->withQueryString()
             ->through(function ($payment) {
                 if ($payment->invoice) {
                     $verifiedPaid = $payment->invoice->payments->where('status', 'verified')->sum('amount');
                     $pendingPaid = $payment->invoice->payments->where('status', 'pending')->sum('amount');
                     
-                    $payment->invoice->setAttribute('remaining', $payment->invoice->amount - $verifiedPaid);
+                    $payment->invoice->setAttribute('remaining', max(0, $payment->invoice->amount - $verifiedPaid));
                     $payment->invoice->setAttribute('total_paid', $verifiedPaid);
                     $payment->invoice->setAttribute('pending_amount', $pendingPaid);
                 }
                 return $payment;
             });
 
+        // Daftar penagih untuk opsi filter
+        $collectors = \App\Models\User::where('is_active', true)
+            ->where(function($q) {
+                $q->whereHas('roles', fn($rq) => $rq->whereIn('name', ['penagih', 'admin', 'super admin', 'biller', 'teknisi']))
+                  ->orWhereIn('id', Payment::select('collected_by')->whereNotNull('collected_by'));
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return Inertia::render('ResellerBilling/Settlements', [
             'payments' => $payments,
-            'activeTab' => $activeTab
+            'activeTab' => $activeTab,
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'collector_id', 'payment_method', 'start_date', 'end_date', 'tab']),
+            'collectors' => $collectors,
         ]);
     }
 
