@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\Area;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -17,35 +18,161 @@ class CustomerBillingController extends Controller
     public function index(Request $request)
     {
         $activeTab = $request->get('tab', 'unpaid');
-        
-        $query = Invoice::with(['customer', 'payments'])
-            ->where('is_reseller_balance', false); // Khusus tagihan internet pelanggan
-            
-        if ($activeTab === 'paid') {
-            $query->where('status', 'paid');
-        } elseif ($activeTab === 'overdue') {
-            $query->whereIn('status', ['unpaid', 'partial'])
-                  ->where('due_date', '<', Carbon::today());
-        } else {
-            $query->whereIn('status', ['unpaid', 'partial']);
+        if (!in_array($activeTab, ['unpaid', 'overdue', 'paid'])) {
+            $activeTab = 'unpaid';
         }
-            
-        $invoices = $query->latest()->paginate(10)
+
+        $userAccessibleAreaIds = auth()->user()->getAccessibleAreaIds();
+
+        // Helper untuk membangun query dengan filter area, tanggal, dan search
+        $buildFilteredQuery = function ($tabType) use ($request, $userAccessibleAreaIds) {
+            $q = Invoice::where('is_reseller_balance', false);
+
+            if (!empty($userAccessibleAreaIds)) {
+                $q->whereHas('customer', fn($c) => $c->whereIn('area_id', $userAccessibleAreaIds));
+            }
+
+            if ($request->filled('area_id')) {
+                $areaId = $request->area_id;
+                $q->whereHas('customer', fn($c) => $c->where('area_id', $areaId));
+            }
+
+            if ($request->filled('search')) {
+                $search = trim($request->search);
+                $q->where(function($sq) use ($search) {
+                    $sq->where('invoice_number', 'like', "%{$search}%")
+                       ->orWhereHas('customer', function($cq) use ($search) {
+                           $cq->where('name', 'like', "%{$search}%")
+                              ->orWhere('phone', 'like', "%{$search}%")
+                              ->orWhere('customer_code', 'like', "%{$search}%");
+                       });
+                });
+            }
+
+            // Filter Tanggal
+            if ($tabType === 'paid') {
+                if ($request->filled('start_date')) {
+                    $q->whereHas('payments', fn($pq) => $pq->where('status', 'verified')->whereDate('payment_date', '>=', $request->start_date));
+                }
+                if ($request->filled('end_date')) {
+                    $q->whereHas('payments', fn($pq) => $pq->where('status', 'verified')->whereDate('payment_date', '<=', $request->end_date));
+                }
+                $q->where('status', 'paid');
+            } elseif ($tabType === 'overdue') {
+                if ($request->filled('start_date')) {
+                    $q->whereDate('due_date', '>=', $request->start_date);
+                }
+                if ($request->filled('end_date')) {
+                    $q->whereDate('due_date', '<=', $request->end_date);
+                }
+                $q->whereIn('status', ['unpaid', 'partial'])
+                  ->where('due_date', '<', Carbon::today());
+            } else { // unpaid
+                if ($request->filled('start_date')) {
+                    $q->whereDate('due_date', '>=', $request->start_date);
+                }
+                if ($request->filled('end_date')) {
+                    $q->whereDate('due_date', '<=', $request->end_date);
+                }
+                $q->whereIn('status', ['unpaid', 'partial']);
+            }
+
+            return $q;
+        };
+
+        // Hitung statistik untuk ketiga tab sesuai filter aktif
+        $unpaidItems = $buildFilteredQuery('unpaid')->with('payments')->get(['id', 'amount', 'status']);
+        $unpaidCount = $unpaidItems->count();
+        $unpaidTotal = (float) $unpaidItems->sum(function($inv) {
+            $paid = $inv->payments->where('status', 'verified')->sum('amount');
+            return max(0, $inv->amount - $paid);
+        });
+
+        $overdueItems = $buildFilteredQuery('overdue')->with('payments')->get(['id', 'amount', 'status']);
+        $overdueCount = $overdueItems->count();
+        $overdueTotal = (float) $overdueItems->sum(function($inv) {
+            $paid = $inv->payments->where('status', 'verified')->sum('amount');
+            return max(0, $inv->amount - $paid);
+        });
+
+        $paidItems = $buildFilteredQuery('paid')->with('payments')->get(['id', 'amount', 'status']);
+        $paidCount = $paidItems->count();
+        $paidTotal = (float) $paidItems->sum('amount');
+
+        // Uang yang sudah diterima hari ini
+        $todayPaymentsQuery = Payment::whereDate('payment_date', Carbon::today())
+            ->whereHas('invoice', fn($q) => $q->where('is_reseller_balance', false));
+
+        if (!empty($userAccessibleAreaIds)) {
+            $todayPaymentsQuery->whereHas('customer', fn($c) => $c->whereIn('area_id', $userAccessibleAreaIds));
+        }
+
+        if ($request->filled('area_id')) {
+            $todayPaymentsQuery->whereHas('customer', fn($c) => $c->where('area_id', $request->area_id));
+        }
+
+        $todayVerifiedAmount = (float) (clone $todayPaymentsQuery)->where('status', 'verified')->sum('amount');
+        $todayVerifiedCount = (clone $todayPaymentsQuery)->where('status', 'verified')->count();
+        $todayPendingAmount = (float) (clone $todayPaymentsQuery)->where('status', 'pending')->sum('amount');
+        $todayPendingCount = (clone $todayPaymentsQuery)->where('status', 'pending')->count();
+
+        // Data Invoice dengan pagination
+        $invoices = $buildFilteredQuery($activeTab)
+            ->with(['customer.areaModel', 'payments'])
+            ->latest('id')
+            ->paginate(15)
+            ->withQueryString()
             ->through(function ($invoice) {
                 $verifiedPaid = $invoice->payments->where('status', 'verified')->sum('amount');
                 $pendingPaid = $invoice->payments->where('status', 'pending')->sum('amount');
                 
                 return array_merge($invoice->toArray(), [
-                    'remaining' => $invoice->amount - $verifiedPaid,
+                    'remaining' => max(0, $invoice->amount - $verifiedPaid),
                     'total_paid' => $verifiedPaid,
                     'pending_amount' => $pendingPaid,
-                    'effective_remaining' => $invoice->amount - $verifiedPaid - $pendingPaid
+                    'effective_remaining' => max(0, $invoice->amount - $verifiedPaid - $pendingPaid)
                 ]);
             });
 
+        // Daftar Area untuk dropdown
+        $areasQuery = Area::orderBy('name');
+        if (!empty($userAccessibleAreaIds)) {
+            $areasQuery->whereIn('id', $userAccessibleAreaIds);
+        }
+        $areas = $areasQuery->get(['id', 'name']);
+
         return Inertia::render('CustomerBilling/Index', [
             'invoices' => $invoices,
-            'activeTab' => $activeTab
+            'activeTab' => $activeTab,
+            'areas' => $areas,
+            'filters' => [
+                'tab' => $activeTab,
+                'area_id' => $request->area_id ?? '',
+                'start_date' => $request->start_date ?? '',
+                'end_date' => $request->end_date ?? '',
+                'search' => $request->search ?? '',
+            ],
+            'stats' => [
+                'unpaid' => [
+                    'total' => $unpaidTotal,
+                    'count' => $unpaidCount,
+                ],
+                'overdue' => [
+                    'total' => $overdueTotal,
+                    'count' => $overdueCount,
+                ],
+                'paid' => [
+                    'total' => $paidTotal,
+                    'count' => $paidCount,
+                ],
+                'today' => [
+                    'verified_amount' => $todayVerifiedAmount,
+                    'verified_count' => $todayVerifiedCount,
+                    'pending_amount' => $todayPendingAmount,
+                    'pending_count' => $todayPendingCount,
+                    'total_amount' => $todayVerifiedAmount + $todayPendingAmount,
+                ],
+            ]
         ]);
     }
 
