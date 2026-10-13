@@ -56,8 +56,8 @@ class WorkScheduleController extends Controller
         // Query Employees dengan eager load area & shift
         $employeeQuery = Employee::with(['area', 'shift']);
 
-        if ($request->filled('branch')) {
-            $branchVal = $request->branch;
+        if ($request->filled('branch') || $request->filled('area')) {
+            $branchVal = $request->branch ?? $request->area;
             if (is_numeric($branchVal)) {
                 $employeeQuery->where('area_id', $branchVal);
             } else {
@@ -187,9 +187,11 @@ class WorkScheduleController extends Controller
             'patterns' => $patterns,
             'schedulesMap' => $schedulesMap,
             'branches' => $branches,
+            'areas' => $branches,
             'positions' => $positions,
             'filters' => [
-                'branch' => $request->branch ?? '',
+                'branch' => $request->branch ?? $request->area ?? '',
+                'area' => $request->area ?? $request->branch ?? '',
                 'position' => $request->position ?? '',
                 'search' => $request->search ?? '',
             ],

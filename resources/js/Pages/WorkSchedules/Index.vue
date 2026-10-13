@@ -145,17 +145,17 @@
                         </button>
                     </div>
 
-                    <!-- Filter Cabang, Jabatan, & Search -->
+                    <!-- Filter Area/Wilayah, Jabatan, & Search -->
                     <div class="flex flex-wrap items-center gap-2">
-                        <!-- Filter Cabang -->
-                        <div class="relative min-w-[140px]">
+                        <!-- Filter Area/Wilayah -->
+                        <div class="relative min-w-[155px]">
                             <select
                                 v-model="filterBranch"
                                 @change="applyFilters"
                                 class="w-full text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 pr-7 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                             >
-                                <option value="">🏢 Semua Cabang</option>
-                                <option v-for="br in branches" :key="br.id" :value="br.id">{{ br.name }}</option>
+                                <option value="">🏢 Semua Area/Wilayah</option>
+                                <option v-for="br in (areas || branches)" :key="br.id" :value="br.id">{{ br.name }}</option>
                             </select>
                         </div>
 
@@ -519,15 +519,15 @@
                                 </button>
                             </div>
 
-                            <!-- Filter Cabang & Jabatan di Modal Generate -->
+                            <!-- Filter Area/Wilayah & Jabatan di Modal Generate -->
                             <div class="grid grid-cols-2 gap-2 mb-2">
                                 <div>
                                     <select
                                         v-model="modalFilterBranch"
                                         class="w-full text-[11px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 cursor-pointer"
                                     >
-                                        <option value="">🏢 Semua Cabang</option>
-                                        <option v-for="br in branches" :key="br.id" :value="br.id">{{ br.name }}</option>
+                                        <option value="">🏢 Semua Area/Wilayah</option>
+                                        <option v-for="br in (areas || branches)" :key="br.id" :value="br.id">{{ br.name }}</option>
                                     </select>
                                 </div>
                                 <div>
@@ -561,7 +561,7 @@
                                     </div>
                                 </label>
                                 <div v-if="filteredGenEmployees.length === 0" class="text-center py-3 text-slate-400 text-xs italic">
-                                    Tidak ada karyawan sesuai filter cabang/jabatan.
+                                    Tidak ada karyawan sesuai filter area/wilayah atau jabatan.
                                 </div>
                             </div>
                         </div>
@@ -895,6 +895,7 @@ const props = defineProps({
     patterns: Array,
     schedulesMap: Object,
     branches: Array,
+    areas: Array,
     positions: Array,
     filters: Object,
     stats: Object,
