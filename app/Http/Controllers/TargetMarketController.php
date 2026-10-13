@@ -104,7 +104,7 @@ class TargetMarketController extends Controller
 
         // Master data untuk modal
         $areas = Area::select('id', 'name')->orderBy('name')->get();
-        $packages = InternetPackage::select('id', 'name', 'price', 'speed')->orderBy('price')->get();
+        $packages = InternetPackage::select('id', 'name', 'price', 'speed_mbps')->orderBy('price')->get();
         $employees = User::select('id', 'name', 'role')->orderBy('name')->get();
 
         return Inertia::render('TargetMarket/Index', [
