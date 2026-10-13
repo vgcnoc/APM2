@@ -185,6 +185,10 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('positions', \App\Http\Controllers\PositionController::class);
     Route::post('positions/{position}/update', [\App\Http\Controllers\PositionController::class, 'update'])->name('positions.update.post');
     Route::post('positions/{position}/delete', [\App\Http\Controllers\PositionController::class, 'destroy'])->name('positions.destroy.post');
+    Route::resource('shifts', \App\Http\Controllers\ShiftController::class);
+    Route::post('shifts/{shift}/update', [\App\Http\Controllers\ShiftController::class, 'update'])->name('shifts.update.post');
+    Route::post('shifts/{shift}/delete', [\App\Http\Controllers\ShiftController::class, 'destroy'])->name('shifts.destroy.post');
+    Route::post('shifts/{shift}/assign', [\App\Http\Controllers\ShiftController::class, 'assignEmployees'])->name('shifts.assign');
     Route::post('materials/bulk-destroy', [MaterialController::class, 'bulkDestroy'])->name('materials.bulk-destroy');
     Route::post('materials/{material}/update', [MaterialController::class, 'update'])->name('materials.update.post');
     Route::post('materials/{material}/add-stock', [MaterialController::class, 'addStock'])->name('materials.add-stock');

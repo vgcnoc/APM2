@@ -12,4 +12,9 @@ class Employee extends Model
     {
         return $this->belongsTo(Area::class);
     }
+
+    public function shift()
+    {
+        return $this->belongsTo(Shift::class);
+    }
 }
