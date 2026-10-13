@@ -332,6 +332,18 @@ Route::middleware(['auth'])->group(function () {
     Route::post('pgk/{pgk}/schedule', [\App\Http\Controllers\PgkController::class, 'schedule'])->name('pgk.schedule');
     Route::post('pgk/{pgk}/report', [\App\Http\Controllers\PgkController::class, 'submitReport'])->name('pgk.report');
     Route::delete('pgk/{pgk}', [\App\Http\Controllers\PgkController::class, 'destroy'])->name('pgk.destroy');
+
+    // ── Penanganan Gangguan Jalur (PGJ) ──────────────────────────
+    Route::get('pgj', [\App\Http\Controllers\PgjController::class, 'index'])->name('pgj.index');
+    Route::get('pgj/jadwal', [\App\Http\Controllers\PgjController::class, 'jadwal'])->name('pgj.jadwal');
+    Route::get('pgj/laporan', [\App\Http\Controllers\PgjController::class, 'laporan'])->name('pgj.laporan');
+    Route::get('pgj/{pgj}/print', [\App\Http\Controllers\PgjController::class, 'print'])->name('pgj.print');
+    Route::post('pgj', [\App\Http\Controllers\PgjController::class, 'store'])->name('pgj.store');
+    Route::post('pgj/{pgj}/resolve-admin', [\App\Http\Controllers\PgjController::class, 'resolveByAdmin'])->name('pgj.resolve-admin');
+    Route::post('pgj/{pgj}/escalate', [\App\Http\Controllers\PgjController::class, 'escalateToLead'])->name('pgj.escalate');
+    Route::post('pgj/{pgj}/schedule', [\App\Http\Controllers\PgjController::class, 'schedule'])->name('pgj.schedule');
+    Route::post('pgj/{pgj}/report', [\App\Http\Controllers\PgjController::class, 'submitReport'])->name('pgj.report');
+    Route::delete('pgj/{pgj}', [\App\Http\Controllers\PgjController::class, 'destroy'])->name('pgj.destroy');
     
     // CBP / Cabut Perangkat
     Route::get('cbp', [\App\Http\Controllers\CbpRequestController::class, 'index'])->name('cbp.index');

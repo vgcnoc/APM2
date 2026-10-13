@@ -256,6 +256,18 @@ const menuItems = [
     },
     {
         type: 'dropdown',
+        icon: 'git-branch',
+        label: 'Gangguan Jalur (PGJ)',
+        active: (url) => (url || '').startsWith('/pgj'),
+        permission: 'menu_tickets',
+        children: [
+            { href: '/pgj', label: '1. Temuan Jalur (Admin)', active: (url) => (url || '').length > 0 && url === '/pgj', permission: 'menu_tickets' },
+            { href: '/pgj/jadwal', label: '2. Jadwal & Material (Lead)', active: (url) => (url || '').startsWith('/pgj/jadwal'), permission: 'menu_tickets' },
+            { href: '/pgj/laporan', label: '3. Laporan Restorasi', active: (url) => (url || '').startsWith('/pgj/laporan'), permission: 'menu_tickets' },
+        ]
+    },
+    {
+        type: 'dropdown',
         icon: 'zap',
         label: 'Penanganan Sigap (PGS)',
         active: (url) => (url || '').startsWith('/pgs'),
