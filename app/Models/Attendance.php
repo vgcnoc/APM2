@@ -15,6 +15,7 @@ class Attendance extends Model
         'employee_id',
         'work_schedule_id',
         'shift_id',
+        'attendance_type',
         'date',
         'clock_in',
         'clock_out',
@@ -29,6 +30,9 @@ class Attendance extends Model
         'status',
         'late_minutes',
         'notes',
+        'duty_location',
+        'is_verified',
+        'is_synced_to_payroll',
     ];
 
     protected $casts = [

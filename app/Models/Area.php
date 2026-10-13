@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Area extends Model
 {
-    protected $fillable = ['name', 'description', 'address', 'latitude', 'longitude'];
+    protected $fillable = ['name', 'description', 'address', 'latitude', 'longitude', 'radius_meters'];
 
     public function stocks()
     {

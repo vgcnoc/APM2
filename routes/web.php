@@ -201,10 +201,13 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('work-schedules/patterns/{id}', [\App\Http\Controllers\WorkScheduleController::class, 'destroyPattern'])->name('work-schedules.patterns.destroy');
     Route::post('work-schedules/quick-shift', [\App\Http\Controllers\WorkScheduleController::class, 'quickStoreShift'])->name('work-schedules.quick-shift');
 
-    // Absensi Karyawan (Selfie & GPS Radius)
+    // Absensi Karyawan (Selfie, GPS Radius & Sinkronisasi)
     Route::get('attendances', [\App\Http\Controllers\AttendanceController::class, 'index'])->name('attendances.index');
     Route::post('attendances/clock-in', [\App\Http\Controllers\AttendanceController::class, 'clockIn'])->name('attendances.clock-in');
     Route::post('attendances/clock-out', [\App\Http\Controllers\AttendanceController::class, 'clockOut'])->name('attendances.clock-out');
+    Route::post('attendances/quick-assign-shift', [\App\Http\Controllers\AttendanceController::class, 'quickAssignShift'])->name('attendances.quick-assign-shift');
+    Route::post('attendances/sync-payroll', [\App\Http\Controllers\AttendanceController::class, 'syncToPayroll'])->name('attendances.sync-payroll');
+    Route::post('attendances/update-location', [\App\Http\Controllers\AttendanceController::class, 'updateAreaLocation'])->name('attendances.update-location');
     Route::post('materials/bulk-destroy', [MaterialController::class, 'bulkDestroy'])->name('materials.bulk-destroy');
     Route::post('materials/{material}/update', [MaterialController::class, 'update'])->name('materials.update.post');
     Route::post('materials/{material}/add-stock', [MaterialController::class, 'addStock'])->name('materials.add-stock');

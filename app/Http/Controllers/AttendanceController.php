@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Area;
 use App\Models\Attendance;
+use App\Models\Deduction;
 use App\Models\Employee;
 use App\Models\Position;
 use App\Models\Shift;
+use App\Models\User;
 use App\Models\WorkSchedule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -25,15 +28,12 @@ class AttendanceController extends Controller
         $now = Carbon::now();
 
         // 1. Tentukan Karyawan Aktif
-        $employeeQuery = Employee::with(['area', 'shift']);
-        
-        // Cari employee yang terhubung dengan akun user login
         $currentEmployee = null;
         if ($user) {
             $currentEmployee = Employee::with(['area', 'shift'])->where('email', $user->email)->first();
         }
 
-        // Jika user adalah admin dan memilih employee lain di dropdown switch
+        // Jika ada filter / switcher employee_id (untuk admin)
         if ($request->filled('employee_id')) {
             $selected = Employee::with(['area', 'shift'])->find($request->employee_id);
             if ($selected) {
@@ -46,9 +46,16 @@ class AttendanceController extends Controller
             $currentEmployee = Employee::with(['area', 'shift'])->first();
         }
 
-        $allEmployees = Employee::orderBy('name')->get(['id', 'name', 'position', 'area_id']);
+        $allEmployees = Employee::with(['area', 'shift'])
+            ->orderBy('name')
+            ->get(['id', 'name', 'position', 'branch', 'area_id', 'shift_id', 'email', 'iak_number']);
 
-        // 2. Ambil Jadwal Shift Hari Ini untuk Karyawan Aktif
+        // 2. Ambil Master Shifts & Areas
+        $allShifts = Shift::where('is_active', true)->orderBy('start_time')->get();
+        $areas = Area::orderBy('name')->get();
+        $positions = Position::orderBy('name')->get(['id', 'name']);
+
+        // 3. Ambil Jadwal Shift Hari Ini untuk Karyawan Aktif
         $todaySchedule = null;
         $shiftToday = null;
         if ($currentEmployee) {
@@ -60,7 +67,7 @@ class AttendanceController extends Controller
             $shiftToday = $todaySchedule?->shift ?: $currentEmployee->shift;
         }
 
-        // 3. Ambil Data Absensi Hari Ini untuk Karyawan Aktif
+        // 4. Ambil Data Absensi Hari Ini untuk Karyawan Aktif
         $todayAttendance = null;
         if ($currentEmployee) {
             $todayAttendance = Attendance::with('shift')
@@ -69,7 +76,7 @@ class AttendanceController extends Controller
                 ->first();
         }
 
-        // 4. Jadwal Shift Minggu Ini (Senin s/d Minggu)
+        // 5. Jadwal Shift Minggu Ini (Senin s/d Minggu)
         $startOfWeek = $now->copy()->startOfWeek(Carbon::MONDAY);
         $weeklySchedules = [];
         $dayNamesIndo = [
@@ -92,21 +99,32 @@ class AttendanceController extends Controller
                     return $item->date->format('Y-m-d');
                 });
 
+            $weekAttendances = Attendance::where('employee_id', $currentEmployee->id)
+                ->whereBetween('date', [$startOfWeek->format('Y-m-d'), $endOfWeek->format('Y-m-d')])
+                ->get()
+                ->keyBy(function ($item) {
+                    return Carbon::parse($item->date)->format('Y-m-d');
+                });
+
             for ($i = 0; $i < 7; $i++) {
                 $dayObj = $startOfWeek->copy()->addDays($i);
                 $dateStr = $dayObj->format('Y-m-d');
                 $sched = $weekSchedules->get($dateStr);
+                $att = $weekAttendances->get($dateStr);
 
                 $shiftLabel = '-';
                 $shiftColor = 'gray';
                 if ($sched) {
                     if ($sched->status === 'off' || empty($sched->shift_id)) {
-                        $shiftLabel = 'OFF';
+                        $shiftLabel = 'LIBUR';
                         $shiftColor = 'rose';
                     } else {
                         $shiftLabel = $sched->shift?->name ?: 'Shift';
                         $shiftColor = $sched->shift?->color ?: 'blue';
                     }
+                } elseif ($currentEmployee->shift) {
+                    $shiftLabel = $currentEmployee->shift->name;
+                    $shiftColor = $currentEmployee->shift->color ?: 'blue';
                 }
 
                 $weeklySchedules[] = [
@@ -117,24 +135,27 @@ class AttendanceController extends Controller
                     'is_sunday' => $dayObj->dayOfWeek === 0,
                     'shift_label' => $shiftLabel,
                     'shift_color' => $shiftColor,
-                    'shift_time' => $sched?->shift?->formatted_time ?? '',
+                    'shift_time' => $sched?->shift?->formatted_time ?? ($currentEmployee->shift?->formatted_time ?? ''),
+                    'has_attended' => !empty($att?->clock_in),
+                    'attendance_status' => $att?->status ?? null,
                 ];
             }
         }
 
-        // 5. Informasi Area & Koordinat Kantor
+        // 6. Informasi Area & Koordinat Kantor
         $officeLocation = null;
         if ($currentEmployee && $currentEmployee->area) {
             $officeLocation = [
+                'id' => $currentEmployee->area->id,
                 'name' => $currentEmployee->area->name,
                 'address' => $currentEmployee->area->address,
                 'latitude' => $currentEmployee->area->latitude ? (float) $currentEmployee->area->latitude : null,
                 'longitude' => $currentEmployee->area->longitude ? (float) $currentEmployee->area->longitude : null,
-                'radius_meters' => 200, // Radius toleransi 200 meter
+                'radius_meters' => $currentEmployee->area->radius_meters ? (int) $currentEmployee->area->radius_meters : 200,
             ];
         }
 
-        // 6. Data Monitoring Kehadiran Seluruh Karyawan Hari Ini (Admin Tab)
+        // 7. Data Monitoring Kehadiran Seluruh Karyawan Hari Ini (Admin Tab)
         $monitoringQuery = Attendance::with(['employee.area', 'shift'])->where('date', $today);
         if ($request->filled('area_id')) {
             $monitoringQuery->whereHas('employee', function ($q) use ($request) {
@@ -146,15 +167,52 @@ class AttendanceController extends Controller
         $totalEmployeesCount = Employee::count();
         $presentCount = $todayAllAttendances->whereNotNull('clock_in')->count();
         $lateCount = $todayAllAttendances->where('status', 'late')->count();
+        $onTimeCount = $todayAllAttendances->where('status', 'present')->where('late_minutes', '<=', 5)->count();
+        $fieldDutyCount = $todayAllAttendances->where('attendance_type', 'dinas_luar')->count();
 
-        $areas = Area::orderBy('name')->get(['id', 'name']);
-        $positions = Position::orderBy('name')->get(['id', 'name']);
+        // 8. Rekapitulasi Kehadiran Bulanan (Tab Rekap & Sinkronisasi Gaji)
+        $selectedMonth = $request->get('month', $now->format('Y-m'));
+        $monthStart = Carbon::parse($selectedMonth . '-01')->startOfMonth();
+        $monthEnd = Carbon::parse($selectedMonth . '-01')->endOfMonth();
+
+        $monthAttendances = Attendance::with(['employee.area', 'shift'])
+            ->whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+            ->get();
+
+        // Rekap per Karyawan
+        $monthlyRecap = $allEmployees->map(function ($emp) use ($monthAttendances, $monthStart, $monthEnd) {
+            $empAtts = $monthAttendances->where('employee_id', $emp->id);
+            $totalPresent = $empAtts->whereNotNull('clock_in')->count();
+            $totalLate = $empAtts->where('status', 'late')->count();
+            $totalLateMinutes = $empAtts->sum('late_minutes');
+            $totalFieldDuty = $empAtts->where('attendance_type', 'dinas_luar')->count();
+            $totalSynced = $empAtts->where('is_synced_to_payroll', true)->count();
+
+            // Cek apakah karyawan terhubung ke user di sistem payroll
+            $linkedUser = User::where('email', $emp->email)->first();
+
+            return [
+                'employee_id' => $emp->id,
+                'name' => $emp->name,
+                'iak_number' => $emp->iak_number,
+                'position' => $emp->position,
+                'area_name' => $emp->area?->name ?? ($emp->branch ?? '-'),
+                'has_user' => !empty($linkedUser),
+                'user_id' => $linkedUser?->id,
+                'total_present' => $totalPresent,
+                'total_late' => $totalLate,
+                'total_late_minutes' => $totalLateMinutes,
+                'total_field_duty' => $totalFieldDuty,
+                'is_all_synced' => $totalLate > 0 ? ($totalSynced >= $totalLate) : true,
+            ];
+        });
 
         return Inertia::render('Attendances/Index', [
-            'todayDateStr' => $now->translatedFormat('l, d/m/Y'),
+            'todayDateStr' => $now->translatedFormat('l, d F Y'),
             'todayIso' => $today,
             'currentEmployee' => $currentEmployee,
             'allEmployees' => $allEmployees,
+            'allShifts' => $allShifts,
             'todaySchedule' => $todaySchedule,
             'shiftToday' => $shiftToday,
             'todayAttendance' => $todayAttendance,
@@ -164,13 +222,23 @@ class AttendanceController extends Controller
                 'attendances' => $todayAllAttendances,
                 'totalEmployees' => $totalEmployeesCount,
                 'presentCount' => $presentCount,
+                'onTimeCount' => $onTimeCount,
                 'lateCount' => $lateCount,
+                'fieldDutyCount' => $fieldDutyCount,
                 'absentCount' => max(0, $totalEmployeesCount - $presentCount),
+            ],
+            'monthlyRecap' => [
+                'month' => $selectedMonth,
+                'monthLabel' => $monthStart->translatedFormat('F Y'),
+                'records' => $monthlyRecap,
+                'totalRecords' => $monthlyRecap->count(),
             ],
             'areas' => $areas,
             'positions' => $positions,
             'filters' => [
                 'area_id' => $request->area_id ?? '',
+                'month' => $selectedMonth,
+                'tab' => $request->tab ?? 'self',
             ]
         ]);
     }
@@ -183,10 +251,13 @@ class AttendanceController extends Controller
         $request->validate([
             'employee_id' => 'required|exists:employees,id',
             'photo' => 'required|string', // base64 photo
+            'shift_id' => 'nullable|exists:shifts,id',
+            'attendance_type' => 'nullable|string|in:wfo,dinas_luar,wfh,lembur',
+            'duty_location' => 'nullable|string|max:255',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'distance' => 'nullable|integer',
-            'notes' => 'nullable|string',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $employee = Employee::with(['area', 'shift'])->findOrFail($request->employee_id);
@@ -200,19 +271,36 @@ class AttendanceController extends Controller
             return back()->with('error', 'Anda sudah melakukan absen masuk hari ini.');
         }
 
-        // Ambil jadwal shift hari ini
+        // Ambil jadwal shift hari ini atau gunakan shift yang dipilih
         $schedule = WorkSchedule::with('shift')
             ->where('employee_id', $employee->id)
             ->where('date', $today)
             ->first();
 
-        $shift = $schedule?->shift ?: $employee->shift;
+        $shiftId = $request->shift_id ?: ($schedule?->shift_id ?: $employee->shift_id);
+        $shift = $shiftId ? Shift::find($shiftId) : null;
+
+        // Auto-sinkronisasi ke Jadwal Kerja / Roster jika belum ada jadwal hari ini
+        if (!$schedule && $shift) {
+            $schedule = WorkSchedule::updateOrCreate(
+                [
+                    'employee_id' => $employee->id,
+                    'date' => $today,
+                ],
+                [
+                    'shift_id' => $shift->id,
+                    'status' => 'scheduled',
+                    'notes' => 'Sinkronisasi otomatis saat presensi masuk',
+                ]
+            );
+        }
 
         // Hitung Keterlambatan
         $status = 'present';
         $lateMinutes = 0;
+        $attendanceType = $request->attendance_type ?: 'wfo';
 
-        if ($shift && $shift->start_time) {
+        if ($shift && $shift->start_time && $attendanceType !== 'dinas_luar') {
             $shiftStartTime = Carbon::createFromFormat('Y-m-d H:i', $today . ' ' . substr($shift->start_time, 0, 5));
             // Toleransi 5 menit keterlambatan
             if ($now->greaterThan($shiftStartTime->copy()->addMinutes(5))) {
@@ -232,6 +320,7 @@ class AttendanceController extends Controller
             [
                 'work_schedule_id' => $schedule?->id,
                 'shift_id' => $shift?->id,
+                'attendance_type' => $attendanceType,
                 'clock_in' => $timeStr,
                 'photo_in' => $photoPath,
                 'lat_in' => $request->latitude,
@@ -240,12 +329,26 @@ class AttendanceController extends Controller
                 'status' => $status,
                 'late_minutes' => $lateMinutes,
                 'notes' => $request->notes,
+                'duty_location' => $request->duty_location,
+                'is_verified' => true,
             ]
         );
 
+        // SINKRONISASI KE STATUS USER ON-DUTY (Teknisi / Staff Sedang Bertugas)
+        if ($employee->email) {
+            User::where('email', $employee->email)->update(['is_on_duty' => true]);
+        }
+
+        $typeLabel = match ($attendanceType) {
+            'dinas_luar' => 'Dinas Luar Lapangan',
+            'wfh' => 'Work From Home (WFH)',
+            'lembur' => 'Lembur / Shift Tambahan',
+            default => 'Di Kantor (WFO)',
+        };
+
         $msg = $status === 'late'
-            ? "Absen masuk berhasil tercatat pada {$now->format('H:i')} (Terlambat {$lateMinutes} menit)."
-            : "Absen masuk berhasil tercatat pada {$now->format('H:i')}. Semangat bekerja!";
+            ? "Absen masuk ({$typeLabel}) berhasil tercatat pada {$now->format('H:i')} (Terlambat {$lateMinutes} menit)."
+            : "Absen masuk ({$typeLabel}) berhasil tercatat pada {$now->format('H:i')}. Selamat bertugas!";
 
         return back()->with('success', $msg);
     }
@@ -261,7 +364,7 @@ class AttendanceController extends Controller
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'distance' => 'nullable|integer',
-            'notes' => 'nullable|string',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $employee = Employee::findOrFail($request->employee_id);
@@ -290,7 +393,140 @@ class AttendanceController extends Controller
             'notes' => $request->notes ?: $attendance->notes,
         ]);
 
-        return back()->with('success', "Absen pulang berhasil tercatat pada {$now->format('H:i')}. Selamat beristirahat!");
+        // SINKRONISASI KE STATUS USER ON-DUTY (Teknisi Selesai Bertugas)
+        if ($employee->email) {
+            User::where('email', $employee->email)->update(['is_on_duty' => false]);
+        }
+
+        return back()->with('success', "Absen pulang berhasil tercatat pada {$now->format('H:i')}. Terima kasih atas kerja keras Anda!");
+    }
+
+    /**
+     * Terapkan Shift Cepat Hari Ini (Quick Assign Shift)
+     */
+    public function quickAssignShift(Request $request)
+    {
+        $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'shift_id' => 'required|exists:shifts,id',
+        ]);
+
+        $today = Carbon::today()->format('Y-m-d');
+        $shift = Shift::findOrFail($request->shift_id);
+
+        WorkSchedule::updateOrCreate(
+            [
+                'employee_id' => $request->employee_id,
+                'date' => $today,
+            ],
+            [
+                'shift_id' => $shift->id,
+                'status' => 'scheduled',
+                'notes' => 'Ditetapkan melalui menu absensi cepat',
+            ]
+        );
+
+        return back()->with('success', "Shift {$shift->name} ({$shift->formatted_time}) berhasil diterapkan untuk hari ini.");
+    }
+
+    /**
+     * Sinkronisasi Potongan Keterlambatan ke Modul Penggajian (Payroll)
+     */
+    public function syncToPayroll(Request $request)
+    {
+        $request->validate([
+            'month' => 'required|string', // Format: YYYY-MM
+            'penalty_per_minute' => 'nullable|numeric|min:0', // misal Rp 1.000 / menit
+            'fixed_penalty_per_late' => 'nullable|numeric|min:0', // misal Rp 20.000 / kejadian
+        ]);
+
+        $month = $request->month;
+        $penaltyPerMinute = (float) ($request->penalty_per_minute ?? 1000);
+        $fixedPenalty = (float) ($request->fixed_penalty_per_late ?? 0);
+
+        $monthStart = Carbon::parse($month . '-01')->startOfMonth();
+        $monthEnd = Carbon::parse($month . '-01')->endOfMonth();
+
+        // Ambil data absensi terlambat yang belum disinkronkan
+        $lateAttendances = Attendance::with('employee')
+            ->whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+            ->where('status', 'late')
+            ->where('late_minutes', '>', 0)
+            ->get();
+
+        if ($lateAttendances->isEmpty()) {
+            return back()->with('info', "Tidak ada catatan keterlambatan untuk periode {$month}.");
+        }
+
+        $grouped = $lateAttendances->groupBy('employee_id');
+        $syncedCount = 0;
+
+        DB::transaction(function () use ($grouped, $penaltyPerMinute, $fixedPenalty, $month, $monthEnd, &$syncedCount) {
+            foreach ($grouped as $employeeId => $atts) {
+                $employee = $atts->first()->employee;
+                if (!$employee || !$employee->email) {
+                    continue;
+                }
+
+                // Cari User yang memiliki email sama dengan employee
+                $user = User::where('email', $employee->email)->first();
+                if (!$user) {
+                    continue;
+                }
+
+                $totalMinutes = $atts->sum('late_minutes');
+                $lateCount = $atts->count();
+
+                // Hitung total nominal potongan
+                $totalDeductionAmount = ($totalMinutes * $penaltyPerMinute) + ($lateCount * $fixedPenalty);
+
+                if ($totalDeductionAmount > 0) {
+                    // Cek apakah sudah pernah dibuat deduction auto untuk bulan ini
+                    $desc = "Potongan Terlambat Absensi Periode {$month} ({$lateCount}x telat, total {$totalMinutes} menit)";
+                    
+                    Deduction::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'type' => 'auto',
+                            'description' => $desc,
+                        ],
+                        [
+                            'amount' => $totalDeductionAmount,
+                            'deduction_date' => $monthEnd->format('Y-m-d'),
+                            'status' => 'pending',
+                        ]
+                    );
+
+                    // Tandai absensi telah disinkronkan
+                    Attendance::whereIn('id', $atts->pluck('id'))->update(['is_synced_to_payroll' => true]);
+                    $syncedCount++;
+                }
+            }
+        });
+
+        return back()->with('success', "Berhasil menyinkronkan data keterlambatan {$syncedCount} karyawan ke modul Penggajian (Payroll)!");
+    }
+
+    /**
+     * Perbarui Koordinat & Radius Kantor Cabang (Geofence Setting)
+     */
+    public function updateAreaLocation(Request $request)
+    {
+        $request->validate([
+            'area_id' => 'required|exists:areas,id',
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'radius_meters' => 'required|integer|min:20|max:5000',
+        ]);
+
+        $area = Area::findOrFail($request->area_id);
+        $area->update([
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
+            'radius_meters' => $request->radius_meters,
+        ]);
+
+        return back()->with('success', "Titik koordinat & radius kantor '{$area->name}' berhasil diperbarui (Radius: {$request->radius_meters}m).");
     }
 
     /**
@@ -300,7 +536,7 @@ class AttendanceController extends Controller
     {
         if (preg_match('/^data:image\/(\w+);base64,/', $base64Data, $type)) {
             $data = substr($base64Data, strpos($base64Data, ',') + 1);
-            $type = strtolower($type[1]); // jpg, png, etc.
+            $type = strtolower($type[1]);
         } else {
             $data = $base64Data;
             $type = 'jpg';
