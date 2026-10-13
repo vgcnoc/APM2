@@ -35,7 +35,12 @@ class CustomerAreaController extends Controller
         $customer = $this->getCustomer();
 
         if (!$customer) {
-            abort(403, 'Akun pelanggan tidak ditemukan.');
+            if (in_array($user->role, ['admin', 'superadmin'])) {
+                $customer = Customer::with('package')->first();
+            }
+            if (!$customer) {
+                return redirect()->route('dashboard')->with('error', 'Akun pelanggan tidak ditemukan.');
+            }
         }
 
         // Get latest unpaid invoice
@@ -70,7 +75,12 @@ class CustomerAreaController extends Controller
         $customer = $this->getCustomer();
 
         if (!$customer) {
-            abort(403, 'Akun pelanggan tidak ditemukan.');
+            if (in_array($user->role, ['admin', 'superadmin'])) {
+                $customer = Customer::with('package')->first();
+            }
+            if (!$customer) {
+                return redirect()->route('dashboard')->with('error', 'Akun pelanggan tidak ditemukan.');
+            }
         }
 
         $invoices = Invoice::where('customer_id', $customer->id)
@@ -91,7 +101,12 @@ class CustomerAreaController extends Controller
             if (auth()->user()->reseller) {
                 return redirect()->route('client-area.dashboard');
             }
-            abort(403, 'Akun pelanggan tidak ditemukan.');
+            if (in_array(auth()->user()->role, ['admin', 'superadmin'])) {
+                $customer = Customer::with('package')->first();
+            }
+            if (!$customer) {
+                return redirect()->route('dashboard')->with('error', 'Akun pelanggan tidak ditemukan.');
+            }
         }
 
         $tickets = Ticket::where('customer_id', $customer->id)

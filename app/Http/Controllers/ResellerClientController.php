@@ -15,19 +15,42 @@ use Illuminate\Support\Str;
 class ResellerClientController extends Controller
 {
     /**
+     * Dapatkan data reseller atau inisialisasi otomatis untuk admin / role reseller.
+     */
+    private function getOrCreateReseller($user)
+    {
+        if (!$user) return null;
+
+        $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+        if (!$reseller) {
+            if (in_array($user->role, ['admin', 'superadmin', 'reseller']) || (method_exists($user, 'hasRole') && $user->hasRole('admin'))) {
+                $reseller = \App\Models\Reseller::firstOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'customer_id' => $user->customer?->id ?? null,
+                        'balance' => in_array($user->role, ['admin', 'superadmin']) ? 5000000 : 0,
+                        'is_active' => true,
+                    ]
+                );
+            }
+        }
+        return $reseller;
+    }
+
+    /**
      * Display the reseller dashboard.
      */
     public function dashboard(Request $request)
     {
         $user = auth()->user();
         
-        // Find reseller by matching user_id
-        $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+        // Find or create reseller
+        $reseller = $this->getOrCreateReseller($user);
         if (!$reseller) {
             if ($user->customer) {
                 return redirect()->route('customer-area.dashboard');
             }
-            abort(403, 'Anda tidak memiliki akses sebagai reseller.');
+            return redirect()->route('dashboard')->with('error', 'Akun Anda tidak memiliki hak akses sebagai reseller.');
         }
 
         $vouchers = Voucher::where('reseller_id', $reseller->id)
@@ -106,12 +129,12 @@ class ResellerClientController extends Controller
     public function billing(Request $request)
     {
         $user = auth()->user();
-        $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+        $reseller = $this->getOrCreateReseller($user);
         if (!$reseller) {
             if ($user->customer) {
                 return redirect()->route('customer-area.billing');
             }
-            abort(403, 'Akses ditolak.');
+            return redirect()->route('dashboard')->with('error', 'Akun Anda tidak memiliki hak akses sebagai reseller.');
         }
 
         $customer = $reseller->customer;
@@ -174,10 +197,10 @@ class ResellerClientController extends Controller
     public function generateVouchers(Request $request)
     {
         $user = auth()->user();
-        $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+        $reseller = $this->getOrCreateReseller($user);
         
         if (!$reseller) {
-            abort(403, 'Akses ditolak.');
+            return redirect()->back()->with('error', 'Akun Anda tidak memiliki hak akses sebagai reseller.');
         }
 
         $validated = $request->validate([
@@ -263,9 +286,9 @@ class ResellerClientController extends Controller
     public function biller(Request $request)
     {
         $user = auth()->user();
-        $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+        $reseller = $this->getOrCreateReseller($user);
         if (!$reseller) {
-            abort(403, 'Akses ditolak.');
+            return redirect()->route('dashboard')->with('error', 'Akun Anda tidak memiliki hak akses sebagai reseller.');
         }
 
         // Ambil riwayat pembayaran internet pelanggan yang diproses oleh reseller ini
@@ -395,9 +418,9 @@ class ResellerClientController extends Controller
     public function payCustomerInvoice(Request $request, Invoice $invoice)
     {
         $user = auth()->user();
-        $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+        $reseller = $this->getOrCreateReseller($user);
         if (!$reseller) {
-            return back()->with('error', 'Akses ditolak. Anda bukan reseller.');
+            return back()->with('error', 'Akun Anda tidak memiliki hak akses sebagai reseller.');
         }
 
         // Invoice harus berupa invoice internet pelanggan (bukan invoice reseller sendiri)

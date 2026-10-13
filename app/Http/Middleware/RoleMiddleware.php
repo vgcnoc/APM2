@@ -21,6 +21,11 @@ class RoleMiddleware
             abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
 
+        // Admin dan Superadmin memiliki hak akses penuh (bypass)
+        if (in_array($user->role, ['admin', 'superadmin']) || (method_exists($user, 'hasRole') && $user->hasRole('admin'))) {
+            return $next($request);
+        }
+
         // Cek custom role (string) ATAU Spatie roles
         if (in_array($user->role, $roles) || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole($roles))) {
             return $next($request);
