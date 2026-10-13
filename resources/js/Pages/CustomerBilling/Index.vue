@@ -162,20 +162,16 @@
                             <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                                 Desa / Kelurahan
                             </label>
-                            <div class="relative">
-                                <input 
-                                    type="text" 
-                                    list="desa-options"
-                                    v-model="filterForm.desa" 
-                                    @change="executeFilter"
-                                    @keyup.enter="executeFilter"
-                                    placeholder="Pilih atau cari desa..."
-                                    class="block w-full text-xs rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 transition-colors"
-                                />
-                                <datalist id="desa-options">
-                                    <option v-for="d in desas" :key="d" :value="d">{{ d }}</option>
-                                </datalist>
-                            </div>
+                            <select 
+                                v-model="filterForm.desa" 
+                                @change="executeFilter"
+                                class="block w-full text-xs rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 transition-colors cursor-pointer"
+                            >
+                                <option value="">Semua Desa / Kelurahan</option>
+                                <option v-for="d in desas" :key="d" :value="d">
+                                    {{ d }}
+                                </option>
+                            </select>
                         </div>
 
                         <!-- Filter Tanggal Mulai -->
@@ -221,7 +217,7 @@
                                     type="text" 
                                     v-model="filterForm.search" 
                                     @input="handleSearchInput"
-                                    placeholder="Cari nama, telp, invoice..."
+                                    placeholder="Cari nama, telp, alamat, invoice..."
                                     class="block w-full pl-8 text-xs rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 transition-colors"
                                 />
                             </div>

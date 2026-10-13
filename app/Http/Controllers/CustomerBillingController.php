@@ -41,8 +41,12 @@ class CustomerBillingController extends Controller
             // Filter Desa / Kelurahan berdasarkan alamat pelanggan
             if ($request->filled('desa')) {
                 $desa = trim($request->desa);
-                $q->whereHas('customer', function($cq) use ($desa) {
-                    $cq->where('address', 'like', "%{$desa}%");
+                $desaNoSpace = str_replace(' ', '', $desa);
+                $q->whereHas('customer', function($cq) use ($desa, $desaNoSpace) {
+                    $cq->where(function($sub) use ($desa, $desaNoSpace) {
+                        $sub->where('address', 'like', "%{$desa}%")
+                            ->orWhere('address', 'like', "%{$desaNoSpace}%");
+                    });
                 });
             }
 
@@ -53,7 +57,8 @@ class CustomerBillingController extends Controller
                        ->orWhereHas('customer', function($cq) use ($search) {
                            $cq->where('name', 'like', "%{$search}%")
                               ->orWhere('phone', 'like', "%{$search}%")
-                              ->orWhere('customer_code', 'like', "%{$search}%");
+                              ->orWhere('customer_code', 'like', "%{$search}%")
+                              ->orWhere('address', 'like', "%{$search}%");
                        });
                 });
             }
@@ -122,8 +127,12 @@ class CustomerBillingController extends Controller
 
         if ($request->filled('desa')) {
             $desa = trim($request->desa);
-            $todayPaymentsQuery->whereHas('customer', function($cq) use ($desa) {
-                $cq->where('address', 'like', "%{$desa}%");
+            $desaNoSpace = str_replace(' ', '', $desa);
+            $todayPaymentsQuery->whereHas('customer', function($cq) use ($desa, $desaNoSpace) {
+                $cq->where(function($sub) use ($desa, $desaNoSpace) {
+                    $sub->where('address', 'like', "%{$desa}%")
+                        ->orWhere('address', 'like', "%{$desaNoSpace}%");
+                });
             });
         }
 
@@ -206,20 +215,52 @@ class CustomerBillingController extends Controller
         }
         $areas = $areasQuery->get(['id', 'name']);
 
-        // Daftar Desa yang terdeteksi dari alamat pelanggan
+        // Daftar Desa / Kelurahan wilayah operasional & yang terdeteksi dari pelanggan
+        $defaultDesas = [
+            'Bantargadung',
+            'Bantarkalong',
+            'Boyongsari',
+            'Cigombong',
+            'Cikembar',
+            'Cimanggu',
+            'Girijaya',
+            'Hegarmanah',
+            'Kertamukti',
+            'Sirnajaya',
+            'Sukamanah',
+            'Sukamulya',
+            'Tarisi',
+            'Ubrug',
+            'Warungkiara',
+        ];
+
+        $desasList = collect($defaultDesas);
+
         $addresses = Customer::whereNotNull('address')->where('address', '!=', '')->pluck('address');
-        $desasList = collect();
         foreach ($addresses as $addr) {
-            if (preg_match_all('/(?:Kel\.?|Kelurahan|Desa)\s*([^,\n\r]+)/i', $addr, $matches)) {
+            // Ekstraksi pola: Kel. / Kelurahan / Desa <nama_desa> dengan batasan kata yang bersih
+            if (preg_match_all('/(?:Kel\.?|Kelurahan|Desa)\s*([a-zA-Z\s]+?)(?=\s+(?:Kec|Kab|RT|RW|No|\d)|[,\n\r\.\-]|$)/i', $addr, $matches)) {
                 foreach ($matches[1] as $m) {
                     $val = trim($m);
-                    if ($val !== '') {
+                    if (strlen($val) >= 3 && strlen($val) <= 30 && !in_array(strtolower($val), ['kec', 'kab', 'rt', 'rw', 'jalan', 'jl'])) {
                         $desasList->push(ucwords(strtolower($val)));
                     }
                 }
             }
+            foreach ($defaultDesas as $known) {
+                $cleanKnown = str_replace(' ', '', strtolower($known));
+                $cleanAddr = str_replace(' ', '', strtolower($addr));
+                if (str_contains($cleanAddr, $cleanKnown)) {
+                    $desasList->push($known);
+                }
+            }
         }
-        $desas = $desasList->unique()->sort()->values()->all();
+
+        $desas = $desasList->map(fn($d) => ucwords(strtolower(trim($d))))
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
 
         return Inertia::render('CustomerBilling/Index', [
             'invoices' => $invoices,
