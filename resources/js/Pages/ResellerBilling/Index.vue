@@ -339,20 +339,59 @@
                                         <div v-if="inv.status !== 'paid'" :class="getDueDuration(inv.due_date).class" class="text-[11px] font-bold mt-1">
                                             {{ getDueDuration(inv.due_date).text }}
                                         </div>
+                                        <div v-if="inv.promise_date && inv.status !== 'paid'" class="mt-1 flex items-center gap-1 bg-amber-50 text-amber-800 px-2 py-0.5 rounded-md text-[10px] font-bold border border-amber-200 w-max">
+                                            <svg class="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                            Janji: {{ new Date(inv.promise_date).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric'}) }}
+                                        </div>
                                     </template>
                                 </td>
 
                                 <!-- Aksi -->
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <template v-if="inv.status !== 'paid'">
-                                        <button v-if="inv.effective_remaining > 0" @click="openModal(inv)" class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold ring-1 ring-indigo-700/50">
+                                    <div class="flex items-center justify-end gap-1.5 flex-wrap">
+                                        <!-- Tombol Terima Uang (Jika belum lunas & sisa > 0) -->
+                                        <button 
+                                            v-if="inv.status !== 'paid' && inv.effective_remaining > 0" 
+                                            type="button"
+                                            @click="openModal(inv)" 
+                                            class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl shadow-xs transition-all hover:shadow text-xs font-bold ring-1 ring-indigo-700/50"
+                                        >
                                             💰 Terima Uang
                                         </button>
-                                        <span v-else class="text-xs font-bold text-gray-400 italic">Menunggu Validasi Admin</span>
-                                    </template>
-                                    <span v-else class="text-green-600 font-bold text-xs bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
-                                        Selesai
-                                    </span>
+                                        <span v-else-if="inv.status !== 'paid' && inv.effective_remaining <= 0" class="text-[11px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                                            Menunggu Validasi
+                                        </span>
+
+                                        <!-- Tombol Janji Bayar (Jika belum lunas) -->
+                                        <button 
+                                            v-if="inv.status !== 'paid'" 
+                                            type="button"
+                                            @click="openPromiseModal(inv)" 
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-2xs"
+                                            :class="inv.promise_date ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300' : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'"
+                                            title="Atur / Ubah Janji Bayar"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                            <span>{{ inv.promise_date ? 'Ubah Janji' : 'Janji Bayar' }}</span>
+                                        </button>
+
+                                        <!-- Status Lunas jika Paid -->
+                                        <span v-if="inv.status === 'paid'" class="text-green-700 font-bold text-xs bg-green-50 px-2.5 py-1 rounded-lg border border-green-200">
+                                            ✓ Lunas
+                                        </span>
+
+                                        <!-- Tombol Rollback (Jika sudah lunas, bayar sebagian, atau punya transaksi pembayaran) -->
+                                        <button 
+                                            v-if="inv.status === 'paid' || inv.status === 'partial' || (inv.payments && inv.payments.length > 0)" 
+                                            type="button"
+                                            @click="rollbackInvoice(inv)" 
+                                            class="inline-flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 px-2.5 py-1.5 rounded-xl border border-rose-200 text-xs font-bold transition-all shadow-2xs hover:border-rose-300"
+                                            title="Batalkan pembayaran / Rollback status invoice"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                                            <span>Rollback</span>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
 
@@ -430,12 +469,72 @@
                                 <label class="block text-sm font-medium text-gray-700">Tanggal Penerimaan</label>
                                 <input type="date" v-model="form.payment_date" class="mt-1 block w-full border-gray-300 rounded-xl" required>
                             </div>
+                            <!-- Pilihan Jenis Pembayaran (Penuh vs Sebagian) -->
                             <div>
-                                <label class="block text-[11px] uppercase tracking-wider font-bold text-gray-600 mb-1">Nominal Uang (Rp)</label>
-                                <input type="number" v-model="form.amount" class="block w-full border-gray-200 bg-gray-50 focus:bg-white rounded-xl font-bold text-lg" required :max="selectedInvoice.effective_remaining">
-                                <div class="flex justify-between items-center mt-2">
-                                    <p class="text-xs text-gray-500">Bisa diisi lunas atau sebagian.</p>
-                                    <button type="button" @click="form.amount = selectedInvoice.effective_remaining" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-1 rounded-md">Isi Max Lunas</button>
+                                <label class="block text-[11px] uppercase tracking-wider font-bold text-gray-600 mb-2">Tipe Pembayaran</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button 
+                                        type="button" 
+                                        @click="setPaymentType('full')"
+                                        class="p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                                        :class="paymentType === 'full' 
+                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-200' 
+                                            : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span>Bayar Lunas (Penuh)</span>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="setPaymentType('partial')"
+                                        class="p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                                        :class="paymentType === 'partial' 
+                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-200' 
+                                            : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                        <span>Bayar Sebagian (Cicil)</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] uppercase tracking-wider font-bold text-gray-600 mb-1">
+                                    Nominal Diterima (Rp) <span class="text-red-500">*</span>
+                                </label>
+                                <input 
+                                    type="number" 
+                                    v-model="form.amount" 
+                                    min="1000"
+                                    :max="selectedInvoice.effective_remaining"
+                                    class="block w-full border-gray-200 bg-gray-50 focus:bg-white rounded-xl font-bold text-lg px-4 py-2.5" 
+                                    required 
+                                />
+
+                                <!-- Kalkulasi Sisa untuk Pembayaran Sebagian -->
+                                <div v-if="paymentType === 'partial'" class="mt-2.5 p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-1 text-xs">
+                                    <div class="flex justify-between text-gray-600">
+                                        <span>Total Sisa Saat Ini:</span>
+                                        <span class="font-bold font-mono">Rp {{ formatRupiah(selectedInvoice.effective_remaining) }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-indigo-700">
+                                        <span>Nominal Dibayar Sekarang:</span>
+                                        <span class="font-bold font-mono">- Rp {{ formatRupiah(form.amount || 0) }}</span>
+                                    </div>
+                                    <div class="border-t border-amber-200 pt-1 flex justify-between font-bold" :class="remainingAfterPartial > 0 ? 'text-amber-800' : 'text-green-700'">
+                                        <span>Sisa Tagihan Berikutnya:</span>
+                                        <span class="font-mono">Rp {{ formatRupiah(Math.max(0, remainingAfterPartial)) }}</span>
+                                    </div>
+                                    <p v-if="remainingAfterPartial > 0" class="text-[10px] text-amber-700 mt-0.5">
+                                        ℹ️ Tagihan ini akan berstatus <strong>Bayar Sebagian (Partial)</strong> hingga sisa Rp {{ formatRupiah(remainingAfterPartial) }} dilunasi.
+                                    </p>
+                                    <p v-else class="text-[10px] text-green-700 mt-0.5 font-bold">
+                                        ✓ Nominal ini akan melunasi seluruh tagihan.
+                                    </p>
+                                </div>
+                                <div v-else class="flex justify-between items-center mt-1.5 text-xs text-gray-500">
+                                    <span>Pembayaran penuh akan melunasi seluruh sisa tagihan.</span>
+                                    <button type="button" @click="form.amount = selectedInvoice.effective_remaining" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded cursor-pointer">Isi Penuh</button>
                                 </div>
                             </div>
                             <div>
@@ -471,6 +570,92 @@
                 </div>
             </div>
         </div>
+
+        <!-- ── JANJI BAYAR MODAL RESELLER ── -->
+        <Teleport to="body">
+            <div v-if="showPromiseModal" class="fixed inset-0 z-100 flex items-center justify-center p-4 sm:p-0">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity" @click="closePromiseModal"></div>
+
+                <div class="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-md relative z-10 animate-fade-in-up border border-gray-100">
+                    <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-amber-50/60">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg">
+                                📅
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-gray-900">Atur Janji Bayar Kasbon</h3>
+                                <p class="text-xs font-semibold text-gray-500 mt-0.5">
+                                    {{ promiseInvoice?.customer?.name }} • {{ promiseInvoice?.invoice_number }}
+                                </p>
+                            </div>
+                        </div>
+                        <button type="button" @click="closePromiseModal" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitPromise">
+                        <div class="p-6 space-y-4">
+                            <div class="p-3 bg-indigo-50/60 border border-indigo-100 rounded-2xl flex items-center justify-between">
+                                <span class="text-xs font-bold text-gray-600">Sisa Tagihan Kasbon:</span>
+                                <span class="text-sm font-black text-indigo-700">Rp {{ formatRupiah(promiseInvoice?.remaining) }}</span>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">
+                                    Tanggal Janji Bayar <span class="text-red-500">*</span>
+                                </label>
+                                <input 
+                                    type="date" 
+                                    v-model="promiseForm.promise_date" 
+                                    required 
+                                    :min="new Date().toISOString().split('T')[0]" 
+                                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">
+                                    Catatan / Keterangan (Opsional)
+                                </label>
+                                <textarea 
+                                    v-model="promiseForm.notes" 
+                                    rows="2" 
+                                    placeholder="Contoh: Reseller janji setoran setelah voucher habis tgl 20..." 
+                                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                                ></textarea>
+                            </div>
+
+                            <p class="text-[11px] text-gray-500 leading-relaxed bg-amber-50/40 p-3 rounded-xl border border-amber-100/60">
+                                ℹ️ Tagihan ini akan ditandai dengan tanggal janji bayar dan otomatis tersinkronisasi ke daftar Invoice Pelanggan/Reseller.
+                            </p>
+                        </div>
+
+                        <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between gap-2">
+                            <div>
+                                <button 
+                                    v-if="promiseInvoice?.promise_date"
+                                    type="button" 
+                                    @click="removePromise" 
+                                    class="px-3.5 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors border border-rose-200"
+                                >
+                                    Hapus Janji
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" @click="closePromiseModal" class="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-200 bg-gray-100 rounded-xl transition-colors">
+                                    Batal
+                                </button>
+                                <button type="submit" :disabled="promiseForm.processing" class="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-amber-200 flex items-center gap-1.5">
+                                    {{ promiseForm.processing ? 'Menyimpan...' : 'Simpan Janji Bayar' }}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
     </AppLayout>
 </template>
 
@@ -560,6 +745,8 @@ const resetFilters = () => {
 const showModal = ref(false);
 const selectedInvoice = ref(null);
 
+const paymentType = ref('full');
+
 const form = useForm({
     amount: '',
     payment_date: new Date().toISOString().split('T')[0],
@@ -568,8 +755,26 @@ const form = useForm({
     is_direct_payment: false
 });
 
+const setPaymentType = (type) => {
+    paymentType.value = type;
+    if (type === 'full') {
+        form.amount = selectedInvoice.value ? selectedInvoice.value.effective_remaining : '';
+    } else {
+        if (selectedInvoice.value && (form.amount >= selectedInvoice.value.effective_remaining || !form.amount)) {
+            form.amount = Math.max(1000, Math.floor(selectedInvoice.value.effective_remaining / 2));
+        }
+    }
+};
+
+const remainingAfterPartial = computed(() => {
+    const rem = Number(selectedInvoice.value?.effective_remaining || 0);
+    const amt = Number(form.amount || 0);
+    return Math.max(0, rem - amt);
+});
+
 const openModal = (inv) => {
     selectedInvoice.value = inv;
+    paymentType.value = 'full';
     form.amount = inv.effective_remaining;
     form.notes = 'Terima dana kasbon reseller';
     showModal.value = true;
@@ -582,6 +787,61 @@ const submitCollection = () => {
             showModal.value = false;
         }
     });
+};
+
+// ── Rollback Action ──
+const rollbackInvoice = (inv) => {
+    if (confirm(`Yakin ingin melakukan rollback (membatalkan pembayaran) untuk kasbon reseller #${inv.invoice_number}? Status tagihan akan dikembalikan menjadi belum lunas dan riwayat pembayaran terkait akan dibatalkan.`)) {
+        router.post(`/invoices/${inv.id}/rollback`, {}, {
+            preserveScroll: true,
+        });
+    }
+};
+
+// ── Janji Bayar State & Handlers ──
+const showPromiseModal = ref(false);
+const promiseInvoice = ref(null);
+const promiseForm = useForm({
+    promise_date: '',
+    notes: '',
+});
+
+const openPromiseModal = (inv) => {
+    promiseInvoice.value = inv;
+    promiseForm.promise_date = inv.promise_date ? String(inv.promise_date).split('T')[0] : '';
+    promiseForm.notes = inv.notes || '';
+    showPromiseModal.value = true;
+};
+
+const closePromiseModal = () => {
+    showPromiseModal.value = false;
+    promiseInvoice.value = null;
+    promiseForm.reset();
+};
+
+const submitPromise = () => {
+    if (!promiseInvoice.value) return;
+    promiseForm.post(`/invoices/${promiseInvoice.value.id}/promise`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closePromiseModal();
+        }
+    });
+};
+
+const removePromise = () => {
+    if (!promiseInvoice.value) return;
+    if (confirm(`Hapus tanggal janji bayar untuk kasbon #${promiseInvoice.value.invoice_number}?`)) {
+        router.post(`/invoices/${promiseInvoice.value.id}/promise`, {
+            promise_date: null,
+            notes: promiseInvoice.value.notes || null,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                closePromiseModal();
+            }
+        });
+    }
 };
 
 const getDueDuration = (dueDateStr) => {

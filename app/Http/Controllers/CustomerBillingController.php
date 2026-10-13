@@ -341,6 +341,9 @@ class CustomerBillingController extends Controller
                 $totalPaid = $invoice->payments()->where('status', 'verified')->sum('amount');
                 if ($totalPaid >= $invoice->amount) {
                     $invoice->update(['status' => 'paid']);
+                    if ($invoice->customer && in_array($invoice->customer->status, ['isolir', 'suspended'])) {
+                        $invoice->customer->update(['status' => 'active']);
+                    }
                 } elseif ($totalPaid > 0) {
                     $invoice->update(['status' => 'partial']);
                 }
@@ -416,6 +419,9 @@ class CustomerBillingController extends Controller
             
             if ($totalPaid >= $invoice->amount) {
                 $invoice->update(['status' => 'paid']);
+                if ($invoice->customer && in_array($invoice->customer->status, ['isolir', 'suspended'])) {
+                    $invoice->customer->update(['status' => 'active']);
+                }
             } elseif ($totalPaid > 0) {
                 $invoice->update(['status' => 'partial']);
             }

@@ -271,36 +271,57 @@ class InvoiceController extends Controller
 
     public function rollback(Invoice $invoice)
     {
-        // Hapus semua record pembayaran terkait invoice ini
-        $invoice->payments()->delete();
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $paymentIds = $invoice->payments()->pluck('id');
+            foreach ($paymentIds as $pid) {
+                \App\Models\Incentive::where('reference_id', 'payment_' . $pid)
+                    ->where('status', 'pending')
+                    ->delete();
+            }
 
-        // Kembalikan status invoice menjadi belum lunas
-        $invoice->update([
-            'status' => 'unpaid',
-            'total_paid' => 0,
-            'remaining' => $invoice->amount
-        ]);
+            // Hapus semua record pembayaran terkait invoice ini
+            $invoice->payments()->delete();
 
-        return back()->with('success', 'Pembayaran berhasil dibatalkan. Tagihan kembali belum lunas.');
+            // Kembalikan status invoice menjadi belum lunas
+            $invoice->update([
+                'status' => 'unpaid',
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+            return back()->with('success', 'Pembayaran berhasil dibatalkan (rollback). Status tagihan kembali belum lunas.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return back()->with('error', 'Gagal memproses rollback pembayaran: ' . $e->getMessage());
+        }
     }
 
     public function promise(Request $request, Invoice $invoice)
     {
         $request->validate([
-            'promise_date' => 'required|date|after_or_equal:today',
+            'promise_date' => 'nullable|date',
+            'notes' => 'nullable|string|max:500',
         ]);
 
-        $invoice->update([
+        $updateData = [
             'promise_date' => $request->promise_date
-        ]);
-
-        // Aktifkan kembali internet jika pelanggan sedang di-isolir
-        $customer = $invoice->customer;
-        if ($customer && $customer->status === 'suspended') {
-            $customer->update(['status' => 'active']);
+        ];
+        if ($request->has('notes')) {
+            $updateData['notes'] = $request->notes;
         }
 
-        return back()->with('success', 'Janji bayar berhasil disimpan. Layanan internet pelanggan telah diaktifkan kembali.');
+        $invoice->update($updateData);
+
+        if (!empty($request->promise_date)) {
+            // Aktifkan kembali internet jika pelanggan sedang di-isolir
+            $customer = $invoice->customer;
+            if ($customer && in_array($customer->status, ['isolir', 'suspended'])) {
+                $customer->update(['status' => 'active']);
+            }
+            return back()->with('success', 'Janji bayar berhasil disimpan. Layanan internet pelanggan telah diaktifkan kembali.');
+        }
+
+        return back()->with('success', 'Janji bayar berhasil dihapus.');
     }
 
     public function update(Request $request, Invoice $invoice)
