@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Olt;
+use App\Models\Ont;
+use App\Models\Odc;
+use App\Models\Area;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -10,6 +13,9 @@ use Inertia\Response;
 
 class OltController extends Controller
 {
+    /**
+     * Daftar Semua OLT (Multi OLT Dashboard)
+     */
     public function index(Request $request): Response
     {
         $query = Olt::with(['area'])->withCount('odcs');
@@ -22,22 +28,162 @@ class OltController extends Controller
             }
         }
 
-        $olts = $query
-            ->when($request->search, fn ($q, $s) =>
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(function($q) use ($s) {
                 $q->where('name', 'like', "%{$s}%")
                   ->orWhere('ip_address', 'like', "%{$s}%")
-                  ->orWhere('hostname', 'like', "%{$s}%"))
-            ->when($request->status, fn ($q, $s) => $q->where('status', $s))
-            ->orderByDesc('created_at')
+                  ->orWhere('hostname', 'like', "%{$s}%")
+                  ->orWhere('brand', 'like', "%{$s}%")
+                  ->orWhere('model', 'like', "%{$s}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('area_id')) {
+            $query->where('area_id', $request->area_id);
+        }
+
+        if ($request->filled('brand')) {
+            $query->where('brand', $request->brand);
+        }
+
+        $olts = $query->orderByDesc('created_at')
             ->paginate(15)
             ->withQueryString();
 
-        $areas = \App\Models\Area::orderBy('name')->get();
+        // Hitung statistik multi-olt
+        $allOlts = Olt::withCount('odcs')->get();
+        $stats = [
+            'total_olt' => $allOlts->count(),
+            'active_olt' => $allOlts->where('status', 'active')->count(),
+            'inactive_olt' => $allOlts->where('status', '!=', 'active')->count(),
+            'total_pon_ports' => $allOlts->sum('total_pon_ports'),
+            'total_odcs' => $allOlts->sum('odcs_count'),
+            'total_onts' => Ont::count(),
+        ];
+
+        $areas = Area::orderBy('name')->get();
+        $brands = Olt::whereNotNull('brand')->where('brand', '!=', '')->distinct()->pluck('brand');
 
         return Inertia::render('Infrastructure/Olt/Index', [
             'olts' => $olts,
             'areas' => $areas,
-            'filters' => $request->only(['search', 'status']),
+            'brands' => $brands,
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'status', 'area_id', 'brand']),
+        ]);
+    }
+
+    /**
+     * Monitoring Port PON Multi OLT
+     */
+    public function ponMonitor(Request $request): Response
+    {
+        $query = Olt::with(['area', 'pons.odcs.odps', 'odcs.odps'])
+            ->withCount(['odcs', 'pons']);
+
+        if ($request->filled('area_id')) {
+            $query->where('area_id', $request->area_id);
+        }
+
+        if ($request->filled('brand')) {
+            $query->where('brand', $request->brand);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $olts = $query->orderBy('name')->get();
+
+        // Hitung utilisasi port PON per OLT
+        $olts->each(function ($olt) {
+            $olt->total_onts = Ont::whereHas('odp.odc', fn($q) => $q->where('olt_id', $olt->id))->count();
+        });
+
+        $areas = Area::orderBy('name')->get();
+        $brands = Olt::whereNotNull('brand')->where('brand', '!=', '')->distinct()->pluck('brand');
+
+        return Inertia::render('Infrastructure/Olt/PonMonitor', [
+            'olts' => $olts,
+            'areas' => $areas,
+            'brands' => $brands,
+            'filters' => $request->only(['area_id', 'brand', 'status']),
+        ]);
+    }
+
+    /**
+     * Peta Sebaran Multi OLT (OLT Geographic Map)
+     */
+    public function map(Request $request): Response
+    {
+        $olts = Olt::with(['area', 'odcs.odps'])
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get();
+
+        $olts->each(function ($olt) {
+            $olt->total_onts = Ont::whereHas('odp.odc', fn($q) => $q->where('olt_id', $olt->id))->count();
+        });
+
+        $areas = Area::orderBy('name')->get();
+
+        return Inertia::render('Infrastructure/Olt/Map', [
+            'olts' => $olts,
+            'areas' => $areas,
+        ]);
+    }
+
+    /**
+     * Analisis Kapasitas & Utilisasi Jaringan Multi OLT
+     */
+    public function capacity(Request $request): Response
+    {
+        $olts = Olt::with(['area', 'pons', 'odcs.odps'])->get();
+        $areas = Area::orderBy('name')->get();
+
+        $totalOlt = $olts->count();
+        $totalPon = $olts->sum('total_pon_ports');
+        $totalCapacitySlots = $olts->sum(fn($o) => $o->total_pon_ports * ($o->pon_capacity ?: 64));
+        $totalActiveOnts = Ont::count();
+
+        // Hitung per OLT
+        $oltCapacities = $olts->map(function ($olt) {
+            $capacity = $olt->total_pon_ports * ($olt->pon_capacity ?: 64);
+            $ontCount = Ont::whereHas('odp.odc', fn($q) => $q->where('olt_id', $olt->id))->count();
+            $percentage = $capacity > 0 ? round(($ontCount / $capacity) * 100, 1) : 0;
+
+            return [
+                'id' => $olt->id,
+                'name' => $olt->name,
+                'brand' => $olt->brand,
+                'model' => $olt->model,
+                'area_name' => $olt->area?->name ?? 'N/A',
+                'status' => $olt->status,
+                'total_pon_ports' => $olt->total_pon_ports,
+                'total_capacity' => $capacity,
+                'used_capacity' => $ontCount,
+                'available_capacity' => max(0, $capacity - $ontCount),
+                'percentage' => $percentage,
+                'odc_count' => $olt->odcs->count(),
+            ];
+        });
+
+        return Inertia::render('Infrastructure/Olt/Capacity', [
+            'oltCapacities' => $oltCapacities,
+            'areas' => $areas,
+            'summary' => [
+                'total_olt' => $totalOlt,
+                'total_pon' => $totalPon,
+                'total_capacity' => $totalCapacitySlots,
+                'total_used' => $totalActiveOnts,
+                'total_available' => max(0, $totalCapacitySlots - $totalActiveOnts),
+                'overall_percentage' => $totalCapacitySlots > 0 ? round(($totalActiveOnts / $totalCapacitySlots) * 100, 1) : 0,
+            ],
         ]);
     }
 
@@ -79,7 +225,7 @@ class OltController extends Controller
 
     public function show(Olt $olt): Response
     {
-        $olt->load(['odcs.odps']);
+        $olt->load(['odcs.odps', 'area', 'pons']);
 
         return Inertia::render('Infrastructure/Olt/Show', [
             'olt' => $olt,
@@ -122,8 +268,6 @@ class OltController extends Controller
             }
         }
 
-        // We optionally could update existing PON capacities if requested, 
-        // but typically this isn't strictly required unless explicitly asked.
         if ($request->has('pon_capacity')) {
             $olt->pons()->update(['capacity' => $capacity]);
         }
