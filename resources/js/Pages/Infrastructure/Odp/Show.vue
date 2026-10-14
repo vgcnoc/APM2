@@ -140,9 +140,12 @@
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/></svg>
                                         </div>
                                         <div>
-                                            <div class="text-sm font-bold text-gray-900">
-                                                {{ ont.customer ? ont.customer.name : 'Pelanggan N/A' }}
-                                                <span v-if="ont.customer && ont.customer.cid" class="text-xs text-gray-500 font-normal ml-1">({{ ont.customer.cid }})</span>
+                                            <div class="text-sm font-bold text-gray-900 flex items-center gap-1.5 flex-wrap">
+                                                <span>{{ ont.customer ? ont.customer.name : 'Pelanggan N/A' }}</span>
+                                                <span v-if="ont.customer && ont.customer.cid" class="text-xs text-gray-500 font-normal">({{ ont.customer.cid }})</span>
+                                                <span v-if="ont.customer && ont.customer.service_status === 'gratis'" class="px-1.5 py-0.2 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs" title="Pelanggan Bebas Tagihan (Gratis)">
+                                                    🎁 Pelanggan Gratis
+                                                </span>
                                             </div>
                                             <div class="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
                                                 <span class="bg-gray-100 px-1.5 py-0.5 rounded font-mono">{{ ont.sn_mac }}</span>

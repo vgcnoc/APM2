@@ -55,7 +55,12 @@
                                 </td>
                                 <td class="px-6 py-4">
                                     <div v-if="ont.customer">
-                                        <div class="text-sm font-medium text-gray-900">{{ ont.customer.name }}</div>
+                                        <div class="text-sm font-medium text-gray-900 flex items-center gap-1.5 flex-wrap">
+                                            <span>{{ ont.customer.name }}</span>
+                                            <span v-if="ont.customer.service_status === 'gratis'" class="px-1.5 py-0.2 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs" title="Pelanggan Bebas Tagihan (Gratis)">
+                                                🎁 Gratis
+                                            </span>
+                                        </div>
                                         <div class="text-xs text-gray-500 mt-0.5">{{ ont.customer.customer_code }}</div>
                                     </div>
                                     <div v-else class="text-sm text-gray-400 italic">Belum terpasang</div>

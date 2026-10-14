@@ -68,7 +68,12 @@
                 <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] relative overflow-hidden group hover:border-indigo-100 transition-colors">
                     <div class="absolute -right-4 -top-4 w-16 h-16 bg-amber-50/50 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Pelanggan Aktif</p>
-                    <h3 class="text-3xl font-black text-gray-800">{{ formatNumber(stats.pelanggan_aktif) }}</h3>
+                    <div class="flex items-baseline justify-between flex-wrap gap-1">
+                        <h3 class="text-3xl font-black text-gray-800">{{ formatNumber(stats.pelanggan_aktif) }}</h3>
+                        <span v-if="stats.pelanggan_gratis > 0" class="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs" title="Pelanggan Gratis Aktif">
+                            <span>🎁</span> {{ stats.pelanggan_gratis }} Gratis
+                        </span>
+                    </div>
                     <p class="text-xs text-amber-600 mt-2 font-medium flex items-center gap-1">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                         Online Users
@@ -230,6 +235,11 @@
                                             <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
                                             ⏳ {{ getOdpCbpCount(odp) }} Port Proses CBP
                                         </div>
+                                        <!-- Pill Pelanggan Gratis jika ada di ODP ini -->
+                                        <div v-if="getOdpGratisCount(odp) > 0" class="bg-emerald-50 border border-emerald-300 text-emerald-800 font-black text-[10px] px-2 py-1 rounded-md flex items-center gap-1 shadow-xs" title="Terdapat pelanggan gratis pada ODP ini">
+                                            <span>🎁</span>
+                                            <span>{{ getOdpGratisCount(odp) }} Gratis</span>
+                                        </div>
                                     </div>
 
                                     <!-- VLAN Sinkron OLT PON -->
@@ -275,6 +285,12 @@
 
                                                         <span class="font-bold text-gray-800 truncate text-xs">
                                                             {{ getPortData(odp, portNum).customer.customer_code }} - {{ getPortData(odp, portNum).customer.name }}
+                                                        </span>
+
+                                                        <!-- Keterangan Pelanggan Gratis -->
+                                                        <span v-if="getPortData(odp, portNum).customer.service_status === 'gratis'" class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs" title="Pelanggan Bebas Tagihan (Gratis)">
+                                                            <span>🎁</span>
+                                                            <span>Gratis</span>
                                                         </span>
                                                     </div>
 
@@ -342,7 +358,11 @@
                                             <div v-for="cust in getPendingInstallationsForOdp(odp)" :key="cust.id" class="flex items-start gap-1.5 text-[10px]">
                                                 <div class="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0 mt-1"></div>
                                                 <span class="text-gray-600">
-                                                    <span class="font-medium text-gray-800">{{ cust.customer_code }}</span> - {{ cust.name }} <span class="text-gray-400">[{{ cust.status === 'installing' ? 'Ready Instalasi' : 'Proses Survey' }}]</span>
+                                                    <span class="font-medium text-gray-800">{{ cust.customer_code }}</span> - {{ cust.name }}
+                                                    <span v-if="cust.service_status === 'gratis'" class="inline-flex items-center gap-0.5 px-1 py-0.2 ml-1 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                                        🎁 Gratis
+                                                    </span>
+                                                    <span class="text-gray-400">[{{ cust.status === 'installing' ? 'Ready Instalasi' : 'Proses Survey' }}]</span>
                                                 </span>
                                             </div>
                                         </div>
@@ -412,8 +432,12 @@
                                     <span v-else class="text-xs text-gray-400 italic">-</span>
                                 </td>
                                 <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900">{{ odp.area?.name || '-' }}</td>
-                                <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900 font-medium">{{ odp.total_ports }} Port</td>
-                                <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900">{{ odp.used_ports }}</td>
+                                <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                    <div>{{ odp.used_ports }}</div>
+                                    <div v-if="getOdpGratisCount(odp) > 0" class="text-[10px] font-bold text-emerald-700 flex items-center gap-0.5 mt-0.5" title="Pelanggan Gratis di ODP ini">
+                                        <span>🎁 {{ getOdpGratisCount(odp) }} Gratis</span>
+                                    </div>
+                                </td>
                                 <td class="px-6 py-3 whitespace-nowrap">
                                     <span class="px-2.5 py-1 rounded text-xs font-bold" :class="Math.max(0, odp.total_ports - odp.used_ports) > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'">
                                         {{ Math.max(0, odp.total_ports - odp.used_ports) }}
@@ -902,6 +926,11 @@ const getOdpCbpCount = (odp) => {
     return count;
 };
 
+const getOdpGratisCount = (odp) => {
+    if (!odp || !odp.onts) return 0;
+    return odp.onts.filter(o => o.customer && o.customer.service_status === 'gratis').length;
+};
+
 const getCustomerStatusColor = (status, cbp) => {
     if (cbp) return 'bg-rose-500 animate-pulse ring-2 ring-rose-300';
     if (status === 'active') return 'bg-emerald-500';
@@ -918,7 +947,9 @@ const renderPortTopology = (odp, portNum) => {
     if (data.customer) {
         const cbp = getCbpForCustomer(data.customer);
         const color = data.customer.status === 'active' ? 'text-indigo-300' : 'text-amber-400';
-        let html = `<span class="${color}">➔ ${data.customer.customer_code} - ${data.customer.name}</span>`;
+        const isGratis = data.customer.service_status === 'gratis';
+        const gratisBadge = isGratis ? ' <span class="bg-emerald-900/90 border border-emerald-400 text-emerald-200 font-black text-[9px] px-1.5 py-0.2 rounded ml-1.5 shadow-xs">🎁 GRATIS</span>' : '';
+        let html = `<span class="${color}">➔ ${data.customer.customer_code} - ${data.customer.name}${gratisBadge}</span>`;
         if (cbp) {
             const statusLabel = cbp.status === 'assigned' ? 'Teknisi Ditugaskan' : 'Menunggu Jadwal';
             html += ` <span class="bg-rose-900/90 border border-rose-500 text-rose-200 font-black text-[10px] px-1.5 py-0.5 rounded ml-2">⏳ PROSES CBP (${cbp.cbp_number || 'CBP'} - ${statusLabel}) - Belum Selesai Cabut</span>`;

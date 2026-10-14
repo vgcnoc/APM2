@@ -55,7 +55,8 @@ class NetworkDataController extends Controller
                          ->orWhere('hotspot_vlan_id', 'like', "%{$search}%")
                          ->orWhereHas('customer', function ($cq) use ($search) {
                              $cq->where('name', 'like', "%{$search}%")
-                                ->orWhere('customer_code', 'like', "%{$search}%");
+                                ->orWhere('customer_code', 'like', "%{$search}%")
+                                ->when(stripos($search, 'gratis') !== false, fn($sq) => $sq->orWhere('service_status', 'gratis'));
                          });
                   })
                   ->orWhereHas('odc.olt', function ($olq) use ($search) {
@@ -74,6 +75,7 @@ class NetworkDataController extends Controller
         $portTersedia = max(0, $totalPort - $portTerpakai);
 
         $pelangganAktif = Customer::where('status', 'active')->count();
+        $pelangganGratis = Customer::where('service_status', 'gratis')->where('status', 'active')->count();
         $pelangganOffline = Customer::where('status', 'suspended')->count() + Customer::where('status', 'terminated')->count();
         $stopPermanen = Customer::where('status', 'terminated')->count();
         $totalProsesCbp = \App\Models\CbpRequest::whereIn('status', ['pending', 'assigned'])->count();
@@ -94,6 +96,7 @@ class NetworkDataController extends Controller
                 'port_terpakai' => $portTerpakai,
                 'port_tersedia' => $portTersedia,
                 'pelanggan_aktif' => $pelangganAktif,
+                'pelanggan_gratis' => $pelangganGratis,
                 'pelanggan_offline' => $pelangganOffline,
                 'stop_permanen' => $stopPermanen,
                 'proses_cbp' => $totalProsesCbp,

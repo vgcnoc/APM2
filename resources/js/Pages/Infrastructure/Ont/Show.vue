@@ -38,7 +38,12 @@
                         <div class="relative z-10">
                             <h3 class="text-sm font-bold uppercase tracking-wider mb-2 opacity-90">Pemilik / Pelanggan</h3>
                             <div v-if="ont.customer">
-                                <div class="text-2xl font-bold mb-1">{{ ont.customer.name }}</div>
+                                <div class="text-2xl font-bold mb-1 flex items-center gap-2 flex-wrap">
+                                    <span>{{ ont.customer.name }}</span>
+                                    <span v-if="ont.customer.service_status === 'gratis'" class="px-2 py-0.5 rounded text-xs font-black bg-white text-emerald-800 shadow-sm">
+                                        🎁 Pelanggan Gratis
+                                    </span>
+                                </div>
                                 <div class="text-sm opacity-90">{{ ont.customer.cid }}</div>
                                 <div v-if="ont.customer.package" class="mt-3 bg-white/20 px-3 py-1.5 rounded-lg text-sm inline-block font-medium">
                                     {{ ont.customer.package.name }}
