@@ -67,5 +67,15 @@ class Invoice extends Model
                 $invoice->invoice_number = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
             }
         });
+
+        static::updated(function (Invoice $invoice) {
+            if ($invoice->wasChanged('status') && $invoice->status === 'paid' && !$invoice->is_reseller_balance) {
+                try {
+                    \App\Services\AffiliateService::recordMonthlyCommission($invoice);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[Affiliate] Monthly commission error: ' . $e->getMessage());
+                }
+            }
+        });
     }
 }

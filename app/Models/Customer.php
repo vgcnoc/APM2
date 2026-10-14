@@ -34,6 +34,7 @@ class Customer extends Model
         'base_amount',
         'installation_fee',
         'sales_id',
+        'referral_code',
         'is_audited',
         'area_id',
         'tax_ppn',
@@ -278,6 +279,34 @@ class Customer extends Model
 
             if (empty($customer->registration_date)) {
                 $customer->registration_date = now()->toDateString();
+            }
+        });
+
+        static::created(function (Customer $customer) {
+            if ($customer->referral_code && !$customer->sales_id) {
+                $aff = \App\Models\AffiliateProfile::where('referral_code', $customer->referral_code)->first();
+                if ($aff) {
+                    $customer->sales_id = $aff->user_id;
+                    $customer->saveQuietly();
+                }
+            }
+
+            if ($customer->sales_id && $customer->service_status !== 'gratis') {
+                try {
+                    \App\Services\AffiliateService::recordBookingCommission($customer);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[Affiliate] Booking commission error: ' . $e->getMessage());
+                }
+            }
+        });
+
+        static::updated(function (Customer $customer) {
+            if ($customer->wasChanged('sales_id') && $customer->sales_id && $customer->service_status !== 'gratis') {
+                try {
+                    \App\Services\AffiliateService::recordBookingCommission($customer);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[Affiliate] Booking commission error: ' . $e->getMessage());
+                }
             }
         });
     }

@@ -24,6 +24,10 @@ class DashboardController extends Controller
             return $this->teknisiDashboard();
         }
 
+        if (auth()->check() && (auth()->user()->role === 'sales' || auth()->user()->role === 'affiliate')) {
+            return redirect()->route('affiliate.dashboard');
+        }
+
         if (auth()->check() && (auth()->user()->role === 'reseller' || auth()->user()->role === 'customer')) {
             $user = auth()->user();
             $customer = $user->customer;

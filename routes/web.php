@@ -551,4 +551,20 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('auth-logs', [\App\Http\Controllers\Radius\AuthLogController::class, 'index'])->name('auth-logs.index');
     });
+
+    // ── Portal Khusus Mitra Afiliasi & Sales ────────────────────
+    Route::prefix('affiliate')->name('affiliate.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\AffiliatePortalController::class, 'dashboard'])->name('dashboard');
+        Route::post('/bank', [\App\Http\Controllers\AffiliatePortalController::class, 'updateBank'])->name('bank');
+        Route::post('/withdraw', [\App\Http\Controllers\AffiliatePortalController::class, 'withdraw'])->name('withdraw');
+    });
+
+    // ── Manajemen Afiliasi & Pengaturan Komisi (Admin) ─────────
+    Route::prefix('marketing/affiliates')->name('admin.affiliates.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'index'])->name('index');
+        Route::post('/settings', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'saveSettings'])->name('settings');
+        Route::post('/withdrawals/{withdrawal}/approve', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'approveWithdrawal'])->name('withdrawals.approve');
+        Route::post('/withdrawals/{withdrawal}/reject', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'rejectWithdrawal'])->name('withdrawals.reject');
+        Route::post('/{affiliate}/toggle-status', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'toggleStatus'])->name('toggle-status');
+    });
 });

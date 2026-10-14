@@ -400,6 +400,21 @@ const handleCheckBill = async () => {
                                 Cek Tagihan Publik
                             </button>
                         </div>
+
+                        <!-- Marketing Affiliate Program Callout -->
+                        <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs bg-gradient-to-r from-amber-50 to-orange-50 p-2.5 rounded-xl border border-amber-200/60">
+                            <div class="flex items-center gap-2 text-amber-900 font-medium">
+                                <span class="text-base">💼</span>
+                                <span>Mau hasilkan komisi bulanan? <strong>Gabung Afiliasi</strong></span>
+                            </div>
+                            <Link
+                                href="/register-affiliate"
+                                class="inline-flex items-center gap-1 font-bold text-amber-800 hover:text-amber-900 hover:underline whitespace-nowrap text-xs bg-amber-100/90 px-2.5 py-1 rounded-lg border border-amber-300/60 transition-colors shadow-xs"
+                            >
+                                <span>Daftar Gratis</span>
+                                <span>&rarr;</span>
+                            </Link>
+                        </div>
                     </div>
 
                 </div>

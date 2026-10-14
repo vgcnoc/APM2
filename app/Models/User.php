@@ -55,6 +55,16 @@ class User extends Authenticatable
         return $this->belongsTo(Area::class, 'area_id');
     }
 
+    public function affiliateProfile(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(AffiliateProfile::class);
+    }
+
+    public function affiliateCommissions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(AffiliateCommission::class, 'affiliate_id');
+    }
+
     public function getAccessibleAreaIds(): array
     {
         $areas = (array) ($this->accessible_areas ?? []);

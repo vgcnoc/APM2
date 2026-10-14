@@ -378,7 +378,30 @@ const menuItems = [
         ]
     },
 
-    // 6. INFRASTRUKTUR JARINGAN
+    // 6. MARKETING & AFILIASI
+    { type: 'group', label: 'MARKETING & AFILIASI' },
+    {
+        type: 'dropdown',
+        icon: 'gift',
+        label: 'Marketing Afiliasi',
+        active: (url) => (url || '').startsWith('/marketing/affiliates'),
+        permission: 'menu_customers_all',
+        children: [
+            { href: '/marketing/affiliates?tab=settings', label: 'Pengaturan Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && ((url || '').includes('tab=settings') || !(url || '').includes('tab=')), permission: 'menu_customers_all' },
+            { href: '/marketing/affiliates?tab=affiliates', label: 'Mitra & Agen Sales', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=affiliates'), permission: 'menu_customers_all' },
+            { href: '/marketing/affiliates?tab=commissions', label: 'Riwayat Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=commissions'), permission: 'menu_customers_all' },
+            { href: '/marketing/affiliates?tab=withdrawals', label: 'Pencairan Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=withdrawals'), permission: 'menu_customers_all' },
+        ]
+    },
+    {
+        type: 'link',
+        href: '/affiliate/dashboard',
+        icon: 'sparkles',
+        label: 'Portal Mitra Saya',
+        active: (url) => (url || '').startsWith('/affiliate'),
+    },
+
+    // 7. INFRASTRUKTUR JARINGAN
     { type: 'group', label: 'INFRASTRUKTUR JARINGAN' },
     {
         type: 'dropdown',
@@ -643,6 +666,7 @@ const iconPaths = {
     cash: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
     'chart-pie': 'M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z',
     scissors: 'M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879a3 3 0 11-1.414-1.414L10.586 12 7.707 9.121a3 3 0 111.414-1.414L12 10.586m0 0L19 12',
-    gift: 'M12 8v13m0-13V4.5a2.5 2.5 0 115 0v3.5m-5 0V4.5a2.5 2.5 0 10-5 0v3.5m-5 0h20a1 1 0 011 1v3a1 1 0 01-1 1H2a1 1 0 01-1-1V9a1 1 0 011-1zm1 5v7a2 2 0 002 2h14a2 2 0 002-2v-7'
+    gift: 'M12 8v13m0-13V4.5a2.5 2.5 0 115 0v3.5m-5 0V4.5a2.5 2.5 0 10-5 0v3.5m-5 0h20a1 1 0 011 1v3a1 1 0 01-1 1H2a1 1 0 01-1-1V9a1 1 0 011-1zm1 5v7a2 2 0 002 2h14a2 2 0 002-2v-7',
+    sparkles: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.286L13 21l-2.286-6.857L5 12l5.714-2.286L13 3z'
 };
 </script>
