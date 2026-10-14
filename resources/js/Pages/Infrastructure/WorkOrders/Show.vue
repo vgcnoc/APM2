@@ -164,9 +164,20 @@ const formatDate = (dateStr) => {
                         <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow-sm">
                             {{ workOrder.target_name }}
                         </h1>
-                        <p class="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
-                            Wilayah: <b>{{ workOrder.area?.name }}</b> &bull; Target Selesai: <b>{{ formatDate(workOrder.scheduled_date) }}</b> &bull; Teknisi: <b>{{ workOrder.technician?.name || '-' }}</b>
-                        </p>
+                        <div class="text-xs sm:text-sm text-slate-300 mt-1 max-w-3xl flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span>Wilayah: <b>{{ workOrder.area?.name }}</b></span>
+                            <span>&bull;</span>
+                            <span>Target: <b>{{ formatDate(workOrder.scheduled_date) }}</b></span>
+                            <span>&bull;</span>
+                            <span>Lead Splicer: <b class="text-amber-300">🌟 {{ workOrder.technician?.name || '-' }}</b></span>
+                            <template v-if="workOrder.technicians && workOrder.technicians.length > 1">
+                                <span>&bull;</span>
+                                <span class="text-slate-400">Tim:</span>
+                                <span v-for="t in workOrder.technicians.filter(u => u.id !== workOrder.technician_id)" :key="t.id" class="px-2 py-0.5 rounded-md bg-white/10 text-xs text-white font-medium border border-white/10">
+                                    👷 {{ t.name }}
+                                </span>
+                            </template>
+                        </div>
 
                         <div v-if="workOrder.rejection_reason && workOrder.status === 'rejected'" class="mt-3 p-3 rounded-xl bg-rose-500/20 border border-rose-400/40 text-xs text-rose-200">
                             <b>Catatan Revisi NOC:</b> {{ workOrder.rejection_reason }}
@@ -315,6 +326,45 @@ const formatDate = (dateStr) => {
                                     <span class="font-bold text-emerald-600 text-sm">{{ workOrder.cable_length_used ? workOrder.cable_length_used + ' Meter' : 'Belum diinput' }}</span>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Tim Teknisi & Splicer -->
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <span>👷 Tim Teknisi &amp; Splicer Rollout</span>
+                            </span>
+                            <span class="text-indigo-600 font-semibold">{{ workOrder.technicians?.length || 1 }} Orang Ditugaskan</span>
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                            <!-- Lead Splicer Card -->
+                            <div class="p-3 rounded-xl bg-amber-50 border border-amber-200/80 flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-amber-500 text-white font-black flex items-center justify-center text-sm shadow-xs">
+                                    🌟
+                                </div>
+                                <div class="truncate">
+                                    <p class="text-xs font-bold text-amber-900 truncate">{{ workOrder.technician?.name || '-' }}</p>
+                                    <p class="text-[10px] font-semibold text-amber-700">Lead Splicer (Koordinator)</p>
+                                </div>
+                            </div>
+
+                            <!-- Helper / Team Members -->
+                            <template v-if="workOrder.technicians">
+                                <div
+                                    v-for="tech in workOrder.technicians.filter(u => u.id !== workOrder.technician_id)"
+                                    :key="tech.id"
+                                    class="p-3 rounded-xl bg-white border border-slate-200 flex items-center gap-3"
+                                >
+                                    <div class="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 font-black flex items-center justify-center text-xs">
+                                        {{ tech.name.substring(0, 2).toUpperCase() }}
+                                    </div>
+                                    <div class="truncate">
+                                        <p class="text-xs font-bold text-slate-800 truncate">{{ tech.name }}</p>
+                                        <p class="text-[10px] text-slate-400 capitalize">{{ tech.pivot?.role === 'lead_splicer' ? 'Lead Splicer' : 'Anggota Tim / Helper' }}</p>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </div>
                 </div>

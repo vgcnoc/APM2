@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InfrastructureWorkOrder extends Model
@@ -80,6 +81,13 @@ class InfrastructureWorkOrder extends Model
     public function technician(): BelongsTo
     {
         return $this->belongsTo(User::class, 'technician_id');
+    }
+
+    public function technicians(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'infrastructure_work_order_technicians', 'work_order_id', 'user_id')
+            ->withPivot('role')
+            ->withTimestamps();
     }
 
     public function creator(): BelongsTo

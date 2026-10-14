@@ -169,6 +169,12 @@ class InfrastructureWorkOrderService
         return DB::transaction(function () use ($data, $materials, $creator) {
             $woNumber = self::generateWoNumber($data['type']);
 
+            $technicianIds = $data['technician_ids'] ?? [];
+            if (empty($technicianIds) && !empty($data['technician_id'])) {
+                $technicianIds = [(int) $data['technician_id']];
+            }
+            $leadTechId = $data['technician_id'] ?? ($technicianIds[0] ?? null);
+
             $workOrder = InfrastructureWorkOrder::create([
                 'wo_number' => $woNumber,
                 'type' => $data['type'],
@@ -183,7 +189,7 @@ class InfrastructureWorkOrderService
                 'location' => $data['location'] ?? null,
                 'planned_latitude' => $data['planned_latitude'] ?? null,
                 'planned_longitude' => $data['planned_longitude'] ?? null,
-                'technician_id' => $data['technician_id'] ?? null,
+                'technician_id' => $leadTechId,
                 'created_by' => $creator->id,
                 'scheduled_date' => $data['scheduled_date'] ?? now()->toDateString(),
                 'status' => 'pending_material',
@@ -191,6 +197,16 @@ class InfrastructureWorkOrderService
                 'end_point' => $data['end_point'] ?? null,
                 'notes' => $data['notes'] ?? null,
             ]);
+
+            // Hubungkan semua teknisi / tim pelaksana yang dipilih
+            if (!empty($technicianIds)) {
+                $attachData = [];
+                foreach (array_unique($technicianIds) as $techId) {
+                    $role = ($techId == $leadTechId) ? 'lead_splicer' : 'technician';
+                    $attachData[$techId] = ['role' => $role];
+                }
+                $workOrder->technicians()->sync($attachData);
+            }
 
             foreach ($materials as $mat) {
                 if (!empty($mat['material_id']) && !empty($mat['quantity'])) {

@@ -257,10 +257,15 @@ const formatDate = (dateStr) => {
                                 <!-- Teknisi -->
                                 <td class="px-4 py-3.5">
                                     <div class="flex items-center gap-1.5">
-                                        <span class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px]">
+                                        <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-[10px]" title="Lead Splicer">
                                             {{ wo.technician?.name ? wo.technician.name.charAt(0).toUpperCase() : 'T' }}
                                         </span>
-                                        <span class="font-semibold text-slate-800">{{ wo.technician?.name || 'Belum Ditugaskan' }}</span>
+                                        <div>
+                                            <span class="font-semibold text-slate-800 block">{{ wo.technician?.name || 'Belum Ditugaskan' }}</span>
+                                            <span v-if="wo.technicians && wo.technicians.length > 1" class="text-[10px] text-indigo-600 font-bold block">
+                                                +{{ wo.technicians.length - 1 }} Anggota Tim
+                                            </span>
+                                        </div>
                                     </div>
                                 </td>
 

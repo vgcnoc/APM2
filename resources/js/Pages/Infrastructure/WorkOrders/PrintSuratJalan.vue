@@ -92,8 +92,14 @@
                         <table class="w-full text-xs">
                             <tbody>
                                 <tr>
-                                    <td class="text-gray-500 py-1 w-28 font-medium">Teknisi Bertugas</td>
-                                    <td class="font-bold text-blue-700 py-1 text-sm">{{ workOrder.technician?.name || '-' }}</td>
+                                    <td class="text-gray-500 py-1 w-28 font-medium">Lead Splicer</td>
+                                    <td class="font-bold text-blue-700 py-1 text-sm">🌟 {{ workOrder.technician?.name || '-' }}</td>
+                                </tr>
+                                <tr v-if="workOrder.technicians && workOrder.technicians.length > 1">
+                                    <td class="text-gray-500 py-1 font-medium">Tim / Helper</td>
+                                    <td class="font-semibold text-gray-800 py-1">
+                                        {{ workOrder.technicians.filter(u => u.id !== workOrder.technician_id).map(u => u.name).join(', ') }}
+                                    </td>
                                 </tr>
                                 <tr>
                                     <td class="text-gray-500 py-1 font-medium">Jadwal Pasang</td>

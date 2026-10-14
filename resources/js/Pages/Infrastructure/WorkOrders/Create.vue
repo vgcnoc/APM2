@@ -29,6 +29,7 @@ const form = useForm({
     planned_latitude: '',
     planned_longitude: '',
     technician_id: props.technicians[0]?.id || '',
+    technician_ids: props.technicians[0]?.id ? [props.technicians[0]?.id] : [],
     scheduled_date: new Date().toISOString().slice(0, 10),
     start_point: '',
     end_point: '',
@@ -36,6 +37,27 @@ const form = useForm({
     notes: '',
     materials: [],
 });
+
+const toggleTechnician = (id) => {
+    const idx = form.technician_ids.indexOf(id);
+    if (idx > -1) {
+        if (form.technician_ids.length > 1) {
+            form.technician_ids.splice(idx, 1);
+            if (form.technician_id === id) {
+                form.technician_id = form.technician_ids[0];
+            }
+        }
+    } else {
+        form.technician_ids.push(id);
+    }
+};
+
+const setLeadTechnician = (id) => {
+    form.technician_id = id;
+    if (!form.technician_ids.includes(id)) {
+        form.technician_ids.push(id);
+    }
+};
 
 // Filter OLT dan ODC berdasarkan Area yang dipilih
 const filteredOlts = computed(() => {
@@ -478,24 +500,74 @@ const submit = () => {
                         <span>Langkah 3: Penunjukan Teknisi &amp; Jadwal Pelaksanaan</span>
                     </h3>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Teknisi / Lead Splicer</label>
-                            <select
-                                v-model="form.technician_id"
-                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                            >
-                                <option v-for="t in technicians" :key="t.id" :value="t.id">{{ t.name }}</option>
-                            </select>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center gap-1.5">
+                                    <span>🌟</span>
+                                    <span>Lead Splicer / Koordinator Utama</span>
+                                </label>
+                                <select
+                                    :value="form.technician_id"
+                                    @change="setLeadTechnician(Number($event.target.value))"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900"
+                                >
+                                    <option v-for="t in technicians" :key="t.id" :value="t.id">
+                                        {{ t.name }}
+                                    </option>
+                                </select>
+                                <p class="text-[11px] text-slate-400 mt-1">Penanggung jawab utama atas kualitas redaman OPM & serah terima barang.</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Target Tanggal Pengerjaan</label>
+                                <input
+                                    v-model="form.scheduled_date"
+                                    type="date"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                                />
+                                <p class="text-[11px] text-slate-400 mt-1">Estimasi jadwal penarikan kabel & splicing di tiang OSP.</p>
+                            </div>
                         </div>
 
+                        <!-- Multi-Select Tim Teknisi Tambahan -->
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Target Tanggal Pengerjaan</label>
-                            <input
-                                v-model="form.scheduled_date"
-                                type="date"
-                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                            />
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-xs font-bold text-slate-700 uppercase">
+                                    👷 Anggota Tim Teknisi / Helper (Bisa Pilih Lebih Dari 1)
+                                </label>
+                                <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                                    {{ form.technician_ids.length }} Teknisi Terpilih
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+                                <label
+                                    v-for="t in technicians"
+                                    :key="t.id"
+                                    class="flex items-center gap-2 p-2.5 rounded-xl border text-xs cursor-pointer transition-all select-none"
+                                    :class="form.technician_ids.includes(t.id) 
+                                        ? (form.technician_id === t.id ? 'bg-amber-50/80 border-amber-300 text-amber-900 shadow-xs' : 'bg-white border-indigo-300 text-indigo-900 shadow-xs') 
+                                        : 'bg-white/60 border-slate-200 text-slate-600 hover:bg-white'"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        :value="t.id"
+                                        :checked="form.technician_ids.includes(t.id)"
+                                        @change="toggleTechnician(t.id)"
+                                        class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                                    />
+                                    <div class="truncate">
+                                        <div class="font-bold truncate flex items-center gap-1">
+                                            <span>{{ t.name }}</span>
+                                            <span v-if="form.technician_id === t.id" class="text-[10px] text-amber-600" title="Lead Splicer">🌟</span>
+                                        </div>
+                                        <div class="text-[10px] text-slate-400">
+                                            {{ form.technician_id === t.id ? 'Lead Splicer' : 'Anggota Tim' }}
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
                     </div>
 

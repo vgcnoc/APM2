@@ -21,14 +21,17 @@ class InfrastructureWorkOrderController extends Controller
      */
     public function index(Request $request): Response
     {
-        $query = InfrastructureWorkOrder::with(['area', 'olt', 'parentOdc', 'technician', 'creator']);
+        $query = InfrastructureWorkOrder::with(['area', 'olt', 'parentOdc', 'technician', 'technicians', 'creator']);
 
         // Filter Hak Akses Area
         if (Auth::check() && !Auth::user()->hasRole('admin') && !Auth::user()->can('network_odc_view_all')) {
             if (Auth::user()->can('network_odc_view_area')) {
                 $query->whereIn('area_id', Auth::user()->getAccessibleAreaIds());
             } elseif (Auth::user()->role === 'teknisi') {
-                $query->where('technician_id', Auth::id());
+                $query->where(function ($q) {
+                    $q->where('technician_id', Auth::id())
+                      ->orWhereHas('technicians', fn($t) => $t->where('users.id', Auth::id()));
+                });
             }
         }
 
@@ -53,7 +56,10 @@ class InfrastructureWorkOrderController extends Controller
         }
 
         if ($request->technician_id) {
-            $query->where('technician_id', $request->technician_id);
+            $query->where(function ($q) use ($request) {
+                $q->where('technician_id', $request->technician_id)
+                  ->orWhereHas('technicians', fn($t) => $t->where('users.id', $request->technician_id));
+            });
         }
 
         $workOrders = $query->latest('id')->paginate(15)->withQueryString();
@@ -136,7 +142,9 @@ class InfrastructureWorkOrderController extends Controller
             'location' => 'nullable|string|max:500',
             'planned_latitude' => 'nullable|numeric|between:-90,90',
             'planned_longitude' => 'nullable|numeric|between:-180,180',
-            'technician_id' => 'required|exists:users,id',
+            'technician_id' => 'nullable|exists:users,id',
+            'technician_ids' => 'required|array|min:1',
+            'technician_ids.*' => 'exists:users,id',
             'scheduled_date' => 'required|date',
             'start_point' => 'nullable|string|max:255',
             'end_point' => 'nullable|string|max:255',
@@ -167,6 +175,7 @@ class InfrastructureWorkOrderController extends Controller
             'olt',
             'parentOdc',
             'technician',
+            'technicians',
             'creator',
             'approver',
             'materials.material',
@@ -185,7 +194,7 @@ class InfrastructureWorkOrderController extends Controller
      */
     public function printSuratJalan(InfrastructureWorkOrder $workOrder)
     {
-        $workOrder->load(['area', 'olt', 'parentOdc', 'technician', 'creator', 'materials.material']);
+        $workOrder->load(['area', 'olt', 'parentOdc', 'technician', 'technicians', 'creator', 'materials.material']);
 
         return Inertia::render('Infrastructure/WorkOrders/PrintSuratJalan', [
             'workOrder' => $workOrder,
