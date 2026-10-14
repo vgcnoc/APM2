@@ -36,6 +36,7 @@ class RoleAndPermissionSeeder extends Seeder
             'menu_network_odc', 'network_odc_create', 'network_odc_edit', 'network_odc_delete',
             'menu_network_odp', 'network_odp_create', 'network_odp_edit', 'network_odp_delete',
             'menu_network_ont', 'network_ont_create', 'network_ont_edit', 'network_ont_delete',
+            'menu_infrastructure_work_orders', 'infrastructure_work_orders_create', 'infrastructure_work_orders_edit', 'infrastructure_work_orders_delete', 'infrastructure_work_orders_approve',
             
             // Menu Materials
             'menu_materials', 'materials_create', 'materials_edit', 'materials_delete',
@@ -84,6 +85,7 @@ class RoleAndPermissionSeeder extends Seeder
         $roleNoc->givePermissionTo([
             'menu_dashboard', 'menu_ftth', 'menu_network_topology', 'menu_network_data',
             'menu_network_olt', 'menu_network_odc', 'menu_network_odp', 'menu_network_ont',
+            'menu_infrastructure_work_orders', 'infrastructure_work_orders_create', 'infrastructure_work_orders_edit', 'infrastructure_work_orders_approve',
             'menu_customers_installed', 'menu_customers_activation', 'menu_customers_online',
             'menu_routers', 'routers_create', 'routers_edit', 'routers_delete',
             'menu_radius_nas', 'radius_nas_create', 'radius_nas_edit', 'radius_nas_delete',
@@ -95,6 +97,7 @@ class RoleAndPermissionSeeder extends Seeder
         $roleTeknisi = Role::firstOrCreate(['name' => 'teknisi']);
         $roleTeknisi->givePermissionTo([
             'menu_dashboard', 'menu_ftth', 'menu_materials', 'menu_material_transactions',
+            'menu_infrastructure_work_orders', 'menu_network_odc', 'menu_network_odp',
             'menu_customers_installed', 'customers_installed_report', 'customers_installed_edit',
             'menu_tickets', 'tickets_edit',
         ]);
