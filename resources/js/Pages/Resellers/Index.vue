@@ -58,7 +58,7 @@ const openEditModal = (reseller) => {
 
 const openCreateAccountModal = (reseller) => {
     accountReseller.value = reseller;
-    createForm.email = reseller.customer.email || '';
+    createForm.email = reseller.customer?.email || reseller.user?.email || '';
     createForm.password = '';
     showCreateModal.value = true;
 };
@@ -204,19 +204,48 @@ const deleteReseller = (reseller) => {
                             <tr v-for="reseller in resellers.data" :key="reseller.id" class="hover:bg-gray-50/50 transition-colors">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div v-if="reseller.customer">
-                                        <Link :href="`/customers/${reseller.customer.id}`" class="text-sm font-medium text-blue-600 hover:underline">
-                                            {{ reseller.customer.name }}
-                                        </Link>
-                                        <div class="text-xs text-gray-500 mt-1">{{ reseller.customer.phone || '-' }}</div>
-                                        <div class="text-[10px] text-gray-400">{{ reseller.customer.customer_code }}</div>
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <Link :href="`/customers/${reseller.customer.id}`" class="text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors">
+                                                {{ reseller.customer.name }}
+                                            </Link>
+                                            <span v-if="!reseller.customer.package_id" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200">
+                                                🎟️ Biller &amp; Reseller Murni
+                                            </span>
+                                            <span v-else class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                                                🌐 Pelanggan + Reseller
+                                            </span>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                                            <span>{{ reseller.customer.phone || reseller.user?.phone || '-' }}</span>
+                                            <a v-if="reseller.customer.phone || reseller.user?.phone" :href="`https://wa.me/${(reseller.customer.phone || reseller.user?.phone || '').replace(/^0/, '62')}`" target="_blank" class="text-[10px] text-emerald-600 font-bold hover:underline">
+                                                💬 WA
+                                            </a>
+                                        </div>
+                                        <div class="text-[10px] text-gray-400 font-mono">{{ reseller.customer.customer_code }}</div>
+                                    </div>
+                                    <div v-else-if="reseller.user">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <span class="text-sm font-semibold text-gray-900">{{ reseller.user.name }}</span>
+                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200">
+                                                🎟️ Mitra Biller Murni
+                                            </span>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                                            <span>{{ reseller.user.phone || '-' }}</span>
+                                            <a v-if="reseller.user.phone" :href="`https://wa.me/${reseller.user.phone.replace(/^0/, '62')}`" target="_blank" class="text-[10px] text-emerald-600 font-bold hover:underline">
+                                                💬 WA
+                                            </a>
+                                        </div>
+                                        <div class="text-[10px] text-gray-400">{{ reseller.user.email }}</div>
                                     </div>
                                     <div v-else class="text-sm text-red-500 font-bold">Error: No Customer</div>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                                     <span v-if="reseller.customer">
                                         {{ reseller.customer.address || '-' }}
-                                        <div v-if="reseller.customer.area_model" class="text-xs text-indigo-600 mt-1">{{ reseller.customer.area_model.name }}</div>
+                                        <div v-if="reseller.customer.area_model" class="text-xs text-indigo-600 mt-1 font-semibold">{{ reseller.customer.area_model.name }}</div>
                                     </span>
+                                    <span v-else class="text-gray-400">-</span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                     Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}
@@ -229,10 +258,10 @@ const deleteReseller = (reseller) => {
                                     <Link v-if="reseller.customer" :href="`/customers/${reseller.customer.id}/edit`" class="text-indigo-600 hover:text-indigo-900 p-2 rounded-lg hover:bg-indigo-50 transition-colors ml-1" title="Edit Profil Pelanggan">
                                         <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                     </Link>
-                                    <button v-if="reseller.customer && !reseller.user" @click="openCreateAccountModal(reseller)" class="text-emerald-600 hover:text-emerald-900 p-2 rounded-lg hover:bg-emerald-50 transition-colors ml-1" title="Buat Akun Login">
+                                    <button v-if="!reseller.user && !reseller.user_id" @click="openCreateAccountModal(reseller)" class="text-emerald-600 hover:text-emerald-900 p-2 rounded-lg hover:bg-emerald-50 transition-colors ml-1" title="Buat Akun Login">
                                         <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                                     </button>
-                                    <button v-if="reseller.customer && reseller.user" @click="openResetModal(reseller)" class="text-amber-600 hover:text-amber-900 p-2 rounded-lg hover:bg-amber-50 transition-colors ml-1" title="Edit Akun Login">
+                                    <button v-if="reseller.user || reseller.user_id" @click="openResetModal(reseller)" class="text-amber-600 hover:text-amber-900 p-2 rounded-lg hover:bg-amber-50 transition-colors ml-1" title="Edit Akun Login">
                                         <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                     </button>
                                     <button @click="openEditModal(reseller)" class="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition-colors ml-1" title="Edit Dompet">

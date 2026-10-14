@@ -1,5 +1,5 @@
 <script setup>
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, Link } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import axios from 'axios';
 import AppLogo from '@/Components/AppLogo.vue';
@@ -246,6 +246,26 @@ const handleCheckBill = async () => {
                         </div>
                     </div>
 
+                    <!-- Self Register Banner (Highlight for Reseller / Biller) -->
+                    <div v-if="currentTab === 'reseller'" class="mb-6 p-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/20 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in duration-200">
+                        <div class="flex items-center gap-3 text-center sm:text-left">
+                            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center flex-shrink-0 text-xl shadow-xs">
+                                🏪
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold">Mau Buka Loket &amp; Jual Voucher?</h3>
+                                <p class="text-xs text-emerald-100">Bukan pelanggan tetap bisa buka loket biller &amp; cetak voucher WiFi.</p>
+                            </div>
+                        </div>
+                        <Link
+                            :href="route('register-reseller')"
+                            class="w-full sm:w-auto px-4 py-2 bg-white text-emerald-800 hover:bg-emerald-50 font-bold text-xs rounded-lg shadow transition-all duration-150 flex items-center justify-center gap-1.5 whitespace-nowrap"
+                        >
+                            <span>Daftar Mitra Mandiri</span>
+                            <span>&rarr;</span>
+                        </Link>
+                    </div>
+
                     <!-- Instant Check Bill Banner (Highlight for Pelanggan) -->
                     <div v-if="currentTab === 'customer'" class="mb-6 p-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/20 flex flex-col sm:flex-row items-center justify-between gap-3">
                         <div class="flex items-center gap-3 text-center sm:text-left">
@@ -380,7 +400,7 @@ const handleCheckBill = async () => {
 
                         <div class="text-center sm:text-right">
                             <span v-if="currentTab === 'reseller'" class="text-gray-500">
-                                Mau jadi agen loket? Hubungi CS kami
+                                Mau jadi agen loket? <Link :href="route('register-reseller')" class="text-emerald-600 font-bold hover:underline">Daftar Mandiri &rarr;</Link>
                             </span>
                             <span v-else-if="currentTab === 'customer'" class="text-gray-500">
                                 Butuh bantuan login? Hubungi Helpdesk

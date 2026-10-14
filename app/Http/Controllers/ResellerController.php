@@ -19,15 +19,26 @@ class ResellerController extends Controller
     public function index(Request $request)
     {
         $query = Reseller::with(['customer.areaModel', 'customer.package', 'customer.user', 'user'])
-            ->whereHas('customer', function($q) {
-                $q->where('status', 'active');
+            ->where(function($q) {
+                $q->whereNull('customer_id')
+                  ->orWhereHas('customer', function($cq) {
+                      $cq->where('status', 'active');
+                  });
             });
 
-        if ($request->has('search')) {
-            $query->whereHas('customer', function($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('phone', 'like', '%' . $request->search . '%')
-                  ->orWhere('customer_code', 'like', '%' . $request->search . '%');
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function($q) use ($search) {
+                $q->whereHas('customer', function($cq) use ($search) {
+                    $cq->where('name', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%")
+                      ->orWhere('customer_code', 'like', "%{$search}%");
+                })
+                ->orWhereHas('user', function($uq) use ($search) {
+                    $uq->where('name', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
             });
         }
 
