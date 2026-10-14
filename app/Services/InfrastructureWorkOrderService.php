@@ -45,7 +45,7 @@ class InfrastructureWorkOrderService
     /**
      * Auto-BOM (Bill of Materials) Generator cerdas sesuai tipe & kapasitas ODC/ODP.
      */
-    public static function getSuggestedBOM(string $type, int $capacity = 8, int $cableLengthEstimate = 150, ?int $areaId = null): array
+    public static function getSuggestedBOM(string $type, int $capacity = 8, int $cableLengthEstimate = 150, ?int $areaId = null, ?string $deviceType = null): array
     {
         $suggestions = [];
 
@@ -54,24 +54,26 @@ class InfrastructureWorkOrderService
             $box = Material::where('name', 'like', '%ODC%')->first()
                 ?? Material::where('category', 'like', '%Box%')->first();
             if ($box) {
+                $odcLabel = $deviceType ? "Box ODC {$deviceType} {$capacity} Core" : "Box ODC Outdoor Kapasitas {$capacity} Core";
                 $suggestions[] = [
                     'material_id' => $box->id,
                     'name' => $box->name,
                     'quantity' => 1,
                     'unit' => $box->unit ?? 'pcs',
-                    'note' => 'Box ODC Outdoor Kapasitas ' . $capacity . ' Core',
+                    'note' => $odcLabel,
                 ];
             }
 
             // Splitter ODC
             $splitter = Material::where('name', 'like', '%Splitter%')->first();
             if ($splitter) {
+                $splitterNote = ($deviceType === 'Split') ? 'Splitter FBT Feeder ODC' : 'PLC Splitter Modular ODC';
                 $suggestions[] = [
                     'material_id' => $splitter->id,
                     'name' => $splitter->name,
                     'quantity' => 1,
                     'unit' => $splitter->unit ?? 'pcs',
-                    'note' => 'PLC Splitter Modular ODC',
+                    'note' => $splitterNote,
                 ];
             }
         } else {
@@ -79,24 +81,26 @@ class InfrastructureWorkOrderService
             $box = Material::where('name', 'like', '%ODP%')->first()
                 ?? Material::where('category', 'like', '%Box%')->first();
             if ($box) {
+                $odpLabel = $deviceType ? "Box ODP {$deviceType} {$capacity} Port" : "Box ODP Solid/Split {$capacity} Port";
                 $suggestions[] = [
                     'material_id' => $box->id,
                     'name' => $box->name,
                     'quantity' => 1,
                     'unit' => $box->unit ?? 'pcs',
-                    'note' => "Box ODP Solid/Split {$capacity} Port",
+                    'note' => $odpLabel,
                 ];
             }
 
             // Splitter ODP
             $splitter = Material::where('name', 'like', '%Splitter%')->first();
             if ($splitter) {
+                $odpSplitterNote = ($deviceType === 'Split 2') ? "PLC Splitter 1:{$capacity} + FBT Split 2" : "PLC Splitter 1:{$capacity} Mini Box";
                 $suggestions[] = [
                     'material_id' => $splitter->id,
                     'name' => $splitter->name,
                     'quantity' => 1,
                     'unit' => $splitter->unit ?? 'pcs',
-                    'note' => "PLC Splitter 1:{$capacity} Mini Box",
+                    'note' => $odpSplitterNote,
                 ];
             }
         }
@@ -178,6 +182,7 @@ class InfrastructureWorkOrderService
             $workOrder = InfrastructureWorkOrder::create([
                 'wo_number' => $woNumber,
                 'type' => $data['type'],
+                'device_type' => $data['device_type'] ?? 'Normal',
                 'target_name' => $data['target_name'],
                 'area_id' => $data['area_id'],
                 'olt_id' => $data['olt_id'] ?? null,
@@ -417,12 +422,15 @@ class InfrastructureWorkOrderService
 
             if ($workOrder->type === 'odc_deployment') {
                 // 1. Buat Record ODC Baru
+                $odcType = $workOrder->device_type ?: ($workOrder->splitter_ratio === 'Split' ? 'Split' : 'Normal');
+                $isSplit = in_array($odcType, ['Split']) || str_contains(strtolower($workOrder->splitter_ratio ?? ''), 'split');
+
                 $odc = Odc::create([
                     'olt_id' => $workOrder->olt_id,
                     'pon_port' => $workOrder->pon_port,
                     'area_id' => $workOrder->area_id,
                     'name' => $workOrder->target_name,
-                    'type' => $workOrder->splitter_ratio === 'Split' ? 'Split' : 'Normal',
+                    'type' => $odcType,
                     'photo' => $photo,
                     'location' => $workOrder->location,
                     'latitude' => $lat,
@@ -434,16 +442,19 @@ class InfrastructureWorkOrderService
                     'start_point' => $workOrder->start_point,
                     'end_point' => $workOrder->end_point,
                     'cable_pull' => $workOrder->cable_length_used ? "{$workOrder->cable_length_used}m" : null,
-                    'is_split' => $workOrder->splitter_ratio === 'Split',
+                    'is_split' => $isSplit,
                 ]);
                 $createdOdcId = $odc->id;
             } else {
                 // 2. Buat Record ODP Baru
+                $odpType = $workOrder->device_type ?: ($workOrder->splitter_ratio === 'Split 2' ? 'Split 2' : 'Normal');
+                $isSplit = in_array($odpType, ['Split 2']) || str_contains(strtolower($workOrder->splitter_ratio ?? ''), 'split');
+
                 $odp = Odp::create([
                     'odc_id' => $workOrder->odc_id,
                     'area_id' => $workOrder->area_id,
                     'name' => $workOrder->target_name,
-                    'type' => $workOrder->splitter_ratio === 'Split 2' ? 'Split 2' : 'Normal',
+                    'type' => $odpType,
                     'address' => $workOrder->location,
                     'latitude' => $lat,
                     'longitude' => $lng,
@@ -451,7 +462,7 @@ class InfrastructureWorkOrderService
                     'end_point' => $workOrder->end_point,
                     'cable_pull' => $workOrder->cable_length_used ? "{$workOrder->cable_length_used}m" : null,
                     'photo' => $photo,
-                    'is_split' => $workOrder->splitter_ratio === 'Split 2',
+                    'is_split' => $isSplit,
                     'total_ports' => $workOrder->capacity ?: 8,
                     'used_ports' => 0,
                     'status' => 'active',

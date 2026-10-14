@@ -15,6 +15,7 @@ class InfrastructureWorkOrder extends Model
     protected $fillable = [
         'wo_number',
         'type',
+        'device_type',
         'target_name',
         'area_id',
         'olt_id',

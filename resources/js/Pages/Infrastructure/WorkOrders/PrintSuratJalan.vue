@@ -60,8 +60,8 @@
                                 <tr>
                                     <td class="text-gray-500 py-1 w-28 font-medium">Tipe Deployment</td>
                                     <td class="font-bold py-1">
-                                        <span v-if="workOrder.type === 'odc_deployment'" class="text-purple-700">Pemasangan ODC Baru</span>
-                                        <span v-else class="text-emerald-700">Pemasangan ODP Baru</span>
+                                        <span v-if="workOrder.type === 'odc_deployment'" class="text-purple-700">Pemasangan ODC Baru (Tipe: {{ workOrder.device_type || 'Normal' }})</span>
+                                        <span v-else class="text-emerald-700">Pemasangan ODP Baru (Tipe: {{ workOrder.device_type || 'Normal' }})</span>
                                     </td>
                                 </tr>
                                 <tr>

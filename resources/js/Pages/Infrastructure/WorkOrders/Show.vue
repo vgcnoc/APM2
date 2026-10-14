@@ -154,6 +154,12 @@ const formatDate = (dateStr) => {
                                 {{ workOrder.type === 'odc_deployment' ? 'Pembangunan ODC' : 'Pembangunan ODP' }}
                             </span>
                             <span
+                                v-if="workOrder.device_type"
+                                class="px-2.5 py-1 rounded-full text-xs font-bold border bg-blue-500/20 text-blue-200 border-blue-400/30"
+                            >
+                                Tipe {{ workOrder.device_type }}
+                            </span>
+                            <span
                                 class="px-2.5 py-1 rounded-full text-xs font-bold border"
                                 :class="getStatusBadge(workOrder.status).class"
                             >
@@ -278,7 +284,10 @@ const formatDate = (dateStr) => {
                             <div class="space-y-2 text-xs">
                                 <div class="flex justify-between py-1 border-b border-slate-200/60">
                                     <span class="text-slate-500">Tipe Pembangunan:</span>
-                                    <span class="font-bold text-slate-900">{{ workOrder.type === 'odc_deployment' ? 'ODC' : 'ODP' }}</span>
+                                    <span class="font-bold text-slate-900">
+                                        {{ workOrder.type === 'odc_deployment' ? 'ODC' : 'ODP' }}
+                                        <span class="text-indigo-600 font-semibold">({{ workOrder.device_type || 'Normal' }})</span>
+                                    </span>
                                 </div>
                                 <div v-if="workOrder.type === 'odc_deployment'" class="flex justify-between py-1 border-b border-slate-200/60">
                                     <span class="text-slate-500">OLT Induk:</span>

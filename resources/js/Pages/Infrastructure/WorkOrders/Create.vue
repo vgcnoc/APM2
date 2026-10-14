@@ -17,6 +17,7 @@ const isLoadingBOM = ref(false);
 
 const form = useForm({
     type: 'odp_deployment', // 'odc_deployment' | 'odp_deployment'
+    device_type: 'Normal', // 'Normal', 'Split 2', 'Closure', 'Pedestal' | 'Normal', 'Split', 'Pedestal', 'Pole Mount'
     target_name: '',
     area_id: props.areas[0]?.id || '',
     olt_id: '',
@@ -86,6 +87,44 @@ watch([() => form.type, () => form.area_id, () => form.odc_id, () => form.olt_id
     }
 });
 
+// Penanganan perubahan tipe perangkat (Normal, Split 2, Closure, Pedestal, Pole Mount)
+const onDeviceTypeChange = () => {
+    if (form.type === 'odp_deployment') {
+        if (form.device_type === 'Split 2') {
+            form.splitter_ratio = 'Split 2 (1:2 FBT)';
+        } else if (form.device_type === 'Closure') {
+            form.splitter_ratio = `Closure 1:${form.capacity}`;
+        } else if (form.device_type === 'Pedestal') {
+            form.splitter_ratio = `1:${form.capacity} (Pedestal)`;
+        } else {
+            form.splitter_ratio = `1:${form.capacity}`;
+        }
+    } else {
+        if (form.device_type === 'Split') {
+            form.splitter_ratio = 'Split 1:2 FBT';
+        } else {
+            form.splitter_ratio = '1:8 PLC';
+        }
+    }
+};
+
+watch(() => form.type, (newType) => {
+    form.device_type = 'Normal';
+    if (newType === 'odc_deployment') {
+        form.capacity = 24;
+        form.splitter_ratio = '1:8 PLC';
+    } else {
+        form.capacity = 8;
+        form.splitter_ratio = '1:8';
+    }
+});
+
+watch(() => form.capacity, (newCap) => {
+    if (form.type === 'odp_deployment' && form.device_type === 'Normal') {
+        form.splitter_ratio = `1:${newCap}`;
+    }
+});
+
 // Auto-BOM Fetcher
 const fetchAutoBOM = async () => {
     isLoadingBOM.value = true;
@@ -93,6 +132,7 @@ const fetchAutoBOM = async () => {
         const response = await axios.get(route('infrastructure.work-orders.bom'), {
             params: {
                 type: form.type,
+                device_type: form.device_type,
                 capacity: form.capacity,
                 cable_length: form.cable_length_estimate,
                 area_id: form.area_id,
@@ -117,7 +157,7 @@ const fetchAutoBOM = async () => {
     }
 };
 
-watch([() => form.type, () => form.capacity, () => form.cable_length_estimate, () => form.area_id], () => {
+watch([() => form.type, () => form.device_type, () => form.capacity, () => form.cable_length_estimate, () => form.area_id], () => {
     if (currentStep.value >= 2) {
         fetchAutoBOM();
     }
@@ -307,21 +347,62 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <!-- Kapasitas & Rasio Splitter -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Tipe Perangkat, Kapasitas & Rasio Splitter -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Kapasitas Port</label>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
+                                <span>{{ form.type === 'odc_deployment' ? 'Tipe ODC' : 'Tipe ODP' }}</span>
+                                <span class="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">Tipe Boks</span>
+                            </label>
+                            <select
+                                v-model="form.device_type"
+                                @change="onDeviceTypeChange"
+                                class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-indigo-500 focus:border-indigo-500 shadow-xs"
+                            >
+                                <template v-if="form.type === 'odp_deployment'">
+                                    <option value="Normal">Normal (Standar Tiang Solid)</option>
+                                    <option value="Split 2">Split 2 (Bercabang 2 Box / Cascading)</option>
+                                    <option value="Closure">Closure (Dome / Sambungan Inline)</option>
+                                    <option value="Pedestal">Pedestal (Box Bawah Tanah / Ground)</option>
+                                </template>
+                                <template v-else>
+                                    <option value="Normal">Normal (Kabinet Standar Outdoor)</option>
+                                    <option value="Split">Split (ODC Split Bercabang Feeder)</option>
+                                    <option value="Pedestal">Pedestal (Kabinet Lantai Beton)</option>
+                                    <option value="Pole Mount">Pole Mount (ODC Tiang / Pole Mounted)</option>
+                                </template>
+                            </select>
+                            <p class="text-[11px] text-slate-400 mt-1">
+                                {{ form.device_type === 'Split 2' || form.device_type === 'Split' ? '⚡ Menggunakan splitter cabang cascading' : 'Konstruksi fisik & model housing boks' }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
+                                {{ form.type === 'odc_deployment' ? 'Kapasitas Core' : 'Kapasitas Port' }}
+                            </label>
                             <select
                                 v-model.number="form.capacity"
-                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800"
                             >
-                                <option :value="4">4 Port</option>
-                                <option :value="8">8 Port (Standar)</option>
-                                <option :value="16">16 Port</option>
-                                <option :value="24">24 Core (ODC)</option>
-                                <option :value="32">32 Port</option>
-                                <option :value="48">48 Core (ODC)</option>
+                                <template v-if="form.type === 'odp_deployment'">
+                                    <option :value="4">4 Port</option>
+                                    <option :value="8">8 Port (Standar)</option>
+                                    <option :value="16">16 Port</option>
+                                    <option :value="24">24 Port</option>
+                                    <option :value="32">32 Port</option>
+                                </template>
+                                <template v-else>
+                                    <option :value="12">12 Core</option>
+                                    <option :value="24">24 Core (Standar)</option>
+                                    <option :value="48">48 Core</option>
+                                    <option :value="96">96 Core</option>
+                                    <option :value="144">144 Core</option>
+                                </template>
                             </select>
+                            <p class="text-[11px] text-slate-400 mt-1">
+                                {{ form.type === 'odc_deployment' ? 'Total kapasitas tray core ODC' : 'Jumlah port distribusi ke pelanggan' }}
+                            </p>
                         </div>
 
                         <div>
@@ -330,8 +411,9 @@ const submit = () => {
                                 v-model="form.splitter_ratio"
                                 type="text"
                                 placeholder="Contoh: 1:8 PLC / Split 2"
-                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800"
                             />
+                            <p class="text-[11px] text-slate-400 mt-1">Rasio modul pembagi sinyal optik</p>
                         </div>
                     </div>
 
@@ -607,7 +689,7 @@ const submit = () => {
                     <!-- Summary Ringkasan Box -->
                     <div class="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 text-xs text-slate-700 space-y-1">
                         <span class="font-bold text-indigo-900 block mb-1">📋 Konfirmasi Terbit Penugasan:</span>
-                        <div>&bull; <b>Perangkat:</b> {{ form.target_name }} ({{ form.type === 'odc_deployment' ? 'ODC' : 'ODP' }}) &bull; {{ form.capacity }} Port</div>
+                        <div>&bull; <b>Perangkat:</b> {{ form.target_name }} ({{ form.type === 'odc_deployment' ? 'ODC' : 'ODP' }} - Tipe {{ form.device_type }}) &bull; {{ form.capacity }} {{ form.type === 'odc_deployment' ? 'Core' : 'Port' }}</div>
                         <div>&bull; <b>Material Dialokasikan:</b> {{ form.materials.length }} Item Material</div>
                         <div>&bull; <b>Alur Berikutnya:</b> Gudang akan menerima notifikasi penyiapan material &rarr; Surat Jalan Outbound &rarr; Teknisi pengerjaan lapangan &rarr; QC Redaman Optik.</div>
                     </div>

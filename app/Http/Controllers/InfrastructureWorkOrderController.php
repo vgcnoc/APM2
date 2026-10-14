@@ -47,6 +47,10 @@ class InfrastructureWorkOrderController extends Controller
             $query->where('type', $request->type);
         }
 
+        if ($request->device_type) {
+            $query->where('device_type', $request->device_type);
+        }
+
         if ($request->status) {
             $query->where('status', $request->status);
         }
@@ -84,7 +88,7 @@ class InfrastructureWorkOrderController extends Controller
             'kpi' => $kpi,
             'areas' => Area::orderBy('name')->get(['id', 'name']),
             'technicians' => User::whereIn('role', ['teknisi', 'admin', 'noc'])->orderBy('name')->get(['id', 'name']),
-            'filters' => $request->only(['search', 'type', 'status', 'area_id', 'technician_id']),
+            'filters' => $request->only(['search', 'type', 'device_type', 'status', 'area_id', 'technician_id']),
         ]);
     }
 
@@ -109,6 +113,7 @@ class InfrastructureWorkOrderController extends Controller
     {
         $validated = $request->validate([
             'type' => 'required|in:odc_deployment,odp_deployment',
+            'device_type' => 'nullable|string|max:50',
             'capacity' => 'required|integer|min:1',
             'cable_length' => 'nullable|integer|min:0',
             'area_id' => 'nullable|exists:areas,id',
@@ -118,7 +123,8 @@ class InfrastructureWorkOrderController extends Controller
             $validated['type'],
             (int) $validated['capacity'],
             (int) ($validated['cable_length'] ?? 150),
-            $validated['area_id'] ?? null
+            $validated['area_id'] ?? null,
+            $validated['device_type'] ?? null
         );
 
         return response()->json($bom);
@@ -131,6 +137,7 @@ class InfrastructureWorkOrderController extends Controller
     {
         $validated = $request->validate([
             'type' => 'required|in:odc_deployment,odp_deployment',
+            'device_type' => 'nullable|string|max:50',
             'target_name' => 'required|string|max:255',
             'area_id' => 'required|exists:areas,id',
             'olt_id' => 'nullable|required_if:type,odc_deployment|exists:olts,id',
