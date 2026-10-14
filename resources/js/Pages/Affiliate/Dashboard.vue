@@ -250,6 +250,69 @@
 
                 <!-- Tab Content: Jaringan & Tim Downline -->
                 <div v-if="activeTab === 'downlines'" class="p-6 space-y-6">
+                    <!-- Visual Multi-Tier Diagram Banner -->
+                    <div class="bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 p-6 rounded-3xl text-white shadow-md relative overflow-hidden border border-indigo-500/20">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                            <div>
+                                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                                    <span>🌳</span>
+                                    <span>Struktur &amp; Alir Komisi Multi-Tier (Pasif Income Anda)</span>
+                                </h3>
+                                <p class="text-xs text-indigo-200/80 mt-0.5">
+                                    Setiap kali pelanggan di jaringan Anda melunasi tagihan bulanan, komisi terdistribusi otomatis ke 3 tingkatan dompet:
+                                </p>
+                            </div>
+                            <span class="inline-flex self-start sm:self-auto text-[11px] font-bold bg-white/10 px-3 py-1 rounded-full text-indigo-200 border border-white/10">
+                                3 Tingkat Komisi Pasif
+                            </span>
+                        </div>
+
+                        <!-- Visual Tier Flow Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <!-- Tier 0: Direct -->
+                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-emerald-500/30">
+                                <div class="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full mb-2">
+                                    🟢 Tingkat 0: Anda (Direct Sales)
+                                </div>
+                                <div class="text-xl font-extrabold text-white">
+                                    {{ formatRupiah(settings.affiliate_commission_monthly) }}
+                                    <span class="text-xs font-normal text-slate-300">/ cust / bln</span>
+                                </div>
+                                <p class="text-[11px] text-slate-300 mt-1.5 leading-relaxed">
+                                    Diterima dari setiap pelanggan yang Anda daftarkan secara langsung.
+                                </p>
+                            </div>
+
+                            <!-- Tier 1: Downline L1 -->
+                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-indigo-500/30">
+                                <div class="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-full mb-2">
+                                    🔵 Tingkat 1: Downline L1
+                                </div>
+                                <div class="text-xl font-extrabold text-white">
+                                    {{ formatRupiah(settings.affiliate_commission_upline_1) }}
+                                    <span class="text-xs font-normal text-slate-300">/ cust / bln</span>
+                                </div>
+                                <p class="text-[11px] text-slate-300 mt-1.5 leading-relaxed">
+                                    Pasif income dari pembayaran pelanggan milik mitra binaan langsung Anda.
+                                </p>
+                            </div>
+
+                            <!-- Tier 2: Downline L2 -->
+                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-purple-500/30">
+                                <div class="inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full mb-2">
+                                    🟣 Tingkat 2: Downline L2
+                                </div>
+                                <div class="text-xl font-extrabold text-white">
+                                    {{ formatRupiah(settings.affiliate_commission_upline_2) }}
+                                    <span class="text-xs font-normal text-slate-300">/ cust / bln</span>
+                                </div>
+                                <p class="text-[11px] text-slate-300 mt-1.5 leading-relaxed">
+                                    Pasif income dari pelanggan yang diajak oleh mitra di bawah mitra Anda (generasi 2).
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Tier 1 Downlines -->
                     <div>
                         <div class="flex items-center justify-between mb-3">
