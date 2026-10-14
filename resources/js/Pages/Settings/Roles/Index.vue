@@ -1,202 +1,437 @@
 <template>
     <AppLayout title="Manajemen Role & Akses" subtitle="Atur role dan hak akses pengguna secara detail">
-        <div class="flex flex-col lg:flex-row gap-6">
-            <!-- Sidebar: Daftar Role -->
-            <div class="w-full lg:w-80 shrink-0 space-y-4">
+        <div class="flex flex-col lg:flex-row gap-6 items-start pb-16">
+            
+            <!-- ── 1. SIDEBAR: DAFTAR ROLE ──────────────────────────── -->
+            <div class="w-full lg:w-80 shrink-0 space-y-4 lg:sticky lg:top-4">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="flex items-center justify-between p-5 border-b border-gray-100">
-                        <h3 class="font-bold text-gray-900 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                            Daftar Role
-                        </h3>
-                        <button @click="openCreateModal" class="text-xs bg-blue-600 text-white hover:bg-blue-700 font-bold px-3.5 py-2 rounded-lg transition-all shadow-sm hover:shadow-md flex items-center gap-1.5">
+                    <!-- Header Sidebar -->
+                    <div class="flex items-center justify-between p-4 bg-gray-50/70 border-b border-gray-100">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-gray-900 text-sm">Daftar Role</h3>
+                                <p class="text-[11px] text-gray-500">{{ roles.length }} role terdaftar</p>
+                            </div>
+                        </div>
+                        <button @click="openCreateModal" 
+                            class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-all shadow-sm flex items-center gap-1 active:scale-95">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             Tambah
                         </button>
                     </div>
 
-                    <div class="p-3 space-y-1.5 max-h-[calc(100vh-300px)] overflow-y-auto">
-                        <div v-for="role in roles" :key="role.id"
+                    <!-- Role Search Input -->
+                    <div class="p-3 border-b border-gray-100 bg-white">
+                        <div class="relative">
+                            <input v-model="roleSearch" type="text" placeholder="Cari nama role..."
+                                class="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border-gray-200 bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-gray-400" />
+                            <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Role Items List -->
+                    <div class="p-2 space-y-1.5 max-h-[calc(100vh-280px)] overflow-y-auto">
+                        <div v-for="role in filteredRoles" :key="role.id"
                             @click="selectRole(role)"
                             :class="[
-                                'p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 group relative',
+                                'p-3 rounded-xl cursor-pointer transition-all border duration-150 group relative',
                                 selectedRole?.id === role.id
-                                    ? 'bg-blue-50 border-blue-300 shadow-sm ring-1 ring-blue-100'
-                                    : 'bg-white border-transparent hover:bg-gray-50 hover:border-gray-200'
+                                    ? 'bg-blue-50/80 border-blue-400 shadow-sm ring-2 ring-blue-100'
+                                    : 'bg-white border-gray-100 hover:bg-gray-50/80 hover:border-gray-200'
                             ]">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-3 min-w-0">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex items-center gap-2.5 min-w-0">
                                     <div :class="[
-                                        'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-sm font-bold transition-colors',
-                                        selectedRole?.id === role.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
+                                        'w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold transition-colors shadow-sm',
+                                        role.name === 'admin' ? 'bg-amber-500 text-white' :
+                                        selectedRole?.id === role.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
                                     ]">
                                         {{ role.name.charAt(0).toUpperCase() }}
                                     </div>
                                     <div class="min-w-0">
-                                        <h4 class="font-bold text-gray-900 capitalize truncate">{{ role.name }}</h4>
-                                        <p class="text-xs text-gray-500 mt-0.5">
-                                            {{ role.permissions.length }} hak akses · {{ role.users_count }} user
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <h4 class="font-bold text-gray-900 text-sm capitalize truncate">{{ role.name }}</h4>
+                                            <span v-if="role.name === 'admin'" class="inline-flex items-center text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded border border-amber-200">
+                                                Super Admin
+                                            </span>
+                                        </div>
+                                        <p class="text-[11px] text-gray-500 mt-0.5">
+                                            <span class="font-medium text-gray-700">{{ role.name === 'admin' ? totalCount : role.permissions.length }}</span> dari {{ totalCount }} akses · 
+                                            <span class="text-blue-600 font-medium">{{ role.users_count }} user</span>
                                         </p>
                                     </div>
                                 </div>
-                                <div v-if="role.name !== 'admin'" class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                    <button @click.stop="openEditModal(role)" class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Rename">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+
+                                <!-- Action Buttons -->
+                                <div v-if="role.name !== 'admin'" class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                    <button @click.stop="openEditModal(role)" class="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-100/60 rounded-md transition-colors" title="Ubah Nama">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                     </button>
-                                    <button @click.stop="confirmDeleteRole(role)" class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    <button @click.stop="confirmDeleteRole(role)" class="p-1 text-gray-400 hover:text-red-600 hover:bg-red-100/60 rounded-md transition-colors" title="Hapus Role">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                     </button>
                                 </div>
                             </div>
-                            <!-- Admin badge -->
-                            <div v-if="role.name === 'admin'" class="mt-2">
-                                <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clip-rule="evenodd"/></svg>
-                                    Super Admin
-                                </span>
+
+                            <!-- Mini Progress Bar on Role Card -->
+                            <div class="mt-2.5 w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                <div :class="[
+                                    'h-1.5 rounded-full transition-all duration-300',
+                                    role.name === 'admin' ? 'bg-amber-500 w-full' :
+                                    selectedRole?.id === role.id ? 'bg-blue-600' : 'bg-gray-400'
+                                ]" :style="{ width: role.name === 'admin' ? '100%' : (role.permissions.length / totalCount * 100) + '%' }"></div>
                             </div>
+                        </div>
+
+                        <!-- Empty search in sidebar -->
+                        <div v-if="filteredRoles.length === 0" class="p-6 text-center text-xs text-gray-400">
+                            Role tidak ditemukan
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Main: Detail Hak Akses -->
-            <div class="flex-1 min-w-0">
-                <!-- Selected Role -->
-                <div v-if="selectedRole" class="space-y-5">
-                    <!-- Header -->
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <!-- ── 2. MAIN: DETAIL & PENGATURAN HAK AKSES ───────────── -->
+            <div class="flex-1 min-w-0 w-full space-y-5">
+                <div v-if="selectedRole" class="space-y-4">
+                    
+                    <!-- ── A. HEADER CARD ──────────────────────────── -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:p-6 transition-all">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3.5">
+                                <div :class="[
+                                    'w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm',
+                                    selectedRole.name === 'admin' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'
+                                ]">
+                                    {{ selectedRole.name.charAt(0).toUpperCase() }}
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <h3 class="text-xl font-extrabold text-gray-900 capitalize">{{ selectedRole.name }}</h3>
+                                        <span v-if="selectedRole.name === 'admin'" class="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200">
+                                            Super Admin (Akses Penuh)
+                                        </span>
+                                        <span v-else-if="hasUnsavedChanges" class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full animate-pulse">
+                                            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                            Ada perubahan belum disimpan
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1 flex items-center gap-3">
+                                        <span>Aktif: <b class="text-blue-600 font-semibold">{{ checkedCount }}</b> dari {{ totalCount }} izin</span>
+                                        <span>•</span>
+                                        <span>Persentase: <b class="text-emerald-600 font-semibold">{{ Math.round((checkedCount / totalCount) * 100) }}%</b></span>
+                                        <span>•</span>
+                                        <span>Ditugaskan ke: <b class="text-gray-700 font-semibold">{{ selectedRole.users_count }} user</b></span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="flex items-center gap-2.5 shrink-0 flex-wrap">
+                                <template v-if="selectedRole.name !== 'admin'">
+                                    <button @click="toggleAll" 
+                                        class="px-3.5 py-2 text-xs font-bold rounded-xl border transition-all active:scale-95 flex items-center gap-1.5"
+                                        :class="isAllChecked 
+                                            ? 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200' 
+                                            : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        {{ isAllChecked ? 'Nonaktifkan Semua' : 'Aktifkan Semua' }}
+                                    </button>
+
+                                    <button @click="resetChanges" v-if="hasUnsavedChanges"
+                                        class="px-3.5 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-all">
+                                        Reset
+                                    </button>
+
+                                    <button @click="savePermissions" :disabled="isSaving || !hasUnsavedChanges"
+                                        :class="[
+                                            'px-4 py-2 font-bold text-xs rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95',
+                                            hasUnsavedChanges 
+                                                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20' 
+                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                                        ]">
+                                        <svg v-if="isSaving" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                                        <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        {{ isSaving ? 'Menyimpan...' : 'Simpan Perubahan' }}
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar Visual -->
+                        <div class="mt-4 pt-3 border-t border-gray-100">
+                            <div class="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+                                <span>Cakupan Izin Role</span>
+                                <span class="font-bold text-gray-800">{{ checkedCount }} / {{ totalCount }} Hak Akses Terpasang</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                                <div :class="[
+                                    'h-2.5 rounded-full transition-all duration-500 ease-out',
+                                    selectedRole.name === 'admin' ? 'bg-amber-500' : 'bg-gradient-to-r from-blue-600 to-indigo-600'
+                                ]" :style="{ width: (checkedCount / totalCount * 100) + '%' }"></div>
+                            </div>
+                        </div>
+
+                        <!-- Super Admin Alert -->
+                        <div v-if="selectedRole.name === 'admin'" class="mt-4 flex items-start gap-3 bg-amber-50 text-amber-900 p-3.5 rounded-xl border border-amber-200 text-xs">
+                            <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
                             <div>
-                                <h3 class="text-xl font-bold text-gray-900 capitalize flex items-center gap-2">
-                                    <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">{{ selectedRole.name.charAt(0).toUpperCase() }}</span>
-                                    Hak Akses: {{ selectedRole.name }}
-                                </h3>
-                                <p class="text-sm text-gray-500 mt-1">
-                                    {{ checkedCount }} dari {{ totalCount }} hak akses aktif
-                                </p>
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <button v-if="selectedRole.name !== 'admin'" @click="toggleAll" class="px-4 py-2 text-sm font-medium rounded-xl border transition-colors"
-                                    :class="isAllChecked ? 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'">
-                                    {{ isAllChecked ? 'Nonaktifkan Semua' : 'Aktifkan Semua' }}
-                                </button>
-                                <button v-if="selectedRole.name !== 'admin'" @click="savePermissions" :disabled="isSaving"
-                                    class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50 flex items-center gap-2">
-                                    <svg v-if="isSaving" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
-                                    <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                    {{ isSaving ? 'Menyimpan...' : 'Simpan Perubahan' }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Admin Notice -->
-                        <div v-if="selectedRole.name === 'admin'" class="mt-4 flex items-start gap-3 bg-amber-50 text-amber-800 p-4 rounded-xl border border-amber-200">
-                            <svg class="w-5 h-5 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-                            <p class="text-sm font-medium">Role <b>Admin</b> adalah Super Admin yang memiliki seluruh hak akses. Pengaturan tidak dapat diubah.</p>
-                        </div>
-
-                        <!-- Progress bar -->
-                        <div v-if="selectedRole.name !== 'admin'" class="mt-4">
-                            <div class="w-full bg-gray-100 rounded-full h-2">
-                                <div class="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500"
-                                    :style="{ width: (checkedCount / totalCount * 100) + '%' }"></div>
+                                <p class="font-bold text-amber-900">Hak Akses Super Admin Terkunci Otomatis (Full Access)</p>
+                                <p class="text-amber-800/90 mt-0.5">Role <b>Admin</b> secara permanen memiliki akses bypass ke seluruh modul, controller, menu, dan API demi keamanan sistem.</p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Permission Groups -->
-                    <div class="space-y-4" :class="{'opacity-60 pointer-events-none': selectedRole.name === 'admin'}">
-                        <div v-for="(group, gIdx) in permissionGroups" :key="gIdx"
-                            class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md">
-                            <!-- Group Header -->
-                            <button @click="toggleGroup(gIdx)"
-                                class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+                    <!-- ── B. SEARCH & FILTER TOOLBAR ──────────────── -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3.5">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                            <!-- Live Search Input -->
+                            <div class="relative flex-1">
+                                <input v-model="searchQuery" type="text"
+                                    placeholder="Cari izin berdasarkan nama atau kode (misal: invoice, tambah, odp, hapus)..."
+                                    class="w-full pl-9 pr-9 py-2 text-xs md:text-sm rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-gray-400" />
+                                <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5 md:top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                                <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-3 top-2.5 md:top-3 text-gray-400 hover:text-gray-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+
+                            <!-- Filter & Tool Actions -->
+                            <div class="flex items-center gap-2 shrink-0">
+                                <!-- Status Filter -->
+                                <select v-model="statusFilter" class="text-xs rounded-xl border-gray-200 py-2 pl-3 pr-8 bg-gray-50 font-medium focus:ring-blue-500">
+                                    <option value="all">Semua Status</option>
+                                    <option value="active">Hanya Aktif</option>
+                                    <option value="inactive">Hanya Nonaktif</option>
+                                </select>
+
+                                <!-- Expand / Collapse All -->
+                                <button @click="expandAll" class="px-2.5 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors" title="Buka Semua Modul">
+                                    Buka Semua
+                                </button>
+                                <button @click="collapseAll" class="px-2.5 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors" title="Tutup Semua Modul">
+                                    Tutup Semua
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Category Tabs (Horizontal Scrollable) -->
+                        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar border-t border-gray-100 pt-3 text-xs">
+                            <button v-for="tab in categoryTabs" :key="tab.id"
+                                @click="selectedCategory = tab.id"
+                                :class="[
+                                    'px-3 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0',
+                                    selectedCategory === tab.id
+                                        ? 'bg-blue-600 text-white shadow-sm'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                ]">
+                                <span>{{ tab.label }}</span>
+                                <span :class="[
+                                    'px-1.5 py-0.2 rounded-full text-[10px]',
+                                    selectedCategory === tab.id ? 'bg-white/25 text-white' : 'bg-gray-200 text-gray-700'
+                                ]">
+                                    {{ tab.count }}
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ── C. PERMISSION GROUPS & GRID ─────────────── -->
+                    <div class="space-y-4" :class="{'opacity-75 pointer-events-none': selectedRole.name === 'admin'}">
+                        
+                        <!-- Empty Search Results -->
+                        <div v-if="filteredGroups.length === 0" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+                            <div class="w-12 h-12 rounded-xl bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-3">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <h4 class="font-bold text-gray-800 text-sm">Tidak ada hak akses yang cocok</h4>
+                            <p class="text-xs text-gray-500 mt-1">Coba sesuaikan kata kunci pencarian atau ubah filter status.</p>
+                            <button @click="resetFilters" class="mt-3 px-3.5 py-1.5 bg-blue-50 text-blue-600 font-bold text-xs rounded-lg hover:bg-blue-100 transition-colors">
+                                Reset Filter
+                            </button>
+                        </div>
+
+                        <!-- Group Card Loop -->
+                        <div v-for="group in filteredGroups" :key="group.group"
+                            class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-200 hover:border-gray-200">
+                            
+                            <!-- Group Card Header -->
+                            <div class="w-full flex items-center justify-between px-5 py-3.5 bg-white hover:bg-gray-50/80 transition-colors cursor-pointer select-none"
+                                @click="toggleGroup(group.group)">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <!-- Icon -->
+                                    <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
                                         :class="getGroupColor(group.icon)">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[group.icon] || iconPaths['cog']"/>
                                         </svg>
                                     </div>
-                                    <div class="text-left">
-                                        <h4 class="font-bold text-gray-900 text-sm">{{ group.group }}</h4>
-                                        <p class="text-xs text-gray-500">{{ getGroupCheckedCount(group) }}/{{ group.permissions.length }} aktif</p>
+                                    <!-- Title & Stats -->
+                                    <div class="min-w-0 text-left">
+                                        <div class="flex items-center gap-2">
+                                            <h4 class="font-bold text-gray-900 text-sm truncate">{{ group.group }}</h4>
+                                            <span :class="[
+                                                'text-[10px] font-bold px-2 py-0.5 rounded-full border',
+                                                getGroupCheckedCount(group) === group.permissions.length 
+                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                    : getGroupCheckedCount(group) > 0 
+                                                        ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                                                        : 'bg-gray-100 text-gray-500 border-gray-200'
+                                            ]">
+                                                {{ getGroupCheckedCount(group) }} / {{ group.permissions.length }} Aktif
+                                            </span>
+                                        </div>
+                                        <p class="text-[11px] text-gray-400 mt-0.5">
+                                            Klik untuk {{ isGroupOpen(group.group) ? 'menutup rincian' : 'melihat rincian izin' }}
+                                        </p>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-3">
-                                    <!-- Group Toggle All -->
-                                    <label @click.stop class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" :checked="selectedRole?.name === 'admin' || isGroupAllChecked(group)" @change="toggleGroupAll(group)" class="sr-only peer" :disabled="selectedRole?.name === 'admin'">
-                                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                                    </label>
-                                    <!-- Collapse Arrow -->
-                                    <svg :class="['w-5 h-5 text-gray-400 transition-transform duration-200', openGroups.includes(gIdx) ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                    </svg>
-                                </div>
-                            </button>
 
-                            <!-- Group Body -->
-                            <div v-show="openGroups.includes(gIdx)" class="border-t border-gray-100">
-                                <div class="divide-y divide-gray-50">
-                                    <div v-for="perm in group.permissions" :key="perm.name"
-                                        class="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50/50 transition-colors">
-                                        <div class="flex items-center gap-3 min-w-0">
+                                <!-- Right Group Actions -->
+                                <div class="flex items-center gap-3 shrink-0" @click.stop>
+                                    <!-- Quick Toggle Group -->
+                                    <button v-if="selectedRole.name !== 'admin'" 
+                                        @click="toggleGroupAll(group)" 
+                                        class="px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all active:scale-95"
+                                        :class="isGroupAllChecked(group)
+                                            ? 'bg-gray-100 hover:bg-gray-200 text-gray-600 border-gray-200'
+                                            : 'bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200'">
+                                        {{ isGroupAllChecked(group) ? 'Batal Semua' : 'Pilih Semua' }}
+                                    </button>
+
+                                    <!-- Chevron -->
+                                    <button @click="toggleGroup(group.group)" class="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
+                                        <svg :class="['w-5 h-5 transition-transform duration-200', isGroupOpen(group.group) ? 'rotate-180' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Group Card Body: 2-Column Responsive Grid -->
+                            <div v-show="isGroupOpen(group.group)" class="border-t border-gray-100 p-3.5 bg-gray-50/40">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                    <div v-for="perm in getFilteredPermissions(group.permissions)" :key="perm.name"
+                                        @click="selectedRole.name !== 'admin' && togglePermission(perm.name)"
+                                        :class="[
+                                            'p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none',
+                                            isPermActive(perm.name)
+                                                ? 'bg-blue-50/70 border-blue-300 ring-1 ring-blue-100 shadow-sm'
+                                                : 'bg-white border-gray-200/80 hover:border-gray-300 hover:bg-white/80'
+                                        ]">
+                                        
+                                        <!-- Left Info -->
+                                        <div class="flex items-start gap-2.5 min-w-0">
                                             <!-- Type Badge -->
                                             <span :class="[
-                                                'shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border',
-                                                perm.type === 'menu' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' :
-                                                perm.type === 'feature' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                                                'bg-orange-50 text-orange-600 border-orange-200'
+                                                'shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide border mt-0.5',
+                                                perm.type === 'menu' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                                                perm.type === 'feature' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                'bg-amber-50 text-amber-700 border-amber-200'
                                             ]">
                                                 {{ perm.type === 'menu' ? 'Menu' : perm.type === 'feature' ? 'Fitur' : 'Aksi' }}
                                             </span>
+
+                                            <!-- Labels -->
                                             <div class="min-w-0">
-                                                <p class="text-sm font-medium text-gray-900 truncate">{{ perm.label }}</p>
-                                                <p class="text-[11px] text-gray-400 font-mono truncate">{{ perm.name }}</p>
+                                                <p :class="[
+                                                    'text-xs font-bold leading-snug truncate',
+                                                    isPermActive(perm.name) ? 'text-blue-900 font-extrabold' : 'text-gray-800'
+                                                ]">
+                                                    {{ perm.label }}
+                                                </p>
+                                                <span class="inline-block text-[10px] text-gray-400 font-mono tracking-tight bg-gray-100/70 px-1 py-0.2 rounded mt-0.5 max-w-[200px] truncate" :title="perm.name">
+                                                    {{ perm.name }}
+                                                </span>
                                             </div>
                                         </div>
 
-                                        <!-- Toggle Switch -->
-                                        <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
-                                            <input type="checkbox" :checked="selectedRole?.name === 'admin' || selectedPermissions.includes(perm.name)"
-                                                @change="togglePermission(perm.name)" class="sr-only peer" :disabled="selectedRole?.name === 'admin'">
-                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 shadow-inner"></div>
-                                        </label>
+                                        <!-- Right: Toggle Switch -->
+                                        <div class="shrink-0" @click.stop>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" 
+                                                    :checked="isPermActive(perm.name)"
+                                                    @change="togglePermission(perm.name)" 
+                                                    class="sr-only peer" 
+                                                    :disabled="selectedRole?.name === 'admin'">
+                                                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 shadow-inner"></div>
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
                     </div>
                 </div>
 
-                <!-- Empty State -->
+                <!-- ── EMPTY STATE KETIKA BELUM ADA ROLE DIPILIH ──── -->
                 <div v-else class="bg-white rounded-2xl shadow-sm border border-gray-100 p-16 text-center">
-                    <div class="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6 text-blue-500">
-                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
                     </div>
-                    <h3 class="font-bold text-gray-900 text-xl mb-2">Pilih Role</h3>
-                    <p class="text-gray-500 max-w-sm mx-auto">Pilih salah satu role di sebelah kiri untuk melihat dan mengatur hak akses secara detail.</p>
+                    <h3 class="font-bold text-gray-900 text-lg mb-1">Pilih Role Pengguna</h3>
+                    <p class="text-xs text-gray-500 max-w-sm mx-auto">Silakan klik salah satu role di menu sebelah kiri untuk melihat daftar hak akses dan mengaturnya.</p>
                 </div>
             </div>
         </div>
 
-        <!-- Modal Tambah/Edit Role -->
+        <!-- ── FLOATING SAVE BAR JIKA ADA PERUBAHAN ─────────────── -->
+        <Transition enter-active-class="transition duration-200 ease-out" enter-from-class="transform translate-y-10 opacity-0" enter-to-class="transform translate-y-0 opacity-100" leave-active-class="transition duration-150 ease-in" leave-from-class="transform translate-y-0 opacity-100" leave-to-class="transform translate-y-10 opacity-0">
+            <div v-if="hasUnsavedChanges && selectedRole?.name !== 'admin'"
+                class="fixed bottom-6 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
+                <div class="bg-gray-900/95 backdrop-blur-md text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-gray-700/50 flex items-center justify-between gap-4 w-full max-w-xl pointer-events-auto animate-bounce-subtle">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+                        <p class="text-xs font-medium truncate">
+                            Ada perubahan izin pada role <b class="text-blue-400 capitalize">{{ selectedRole.name }}</b> yang belum disimpan!
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button @click="resetChanges" class="px-3 py-1.5 text-xs text-gray-300 hover:text-white rounded-lg hover:bg-gray-800 transition-colors">
+                            Batal
+                        </button>
+                        <button @click="savePermissions" :disabled="isSaving" 
+                            class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg transition-all shadow-md flex items-center gap-1.5">
+                            <svg v-if="isSaving" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                            {{ isSaving ? 'Menyimpan...' : 'Simpan Sekarang' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+
+        <!-- ── MODAL TAMBAH / EDIT NAMA ROLE ────────────────────── -->
         <Teleport to="body">
             <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showModal = false"></div>
-                <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fade-in-up overflow-hidden">
+                <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up">
                     <form @submit.prevent="submitForm">
                         <div class="px-6 pt-6 pb-5">
                             <div class="flex items-center gap-3 mb-5">
                                 <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                                 </div>
-                                <h3 class="text-lg font-bold text-gray-900">{{ isEditing ? 'Edit Nama Role' : 'Tambah Role Baru' }}</h3>
+                                <div>
+                                    <h3 class="text-base font-bold text-gray-900">{{ isEditing ? 'Edit Nama Role' : 'Tambah Role Baru' }}</h3>
+                                    <p class="text-xs text-gray-500">Pilih posisi/jabatan atau ketik nama role baru</p>
+                                </div>
                             </div>
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">Nama Role</label>
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nama Role</label>
                                 <select v-model="formName" required
                                     class="w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
                                     <option value="" disabled>-- Pilih Jabatan / Posisi --</option>
@@ -207,12 +442,12 @@
                                         {{ formName }} (Lama)
                                     </option>
                                 </select>
-                                <p class="mt-2 text-xs text-gray-500">Nama role diambil dari data Jabatan. Hak akses bisa diatur setelah role dibuat.</p>
+                                <p class="mt-2 text-[11px] text-gray-500">Nama role dihubungkan dengan data Jabatan operasional. Izin dapat diatur segera setelah role dibuat.</p>
                             </div>
                         </div>
-                        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                            <button type="button" @click="showModal = false" class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">Batal</button>
-                            <button type="submit" :disabled="isSubmitting" class="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all shadow-sm disabled:opacity-50">
+                        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2.5">
+                            <button type="button" @click="showModal = false" class="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">Batal</button>
+                            <button type="submit" :disabled="isSubmitting" class="px-5 py-2 text-xs font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all shadow-sm disabled:opacity-50">
                                 {{ isSubmitting ? 'Menyimpan...' : 'Simpan' }}
                             </button>
                         </div>
@@ -221,35 +456,36 @@
             </div>
         </Teleport>
 
-        <!-- Modal Konfirmasi Hapus -->
+        <!-- ── MODAL KONFIRMASI HAPUS ROLE ──────────────────────── -->
         <Teleport to="body">
             <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showDeleteModal = false"></div>
                 <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center animate-fade-in-up">
-                    <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <div class="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3.5">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-900 mb-2">Hapus Role?</h3>
-                    <p class="text-sm text-gray-500 mb-6">
-                        Apakah Anda yakin ingin menghapus role <b class="capitalize">{{ roleToDelete?.name }}</b>?
-                        <span v-if="roleToDelete?.users_count > 0" class="block mt-1 text-red-500 font-medium">
-                            ⚠️ Masih ada {{ roleToDelete.users_count }} user dengan role ini!
+                    <h3 class="text-base font-bold text-gray-900 mb-1">Hapus Role?</h3>
+                    <p class="text-xs text-gray-500 mb-5 leading-relaxed">
+                        Apakah Anda yakin ingin menghapus role <b class="capitalize text-gray-800">{{ roleToDelete?.name }}</b>?
+                        <span v-if="roleToDelete?.users_count > 0" class="block mt-2 text-red-600 font-bold bg-red-50 p-2 rounded-lg border border-red-200">
+                            ⚠️ Masih ada {{ roleToDelete.users_count }} pengguna yang terhubung ke role ini!
                         </span>
                     </p>
-                    <div class="flex items-center justify-center gap-3">
-                        <button @click="showDeleteModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm rounded-xl transition-colors w-full">Batal</button>
-                        <button @click="deleteRole" :disabled="isDeleting" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium text-sm rounded-xl transition-colors w-full flex justify-center items-center">
+                    <div class="flex items-center justify-center gap-2.5">
+                        <button @click="showDeleteModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-xl transition-colors w-full">Batal</button>
+                        <button @click="deleteRole" :disabled="isDeleting" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition-colors w-full flex justify-center items-center">
                             {{ isDeleting ? 'Menghapus...' : 'Hapus' }}
                         </button>
                     </div>
                 </div>
             </div>
         </Teleport>
+
     </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -265,19 +501,76 @@ const selectedPermissions = ref([]);
 const openGroups = ref([]);
 const isSaving = ref(false);
 
-// Modal state
+// Filter & Search State
+const roleSearch = ref('');
+const searchQuery = ref('');
+const selectedCategory = ref('all');
+const statusFilter = ref('all');
+
+// Modal State
 const showModal = ref(false);
 const isEditing = ref(false);
 const editingId = ref(null);
 const formName = ref('');
 const isSubmitting = ref(false);
 
-// Delete modal state
+// Delete Modal State
 const showDeleteModal = ref(false);
 const roleToDelete = ref(null);
 const isDeleting = ref(false);
 
-// ── Computed ───────────────────────────────────────
+// ── Category Definitions ───────────────────────────
+const categoryMap = {
+    'pelanggan': [
+        'Data Booking',
+        'Survey',
+        'Instalasi Jaringan',
+        'Aktivasi Layanan',
+        'Pelanggan Aktif & Layanan',
+        'Semua Pelanggan',
+        'Pantauan Pelanggan',
+    ],
+    'billing': [
+        'Billing & Invoice Pelanggan',
+        'Penagihan Lapangan & Setoran',
+        'Laporan Keuangan & Pajak',
+    ],
+    'jaringan': [
+        'Topologi & Radar Jaringan',
+        'OLT',
+        'ODC',
+        'ODP',
+        'Rollout Pembangunan ODC & ODP',
+        'ONT & Find ONU',
+        'MikroTik & Router',
+        'RADIUS Billing System',
+    ],
+    'tiket': [
+        'Ticketing & CBP',
+        'Penanganan Khusus (PGK, PGJ, PGS)',
+    ],
+    'gudang': [
+        'Material & Logistik Gudang',
+    ],
+    'hrd': [
+        'Karyawan & SDM (HR)',
+        'Presensi & Absensi Karyawan',
+        'Penggajian & Insentif (Payroll)',
+    ],
+    'voucher': [
+        'Voucher & Reseller',
+        'Marketing Afiliasi',
+        'Paket Internet',
+    ],
+    'setting': [
+        'Master Area & Wilayah',
+        'Master Konfigurasi & Kategori',
+        'Manajemen Pengguna (User)',
+        'Manajemen Role & Hak Akses',
+    ],
+};
+
+// ── Computed Properties ────────────────────────────
 const allPermissionNames = computed(() => {
     const names = [];
     props.permissionGroups.forEach(g => {
@@ -295,27 +588,120 @@ const checkedCount = computed(() => {
 
 const isAllChecked = computed(() => checkedCount.value === totalCount.value);
 
+const hasUnsavedChanges = computed(() => {
+    if (!selectedRole.value || selectedRole.value.name === 'admin') return false;
+    const current = [...selectedPermissions.value].sort();
+    const original = [...(selectedRole.value.permissions || [])].sort();
+    return JSON.stringify(current) !== JSON.stringify(original);
+});
+
+// Sidebar Filtered Roles
+const filteredRoles = computed(() => {
+    if (!roleSearch.value.trim()) return props.roles;
+    const q = roleSearch.value.toLowerCase();
+    return props.roles.filter(r => r.name.toLowerCase().includes(q));
+});
+
+// Category Tabs
+const categoryTabs = computed(() => {
+    return [
+        { id: 'all', label: 'Semua Modul', count: totalCount.value },
+        { id: 'pelanggan', label: 'Pelanggan & PSB', count: countPermissionsByCategory('pelanggan') },
+        { id: 'billing', label: 'Billing & Keuangan', count: countPermissionsByCategory('billing') },
+        { id: 'jaringan', label: 'Jaringan & FTTH', count: countPermissionsByCategory('jaringan') },
+        { id: 'tiket', label: 'Operasional & Tiket', count: countPermissionsByCategory('tiket') },
+        { id: 'gudang', label: 'Logistik & Gudang', count: countPermissionsByCategory('gudang') },
+        { id: 'hrd', label: 'HRD & Payroll', count: countPermissionsByCategory('hrd') },
+        { id: 'voucher', label: 'Voucher & Afiliasi', count: countPermissionsByCategory('voucher') },
+        { id: 'setting', label: 'Pengaturan Sistem', count: countPermissionsByCategory('setting') },
+    ];
+});
+
+const countPermissionsByCategory = (catKey) => {
+    const targetGroups = categoryMap[catKey] || [];
+    return props.permissionGroups
+        .filter(g => targetGroups.includes(g.group))
+        .reduce((sum, g) => sum + g.permissions.length, 0);
+};
+
+// Filtered Groups based on search, category, and status
+const filteredGroups = computed(() => {
+    let groups = props.permissionGroups;
+
+    // 1. Filter by category
+    if (selectedCategory.value !== 'all') {
+        const allowedGroups = categoryMap[selectedCategory.value] || [];
+        groups = groups.filter(g => allowedGroups.includes(g.group));
+    }
+
+    // 2. Filter by search or status
+    const q = searchQuery.value.toLowerCase().trim();
+    const status = statusFilter.value;
+
+    return groups.map(g => {
+        let perms = g.permissions;
+
+        // Search query filter
+        if (q) {
+            perms = perms.filter(p => 
+                p.label.toLowerCase().includes(q) || 
+                p.name.toLowerCase().includes(q) ||
+                g.group.toLowerCase().includes(q)
+            );
+        }
+
+        // Status filter
+        if (status === 'active') {
+            perms = perms.filter(p => isPermActive(p.name));
+        } else if (status === 'inactive') {
+            perms = perms.filter(p => !isPermActive(p.name));
+        }
+
+        return {
+            ...g,
+            permissions: perms,
+        };
+    }).filter(g => g.permissions.length > 0);
+});
+
 // ── Methods ────────────────────────────────────────
 const selectRole = (role) => {
     selectedRole.value = role;
     selectedPermissions.value = [...role.permissions];
     // Open all groups by default
-    openGroups.value = props.permissionGroups.map((_, i) => i);
+    openGroups.value = props.permissionGroups.map(g => g.group);
 };
 
-const toggleGroup = (idx) => {
-    const i = openGroups.value.indexOf(idx);
+const isGroupOpen = (groupName) => openGroups.value.includes(groupName);
+
+const toggleGroup = (groupName) => {
+    const i = openGroups.value.indexOf(groupName);
     if (i >= 0) openGroups.value.splice(i, 1);
-    else openGroups.value.push(idx);
+    else openGroups.value.push(groupName);
+};
+
+const expandAll = () => {
+    openGroups.value = props.permissionGroups.map(g => g.group);
+};
+
+const collapseAll = () => {
+    openGroups.value = [];
+};
+
+const isPermActive = (name) => {
+    if (selectedRole.value?.name === 'admin') return true;
+    return selectedPermissions.value.includes(name);
 };
 
 const togglePermission = (name) => {
+    if (selectedRole.value?.name === 'admin') return;
     const i = selectedPermissions.value.indexOf(name);
     if (i >= 0) selectedPermissions.value.splice(i, 1);
     else selectedPermissions.value.push(name);
 };
 
 const toggleAll = () => {
+    if (selectedRole.value?.name === 'admin') return;
     if (isAllChecked.value) {
         selectedPermissions.value = [];
     } else {
@@ -324,10 +710,12 @@ const toggleAll = () => {
 };
 
 const isGroupAllChecked = (group) => {
+    if (selectedRole.value?.name === 'admin') return true;
     return group.permissions.every(p => selectedPermissions.value.includes(p.name));
 };
 
 const toggleGroupAll = (group) => {
+    if (selectedRole.value?.name === 'admin') return;
     if (isGroupAllChecked(group)) {
         group.permissions.forEach(p => {
             const i = selectedPermissions.value.indexOf(p.name);
@@ -343,7 +731,24 @@ const toggleGroupAll = (group) => {
 };
 
 const getGroupCheckedCount = (group) => {
+    if (selectedRole.value?.name === 'admin') return group.permissions.length;
     return group.permissions.filter(p => selectedPermissions.value.includes(p.name)).length;
+};
+
+const getFilteredPermissions = (permissions) => {
+    return permissions;
+};
+
+const resetChanges = () => {
+    if (selectedRole.value) {
+        selectedPermissions.value = [...(selectedRole.value.permissions || [])];
+    }
+};
+
+const resetFilters = () => {
+    searchQuery.value = '';
+    selectedCategory.value = 'all';
+    statusFilter.value = 'all';
 };
 
 const savePermissions = () => {
@@ -355,11 +760,10 @@ const savePermissions = () => {
     }, {
         preserveScroll: true,
         onSuccess: () => {
-            // Update local state
             const role = props.roles.find(r => r.id === selectedRole.value.id);
             if (role) {
                 role.permissions = [...selectedPermissions.value];
-                selectedRole.value = role;
+                selectedRole.value = { ...role };
             }
         },
         onFinish: () => isSaving.value = false,
@@ -431,32 +835,41 @@ const deleteRole = () => {
     });
 };
 
-// ── Helpers ─────────────────────────────────────────
+// ── Helpers & Icons ─────────────────────────────────
 const getGroupColor = (icon) => {
     const colors = {
         'dashboard': 'bg-blue-100 text-blue-600',
-        'document-add': 'bg-yellow-100 text-yellow-600',
-        'clipboard-check': 'bg-cyan-100 text-cyan-600',
-        'cog': 'bg-indigo-100 text-indigo-600',
-        'key': 'bg-purple-100 text-purple-600',
-        'badge-check': 'bg-emerald-100 text-emerald-600',
-        'users': 'bg-sky-100 text-sky-600',
-        'alert-circle': 'bg-red-100 text-red-600',
-        'globe': 'bg-teal-100 text-teal-600',
-        'server': 'bg-gray-200 text-gray-700',
-        'box': 'bg-amber-100 text-amber-600',
+        'document-add': 'bg-yellow-100 text-yellow-700',
+        'clipboard-check': 'bg-cyan-100 text-cyan-700',
+        'cog': 'bg-indigo-100 text-indigo-700',
+        'key': 'bg-purple-100 text-purple-700',
+        'badge-check': 'bg-emerald-100 text-emerald-700',
+        'users': 'bg-sky-100 text-sky-700',
+        'calendar': 'bg-amber-100 text-amber-700',
+        'document-text': 'bg-blue-100 text-blue-700',
+        'cash': 'bg-green-100 text-green-700',
+        'chart-pie': 'bg-purple-100 text-purple-700',
+        'alert-circle': 'bg-red-100 text-red-700',
+        'support': 'bg-rose-100 text-rose-700',
+        'globe': 'bg-teal-100 text-teal-700',
+        'server': 'bg-slate-100 text-slate-700',
+        'box': 'bg-amber-100 text-amber-700',
         'git-branch': 'bg-lime-100 text-lime-700',
-        'wifi': 'bg-violet-100 text-violet-600',
-        'archive': 'bg-orange-100 text-orange-600',
-        'shopping-cart': 'bg-pink-100 text-pink-600',
-        'briefcase': 'bg-rose-100 text-rose-600',
-        'map': 'bg-emerald-100 text-emerald-600',
-        'lock-closed': 'bg-slate-200 text-slate-700',
-        'color-swatch': 'bg-fuchsia-100 text-fuchsia-600',
-        'code': 'bg-zinc-200 text-zinc-700',
-        'package': 'bg-cyan-100 text-cyan-700',
+        'zap': 'bg-yellow-100 text-yellow-700',
+        'wifi': 'bg-violet-100 text-violet-700',
+        'archive': 'bg-orange-100 text-orange-700',
+        'shopping-cart': 'bg-pink-100 text-pink-700',
+        'briefcase': 'bg-rose-100 text-rose-700',
+        'calculator': 'bg-emerald-100 text-emerald-700',
+        'ticket': 'bg-cyan-100 text-cyan-700',
+        'gift': 'bg-pink-100 text-pink-700',
+        'package': 'bg-sky-100 text-sky-700',
+        'map': 'bg-emerald-100 text-emerald-700',
+        'lock-closed': 'bg-indigo-100 text-indigo-700',
+        'color-swatch': 'bg-fuchsia-100 text-fuchsia-700',
+        'code': 'bg-slate-100 text-slate-700',
     };
-    return colors[icon] || 'bg-gray-100 text-gray-600';
+    return colors[icon] || 'bg-gray-100 text-gray-700';
 };
 
 const iconPaths = {
@@ -467,19 +880,60 @@ const iconPaths = {
     key: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z',
     'badge-check': 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z',
     users: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
+    calendar: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+    'document-text': 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    cash: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
+    'chart-pie': 'M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z',
     'alert-circle': 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    support: 'M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z',
     globe: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
     server: 'M5 12H3l9-9 9 9h-2M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7',
     box: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
     'git-branch': 'M6 3v12M18 9a3 3 0 01-3 3H9m-3 0a3 3 0 003 3h0a3 3 0 003-3m0 0V3',
+    zap: 'M13 10V3L4 14h7v7l9-11h-7z',
     wifi: 'M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.858 15.355-5.858 21.213 0',
     archive: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4',
     'shopping-cart': 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
     briefcase: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
+    calculator: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
+    ticket: 'M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z',
+    gift: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V6a2 2 0 10-2 2h2zm0 0H4a2 2 0 00-2 2v3a2 2 0 002 2h16a2 2 0 002-2v-3a2 2 0 00-2-2h-8zM4 15v4a2 2 0 002 2h12a2 2 0 002-2v-4',
+    package: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
     map: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
     'lock-closed': 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
     'color-swatch': 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01',
     code: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4',
-    package: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
 };
+
+// Auto-select first role on mount if none selected
+onMounted(() => {
+    if (props.roles.length > 0 && !selectedRole.value) {
+        // Prefer 'noc' or non-admin if available, or first role
+        const defaultRole = props.roles.find(r => r.name !== 'admin') || props.roles[0];
+        selectRole(defaultRole);
+    }
+});
 </script>
+
+<style scoped>
+/* Hide scrollbar for category tabs */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+@keyframes bounceSubtle {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-4px);
+    }
+}
+.animate-bounce-subtle {
+    animation: bounceSubtle 3s ease-in-out infinite;
+}
+</style>
