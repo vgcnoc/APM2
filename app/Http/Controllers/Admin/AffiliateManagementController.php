@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AffiliateCommission;
 use App\Models\AffiliateProfile;
 use App\Models\AffiliateWithdrawal;
+use App\Models\Customer;
 use App\Services\AffiliateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
