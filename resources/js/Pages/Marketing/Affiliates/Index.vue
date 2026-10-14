@@ -75,7 +75,7 @@
                     <button
                         v-for="t in [
                             { id: 'settings', label: 'Pengaturan Komisi', icon: '⚙️' },
-                            { id: 'diagram', label: 'Arsitektur & Diagram Cerdas', icon: '🧠' },
+                            { id: 'diagram', label: 'Diagram Multi-Tier Affiliate', icon: '🌳' },
                             { id: 'affiliates', label: 'Daftar Agen Afiliasi (' + affiliates.total + ')', icon: '👥' },
                             { id: 'commissions', label: 'Riwayat Log Komisi', icon: '📜' },
                             { id: 'withdrawals', label: 'Permintaan Pencairan (' + withdrawals.total + ')', icon: '💸' },
@@ -252,375 +252,823 @@
                     </div>
                 </div>
 
-                <!-- ════ TAB DIAGRAM: ARSITEKTUR & SKEMA AFILIASI CERDAS ════ -->
-                <div v-if="currentTab === 'diagram'" class="p-6 sm:p-8 space-y-8">
-                    <!-- Filter Pills -->
-                    <div class="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-100">
-                        <span class="text-xs font-bold text-slate-500 mr-2">Fokus Alur:</span>
-                        <button
-                            v-for="f in [
-                                { id: 'all', label: '🌐 Semua Alur Sistem' },
-                                { id: 'employee', label: '👔 Jalur Karyawan (Slip Gaji)' },
-                                { id: 'external', label: '🤝 Jalur Mitra Luar (Dompet)' },
-                                { id: 'multitier', label: '🌳 Jaringan Multi-Tier' },
-                                { id: 'clawback', label: '✂️ Smart Pinalti < 4 Bulan' },
-                                { id: 'sim', label: '🧮 Simulator Pasif Income' },
-                            ]"
-                            :key="f.id"
-                            type="button"
-                            @click="diagramActiveFilter = f.id"
-                            class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
-                            :class="diagramActiveFilter === f.id ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                        >
-                            {{ f.label }}
-                        </button>
+                <!-- ════ TAB DIAGRAM: MULTI-TIER AFFILIATE DIAGRAM (PERSIS SCREENSHOT - LEBIH RAPIH & CANGGIH) ════ -->
+                <div v-if="currentTab === 'diagram'" class="p-6 sm:p-8 space-y-6">
+                    <!-- Top Container Card with Diagram & List Toggle -->
+                    <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+                        
+                        <!-- Top Bar: Title, Search, and View Mode Toggle -->
+                        <div class="p-4 sm:p-6 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center text-xl shadow-2xs">
+                                    🌳
+                                </div>
+                                <div>
+                                    <h2 class="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                        Diagram Multi-Tier Affiliate
+                                    </h2>
+                                    <p class="text-xs text-slate-500">
+                                        Visualisasi struktur hierarki jaringan pemasaran, hubungan Upline - Downline, dan pasif income.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Right Controls: Search bar & View Toggle -->
+                            <div class="flex flex-wrap items-center gap-3">
+                                <div class="relative w-full sm:w-72">
+                                    <input
+                                        v-model="treeSearch"
+                                        type="text"
+                                        placeholder="Cari pelanggan, transaksi, atau area..."
+                                        class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all shadow-2xs"
+                                    />
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">🔍</span>
+                                    <button
+                                        v-if="treeSearch"
+                                        @click="treeSearch = ''"
+                                        type="button"
+                                        class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 text-xs"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                <!-- View Mode Toggles (Persis Screenshot) -->
+                                <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                                    <button
+                                        type="button"
+                                        @click="treeViewMode = 'diagram'"
+                                        class="px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all"
+                                        :class="treeViewMode === 'diagram' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                                        <span>Tampilan Diagram</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="treeViewMode = 'list'"
+                                        class="px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all"
+                                        :class="treeViewMode === 'list' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                                        <span>Tampilan List</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4 Top KPI Cards (Persis Screenshot: 2 Upline Aktif, 24 Downline 1, 4 Downline 2, 30 Total Member) -->
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 p-4 sm:p-6 bg-slate-50/50 border-b border-slate-100">
+                            <!-- Card 1: Upline Aktif (Blue) -->
+                            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5 hover:border-blue-300 hover:shadow-xs transition-all">
+                                <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
+                                    👤
+                                </div>
+                                <div>
+                                    <div class="text-xl sm:text-2xl font-black text-slate-900">{{ tree_kpi?.upline_count ?? 1 }}</div>
+                                    <div class="text-xs font-semibold text-slate-500">Upline Aktif</div>
+                                </div>
+                            </div>
+
+                            <!-- Card 2: Downline 1 (Green) -->
+                            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5 hover:border-emerald-300 hover:shadow-xs transition-all">
+                                <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+                                    👥
+                                </div>
+                                <div>
+                                    <div class="text-xl sm:text-2xl font-black text-slate-900">{{ tree_kpi?.downline_1_count ?? 10 }}</div>
+                                    <div class="text-xs font-semibold text-slate-500">Downline 1</div>
+                                </div>
+                            </div>
+
+                            <!-- Card 3: Downline 2 (Amber) -->
+                            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5 hover:border-amber-300 hover:shadow-xs transition-all">
+                                <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shrink-0">
+                                    👥
+                                </div>
+                                <div>
+                                    <div class="text-xl sm:text-2xl font-black text-slate-900">{{ tree_kpi?.downline_2_count ?? 1 }}</div>
+                                    <div class="text-xs font-semibold text-slate-500">Downline 2</div>
+                                </div>
+                            </div>
+
+                            <!-- Card 4: Total Member (Purple) -->
+                            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5 hover:border-purple-300 hover:shadow-xs transition-all">
+                                <div class="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl shrink-0">
+                                    🌐
+                                </div>
+                                <div>
+                                    <div class="text-xl sm:text-2xl font-black text-slate-900">{{ tree_kpi?.total_members ?? 12 }}</div>
+                                    <div class="text-xs font-semibold text-slate-500">Total Member</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ══ MODE A: TAMPILAN DIAGRAM POHON INTERAKTIF ══ -->
+                        <div v-if="treeViewMode === 'diagram'" class="relative">
+                            
+                            <!-- Canvas Action Subheader: Upline Selector & Zoom Controls -->
+                            <div class="p-3 sm:px-6 bg-white/80 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-slate-600">Pohon Upline:</span>
+                                    <select
+                                        v-if="tree_data && tree_data.length > 1"
+                                        v-model="selectedUplineIndex"
+                                        class="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    >
+                                        <option v-for="(u, idx) in tree_data" :key="u.id" :value="idx">
+                                            {{ u.name }} ({{ u.l1_count || u.downlines?.length || 0 }} Downline)
+                                        </option>
+                                    </select>
+                                    <span v-else class="font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+                                        {{ activeUplineTree?.name }}
+                                    </span>
+                                </div>
+
+                                <!-- Zoom controls -->
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-slate-400 font-medium">Zoom:</span>
+                                    <div class="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                                        <button
+                                            type="button"
+                                            @click="setTreeZoom(-10)"
+                                            class="w-6 h-6 rounded flex items-center justify-center font-bold text-slate-600 hover:bg-white transition-colors"
+                                            title="Zoom Out"
+                                        >
+                                            -
+                                        </button>
+                                        <span class="text-[11px] font-mono font-bold text-slate-700 px-2">{{ treeZoom }}%</span>
+                                        <button
+                                            type="button"
+                                            @click="setTreeZoom(10)"
+                                            class="w-6 h-6 rounded flex items-center justify-center font-bold text-slate-600 hover:bg-white transition-colors"
+                                            title="Zoom In"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        @click="setTreeZoom(0)"
+                                        class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-lg text-[11px] transition-colors"
+                                    >
+                                        Fit 100%
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Interactive Tree Canvas with Wavy SVG Background -->
+                            <div class="relative overflow-x-auto min-h-[580px] bg-gradient-to-b from-slate-50/40 via-white to-indigo-50/30">
+                                <!-- Wavy background decoration (Persis Screenshot) -->
+                                <div class="absolute inset-x-0 bottom-0 pointer-events-none overflow-hidden h-64 z-0">
+                                    <svg class="w-full h-full text-indigo-100/60 fill-current" viewBox="0 0 1440 320" preserveAspectRatio="none">
+                                        <path fill-opacity="1" d="M0,192L48,197.3C96,203,192,213,288,208C384,203,480,181,576,181.3C672,181,768,203,864,218.7C960,235,1056,245,1152,229.3C1248,213,1344,171,1392,149.3L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+                                    </svg>
+                                </div>
+
+                                <!-- Tree Nodes Container (Scalable) -->
+                                <div
+                                    class="py-10 px-6 flex flex-col items-center min-w-max relative z-10 transition-transform duration-200 origin-top"
+                                    :style="{ transform: `scale(${treeZoom / 100})` }"
+                                >
+                                    <!-- 1. ROOT UPLINE NODE -->
+                                    <div class="flex flex-col items-center mb-0">
+                                        <!-- Top Capsule Badge -->
+                                        <div class="relative z-10 -mb-3">
+                                            <span class="inline-flex items-center gap-1 px-4 py-1 rounded-full bg-blue-600 text-white text-[11px] font-extrabold uppercase tracking-widest shadow-sm">
+                                                <span>UPLINE</span>
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                                            </span>
+                                        </div>
+
+                                        <!-- Card Box -->
+                                        <div
+                                            @click="openMemberModal(activeUplineTree, 'Upline Utama')"
+                                            class="w-64 bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-lg transition-all p-4 cursor-pointer relative group"
+                                            :class="isNodeMatched(activeUplineTree) ? 'ring-4 ring-indigo-400 border-indigo-500 scale-105' : ''"
+                                        >
+                                            <div class="flex items-start justify-between gap-2">
+                                                <div class="flex items-center gap-2.5 min-w-0">
+                                                    <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-bold text-sm shrink-0">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                                    </div>
+                                                    <div class="min-w-0">
+                                                        <h4 class="text-xs font-extrabold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                                                            {{ activeUplineTree?.name }}
+                                                        </h4>
+                                                        <span class="text-[10px] text-slate-400 font-mono block">
+                                                            ID: {{ activeUplineTree?.referral_code || ('SL-202301-' + String(activeUplineTree?.id).padStart(4, '0')) }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="flex items-center gap-1 shrink-0">
+                                                    <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold border border-emerald-200 flex items-center gap-1">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                        <span>Aktif</span>
+                                                    </span>
+                                                    <button type="button" @click.stop="openMemberModal(activeUplineTree, 'Upline Utama')" class="text-slate-400 hover:text-slate-700 p-1 rounded-md hover:bg-slate-50">
+                                                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <!-- Bottom Info Row -->
+                                            <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                                                <div class="flex items-center gap-1">
+                                                    <span>👤</span>
+                                                    <span>Komisi : <b class="text-slate-700">0%</b></span>
+                                                </div>
+                                                <div class="flex items-center gap-1">
+                                                    <span>👥</span>
+                                                    <span class="font-semibold text-blue-600">{{ activeUplineTree?.l1_count || activeUplineTree?.downlines?.length || 10 }} Downline 1</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Connector Circle (Checkmark) -->
+                                        <div class="relative z-10 -mt-2.5">
+                                            <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black shadow-xs ring-4 ring-white">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                            </div>
+                                        </div>
+
+                                        <!-- Vertical Stem Line to horizontal bus -->
+                                        <div class="w-0.5 h-7 bg-blue-300"></div>
+                                    </div>
+
+                                    <!-- 2. DOWNLINE 1 BUS BAR & CARDS ROW -->
+                                    <div v-if="activeUplineTree?.downlines && activeUplineTree.downlines.length > 0" class="flex justify-center items-start min-w-max px-4">
+                                        <div
+                                            v-for="(d1, idx) in activeUplineTree.downlines"
+                                            :key="d1.id"
+                                            class="flex flex-col items-center"
+                                        >
+                                            <!-- Responsive Bus Line segment -->
+                                            <div class="w-full flex h-6">
+                                                <div :class="['h-full border-t-2 border-blue-300 flex-1', idx === 0 ? 'invisible' : '']"></div>
+                                                <div class="w-0.5 h-full bg-blue-300"></div>
+                                                <div :class="['h-full border-t-2 border-blue-300 flex-1', idx === activeUplineTree.downlines.length - 1 ? 'invisible' : '']"></div>
+                                            </div>
+
+                                            <!-- Downline 1 Card Container with margins -->
+                                            <div class="px-2 sm:px-3 flex flex-col items-center">
+                                                <!-- Top Badge -->
+                                                <div class="relative z-10 -mb-2.5">
+                                                    <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-black uppercase tracking-wider shadow-xs">
+                                                        <span>DOWNLINE 1</span>
+                                                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                                                    </span>
+                                                </div>
+
+                                                <!-- Downline 1 Card -->
+                                                <div
+                                                    @click="openMemberModal(d1, 'Downline 1')"
+                                                    class="w-56 bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all p-3.5 cursor-pointer relative group"
+                                                    :class="isNodeMatched(d1) ? 'ring-4 ring-emerald-400 border-emerald-500 scale-105' : ''"
+                                                >
+                                                    <div class="flex items-start justify-between gap-1.5">
+                                                        <div class="flex items-center gap-2 min-w-0">
+                                                            <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold text-xs shrink-0">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                                            </div>
+                                                            <div class="min-w-0">
+                                                                <h5 class="text-xs font-extrabold text-slate-800 truncate group-hover:text-emerald-600 transition-colors" :title="d1.name">
+                                                                    {{ d1.name }}
+                                                                </h5>
+                                                                <span class="text-[9px] text-slate-400 font-mono block truncate">
+                                                                    ID: {{ d1.referral_code || ('SL-202301-' + String(d1.id).padStart(4, '0')) }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="flex items-center gap-0.5 shrink-0">
+                                                            <span class="px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[9px] font-bold border border-emerald-100">
+                                                                Aktif
+                                                            </span>
+                                                            <button type="button" @click.stop="openMemberModal(d1, 'Downline 1')" class="text-slate-400 hover:text-slate-600 p-0.5">
+                                                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Bottom Stats Row -->
+                                                    <div class="mt-2.5 pt-2 border-t border-slate-100 grid grid-cols-2 gap-1 text-[10px] text-slate-500">
+                                                        <div class="truncate">
+                                                            <span>👤 Komisi : </span><b class="text-slate-700">0%</b>
+                                                        </div>
+                                                        <div class="truncate text-right">
+                                                            <span v-if="d1.downlines && d1.downlines.length > 0" class="font-bold text-emerald-600">
+                                                                👥 {{ d1.downlines.length }} Downline 2
+                                                            </span>
+                                                            <span v-else class="text-slate-400">
+                                                                👥 0 Downline 2
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- 3. DOWNLINE 2 CONNECTOR & CARDS IF EXISTS (e.g. IMALULHAKIM -> SADIN) -->
+                                                <div v-if="d1.downlines && d1.downlines.length > 0" class="flex flex-col items-center">
+                                                    <!-- Expand/Collapse Button (Check/Arrow Circle) -->
+                                                    <div class="relative z-10 -mt-2">
+                                                        <button
+                                                            type="button"
+                                                            @click.stop="toggleDownlineExpand(d1.id)"
+                                                            class="w-5 h-5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center text-[9px] font-black shadow-xs ring-2 ring-white transition-transform duration-200"
+                                                            :class="expandedDownlines[d1.id] ? 'rotate-180' : ''"
+                                                            :title="expandedDownlines[d1.id] ? 'Tutup Downline 2' : 'Buka Downline 2'"
+                                                        >
+                                                            ▼
+                                                        </button>
+                                                    </div>
+
+                                                    <!-- Vertical Drop Line & Downline 2 Children -->
+                                                    <div v-if="expandedDownlines[d1.id]" class="flex flex-col items-center">
+                                                        <div class="w-0.5 h-8 bg-emerald-400"></div>
+
+                                                        <div class="flex items-start gap-4">
+                                                            <div
+                                                                v-for="d2 in d1.downlines"
+                                                                :key="d2.id"
+                                                                class="flex flex-col items-center"
+                                                            >
+                                                                <!-- Top Badge -->
+                                                                <div class="relative z-10 -mb-2.5">
+                                                                    <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-black uppercase tracking-wider shadow-xs">
+                                                                        <span>DOWNLINE 2</span>
+                                                                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                                                                    </span>
+                                                                </div>
+
+                                                                <!-- Downline 2 Card -->
+                                                                <div
+                                                                    @click="openMemberModal(d2, 'Downline 2')"
+                                                                    class="w-56 bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all p-3.5 cursor-pointer relative group"
+                                                                    :class="isNodeMatched(d2) ? 'ring-4 ring-amber-400 border-amber-500 scale-105' : ''"
+                                                                >
+                                                                    <div class="flex items-start justify-between gap-1.5">
+                                                                        <div class="flex items-center gap-2 min-w-0">
+                                                                            <div class="w-8 h-8 rounded-full bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold text-xs shrink-0">
+                                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                                                            </div>
+                                                                            <div class="min-w-0">
+                                                                                <h5 class="text-xs font-extrabold text-slate-800 truncate group-hover:text-amber-600 transition-colors" :title="d2.name">
+                                                                                    {{ d2.name }}
+                                                                                </h5>
+                                                                                <span class="text-[9px] text-slate-400 font-mono block truncate">
+                                                                                    ID: {{ d2.referral_code || ('SL-202303-' + String(d2.id).padStart(4, '0')) }}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="flex items-center gap-0.5 shrink-0">
+                                                                            <span class="px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[9px] font-bold border border-emerald-100">
+                                                                                Aktif
+                                                                            </span>
+                                                                            <button type="button" @click.stop="openMemberModal(d2, 'Downline 2')" class="text-slate-400 hover:text-slate-600 p-0.5">
+                                                                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <!-- Bottom Stats Row -->
+                                                                    <div class="mt-2.5 pt-2 border-t border-slate-100 grid grid-cols-2 gap-1 text-[10px] text-slate-500">
+                                                                        <div class="truncate">
+                                                                            <span>👤 Komisi : </span><b class="text-slate-700">5%</b>
+                                                                        </div>
+                                                                        <div class="truncate text-right">
+                                                                            <span class="text-slate-400">👥 0 Downline 3</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bottom Information Bar (Persis Screenshot) -->
+                            <div class="p-4 sm:p-5 bg-blue-50/80 border-t border-blue-100 flex items-start gap-3">
+                                <div class="w-7 h-7 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
+                                    ℹ️
+                                </div>
+                                <div class="text-xs text-blue-900 leading-relaxed">
+                                    <strong class="font-black text-blue-950 block sm:inline mr-1">Informasi:</strong>
+                                    <span>Sistem Komisi Multi-Tier: Menikmati passive income pasif hingga 2 Level (Upline 1 &amp; Upline 2). Setiap Sales/Upline bebas memiliki Downline sebanyak-banyaknya tanpa batas.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ══ MODE B: TAMPILAN LIST (TABEL STRUKTUR HIERARKI) ══ -->
+                        <div v-else class="p-6">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                <div class="flex items-center gap-1.5 overflow-x-auto">
+                                    <button
+                                        v-for="lvl in [
+                                            { id: 'all', label: 'Semua Tingkat' },
+                                            { id: 'upline', label: 'Upline Utama' },
+                                            { id: 'l1', label: 'Downline 1' },
+                                            { id: 'l2', label: 'Downline 2' },
+                                        ]"
+                                        :key="lvl.id"
+                                        type="button"
+                                        @click="listFilterLevel = lvl.id"
+                                        class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap"
+                                        :class="listFilterLevel === lvl.id ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                    >
+                                        {{ lvl.label }}
+                                    </button>
+                                </div>
+                                <span class="text-xs text-slate-500 font-medium">
+                                    Menampilkan <b>{{ flatMemberList.length }}</b> anggota jaringan
+                                </span>
+                            </div>
+
+                            <div class="overflow-x-auto rounded-2xl border border-slate-200">
+                                <table class="min-w-full divide-y divide-slate-100 text-xs">
+                                    <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
+                                        <tr>
+                                            <th class="px-4 py-3">Nama Member / Kode</th>
+                                            <th class="px-4 py-3">Tingkatan</th>
+                                            <th class="px-4 py-3">Sponsor / Upline</th>
+                                            <th class="px-4 py-3">Jalur Sistem</th>
+                                            <th class="px-4 py-3 text-center">Pelanggan Direct</th>
+                                            <th class="px-4 py-3 text-right">Total Pendapatan</th>
+                                            <th class="px-4 py-3 text-center">Status</th>
+                                            <th class="px-4 py-3 text-center">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 bg-white">
+                                        <tr v-for="m in flatMemberList" :key="m.level_label + '-' + m.id" class="hover:bg-slate-50/70 transition-colors">
+                                            <td class="px-4 py-3 font-medium text-slate-900">
+                                                <div class="flex items-center gap-2.5">
+                                                    <div class="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0">
+                                                        👤
+                                                    </div>
+                                                    <div>
+                                                        <div class="font-bold text-slate-800">{{ m.name }}</div>
+                                                        <div class="text-[10px] text-slate-400 font-mono">{{ m.referral_code || ('ID: SL-' + m.id) }}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border" :class="m.level_badge">
+                                                    {{ m.level_label }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-slate-600 font-medium">
+                                                {{ m.sponsor_name }}
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <span v-if="m.is_employee" class="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-200">
+                                                    👔 Karyawan (Slip Gaji)
+                                                </span>
+                                                <span v-else class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                                                    🤝 Mitra Luar (Dompet)
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-center font-bold text-slate-700">
+                                                {{ m.total_customers || 0 }} Cust
+                                            </td>
+                                            <td class="px-4 py-3 text-right font-black text-emerald-600">
+                                                {{ formatRupiah(m.total_earned || 0) }}
+                                            </td>
+                                            <td class="px-4 py-3 text-center">
+                                                <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                                                    Aktif
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-center">
+                                                <button
+                                                    type="button"
+                                                    @click="openMemberModal(m, m.level_label)"
+                                                    class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-[11px] transition-colors"
+                                                >
+                                                    Detail
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="flatMemberList.length === 0">
+                                            <td colspan="8" class="px-4 py-8 text-center text-slate-400 text-xs">
+                                                Tidak ada member yang cocok dengan filter / pencarian.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- 1. SMART DUAL-ROUTE ENGINE (KARYAWAN VS MITRA LUAR) -->
-                    <div v-if="['all', 'employee', 'external'].includes(diagramActiveFilter)" class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-lg border border-indigo-500/20">
-                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6 pb-4 border-b border-white/10">
-                            <div>
-                                <span class="px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-extrabold uppercase tracking-wider border border-indigo-400/30">
-                                    Smart Dual-Route Engine &bull; 1 Akun Tunggal
+                    <!-- Collapsible Section: Panduan Alur Sistem Cerdas & Simulator -->
+                    <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-7">
+                        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                            <div class="flex items-center gap-3">
+                                <span class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg">
+                                    💡
                                 </span>
-                                <h3 class="text-lg sm:text-xl font-black text-white mt-1.5 flex items-center gap-2">
-                                    <span>🧠</span>
-                                    <span>Pembedaan Otomatis Jalur Karyawan vs Mitra Luar</span>
-                                </h3>
-                                <p class="text-xs text-indigo-200/80 mt-1">
-                                    Sistem secara otomatis mendeteksi profil pengguna saat komisi dihasilkan tanpa memerlukan pendaftaran akun ganda.
-                                </p>
+                                <div>
+                                    <h3 class="text-sm sm:text-base font-bold text-slate-900">
+                                        Panduan Alur Sistem Cerdas &amp; Simulator Interaktif
+                                    </h3>
+                                    <p class="text-xs text-slate-500">
+                                        Pelajari aturan pemisahan Slip Gaji Karyawan vs Dompet Mitra, Pinalti Berhenti &lt; {{ settingsForm.affiliate_contract_min_months }} Bulan, dan coba Simulator Pasif.
+                                    </p>
+                                </div>
                             </div>
-                            <span class="inline-flex self-start md:self-auto text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-3 py-1.5 rounded-xl">
-                                🛡️ Anti-Double Pay Active
-                            </span>
+                            <button
+                                type="button"
+                                @click="showArchitectureGuide = !showArchitectureGuide"
+                                class="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5"
+                            >
+                                <span>{{ showArchitectureGuide ? 'Sembunyikan' : 'Buka Detail' }}</span>
+                                <span class="text-xs transition-transform duration-200" :class="showArchitectureGuide ? 'rotate-180' : ''">▼</span>
+                            </button>
                         </div>
 
-                        <!-- Grid Perbandingan 2 Jalur -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Jalur Ungu: Karyawan Internal -->
-                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-purple-400/30 space-y-4">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-9 h-9 rounded-xl bg-purple-500/30 text-purple-200 flex items-center justify-center text-lg font-bold">
-                                            👔
-                                        </div>
-                                        <div>
-                                            <h4 class="font-bold text-white text-sm">Jalur Karyawan Internal</h4>
-                                            <span class="text-[10px] text-purple-300">Staff, Teknisi, Sales, Admin, NOC</span>
-                                        </div>
+                        <!-- Guide Content when opened -->
+                        <div v-if="showArchitectureGuide" class="mt-6 space-y-6">
+                            <!-- 1. SMART DUAL-ROUTE ENGINE (KARYAWAN VS MITRA LUAR) -->
+                            <div class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-lg border border-indigo-500/20">
+                                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6 pb-4 border-b border-white/10">
+                                    <div>
+                                        <span class="px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-extrabold uppercase tracking-wider border border-indigo-400/30">
+                                            Smart Dual-Route Engine &bull; 1 Akun Tunggal
+                                        </span>
+                                        <h3 class="text-lg sm:text-xl font-black text-white mt-1.5 flex items-center gap-2">
+                                            <span>🧠</span>
+                                            <span>Pembedaan Otomatis Jalur Karyawan vs Mitra Luar</span>
+                                        </h3>
+                                        <p class="text-xs text-indigo-200/80 mt-1">
+                                            Sistem secara otomatis mendeteksi profil pengguna saat komisi dihasilkan tanpa memerlukan pendaftaran akun ganda.
+                                        </p>
                                     </div>
-                                    <span class="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 text-[10px] font-bold border border-purple-400/30">
-                                        Slip Gaji / Payroll
+                                    <span class="inline-flex self-start md:self-auto text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-3 py-1.5 rounded-xl">
+                                        🛡️ Anti-Double Pay Active
                                     </span>
                                 </div>
 
-                                <div class="space-y-2.5 text-xs text-purple-100/90 pt-1">
-                                    <div class="p-3 rounded-xl bg-white/5 border border-purple-400/20 flex items-start gap-2.5">
-                                        <span class="text-base">🎯</span>
-                                        <div>
-                                            <span class="font-bold text-white block">Fee Booking Pelanggan:</span>
-                                            Otomatis masuk ke tabel <b>Incentives (Pending)</b> dengan referensi unik <code>booking_cust_{id}</code>. Saldo dompet = Rp 0.
+                                <!-- Grid Perbandingan 2 Jalur -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- Jalur Ungu: Karyawan Internal -->
+                                    <div class="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-purple-400/30 space-y-4">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center gap-2.5">
+                                                <div class="w-9 h-9 rounded-xl bg-purple-500/30 text-purple-200 flex items-center justify-center text-lg font-bold">
+                                                    👔
+                                                </div>
+                                                <div>
+                                                    <h4 class="font-bold text-white text-sm">Jalur Karyawan Internal</h4>
+                                                    <span class="text-[10px] text-purple-300">Staff, Teknisi, Sales, Admin, NOC</span>
+                                                </div>
+                                            </div>
+                                            <span class="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 text-[10px] font-bold border border-purple-400/30">
+                                                Slip Gaji / Payroll
+                                            </span>
+                                        </div>
+
+                                        <div class="space-y-2.5 text-xs text-purple-100/90 pt-1">
+                                            <div class="p-3 rounded-xl bg-white/5 border border-purple-400/20 flex items-start gap-2.5">
+                                                <span class="text-base">🎯</span>
+                                                <div>
+                                                    <span class="font-bold text-white block">Fee Booking Pelanggan:</span>
+                                                    Otomatis masuk ke tabel <b>Incentives (Pending)</b> dengan referensi unik <code>booking_cust_{id}</code>. Saldo dompet = Rp 0.
+                                                </div>
+                                            </div>
+                                            <div class="p-3 rounded-xl bg-white/5 border border-purple-400/20 flex items-start gap-2.5">
+                                                <span class="text-base">💰</span>
+                                                <div>
+                                                    <span class="font-bold text-white block">Pasif Downline L1 &amp; L2:</span>
+                                                    Otomatis masuk ke tabel <b>Incentives (Pending)</b> setiap invoice pelanggan binaan lunas.
+                                                </div>
+                                            </div>
+                                            <div class="p-3 rounded-xl bg-white/5 border border-purple-400/20 flex items-start gap-2.5">
+                                                <span class="text-base">✂️</span>
+                                                <div>
+                                                    <span class="font-bold text-white block">Pinalti Stop Dini (&lt; {{ settingsForm.affiliate_contract_min_months }} Bulan):</span>
+                                                    Otomatis masuk ke tabel <b>Deductions (Pending)</b>, otomatis memotong total gaji pada slip gaji bulanan.
+                                                </div>
+                                            </div>
+                                            <div class="p-3 rounded-xl bg-purple-600/30 border border-purple-400/40 text-[11px] font-semibold text-purple-100 flex items-center justify-between">
+                                                <span>📅 Muara Pencairan:</span>
+                                                <span class="font-bold text-white">Slip Gaji Bulanan (Menu Payroll)</span>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="p-3 rounded-xl bg-white/5 border border-purple-400/20 flex items-start gap-2.5">
-                                        <span class="text-base">💰</span>
-                                        <div>
-                                            <span class="font-bold text-white block">Pasif Downline L1 &amp; L2:</span>
-                                            Otomatis masuk ke tabel <b>Incentives (Pending)</b> setiap invoice pelanggan binaan lunas.
+
+                                    <!-- Jalur Hijau: Mitra Luar -->
+                                    <div class="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-emerald-400/30 space-y-4">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center gap-2.5">
+                                                <div class="w-9 h-9 rounded-xl bg-emerald-500/30 text-emerald-200 flex items-center justify-center text-lg font-bold">
+                                                    🤝
+                                                </div>
+                                                <div>
+                                                    <h4 class="font-bold text-white text-sm">Jalur Mitra Luar / Freelance</h4>
+                                                    <span class="text-[10px] text-emerald-300">Agen Umum, Reseller, Partner Publik</span>
+                                                </div>
+                                            </div>
+                                            <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 text-[10px] font-bold border border-emerald-400/30">
+                                                Dompet E-Wallet
+                                            </span>
                                         </div>
-                                    </div>
-                                    <div class="p-3 rounded-xl bg-white/5 border border-purple-400/20 flex items-start gap-2.5">
-                                        <span class="text-base">✂️</span>
-                                        <div>
-                                            <span class="font-bold text-white block">Pinalti Stop Dini (&lt; 4 Bulan):</span>
-                                            Otomatis masuk ke tabel <b>Deductions (Pending)</b>, otomatis memotong total gaji pada slip gaji bulanan.
+
+                                        <div class="space-y-2.5 text-xs text-emerald-100/90 pt-1">
+                                            <div class="p-3 rounded-xl bg-white/5 border border-emerald-400/20 flex items-start gap-2.5">
+                                                <span class="text-base">🎯</span>
+                                                <div>
+                                                    <span class="font-bold text-white block">Fee Booking Pelanggan:</span>
+                                                    Otomatis menambah <b>Saldo Dompet Afiliasi (+{{ formatRupiah(settingsForm.affiliate_commission_booking) }})</b> dan tercatat di total pendapatan.
+                                                </div>
+                                            </div>
+                                            <div class="p-3 rounded-xl bg-white/5 border border-emerald-400/20 flex items-start gap-2.5">
+                                                <span class="text-base">💰</span>
+                                                <div>
+                                                    <span class="font-bold text-white block">Pasif Downline L1 &amp; L2:</span>
+                                                    Otomatis menambah saldo dompet: L1 (+{{ formatRupiah(settingsForm.affiliate_commission_upline_1) }}) &amp; L2 (+{{ formatRupiah(settingsForm.affiliate_commission_upline_2) }}).
+                                                </div>
+                                            </div>
+                                            <div class="p-3 rounded-xl bg-white/5 border border-emerald-400/20 flex items-start gap-2.5">
+                                                <span class="text-base">✂️</span>
+                                                <div>
+                                                    <span class="font-bold text-white block">Pinalti Stop Dini (&lt; {{ settingsForm.affiliate_contract_min_months }} Bulan):</span>
+                                                    Otomatis memotong langsung dari <b>Saldo Dompet (-{{ formatRupiah(settingsForm.affiliate_commission_booking) }})</b>.
+                                                </div>
+                                            </div>
+                                            <div class="p-3 rounded-xl bg-emerald-600/30 border border-emerald-400/40 text-[11px] font-semibold text-emerald-100 flex items-center justify-between">
+                                                <span>🏦 Muara Pencairan:</span>
+                                                <span class="font-bold text-white">Transfer Bank / E-Wallet (Withdrawal)</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="p-3 rounded-xl bg-purple-600/30 border border-purple-400/40 text-[11px] font-semibold text-purple-100 flex items-center justify-between">
-                                        <span>📅 Muara Pencairan:</span>
-                                        <span class="font-bold text-white">Slip Gaji Bulanan (Menu Payroll)</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Jalur Hijau: Mitra Luar -->
-                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-emerald-400/30 space-y-4">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-9 h-9 rounded-xl bg-emerald-500/30 text-emerald-200 flex items-center justify-center text-lg font-bold">
-                                            🤝
-                                        </div>
-                                        <div>
-                                            <h4 class="font-bold text-white text-sm">Jalur Mitra Luar / Freelance</h4>
-                                            <span class="text-[10px] text-emerald-300">Agen Umum, Reseller, Partner Publik</span>
-                                        </div>
+                            <!-- 2. SMART GUARD KONTRAK 4 BULAN -->
+                            <div class="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-7 shadow-xs space-y-6">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                                    <div>
+                                        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                                            <span>✂️</span>
+                                            <span>Smart Guard: Pinalti Berhenti Dini (&lt; {{ settingsForm.affiliate_contract_min_months }} Bulan)</span>
+                                        </h3>
+                                        <p class="text-xs text-slate-500 mt-0.5">
+                                            Perlindungan finansial perusahaan agar mitra &amp; sales berkomitmen menjaga pelanggan tetap berlangganan minimal {{ settingsForm.affiliate_contract_min_months }} bulan.
+                                        </p>
                                     </div>
-                                    <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 text-[10px] font-bold border border-emerald-400/30">
-                                        Dompet E-Wallet
+                                    <span class="inline-flex self-start sm:self-auto text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full">
+                                        Auto-Clawback Protection
                                     </span>
                                 </div>
 
-                                <div class="space-y-2.5 text-xs text-emerald-100/90 pt-1">
-                                    <div class="p-3 rounded-xl bg-white/5 border border-emerald-400/20 flex items-start gap-2.5">
-                                        <span class="text-base">🎯</span>
-                                        <div>
-                                            <span class="font-bold text-white block">Fee Booking Pelanggan:</span>
-                                            Otomatis menambah <b>Saldo Dompet Afiliasi (+{{ formatRupiah(settingsForm.affiliate_commission_booking) }})</b> dan tercatat di total pendapatan.
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <!-- Lulus Kontrak -->
+                                    <div class="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-3">
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-extrabold text-emerald-800 text-sm flex items-center gap-1.5">
+                                                <span>✅</span>
+                                                <span>Masa Aktif &ge; {{ settingsForm.affiliate_contract_min_months }} Bulan</span>
+                                            </span>
+                                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">
+                                                LULUS KONTRAK
+                                            </span>
+                                        </div>
+                                        <p class="text-xs text-slate-600 leading-relaxed">
+                                            Jika pelanggan berhenti setelah melewati minimal {{ settingsForm.affiliate_contract_min_months }} bulan:
+                                        </p>
+                                        <div class="p-3 bg-white rounded-xl border border-emerald-200 text-xs text-emerald-800 font-semibold space-y-1">
+                                            <div>&bull; Bebas pinalti pemotongan fee booking (0 rupiah).</div>
+                                            <div>&bull; Fee booking awal tetap 100% menjadi hak sales/mitra.</div>
+                                            <div>&bull; Status di menu Stop Permanen: <span class="text-emerald-700 font-bold">Lulus Kontrak</span>.</div>
                                         </div>
                                     </div>
-                                    <div class="p-3 rounded-xl bg-white/5 border border-emerald-400/20 flex items-start gap-2.5">
-                                        <span class="text-base">💰</span>
-                                        <div>
-                                            <span class="font-bold text-white block">Pasif Downline L1 &amp; L2:</span>
-                                            Otomatis menambah saldo dompet: L1 (+{{ formatRupiah(settingsForm.affiliate_commission_upline_1) }}) &amp; L2 (+{{ formatRupiah(settingsForm.affiliate_commission_upline_2) }}).
+
+                                    <!-- Stop Dini -->
+                                    <div class="p-5 rounded-2xl bg-rose-50/60 border border-rose-200 space-y-3">
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-extrabold text-rose-800 text-sm flex items-center gap-1.5">
+                                                <span>⚠️</span>
+                                                <span>Masa Aktif &lt; {{ settingsForm.affiliate_contract_min_months }} Bulan</span>
+                                            </span>
+                                            <span class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded-full">
+                                                POTONG FEE BOOKING
+                                            </span>
+                                        </div>
+                                        <p class="text-xs text-slate-600 leading-relaxed">
+                                            Jika pelanggan berhenti sebelum mencapai {{ settingsForm.affiliate_contract_min_months }} bulan:
+                                        </p>
+                                        <div class="p-3 bg-white rounded-xl border border-rose-200 text-xs text-rose-800 font-semibold space-y-1">
+                                            <div>&bull; Otomatis dipotong fee booking senilai <b>{{ formatRupiah(settingsForm.affiliate_commission_booking) }}</b>.</div>
+                                            <div>&bull; <b>Karyawan</b>: Masuk ke <b>Deductions</b> (Potongan Slip Gaji Payroll).</div>
+                                            <div>&bull; <b>Mitra Luar</b>: Otomatis memotong <b>Saldo Dompet Afiliasi</b>.</div>
+                                            <div>&bull; Badge transparan di menu Stop Permanen: <code>[SLIP GAJI]</code> atau <code>[DOMPET MITRA]</code>.</div>
                                         </div>
                                     </div>
-                                    <div class="p-3 rounded-xl bg-white/5 border border-emerald-400/20 flex items-start gap-2.5">
-                                        <span class="text-base">✂️</span>
-                                        <div>
-                                            <span class="font-bold text-white block">Pinalti Stop Dini (&lt; 4 Bulan):</span>
-                                            Otomatis memotong langsung dari <b>Saldo Dompet (-{{ formatRupiah(settingsForm.affiliate_commission_booking) }})</b>.
-                                        </div>
+                                </div>
+                            </div>
+
+                            <!-- 3. LIVE INTERACTIVE PASSIVE INCOME SIMULATOR -->
+                            <div class="bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-indigo-400/20 space-y-6">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+                                    <div>
+                                        <span class="px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-extrabold uppercase tracking-wider border border-indigo-400/30">
+                                            Kalkulator Proyeksi &bull; Interaktif
+                                        </span>
+                                        <h3 class="text-base sm:text-lg font-black text-white mt-1.5 flex items-center gap-2">
+                                            <span>🧮</span>
+                                            <span>Simulasi Potensi Pasif Income Jaringan Downline</span>
+                                        </h3>
+                                        <p class="text-xs text-indigo-200/80 mt-1">
+                                            Ubah angka di bawah ini untuk melihat potensi pasif income bulanan yang diterima seorang Upline/Karyawan:
+                                        </p>
                                     </div>
-                                    <div class="p-3 rounded-xl bg-emerald-600/30 border border-emerald-400/40 text-[11px] font-semibold text-emerald-100 flex items-center justify-between">
-                                        <span>🏦 Muara Pencairan:</span>
-                                        <span class="font-bold text-white">Transfer Bank / E-Wallet (Withdrawal)</span>
+                                    <span class="text-xs font-mono text-indigo-300">
+                                        L1: {{ formatRupiah(settingsForm.affiliate_commission_upline_1) }} &bull; L2: {{ formatRupiah(settingsForm.affiliate_commission_upline_2) }}
+                                    </span>
+                                </div>
+
+                                <!-- Kontrol Input Simulasi -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+                                        <label class="block text-[11px] font-bold uppercase tracking-wider text-indigo-200 mb-1">
+                                            Jumlah Mitra Level 1
+                                        </label>
+                                        <input
+                                            v-model.number="simDownlinesL1"
+                                            type="number"
+                                            min="0"
+                                            class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white font-mono font-bold text-sm focus:outline-none focus:bg-white/20"
+                                        />
+                                        <span class="text-[10px] text-slate-300 mt-1 block">Mitra binaan langsung</span>
+                                    </div>
+
+                                    <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+                                        <label class="block text-[11px] font-bold uppercase tracking-wider text-indigo-200 mb-1">
+                                            Rata2 Pelanggan / Mitra L1
+                                        </label>
+                                        <input
+                                            v-model.number="simCustPerL1"
+                                            type="number"
+                                            min="0"
+                                            class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white font-mono font-bold text-sm focus:outline-none focus:bg-white/20"
+                                        />
+                                        <span class="text-[10px] text-slate-300 mt-1 block">Total L1: {{ simTotalCustL1 }} pelanggan</span>
+                                    </div>
+
+                                    <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+                                        <label class="block text-[11px] font-bold uppercase tracking-wider text-purple-200 mb-1">
+                                            Jumlah Mitra Level 2
+                                        </label>
+                                        <input
+                                            v-model.number="simDownlinesL2"
+                                            type="number"
+                                            min="0"
+                                            class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white font-mono font-bold text-sm focus:outline-none focus:bg-white/20"
+                                        />
+                                        <span class="text-[10px] text-slate-300 mt-1 block">Binaan dari Mitra L1 Anda</span>
+                                    </div>
+
+                                    <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+                                        <label class="block text-[11px] font-bold uppercase tracking-wider text-purple-200 mb-1">
+                                            Rata2 Pelanggan / Mitra L2
+                                        </label>
+                                        <input
+                                            v-model.number="simCustPerL2"
+                                            type="number"
+                                            min="0"
+                                            class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white font-mono font-bold text-sm focus:outline-none focus:bg-white/20"
+                                        />
+                                        <span class="text-[10px] text-slate-300 mt-1 block">Total L2: {{ simTotalCustL2 }} pelanggan</span>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- 2. SKEMA MULTI-TIER PASIF INCOME REALTIME -->
-                    <div v-if="['all', 'multitier'].includes(diagramActiveFilter)" class="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-7 shadow-xs space-y-6">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                            <div>
-                                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                                    <span>🌳</span>
-                                    <span>Struktur Jaringan Multi-Tier &amp; Aliran Pasif Income</span>
-                                </h3>
-                                <p class="text-xs text-slate-500 mt-0.5">
-                                    Model Unilevel Terbuka (Unlimited Width) &bull; Pasif income mengalir otomatis dari 2 Level binaan setiap invoice lunas.
-                                </p>
-                            </div>
-                            <span class="inline-flex self-start sm:self-auto text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full">
-                                ♾️ Rekrut Downline Tanpa Batas Kuota
-                            </span>
-                        </div>
+                                <!-- Output Hasil Simulasi -->
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                                    <div class="bg-white/10 rounded-2xl p-4 border border-white/15">
+                                        <span class="text-xs text-indigo-200 block">Total Pelanggan Jaringan Binaan</span>
+                                        <span class="text-2xl font-black text-white mt-1 block">
+                                            {{ simTotalCustL1 + simTotalCustL2 }} Pelanggan
+                                        </span>
+                                        <span class="text-[11px] text-slate-300">L1: {{ simTotalCustL1 }} &bull; L2: {{ simTotalCustL2 }}</span>
+                                    </div>
 
-                        <!-- 3 Kartu Tingkatan Bertingkat -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <!-- Tier 0 -->
-                            <div class="p-5 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2 relative overflow-hidden">
-                                <div class="inline-flex items-center gap-1 text-[10px] uppercase font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                                    🟢 Tingkat 0: Direct Sales
+                                    <div class="bg-emerald-500/20 rounded-2xl p-4 border border-emerald-400/30">
+                                        <span class="text-xs text-emerald-200 block">Potensi Pasif Bulanan</span>
+                                        <span class="text-2xl font-black text-emerald-300 mt-1 block">
+                                            {{ formatRupiah(simTotalPassiveMonthly) }}
+                                        </span>
+                                        <span class="text-[11px] text-emerald-200/80">L1: {{ formatRupiah(simIncomeL1) }} | L2: {{ formatRupiah(simIncomeL2) }}</span>
+                                    </div>
+
+                                    <div class="bg-purple-500/20 rounded-2xl p-4 border border-purple-400/30">
+                                        <span class="text-xs text-purple-200 block">Proyeksi Pasif Tahunan (12 Bulan)</span>
+                                        <span class="text-2xl font-black text-purple-200 mt-1 block">
+                                            {{ formatRupiah(simTotalPassiveYearly) }}
+                                        </span>
+                                        <span class="text-[11px] text-purple-200/80">Otomatis masuk slip gaji / dompet</span>
+                                    </div>
                                 </div>
-                                <div class="text-2xl font-black text-emerald-700">
-                                    {{ formatRupiah(settingsForm.affiliate_commission_monthly) }}
-                                    <span class="text-xs font-normal text-slate-500">/ cust / bln</span>
-                                </div>
-                                <p class="text-xs text-slate-600 leading-relaxed">
-                                    Didapatkan oleh mitra/sales yang mendaftarkan pelanggan secara langsung setiap kali invoice bulanan lunas.
-                                </p>
-                            </div>
-
-                            <!-- Tier 1 -->
-                            <div class="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-2 relative overflow-hidden">
-                                <div class="inline-flex items-center gap-1 text-[10px] uppercase font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
-                                    🔵 Tingkat 1: Upline Level 1
-                                </div>
-                                <div class="text-2xl font-black text-indigo-700">
-                                    {{ formatRupiah(settingsForm.affiliate_commission_upline_1) }}
-                                    <span class="text-xs font-normal text-slate-500">/ cust / bln</span>
-                                </div>
-                                <p class="text-xs text-slate-600 leading-relaxed">
-                                    Pasif income yang dinikmati Upline dari seluruh pembayaran tagihan milik pelanggan mitra binaan langsung (Generasi 1).
-                                </p>
-                            </div>
-
-                            <!-- Tier 2 -->
-                            <div class="p-5 rounded-2xl bg-purple-50/70 border border-purple-200 space-y-2 relative overflow-hidden">
-                                <div class="inline-flex items-center gap-1 text-[10px] uppercase font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">
-                                    🟣 Tingkat 2: Upline Level 2
-                                </div>
-                                <div class="text-2xl font-black text-purple-700">
-                                    {{ formatRupiah(settingsForm.affiliate_commission_upline_2) }}
-                                    <span class="text-xs font-normal text-slate-500">/ cust / bln</span>
-                                </div>
-                                <p class="text-xs text-slate-600 leading-relaxed">
-                                    Pasif income ekstra dari pelanggan yang didaftarkan oleh mitra di bawah mitra Anda (Generasi 2).
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 3. SMART GUARD KONTRAK 4 BULAN (PINALTI STOP DINI) -->
-                    <div v-if="['all', 'clawback', 'employee', 'external'].includes(diagramActiveFilter)" class="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-7 shadow-xs space-y-6">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                            <div>
-                                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                                    <span>✂️</span>
-                                    <span>Smart Guard: Pinalti Berhenti Dini (&lt; {{ settingsForm.affiliate_contract_min_months }} Bulan)</span>
-                                </h3>
-                                <p class="text-xs text-slate-500 mt-0.5">
-                                    Perlindungan finansial perusahaan agar mitra &amp; sales berkomitmen menjaga pelanggan tetap berlangganan minimal {{ settingsForm.affiliate_contract_min_months }} bulan.
-                                </p>
-                            </div>
-                            <span class="inline-flex self-start sm:self-auto text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full">
-                                Auto-Clawback Protection
-                            </span>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <!-- Lulus Kontrak -->
-                            <div class="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <span class="font-extrabold text-emerald-800 text-sm flex items-center gap-1.5">
-                                        <span>✅</span>
-                                        <span>Masa Aktif &ge; {{ settingsForm.affiliate_contract_min_months }} Bulan</span>
-                                    </span>
-                                    <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">
-                                        LULUS KONTRAK
-                                    </span>
-                                </div>
-                                <p class="text-xs text-slate-600 leading-relaxed">
-                                    Jika pelanggan berhenti setelah melewati minimal {{ settingsForm.affiliate_contract_min_months }} bulan:
-                                </p>
-                                <div class="p-3 bg-white rounded-xl border border-emerald-200 text-xs text-emerald-800 font-semibold space-y-1">
-                                    <div>&bull; Bebas pinalti pemotongan fee booking (0 rupiah).</div>
-                                    <div>&bull; Fee booking awal tetap 100% menjadi hak sales/mitra.</div>
-                                    <div>&bull; Status di menu Stop Permanen: <span class="text-emerald-700 font-bold">Lulus Kontrak</span>.</div>
-                                </div>
-                            </div>
-
-                            <!-- Stop Dini -->
-                            <div class="p-5 rounded-2xl bg-rose-50/60 border border-rose-200 space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <span class="font-extrabold text-rose-800 text-sm flex items-center gap-1.5">
-                                        <span>⚠️</span>
-                                        <span>Masa Aktif &lt; {{ settingsForm.affiliate_contract_min_months }} Bulan</span>
-                                    </span>
-                                    <span class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded-full">
-                                        POTONG FEE BOOKING
-                                    </span>
-                                </div>
-                                <p class="text-xs text-slate-600 leading-relaxed">
-                                    Jika pelanggan berhenti sebelum mencapai {{ settingsForm.affiliate_contract_min_months }} bulan:
-                                </p>
-                                <div class="p-3 bg-white rounded-xl border border-rose-200 text-xs text-rose-800 font-semibold space-y-1">
-                                    <div>&bull; Otomatis dipotong fee booking senilai <b>{{ formatRupiah(settingsForm.affiliate_commission_booking) }}</b>.</div>
-                                    <div>&bull; <b>Karyawan</b>: Masuk ke <b>Deductions</b> (Potongan Slip Gaji Payroll).</div>
-                                    <div>&bull; <b>Mitra Luar</b>: Otomatis memotong <b>Saldo Dompet Afiliasi</b>.</div>
-                                    <div>&bull; Badge transparan di menu Stop Permanen: <code>[SLIP GAJI]</code> atau <code>[DOMPET MITRA]</code>.</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 4. LIVE INTERACTIVE PASSIVE INCOME SIMULATOR -->
-                    <div v-if="['all', 'multitier', 'sim'].includes(diagramActiveFilter)" class="bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-indigo-400/20 space-y-6">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
-                            <div>
-                                <span class="px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-extrabold uppercase tracking-wider border border-indigo-400/30">
-                                    Kalkulator Proyeksi &bull; Interaktif
-                                </span>
-                                <h3 class="text-base sm:text-lg font-black text-white mt-1.5 flex items-center gap-2">
-                                    <span>🧮</span>
-                                    <span>Simulasi Potensi Pasif Income Jaringan Downline</span>
-                                </h3>
-                                <p class="text-xs text-indigo-200/80 mt-1">
-                                    Ubah angka di bawah ini untuk melihat potensi pasif income bulanan yang diterima seorang Upline/Karyawan:
-                                </p>
-                            </div>
-                            <span class="text-xs font-mono text-indigo-300">
-                                L1: {{ formatRupiah(settingsForm.affiliate_commission_upline_1) }} &bull; L2: {{ formatRupiah(settingsForm.affiliate_commission_upline_2) }}
-                            </span>
-                        </div>
-
-                        <!-- Kontrol Input Simulasi -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <!-- Input 1: Downline L1 -->
-                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-                                <label class="block text-[11px] font-bold uppercase tracking-wider text-indigo-200 mb-1">
-                                    Jumlah Mitra Level 1
-                                </label>
-                                <input
-                                    v-model.number="simDownlinesL1"
-                                    type="number"
-                                    min="0"
-                                    class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white font-mono font-bold text-sm focus:outline-none focus:bg-white/20"
-                                />
-                                <span class="text-[10px] text-slate-300 mt-1 block">Mitra binaan langsung</span>
-                            </div>
-
-                            <!-- Input 2: Cust per L1 -->
-                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-                                <label class="block text-[11px] font-bold uppercase tracking-wider text-indigo-200 mb-1">
-                                    Rata2 Pelanggan / Mitra L1
-                                </label>
-                                <input
-                                    v-model.number="simCustPerL1"
-                                    type="number"
-                                    min="0"
-                                    class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white font-mono font-bold text-sm focus:outline-none focus:bg-white/20"
-                                />
-                                <span class="text-[10px] text-slate-300 mt-1 block">Total L1: {{ simTotalCustL1 }} pelanggan</span>
-                            </div>
-
-                            <!-- Input 3: Downline L2 -->
-                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-                                <label class="block text-[11px] font-bold uppercase tracking-wider text-purple-200 mb-1">
-                                    Jumlah Mitra Level 2
-                                </label>
-                                <input
-                                    v-model.number="simDownlinesL2"
-                                    type="number"
-                                    min="0"
-                                    class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white font-mono font-bold text-sm focus:outline-none focus:bg-white/20"
-                                />
-                                <span class="text-[10px] text-slate-300 mt-1 block">Binaan dari Mitra L1 Anda</span>
-                            </div>
-
-                            <!-- Input 4: Cust per L2 -->
-                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-                                <label class="block text-[11px] font-bold uppercase tracking-wider text-purple-200 mb-1">
-                                    Rata2 Pelanggan / Mitra L2
-                                </label>
-                                <input
-                                    v-model.number="simCustPerL2"
-                                    type="number"
-                                    min="0"
-                                    class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white font-mono font-bold text-sm focus:outline-none focus:bg-white/20"
-                                />
-                                <span class="text-[10px] text-slate-300 mt-1 block">Total L2: {{ simTotalCustL2 }} pelanggan</span>
-                            </div>
-                        </div>
-
-                        <!-- Output Hasil Simulasi -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                            <div class="bg-white/10 rounded-2xl p-4 border border-white/15">
-                                <span class="text-xs text-indigo-200 block">Total Pelanggan Jaringan Binaan</span>
-                                <span class="text-2xl font-black text-white mt-1 block">
-                                    {{ simTotalCustL1 + simTotalCustL2 }} Pelanggan
-                                </span>
-                                <span class="text-[11px] text-slate-300">L1: {{ simTotalCustL1 }} &bull; L2: {{ simTotalCustL2 }}</span>
-                            </div>
-
-                            <div class="bg-emerald-500/20 rounded-2xl p-4 border border-emerald-400/30">
-                                <span class="text-xs text-emerald-200 block">Potensi Pasif Bulanan</span>
-                                <span class="text-2xl font-black text-emerald-300 mt-1 block">
-                                    {{ formatRupiah(simTotalPassiveMonthly) }}
-                                </span>
-                                <span class="text-[11px] text-emerald-200/80">L1: {{ formatRupiah(simIncomeL1) }} | L2: {{ formatRupiah(simIncomeL2) }}</span>
-                            </div>
-
-                            <div class="bg-purple-500/20 rounded-2xl p-4 border border-purple-400/30">
-                                <span class="text-xs text-purple-200 block">Proyeksi Pasif Tahunan (12 Bulan)</span>
-                                <span class="text-2xl font-black text-purple-200 mt-1 block">
-                                    {{ formatRupiah(simTotalPassiveYearly) }}
-                                </span>
-                                <span class="text-[11px] text-purple-200/80">Otomatis masuk slip gaji / dompet</span>
                             </div>
                         </div>
                     </div>
@@ -952,6 +1400,141 @@
                 </form>
             </div>
         </div>
+
+        <!-- ── Modal Detail Member Jaringan Affiliate ── -->
+        <div
+            v-if="showMemberModal && selectedMemberModal"
+            class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+            @click.self="showMemberModal = false"
+        >
+            <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100">
+                <!-- Modal Header -->
+                <div class="p-6 bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white relative">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 text-white flex items-center justify-center font-bold text-lg backdrop-blur-sm">
+                                👤
+                            </div>
+                            <div>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 inline-block mb-1">
+                                    {{ selectedMemberModal.modal_level || 'Member Jaringan' }}
+                                </span>
+                                <h3 class="text-base font-extrabold text-white">
+                                    {{ selectedMemberModal.name }}
+                                </h3>
+                                <span class="text-xs text-indigo-200 font-mono">
+                                    ID: {{ selectedMemberModal.referral_code || ('ID: SL-' + selectedMemberModal.id) }}
+                                </span>
+                            </div>
+                        </div>
+                        <button type="button" @click="showMemberModal = false" class="text-white/60 hover:text-white p-1 rounded-lg">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="p-6 space-y-5">
+                    <!-- Status & Classification -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Status Keanggotaan</span>
+                            <span class="inline-flex items-center gap-1.5 mt-1 font-bold text-xs text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                <span>Aktif Berjalan</span>
+                            </span>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Jalur Aliran Komisi</span>
+                            <span v-if="selectedMemberModal.is_employee" class="inline-flex items-center gap-1 mt-1 font-bold text-xs text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
+                                👔 Karyawan (Payroll)
+                            </span>
+                            <span v-else class="inline-flex items-center gap-1 mt-1 font-bold text-xs text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                🤝 Mitra Luar (Dompet)
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Contact & Communication -->
+                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2 text-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500">Email:</span>
+                            <span class="font-medium text-slate-800">{{ selectedMemberModal.email || '-' }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500">WhatsApp / Telp:</span>
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono text-slate-800">{{ selectedMemberModal.phone || '-' }}</span>
+                                <a
+                                    v-if="selectedMemberModal.phone"
+                                    :href="'https://wa.me/' + selectedMemberModal.phone.replace(/[^0-9]/g, '')"
+                                    target="_blank"
+                                    class="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold transition-colors"
+                                >
+                                    Chat WA 💬
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-3 gap-3 text-center">
+                        <div class="p-3 rounded-2xl bg-indigo-50/60 border border-indigo-100">
+                            <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">Pelanggan</span>
+                            <span class="text-lg font-black text-indigo-700 mt-0.5 block">
+                                {{ selectedMemberModal.total_customers || 0 }}
+                            </span>
+                        </div>
+                        <div class="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+                            <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">Total Pendapatan</span>
+                            <span class="text-xs font-black text-emerald-700 mt-1.5 block">
+                                {{ formatRupiah(selectedMemberModal.total_earned || 0) }}
+                            </span>
+                        </div>
+                        <div class="p-3 rounded-2xl bg-purple-50/60 border border-purple-100">
+                            <span class="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">Saldo Dompet</span>
+                            <span class="text-xs font-black text-purple-700 mt-1.5 block">
+                                {{ formatRupiah(selectedMemberModal.balance || 0) }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Downline Summary if exists -->
+                    <div v-if="selectedMemberModal.downlines && selectedMemberModal.downlines.length > 0" class="pt-2 border-t border-slate-100">
+                        <span class="text-xs font-bold text-slate-800 block mb-2">
+                            Daftar Binaan Langsung ({{ selectedMemberModal.downlines.length }} Downline):
+                        </span>
+                        <div class="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                            <div
+                                v-for="dl in selectedMemberModal.downlines"
+                                :key="dl.id"
+                                class="p-2 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs"
+                            >
+                                <div class="flex items-center gap-2">
+                                    <span class="text-slate-400">↳</span>
+                                    <span class="font-bold text-slate-700">{{ dl.name }}</span>
+                                    <span class="text-[10px] font-mono text-slate-400">({{ dl.referral_code }})</span>
+                                </div>
+                                <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                    Aktif
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                    <button
+                        type="button"
+                        @click="showMemberModal = false"
+                        class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-colors"
+                    >
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
     </AppLayout>
 </template>
 
@@ -967,12 +1550,109 @@ const props = defineProps({
     commissions: Object,
     withdrawals: Object,
     kpi: Object,
+    tree_data: Array,
+    tree_kpi: Object,
     filters: Object,
 });
 
-const currentTab = ref(props.tab || 'settings');
+const currentTab = ref(props.tab || 'diagram');
 const searchQuery = ref(props.filters?.search || '');
 const diagramActiveFilter = ref('all');
+
+// Tree Diagram State
+const treeViewMode = ref('diagram'); // 'diagram' | 'list'
+const selectedUplineIndex = ref(0);
+const treeSearch = ref('');
+const treeZoom = ref(100);
+const expandedDownlines = ref({ 8: true }); // expand IMALULHAKIM by default
+const selectedMemberModal = ref(null);
+const showMemberModal = ref(false);
+const listFilterLevel = ref('all');
+const showArchitectureGuide = ref(false);
+
+const toggleDownlineExpand = (id) => {
+    expandedDownlines.value[id] = !expandedDownlines.value[id];
+};
+
+const setTreeZoom = (delta) => {
+    if (delta === 0) {
+        treeZoom.value = 100;
+        return;
+    }
+    const next = treeZoom.value + delta;
+    if (next >= 60 && next <= 150) {
+        treeZoom.value = next;
+    }
+};
+
+const activeUplineTree = computed(() => {
+    if (!props.tree_data || props.tree_data.length === 0) return null;
+    const idx = Math.min(selectedUplineIndex.value, props.tree_data.length - 1);
+    return props.tree_data[idx] || props.tree_data[0];
+});
+
+const isNodeMatched = (node) => {
+    if (!treeSearch.value.trim() || !node) return false;
+    const q = treeSearch.value.toLowerCase().trim();
+    return (
+        node.name?.toLowerCase().includes(q) ||
+        node.referral_code?.toLowerCase().includes(q) ||
+        String(node.id).includes(q)
+    );
+};
+
+const openMemberModal = (member, level = 'Upline') => {
+    if (!member) return;
+    selectedMemberModal.value = {
+        ...member,
+        modal_level: level,
+    };
+    showMemberModal.value = true;
+};
+
+const flatMemberList = computed(() => {
+    const list = [];
+    if (!props.tree_data) return list;
+    props.tree_data.forEach(upline => {
+        list.push({
+            ...upline,
+            level_label: 'Upline Utama',
+            level_badge: 'bg-blue-100 text-blue-700 border-blue-200',
+            sponsor_name: '-',
+        });
+        (upline.downlines || []).forEach(l1 => {
+            list.push({
+                ...l1,
+                level_label: 'Downline 1',
+                level_badge: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                sponsor_name: upline.name,
+            });
+            (l1.downlines || []).forEach(l2 => {
+                list.push({
+                    ...l2,
+                    level_label: 'Downline 2',
+                    level_badge: 'bg-amber-100 text-amber-700 border-amber-200',
+                    sponsor_name: l1.name,
+                });
+            });
+        });
+    });
+
+    return list.filter(m => {
+        if (listFilterLevel.value === 'upline' && m.level_label !== 'Upline Utama') return false;
+        if (listFilterLevel.value === 'l1' && m.level_label !== 'Downline 1') return false;
+        if (listFilterLevel.value === 'l2' && m.level_label !== 'Downline 2') return false;
+        if (treeSearch.value.trim()) {
+            const q = treeSearch.value.toLowerCase().trim();
+            return (
+                m.name?.toLowerCase().includes(q) ||
+                m.referral_code?.toLowerCase().includes(q) ||
+                m.email?.toLowerCase().includes(q)
+            );
+        }
+        return true;
+    });
+});
 
 const settingsForm = useForm({
     affiliate_commission_booking: props.settings.affiliate_commission_booking || 35000,
