@@ -7,7 +7,11 @@
 
                 <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-indigo-300 text-xs font-semibold mb-2">
+                        <div v-if="is_employee" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/30 text-purple-200 text-xs font-semibold mb-2">
+                            <span>💼</span>
+                            <span>Akun Karyawan Internal &bull; Fee Booking &amp; Pasif Masuk ke Insentif Slip Gaji</span>
+                        </div>
+                        <div v-else class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-indigo-300 text-xs font-semibold mb-2">
                             <span>⭐</span>
                             <span>Akun Kemitraan Afiliasi Resmi</span>
                         </div>
@@ -26,12 +30,27 @@
                     <!-- Saldo & Tarik Dana Action -->
                     <div class="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-5">
                         <div>
-                            <span class="text-xs text-indigo-200 block">Saldo Komisi Siap Tarik</span>
+                            <span class="text-xs text-indigo-200 block">
+                                {{ is_employee ? 'Estimasi Insentif Siap Dicairkan' : 'Saldo Komisi Siap Tarik' }}
+                            </span>
                             <span class="text-2xl sm:text-3xl font-extrabold text-white">
-                                {{ formatRupiah(profile.balance) }}
+                                {{ formatRupiah(is_employee ? (pending_payroll_incentives || 0) : profile.balance) }}
+                            </span>
+                            <span v-if="is_employee" class="text-[11px] text-purple-200 block mt-0.5">
+                                Cair bulanan via Slip Gaji (Payroll)
                             </span>
                         </div>
+                        <div v-if="is_employee">
+                            <a
+                                href="/insentif-potongan"
+                                class="w-full sm:w-auto px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                <span>Histori Insentif Gaji</span>
+                            </a>
+                        </div>
                         <button
+                            v-else
                             type="button"
                             @click="openWithdrawModal"
                             class="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
@@ -455,9 +474,13 @@
                                     <td class="px-4 py-3 text-center">
                                         <span 
                                             class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border"
-                                            :class="c.type === 'clawback_booking' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
+                                            :class="{
+                                                'bg-rose-50 text-rose-700 border-rose-200': c.type === 'clawback_booking',
+                                                'bg-purple-50 text-purple-700 border-purple-200': c.status === 'payroll' && c.type !== 'clawback_booking',
+                                                'bg-emerald-50 text-emerald-700 border-emerald-200': c.status === 'approved' && c.type !== 'clawback_booking'
+                                            }"
                                         >
-                                            {{ c.type === 'clawback_booking' ? 'Dipotong' : c.status }}
+                                            {{ c.type === 'clawback_booking' ? (c.status === 'payroll' ? 'Potong Gaji' : 'Dipotong') : (c.status === 'payroll' ? 'Slip Gaji' : c.status) }}
                                         </span>
                                     </td>
                                 </tr>
@@ -696,6 +719,8 @@ const props = defineProps({
     commissions: Object,
     withdrawals: Array,
     settings: Object,
+    is_employee: Boolean,
+    pending_payroll_incentives: Number,
 });
 
 const activeTab = ref('customers');

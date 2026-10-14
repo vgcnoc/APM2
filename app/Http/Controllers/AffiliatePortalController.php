@@ -118,10 +118,21 @@ class AffiliatePortalController extends Controller
             });
 
         $settings = AffiliateService::getSettings();
+        $isEmployee = AffiliateService::isInternalEmployee($user);
+        $pendingPayrollIncentives = $isEmployee
+            ? (float) \App\Models\Incentive::where('user_id', $user->id)
+                ->where('status', 'pending')
+                ->where(function($q) {
+                    $q->where('reference_id', 'like', 'booking_cust_%')
+                      ->orWhere('reference_id', 'like', 'aff_%');
+                })->sum('amount')
+            : 0;
 
         $appUrl = config('app.url', url('/'));
 
         return Inertia::render('Affiliate/Dashboard', [
+            'is_employee' => $isEmployee,
+            'pending_payroll_incentives' => $pendingPayrollIncentives,
             'profile' => [
                 'id' => $profile->id,
                 'name' => $user->name,
@@ -147,6 +158,7 @@ class AffiliatePortalController extends Controller
                 'total_downlines' => count($downlinesL1) + count($downlinesL2),
                 'downlines_l1_count' => count($downlinesL1),
                 'downlines_l2_count' => count($downlinesL2),
+                'pending_payroll_incentives' => $pendingPayrollIncentives,
             ],
             'customers' => $customers,
             'downlinesL1' => $downlinesL1,

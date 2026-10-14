@@ -108,7 +108,44 @@ class AffiliateService
     }
 
     /**
+     * Cek apakah user adalah Karyawan Internal (Internal Employee).
+     * Jika ya, komisi masuk ke Insentif Slip Gaji (Payroll), bukan ke dompet afiliasi.
+     */
+    public static function isInternalEmployee(?User $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        $role = strtolower((string) $user->role);
+        // Role khusus pihak luar
+        if (in_array($role, ['affiliate', 'reseller', 'customer', 'mitra'])) {
+            return false;
+        }
+
+        // Terdaftar di master employee (tabel employees)
+        if (\App\Models\Employee::where('email', $user->email)->exists()) {
+            return true;
+        }
+
+        // Memiliki gaji pokok / riwayat payroll
+        if ((float) $user->base_salary > 0 || $user->payrolls()->exists()) {
+            return true;
+        }
+
+        // Role internal operasional / kantor
+        $internalRoles = ['admin', 'teknisi', 'noc', 'cs', 'sales', 'dispatcher', 'auditor', 'aktivator', 'staff', 'karyawan', 'superadmin'];
+        if (in_array($role, $internalRoles)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Catat Komisi Booking (Sekali Bayar) saat pelanggan baru booking/registrasi/aktif.
+     * Khusus karyawan: Masuk ke Insentif Payroll (Status Pending).
+     * Mitra Luar: Masuk ke Saldo Dompet Afiliasi (Balance bertambah).
      */
     public static function recordBookingCommission(Customer $customer): ?AffiliateCommission
     {
@@ -116,15 +153,12 @@ class AffiliateService
             return null;
         }
 
-        $affiliate = AffiliateProfile::where('user_id', $customer->sales_id)
-            ->where('status', 'active')
-            ->first();
-
-        if (!$affiliate) {
+        $user = User::find($customer->sales_id);
+        if (!$user) {
             return null;
         }
 
-        // Cek apakah komisi booking sudah pernah dicatat untuk pelanggan ini
+        // Cek apakah komisi booking sudah pernah dicatat di tabel AffiliateCommission
         $alreadyRecorded = AffiliateCommission::where('affiliate_id', $customer->sales_id)
             ->where('customer_id', $customer->id)
             ->where('type', 'booking')
@@ -134,40 +168,100 @@ class AffiliateService
             return null;
         }
 
+        $isEmployee = self::isInternalEmployee($user);
+
+        // Jika karyawan, cek juga apakah sudah ada di tabel incentives
+        if ($isEmployee) {
+            $alreadyInIncentive = \App\Models\Incentive::where('reference_id', 'booking_cust_' . $customer->id)->exists();
+            if ($alreadyInIncentive) {
+                return null;
+            }
+        }
+
         $settings = self::getSettings();
-        $amount = $settings['affiliate_commission_booking'];
+        $amount = (float) $settings['affiliate_commission_booking'];
+
+        // Jika karyawan memiliki custom fee booking di user atau MasterFee
+        if ($isEmployee) {
+            if ($user->booking_fee > 0) {
+                $amount = (float) $user->booking_fee;
+            } else {
+                $masterBooking = \App\Models\MasterFee::where('type', 'Fee Booking')->where('is_active', true)->value('nominal');
+                if ($masterBooking > 0) {
+                    $amount = (float) $masterBooking;
+                }
+            }
+        }
 
         if ($amount <= 0) {
             return null;
         }
 
-        return DB::transaction(function () use ($affiliate, $customer, $amount) {
-            $commission = AffiliateCommission::create([
-                'affiliate_id' => $customer->sales_id,
-                'customer_id' => $customer->id,
-                'source_user_id' => $customer->sales_id,
-                'type' => 'booking',
-                'tier_level' => 0,
-                'amount' => $amount,
-                'description' => "Komisi Booking Pelanggan Baru: {$customer->name} ({$customer->customer_code})",
-                'status' => 'approved',
-                'paid_at' => now(),
-            ]);
+        $affiliate = self::ensureAffiliateProfile($user);
 
-            $affiliate->increment('balance', $amount);
-            $affiliate->increment('total_earned', $amount);
+        return DB::transaction(function () use ($affiliate, $user, $customer, $amount, $isEmployee) {
+            if ($isEmployee) {
+                // ── KARYAWAN: Masuk ke Insentif Payroll (Status Pending) ──
+                \App\Models\Incentive::create([
+                    'user_id' => $user->id,
+                    'amount' => $amount,
+                    'type' => 'auto',
+                    'description' => "Fee Booking Pelanggan: {$customer->name} ({$customer->customer_code})",
+                    'reference_id' => 'booking_cust_' . $customer->id,
+                    'incentive_date' => now(),
+                    'status' => 'pending',
+                ]);
 
-            return $commission;
+                // Catat di AffiliateCommission untuk riwayat audit log (status 'payroll', dompet TIDAK ditambah)
+                $commission = AffiliateCommission::create([
+                    'affiliate_id' => $user->id,
+                    'customer_id' => $customer->id,
+                    'source_user_id' => $user->id,
+                    'type' => 'booking',
+                    'tier_level' => 0,
+                    'amount' => $amount,
+                    'description' => "Fee Booking Pelanggan: {$customer->name} ({$customer->customer_code}) [Masuk Insentif Payroll]",
+                    'status' => 'payroll',
+                    'paid_at' => null,
+                ]);
+
+                return $commission;
+            } else {
+                // ── MITRA LUAR: Masuk ke Dompet Afiliasi (Balance bertambah) ──
+                $commission = AffiliateCommission::create([
+                    'affiliate_id' => $customer->sales_id,
+                    'customer_id' => $customer->id,
+                    'source_user_id' => $customer->sales_id,
+                    'type' => 'booking',
+                    'tier_level' => 0,
+                    'amount' => $amount,
+                    'description' => "Komisi Booking Pelanggan Baru: {$customer->name} ({$customer->customer_code})",
+                    'status' => 'approved',
+                    'paid_at' => now(),
+                ]);
+
+                $affiliate->increment('balance', $amount);
+                $affiliate->increment('total_earned', $amount);
+
+                return $commission;
+            }
         });
     }
 
     /**
      * Otomatis Potong (Clawback) Fee Booking jika pelanggan berhenti di bawah batas minimal kontrak (default: 4 bulan).
+     * Khusus karyawan: Otomatis masuk ke Deductions (Potongan Slip Gaji Payroll).
+     * Mitra Luar: Otomatis dipotong dari Saldo Dompet Afiliasi.
      */
     public static function handleEarlyTerminationPenalty(Customer $customer, ?string $cancelDate = null): ?array
     {
         // 1. Pelanggan wajib memiliki sales_id (mitra afiliasi / sales)
         if (!$customer->sales_id) {
+            return null;
+        }
+
+        $user = User::find($customer->sales_id);
+        if (!$user) {
             return null;
         }
 
@@ -189,6 +283,8 @@ class AffiliateService
             return null;
         }
 
+        $isEmployee = self::isInternalEmployee($user);
+
         // 3. Cek apakah sudah pernah dipotong pinalti sebelumnya untuk pelanggan ini
         $alreadyClawedBack = AffiliateCommission::where('affiliate_id', $customer->sales_id)
             ->where('customer_id', $customer->id)
@@ -199,18 +295,15 @@ class AffiliateService
             return null;
         }
 
-        // 4. Cari profil afiliasi
-        $affiliate = AffiliateProfile::where('user_id', $customer->sales_id)->first();
-        if (!$affiliate) {
-            $user = User::find($customer->sales_id);
-            if ($user) {
-                $affiliate = self::ensureAffiliateProfile($user);
+        if ($isEmployee) {
+            $alreadyDeducted = \App\Models\Deduction::where('reference_id', 'clawback_booking_cust_' . $customer->id)->exists();
+            if ($alreadyDeducted) {
+                return null;
             }
         }
 
-        if (!$affiliate) {
-            return null;
-        }
+        // 4. Cari profil afiliasi
+        $affiliate = self::ensureAffiliateProfile($user);
 
         // 5. Cari nominal fee booking yang pernah diberikan
         $bookingComm = AffiliateCommission::where('affiliate_id', $customer->sales_id)
@@ -220,44 +313,96 @@ class AffiliateService
 
         $penaltyAmount = $bookingComm ? (float) $bookingComm->amount : (float) $settings['affiliate_commission_booking'];
 
+        if ($isEmployee && (!$bookingComm || $penaltyAmount <= 0)) {
+            if ($user->booking_fee > 0) {
+                $penaltyAmount = (float) $user->booking_fee;
+            } else {
+                $masterBooking = \App\Models\MasterFee::where('type', 'Fee Booking')->where('is_active', true)->value('nominal');
+                if ($masterBooking > 0) {
+                    $penaltyAmount = (float) $masterBooking;
+                }
+            }
+        }
+
         if ($penaltyAmount <= 0) {
             return null;
         }
 
-        return DB::transaction(function () use ($affiliate, $customer, $penaltyAmount, $diffInDays, $diffInMonths, $minContractMonths) {
+        return DB::transaction(function () use ($affiliate, $user, $customer, $penaltyAmount, $diffInDays, $diffInMonths, $minContractMonths, $isEmployee) {
             $remainingDays = $diffInDays % 30;
             $durationStr = $diffInMonths > 0 
                 ? "{$diffInMonths} bulan {$remainingDays} hari" 
                 : "{$diffInDays} hari";
 
-            $commission = AffiliateCommission::create([
-                'affiliate_id' => $affiliate->user_id,
-                'customer_id' => $customer->id,
-                'source_user_id' => $affiliate->user_id,
-                'type' => 'clawback_booking',
-                'tier_level' => 0,
-                'amount' => -$penaltyAmount,
-                'description' => "Pinalti Otomatis: Pemotongan Fee Booking pelanggan {$customer->name} ({$customer->customer_code}) berhenti sebelum {$minContractMonths} bulan (Masa aktif: {$durationStr})",
-                'status' => 'approved',
-                'paid_at' => now(),
-            ]);
+            if ($isEmployee) {
+                // ── KARYAWAN: Otomatis masuk ke Tabel Deductions (Potongan Slip Gaji Payroll) ──
+                \App\Models\Deduction::create([
+                    'user_id' => $user->id,
+                    'amount' => $penaltyAmount,
+                    'type' => 'auto',
+                    'description' => "Pinalti Stop Dini < {$minContractMonths} Bln: Pemotongan Fee Booking {$customer->name} ({$customer->customer_code}) - Masa aktif: {$durationStr}",
+                    'reference_id' => 'clawback_booking_cust_' . $customer->id,
+                    'deduction_date' => now(),
+                    'status' => 'pending',
+                ]);
 
-            // Potong saldo dompet afiliasi & total earned
-            $affiliate->decrement('balance', $penaltyAmount);
-            $affiliate->decrement('total_earned', $penaltyAmount);
+                // Catat di AffiliateCommission untuk audit log
+                $commission = AffiliateCommission::create([
+                    'affiliate_id' => $user->id,
+                    'customer_id' => $customer->id,
+                    'source_user_id' => $user->id,
+                    'type' => 'clawback_booking',
+                    'tier_level' => 0,
+                    'amount' => -$penaltyAmount,
+                    'description' => "Pinalti Stop Dini < {$minContractMonths} Bln: Pemotongan Fee Booking [Dipotong dari Slip Gaji Payroll] {$customer->name} ({$customer->customer_code}) - Masa aktif: {$durationStr}",
+                    'status' => 'payroll',
+                    'paid_at' => null,
+                ]);
 
-            return [
-                'penalty_applied' => true,
-                'amount' => $penaltyAmount,
-                'affiliate_name' => $affiliate->user?->name ?? 'Sales',
-                'duration' => $durationStr,
-                'commission' => $commission,
-            ];
+                return [
+                    'penalty_applied' => true,
+                    'is_employee' => true,
+                    'target' => 'payroll',
+                    'amount' => $penaltyAmount,
+                    'affiliate_name' => $user->name,
+                    'duration' => $durationStr,
+                    'commission' => $commission,
+                ];
+            } else {
+                // ── MITRA LUAR: Potong Saldo Dompet Afiliasi Langsung ──
+                $commission = AffiliateCommission::create([
+                    'affiliate_id' => $affiliate->user_id,
+                    'customer_id' => $customer->id,
+                    'source_user_id' => $affiliate->user_id,
+                    'type' => 'clawback_booking',
+                    'tier_level' => 0,
+                    'amount' => -$penaltyAmount,
+                    'description' => "Pinalti Otomatis: Pemotongan Fee Booking pelanggan {$customer->name} ({$customer->customer_code}) berhenti sebelum {$minContractMonths} bulan (Masa aktif: {$durationStr})",
+                    'status' => 'approved',
+                    'paid_at' => now(),
+                ]);
+
+                // Potong saldo dompet afiliasi & total earned
+                $affiliate->decrement('balance', $penaltyAmount);
+                $affiliate->decrement('total_earned', $penaltyAmount);
+
+                return [
+                    'penalty_applied' => true,
+                    'is_employee' => false,
+                    'target' => 'wallet',
+                    'amount' => $penaltyAmount,
+                    'affiliate_name' => $affiliate->user?->name ?? 'Sales',
+                    'duration' => $durationStr,
+                    'commission' => $commission,
+                ];
+            }
         });
     }
 
     /**
      * Catat Komisi Bulanan (Multi-Tier) saat invoice pelanggan berhasil dibayar/lunas.
+     * Khusus karyawan: Otomatis masuk ke Insentif Slip Gaji (Payroll).
+     * Mitra Luar: Otomatis masuk ke Dompet Afiliasi (Balance bertambah).
      */
     public static function recordMonthlyCommission(Invoice $invoice): array
     {
@@ -272,88 +417,176 @@ class AffiliateService
             return [];
         }
 
-        $directAffiliate = AffiliateProfile::where('user_id', $customer->sales_id)
-            ->where('status', 'active')
-            ->first();
+        $directUser = User::find($customer->sales_id);
+        if (!$directUser) {
+            return [];
+        }
 
-        if (!$directAffiliate) {
+        $directAffiliate = self::ensureAffiliateProfile($directUser);
+        if ($directAffiliate->status !== 'active') {
             return [];
         }
 
         $settings = self::getSettings();
         $commissions = [];
 
-        DB::transaction(function () use ($invoice, $customer, $directAffiliate, $settings, &$commissions) {
+        DB::transaction(function () use ($invoice, $customer, $directUser, $directAffiliate, $settings, &$commissions) {
             // ── Tier 0: Direct Sales Commission ──
-            $directAmount = $settings['affiliate_commission_monthly'];
+            $directAmount = (float) $settings['affiliate_commission_monthly'];
             if ($directAmount > 0) {
-                $commDirect = AffiliateCommission::create([
-                    'affiliate_id' => $directAffiliate->user_id,
-                    'customer_id' => $customer->id,
-                    'invoice_id' => $invoice->id,
-                    'source_user_id' => $directAffiliate->user_id,
-                    'type' => 'monthly_direct',
-                    'tier_level' => 0,
-                    'amount' => $directAmount,
-                    'description' => "Komisi Bulanan Invoice #{$invoice->invoice_number} ({$customer->name})",
-                    'status' => 'approved',
-                    'paid_at' => now(),
-                ]);
+                $isDirectEmployee = self::isInternalEmployee($directUser);
 
-                $directAffiliate->increment('balance', $directAmount);
-                $directAffiliate->increment('total_earned', $directAmount);
+                if ($isDirectEmployee) {
+                    \App\Models\Incentive::create([
+                        'user_id' => $directUser->id,
+                        'amount' => $directAmount,
+                        'type' => 'auto',
+                        'description' => "Komisi Pasif Bulanan Invoice #{$invoice->invoice_number} ({$customer->name})",
+                        'reference_id' => "aff_monthly_inv_{$invoice->id}",
+                        'incentive_date' => now(),
+                        'status' => 'pending',
+                    ]);
+
+                    $commDirect = AffiliateCommission::create([
+                        'affiliate_id' => $directUser->id,
+                        'customer_id' => $customer->id,
+                        'invoice_id' => $invoice->id,
+                        'source_user_id' => $directUser->id,
+                        'type' => 'monthly_direct',
+                        'tier_level' => 0,
+                        'amount' => $directAmount,
+                        'description' => "Komisi Bulanan Invoice #{$invoice->invoice_number} ({$customer->name}) [Masuk Insentif Payroll]",
+                        'status' => 'payroll',
+                        'paid_at' => null,
+                    ]);
+                } else {
+                    $commDirect = AffiliateCommission::create([
+                        'affiliate_id' => $directAffiliate->user_id,
+                        'customer_id' => $customer->id,
+                        'invoice_id' => $invoice->id,
+                        'source_user_id' => $directAffiliate->user_id,
+                        'type' => 'monthly_direct',
+                        'tier_level' => 0,
+                        'amount' => $directAmount,
+                        'description' => "Komisi Bulanan Invoice #{$invoice->invoice_number} ({$customer->name})",
+                        'status' => 'approved',
+                        'paid_at' => now(),
+                    ]);
+
+                    $directAffiliate->increment('balance', $directAmount);
+                    $directAffiliate->increment('total_earned', $directAmount);
+                }
+
                 $commissions[] = $commDirect;
             }
 
             // ── Tier 1: Upline Level 1 (Downline 1) ──
             if ($directAffiliate->upline_id) {
-                $upline1 = AffiliateProfile::where('user_id', $directAffiliate->upline_id)
-                    ->where('status', 'active')
-                    ->first();
+                $upline1User = User::find($directAffiliate->upline_id);
+                if ($upline1User) {
+                    $upline1 = self::ensureAffiliateProfile($upline1User);
+                    $upline1Amount = (float) $settings['affiliate_commission_upline_1'];
 
-                $upline1Amount = $settings['affiliate_commission_upline_1'];
-                if ($upline1 && $upline1Amount > 0) {
-                    $commUpline1 = AffiliateCommission::create([
-                        'affiliate_id' => $upline1->user_id,
-                        'customer_id' => $customer->id,
-                        'invoice_id' => $invoice->id,
-                        'source_user_id' => $directAffiliate->user_id,
-                        'type' => 'upline_tier_1',
-                        'tier_level' => 1,
-                        'amount' => $upline1Amount,
-                        'description' => "Komisi Upline Level 1 dari Mitra {$directAffiliate->user->name} (Inv #{$invoice->invoice_number})",
-                        'status' => 'approved',
-                        'paid_at' => now(),
-                    ]);
+                    if ($upline1->status === 'active' && $upline1Amount > 0) {
+                        $isUpline1Employee = self::isInternalEmployee($upline1User);
 
-                    $upline1->increment('balance', $upline1Amount);
-                    $upline1->increment('total_earned', $upline1Amount);
-                    $commissions[] = $commUpline1;
+                        if ($isUpline1Employee) {
+                            \App\Models\Incentive::create([
+                                'user_id' => $upline1User->id,
+                                'amount' => $upline1Amount,
+                                'type' => 'auto',
+                                'description' => "Komisi Downline Level 1 dari Mitra {$directUser->name} (Inv #{$invoice->invoice_number})",
+                                'reference_id' => "aff_upline_1_inv_{$invoice->id}",
+                                'incentive_date' => now(),
+                                'status' => 'pending',
+                            ]);
 
-                    // ── Tier 2: Upline Level 2 (Downline 2) ──
-                    if ($upline1->upline_id) {
-                        $upline2 = AffiliateProfile::where('user_id', $upline1->upline_id)
-                            ->where('status', 'active')
-                            ->first();
-
-                        $upline2Amount = $settings['affiliate_commission_upline_2'];
-                        if ($upline2 && $upline2Amount > 0) {
-                            $commUpline2 = AffiliateCommission::create([
-                                'affiliate_id' => $upline2->user_id,
+                            $commUpline1 = AffiliateCommission::create([
+                                'affiliate_id' => $upline1User->id,
                                 'customer_id' => $customer->id,
                                 'invoice_id' => $invoice->id,
-                                'source_user_id' => $directAffiliate->user_id,
-                                'type' => 'upline_tier_2',
-                                'tier_level' => 2,
-                                'amount' => $upline2Amount,
-                                'description' => "Komisi Upline Level 2 dari Mitra {$directAffiliate->user->name} (Inv #{$invoice->invoice_number})",
+                                'source_user_id' => $directUser->id,
+                                'type' => 'upline_tier_1',
+                                'tier_level' => 1,
+                                'amount' => $upline1Amount,
+                                'description' => "Komisi Upline Level 1 dari Mitra {$directUser->name} (Inv #{$invoice->invoice_number}) [Masuk Insentif Payroll]",
+                                'status' => 'payroll',
+                                'paid_at' => null,
+                            ]);
+                        } else {
+                            $commUpline1 = AffiliateCommission::create([
+                                'affiliate_id' => $upline1->user_id,
+                                'customer_id' => $customer->id,
+                                'invoice_id' => $invoice->id,
+                                'source_user_id' => $directUser->id,
+                                'type' => 'upline_tier_1',
+                                'tier_level' => 1,
+                                'amount' => $upline1Amount,
+                                'description' => "Komisi Upline Level 1 dari Mitra {$directUser->name} (Inv #{$invoice->invoice_number})",
                                 'status' => 'approved',
                                 'paid_at' => now(),
                             ]);
 
-                            $upline2->increment('balance', $upline2Amount);
-                            $upline2->increment('total_earned', $upline2Amount);
-                            $commissions[] = $commUpline2;
+                            $upline1->increment('balance', $upline1Amount);
+                            $upline1->increment('total_earned', $upline1Amount);
+                        }
+
+                        $commissions[] = $commUpline1;
+
+                        // ── Tier 2: Upline Level 2 (Downline 2) ──
+                        if ($upline1->upline_id) {
+                            $upline2User = User::find($upline1->upline_id);
+                            if ($upline2User) {
+                                $upline2 = self::ensureAffiliateProfile($upline2User);
+                                $upline2Amount = (float) $settings['affiliate_commission_upline_2'];
+
+                                if ($upline2->status === 'active' && $upline2Amount > 0) {
+                                    $isUpline2Employee = self::isInternalEmployee($upline2User);
+
+                                    if ($isUpline2Employee) {
+                                        \App\Models\Incentive::create([
+                                            'user_id' => $upline2User->id,
+                                            'amount' => $upline2Amount,
+                                            'type' => 'auto',
+                                            'description' => "Komisi Downline Level 2 dari Mitra {$directUser->name} (Inv #{$invoice->invoice_number})",
+                                            'reference_id' => "aff_upline_2_inv_{$invoice->id}",
+                                            'incentive_date' => now(),
+                                            'status' => 'pending',
+                                        ]);
+
+                                        $commUpline2 = AffiliateCommission::create([
+                                            'affiliate_id' => $upline2User->id,
+                                            'customer_id' => $customer->id,
+                                            'invoice_id' => $invoice->id,
+                                            'source_user_id' => $directUser->id,
+                                            'type' => 'upline_tier_2',
+                                            'tier_level' => 2,
+                                            'amount' => $upline2Amount,
+                                            'description' => "Komisi Upline Level 2 dari Mitra {$directUser->name} (Inv #{$invoice->invoice_number}) [Masuk Insentif Payroll]",
+                                            'status' => 'payroll',
+                                            'paid_at' => null,
+                                        ]);
+                                    } else {
+                                        $commUpline2 = AffiliateCommission::create([
+                                            'affiliate_id' => $upline2->user_id,
+                                            'customer_id' => $customer->id,
+                                            'invoice_id' => $invoice->id,
+                                            'source_user_id' => $directUser->id,
+                                            'type' => 'upline_tier_2',
+                                            'tier_level' => 2,
+                                            'amount' => $upline2Amount,
+                                            'description' => "Komisi Upline Level 2 dari Mitra {$directUser->name} (Inv #{$invoice->invoice_number})",
+                                            'status' => 'approved',
+                                            'paid_at' => now(),
+                                        ]);
+
+                                        $upline2->increment('balance', $upline2Amount);
+                                        $upline2->increment('total_earned', $upline2Amount);
+                                    }
+
+                                    $commissions[] = $commUpline2;
+                                }
+                            }
                         }
                     }
                 }
@@ -368,6 +601,10 @@ class AffiliateService
      */
     public static function requestWithdrawal(User $user, float $amount, ?string $notes = null): AffiliateWithdrawal
     {
+        if (self::isInternalEmployee($user)) {
+            throw new \Exception("Sebagai karyawan internal, seluruh fee booking dan komisi pasif Anda otomatis dicairkan melalui Slip Gaji (Insentif Payroll) setiap bulan.");
+        }
+
         $profile = AffiliateProfile::where('user_id', $user->id)->firstOrFail();
         $settings = self::getSettings();
         $minWithdraw = $settings['affiliate_min_withdraw'];

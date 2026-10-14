@@ -286,7 +286,10 @@
                             <tbody class="divide-y divide-slate-100">
                                 <tr v-for="a in affiliates.data" :key="a.id" class="hover:bg-slate-50/60">
                                     <td class="px-4 py-3">
-                                        <div class="font-bold text-slate-900">{{ a.name }}</div>
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="font-bold text-slate-900">{{ a.name }}</span>
+                                            <span v-if="a.is_employee" class="px-1.5 py-0.2 bg-purple-100 text-purple-700 rounded text-[9px] font-bold">[Karyawan]</span>
+                                        </div>
                                         <div class="text-[11px] text-slate-400">{{ a.email }} &bull; {{ a.whatsapp || '-' }}</div>
                                     </td>
                                     <td class="px-4 py-3 font-mono font-bold text-indigo-600">{{ a.referral_code }}</td>
@@ -363,9 +366,13 @@
                                     <td class="px-4 py-3 text-center">
                                         <span 
                                             class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border"
-                                            :class="c.type === 'clawback_booking' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
+                                            :class="{
+                                                'bg-rose-50 text-rose-700 border-rose-200': c.type === 'clawback_booking',
+                                                'bg-purple-50 text-purple-700 border-purple-200': c.status === 'payroll' && c.type !== 'clawback_booking',
+                                                'bg-emerald-50 text-emerald-700 border-emerald-200': c.status === 'approved' && c.type !== 'clawback_booking'
+                                            }"
                                         >
-                                            {{ c.type === 'clawback_booking' ? 'Dipotong' : c.status }}
+                                            {{ c.type === 'clawback_booking' ? (c.status === 'payroll' ? 'Potong Gaji' : 'Dipotong') : (c.status === 'payroll' ? 'Slip Gaji' : c.status) }}
                                         </span>
                                     </td>
                                 </tr>

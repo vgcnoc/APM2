@@ -1023,7 +1023,11 @@ class CustomerController extends Controller
         }
         if ($clawback && $clawback['penalty_applied']) {
             $formattedAmount = 'Rp ' . number_format($clawback['amount'], 0, ',', '.');
-            $penaltyNote = "[Pinalti Stop Dini < 4 Bln]: Fee booking {$formattedAmount} otomatis dipotong dari saldo afiliasi {$clawback['affiliate_name']} (Masa aktif: {$clawback['duration']})";
+            if (!empty($clawback['is_employee'])) {
+                $penaltyNote = "[Pinalti Stop Dini < 4 Bln]: Fee booking {$formattedAmount} otomatis dipotong pada Slip Gaji / Payroll Karyawan {$clawback['affiliate_name']} (Masa aktif: {$clawback['duration']})";
+            } else {
+                $penaltyNote = "[Pinalti Stop Dini < 4 Bln]: Fee booking {$formattedAmount} otomatis dipotong dari saldo dompet afiliasi {$clawback['affiliate_name']} (Masa aktif: {$clawback['duration']})";
+            }
             $notes = $notes ? $notes . " | {$penaltyNote}" : $penaltyNote;
         }
 
@@ -1047,7 +1051,11 @@ class CustomerController extends Controller
         $msg = "Pelanggan {$customer->name} ({$customer->customer_code}) berhasil di-Stop Permanen dan dipindahkan ke menu Stop Permanen.";
         if ($clawback && $clawback['penalty_applied']) {
             $formattedAmount = 'Rp ' . number_format($clawback['amount'], 0, ',', '.');
-            $msg .= " ⚠️ Pinalti Stop Dini (< 4 Bulan) Diterapkan: Fee booking {$formattedAmount} otomatis dipotong dari saldo afiliasi/sales {$clawback['affiliate_name']} (Masa aktif: {$clawback['duration']}).";
+            if (!empty($clawback['is_employee'])) {
+                $msg .= " ⚠️ Pinalti Stop Dini (< 4 Bulan) Diterapkan: Fee booking {$formattedAmount} otomatis dipotong pada Slip Gaji / Payroll Karyawan {$clawback['affiliate_name']} (Masa aktif: {$clawback['duration']}).";
+            } else {
+                $msg .= " ⚠️ Pinalti Stop Dini (< 4 Bulan) Diterapkan: Fee booking {$formattedAmount} otomatis dipotong dari saldo dompet afiliasi/sales {$clawback['affiliate_name']} (Masa aktif: {$clawback['duration']}).";
+            }
         }
 
         return back()->with('success', $msg);
@@ -2276,21 +2284,12 @@ class CustomerController extends Controller
                     ]);
                 }
 
-                // Auto Incentives: Fee Market/Booking for Sales
-                if ($customer->sales_id) {
-                    $salesUser = \App\Models\User::find($customer->sales_id);
-                    if ($salesUser) {
-                        $feeAmount = $salesUser->booking_fee > 0 ? $salesUser->booking_fee : \App\Models\MasterFee::where('type', 'Fee Booking')->where('is_active', true)->value('nominal');
-                        if ($feeAmount > 0) {
-                            \App\Models\Incentive::create([
-                                'user_id' => $salesUser->id,
-                                'amount' => $feeAmount,
-                                'type' => 'auto',
-                                'description' => 'Fee Booking Pelanggan: ' . $customer->name,
-                                'incentive_date' => now(),
-                                'status' => 'pending'
-                            ]);
-                        }
+                // Fee Market/Booking for Sales (Otomatis deteksi Karyawan -> Insentif Payroll atau Mitra Luar -> Saldo Afiliasi)
+                if ($customer->sales_id && $customer->service_status !== 'gratis') {
+                    try {
+                        \App\Services\AffiliateService::recordBookingCommission($customer);
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning('[Affiliate] Activation booking fee error: ' . $e->getMessage());
                     }
                 }
 

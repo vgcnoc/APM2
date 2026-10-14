@@ -55,6 +55,7 @@ class AffiliateManagementController extends Controller
                     'total_downlines' => $aff->downlinesLevel1()->count(),
                     'bank_info' => $aff->bank_name ? "{$aff->bank_name} - {$aff->bank_account_number} ({$aff->bank_account_holder})" : '-',
                     'status' => $aff->status,
+                    'is_employee' => AffiliateService::isInternalEmployee($aff->user),
                     'joined_at' => $aff->created_at->format('d M Y'),
                 ];
             });

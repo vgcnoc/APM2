@@ -250,10 +250,12 @@
                         <div v-if="row.clawback_commission" class="pt-0.5">
                             <span 
                                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold shadow-xs"
-                                :title="'Fee booking otomatis dipotong dari saldo ' + (row.sales?.name || 'Afiliasi')"
+                                :title="'Fee booking otomatis dipotong dari ' + (row.clawback_commission.status === 'payroll' ? 'Slip Gaji / Payroll Karyawan ' : 'saldo dompet ') + (row.sales?.name || 'Afiliasi')"
                             >
                                 <span>✂️ Auto-Potong Booking:</span>
                                 <span class="font-mono">{{ formatRupiah(Math.abs(row.clawback_commission.amount)) }}</span>
+                                <span v-if="row.clawback_commission.status === 'payroll'" class="px-1.5 py-0.2 bg-purple-100 text-purple-700 rounded text-[9px] font-bold">[SLIP GAJI]</span>
+                                <span v-else class="px-1.5 py-0.2 bg-blue-100 text-blue-700 rounded text-[9px] font-bold">[DOMPET MITRA]</span>
                                 <span v-if="row.sales?.name" class="font-normal text-slate-600 text-[9px]">• {{ row.sales.name }}</span>
                             </span>
                         </div>
