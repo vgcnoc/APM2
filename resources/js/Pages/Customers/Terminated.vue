@@ -215,15 +215,47 @@
                     </div>
                 </td>
 
-                <!-- 3. Penghentian (Tgl & Alasan) -->
+                <!-- 3. Penghentian (Tgl, Alasan & Masa Kontrak) -->
                 <td>
                     <div class="py-1 space-y-1">
                         <div class="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
-                            <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            <span>{{ formatDate(row.cancel_date) }}</span>
+                            <svg class="w-3.5 h-3.5 text-rose-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <span class="font-bold">{{ formatDate(row.cancel_date) }}</span>
                         </div>
                         <div class="text-xs text-slate-600 line-clamp-2 max-w-xs" :title="row.cancel_reason">
                             <span class="font-semibold text-slate-700">Alasan:</span> {{ row.cancel_reason || 'Permintaan pelanggan' }}
+                        </div>
+
+                        <!-- Masa Aktif / Status Kontrak 4 Bulan -->
+                        <div v-if="row.active_duration && row.active_duration.text" class="flex flex-wrap items-center gap-1 pt-0.5">
+                            <span 
+                                v-if="row.active_duration.is_under_4_months"
+                                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200"
+                                :title="'Masa aktif: ' + row.active_duration.text + ' (Kurang dari 4 bulan)'"
+                            >
+                                <span>⚠️ Stop Dini</span>
+                                <span class="font-normal text-amber-700">({{ row.active_duration.text }})</span>
+                            </span>
+                            <span 
+                                v-else
+                                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                :title="'Masa aktif: ' + row.active_duration.text"
+                            >
+                                <span>✅ Lulus Kontrak</span>
+                                <span class="font-normal text-emerald-600">({{ row.active_duration.text }})</span>
+                            </span>
+                        </div>
+
+                        <!-- Pemotongan Fee Booking Afiliasi Otomatis -->
+                        <div v-if="row.clawback_commission" class="pt-0.5">
+                            <span 
+                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold shadow-xs"
+                                :title="'Fee booking otomatis dipotong dari saldo ' + (row.sales?.name || 'Afiliasi')"
+                            >
+                                <span>✂️ Auto-Potong Booking:</span>
+                                <span class="font-mono">{{ formatRupiah(Math.abs(row.clawback_commission.amount)) }}</span>
+                                <span v-if="row.sales?.name" class="font-normal text-slate-600 text-[9px]">• {{ row.sales.name }}</span>
+                            </span>
                         </div>
                     </div>
                 </td>

@@ -69,7 +69,7 @@ class CustomerController extends Controller
 
         // 2. Fetch Data
         $customers = (clone $baseQuery)
-            ->with(['package', 'ont.odp', 'surveys.odp', 'areaModel', 'user'])
+            ->with(['package', 'ont.odp', 'surveys.odp', 'areaModel', 'user', 'sales:id,name'])
             ->search($request->search)
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
             ->when($request->service_status, fn ($q, $ss) => $q->where('service_status', $ss))
@@ -963,6 +963,7 @@ class CustomerController extends Controller
                 'areaModel', 
                 'ont.odp', 
                 'sales:id,name',
+                'clawbackCommission',
                 'invoices' => function($q) {
                     $q->whereIn('status', ['unpaid', 'partial'])
                       ->where('is_reseller_balance', false)
@@ -1013,11 +1014,24 @@ class CustomerController extends Controller
 
         $cancelDate = $request->cancel_date ?: now()->toDateString();
 
+        // ── Otomatis Pinalti Stop Dini (< 4 Bulan) ──
+        $clawback = \App\Services\AffiliateService::handleEarlyTerminationPenalty($customer, $cancelDate);
+
+        $notes = $customer->notes;
+        if ($request->notes) {
+            $notes = $notes ? $notes . ' | ' . $request->notes : $request->notes;
+        }
+        if ($clawback && $clawback['penalty_applied']) {
+            $formattedAmount = 'Rp ' . number_format($clawback['amount'], 0, ',', '.');
+            $penaltyNote = "[Pinalti Stop Dini < 4 Bln]: Fee booking {$formattedAmount} otomatis dipotong dari saldo afiliasi {$clawback['affiliate_name']} (Masa aktif: {$clawback['duration']})";
+            $notes = $notes ? $notes . " | {$penaltyNote}" : $penaltyNote;
+        }
+
         $customer->update([
             'status' => 'terminated',
             'cancel_date' => $cancelDate,
             'cancel_reason' => $request->cancel_reason,
-            'notes' => $request->notes ? ($customer->notes ? $customer->notes . ' | ' . $request->notes : $request->notes) : $customer->notes,
+            'notes' => $notes,
         ]);
 
         // Putus koneksi dan hapus user RADIUS
@@ -1030,7 +1044,13 @@ class CustomerController extends Controller
             }
         });
 
-        return back()->with('success', "Pelanggan {$customer->name} ({$customer->customer_code}) berhasil di-Stop Permanen dan dipindahkan ke menu Stop Permanen.");
+        $msg = "Pelanggan {$customer->name} ({$customer->customer_code}) berhasil di-Stop Permanen dan dipindahkan ke menu Stop Permanen.";
+        if ($clawback && $clawback['penalty_applied']) {
+            $formattedAmount = 'Rp ' . number_format($clawback['amount'], 0, ',', '.');
+            $msg .= " ⚠️ Pinalti Stop Dini (< 4 Bulan) Diterapkan: Fee booking {$formattedAmount} otomatis dipotong dari saldo afiliasi/sales {$clawback['affiliate_name']} (Masa aktif: {$clawback['duration']}).";
+        }
+
+        return back()->with('success', $msg);
     }
 
     /**
@@ -1254,6 +1274,7 @@ class CustomerController extends Controller
             'surveys.surveyor',
             'technicianSchedules.technician',
             'user',
+            'sales:id,name',
         ]);
 
         $materialRequests = \App\Models\MaterialTransaction::with('items.material')

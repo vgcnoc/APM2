@@ -177,7 +177,42 @@ class Customer extends Model
         return $this->hasOne(CbpRequest::class)->latestOfMany();
     }
 
+    /**
+     * Catatan komisi pinalti / clawback fee booking jika berhenti < 4 bulan
+     */
+    public function clawbackCommission(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(AffiliateCommission::class, 'customer_id')->where('type', 'clawback_booking');
+    }
+
     // ── Computed ───────────────────────────────────────────────
+
+    /**
+     * Hitung durasi masa aktif pelanggan
+     */
+    public function getActiveDurationAttribute(): array
+    {
+        $startDate = $this->activation_date 
+            ? \Carbon\Carbon::parse($this->activation_date) 
+            : ($this->registration_date ? \Carbon\Carbon::parse($this->registration_date) : $this->created_at);
+        
+        $endDate = $this->cancel_date ? \Carbon\Carbon::parse($this->cancel_date) : now();
+
+        $diffInDays = (int) $startDate->diffInDays($endDate);
+        $diffInMonths = (int) $startDate->diffInMonths($endDate);
+        $remainingDays = $diffInDays % 30;
+
+        $text = $diffInMonths > 0 
+            ? "{$diffInMonths} bln {$remainingDays} hr" 
+            : "{$diffInDays} hr";
+
+        return [
+            'months' => $diffInMonths,
+            'days' => $diffInDays,
+            'text' => $text,
+            'is_under_4_months' => $diffInMonths < 4,
+        ];
+    }
 
     /**
      * Informasi ONT & ODP yang terhubung

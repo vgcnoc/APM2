@@ -463,6 +463,30 @@
                             <div class="bg-rose-50 text-rose-800 p-3.5 rounded-xl border border-rose-200 shadow-sm leading-relaxed">
                                 Pelanggan <strong>{{ terminatingCustomer?.name }}</strong> ({{ terminatingCustomer?.customer_code }}) akan dipindahkan ke menu <strong>Stop Permanen</strong> dan dinonaktifkan dari sistem serta RADIUS.
                             </div>
+
+                            <!-- Peringatan Auto-Pinalti Kontrak < 4 Bulan -->
+                            <div v-if="customerActiveTenure && customerActiveTenure.isUnder4" class="p-3.5 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 text-amber-900 shadow-xs space-y-2 animate-fade-in">
+                                <div class="flex items-center gap-1.5 font-bold text-xs text-amber-900">
+                                    <span class="text-base">⚠️</span>
+                                    <span>Peringatan Kontrak: Masa Aktif Baru {{ customerActiveTenure.text }} (&lt; 4 Bulan)</span>
+                                </div>
+                                <p class="text-[11px] text-amber-800 leading-relaxed">
+                                    Pelanggan berhenti sebelum masa minimal komitmen <strong>4 bulan</strong>.
+                                </p>
+                                <div v-if="customerActiveTenure.hasSales" class="p-2.5 rounded-lg bg-white/90 border border-amber-200 text-[11px] space-y-1">
+                                    <div class="font-bold flex items-center justify-between text-rose-800">
+                                        <span>✂️ Pemotongan Fee Booking Otomatis:</span>
+                                        <span class="bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded text-[10px] uppercase font-black">AUTO-POTONG</span>
+                                    </div>
+                                    <p class="text-slate-600">
+                                        Fee booking yang pernah diterima oleh Sales/Afiliator <strong class="text-slate-900">{{ customerActiveTenure.salesName }}</strong> akan <strong>otomatis dipotong</strong> dari saldo afiliasinya saat data disimpan.
+                                    </p>
+                                </div>
+                                <div v-else class="text-[10px] text-slate-500 italic">
+                                    (Pelanggan mendaftar tanpa sales afiliasi, tidak ada fee booking yang dipotong).
+                                </div>
+                            </div>
+
                             <div>
                                 <label class="block font-semibold text-gray-700 mb-1">Tanggal Berhenti <span class="text-rose-500">*</span></label>
                                 <input v-model="terminateForm.cancel_date" type="date" required class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-rose-500 focus:border-rose-500" />
@@ -687,6 +711,28 @@ const terminateForm = useForm({
     cancel_date: new Date().toISOString().split('T')[0],
     cancel_reason: '',
     notes: '',
+});
+
+const customerActiveTenure = computed(() => {
+    if (!terminatingCustomer.value) return null;
+    const startStr = terminatingCustomer.value.activation_date || terminatingCustomer.value.registration_date || terminatingCustomer.value.created_at;
+    if (!startStr) return null;
+    const start = new Date(startStr);
+    const end = new Date(terminateForm.cancel_date || new Date());
+    const diffTime = Math.max(0, end.getTime() - start.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const months = Math.floor(diffDays / 30);
+    const days = diffDays % 30;
+    const isUnder4 = months < 4;
+    return {
+        diffDays,
+        months,
+        days,
+        isUnder4,
+        text: months > 0 ? `${months} bulan ${days} hari` : `${diffDays} hari`,
+        hasSales: !!terminatingCustomer.value.sales_id,
+        salesName: terminatingCustomer.value.sales?.name || (terminatingCustomer.value.sales_id ? 'Sales #' + terminatingCustomer.value.sales_id : null)
+    };
 });
 
 function openTerminateModal(customer) {

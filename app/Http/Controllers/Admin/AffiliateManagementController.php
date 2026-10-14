@@ -133,6 +133,7 @@ class AffiliateManagementController extends Controller
             'affiliate_commission_upline_1' => 'required|numeric|min:0',
             'affiliate_commission_upline_2' => 'required|numeric|min:0',
             'affiliate_min_withdraw' => 'required|numeric|min:10000',
+            'affiliate_contract_min_months' => 'nullable|integer|min:1|max:60',
         ], [
             'affiliate_commission_booking.required' => 'Komisi booking wajib diisi.',
             'affiliate_commission_monthly.required' => 'Komisi bulanan direct sales wajib diisi.',

@@ -212,6 +212,29 @@
                                     </div>
                                     <p class="text-[11px] text-slate-400 mt-1">Batas saldo minimal agar mitra dapat mengajukan pencairan.</p>
                                 </div>
+
+                                <!-- MINIMAL MASA KONTRAK PELANGGAN (BULAN) -->
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1.5">
+                                        <span>MINIMAL KONTRAK PELANGGAN</span>
+                                        <span class="bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded text-[10px] uppercase font-black">AUTO-POTONG</span>
+                                    </label>
+                                    <div class="relative">
+                                        <input
+                                            v-model="settingsForm.affiliate_contract_min_months"
+                                            type="number"
+                                            min="1"
+                                            max="60"
+                                            step="1"
+                                            required
+                                            class="block w-full px-3.5 py-2.5 bg-slate-50/70 border border-slate-300 rounded-xl text-slate-900 font-bold text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                                        />
+                                        <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400 text-xs font-bold">
+                                            Bulan
+                                        </div>
+                                    </div>
+                                    <p class="text-[11px] text-rose-600 font-medium mt-1">Jika pelanggan stop sebelum masa ini, fee booking otomatis dipotong dari saldo afiliasi.</p>
+                                </div>
                             </div>
 
                             <div class="pt-4 border-t border-slate-100 flex justify-end">
@@ -322,22 +345,27 @@
                                                 'bg-emerald-100 text-emerald-800': c.type === 'monthly_direct',
                                                 'bg-purple-100 text-purple-800': c.type === 'upline_tier_1',
                                                 'bg-amber-100 text-amber-800': c.type === 'upline_tier_2',
+                                                'bg-rose-100 text-rose-800 border border-rose-200': c.type === 'clawback_booking',
                                             }"
                                         >
                                             <template v-if="c.type === 'booking'">🎯 Booking Baru</template>
                                             <template v-else-if="c.type === 'monthly_direct'">💰 Pasif Bulanan</template>
                                             <template v-else-if="c.type === 'upline_tier_1'">🚀 Upline Tier 1</template>
                                             <template v-else-if="c.type === 'upline_tier_2'">🌟 Upline Tier 2</template>
+                                            <template v-else-if="c.type === 'clawback_booking'">✂️ Potong Booking (&lt; 4 Bln)</template>
                                             <template v-else>{{ c.type }}</template>
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-slate-700">{{ c.description }}</td>
-                                    <td class="px-4 py-3 text-right font-extrabold text-emerald-600 whitespace-nowrap">
-                                        +{{ formatRupiah(c.amount) }}
+                                    <td class="px-4 py-3 text-right font-extrabold whitespace-nowrap" :class="c.amount < 0 || c.type === 'clawback_booking' ? 'text-rose-600' : 'text-emerald-600'">
+                                        {{ (c.amount < 0 || c.type === 'clawback_booking') ? '-' : '+' }}{{ formatRupiah(Math.abs(c.amount)) }}
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                            {{ c.status }}
+                                        <span 
+                                            class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border"
+                                            :class="c.type === 'clawback_booking' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
+                                        >
+                                            {{ c.type === 'clawback_booking' ? 'Dipotong' : c.status }}
                                         </span>
                                     </td>
                                 </tr>
@@ -569,6 +597,7 @@ const settingsForm = useForm({
     affiliate_commission_upline_1: props.settings.affiliate_commission_upline_1 || 2000,
     affiliate_commission_upline_2: props.settings.affiliate_commission_upline_2 || 1000,
     affiliate_min_withdraw: props.settings.affiliate_min_withdraw || 50000,
+    affiliate_contract_min_months: props.settings.affiliate_contract_min_months || 4,
 });
 
 const selectedWithdrawal = ref(null);

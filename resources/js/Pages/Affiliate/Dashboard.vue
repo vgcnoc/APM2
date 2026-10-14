@@ -412,22 +412,27 @@
                                                 'bg-emerald-100 text-emerald-800': c.type === 'monthly_direct',
                                                 'bg-purple-100 text-purple-800': c.type === 'upline_tier_1',
                                                 'bg-amber-100 text-amber-800': c.type === 'upline_tier_2',
+                                                'bg-rose-100 text-rose-800 border border-rose-200': c.type === 'clawback_booking',
                                             }"
                                         >
                                             <template v-if="c.type === 'booking'">🎯 Booking Baru</template>
                                             <template v-else-if="c.type === 'monthly_direct'">💰 Pasif Bulanan</template>
                                             <template v-else-if="c.type === 'upline_tier_1'">🚀 Upline Tier 1</template>
                                             <template v-else-if="c.type === 'upline_tier_2'">🌟 Upline Tier 2</template>
+                                            <template v-else-if="c.type === 'clawback_booking'">✂️ Potong Booking (&lt; 4 Bln)</template>
                                             <template v-else>{{ c.type }}</template>
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-slate-700 font-medium">{{ c.description }}</td>
-                                    <td class="px-4 py-3 text-right font-bold text-emerald-600 whitespace-nowrap">
-                                        +{{ formatRupiah(c.amount) }}
+                                    <td class="px-4 py-3 text-right font-bold whitespace-nowrap" :class="c.amount < 0 || c.type === 'clawback_booking' ? 'text-rose-600' : 'text-emerald-600'">
+                                        {{ (c.amount < 0 || c.type === 'clawback_booking') ? '-' : '+' }}{{ formatRupiah(Math.abs(c.amount)) }}
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                            {{ c.status }}
+                                        <span 
+                                            class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border"
+                                            :class="c.type === 'clawback_booking' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
+                                        >
+                                            {{ c.type === 'clawback_booking' ? 'Dipotong' : c.status }}
                                         </span>
                                     </td>
                                 </tr>

@@ -26,6 +26,7 @@ class AffiliateService
             'affiliate_commission_upline_2' => (float) Setting::get('affiliate_commission_upline_2', 1000),
             'affiliate_min_withdraw' => (float) Setting::get('affiliate_min_withdraw', 50000),
             'affiliate_auto_approve' => Setting::get('affiliate_auto_approve', '1') === '1',
+            'affiliate_contract_min_months' => (int) Setting::get('affiliate_contract_min_months', 4),
         ];
     }
 
@@ -51,6 +52,9 @@ class AffiliateService
         }
         if (isset($data['affiliate_auto_approve'])) {
             Setting::set('affiliate_auto_approve', !empty($data['affiliate_auto_approve']) ? '1' : '0');
+        }
+        if (isset($data['affiliate_contract_min_months'])) {
+            Setting::set('affiliate_contract_min_months', (string) $data['affiliate_contract_min_months']);
         }
     }
 
@@ -154,6 +158,101 @@ class AffiliateService
             $affiliate->increment('total_earned', $amount);
 
             return $commission;
+        });
+    }
+
+    /**
+     * Otomatis Potong (Clawback) Fee Booking jika pelanggan berhenti di bawah batas minimal kontrak (default: 4 bulan).
+     */
+    public static function handleEarlyTerminationPenalty(Customer $customer, ?string $cancelDate = null): ?array
+    {
+        // 1. Pelanggan wajib memiliki sales_id (mitra afiliasi / sales)
+        if (!$customer->sales_id) {
+            return null;
+        }
+
+        // 2. Hitung masa aktif pelanggan
+        $startDate = $customer->activation_date 
+            ? \Carbon\Carbon::parse($customer->activation_date) 
+            : ($customer->registration_date ? \Carbon\Carbon::parse($customer->registration_date) : $customer->created_at);
+
+        $endDate = $cancelDate ? \Carbon\Carbon::parse($cancelDate) : now();
+
+        $diffInDays = (int) $startDate->diffInDays($endDate);
+        $diffInMonths = (int) $startDate->diffInMonths($endDate);
+
+        $settings = self::getSettings();
+        $minContractMonths = (int) ($settings['affiliate_contract_min_months'] ?? 4);
+
+        // Jika masa aktif >= batas bulan kontrak, maka bebas pinalti
+        if ($diffInMonths >= $minContractMonths) {
+            return null;
+        }
+
+        // 3. Cek apakah sudah pernah dipotong pinalti sebelumnya untuk pelanggan ini
+        $alreadyClawedBack = AffiliateCommission::where('affiliate_id', $customer->sales_id)
+            ->where('customer_id', $customer->id)
+            ->where('type', 'clawback_booking')
+            ->exists();
+
+        if ($alreadyClawedBack) {
+            return null;
+        }
+
+        // 4. Cari profil afiliasi
+        $affiliate = AffiliateProfile::where('user_id', $customer->sales_id)->first();
+        if (!$affiliate) {
+            $user = User::find($customer->sales_id);
+            if ($user) {
+                $affiliate = self::ensureAffiliateProfile($user);
+            }
+        }
+
+        if (!$affiliate) {
+            return null;
+        }
+
+        // 5. Cari nominal fee booking yang pernah diberikan
+        $bookingComm = AffiliateCommission::where('affiliate_id', $customer->sales_id)
+            ->where('customer_id', $customer->id)
+            ->where('type', 'booking')
+            ->first();
+
+        $penaltyAmount = $bookingComm ? (float) $bookingComm->amount : (float) $settings['affiliate_commission_booking'];
+
+        if ($penaltyAmount <= 0) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($affiliate, $customer, $penaltyAmount, $diffInDays, $diffInMonths, $minContractMonths) {
+            $remainingDays = $diffInDays % 30;
+            $durationStr = $diffInMonths > 0 
+                ? "{$diffInMonths} bulan {$remainingDays} hari" 
+                : "{$diffInDays} hari";
+
+            $commission = AffiliateCommission::create([
+                'affiliate_id' => $affiliate->user_id,
+                'customer_id' => $customer->id,
+                'source_user_id' => $affiliate->user_id,
+                'type' => 'clawback_booking',
+                'tier_level' => 0,
+                'amount' => -$penaltyAmount,
+                'description' => "Pinalti Otomatis: Pemotongan Fee Booking pelanggan {$customer->name} ({$customer->customer_code}) berhenti sebelum {$minContractMonths} bulan (Masa aktif: {$durationStr})",
+                'status' => 'approved',
+                'paid_at' => now(),
+            ]);
+
+            // Potong saldo dompet afiliasi & total earned
+            $affiliate->decrement('balance', $penaltyAmount);
+            $affiliate->decrement('total_earned', $penaltyAmount);
+
+            return [
+                'penalty_applied' => true,
+                'amount' => $penaltyAmount,
+                'affiliate_name' => $affiliate->user?->name ?? 'Sales',
+                'duration' => $durationStr,
+                'commission' => $commission,
+            ];
         });
     }
 
