@@ -144,7 +144,7 @@ const formatDate = (dateStr) => {
                             </span>
                         </div>
 
-                        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                        <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow-sm">
                             {{ workOrder.target_name }}
                         </h1>
                         <p class="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
