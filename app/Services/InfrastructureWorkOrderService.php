@@ -211,9 +211,11 @@ class InfrastructureWorkOrderService
     /**
      * Konfirmasi Persiapan & Pengeluaran Material oleh Gudang (Surat Jalan Outbound).
      */
-    public static function approveMaterialDispatch(InfrastructureWorkOrder $workOrder, User $warehouseUser): void
+    public static function approveMaterialDispatch(InfrastructureWorkOrder $workOrder, ?User $warehouseUser = null): void
     {
         DB::transaction(function () use ($workOrder, $warehouseUser) {
+            $userId = $warehouseUser?->id ?? Auth::id() ?? User::value('id');
+
             // Potong stok gudang
             $area = Area::find($workOrder->area_id);
             $areaName = $area?->name ?? 'Gudang Utama';
@@ -227,7 +229,7 @@ class InfrastructureWorkOrderService
                 'purpose' => "Material Rollout {$workOrder->target_name} ({$workOrder->wo_number})",
                 'area' => $areaName,
                 'area_id' => $workOrder->area_id,
-                'user_id' => $warehouseUser->id,
+                'user_id' => $userId,
                 'notes' => "Pengeluaran material resmi penugasan {$workOrder->wo_number}",
                 'total_cost' => 0,
             ]);
@@ -235,19 +237,29 @@ class InfrastructureWorkOrderService
             $totalCost = 0;
 
             foreach ($workOrder->materials as $woMat) {
-                $material = $woMat->material;
+                $material = $woMat->material ?? Material::find($woMat->material_id);
+                if (!$material) continue;
+
                 $qty = (float) $woMat->requested_qty;
 
                 // Hitung estimasi biaya
-                $cost = $qty * ($material->price_per_unit ?? 0);
+                $unitPrice = (float) ($material->price_per_unit ?? 0);
+                $cost = $qty * $unitPrice;
                 $totalCost += $cost;
+
+                $stockBefore = (float) ($material->stock ?? 0);
+                $stockAfter = max(0, $stockBefore - $qty);
 
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
                     'quantity' => $qty,
-                    'price' => $material->price_per_unit ?? 0,
-                    'subtotal' => $cost,
+                    'unit' => $woMat->unit ?? $material->unit ?? 'pcs',
+                    'price_per_unit' => $unitPrice,
+                    'total_price' => $cost,
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $stockAfter,
+                    'condition' => 'Layak Pakai',
                 ]);
 
                 // Kurangi stok di MaterialStock area jika ada
@@ -272,7 +284,10 @@ class InfrastructureWorkOrderService
 
             $transaction->update(['total_cost' => $totalCost]);
 
-            $workOrder->update(['status' => 'material_ready']);
+            $workOrder->update([
+                'status' => 'material_ready',
+                'material_status' => 'released',
+            ]);
         });
     }
 

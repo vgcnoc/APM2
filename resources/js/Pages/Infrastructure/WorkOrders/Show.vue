@@ -122,6 +122,23 @@ const formatDate = (dateStr) => {
                 </Link>
             </div>
 
+            <!-- Flash Message Alerts -->
+            <div v-if="$page.props.flash?.success" class="mb-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between shadow-xs">
+                <div class="flex items-center gap-3">
+                    <span class="text-xl">✅</span>
+                    <span class="text-sm font-bold">{{ $page.props.flash.success }}</span>
+                </div>
+                <button type="button" @click="$page.props.flash.success = null" class="text-emerald-500 hover:text-emerald-800 text-sm font-black">&times;</button>
+            </div>
+
+            <div v-if="$page.props.flash?.error" class="mb-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center justify-between shadow-xs">
+                <div class="flex items-center gap-3">
+                    <span class="text-xl">⚠️</span>
+                    <span class="text-sm font-bold">{{ $page.props.flash.error }}</span>
+                </div>
+                <button type="button" @click="$page.props.flash.error = null" class="text-rose-500 hover:text-rose-800 text-sm font-black">&times;</button>
+            </div>
+
             <!-- Banner Header -->
             <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl mb-8 relative overflow-hidden">
                 <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
