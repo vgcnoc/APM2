@@ -72,6 +72,7 @@ class CustomerController extends Controller
             ->with(['package', 'ont.odp', 'surveys.odp', 'areaModel', 'user'])
             ->search($request->search)
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
+            ->when($request->service_status, fn ($q, $ss) => $q->where('service_status', $ss))
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
             ->when($request->area_id, fn ($q, $area) => $q->where('area_id', $area))
             ->when($request->odp_id, fn ($q, $odp) => $q->whereHas('ont', fn ($oq) => $oq->where('odp_id', $odp))->orWhereHas('surveys', fn ($sq) => $sq->where('odp_id', $odp)))
@@ -92,7 +93,7 @@ class CustomerController extends Controller
             'areas' => \App\Models\Area::orderBy('name')->get(),
             'odps' => class_exists('\App\Models\Odp') ? \App\Models\Odp::orderBy('name')->get() : [],
             'officers' => \App\Models\User::where('is_on_duty', true)->get(['id', 'name', 'phone', 'role']),
-            'filters' => $request->only(['search', 'status', 'package_id', 'area_id', 'odp_id', 'sort_by']),
+            'filters' => $request->only(['search', 'status', 'service_status', 'package_id', 'area_id', 'odp_id', 'sort_by']),
             'stats' => [
                 'total' => ['value' => $totalCustomers, 'growth' => $totalGrowth],
                 'active' => ['value' => $activeCustomers, 'percentage' => $activePercentage, 'growth' => $activeGrowth],
@@ -309,6 +310,119 @@ class CustomerController extends Controller
             'filters' => $request->only(['search', 'area_id', 'package_id', 'tab']),
             'totalOffline' => $rows->count(),
         ]);
+    }
+
+    /**
+     * Menu Khusus Data Pelanggan Gratis (Bebas Tagihan / Non-Invoice)
+     */
+    public function gratis(Request $request): Response
+    {
+        $baseQuery = Customer::query()
+            ->where('service_status', 'gratis')
+            ->where('status', '!=', 'terminated')
+            ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
+                if (auth()->user()->can('customers_all_view_area')) {
+                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                } else {
+                    $q->where('sales_id', auth()->id());
+                }
+            });
+
+        // Online sessions dari RADIUS
+        $onlineUsernames = (function() {
+            try {
+                return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
+            } catch (\Exception $e) {
+                return [];
+            }
+        })();
+
+        // Statistik Ringkasan Cerdas
+        $totalGratis = (clone $baseQuery)->count();
+        $activeGratis = (clone $baseQuery)->where('status', 'active')->count();
+        $totalBandwidthMbps = (clone $baseQuery)->with('package')->get()->sum(fn($c) => $c->package?->speed_mbps ?? 0);
+        $totalCsrValue = (clone $baseQuery)->with('package')->get()->sum(fn($c) => $c->package?->price ?? 0);
+        $onlineGratis = (clone $baseQuery)->whereHas('ont', fn($q) => $q->whereIn('pppoe_user', $onlineUsernames))->count();
+
+        // Data Pelanggan Gratis dengan filter & pagination
+        $customers = (clone $baseQuery)
+            ->with(['package', 'ont.odp', 'areaModel', 'user', 'sales'])
+            ->when($request->filled('search'), function($q) use ($request) {
+                $search = trim($request->search);
+                $q->where(function($sq) use ($search) {
+                    $sq->where('name', 'like', "%{$search}%")
+                       ->orWhere('customer_code', 'like', "%{$search}%")
+                       ->orWhere('phone', 'like', "%{$search}%")
+                       ->orWhere('address', 'like', "%{$search}%")
+                       ->orWhereHas('ont', fn($oq) => $oq->where('pppoe_user', 'like', "%{$search}%"));
+                });
+            })
+            ->when($request->filled('area_id'), fn($q) => $q->where('area_id', $request->area_id))
+            ->when($request->filled('package_id'), fn($q) => $q->where('package_id', $request->package_id))
+            ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
+            ->latest('id')
+            ->paginate($request->per_page ?? 12)
+            ->withQueryString();
+
+        return Inertia::render('Customers/Gratis', [
+            'customers' => $customers,
+            'packages' => InternetPackage::active()->get(['id', 'name', 'speed_mbps', 'price']),
+            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'filters' => $request->only(['search', 'area_id', 'package_id', 'status']),
+            'onlineUsernames' => $onlineUsernames,
+            'stats' => [
+                'total' => $totalGratis,
+                'active' => $activeGratis,
+                'online' => $onlineGratis,
+                'total_bandwidth' => $totalBandwidthMbps,
+                'monthly_csr_value' => $totalCsrValue,
+            ],
+        ]);
+    }
+
+    /**
+     * Beralih Status Layanan (Gratis <-> Berbayar)
+     */
+    public function toggleServiceStatus(Request $request, Customer $customer): RedirectResponse
+    {
+        $validated = $request->validate([
+            'service_status' => 'required|in:berbayar,gratis',
+            'notes' => 'nullable|string',
+        ]);
+
+        $oldStatus = $customer->service_status;
+        $newStatus = $validated['service_status'];
+
+        DB::transaction(function() use ($customer, $newStatus, $validated, $oldStatus) {
+            $updateData = [
+                'service_status' => $newStatus,
+            ];
+
+            if ($newStatus === 'gratis') {
+                $updateData['base_amount'] = 0;
+                // Bersihkan tagihan berjalan yang belum lunas jika diubah ke gratis
+                \App\Models\Invoice::where('customer_id', $customer->id)
+                    ->whereIn('status', ['unpaid', 'partial'])
+                    ->delete();
+            } else {
+                // Jika kembali berbayar, gunakan tarif paket
+                $updateData['base_amount'] = $customer->package?->price ?? 0;
+            }
+
+            if (!empty($validated['notes'])) {
+                $updateData['notes'] = ($customer->notes ? $customer->notes . "\n" : '') . "[" . now()->format('d/m/Y H:i') . "] Status layanan diubah ke " . ucfirst($newStatus) . ": " . $validated['notes'];
+            }
+
+            $customer->update($updateData);
+
+            \App\Models\AuditLog::createLog('Update Service Status', $customer, ['service_status' => $oldStatus], ['service_status' => $newStatus], 'Mengubah status layanan ke ' . ucfirst($newStatus));
+        });
+
+        $msg = $newStatus === 'gratis' 
+            ? "Pelanggan {$customer->name} berhasil diubah menjadi Pelanggan Gratis (Bebas Tagihan)."
+            : "Pelanggan {$customer->name} berhasil diubah menjadi Pelanggan Berbayar.";
+
+        return back()->with('success', $msg);
     }
 
     /**
@@ -1099,6 +1213,10 @@ class CustomerController extends Controller
             $validated['area_id'] = $areaModel->id;
         }
 
+        if (($validated['service_status'] ?? 'berbayar') === 'gratis') {
+            $validated['base_amount'] = 0;
+        }
+
         $validated['status'] = 'booking'; // Ensure it goes to booking
 
         DB::transaction(function () use ($validated, &$customer) {
@@ -1314,6 +1432,13 @@ class CustomerController extends Controller
         // Jika status berubah ke 'active', set activation_date
         if ($validated['status'] === 'active' && $customer->status !== 'active') {
             $validated['activation_date'] = now()->toDateString();
+        }
+
+        if (($validated['service_status'] ?? $customer->service_status) === 'gratis') {
+            $validated['base_amount'] = 0;
+            \App\Models\Invoice::where('customer_id', $customer->id)
+                ->whereIn('status', ['unpaid', 'partial'])
+                ->delete();
         }
 
         DB::transaction(function () use ($customer, $validated) {
@@ -2077,29 +2202,25 @@ class CustomerController extends Controller
                     $dueDateTime->setTime((int)$timeParts[0], (int)$timeParts[1], 0);
                 }
 
-                $status = 'unpaid';
-                if ($serviceStatus === 'gratis') {
-                    $amount = 0;
-                    $status = 'paid';
-                } else {
-                    // Hanya PPN yang ditambahkan ke invoice tagihan pelanggan
+                // JANGAN BUAT INVOICE APAPUN JIKA PELANGGAN GRATIS
+                if ($serviceStatus !== 'gratis') {
                     if ($taxPpn > 0) {
                         $amount = $amount + ($amount * ($taxPpn / 100));
                     }
-                }
 
-                \App\Models\Invoice::create([
-                    'customer_id' => $customer->id,
-                    'period_month' => $activationDate->month,
-                    'period_year' => $activationDate->year,
-                    'amount' => $amount,
-                    'due_date' => $dueDateTime,
-                    'issued_date' => $activationDate,
-                    'status' => $status,
-                    'is_prorata' => $isProrata,
-                    'billing_type' => $invoiceBillingType,
-                    'notes' => $invoiceNotes,
-                ]);
+                    \App\Models\Invoice::create([
+                        'customer_id' => $customer->id,
+                        'period_month' => $activationDate->month,
+                        'period_year' => $activationDate->year,
+                        'amount' => $amount,
+                        'due_date' => $dueDateTime,
+                        'issued_date' => $activationDate,
+                        'status' => 'unpaid',
+                        'is_prorata' => $isProrata,
+                        'billing_type' => $invoiceBillingType,
+                        'notes' => $invoiceNotes,
+                    ]);
+                }
 
                 // Auto Incentives: Fee Market/Booking for Sales
                 if ($customer->sales_id) {

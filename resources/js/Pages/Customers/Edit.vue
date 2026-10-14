@@ -178,20 +178,39 @@
                                     </div>
                                     <div>
                                         <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Status Layanan <span class="text-red-500">*</span></label>
-                                        <select v-model="form.service_status" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all" required>
-                                            <option value="berbayar">Berbayar</option>
-                                            <option value="gratis">Gratis</option>
+                                        <select v-model="form.service_status" class="w-full px-4 py-2.5 border rounded-lg text-sm font-semibold transition-all" :class="form.service_status === 'gratis' ? 'bg-emerald-50 border-emerald-300 text-emerald-800 focus:ring-emerald-500' : 'bg-gray-50 border-gray-200 text-gray-800 focus:ring-yellow-500'" required>
+                                            <option value="berbayar">💳 Berbayar (Dikenakan Tagihan Bulanan)</option>
+                                            <option value="gratis">🎁 Gratis (Bebas Tagihan / Non-Invoice)</option>
                                         </select>
+                                    </div>
+                                    
+                                    <!-- Smart Banner Pelanggan Gratis -->
+                                    <div v-if="form.service_status === 'gratis'" class="md:col-span-2 p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 border border-emerald-200 rounded-xl flex items-start gap-3 shadow-sm animate-fade-in">
+                                        <div class="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm text-sm">
+                                            🎁
+                                        </div>
+                                        <div class="text-xs">
+                                            <p class="font-bold text-emerald-900 flex items-center gap-1.5">
+                                                Mode Pelanggan Gratis Aktif
+                                                <span class="text-[9px] px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-900 font-extrabold uppercase tracking-wide">Bebas Invoice Selamanya</span>
+                                            </p>
+                                            <p class="text-emerald-700 mt-0.5 leading-relaxed">
+                                                Menyetel status ke Gratis otomatis membebaskan pelanggan dari invoice baru, mengatur tarif Rp 0, dan otomatis menghapus antrean tagihan yang belum terbayar.
+                                            </p>
+                                        </div>
                                     </div>
                                 </template>
 
                                 <div>
-                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tarif Bulanan (Rp) <span class="text-red-500">*</span></label>
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center justify-between">
+                                        <span>Tarif Bulanan (Rp) <span class="text-red-500">*</span></span>
+                                        <span v-if="form.service_status === 'gratis'" class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Otomatis Rp 0</span>
+                                    </label>
                                     <div class="relative">
                                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                             <span class="text-gray-500 text-sm font-semibold">Rp</span>
                                         </div>
-                                        <input v-model="form.base_amount" type="number" class="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all font-mono font-medium" required />
+                                        <input v-model="form.base_amount" type="number" :disabled="form.service_status === 'gratis'" class="w-full pl-11 pr-4 py-2.5 border rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:border-transparent transition-all font-mono font-medium disabled:bg-emerald-50/70 disabled:text-emerald-800 disabled:font-bold disabled:border-emerald-300 disabled:cursor-not-allowed" :class="form.service_status === 'gratis' ? 'focus:ring-emerald-500' : 'bg-gray-50 border-gray-200 focus:ring-yellow-500'" required />
                                     </div>
                                 </div>
                                 
@@ -489,8 +508,25 @@ watch(registration_type, (type) => {
     }
 });
 
+watch(() => form.service_status, (newStatus) => {
+    if (newStatus === 'gratis') {
+        form.base_amount = 0;
+    } else {
+        const pkg = props.packages.find(p => p.id === form.package_id);
+        if (pkg) {
+            form.base_amount = pkg.price;
+        } else if (Number(form.base_amount) === 0) {
+            form.base_amount = props.customer.base_amount || 150000;
+        }
+    }
+});
+
 watch(() => form.package_id, (newId) => {
     if (registration_type.value === 'reseller') return;
+    if (form.service_status === 'gratis') {
+        form.base_amount = 0;
+        return;
+    }
     const pkg = props.packages.find(p => p.id === newId);
     if (pkg) {
         form.base_amount = pkg.price;

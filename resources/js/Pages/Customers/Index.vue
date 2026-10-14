@@ -120,6 +120,21 @@
                     </div>
                 </div>
 
+                <!-- Layanan (Berbayar / Gratis) -->
+                <div class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
+                    <div class="shrink-0 mr-2 text-gray-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div class="flex flex-col flex-1">
+                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Layanan</span>
+                        <select v-model="filterServiceStatus" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                            <option value="">Semua Layanan</option>
+                            <option value="berbayar">💳 Berbayar</option>
+                            <option value="gratis">🎁 Gratis</option>
+                        </select>
+                    </div>
+                </div>
+
                 <!-- Paket -->
                 <div class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
                     <div class="shrink-0 mr-2 text-gray-400">
@@ -190,12 +205,17 @@
 
             <!-- Action Button -->
             <template #actions>
-                <Link href="/customers/create" class="btn-primary">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Tambah Pelanggan
-                </Link>
+                <div class="flex items-center gap-2">
+                    <Link href="/customers/gratis" class="px-3 py-2 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-1.5 shadow-sm">
+                        <span>🎁</span> Pelanggan Gratis
+                    </Link>
+                    <Link href="/customers/create" class="btn-primary">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Tambah Pelanggan
+                    </Link>
+                </div>
             </template>
 
             <!-- Table Rows -->
@@ -209,9 +229,14 @@
                             {{ row.name.charAt(0).toUpperCase() }}
                         </div>
                         <div>
-                            <Link :href="`/customers/${row.id}`" class="text-gray-900 font-semibold text-sm hover:text-blue-500 transition-colors">
-                                {{ row.name }}
-                            </Link>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <Link :href="`/customers/${row.id}`" class="text-gray-900 font-semibold text-sm hover:text-blue-500 transition-colors">
+                                    {{ row.name }}
+                                </Link>
+                                <span v-if="row.service_status === 'gratis'" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200" title="Pelanggan Gratis (Non-Invoice)">
+                                    🎁 Gratis
+                                </span>
+                            </div>
                             <p class="text-[10px] text-gray-500 font-mono">{{ row.customer_code }}</p>
                         </div>
                     </div>
@@ -553,6 +578,7 @@ function getAvatarColor(name) {
 }
 
 const filterStatus = ref(props.filters?.status || '');
+const filterServiceStatus = ref(props.filters?.service_status || '');
 const filterPackage = ref(props.filters?.package_id || '');
 const filterArea = ref(props.filters?.area_id || '');
 const filterOdp = ref(props.filters?.odp_id || '');
@@ -561,6 +587,7 @@ const filterSort = ref(props.filters?.sort_by || '');
 function applyFilters() {
     router.get('/customers', {
         status: filterStatus.value || undefined,
+        service_status: filterServiceStatus.value || undefined,
         package_id: filterPackage.value || undefined,
         area_id: filterArea.value || undefined,
         odp_id: filterOdp.value || undefined,
@@ -570,6 +597,7 @@ function applyFilters() {
 
 function resetFilters() {
     filterStatus.value = '';
+    filterServiceStatus.value = '';
     filterPackage.value = '';
     filterArea.value = '';
     filterOdp.value = '';

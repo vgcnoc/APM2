@@ -39,6 +39,12 @@ class GenerateMissingInvoices extends Command
             if ($unpaidCount >= 2) {
                 continue;
             }
+
+            // Pelanggan gratis tidak boleh diterbitkan invoice tagihan
+            if ($customer->service_status === 'gratis') {
+                continue;
+            }
+
             // Check if invoice exists for this customer
             $exists = Invoice::where('customer_id', $customer->id)->exists();
             if (!$exists) {
@@ -46,15 +52,10 @@ class GenerateMissingInvoices extends Command
                 $amount = $customer->package ? $customer->package->price : 0;
                 $status = 'unpaid';
                 
-                if ($customer->service_status === 'gratis') {
-                    $amount = 0;
-                    $status = 'paid';
-                } else {
-                    // Hanya PPN yang ditambahkan ke invoice tagihan pelanggan
-                    $taxPpn = (float) ($customer->tax_ppn ?? \App\Models\Setting::get('tax_ppn', '0'));
-                    if ($taxPpn > 0) {
-                        $amount = $amount + ($amount * ($taxPpn / 100));
-                    }
+                // Hanya PPN yang ditambahkan ke invoice tagihan pelanggan
+                $taxPpn = (float) ($customer->tax_ppn ?? \App\Models\Setting::get('tax_ppn', '0'));
+                if ($taxPpn > 0) {
+                    $amount = $amount + ($amount * ($taxPpn / 100));
                 }
                 
                 $isolateDays = (int) \App\Models\Setting::get('isolate_days', '3');

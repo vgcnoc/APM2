@@ -220,16 +220,25 @@ const menuItems = [
         type: 'dropdown',
         icon: 'users',
         label: 'Data Pelanggan',
-        active: (url) => ['/customers', '/customers/active', '/customers/isolir', '/customers/online', '/customers/offline', '/customers/terminated'].some(path => (url || '') === path || (url || '').startsWith(path + '?')),
+        active: (url) => ['/customers', '/customers/gratis', '/customers/active', '/customers/isolir', '/customers/online', '/customers/offline', '/customers/terminated'].some(path => (url || '') === path || (url || '').startsWith(path + '?')),
         permission: 'menu_customers_all',
         children: [
             { href: '/customers', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
+            { href: '/customers/gratis', label: 'Pelanggan Gratis', active: (url) => (url || '').startsWith('/customers/gratis'), permission: 'menu_customers_all' },
             { href: '/customers/active', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: 'menu_customers_active' },
             { href: '/customers/isolir', label: 'Pelanggan Isolir', active: (url) => (url || '').startsWith('/customers/isolir'), permission: 'menu_customers_active' },
             { href: '/customers/online', label: 'Status Online', active: (url) => (url || '').startsWith('/customers/online'), permission: 'menu_customers_online' },
             { href: '/customers/offline', label: 'Status Offline', active: (url) => (url || '').startsWith('/customers/offline'), permission: 'menu_customers_online' },
             { href: '/customers/terminated', label: 'Stop Permanen', active: (url) => (url || '').startsWith('/customers/terminated'), permission: 'menu_customers_all' },
         ]
+    },
+    { 
+        type: 'link', 
+        href: '/customers/gratis', 
+        icon: 'gift', 
+        label: 'Pelanggan Gratis', 
+        active: (url) => (url || '').startsWith('/customers/gratis'), 
+        permission: 'menu_customers_all' 
     },
     {
         type: 'dropdown',
@@ -633,6 +642,7 @@ const iconPaths = {
     support: 'M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z',
     cash: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
     'chart-pie': 'M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z',
-    scissors: 'M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879a3 3 0 11-1.414-1.414L10.586 12 7.707 9.121a3 3 0 111.414-1.414L12 10.586m0 0L19 12'
+    scissors: 'M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879a3 3 0 11-1.414-1.414L10.586 12 7.707 9.121a3 3 0 111.414-1.414L12 10.586m0 0L19 12',
+    gift: 'M12 8v13m0-13V4.5a2.5 2.5 0 115 0v3.5m-5 0V4.5a2.5 2.5 0 10-5 0v3.5m-5 0h20a1 1 0 011 1v3a1 1 0 01-1 1H2a1 1 0 01-1-1V9a1 1 0 011-1zm1 5v7a2 2 0 002 2h14a2 2 0 002-2v-7'
 };
 </script>

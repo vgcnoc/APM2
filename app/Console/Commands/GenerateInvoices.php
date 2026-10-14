@@ -68,19 +68,19 @@ class GenerateInvoices extends Command
                 }
             }
 
+            // Pelanggan gratis tidak boleh diterbitkan invoice tagihan
+            if ($customer->service_status === 'gratis') {
+                continue;
+            }
+
             if (!$exists) {
                 $amount = $customer->package ? $customer->package->price : 0;
                 $status = 'unpaid';
 
-                if ($customer->service_status === 'gratis') {
-                    $amount = 0;
-                    $status = 'paid';
-                } else {
-                    // Hanya PPN yang ditambahkan ke invoice tagihan pelanggan
-                    $taxPpn = (float) ($customer->tax_ppn ?? Setting::get('tax_ppn', '0'));
-                    if ($taxPpn > 0) {
-                        $amount = $amount + ($amount * ($taxPpn / 100));
-                    }
+                // Hanya PPN yang ditambahkan ke invoice tagihan pelanggan
+                $taxPpn = (float) ($customer->tax_ppn ?? Setting::get('tax_ppn', '0'));
+                if ($taxPpn > 0) {
+                    $amount = $amount + ($amount * ($taxPpn / 100));
                 }
 
                 $isolateDays = (int) Setting::get('isolate_days', '3');
