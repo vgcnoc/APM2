@@ -227,6 +227,21 @@ Route::middleware(['auth'])->group(function () {
     Route::post('odps/{odp}/update', [OdpController::class, 'update'])->name('odps.update.post');
     Route::post('odps/{odp}/delete', [OdpController::class, 'destroy'])->name('odps.destroy.post');
 
+    // ── Rollout & Penugasan Pembangunan ODC & ODP ─────────────
+    Route::prefix('infrastructure/work-orders')->name('infrastructure.work-orders.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'create'])->name('create');
+        Route::get('/api/bom', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'getBOM'])->name('bom');
+        Route::post('/', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'store'])->name('store');
+        Route::get('/{workOrder}', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'show'])->name('show');
+        Route::get('/{workOrder}/print-surat-jalan', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'printSuratJalan'])->name('print-surat-jalan');
+        Route::post('/{workOrder}/approve-material', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'approveMaterial'])->name('approve-material');
+        Route::post('/{workOrder}/start-work', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'startWork'])->name('start-work');
+        Route::post('/{workOrder}/submit-report', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'submitReport'])->name('submit-report');
+        Route::post('/{workOrder}/approve', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'approve'])->name('approve');
+        Route::post('/{workOrder}/reject', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'reject'])->name('reject');
+    });
+
     Route::resource('onts', OntController::class);
     Route::post('onts/{ont}/update', [OntController::class, 'update'])->name('onts.update.post');
     Route::post('onts/{ont}/delete', [OntController::class, 'destroy'])->name('onts.destroy.post');

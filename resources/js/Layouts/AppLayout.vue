@@ -420,9 +420,10 @@ const menuItems = [
         type: 'dropdown',
         icon: 'server',
         label: 'Perangkat OSP / FTTH',
-        active: (url) => ['/olts', '/odcs', '/odps', '/onts', '/find-onu'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/olts', '/odcs', '/odps', '/onts', '/find-onu', '/infrastructure/work-orders'].some(path => (url || '').startsWith(path)),
         permission: 'menu_network_olt',
         children: [
+            { href: '/infrastructure/work-orders', label: '⚡ Rollout ODC & ODP', active: (url) => (url || '').startsWith('/infrastructure/work-orders'), permission: 'menu_network_odc' },
             { href: '/olts', label: 'Data OLT', active: (url) => (url || '').startsWith('/olts'), permission: 'menu_network_olt' },
             { href: '/odcs', label: 'Data ODC', active: (url) => (url || '').startsWith('/odcs'), permission: 'menu_network_odc' },
             { href: '/odps', label: 'Data ODP', active: (url) => (url || '').startsWith('/odps'), permission: 'menu_network_odp' },
