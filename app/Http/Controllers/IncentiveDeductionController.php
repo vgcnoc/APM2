@@ -17,23 +17,37 @@ class IncentiveDeductionController extends Controller
         $month = $request->query('month', now()->month);
         $year = $request->query('year', now()->year);
         $search = $request->query('search', '');
+        $areaId = $request->query('area_id', '');
         
-        $incentivesQuery = Incentive::with('user')
+        $incentivesQuery = Incentive::with(['user.area'])
             ->whereMonth('incentive_date', $month)
             ->whereYear('incentive_date', $year);
             
-        $deductionsQuery = Deduction::with('user')
+        $deductionsQuery = Deduction::with(['user.area'])
             ->whereMonth('deduction_date', $month)
             ->whereYear('deduction_date', $year);
 
+        if ($areaId) {
+            $incentivesQuery->whereHas('user', function($q) use ($areaId) {
+                $q->where('area_id', $areaId);
+            });
+            $deductionsQuery->whereHas('user', function($q) use ($areaId) {
+                $q->where('area_id', $areaId);
+            });
+        }
+
         if ($search) {
-            $incentivesQuery->whereHas('user', function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%");
-            })->orWhere('description', 'like', "%{$search}%");
+            $incentivesQuery->where(function($query) use ($search) {
+                $query->whereHas('user', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%");
+                })->orWhere('description', 'like', "%{$search}%");
+            });
             
-            $deductionsQuery->whereHas('user', function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%");
-            })->orWhere('description', 'like', "%{$search}%");
+            $deductionsQuery->where(function($query) use ($search) {
+                $query->whereHas('user', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%");
+                })->orWhere('description', 'like', "%{$search}%");
+            });
         }
 
         $incentives = $incentivesQuery->get()->map(function ($item) {
@@ -41,6 +55,7 @@ class IncentiveDeductionController extends Controller
                 'id' => 'inc_' . $item->id,
                 'real_id' => $item->id,
                 'user_name' => $item->user->name ?? 'Unknown',
+                'area_name' => $item->user?->area?->name ?? 'Pusat / Semua Area',
                 'record_type' => 'Insentif',
                 'mode' => ucfirst($item->type),
                 'amount' => $item->amount,
@@ -56,6 +71,7 @@ class IncentiveDeductionController extends Controller
                 'id' => 'ded_' . $item->id,
                 'real_id' => $item->id,
                 'user_name' => $item->user->name ?? 'Unknown',
+                'area_name' => $item->user?->area?->name ?? 'Pusat / Semua Area',
                 'record_type' => 'Potongan',
                 'mode' => ucfirst($item->type),
                 'amount' => $item->amount,
@@ -97,8 +113,9 @@ class IncentiveDeductionController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        $users = User::where('is_active', true)->get(['id', 'name']);
+        $users = User::with('area')->where('is_active', true)->get(['id', 'name', 'area_id']);
         $categories = \App\Models\PayrollCategory::where('is_active', true)->get();
+        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Payroll/IncentivesDeductions', [
             'records' => $paginated,
@@ -108,9 +125,10 @@ class IncentiveDeductionController extends Controller
                 'countAuto' => $countAuto,
                 'countManual' => $countManual,
             ],
-            'filters' => $request->only(['tab', 'month', 'year', 'search']),
+            'filters' => $request->only(['tab', 'month', 'year', 'search', 'area_id']),
             'users' => $users,
             'payrollCategories' => $categories,
+            'areas' => $areas,
         ]);
     }
 

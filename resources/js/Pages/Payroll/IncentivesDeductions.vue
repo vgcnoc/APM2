@@ -56,24 +56,85 @@
 
             <!-- Filters -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-50">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-600 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                            Filter Otomatis
+                        </span>
+                        <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            Auto Filter Aktif
+                        </span>
+                    </div>
+                    <button
+                        v-if="hasActiveFilters"
+                        @click="resetFilters"
+                        type="button"
+                        class="text-xs text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1 hover:underline"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        Reset Filter
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Bulan -->
                     <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Bulan</label>
-                        <select v-model="filter.month" @change="fetchData" class="block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            Bulan
+                        </label>
+                        <select v-model="filter.month" class="block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all">
                             <option v-for="(name, index) in months" :key="index" :value="index + 1">{{ name }}</option>
                         </select>
                     </div>
+
+                    <!-- Tahun -->
                     <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Tahun</label>
-                        <input type="number" v-model="filter.year" @change="fetchData" class="block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Tahun
+                        </label>
+                        <input type="number" v-model="filter.year" class="block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all">
                     </div>
-                    <div class="md:col-span-2">
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Pencarian</label>
+
+                    <!-- Area / Wilayah Filter -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            Area / Wilayah
+                        </label>
+                        <select v-model="filter.area_id" class="block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all">
+                            <option value="">Semua Wilayah</option>
+                            <option v-for="area in (areas || [])" :key="area.id" :value="area.id">{{ area.name }}</option>
+                        </select>
+                    </div>
+
+                    <!-- Pencarian Otomatis -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            Pencarian
+                        </label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                             </div>
-                            <input type="text" v-model="filter.search" @keyup.enter="fetchData" placeholder="Cari karyawan / keterangan..." class="block w-full pl-10 border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            <input
+                                type="text"
+                                v-model="filter.search"
+                                placeholder="Cari karyawan / keterangan..."
+                                class="block w-full pl-9 pr-8 border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
+                            >
+                            <button
+                                v-if="filter.search"
+                                @click="filter.search = ''"
+                                type="button"
+                                class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                                title="Hapus pencarian"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -81,12 +142,12 @@
 
             <!-- Tabs -->
             <div class="mb-4">
-                <nav class="flex space-x-2" aria-label="Tabs">
-                    <button @click="setTab('semua')" :class="[filter.tab === 'semua' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-gray-200' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100', 'px-4 py-2 text-sm font-bold rounded-lg transition-all']">Semua ({{ records.total }})</button>
-                    <button @click="setTab('insentif')" :class="[filter.tab === 'insentif' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-gray-200' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100', 'px-4 py-2 text-sm font-bold rounded-lg transition-all']">Insentif</button>
-                    <button @click="setTab('potongan')" :class="[filter.tab === 'potongan' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-gray-200' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100', 'px-4 py-2 text-sm font-bold rounded-lg transition-all']">Potongan</button>
-                    <button @click="setTab('auto')" :class="[filter.tab === 'auto' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-gray-200' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100', 'px-4 py-2 text-sm font-bold rounded-lg transition-all']">Auto</button>
-                    <button @click="setTab('manual')" :class="[filter.tab === 'manual' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-gray-200' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100', 'px-4 py-2 text-sm font-bold rounded-lg transition-all']">Manual</button>
+                <nav class="flex space-x-2 overflow-x-auto pb-1" aria-label="Tabs">
+                    <button @click="setTab('semua')" :class="[filter.tab === 'semua' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-gray-200' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100', 'px-4 py-2 text-sm font-bold rounded-lg transition-all whitespace-nowrap']">Semua ({{ records.total }})</button>
+                    <button @click="setTab('insentif')" :class="[filter.tab === 'insentif' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-gray-200' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100', 'px-4 py-2 text-sm font-bold rounded-lg transition-all whitespace-nowrap']">Insentif</button>
+                    <button @click="setTab('potongan')" :class="[filter.tab === 'potongan' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-gray-200' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100', 'px-4 py-2 text-sm font-bold rounded-lg transition-all whitespace-nowrap']">Potongan</button>
+                    <button @click="setTab('auto')" :class="[filter.tab === 'auto' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-gray-200' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100', 'px-4 py-2 text-sm font-bold rounded-lg transition-all whitespace-nowrap']">Auto</button>
+                    <button @click="setTab('manual')" :class="[filter.tab === 'manual' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-gray-200' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100', 'px-4 py-2 text-sm font-bold rounded-lg transition-all whitespace-nowrap']">Manual</button>
                 </nav>
             </div>
 
@@ -96,7 +157,7 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50/80">
                             <tr>
-                                <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Karyawan</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Karyawan &amp; Area</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Tipe</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Mode</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Jumlah</th>
@@ -109,6 +170,11 @@
                             <tr v-for="record in records.data" :key="record.id" class="hover:bg-gray-50/50 transition-colors">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="font-bold text-gray-900">{{ record.user_name }}</div>
+                                    <div class="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                            📍 {{ record.area_name }}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span :class="[record.record_type === 'Insentif' ? 'bg-indigo-100 text-indigo-800' : 'bg-rose-100 text-rose-800', 'px-2.5 py-1 inline-flex text-xs leading-5 font-bold rounded-full']">
@@ -204,7 +270,9 @@
                                     <label class="block text-sm font-medium text-gray-700">Karyawan</label>
                                     <select v-model="manualForm.user_id" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
                                         <option value="" disabled>Pilih Karyawan</option>
-                                        <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
+                                        <option v-for="user in users" :key="user.id" :value="user.id">
+                                            {{ user.name }} {{ user.area ? `(${user.area.name})` : '' }}
+                                        </option>
                                     </select>
                                 </div>
                                 <div>
@@ -247,7 +315,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, watch, computed } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -257,6 +325,7 @@ const props = defineProps({
     filters: Object,
     users: Array,
     payrollCategories: Array,
+    areas: Array,
 });
 
 const months = [
@@ -265,10 +334,11 @@ const months = [
 ];
 
 const filter = reactive({
-    tab: props.filters.tab || 'semua',
-    month: props.filters.month || new Date().getMonth() + 1,
-    year: props.filters.year || new Date().getFullYear(),
-    search: props.filters.search || '',
+    tab: props.filters?.tab || 'semua',
+    month: Number(props.filters?.month) || new Date().getMonth() + 1,
+    year: Number(props.filters?.year) || new Date().getFullYear(),
+    area_id: props.filters?.area_id || '',
+    search: props.filters?.search || '',
 });
 
 const showManualModal = ref(false);
@@ -293,6 +363,23 @@ const formatDate = (dateString) => {
     }).format(date);
 };
 
+const hasActiveFilters = computed(() => {
+    return Boolean(
+        filter.area_id !== '' ||
+        filter.search.trim() !== '' ||
+        Number(filter.month) !== (new Date().getMonth() + 1) ||
+        Number(filter.year) !== new Date().getFullYear()
+    );
+});
+
+const resetFilters = () => {
+    filter.month = new Date().getMonth() + 1;
+    filter.year = new Date().getFullYear();
+    filter.area_id = '';
+    filter.search = '';
+    fetchData();
+};
+
 const fetchData = () => {
     router.get(route('insentif-potongan.index'), filter, {
         preserveState: true,
@@ -300,6 +387,27 @@ const fetchData = () => {
         replace: true,
     });
 };
+
+// ── Auto-Filter Watchers ──
+let debounceTimer = null;
+const applyFilter = (immediate = false) => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (immediate) {
+        fetchData();
+    } else {
+        debounceTimer = setTimeout(() => {
+            fetchData();
+        }, 350);
+    }
+};
+
+watch(() => filter.search, () => {
+    applyFilter(false); // debounced 350ms
+});
+
+watch([() => filter.month, () => filter.year, () => filter.area_id], () => {
+    applyFilter(true); // immediate
+});
 
 const setTab = (tab) => {
     filter.tab = tab;
