@@ -211,6 +211,20 @@
 
                 <!-- Tab Content: Pelanggan Saya -->
                 <div v-if="activeTab === 'customers'" class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800">Daftar Pelanggan Internet Binaan Anda</h4>
+                            <p class="text-xs text-slate-500">Pelanggan yang Anda daftarkan langsung secara resmi.</p>
+                        </div>
+                        <a
+                            href="/customers/create"
+                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>+ Booking Pelanggan Baru</span>
+                        </a>
+                    </div>
+
                     <div v-if="customers.length > 0" class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-100 text-xs">
                             <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
@@ -241,10 +255,21 @@
                             </tbody>
                         </table>
                     </div>
-                    <div v-else class="text-center py-12 text-slate-400">
-                        <span class="text-4xl block mb-2">📡</span>
-                        <p class="font-medium text-slate-700">Belum Ada Pelanggan Terdaftar</p>
-                        <p class="text-xs text-slate-400 mt-1">Bagikan link referral Anda untuk mulai mendaftarkan pelanggan pertama!</p>
+                    <div v-else class="text-center py-12 text-slate-400 space-y-3">
+                        <span class="text-4xl block">📡</span>
+                        <div>
+                            <p class="font-medium text-slate-700">Belum Ada Pelanggan Terdaftar</p>
+                            <p class="text-xs text-slate-400 mt-1">Bagikan link referral Anda atau daftarkan pelanggan langsung sekarang!</p>
+                        </div>
+                        <div>
+                            <a
+                                href="/customers/create"
+                                class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                <span>Input Booking Baru Sekarang</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
 

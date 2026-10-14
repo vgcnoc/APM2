@@ -1182,11 +1182,17 @@ class CustomerController extends Controller
             $areaVillagesMap[$a->name] = $vList->unique()->sort()->values()->all();
         }
 
+        $isAffiliate = auth()->user()->role === 'sales'
+            || auth()->user()->role === 'affiliate'
+            || \App\Models\AffiliateProfile::where('user_id', auth()->id())->exists()
+            || (!auth()->user()->hasRole('admin') && auth()->user()->role !== 'admin' && auth()->user()->role !== 'super-admin');
+
         return Inertia::render('Customers/Create', [
             'packages' => InternetPackage::active()->get(),
             'sales' => $sales,
             'areas' => $areas,
             'area_villages' => $areaVillagesMap,
+            'isAffiliate' => $isAffiliate,
         ]);
     }
 
@@ -1232,6 +1238,16 @@ class CustomerController extends Controller
         if (!empty($validated['area'])) {
             $areaModel = \App\Models\Area::firstOrCreate(['name' => $validated['area']]);
             $validated['area_id'] = $areaModel->id;
+        }
+
+        $isAffiliate = auth()->user()->role === 'sales'
+            || auth()->user()->role === 'affiliate'
+            || \App\Models\AffiliateProfile::where('user_id', auth()->id())->exists()
+            || (!auth()->user()->hasRole('admin') && auth()->user()->role !== 'admin' && auth()->user()->role !== 'super-admin');
+
+        // Khusus booking dari akun affiliate, dilarang keras status gratis (wajib berbayar)
+        if ($isAffiliate) {
+            $validated['service_status'] = 'berbayar';
         }
 
         if (($validated['service_status'] ?? 'berbayar') === 'gratis') {
@@ -1378,12 +1394,18 @@ class CustomerController extends Controller
             }
         }
 
+        $isAffiliate = auth()->user()->role === 'sales'
+            || auth()->user()->role === 'affiliate'
+            || \App\Models\AffiliateProfile::where('user_id', auth()->id())->exists()
+            || (!auth()->user()->hasRole('admin') && auth()->user()->role !== 'admin' && auth()->user()->role !== 'super-admin');
+
         return Inertia::render('Customers/Edit', [
             'customer' => $customer,
             'packages' => InternetPackage::active()->get(),
             'availableOdps' => Odp::active()->with('odc.olt')->get(),
             'sales' => $sales,
             'areas' => $areas,
+            'isAffiliate' => $isAffiliate,
         ]);
     }
 
@@ -1455,6 +1477,15 @@ class CustomerController extends Controller
         // Jika status berubah ke 'active', set activation_date
         if ($validated['status'] === 'active' && $customer->status !== 'active') {
             $validated['activation_date'] = now()->toDateString();
+        }
+
+        $isAffiliate = auth()->user()->role === 'sales'
+            || auth()->user()->role === 'affiliate'
+            || \App\Models\AffiliateProfile::where('user_id', auth()->id())->exists()
+            || (!auth()->user()->hasRole('admin') && auth()->user()->role !== 'admin' && auth()->user()->role !== 'super-admin');
+
+        if ($isAffiliate && isset($validated['service_status'])) {
+            $validated['service_status'] = 'berbayar';
         }
 
         if (($validated['service_status'] ?? $customer->service_status) === 'gratis') {

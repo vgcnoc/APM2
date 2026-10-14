@@ -61,6 +61,11 @@ class HandleInertiaRequests extends Middleware
                             'area_id' => $request->user()->area_id,
                             'accessible_areas' => $request->user()->getAccessibleAreaIds(),
                             'is_on_duty' => (bool) $request->user()->is_on_duty,
+                            'is_affiliate' => (bool) (
+                                $request->user()->role === 'sales'
+                                || $request->user()->role === 'affiliate'
+                                || \App\Models\AffiliateProfile::where('user_id', $request->user()->id)->exists()
+                            ),
                             'customer' => $customerData,
                         ];
                     })() : null,

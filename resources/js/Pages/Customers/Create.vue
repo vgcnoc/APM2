@@ -194,14 +194,20 @@
                                     </div>
                                     <div>
                                         <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Status Layanan <span class="text-red-500">*</span></label>
-                                        <select v-model="form.service_status" class="w-full px-4 py-2.5 border rounded-lg text-sm font-semibold transition-all" :class="form.service_status === 'gratis' ? 'bg-emerald-50 border-emerald-300 text-emerald-800 focus:ring-emerald-500' : 'bg-gray-50 border-gray-200 text-gray-800 focus:ring-indigo-500'" required>
+                                        <select 
+                                            v-model="form.service_status" 
+                                            :disabled="isAffiliateAccount"
+                                            class="w-full px-4 py-2.5 border rounded-lg text-sm font-semibold transition-all disabled:bg-gray-100 disabled:text-gray-600 disabled:cursor-not-allowed" 
+                                            :class="form.service_status === 'gratis' ? 'bg-emerald-50 border-emerald-300 text-emerald-800 focus:ring-emerald-500' : 'bg-gray-50 border-gray-200 text-gray-800 focus:ring-indigo-500'" 
+                                            required
+                                        >
                                             <option value="berbayar">💳 Berbayar (Dikenakan Tagihan Bulanan)</option>
-                                            <option value="gratis">🎁 Gratis (Bebas Tagihan / Non-Invoice)</option>
+                                            <option v-if="!isAffiliateAccount" value="gratis">🎁 Gratis (Bebas Tagihan / Non-Invoice)</option>
                                         </select>
                                     </div>
                                     
                                     <!-- Smart Banner Pelanggan Gratis -->
-                                    <div v-if="form.service_status === 'gratis'" class="md:col-span-2 p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 border border-emerald-200 rounded-xl flex items-start gap-3 shadow-sm animate-fade-in">
+                                    <div v-if="form.service_status === 'gratis' && !isAffiliateAccount" class="md:col-span-2 p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 border border-emerald-200 rounded-xl flex items-start gap-3 shadow-sm animate-fade-in">
                                         <div class="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm text-sm">
                                             🎁
                                         </div>
@@ -220,13 +226,13 @@
                                 <div>
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center justify-between">
                                         <span>Tarif Bulanan (Rp) <span class="text-red-500">*</span></span>
-                                        <span v-if="form.service_status === 'gratis'" class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Otomatis Rp 0</span>
+                                        <span v-if="form.service_status === 'gratis' && !isAffiliateAccount" class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Otomatis Rp 0</span>
                                     </label>
                                     <div class="relative">
                                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                             <span class="text-gray-500 text-sm font-semibold">Rp</span>
                                         </div>
-                                        <input v-model="form.base_amount" type="number" :disabled="form.service_status === 'gratis'" class="w-full pl-11 pr-4 py-2.5 border rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:border-transparent transition-all font-mono font-medium disabled:bg-emerald-50/70 disabled:text-emerald-800 disabled:font-bold disabled:border-emerald-300 disabled:cursor-not-allowed" :class="form.service_status === 'gratis' ? 'focus:ring-emerald-500' : 'bg-gray-50 border-gray-200 focus:ring-indigo-500'" required />
+                                        <input v-model="form.base_amount" type="number" :disabled="form.service_status === 'gratis' && !isAffiliateAccount" class="w-full pl-11 pr-4 py-2.5 border rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:border-transparent transition-all font-mono font-medium disabled:bg-emerald-50/70 disabled:text-emerald-800 disabled:font-bold disabled:border-emerald-300 disabled:cursor-not-allowed" :class="form.service_status === 'gratis' ? 'focus:ring-emerald-500' : 'bg-gray-50 border-gray-200 focus:ring-indigo-500'" required />
                                     </div>
                                 </div>
                                 
@@ -306,11 +312,40 @@ const props = defineProps({
         type: Object,
         default: () => ({}),
     },
+    isAffiliate: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const isNewArea = ref(false);
 const page = usePage();
-const isAdmin = computed(() => page.props.auth.user?.role === 'admin' || page.props.auth.user?.role === 'super-admin');
+const isAdmin = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user) return false;
+    if (user.role === 'admin' || user.role === 'super-admin' || user.role === 'Super Admin') return true;
+    let roles = [];
+    if (Array.isArray(user.roles)) roles = user.roles;
+    else if (user.roles) roles = Object.values(user.roles);
+    return roles.includes('admin') || roles.includes('super-admin') || roles.includes('Super Admin');
+});
+
+const isAffiliateAccount = computed(() => {
+    if (props.isAffiliate) return true;
+    const user = page.props.auth?.user;
+    if (!user) return false;
+    if (user.is_affiliate) return true;
+    if (user.role === 'sales' || user.role === 'affiliate') return true;
+    let roles = [];
+    if (Array.isArray(user.roles)) roles = user.roles;
+    else if (user.roles) roles = Object.values(user.roles);
+    if (roles.includes('sales') || roles.includes('affiliate')) return true;
+    if (!isAdmin.value && user.role !== 'teknisi' && !roles.includes('teknisi')) {
+        return true;
+    }
+    return false;
+});
+
 const registration_type = ref('customer');
 
 // Rekomendasi desa yang pernah di-input di area yang dipilih
@@ -320,6 +355,12 @@ const suggestedVillages = computed(() => {
     }
     return [];
 });
+
+watch(isAffiliateAccount, (val) => {
+    if (val && form.service_status === 'gratis') {
+        form.service_status = 'berbayar';
+    }
+}, { immediate: true });
 
 onMounted(() => {
     if (!props.areas || props.areas.length === 0) {
@@ -332,12 +373,14 @@ onMounted(() => {
         form.sales_id = user.id;
     }
 
-    // Auto default ke gratis jika dibuka dari menu Pelanggan Gratis (?service_status=gratis)
+    // Auto default ke gratis jika dibuka dari menu Pelanggan Gratis (?service_status=gratis) - HANYA jika bukan affiliate
     try {
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('service_status') === 'gratis' || urlParams.get('status') === 'gratis') {
+        if (!isAffiliateAccount.value && (urlParams.get('service_status') === 'gratis' || urlParams.get('status') === 'gratis')) {
             form.service_status = 'gratis';
             form.base_amount = 0;
+        } else if (isAffiliateAccount.value) {
+            form.service_status = 'berbayar';
         }
     } catch (e) {}
 });
