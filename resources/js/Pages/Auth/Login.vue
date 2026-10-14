@@ -407,7 +407,7 @@ const handleCheckBill = async () => {
 
             <!-- Global Footer Note -->
             <p class="mt-5 text-center text-xs text-slate-400">
-                &copy; {{ new Date().getFullYear() }} ISP Management System &bull; Secure Authentication
+                &copy; {{ new Date().getFullYear() }} VIRUZS.ISP Billing &amp; Reseller Infrastructure. All rights reserved.
             </p>
         </div>
     </div>

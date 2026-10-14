@@ -287,7 +287,7 @@ const submit = () => {
 
             <!-- Footer Note -->
             <p class="text-center text-xs text-gray-400">
-                &copy; {{ new Date().getFullYear() }} ISP Billing &amp; Reseller Infrastructure. All rights reserved.
+                &copy; {{ new Date().getFullYear() }} VIRUZS.ISP Billing &amp; Reseller Infrastructure. All rights reserved.
             </p>
 
         </div>
