@@ -75,6 +75,7 @@
                     <button
                         v-for="t in [
                             { id: 'settings', label: 'Pengaturan Komisi', icon: '⚙️' },
+                            { id: 'diagram', label: 'Arsitektur & Diagram Cerdas', icon: '🧠' },
                             { id: 'affiliates', label: 'Daftar Agen Afiliasi (' + affiliates.total + ')', icon: '👥' },
                             { id: 'commissions', label: 'Riwayat Log Komisi', icon: '📜' },
                             { id: 'withdrawals', label: 'Permintaan Pencairan (' + withdrawals.total + ')', icon: '💸' },
@@ -248,6 +249,380 @@
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+
+                <!-- ════ TAB DIAGRAM: ARSITEKTUR & SKEMA AFILIASI CERDAS ════ -->
+                <div v-if="currentTab === 'diagram'" class="p-6 sm:p-8 space-y-8">
+                    <!-- Filter Pills -->
+                    <div class="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-100">
+                        <span class="text-xs font-bold text-slate-500 mr-2">Fokus Alur:</span>
+                        <button
+                            v-for="f in [
+                                { id: 'all', label: '🌐 Semua Alur Sistem' },
+                                { id: 'employee', label: '👔 Jalur Karyawan (Slip Gaji)' },
+                                { id: 'external', label: '🤝 Jalur Mitra Luar (Dompet)' },
+                                { id: 'multitier', label: '🌳 Jaringan Multi-Tier' },
+                                { id: 'clawback', label: '✂️ Smart Pinalti < 4 Bulan' },
+                                { id: 'sim', label: '🧮 Simulator Pasif Income' },
+                            ]"
+                            :key="f.id"
+                            type="button"
+                            @click="diagramActiveFilter = f.id"
+                            class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+                            :class="diagramActiveFilter === f.id ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                        >
+                            {{ f.label }}
+                        </button>
+                    </div>
+
+                    <!-- 1. SMART DUAL-ROUTE ENGINE (KARYAWAN VS MITRA LUAR) -->
+                    <div v-if="['all', 'employee', 'external'].includes(diagramActiveFilter)" class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-lg border border-indigo-500/20">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6 pb-4 border-b border-white/10">
+                            <div>
+                                <span class="px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-extrabold uppercase tracking-wider border border-indigo-400/30">
+                                    Smart Dual-Route Engine &bull; 1 Akun Tunggal
+                                </span>
+                                <h3 class="text-lg sm:text-xl font-black text-white mt-1.5 flex items-center gap-2">
+                                    <span>🧠</span>
+                                    <span>Pembedaan Otomatis Jalur Karyawan vs Mitra Luar</span>
+                                </h3>
+                                <p class="text-xs text-indigo-200/80 mt-1">
+                                    Sistem secara otomatis mendeteksi profil pengguna saat komisi dihasilkan tanpa memerlukan pendaftaran akun ganda.
+                                </p>
+                            </div>
+                            <span class="inline-flex self-start md:self-auto text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-3 py-1.5 rounded-xl">
+                                🛡️ Anti-Double Pay Active
+                            </span>
+                        </div>
+
+                        <!-- Grid Perbandingan 2 Jalur -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Jalur Ungu: Karyawan Internal -->
+                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-purple-400/30 space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-9 h-9 rounded-xl bg-purple-500/30 text-purple-200 flex items-center justify-center text-lg font-bold">
+                                            👔
+                                        </div>
+                                        <div>
+                                            <h4 class="font-bold text-white text-sm">Jalur Karyawan Internal</h4>
+                                            <span class="text-[10px] text-purple-300">Staff, Teknisi, Sales, Admin, NOC</span>
+                                        </div>
+                                    </div>
+                                    <span class="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 text-[10px] font-bold border border-purple-400/30">
+                                        Slip Gaji / Payroll
+                                    </span>
+                                </div>
+
+                                <div class="space-y-2.5 text-xs text-purple-100/90 pt-1">
+                                    <div class="p-3 rounded-xl bg-white/5 border border-purple-400/20 flex items-start gap-2.5">
+                                        <span class="text-base">🎯</span>
+                                        <div>
+                                            <span class="font-bold text-white block">Fee Booking Pelanggan:</span>
+                                            Otomatis masuk ke tabel <b>Incentives (Pending)</b> dengan referensi unik <code>booking_cust_{id}</code>. Saldo dompet = Rp 0.
+                                        </div>
+                                    </div>
+                                    <div class="p-3 rounded-xl bg-white/5 border border-purple-400/20 flex items-start gap-2.5">
+                                        <span class="text-base">💰</span>
+                                        <div>
+                                            <span class="font-bold text-white block">Pasif Downline L1 &amp; L2:</span>
+                                            Otomatis masuk ke tabel <b>Incentives (Pending)</b> setiap invoice pelanggan binaan lunas.
+                                        </div>
+                                    </div>
+                                    <div class="p-3 rounded-xl bg-white/5 border border-purple-400/20 flex items-start gap-2.5">
+                                        <span class="text-base">✂️</span>
+                                        <div>
+                                            <span class="font-bold text-white block">Pinalti Stop Dini (&lt; 4 Bulan):</span>
+                                            Otomatis masuk ke tabel <b>Deductions (Pending)</b>, otomatis memotong total gaji pada slip gaji bulanan.
+                                        </div>
+                                    </div>
+                                    <div class="p-3 rounded-xl bg-purple-600/30 border border-purple-400/40 text-[11px] font-semibold text-purple-100 flex items-center justify-between">
+                                        <span>📅 Muara Pencairan:</span>
+                                        <span class="font-bold text-white">Slip Gaji Bulanan (Menu Payroll)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Jalur Hijau: Mitra Luar -->
+                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-emerald-400/30 space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-9 h-9 rounded-xl bg-emerald-500/30 text-emerald-200 flex items-center justify-center text-lg font-bold">
+                                            🤝
+                                        </div>
+                                        <div>
+                                            <h4 class="font-bold text-white text-sm">Jalur Mitra Luar / Freelance</h4>
+                                            <span class="text-[10px] text-emerald-300">Agen Umum, Reseller, Partner Publik</span>
+                                        </div>
+                                    </div>
+                                    <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 text-[10px] font-bold border border-emerald-400/30">
+                                        Dompet E-Wallet
+                                    </span>
+                                </div>
+
+                                <div class="space-y-2.5 text-xs text-emerald-100/90 pt-1">
+                                    <div class="p-3 rounded-xl bg-white/5 border border-emerald-400/20 flex items-start gap-2.5">
+                                        <span class="text-base">🎯</span>
+                                        <div>
+                                            <span class="font-bold text-white block">Fee Booking Pelanggan:</span>
+                                            Otomatis menambah <b>Saldo Dompet Afiliasi (+{{ formatRupiah(settingsForm.affiliate_commission_booking) }})</b> dan tercatat di total pendapatan.
+                                        </div>
+                                    </div>
+                                    <div class="p-3 rounded-xl bg-white/5 border border-emerald-400/20 flex items-start gap-2.5">
+                                        <span class="text-base">💰</span>
+                                        <div>
+                                            <span class="font-bold text-white block">Pasif Downline L1 &amp; L2:</span>
+                                            Otomatis menambah saldo dompet: L1 (+{{ formatRupiah(settingsForm.affiliate_commission_upline_1) }}) &amp; L2 (+{{ formatRupiah(settingsForm.affiliate_commission_upline_2) }}).
+                                        </div>
+                                    </div>
+                                    <div class="p-3 rounded-xl bg-white/5 border border-emerald-400/20 flex items-start gap-2.5">
+                                        <span class="text-base">✂️</span>
+                                        <div>
+                                            <span class="font-bold text-white block">Pinalti Stop Dini (&lt; 4 Bulan):</span>
+                                            Otomatis memotong langsung dari <b>Saldo Dompet (-{{ formatRupiah(settingsForm.affiliate_commission_booking) }})</b>.
+                                        </div>
+                                    </div>
+                                    <div class="p-3 rounded-xl bg-emerald-600/30 border border-emerald-400/40 text-[11px] font-semibold text-emerald-100 flex items-center justify-between">
+                                        <span>🏦 Muara Pencairan:</span>
+                                        <span class="font-bold text-white">Transfer Bank / E-Wallet (Withdrawal)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. SKEMA MULTI-TIER PASIF INCOME REALTIME -->
+                    <div v-if="['all', 'multitier'].includes(diagramActiveFilter)" class="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-7 shadow-xs space-y-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                                    <span>🌳</span>
+                                    <span>Struktur Jaringan Multi-Tier &amp; Aliran Pasif Income</span>
+                                </h3>
+                                <p class="text-xs text-slate-500 mt-0.5">
+                                    Model Unilevel Terbuka (Unlimited Width) &bull; Pasif income mengalir otomatis dari 2 Level binaan setiap invoice lunas.
+                                </p>
+                            </div>
+                            <span class="inline-flex self-start sm:self-auto text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full">
+                                ♾️ Rekrut Downline Tanpa Batas Kuota
+                            </span>
+                        </div>
+
+                        <!-- 3 Kartu Tingkatan Bertingkat -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Tier 0 -->
+                            <div class="p-5 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2 relative overflow-hidden">
+                                <div class="inline-flex items-center gap-1 text-[10px] uppercase font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                                    🟢 Tingkat 0: Direct Sales
+                                </div>
+                                <div class="text-2xl font-black text-emerald-700">
+                                    {{ formatRupiah(settingsForm.affiliate_commission_monthly) }}
+                                    <span class="text-xs font-normal text-slate-500">/ cust / bln</span>
+                                </div>
+                                <p class="text-xs text-slate-600 leading-relaxed">
+                                    Didapatkan oleh mitra/sales yang mendaftarkan pelanggan secara langsung setiap kali invoice bulanan lunas.
+                                </p>
+                            </div>
+
+                            <!-- Tier 1 -->
+                            <div class="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-2 relative overflow-hidden">
+                                <div class="inline-flex items-center gap-1 text-[10px] uppercase font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
+                                    🔵 Tingkat 1: Upline Level 1
+                                </div>
+                                <div class="text-2xl font-black text-indigo-700">
+                                    {{ formatRupiah(settingsForm.affiliate_commission_upline_1) }}
+                                    <span class="text-xs font-normal text-slate-500">/ cust / bln</span>
+                                </div>
+                                <p class="text-xs text-slate-600 leading-relaxed">
+                                    Pasif income yang dinikmati Upline dari seluruh pembayaran tagihan milik pelanggan mitra binaan langsung (Generasi 1).
+                                </p>
+                            </div>
+
+                            <!-- Tier 2 -->
+                            <div class="p-5 rounded-2xl bg-purple-50/70 border border-purple-200 space-y-2 relative overflow-hidden">
+                                <div class="inline-flex items-center gap-1 text-[10px] uppercase font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">
+                                    🟣 Tingkat 2: Upline Level 2
+                                </div>
+                                <div class="text-2xl font-black text-purple-700">
+                                    {{ formatRupiah(settingsForm.affiliate_commission_upline_2) }}
+                                    <span class="text-xs font-normal text-slate-500">/ cust / bln</span>
+                                </div>
+                                <p class="text-xs text-slate-600 leading-relaxed">
+                                    Pasif income ekstra dari pelanggan yang didaftarkan oleh mitra di bawah mitra Anda (Generasi 2).
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. SMART GUARD KONTRAK 4 BULAN (PINALTI STOP DINI) -->
+                    <div v-if="['all', 'clawback', 'employee', 'external'].includes(diagramActiveFilter)" class="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-7 shadow-xs space-y-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                                    <span>✂️</span>
+                                    <span>Smart Guard: Pinalti Berhenti Dini (&lt; {{ settingsForm.affiliate_contract_min_months }} Bulan)</span>
+                                </h3>
+                                <p class="text-xs text-slate-500 mt-0.5">
+                                    Perlindungan finansial perusahaan agar mitra &amp; sales berkomitmen menjaga pelanggan tetap berlangganan minimal {{ settingsForm.affiliate_contract_min_months }} bulan.
+                                </p>
+                            </div>
+                            <span class="inline-flex self-start sm:self-auto text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full">
+                                Auto-Clawback Protection
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Lulus Kontrak -->
+                            <div class="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-extrabold text-emerald-800 text-sm flex items-center gap-1.5">
+                                        <span>✅</span>
+                                        <span>Masa Aktif &ge; {{ settingsForm.affiliate_contract_min_months }} Bulan</span>
+                                    </span>
+                                    <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">
+                                        LULUS KONTRAK
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-600 leading-relaxed">
+                                    Jika pelanggan berhenti setelah melewati minimal {{ settingsForm.affiliate_contract_min_months }} bulan:
+                                </p>
+                                <div class="p-3 bg-white rounded-xl border border-emerald-200 text-xs text-emerald-800 font-semibold space-y-1">
+                                    <div>&bull; Bebas pinalti pemotongan fee booking (0 rupiah).</div>
+                                    <div>&bull; Fee booking awal tetap 100% menjadi hak sales/mitra.</div>
+                                    <div>&bull; Status di menu Stop Permanen: <span class="text-emerald-700 font-bold">Lulus Kontrak</span>.</div>
+                                </div>
+                            </div>
+
+                            <!-- Stop Dini -->
+                            <div class="p-5 rounded-2xl bg-rose-50/60 border border-rose-200 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-extrabold text-rose-800 text-sm flex items-center gap-1.5">
+                                        <span>⚠️</span>
+                                        <span>Masa Aktif &lt; {{ settingsForm.affiliate_contract_min_months }} Bulan</span>
+                                    </span>
+                                    <span class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded-full">
+                                        POTONG FEE BOOKING
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-600 leading-relaxed">
+                                    Jika pelanggan berhenti sebelum mencapai {{ settingsForm.affiliate_contract_min_months }} bulan:
+                                </p>
+                                <div class="p-3 bg-white rounded-xl border border-rose-200 text-xs text-rose-800 font-semibold space-y-1">
+                                    <div>&bull; Otomatis dipotong fee booking senilai <b>{{ formatRupiah(settingsForm.affiliate_commission_booking) }}</b>.</div>
+                                    <div>&bull; <b>Karyawan</b>: Masuk ke <b>Deductions</b> (Potongan Slip Gaji Payroll).</div>
+                                    <div>&bull; <b>Mitra Luar</b>: Otomatis memotong <b>Saldo Dompet Afiliasi</b>.</div>
+                                    <div>&bull; Badge transparan di menu Stop Permanen: <code>[SLIP GAJI]</code> atau <code>[DOMPET MITRA]</code>.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. LIVE INTERACTIVE PASSIVE INCOME SIMULATOR -->
+                    <div v-if="['all', 'multitier', 'sim'].includes(diagramActiveFilter)" class="bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-indigo-400/20 space-y-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+                            <div>
+                                <span class="px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-extrabold uppercase tracking-wider border border-indigo-400/30">
+                                    Kalkulator Proyeksi &bull; Interaktif
+                                </span>
+                                <h3 class="text-base sm:text-lg font-black text-white mt-1.5 flex items-center gap-2">
+                                    <span>🧮</span>
+                                    <span>Simulasi Potensi Pasif Income Jaringan Downline</span>
+                                </h3>
+                                <p class="text-xs text-indigo-200/80 mt-1">
+                                    Ubah angka di bawah ini untuk melihat potensi pasif income bulanan yang diterima seorang Upline/Karyawan:
+                                </p>
+                            </div>
+                            <span class="text-xs font-mono text-indigo-300">
+                                L1: {{ formatRupiah(settingsForm.affiliate_commission_upline_1) }} &bull; L2: {{ formatRupiah(settingsForm.affiliate_commission_upline_2) }}
+                            </span>
+                        </div>
+
+                        <!-- Kontrol Input Simulasi -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <!-- Input 1: Downline L1 -->
+                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+                                <label class="block text-[11px] font-bold uppercase tracking-wider text-indigo-200 mb-1">
+                                    Jumlah Mitra Level 1
+                                </label>
+                                <input
+                                    v-model.number="simDownlinesL1"
+                                    type="number"
+                                    min="0"
+                                    class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white font-mono font-bold text-sm focus:outline-none focus:bg-white/20"
+                                />
+                                <span class="text-[10px] text-slate-300 mt-1 block">Mitra binaan langsung</span>
+                            </div>
+
+                            <!-- Input 2: Cust per L1 -->
+                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+                                <label class="block text-[11px] font-bold uppercase tracking-wider text-indigo-200 mb-1">
+                                    Rata2 Pelanggan / Mitra L1
+                                </label>
+                                <input
+                                    v-model.number="simCustPerL1"
+                                    type="number"
+                                    min="0"
+                                    class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white font-mono font-bold text-sm focus:outline-none focus:bg-white/20"
+                                />
+                                <span class="text-[10px] text-slate-300 mt-1 block">Total L1: {{ simTotalCustL1 }} pelanggan</span>
+                            </div>
+
+                            <!-- Input 3: Downline L2 -->
+                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+                                <label class="block text-[11px] font-bold uppercase tracking-wider text-purple-200 mb-1">
+                                    Jumlah Mitra Level 2
+                                </label>
+                                <input
+                                    v-model.number="simDownlinesL2"
+                                    type="number"
+                                    min="0"
+                                    class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white font-mono font-bold text-sm focus:outline-none focus:bg-white/20"
+                                />
+                                <span class="text-[10px] text-slate-300 mt-1 block">Binaan dari Mitra L1 Anda</span>
+                            </div>
+
+                            <!-- Input 4: Cust per L2 -->
+                            <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+                                <label class="block text-[11px] font-bold uppercase tracking-wider text-purple-200 mb-1">
+                                    Rata2 Pelanggan / Mitra L2
+                                </label>
+                                <input
+                                    v-model.number="simCustPerL2"
+                                    type="number"
+                                    min="0"
+                                    class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white font-mono font-bold text-sm focus:outline-none focus:bg-white/20"
+                                />
+                                <span class="text-[10px] text-slate-300 mt-1 block">Total L2: {{ simTotalCustL2 }} pelanggan</span>
+                            </div>
+                        </div>
+
+                        <!-- Output Hasil Simulasi -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                            <div class="bg-white/10 rounded-2xl p-4 border border-white/15">
+                                <span class="text-xs text-indigo-200 block">Total Pelanggan Jaringan Binaan</span>
+                                <span class="text-2xl font-black text-white mt-1 block">
+                                    {{ simTotalCustL1 + simTotalCustL2 }} Pelanggan
+                                </span>
+                                <span class="text-[11px] text-slate-300">L1: {{ simTotalCustL1 }} &bull; L2: {{ simTotalCustL2 }}</span>
+                            </div>
+
+                            <div class="bg-emerald-500/20 rounded-2xl p-4 border border-emerald-400/30">
+                                <span class="text-xs text-emerald-200 block">Potensi Pasif Bulanan</span>
+                                <span class="text-2xl font-black text-emerald-300 mt-1 block">
+                                    {{ formatRupiah(simTotalPassiveMonthly) }}
+                                </span>
+                                <span class="text-[11px] text-emerald-200/80">L1: {{ formatRupiah(simIncomeL1) }} | L2: {{ formatRupiah(simIncomeL2) }}</span>
+                            </div>
+
+                            <div class="bg-purple-500/20 rounded-2xl p-4 border border-purple-400/30">
+                                <span class="text-xs text-purple-200 block">Proyeksi Pasif Tahunan (12 Bulan)</span>
+                                <span class="text-2xl font-black text-purple-200 mt-1 block">
+                                    {{ formatRupiah(simTotalPassiveYearly) }}
+                                </span>
+                                <span class="text-[11px] text-purple-200/80">Otomatis masuk slip gaji / dompet</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -581,7 +956,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -597,6 +972,7 @@ const props = defineProps({
 
 const currentTab = ref(props.tab || 'settings');
 const searchQuery = ref(props.filters?.search || '');
+const diagramActiveFilter = ref('all');
 
 const settingsForm = useForm({
     affiliate_commission_booking: props.settings.affiliate_commission_booking || 35000,
@@ -606,6 +982,19 @@ const settingsForm = useForm({
     affiliate_min_withdraw: props.settings.affiliate_min_withdraw || 50000,
     affiliate_contract_min_months: props.settings.affiliate_contract_min_months || 4,
 });
+
+// Simulator Pasif Income
+const simDownlinesL1 = ref(10);
+const simCustPerL1 = ref(20);
+const simDownlinesL2 = ref(25);
+const simCustPerL2 = ref(15);
+
+const simTotalCustL1 = computed(() => Number(simDownlinesL1.value || 0) * Number(simCustPerL1.value || 0));
+const simTotalCustL2 = computed(() => Number(simDownlinesL2.value || 0) * Number(simCustPerL2.value || 0));
+const simIncomeL1 = computed(() => simTotalCustL1.value * Number(settingsForm.affiliate_commission_upline_1 || 2000));
+const simIncomeL2 = computed(() => simTotalCustL2.value * Number(settingsForm.affiliate_commission_upline_2 || 1000));
+const simTotalPassiveMonthly = computed(() => simIncomeL1.value + simIncomeL2.value);
+const simTotalPassiveYearly = computed(() => simTotalPassiveMonthly.value * 12);
 
 const selectedWithdrawal = ref(null);
 const showApproveModal = ref(false);
