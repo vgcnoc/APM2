@@ -9,7 +9,7 @@ git reset --hard origin/main
 git clean -fd
 composer dump-autoload
 php artisan migrate --force
-php artisan db:seed --class=RbcaSeeder --force
+php artisan db:seed --class=RoleAndPermissionSeeder --force
 npm install --legacy-peer-deps
 npm run build
 php artisan optimize:clear
