@@ -53,6 +53,13 @@ class UserController extends Controller
             'incentive_rate' => 'nullable|numeric|min:0',
             'booking_fee' => 'nullable|numeric|min:0',
             'installation_fee' => 'nullable|numeric|min:0',
+            'bpjs_kesehatan' => 'nullable|boolean',
+            'bpjs_kesehatan_no' => 'nullable|string|max:50',
+            'bpjs_ketenagakerjaan' => 'nullable|boolean',
+            'bpjs_tk_no' => 'nullable|string|max:50',
+            'bank_name' => 'nullable|string|max:50',
+            'bank_account_number' => 'nullable|string|max:50',
+            'bank_account_holder' => 'nullable|string|max:100',
         ]);
 
         $employee = \App\Models\Employee::where('email', $validated['email'])->first();
@@ -72,6 +79,13 @@ class UserController extends Controller
         $validated['incentive_rate'] = $request->input('incentive_rate', 0);
         $validated['booking_fee'] = $request->input('booking_fee', 0);
         $validated['installation_fee'] = $request->input('installation_fee', 0);
+        $validated['bpjs_kesehatan'] = $request->boolean('bpjs_kesehatan');
+        $validated['bpjs_kesehatan_no'] = $request->input('bpjs_kesehatan_no');
+        $validated['bpjs_ketenagakerjaan'] = $request->boolean('bpjs_ketenagakerjaan');
+        $validated['bpjs_tk_no'] = $request->input('bpjs_tk_no');
+        $validated['bank_name'] = $request->input('bank_name');
+        $validated['bank_account_number'] = $request->input('bank_account_number');
+        $validated['bank_account_holder'] = $request->input('bank_account_holder');
 
         $user = User::create($validated);
         
@@ -96,6 +110,13 @@ class UserController extends Controller
             'incentive_rate' => 'nullable|numeric|min:0',
             'booking_fee' => 'nullable|numeric|min:0',
             'installation_fee' => 'nullable|numeric|min:0',
+            'bpjs_kesehatan' => 'nullable|boolean',
+            'bpjs_kesehatan_no' => 'nullable|string|max:50',
+            'bpjs_ketenagakerjaan' => 'nullable|boolean',
+            'bpjs_tk_no' => 'nullable|string|max:50',
+            'bank_name' => 'nullable|string|max:50',
+            'bank_account_number' => 'nullable|string|max:50',
+            'bank_account_holder' => 'nullable|string|max:100',
         ]);
 
         $employee = \App\Models\Employee::where('email', $validated['email'])->first();
@@ -120,6 +141,13 @@ class UserController extends Controller
         $validated['incentive_rate'] = $request->input('incentive_rate', 0);
         $validated['booking_fee'] = $request->input('booking_fee', 0);
         $validated['installation_fee'] = $request->input('installation_fee', 0);
+        $validated['bpjs_kesehatan'] = $request->boolean('bpjs_kesehatan');
+        $validated['bpjs_kesehatan_no'] = $request->input('bpjs_kesehatan_no');
+        $validated['bpjs_ketenagakerjaan'] = $request->boolean('bpjs_ketenagakerjaan');
+        $validated['bpjs_tk_no'] = $request->input('bpjs_tk_no');
+        $validated['bank_name'] = $request->input('bank_name');
+        $validated['bank_account_number'] = $request->input('bank_account_number');
+        $validated['bank_account_holder'] = $request->input('bank_account_holder');
 
         $user->update($validated);
         

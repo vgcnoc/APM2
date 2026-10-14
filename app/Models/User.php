@@ -25,6 +25,15 @@ class User extends Authenticatable
         'is_on_duty',
         'base_salary',
         'incentive_rate',
+        'booking_fee',
+        'installation_fee',
+        'bpjs_kesehatan',
+        'bpjs_kesehatan_no',
+        'bpjs_ketenagakerjaan',
+        'bpjs_tk_no',
+        'bank_name',
+        'bank_account_number',
+        'bank_account_holder',
     ];
 
     protected $hidden = [
@@ -40,6 +49,8 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'is_on_duty' => 'boolean',
             'accessible_areas' => 'array',
+            'bpjs_kesehatan' => 'boolean',
+            'bpjs_ketenagakerjaan' => 'boolean',
         ];
     }
 

@@ -487,8 +487,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/payroll/{user}/incentives', [\App\Http\Controllers\PayrollController::class, 'storeIncentive'])->name('payroll.incentive.store');
         Route::delete('/payroll/incentives/{incentive}', [\App\Http\Controllers\PayrollController::class, 'destroyIncentive'])->name('payroll.incentive.destroy');
         Route::post('/payroll/{user}/deductions', [\App\Http\Controllers\PayrollController::class, 'storeDeduction'])->name('payroll.deduction.store');
-        Route::delete('/payroll/deductions/{deduction}', [\App\Http\Controllers\PayrollController::class, 'destroyDeduction'])->name('payroll.deduction.destroy');
         Route::post('/payroll/{user}/disburse', [\App\Http\Controllers\PayrollController::class, 'disburse'])->name('payroll.disburse');
+        Route::post('/payroll/disburse-all', [\App\Http\Controllers\PayrollController::class, 'disburseAll'])->name('payroll.disburse-all');
+        Route::post('/payroll/{user}/update-bpjs-bank', [\App\Http\Controllers\PayrollController::class, 'updateBpjsBank'])->name('payroll.update-bpjs-bank');
 
         // Insentif & Potongan List
         Route::get('/insentif-potongan', [\App\Http\Controllers\IncentiveDeductionController::class, 'index'])->name('insentif-potongan.index');

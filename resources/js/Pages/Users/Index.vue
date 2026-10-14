@@ -173,6 +173,54 @@
                         </div>
                     </div>
 
+                    <!-- BPJS & Rekening Bank -->
+                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
+                        <div class="font-bold text-xs uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                            <span>🛡️</span>
+                            <span>Keikutsertaan BPJS &amp; Rekening Gaji</span>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- BPJS Kesehatan -->
+                            <div class="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" v-model="form.bpjs_kesehatan" class="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
+                                    <span class="text-xs font-bold text-slate-800">BPJS Kesehatan (1% Karyawan / 4% Kantor)</span>
+                                </label>
+                                <div v-if="form.bpjs_kesehatan">
+                                    <input v-model="form.bpjs_kesehatan_no" type="text" placeholder="No. Kartu BPJS Kesehatan" class="w-full text-xs px-3 py-1.5 border border-slate-200 rounded-lg">
+                                </div>
+                            </div>
+
+                            <!-- BPJS Ketenagakerjaan -->
+                            <div class="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" v-model="form.bpjs_ketenagakerjaan" class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+                                    <span class="text-xs font-bold text-slate-800">BPJS Ketenagakerjaan (JHT, JP, JKK, JKM)</span>
+                                </label>
+                                <div v-if="form.bpjs_ketenagakerjaan">
+                                    <input v-model="form.bpjs_tk_no" type="text" placeholder="No. KPJ / BPJS Ketenagakerjaan" class="w-full text-xs px-3 py-1.5 border border-slate-200 rounded-lg">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Rekening Bank Karyawan -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-200">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Bank / E-Wallet</label>
+                                <input v-model="form.bank_name" type="text" placeholder="Contoh: BCA / BRI / Mandiri" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">No. Rekening</label>
+                                <input v-model="form.bank_account_number" type="text" placeholder="Contoh: 1234567890" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Atas Nama Rekening</label>
+                                <input v-model="form.bank_account_holder" type="text" placeholder="Nama Pemilik" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="pt-4 flex justify-end gap-3 border-t border-gray-100">
                         <button type="button" @click="closeModal" class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">Batal</button>
                         <button type="submit" :disabled="form.processing" class="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
@@ -225,6 +273,13 @@ const form = useForm({
     booking_fee: 0,
     installation_fee: 0,
     is_active: true,
+    bpjs_kesehatan: false,
+    bpjs_kesehatan_no: '',
+    bpjs_ketenagakerjaan: false,
+    bpjs_tk_no: '',
+    bank_name: '',
+    bank_account_number: '',
+    bank_account_holder: '',
 });
 
 const performSearch = debounce(() => {
@@ -261,6 +316,13 @@ function openEditModal(user) {
     form.installation_fee = user.installation_fee || 0;
     form.password = '';
     form.is_active = !!user.is_active;
+    form.bpjs_kesehatan = Boolean(user.bpjs_kesehatan);
+    form.bpjs_kesehatan_no = user.bpjs_kesehatan_no || '';
+    form.bpjs_ketenagakerjaan = Boolean(user.bpjs_ketenagakerjaan);
+    form.bpjs_tk_no = user.bpjs_tk_no || '';
+    form.bank_name = user.bank_name || '';
+    form.bank_account_number = user.bank_account_number || '';
+    form.bank_account_holder = user.bank_account_holder || '';
     isModalOpen.value = true;
 }
 

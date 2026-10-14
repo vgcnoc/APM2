@@ -15,15 +15,109 @@ use Illuminate\Support\Facades\DB;
 class PayrollController extends Controller
 {
     /**
+     * Hitung rincian BPJS Kesehatan & Ketenagakerjaan untuk seorang karyawan.
+     */
+    public static function calculateBpjs(User $user, float $baseSalary): array
+    {
+        $settings = [
+            'bpjs_kesehatan_employee_pct' => (float) Setting::get('bpjs_kesehatan_employee_pct', 1.0),
+            'bpjs_kesehatan_company_pct' => (float) Setting::get('bpjs_kesehatan_company_pct', 4.0),
+            'bpjs_tk_jht_employee_pct' => (float) Setting::get('bpjs_tk_jht_employee_pct', 2.0),
+            'bpjs_tk_jht_company_pct' => (float) Setting::get('bpjs_tk_jht_company_pct', 3.7),
+            'bpjs_tk_jp_employee_pct' => (float) Setting::get('bpjs_tk_jp_employee_pct', 1.0),
+            'bpjs_tk_jp_company_pct' => (float) Setting::get('bpjs_tk_jp_company_pct', 2.0),
+            'bpjs_tk_jkk_company_pct' => (float) Setting::get('bpjs_tk_jkk_company_pct', 0.24),
+            'bpjs_tk_jkm_company_pct' => (float) Setting::get('bpjs_tk_jkm_company_pct', 0.30),
+        ];
+
+        // 1. BPJS Kesehatan (Batas atas upah: 12.000.000 jika disetel)
+        $kesehatanEmployee = 0;
+        $kesehatanCompany = 0;
+        if ($user->bpjs_kesehatan && $baseSalary > 0) {
+            $capKesehatan = (float) Setting::get('bpjs_cap_kesehatan', 12000000);
+            $wageKesehatan = ($capKesehatan > 0) ? min($baseSalary, $capKesehatan) : $baseSalary;
+            $kesehatanEmployee = round(($settings['bpjs_kesehatan_employee_pct'] / 100) * $wageKesehatan);
+            $kesehatanCompany = round(($settings['bpjs_kesehatan_company_pct'] / 100) * $wageKesehatan);
+        }
+
+        // 2. BPJS Ketenagakerjaan (JHT, JP, JKK, JKM)
+        $tkJhtEmployee = 0;
+        $tkJhtCompany = 0;
+        $tkJpEmployee = 0;
+        $tkJpCompany = 0;
+        $tkJkkCompany = 0;
+        $tkJkmCompany = 0;
+
+        if ($user->bpjs_ketenagakerjaan && $baseSalary > 0) {
+            // JHT: 2% Karyawan, 3.7% Perusahaan
+            $tkJhtEmployee = round(($settings['bpjs_tk_jht_employee_pct'] / 100) * $baseSalary);
+            $tkJhtCompany = round(($settings['bpjs_tk_jht_company_pct'] / 100) * $baseSalary);
+
+            // JP: 1% Karyawan, 2% Perusahaan (Batas atas upah JP: 10.042.300)
+            $capJp = (float) Setting::get('bpjs_cap_jp', 10042300);
+            $wageJp = ($capJp > 0) ? min($baseSalary, $capJp) : $baseSalary;
+            $tkJpEmployee = round(($settings['bpjs_tk_jp_employee_pct'] / 100) * $wageJp);
+            $tkJpCompany = round(($settings['bpjs_tk_jp_company_pct'] / 100) * $wageJp);
+
+            // JKK & JKM: 0.24% & 0.3% Ditanggung Perusahaan (Karyawan 0%)
+            $tkJkkCompany = round(($settings['bpjs_tk_jkk_company_pct'] / 100) * $baseSalary);
+            $tkJkmCompany = round(($settings['bpjs_tk_jkm_company_pct'] / 100) * $baseSalary);
+        }
+
+        $totalEmployee = $kesehatanEmployee + $tkJhtEmployee + $tkJpEmployee;
+        $totalCompany = $kesehatanCompany + $tkJhtCompany + $tkJpCompany + $tkJkkCompany + $tkJkmCompany;
+
+        return [
+            'has_kesehatan' => (bool) $user->bpjs_kesehatan,
+            'has_tk' => (bool) $user->bpjs_ketenagakerjaan,
+            'kesehatan_no' => $user->bpjs_kesehatan_no,
+            'tk_no' => $user->bpjs_tk_no,
+            'kesehatan_employee' => (float) $kesehatanEmployee,
+            'kesehatan_company' => (float) $kesehatanCompany,
+            'tk_jht_employee' => (float) $tkJhtEmployee,
+            'tk_jht_company' => (float) $tkJhtCompany,
+            'tk_jp_employee' => (float) $tkJpEmployee,
+            'tk_jp_company' => (float) $tkJpCompany,
+            'tk_jkk_company' => (float) $tkJkkCompany,
+            'tk_jkm_company' => (float) $tkJkmCompany,
+            'total_employee' => (float) $totalEmployee,
+            'total_company' => (float) $totalCompany,
+            'grand_total_bpjs' => (float) ($totalEmployee + $totalCompany),
+        ];
+    }
+
+    /**
      * Dashboard Penggajian & Insentif
      */
     public function index(Request $request)
     {
-        $month = $request->get('month', now()->month);
-        $year = $request->get('year', now()->year);
+        $month = (int) $request->get('month', now()->month);
+        $year = (int) $request->get('year', now()->year);
         
-        // Pengaturan Tanggal Pencairan
+        // Pengaturan Tanggal Pencairan & Tarif BPJS
         $disbursementDate = Setting::get('payroll_disbursement_date', '25'); // Default tanggal 25
+        $bpjsSettings = [
+            'bpjs_kesehatan_employee_pct' => (float) Setting::get('bpjs_kesehatan_employee_pct', 1.0),
+            'bpjs_kesehatan_company_pct' => (float) Setting::get('bpjs_kesehatan_company_pct', 4.0),
+            'bpjs_tk_jht_employee_pct' => (float) Setting::get('bpjs_tk_jht_employee_pct', 2.0),
+            'bpjs_tk_jht_company_pct' => (float) Setting::get('bpjs_tk_jht_company_pct', 3.7),
+            'bpjs_tk_jp_employee_pct' => (float) Setting::get('bpjs_tk_jp_employee_pct', 1.0),
+            'bpjs_tk_jp_company_pct' => (float) Setting::get('bpjs_tk_jp_company_pct', 2.0),
+            'bpjs_tk_jkk_company_pct' => (float) Setting::get('bpjs_tk_jkk_company_pct', 0.24),
+            'bpjs_tk_jkm_company_pct' => (float) Setting::get('bpjs_tk_jkm_company_pct', 0.30),
+        ];
+
+        $recapBpjs = [
+            'total_kesehatan_employee' => 0,
+            'total_kesehatan_company' => 0,
+            'total_tk_employee' => 0,
+            'total_tk_company' => 0,
+            'total_deducted_employee' => 0,
+            'total_contributed_company' => 0,
+            'grand_total_payable' => 0,
+            'enrolled_kesehatan_count' => 0,
+            'enrolled_tk_count' => 0,
+        ];
 
         $users = User::where('is_active', true)
             ->with([
@@ -38,36 +132,82 @@ class PayrollController extends Controller
                 }
             ])
             ->get()
-            ->map(function ($user) {
+            ->map(function ($user) use (&$recapBpjs) {
                 $pendingIncentives = $user->incentives->where('status', 'pending');
-                $totalAuto = $pendingIncentives->where('type', 'auto')->sum('amount');
-                $totalManual = $pendingIncentives->where('type', 'manual')->sum('amount');
+                $totalAuto = (float) $pendingIncentives->where('type', 'auto')->sum('amount');
+                $totalManual = (float) $pendingIncentives->where('type', 'manual')->sum('amount');
                 
                 $pendingDeductions = $user->deductions->where('status', 'pending');
-                $totalDeduction = $pendingDeductions->sum('amount');
+                $totalDeduction = (float) $pendingDeductions->sum('amount');
                 
                 $payroll = $user->payrolls->first();
-                
                 $isPaid = $payroll && $payroll->status === 'paid';
                 
-                // If paid, show historical data from payroll. If draft, show live calculation
-                $baseSalary = $isPaid ? $payroll->base_salary : $user->base_salary;
-                $totalIncentive = $isPaid ? $payroll->total_incentive : ($totalAuto + $totalManual);
-                $finalDeduction = $isPaid ? $payroll->total_deduction : $totalDeduction;
-                
+                $baseSalary = $isPaid ? (float) $payroll->base_salary : (float) $user->base_salary;
+                $totalIncentive = $isPaid ? (float) $payroll->total_incentive : ($totalAuto + $totalManual);
+                $finalDeduction = $isPaid ? (float) $payroll->total_deduction : $totalDeduction;
+
+                // Hitung / Ambil rincian BPJS
+                if ($isPaid) {
+                    $bpjs = [
+                        'has_kesehatan' => (bool) $user->bpjs_kesehatan,
+                        'has_tk' => (bool) $user->bpjs_ketenagakerjaan,
+                        'kesehatan_no' => $user->bpjs_kesehatan_no,
+                        'tk_no' => $user->bpjs_tk_no,
+                        'kesehatan_employee' => (float) ($payroll->bpjs_kesehatan_employee ?? 0),
+                        'kesehatan_company' => (float) ($payroll->bpjs_kesehatan_company ?? 0),
+                        'tk_jht_employee' => (float) ($payroll->bpjs_tk_jht_employee ?? 0),
+                        'tk_jht_company' => (float) ($payroll->bpjs_tk_jht_company ?? 0),
+                        'tk_jp_employee' => (float) ($payroll->bpjs_tk_jp_employee ?? 0),
+                        'tk_jp_company' => (float) ($payroll->bpjs_tk_jp_company ?? 0),
+                        'tk_jkk_company' => (float) ($payroll->bpjs_tk_jkk_company ?? 0),
+                        'tk_jkm_company' => (float) ($payroll->bpjs_tk_jkm_company ?? 0),
+                        'total_employee' => (float) ($payroll->total_bpjs_employee ?? 0),
+                        'total_company' => (float) ($payroll->total_bpjs_company ?? 0),
+                        'grand_total_bpjs' => (float) (($payroll->total_bpjs_employee ?? 0) + ($payroll->total_bpjs_company ?? 0)),
+                    ];
+                    $netSalary = (float) $payroll->net_salary;
+                } else {
+                    $bpjs = self::calculateBpjs($user, $baseSalary);
+                    $netSalary = max(0, $baseSalary + $totalIncentive - $finalDeduction - $bpjs['total_employee']);
+                }
+
+                // Akumulasi rekap
+                if ($user->bpjs_kesehatan) {
+                    $recapBpjs['enrolled_kesehatan_count']++;
+                    $recapBpjs['total_kesehatan_employee'] += $bpjs['kesehatan_employee'];
+                    $recapBpjs['total_kesehatan_company'] += $bpjs['kesehatan_company'];
+                }
+                if ($user->bpjs_ketenagakerjaan) {
+                    $recapBpjs['enrolled_tk_count']++;
+                    $recapBpjs['total_tk_employee'] += ($bpjs['tk_jht_employee'] + $bpjs['tk_jp_employee']);
+                    $recapBpjs['total_tk_company'] += ($bpjs['tk_jht_company'] + $bpjs['tk_jp_company'] + $bpjs['tk_jkk_company'] + $bpjs['tk_jkm_company']);
+                }
+                $recapBpjs['total_deducted_employee'] += $bpjs['total_employee'];
+                $recapBpjs['total_contributed_company'] += $bpjs['total_company'];
+                $recapBpjs['grand_total_payable'] += $bpjs['grand_total_bpjs'];
+
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
                     'role' => $user->role,
                     'base_salary' => $baseSalary,
-                    'auto_incentive_rate' => $user->incentive_rate,
+                    'auto_incentive_rate' => (float) $user->incentive_rate,
                     'total_auto_incentive' => $isPaid ? 0 : $totalAuto,
                     'total_manual_incentive' => $isPaid ? 0 : $totalManual,
                     'total_incentive' => $totalIncentive,
                     'total_deduction' => $finalDeduction,
-                    'net_salary' => $isPaid ? $payroll->net_salary : max(0, $baseSalary + $totalIncentive - $finalDeduction),
+                    'bpjs' => $bpjs,
+                    'net_salary' => $netSalary,
                     'is_paid' => $isPaid,
                     'payment_date' => $isPaid ? $payroll->payment_date : null,
+                    'bank_name' => $user->bank_name,
+                    'bank_account_number' => $user->bank_account_number,
+                    'bank_account_holder' => $user->bank_account_holder ?: $user->name,
+                    'bpjs_kesehatan' => (bool) $user->bpjs_kesehatan,
+                    'bpjs_kesehatan_no' => $user->bpjs_kesehatan_no,
+                    'bpjs_ketenagakerjaan' => (bool) $user->bpjs_ketenagakerjaan,
+                    'bpjs_tk_no' => $user->bpjs_tk_no,
                     'incentives_list' => $user->incentives->toArray(),
                     'deductions_list' => $user->deductions->toArray()
                 ];
@@ -76,28 +216,92 @@ class PayrollController extends Controller
         $categories = \App\Models\PayrollCategory::where('is_active', true)->get();
 
         return Inertia::render('Payroll/Index', [
-            'month' => (int)$month,
-            'year' => (int)$year,
+            'month' => $month,
+            'year' => $year,
             'users' => $users,
             'settings' => [
-                'disbursement_date' => $disbursementDate
+                'disbursement_date' => $disbursementDate,
+                ...$bpjsSettings,
             ],
+            'recapBpjs' => $recapBpjs,
             'payrollCategories' => $categories
         ]);
     }
 
     /**
-     * Update Pengaturan Tanggal Pencairan
+     * Update Pengaturan Tanggal Pencairan & Tarif BPJS
      */
     public function updateSettings(Request $request)
     {
         $request->validate([
-            'disbursement_date' => 'required|integer|min:1|max:31'
+            'disbursement_date' => 'nullable|integer|min:1|max:31',
+            'bpjs_kesehatan_employee_pct' => 'nullable|numeric|min:0|max:100',
+            'bpjs_kesehatan_company_pct' => 'nullable|numeric|min:0|max:100',
+            'bpjs_tk_jht_employee_pct' => 'nullable|numeric|min:0|max:100',
+            'bpjs_tk_jht_company_pct' => 'nullable|numeric|min:0|max:100',
+            'bpjs_tk_jp_employee_pct' => 'nullable|numeric|min:0|max:100',
+            'bpjs_tk_jp_company_pct' => 'nullable|numeric|min:0|max:100',
+            'bpjs_tk_jkk_company_pct' => 'nullable|numeric|min:0|max:100',
+            'bpjs_tk_jkm_company_pct' => 'nullable|numeric|min:0|max:100',
         ]);
 
-        Setting::set('payroll_disbursement_date', $request->disbursement_date);
+        if ($request->has('disbursement_date')) {
+            Setting::set('payroll_disbursement_date', $request->disbursement_date);
+        }
+        if ($request->has('bpjs_kesehatan_employee_pct')) {
+            Setting::set('bpjs_kesehatan_employee_pct', $request->bpjs_kesehatan_employee_pct);
+        }
+        if ($request->has('bpjs_kesehatan_company_pct')) {
+            Setting::set('bpjs_kesehatan_company_pct', $request->bpjs_kesehatan_company_pct);
+        }
+        if ($request->has('bpjs_tk_jht_employee_pct')) {
+            Setting::set('bpjs_tk_jht_employee_pct', $request->bpjs_tk_jht_employee_pct);
+        }
+        if ($request->has('bpjs_tk_jht_company_pct')) {
+            Setting::set('bpjs_tk_jht_company_pct', $request->bpjs_tk_jht_company_pct);
+        }
+        if ($request->has('bpjs_tk_jp_employee_pct')) {
+            Setting::set('bpjs_tk_jp_employee_pct', $request->bpjs_tk_jp_employee_pct);
+        }
+        if ($request->has('bpjs_tk_jp_company_pct')) {
+            Setting::set('bpjs_tk_jp_company_pct', $request->bpjs_tk_jp_company_pct);
+        }
+        if ($request->has('bpjs_tk_jkk_company_pct')) {
+            Setting::set('bpjs_tk_jkk_company_pct', $request->bpjs_tk_jkk_company_pct);
+        }
+        if ($request->has('bpjs_tk_jkm_company_pct')) {
+            Setting::set('bpjs_tk_jkm_company_pct', $request->bpjs_tk_jkm_company_pct);
+        }
 
-        return back()->with('success', 'Pengaturan pencairan gaji berhasil disimpan.');
+        return back()->with('success', 'Pengaturan penggajian & tarif BPJS berhasil disimpan.');
+    }
+
+    /**
+     * Update Pengaturan BPJS & Bank Rekening per Karyawan
+     */
+    public function updateBpjsBank(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'bpjs_kesehatan' => 'nullable|boolean',
+            'bpjs_kesehatan_no' => 'nullable|string|max:50',
+            'bpjs_ketenagakerjaan' => 'nullable|boolean',
+            'bpjs_tk_no' => 'nullable|string|max:50',
+            'bank_name' => 'nullable|string|max:50',
+            'bank_account_number' => 'nullable|string|max:50',
+            'bank_account_holder' => 'nullable|string|max:100',
+        ]);
+
+        $user->update([
+            'bpjs_kesehatan' => $request->boolean('bpjs_kesehatan'),
+            'bpjs_kesehatan_no' => $request->input('bpjs_kesehatan_no'),
+            'bpjs_ketenagakerjaan' => $request->boolean('bpjs_ketenagakerjaan'),
+            'bpjs_tk_no' => $request->input('bpjs_tk_no'),
+            'bank_name' => $request->input('bank_name'),
+            'bank_account_number' => $request->input('bank_account_number'),
+            'bank_account_holder' => $request->input('bank_account_holder'),
+        ]);
+
+        return back()->with('success', "Data BPJS & Rekening untuk {$user->name} berhasil diperbarui.");
     }
 
     /**
@@ -171,12 +375,12 @@ class PayrollController extends Controller
     }
 
     /**
-     * Cairkan Gaji (Disbursement)
+     * Cairkan Gaji Tunggal Karyawan (Disbursement)
      */
     public function disburse(Request $request, User $user)
     {
-        $month = $request->get('month', now()->month);
-        $year = $request->get('year', now()->year);
+        $month = (int) $request->get('month', now()->month);
+        $year = (int) $request->get('year', now()->year);
 
         // Pastikan belum dicairkan
         $existing = Payroll::where('user_id', $user->id)->where('month', $month)->where('year', $year)->first();
@@ -200,14 +404,26 @@ class PayrollController extends Controller
                 ->where('status', 'pending')
                 ->get();
 
-            $totalIncentive = $pendingIncentives->sum('amount');
-            $totalDeduction = $pendingDeductions->sum('amount');
-            $netSalary = max(0, $user->base_salary + $totalIncentive - $totalDeduction);
+            $totalIncentive = (float) $pendingIncentives->sum('amount');
+            $totalDeduction = (float) $pendingDeductions->sum('amount');
+
+            // Hitung BPJS
+            $bpjs = self::calculateBpjs($user, (float) $user->base_salary);
+            $netSalary = max(0, $user->base_salary + $totalIncentive - $totalDeduction - $bpjs['total_employee']);
+
+            $bpjsNotes = [];
+            if ($bpjs['total_employee'] > 0) {
+                $bpjsNotes[] = "Potong BPJS: Rp " . number_format($bpjs['total_employee'], 0, ',', '.');
+            }
+            if ($bpjs['total_company'] > 0) {
+                $bpjsNotes[] = "Tunjangan BPJS Perusahaan: Rp " . number_format($bpjs['total_company'], 0, ',', '.');
+            }
+            $bpjsNotesStr = !empty($bpjsNotes) ? " [" . implode(' | ', $bpjsNotes) . "]" : "";
 
             // 1. Create Expense (Buku Kas Umum)
             $expense = Expense::create([
                 'amount' => $netSalary,
-                'description' => "Pencairan Gaji & Insentif - {$user->name} (Periode: " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year})",
+                'description' => "Pencairan Gaji & Insentif - {$user->name} (Periode: " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}){$bpjsNotesStr}",
                 'expense_date' => now(),
                 'user_id' => auth()->id()
             ]);
@@ -223,11 +439,21 @@ class PayrollController extends Controller
                     'base_salary' => $user->base_salary,
                     'total_incentive' => $totalIncentive,
                     'total_deduction' => $totalDeduction,
+                    'bpjs_kesehatan_employee' => $bpjs['kesehatan_employee'],
+                    'bpjs_kesehatan_company' => $bpjs['kesehatan_company'],
+                    'bpjs_tk_jht_employee' => $bpjs['tk_jht_employee'],
+                    'bpjs_tk_jht_company' => $bpjs['tk_jht_company'],
+                    'bpjs_tk_jp_employee' => $bpjs['tk_jp_employee'],
+                    'bpjs_tk_jp_company' => $bpjs['tk_jp_company'],
+                    'bpjs_tk_jkk_company' => $bpjs['tk_jkk_company'],
+                    'bpjs_tk_jkm_company' => $bpjs['tk_jkm_company'],
+                    'total_bpjs_employee' => $bpjs['total_employee'],
+                    'total_bpjs_company' => $bpjs['total_company'],
                     'net_salary' => $netSalary,
                     'status' => 'paid',
                     'payment_date' => now(),
                     'expense_id' => $expense->id,
-                    'notes' => 'Cair otomatis via sistem'
+                    'notes' => 'Cair otomatis via sistem' . $bpjsNotesStr,
                 ]
             );
 
@@ -248,10 +474,110 @@ class PayrollController extends Controller
             }
 
             DB::commit();
-            return back()->with('success', 'Gaji dan insentif berhasil dicairkan. Pengeluaran otomatis tercatat di Buku Kas.');
+            return back()->with('success', "Gaji {$user->name} berhasil dicairkan (Net: Rp " . number_format($netSalary, 0, ',', '.') . "). Pengeluaran otomatis dicatat di Buku Kas.");
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal mencairkan gaji: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Cairkan Gaji Seluruh Karyawan Sekaligus (Batch Disbursement)
+     */
+    public function disburseAll(Request $request)
+    {
+        $month = (int) $request->get('month', now()->month);
+        $year = (int) $request->get('year', now()->year);
+
+        $users = User::where('is_active', true)->get();
+        $disbursedCount = 0;
+        $totalNetDisbursed = 0;
+
+        DB::beginTransaction();
+        try {
+            foreach ($users as $user) {
+                $existing = Payroll::where('user_id', $user->id)->where('month', $month)->where('year', $year)->first();
+                if ($existing && $existing->status === 'paid') {
+                    continue;
+                }
+
+                $pendingIncentives = Incentive::where('user_id', $user->id)
+                    ->whereMonth('incentive_date', $month)
+                    ->whereYear('incentive_date', $year)
+                    ->where('status', 'pending')
+                    ->get();
+
+                $pendingDeductions = \App\Models\Deduction::where('user_id', $user->id)
+                    ->whereMonth('deduction_date', $month)
+                    ->whereYear('deduction_date', $year)
+                    ->where('status', 'pending')
+                    ->get();
+
+                $totalIncentive = (float) $pendingIncentives->sum('amount');
+                $totalDeduction = (float) $pendingDeductions->sum('amount');
+                $bpjs = self::calculateBpjs($user, (float) $user->base_salary);
+                $netSalary = max(0, $user->base_salary + $totalIncentive - $totalDeduction - $bpjs['total_employee']);
+
+                $bpjsNotes = [];
+                if ($bpjs['total_employee'] > 0) {
+                    $bpjsNotes[] = "Potong BPJS: Rp " . number_format($bpjs['total_employee'], 0, ',', '.');
+                }
+                if ($bpjs['total_company'] > 0) {
+                    $bpjsNotes[] = "Tunjangan BPJS: Rp " . number_format($bpjs['total_company'], 0, ',', '.');
+                }
+                $bpjsNotesStr = !empty($bpjsNotes) ? " [" . implode(' | ', $bpjsNotes) . "]" : "";
+
+                $expense = Expense::create([
+                    'amount' => $netSalary,
+                    'description' => "Pencairan Gaji Batch - {$user->name} (Periode: " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}){$bpjsNotesStr}",
+                    'expense_date' => now(),
+                    'user_id' => auth()->id()
+                ]);
+
+                $payroll = Payroll::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'month' => $month,
+                        'year' => $year
+                    ],
+                    [
+                        'base_salary' => $user->base_salary,
+                        'total_incentive' => $totalIncentive,
+                        'total_deduction' => $totalDeduction,
+                        'bpjs_kesehatan_employee' => $bpjs['kesehatan_employee'],
+                        'bpjs_kesehatan_company' => $bpjs['kesehatan_company'],
+                        'bpjs_tk_jht_employee' => $bpjs['tk_jht_employee'],
+                        'bpjs_tk_jht_company' => $bpjs['tk_jht_company'],
+                        'bpjs_tk_jp_employee' => $bpjs['tk_jp_employee'],
+                        'bpjs_tk_jp_company' => $bpjs['tk_jp_company'],
+                        'bpjs_tk_jkk_company' => $bpjs['tk_jkk_company'],
+                        'bpjs_tk_jkm_company' => $bpjs['tk_jkm_company'],
+                        'total_bpjs_employee' => $bpjs['total_employee'],
+                        'total_bpjs_company' => $bpjs['total_company'],
+                        'net_salary' => $netSalary,
+                        'status' => 'paid',
+                        'payment_date' => now(),
+                        'expense_id' => $expense->id,
+                        'notes' => 'Batch Auto Disburse via sistem' . $bpjsNotesStr,
+                    ]
+                );
+
+                foreach ($pendingIncentives as $inc) {
+                    $inc->update(['status' => 'paid', 'payroll_id' => $payroll->id]);
+                }
+                foreach ($pendingDeductions as $ded) {
+                    $ded->update(['status' => 'applied', 'payroll_id' => $payroll->id]);
+                }
+
+                $disbursedCount++;
+                $totalNetDisbursed += $netSalary;
+            }
+
+            DB::commit();
+            return back()->with('success', "Berhasil mencairkan gaji massal untuk {$disbursedCount} staf (Total Net: Rp " . number_format($totalNetDisbursed, 0, ',', '.') . "). Pengeluaran otomatis dicatat di Buku Kas.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal mencairkan gaji massal: ' . $e->getMessage());
         }
     }
 }
