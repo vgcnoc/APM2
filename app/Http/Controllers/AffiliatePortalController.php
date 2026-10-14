@@ -128,11 +128,32 @@ class AffiliatePortalController extends Controller
                 })->sum('amount')
             : 0;
 
+        $unpaidCustomers = AffiliateService::getUnpaidCustomersForAffiliate($user);
+        $payoutDay = (int) ($settings['affiliate_payout_day'] ?? 15);
+        $currentDay = (int) now()->format('j');
+        $isPayoutOpen = $currentDay >= $payoutDay;
+        $nextPayoutDate = $currentDay < $payoutDay
+            ? now()->day($payoutDay)->format('d M Y')
+            : now()->addMonth()->day($payoutDay)->format('d M Y');
+
+        $payoutInfo = [
+            'payout_day' => $payoutDay,
+            'is_payout_open' => $isPayoutOpen,
+            'current_day' => $currentDay,
+            'next_payout_date' => $nextPayoutDate,
+            'has_unpaid_customers' => $unpaidCustomers->isNotEmpty(),
+            'unpaid_customers_count' => $unpaidCustomers->count(),
+            'total_unpaid_amount' => (float) $unpaidCustomers->sum('total_unpaid_amount'),
+            'unpaid_customers' => $unpaidCustomers,
+            'can_withdraw' => !$isEmployee && $isPayoutOpen && $unpaidCustomers->isEmpty() && ((float) $profile->balance >= (float) $settings['affiliate_min_withdraw']),
+        ];
+
         $appUrl = config('app.url', url('/'));
 
         return Inertia::render('Affiliate/Dashboard', [
             'is_employee' => $isEmployee,
             'pending_payroll_incentives' => $pendingPayrollIncentives,
+            'payout_info' => $payoutInfo,
             'profile' => [
                 'id' => $profile->id,
                 'name' => $user->name,

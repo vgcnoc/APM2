@@ -62,6 +62,98 @@
                 </div>
             </div>
 
+            <!-- Notice & Alert: Jadwal Pencairan per Tanggal 15 & Pelanggan Belum Bayar (Khusus Mitra Luar) -->
+            <div v-if="!is_employee" class="mb-8 space-y-4">
+                <!-- Alert 1: Ada Pelanggan Belum Bayar (Fee Tidak Dapat Dicairkan) -->
+                <div
+                    v-if="payout_info?.has_unpaid_customers"
+                    class="bg-rose-50/90 border-2 border-rose-300 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4"
+                >
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex items-start gap-3.5">
+                            <div class="w-11 h-11 rounded-2xl bg-rose-100 border border-rose-200 text-rose-600 flex items-center justify-center text-xl shrink-0 mt-0.5">
+                                ⚠️
+                            </div>
+                            <div>
+                                <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-extrabold uppercase tracking-wider border border-rose-200 mb-1">
+                                    <span>Pencairan Fee Terkunci</span>
+                                    <span>&bull;</span>
+                                    <span>Tagihan Belum Lunas</span>
+                                </div>
+                                <h3 class="text-sm sm:text-base font-black text-rose-950">
+                                    Fee Komisi Belum Dapat Dicairkan ({{ payout_info.unpaid_customers_count }} Pelanggan Booking Belum Bayar)
+                                </h3>
+                                <p class="text-xs text-rose-800 mt-1 leading-relaxed">
+                                    Khusus akun affiliate, komisi dicairkan per tanggal <b>{{ payout_info.payout_day }}</b>. Namun karena masih ada pelanggan hasil bookingan Anda yang belum melunasi tagihannya, <strong>tolong dibantu melakukan penagihan ke pelanggan di bawah ini</strong> agar fee komisi Anda dapat segera dicairkan.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="shrink-0 text-left sm:text-right bg-white/80 p-3 rounded-2xl border border-rose-200">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Tagihan Tertunggak</span>
+                            <span class="text-base font-black text-rose-700 block">
+                                {{ formatRupiah(payout_info.total_unpaid_amount) }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- List Pelanggan Yang Perlu Ditagih -->
+                    <div class="overflow-x-auto rounded-2xl border border-rose-200/80 bg-white">
+                        <table class="min-w-full divide-y divide-rose-100 text-xs">
+                            <thead class="bg-rose-50/60 text-rose-900 font-bold uppercase tracking-wider text-left">
+                                <tr>
+                                    <th class="px-4 py-2.5">Pelanggan Hasil Booking</th>
+                                    <th class="px-4 py-2.5">Paket</th>
+                                    <th class="px-4 py-2.5">Periode / Jatuh Tempo</th>
+                                    <th class="px-4 py-2.5 text-right">Nominal Tagihan</th>
+                                    <th class="px-4 py-2.5 text-center">Bantu Penagihan</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-rose-50">
+                                <tr v-for="c in payout_info.unpaid_customers" :key="c.id" class="hover:bg-rose-50/30 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="font-extrabold text-slate-900">{{ c.name }}</div>
+                                        <div class="text-[10px] text-slate-500 font-mono">{{ c.customer_code }} &bull; {{ c.phone }}</div>
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-700">{{ c.package_name }}</td>
+                                    <td class="px-4 py-3">
+                                        <span class="font-bold text-slate-800">{{ c.period_label }}</span>
+                                        <span class="text-[10px] text-rose-600 block font-medium">Jatuh Tempo: {{ c.due_date }}</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-black text-rose-600">
+                                        {{ formatRupiah(c.total_unpaid_amount) }}
+                                    </td>
+                                    <td class="px-4 py-3 text-center">
+                                        <a
+                                            v-if="c.wa_reminder_url"
+                                            :href="c.wa_reminder_url"
+                                            target="_blank"
+                                            class="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+                                        >
+                                            <span>💬 Bantu Tagih via WA</span>
+                                        </a>
+                                        <span v-else class="text-slate-400 text-xs">-</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Alert 2: Jadwal Tanggal Pencairan (Jika sebelum tanggal 15) -->
+                <div
+                    v-else-if="!payout_info?.is_payout_open"
+                    class="bg-blue-50/80 border border-blue-200 rounded-2xl p-4 flex items-start gap-3 shadow-2xs"
+                >
+                    <div class="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold shrink-0">
+                        📅
+                    </div>
+                    <div class="text-xs text-blue-900 leading-relaxed">
+                        <strong class="font-bold text-blue-950">Jadwal Pencairan Fee Mitra Luar:</strong>
+                        Khusus fee affiliate orang luar dicairkan per tanggal <b>{{ payout_info?.payout_day || 15 }}</b> setiap bulannya (Pencairan berikutnya: <b>{{ payout_info?.next_payout_date }}</b>). Seluruh pelanggan bookingan Anda saat ini telah lunas, penarikan saldo dapat diajukan saat memasuki tanggal {{ payout_info?.payout_day || 15 }}.
+                    </div>
+                </div>
+            </div>
+
             <!-- KPI Cards -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <!-- Total Earned -->
@@ -654,6 +746,28 @@
                     </div>
                 </div>
 
+                <!-- Alert jika ada pelanggan belum bayar -->
+                <div v-if="payout_info?.has_unpaid_customers" class="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl mb-4 text-xs text-rose-900 space-y-1">
+                    <div class="flex items-center gap-1.5 font-bold text-rose-800">
+                        <span>⚠️</span>
+                        <span>Pencairan Belum Dapat Dilakukan</span>
+                    </div>
+                    <p class="leading-relaxed">
+                        Terdapat <b>{{ payout_info.unpaid_customers_count }} pelanggan</b> bookingan Anda yang belum membayar tagihan. Tolong dibantu melakukan penagihan ke pelanggan tersebut terlebih dahulu agar komisi Anda dapat dicairkan.
+                    </p>
+                </div>
+
+                <!-- Alert jika belum tanggal 15 -->
+                <div v-else-if="!payout_info?.is_payout_open" class="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl mb-4 text-xs text-blue-900 space-y-1">
+                    <div class="flex items-center gap-1.5 font-bold text-blue-800">
+                        <span>📅</span>
+                        <span>Pencairan per Tanggal {{ payout_info?.payout_day || 15 }}</span>
+                    </div>
+                    <p class="leading-relaxed">
+                        Khusus fee affiliate orang luar dicairkan per tanggal <b>{{ payout_info?.payout_day || 15 }}</b> setiap bulannya (Pencairan berikutnya: <b>{{ payout_info?.next_payout_date }}</b>).
+                    </p>
+                </div>
+
                 <form @submit.prevent="submitWithdrawal" class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
@@ -666,8 +780,9 @@
                             :max="profile.balance"
                             step="1000"
                             required
+                            :disabled="payout_info?.has_unpaid_customers || !payout_info?.is_payout_open"
                             placeholder="Contoh: 100000"
-                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm font-bold focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500"
+                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm font-bold focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
                         />
                     </div>
 
@@ -678,8 +793,9 @@
                         <textarea
                             v-model="withdrawForm.notes"
                             rows="2"
+                            :disabled="payout_info?.has_unpaid_customers || !payout_info?.is_payout_open"
                             placeholder="Misal: Tarik komisi periode bulan ini"
-                            class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500"
+                            class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
                         ></textarea>
                     </div>
 
@@ -693,7 +809,7 @@
                         </button>
                         <button
                             type="submit"
-                            :disabled="withdrawForm.processing || profile.balance < settings.affiliate_min_withdraw"
+                            :disabled="withdrawForm.processing || profile.balance < settings.affiliate_min_withdraw || payout_info?.has_unpaid_customers || !payout_info?.is_payout_open"
                             class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors disabled:opacity-50"
                         >
                             {{ withdrawForm.processing ? 'Memproses...' : 'Konfirmasi Penarikan' }}
@@ -721,6 +837,7 @@ const props = defineProps({
     settings: Object,
     is_employee: Boolean,
     pending_payroll_incentives: Number,
+    payout_info: Object,
 });
 
 const activeTab = ref('customers');

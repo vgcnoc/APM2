@@ -27,6 +27,7 @@ class AffiliateService
             'affiliate_min_withdraw' => (float) Setting::get('affiliate_min_withdraw', 50000),
             'affiliate_auto_approve' => Setting::get('affiliate_auto_approve', '1') === '1',
             'affiliate_contract_min_months' => (int) Setting::get('affiliate_contract_min_months', 4),
+            'affiliate_payout_day' => (int) Setting::get('affiliate_payout_day', 15),
         ];
     }
 
@@ -55,6 +56,9 @@ class AffiliateService
         }
         if (isset($data['affiliate_contract_min_months'])) {
             Setting::set('affiliate_contract_min_months', (string) $data['affiliate_contract_min_months']);
+        }
+        if (isset($data['affiliate_payout_day'])) {
+            Setting::set('affiliate_payout_day', (string) $data['affiliate_payout_day']);
         }
     }
 
@@ -597,7 +601,56 @@ class AffiliateService
     }
 
     /**
+     * Ambil daftar pelanggan yang dibooking oleh akun affiliate ini yang belum melunasi tagihan (status unpaid / partial).
+     */
+    public static function getUnpaidCustomersForAffiliate(User $user)
+    {
+        return Customer::where('sales_id', $user->id)
+            ->whereHas('invoices', function ($q) {
+                $q->whereIn('status', ['unpaid', 'partial']);
+            })
+            ->with(['package', 'invoices' => function ($q) {
+                $q->whereIn('status', ['unpaid', 'partial'])->orderBy('due_date', 'asc');
+            }])
+            ->get()
+            ->map(function ($cust) use ($user) {
+                $unpaidInvoices = $cust->invoices;
+                $totalUnpaid = (float) $unpaidInvoices->sum(function ($inv) {
+                    return $inv->remaining ?: $inv->amount;
+                });
+                $earliestInvoice = $unpaidInvoices->first();
+                $periodLabel = $earliestInvoice ? $earliestInvoice->period_label : '-';
+
+                $custPhone = preg_replace('/[^0-9]/', '', (string) ($cust->phone ?? ''));
+                if (str_starts_with($custPhone, '0')) {
+                    $custPhone = '62' . substr($custPhone, 1);
+                }
+
+                $msg = "Halo Kak {$cust->name}, saya {$user->name} dari tim layanan internet WiFi. "
+                    . "Sekadar menginfokan bahwa tagihan internet periode {$periodLabel} sebesar Rp " . number_format($totalUnpaid, 0, ',', '.') . " saat ini belum terbayar. "
+                    . "Mohon dibantu pelunasannya ya Kak agar koneksi internet tetap aktif dan lancar. Terima kasih banyak 🙏";
+                $waUrl = $custPhone ? "https://wa.me/{$custPhone}?text=" . urlencode($msg) : null;
+
+                return [
+                    'id' => $cust->id,
+                    'customer_code' => $cust->customer_code,
+                    'name' => $cust->name,
+                    'phone' => $cust->phone,
+                    'clean_phone' => $custPhone,
+                    'package_name' => $cust->package?->name ?? 'Internet Rumah',
+                    'unpaid_invoices_count' => $unpaidInvoices->count(),
+                    'total_unpaid_amount' => (float) $totalUnpaid,
+                    'period_label' => $periodLabel,
+                    'due_date' => $earliestInvoice?->due_date?->format('d M Y') ?? '-',
+                    'wa_reminder_url' => $waUrl,
+                ];
+            });
+    }
+
+    /**
      * Ajukan penarikan saldo komisi afiliasi.
+     * Khusus fee affiliate orang luar dicairkan per tanggal 15.
+     * Jika pelanggan yang dibooking belum bayar, fee tidak dapat dicairkan.
      */
     public static function requestWithdrawal(User $user, float $amount, ?string $notes = null): AffiliateWithdrawal
     {
@@ -607,7 +660,26 @@ class AffiliateService
 
         $profile = AffiliateProfile::where('user_id', $user->id)->firstOrFail();
         $settings = self::getSettings();
+        $payoutDay = (int) ($settings['affiliate_payout_day'] ?? 15);
         $minWithdraw = $settings['affiliate_min_withdraw'];
+
+        // 1. Validasi Jadwal Pencairan (Khusus Mitra Luar per tanggal 15)
+        $currentDay = (int) now()->format('j');
+        if ($currentDay < $payoutDay) {
+            $nextDate = now()->day($payoutDay)->format('d M Y');
+            throw new \Exception("Khusus fee affiliate orang luar dicairkan per tanggal {$payoutDay} setiap bulannya. Pencairan dana berikutnya dibuka pada tanggal {$nextDate}.");
+        }
+
+        // 2. Validasi Pelanggan Belum Bayar (Unpaid Invoices)
+        $unpaidCustomers = self::getUnpaidCustomersForAffiliate($user);
+        if ($unpaidCustomers->isNotEmpty()) {
+            $count = $unpaidCustomers->count();
+            $names = $unpaidCustomers->take(3)->pluck('name')->implode(', ');
+            if ($count > 3) {
+                $names .= ' dan ' . ($count - 3) . ' pelanggan lainnya';
+            }
+            throw new \Exception("Fee komisi tidak dapat dicairkan karena terdapat {$count} pelanggan yang Anda booking belum membayar tagihan ({$names}). Tolong dibantu melakukan penagihan ke pelanggan yang di-booking akun affiliate terlebih dahulu agar komisi Anda dapat dicairkan.");
+        }
 
         if ($amount < $minWithdraw) {
             throw new \Exception("Minimal penarikan komisi adalah Rp " . number_format($minWithdraw, 0, ',', '.'));
@@ -649,6 +721,17 @@ class AffiliateService
     {
         if ($withdrawal->status !== 'pending') {
             throw new \Exception("Permintaan penarikan ini sudah diproses sebelumnya.");
+        }
+
+        // Cek apakah mitra memiliki pelanggan bookingan yang belum bayar
+        $affiliateUser = User::find($withdrawal->affiliate_id);
+        if ($affiliateUser) {
+            $unpaid = self::getUnpaidCustomersForAffiliate($affiliateUser);
+            if ($unpaid->isNotEmpty() && !request()->boolean('force_approve')) {
+                $count = $unpaid->count();
+                $names = $unpaid->take(2)->pluck('name')->implode(', ');
+                throw new \Exception("Pencairan dana tertahan karena terdapat {$count} pelanggan bookingan mitra ini yang belum melunasi tagihan ({$names}). Mitra diminta membantu penagihan ke pelanggan terlebih dahulu.");
+            }
         }
 
         DB::transaction(function () use ($withdrawal, $admin, $receiptProof, $referenceNo) {

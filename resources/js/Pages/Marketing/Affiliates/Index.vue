@@ -236,6 +236,35 @@
                                     </div>
                                     <p class="text-[11px] text-rose-600 font-medium mt-1">Jika pelanggan stop sebelum masa ini, fee booking otomatis dipotong dari saldo afiliasi.</p>
                                 </div>
+
+                                <!-- TANGGAL PENCAIRAN BULANAN (MITRA LUAR) -->
+                                <div class="md:col-span-2 bg-amber-50/70 border border-amber-200/80 p-4 rounded-2xl">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div>
+                                            <label class="block text-xs font-bold uppercase tracking-wider text-amber-950 mb-0.5 flex items-center gap-1.5">
+                                                <span>📅 JADWAL PENCAIRAN FEE MITRA LUAR</span>
+                                                <span class="bg-amber-200 text-amber-900 px-2 py-0.5 rounded text-[10px] uppercase font-black">KHUSUS NON-KARYAWAN</span>
+                                            </label>
+                                            <p class="text-xs text-amber-800">
+                                                Pencairan saldo komisi untuk mitra luar hanya dapat diajukan mulai tanggal ini setiap bulannya dan dengan syarat pelanggan yang dibooking sudah lunas tagihannya.
+                                            </p>
+                                        </div>
+                                        <div class="w-full sm:w-48 flex items-center gap-2">
+                                            <span class="text-xs font-bold text-slate-700 whitespace-nowrap">Tiap Tanggal:</span>
+                                            <div class="relative flex-1">
+                                                <input
+                                                    v-model="settingsForm.affiliate_payout_day"
+                                                    type="number"
+                                                    min="1"
+                                                    max="31"
+                                                    step="1"
+                                                    required
+                                                    class="block w-full px-3 py-2 bg-white border border-amber-300 rounded-xl text-slate-900 font-extrabold text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500 transition"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="pt-4 border-t border-slate-100 flex justify-end">
@@ -1228,6 +1257,11 @@
                                     <td class="px-4 py-3">
                                         <div class="font-bold text-slate-900">{{ w.affiliate_name }}</div>
                                         <div class="text-[11px] text-slate-400">{{ w.affiliate_phone || '-' }}</div>
+                                        <div v-if="w.unpaid_customers_count > 0" class="mt-1">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200">
+                                                ⚠️ {{ w.unpaid_customers_count }} Pelanggan Menunggak ({{ formatRupiah(w.unpaid_customers_amount) }})
+                                            </span>
+                                        </div>
                                     </td>
                                     <td class="px-4 py-3">
                                         <div class="font-semibold text-slate-800">{{ w.bank_name }} - {{ w.bank_account_number }}</div>
@@ -1310,6 +1344,15 @@
                         <span>Total Ditransfer:</span>
                         <span>{{ formatRupiah(selectedWithdrawal.amount) }}</span>
                     </div>
+                </div>
+
+                <div v-if="selectedWithdrawal && selectedWithdrawal.unpaid_customers_count > 0" class="p-3 bg-amber-50 border border-amber-200 rounded-2xl mb-4 text-xs text-amber-900">
+                    <div class="font-bold flex items-center gap-1.5 text-amber-800">
+                        <span>⚠️ Perhatian: Pelanggan Belum Lunas</span>
+                    </div>
+                    <p class="mt-1 text-[11px] text-amber-700 leading-relaxed">
+                        Mitra ini memiliki <strong>{{ selectedWithdrawal.unpaid_customers_count }} pelanggan booking</strong> yang belum melunasi tagihannya (Total tunggakan: <strong>{{ formatRupiah(selectedWithdrawal.unpaid_customers_amount) }}</strong>). Sesuai kebijakan, komisi mitra luar seharusnya dicairkan setelah pelanggan melunasi tagihan.
+                    </p>
                 </div>
 
                 <form @submit.prevent="submitApprove" class="space-y-4">
@@ -1661,6 +1704,7 @@ const settingsForm = useForm({
     affiliate_commission_upline_2: props.settings.affiliate_commission_upline_2 || 1000,
     affiliate_min_withdraw: props.settings.affiliate_min_withdraw || 50000,
     affiliate_contract_min_months: props.settings.affiliate_contract_min_months || 4,
+    affiliate_payout_day: props.settings.affiliate_payout_day || 15,
 });
 
 // Simulator Pasif Income

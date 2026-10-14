@@ -84,6 +84,14 @@ class AffiliateManagementController extends Controller
             ->latest('id')
             ->paginate(15)
             ->through(function ($w) {
+                $unpaidCount = 0;
+                $unpaidAmount = 0;
+                if ($w->affiliate) {
+                    $unpaid = AffiliateService::getUnpaidCustomersForAffiliate($w->affiliate);
+                    $unpaidCount = $unpaid->count();
+                    $unpaidAmount = (float) $unpaid->sum('total_unpaid_amount');
+                }
+
                 return [
                     'id' => $w->id,
                     'reference_no' => $w->reference_no,
@@ -100,6 +108,8 @@ class AffiliateManagementController extends Controller
                     'processor_name' => $w->processor?->name,
                     'date' => $w->created_at->format('d M Y H:i'),
                     'processed_at' => $w->processed_at ? $w->processed_at->format('d M Y H:i') : null,
+                    'unpaid_customers_count' => $unpaidCount,
+                    'unpaid_customers_amount' => $unpaidAmount,
                 ];
             });
 
@@ -264,12 +274,14 @@ class AffiliateManagementController extends Controller
             'affiliate_commission_upline_2' => 'required|numeric|min:0',
             'affiliate_min_withdraw' => 'required|numeric|min:10000',
             'affiliate_contract_min_months' => 'nullable|integer|min:1|max:60',
+            'affiliate_payout_day' => 'nullable|integer|min:1|max:31',
         ], [
             'affiliate_commission_booking.required' => 'Komisi booking wajib diisi.',
             'affiliate_commission_monthly.required' => 'Komisi bulanan direct sales wajib diisi.',
             'affiliate_commission_upline_1.required' => 'Komisi upline downline 1 wajib diisi.',
             'affiliate_commission_upline_2.required' => 'Komisi upline downline 2 wajib diisi.',
             'affiliate_min_withdraw.required' => 'Minimal penarikan dana wajib diisi.',
+            'affiliate_payout_day.integer' => 'Tanggal pencairan harus berupa angka 1 s/d 31.',
         ]);
 
         AffiliateService::saveSettings($validated);
