@@ -223,7 +223,7 @@ class InfrastructureWorkOrderService
             $transaction = MaterialTransaction::create([
                 'transaction_number' => 'TRX-WO-' . date('Ymd') . '-' . strtoupper(Str::random(4)),
                 'type' => 'out',
-                'status' => 'completed',
+                'status' => 'approved',
                 'date' => now()->toDateString(),
                 'technician_name' => $workOrder->technician?->name ?? 'Tim Teknisi',
                 'purpose' => "Material Rollout {$workOrder->target_name} ({$workOrder->wo_number})",
