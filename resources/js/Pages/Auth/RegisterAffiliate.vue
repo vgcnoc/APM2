@@ -114,7 +114,7 @@ const submit = () => {
                     <div class="text-xs font-bold text-purple-700 mt-0.5">
                         Tier 1: {{ formatRupiah(commissionSettings?.upline1 || 2000) }} &bull; Tier 2: {{ formatRupiah(commissionSettings?.upline2 || 1000) }}
                     </div>
-                    <p class="text-[11px] text-slate-500 mt-1">Dapatkan komisi dari transaksi yang dihasilkan mitra di bawah binaan Anda.</p>
+                    <p class="text-[11px] text-slate-500 mt-1">Bebas rekrut downline sebanyak-banyaknya tanpa batas! Komisi pasif mengalir hingga 2 generasi (Upline 1 &amp; Upline 2).</p>
                 </div>
             </div>
         </div>

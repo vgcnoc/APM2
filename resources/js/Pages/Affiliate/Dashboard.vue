@@ -256,14 +256,14 @@
                             <div>
                                 <h3 class="text-sm font-bold text-white flex items-center gap-2">
                                     <span>🌳</span>
-                                    <span>Struktur &amp; Alir Komisi Multi-Tier (Pasif Income Anda)</span>
+                                    <span>Sistem Komisi Multi-Tier (Pasif Income 2 Level &bull; Downline Tanpa Batas)</span>
                                 </h3>
                                 <p class="text-xs text-indigo-200/80 mt-0.5">
-                                    Setiap kali pelanggan di jaringan Anda melunasi tagihan bulanan, komisi terdistribusi otomatis ke 3 tingkatan dompet:
+                                    Setiap Sales/Upline bebas memiliki Downline sebanyak-banyaknya tanpa batas kuota (unlimited width). Komisi pasif mengalir otomatis dari 2 Level binaan:
                                 </p>
                             </div>
                             <span class="inline-flex self-start sm:self-auto text-[11px] font-bold bg-white/10 px-3 py-1 rounded-full text-indigo-200 border border-white/10">
-                                3 Tingkat Komisi Pasif
+                                ♾️ Downline Tanpa Batas &bull; 2 Level
                             </span>
                         </div>
 
