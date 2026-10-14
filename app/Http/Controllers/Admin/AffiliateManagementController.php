@@ -231,6 +231,14 @@ class AffiliateManagementController extends Controller
             'total_members' => count($networkTrees) + $totalDownline1Count + $totalDownline2Count,
         ];
 
+        $kpi = [
+            'total_affiliates' => AffiliateProfile::count(),
+            'total_customers' => Customer::whereNotNull('sales_id')->count(),
+            'total_commissions_paid' => (float) AffiliateCommission::where('status', 'paid')->sum('amount'),
+            'pending_withdrawals_count' => AffiliateWithdrawal::where('status', 'pending')->count(),
+            'pending_withdrawals_amount' => (float) AffiliateWithdrawal::where('status', 'pending')->sum('amount'),
+        ];
+
         return Inertia::render('Marketing/Affiliates/Index', [
             'tab' => $tab,
             'settings' => $settings,
