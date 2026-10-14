@@ -23,6 +23,14 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
+        // Superadmin & Admin bypass for all permissions
+        \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
+            if ($user->hasRole('admin') || (method_exists($user, 'hasRole') && $user->hasRole('superadmin')) || in_array($user->role, ['admin', 'superadmin'])) {
+                return true;
+            }
+            return null;
+        });
+
         // Register Observers for RADIUS Synchronization
         \App\Models\Customer::observe(\App\Observers\Radius\CustomerObserver::class);
         \App\Models\Ont::observe(\App\Observers\Radius\OntObserver::class);

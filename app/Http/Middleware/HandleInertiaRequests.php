@@ -58,6 +58,8 @@ class HandleInertiaRequests extends Middleware
                             'role' => $request->user()->role,
                             'roles' => $request->user()->getRoleNames()->values()->toArray(),
                             'permissions' => $request->user()->getAllPermissions()->pluck('name')->values()->toArray(),
+                            'area_id' => $request->user()->area_id,
+                            'accessible_areas' => $request->user()->getAccessibleAreaIds(),
                             'is_on_duty' => (bool) $request->user()->is_on_duty,
                             'customer' => $customerData,
                         ];

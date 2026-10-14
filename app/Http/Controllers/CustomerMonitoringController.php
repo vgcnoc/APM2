@@ -24,26 +24,56 @@ class CustomerMonitoringController extends Controller
         $promiseFilter = $request->query('promise_filter', 'all');
         $stopReason = $request->query('stop_reason', 'all');
 
+        $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all');
+        $userAreaIds = auth()->check() ? auth()->user()->getAccessibleAreaIds() : [];
+
+        // Scoping closures
+        $scopeCustomerArea = function ($query) use ($isAreaRestricted, $userAreaIds) {
+            if ($isAreaRestricted) {
+                if (auth()->user()->can('customers_all_view_area')) {
+                    $query->whereIn('area_id', $userAreaIds);
+                } else {
+                    $query->where('id', -1);
+                }
+            }
+        };
+
+        $scopeInvoiceArea = function ($query) use ($isAreaRestricted, $userAreaIds) {
+            if ($isAreaRestricted) {
+                if (auth()->user()->can('customers_all_view_area')) {
+                    $query->whereHas('customer', function($cq) use ($userAreaIds) {
+                        $cq->whereIn('area_id', $userAreaIds);
+                    });
+                } else {
+                    $query->where('id', -1);
+                }
+            }
+        };
+
         // ── 1. STATS RINGKASAN GLOBAL ─────────────────────────────
         // Pelanggan menunggak (memiliki invoice belum lunas yang telah lewat jatuh tempo dan belum terminated)
-        $menunggakCustomersCount = Customer::where('status', '!=', 'terminated')
+        $menunggakCustomerQuery = Customer::where('status', '!=', 'terminated')
             ->whereHas('invoices', function ($q) use ($today) {
                 $q->whereIn('status', ['unpaid', 'partial'])
                   ->where('is_reseller_balance', false)
                   ->where('due_date', '<', $today);
-            })->count();
+            });
+        $scopeCustomerArea($menunggakCustomerQuery);
+        $menunggakCustomersCount = $menunggakCustomerQuery->count();
 
-        $totalNominalMenunggak = (float) Invoice::whereIn('status', ['unpaid', 'partial'])
+        $nominalMenunggakQuery = Invoice::whereIn('status', ['unpaid', 'partial'])
             ->where('is_reseller_balance', false)
             ->where('due_date', '<', $today)
-            ->whereHas('customer', fn($c) => $c->where('status', '!=', 'terminated'))
-            ->sum('amount');
+            ->whereHas('customer', fn($c) => $c->where('status', '!=', 'terminated'));
+        $scopeInvoiceArea($nominalMenunggakQuery);
+        $totalNominalMenunggak = (float) $nominalMenunggakQuery->sum('amount');
 
         // Janji bayar (hanya pelanggan yang belum terminated)
         $janjiBayarQuery = Invoice::whereIn('status', ['unpaid', 'partial'])
             ->where('is_reseller_balance', false)
             ->whereNotNull('promise_date')
             ->whereHas('customer', fn($c) => $c->where('status', '!=', 'terminated'));
+        $scopeInvoiceArea($janjiBayarQuery);
 
         $totalJanjiBayarCount = (clone $janjiBayarQuery)->count();
         $totalNominalJanjiBayar = (float) (clone $janjiBayarQuery)->sum('amount');
@@ -52,13 +82,18 @@ class CustomerMonitoringController extends Controller
         $janjiMendatangCount = (clone $janjiBayarQuery)->where('promise_date', '>', $today)->count();
 
         // Stop Sementara (Suspended)
-        $stopSementaraCount = Customer::where('status', 'suspended')->count();
-        $stopKarenaTunggakanCount = Customer::where('status', 'suspended')
+        $stopSementaraQuery = Customer::where('status', 'suspended');
+        $scopeCustomerArea($stopSementaraQuery);
+        $stopSementaraCount = $stopSementaraQuery->count();
+
+        $stopKarenaTunggakanQuery = Customer::where('status', 'suspended')
             ->whereHas('invoices', function ($q) use ($today) {
                 $q->whereIn('status', ['unpaid', 'partial'])
                   ->where('is_reseller_balance', false)
                   ->where('due_date', '<', $today);
-            })->count();
+            });
+        $scopeCustomerArea($stopKarenaTunggakanQuery);
+        $stopKarenaTunggakanCount = $stopKarenaTunggakanQuery->count();
 
         $stats = [
             'total_menunggak_count' => $menunggakCustomersCount,
@@ -113,6 +148,7 @@ class CustomerMonitoringController extends Controller
                 $q->where('promise_date', '>', $today);
             }
 
+            $scopeInvoiceArea($q);
             $items = $q->orderBy('promise_date', 'asc')->paginate(15)->withQueryString();
 
         } elseif ($tab === 'stop_sementara') {
@@ -156,6 +192,7 @@ class CustomerMonitoringController extends Controller
                 });
             }
 
+            $scopeCustomerArea($q);
             $items = $q->orderByDesc('updated_at')->paginate(15)->withQueryString();
 
         } else {
@@ -205,6 +242,8 @@ class CustomerMonitoringController extends Controller
                 $q->having('unpaid_count', '>=', 3);
             }
 
+            $scopeCustomerArea($q);
+
             // Urutkan dari jumlah tunggakan terbanyak, lalu total rupiah terbesar
             $items = $q->orderByDesc('unpaid_count')
                        ->orderByDesc('total_unpaid_amount')
@@ -212,8 +251,10 @@ class CustomerMonitoringController extends Controller
                        ->withQueryString();
         }
 
-        // Master Area untuk Filter
-        $areas = Area::orderBy('name')->get(['id', 'name']);
+        // Master Area untuk Filter (scoped if restricted)
+        $areas = $isAreaRestricted
+            ? Area::whereIn('id', $userAreaIds)->orderBy('name')->get(['id', 'name'])
+            : Area::orderBy('name')->get(['id', 'name']);
 
         // Data Perusahaan untuk Template WhatsApp
         $companyName = Setting::get('company_name', config('app.name', 'ISP Provider'));
@@ -245,6 +286,12 @@ class CustomerMonitoringController extends Controller
      */
     public function unsuspend(Customer $customer, RadiusService $radius)
     {
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all')) {
+            if (!in_array($customer->area_id, auth()->user()->getAccessibleAreaIds())) {
+                return back()->with('error', 'Anda tidak memiliki hak akses untuk mengubah data pelanggan di area ini.');
+            }
+        }
+
         $customer->update([
             'status' => 'active',
             'suspend_start' => null,
@@ -260,6 +307,12 @@ class CustomerMonitoringController extends Controller
      */
     public function suspend(Request $request, Customer $customer, RadiusService $radius)
     {
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all')) {
+            if (!in_array($customer->area_id, auth()->user()->getAccessibleAreaIds())) {
+                return back()->with('error', 'Anda tidak memiliki hak akses untuk mengubah data pelanggan di area ini.');
+            }
+        }
+
         $request->validate([
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
@@ -282,6 +335,13 @@ class CustomerMonitoringController extends Controller
      */
     public function setPromise(Request $request, Invoice $invoice)
     {
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all')) {
+            $invoice->loadMissing('customer');
+            if ($invoice->customer && !in_array($invoice->customer->area_id, auth()->user()->getAccessibleAreaIds())) {
+                return back()->with('error', 'Anda tidak memiliki hak akses untuk memproses invoice di area ini.');
+            }
+        }
+
         $request->validate([
             'promise_date' => 'required|date',
             'notes' => 'nullable|string',

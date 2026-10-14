@@ -228,7 +228,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('odps/{odp}/delete', [OdpController::class, 'destroy'])->name('odps.destroy.post');
 
     // ── Rollout & Penugasan Pembangunan ODC & ODP ─────────────
-    Route::prefix('infrastructure/work-orders')->name('infrastructure.work-orders.')->group(function () {
+    Route::middleware(['permission:menu_infrastructure_work_orders|menu_network_odc|menu_network_odp'])->prefix('infrastructure/work-orders')->name('infrastructure.work-orders.')->group(function () {
         Route::get('/', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'index'])->name('index');
         Route::get('/create', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'create'])->name('create');
         Route::get('/api/bom', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'getBOM'])->name('bom');
@@ -388,41 +388,48 @@ Route::middleware(['auth'])->group(function () {
 
 
     // ── Pengguna & Hak Akses ───────────────────────────────────
-    Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit'])->middleware('role:admin');
-    Route::post('users/{user}/update', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update.post')->middleware('role:admin');
-    Route::post('users/{user}/delete', [\App\Http\Controllers\UserController::class, 'destroy'])->name('users.destroy.post');
+    Route::middleware(['permission:menu_users'])->group(function () {
+        Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
+        Route::post('users/{user}/update', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update.post');
+        Route::post('users/{user}/delete', [\App\Http\Controllers\UserController::class, 'destroy'])->name('users.destroy.post');
+    });
 
     // ── Billing & Keuangan ─────────────────────────────────────
-    Route::post('invoices/{invoice}/pay', [\App\Http\Controllers\InvoiceController::class, 'pay'])->name('invoices.pay');
-    Route::post('invoices/{invoice}/rollback', [\App\Http\Controllers\InvoiceController::class, 'rollback'])->name('invoices.rollback');
-    Route::post('invoices/{invoice}/promise', [\App\Http\Controllers\InvoiceController::class, 'promise'])->name('invoices.promise');
-    Route::post('invoices/{invoice}/stop-sementara', [\App\Http\Controllers\InvoiceController::class, 'stopSementara'])->name('invoices.stop-sementara');
-    Route::post('invoices/{invoice}/stop-permanen', [\App\Http\Controllers\InvoiceController::class, 'stopPermanen'])->name('invoices.stop-permanen');
-    Route::post('invoices/{invoice}/change-package', [\App\Http\Controllers\InvoiceController::class, 'changePackage'])->name('invoices.change-package');
-    Route::get('invoices/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->name('invoices.print');
-    Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
+    Route::middleware(['permission:menu_invoices'])->group(function () {
+        Route::post('invoices/{invoice}/pay', [\App\Http\Controllers\InvoiceController::class, 'pay'])->name('invoices.pay');
+        Route::post('invoices/{invoice}/rollback', [\App\Http\Controllers\InvoiceController::class, 'rollback'])->name('invoices.rollback');
+        Route::post('invoices/{invoice}/promise', [\App\Http\Controllers\InvoiceController::class, 'promise'])->name('invoices.promise');
+        Route::post('invoices/{invoice}/stop-sementara', [\App\Http\Controllers\InvoiceController::class, 'stopSementara'])->name('invoices.stop-sementara');
+        Route::post('invoices/{invoice}/stop-permanen', [\App\Http\Controllers\InvoiceController::class, 'stopPermanen'])->name('invoices.stop-permanen');
+        Route::post('invoices/{invoice}/change-package', [\App\Http\Controllers\InvoiceController::class, 'changePackage'])->name('invoices.change-package');
+        Route::get('invoices/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->name('invoices.print');
+        Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
+    });
     
     // ── Pantauan Pelanggan (Menunggak, Janji Bayar, Stop Sementara) ──────
-    Route::get('/monitoring-pelanggan', [\App\Http\Controllers\CustomerMonitoringController::class, 'index'])->name('monitoring-pelanggan.index');
-    Route::post('/monitoring-pelanggan/{customer}/unsuspend', [\App\Http\Controllers\CustomerMonitoringController::class, 'unsuspend'])->name('monitoring-pelanggan.unsuspend');
-    Route::post('/monitoring-pelanggan/{customer}/suspend', [\App\Http\Controllers\CustomerMonitoringController::class, 'suspend'])->name('monitoring-pelanggan.suspend');
-    Route::post('/monitoring-pelanggan/{invoice}/set-promise', [\App\Http\Controllers\CustomerMonitoringController::class, 'setPromise'])->name('monitoring-pelanggan.set-promise');
-    
-    Route::get('tax-reports/print', [\App\Http\Controllers\TaxReportController::class, 'print'])->name('tax.reports.print');
-    Route::get('tax-reports', [\App\Http\Controllers\TaxReportController::class, 'index'])->name('tax.reports.index');
-    // Route::resource('payments', PaymentController::class);
+    Route::middleware(['permission:menu_monitoring_pelanggan|menu_customers_all'])->group(function () {
+        Route::get('/monitoring-pelanggan', [\App\Http\Controllers\CustomerMonitoringController::class, 'index'])->name('monitoring-pelanggan.index');
+        Route::post('/monitoring-pelanggan/{customer}/unsuspend', [\App\Http\Controllers\CustomerMonitoringController::class, 'unsuspend'])->name('monitoring-pelanggan.unsuspend');
+        Route::post('/monitoring-pelanggan/{customer}/suspend', [\App\Http\Controllers\CustomerMonitoringController::class, 'suspend'])->name('monitoring-pelanggan.suspend');
+        Route::post('/monitoring-pelanggan/{invoice}/set-promise', [\App\Http\Controllers\CustomerMonitoringController::class, 'setPromise'])->name('monitoring-pelanggan.set-promise');
+    });
 
     // ── Customer Billing (Penagihan Lapangan) ─────────────────────
-    Route::get('/customer-billing', [\App\Http\Controllers\CustomerBillingController::class, 'index'])->name('customer-billing.index');
-    Route::post('/customer-billing/{invoice}/collect', [\App\Http\Controllers\CustomerBillingController::class, 'collect'])->name('customer-billing.collect');
-    
-    Route::get('/customer-settlements', [\App\Http\Controllers\CustomerBillingController::class, 'settlements'])->name('customer-settlements.index');
-    Route::post('/customer-settlements/{payment}/approve', [\App\Http\Controllers\CustomerBillingController::class, 'approve'])->name('customer-settlements.approve');
-    Route::post('/customer-settlements/{payment}/cancel', [\App\Http\Controllers\CustomerBillingController::class, 'cancel'])->name('customer-settlements.cancel');
+    Route::middleware(['permission:menu_customer_billing'])->group(function () {
+        Route::get('/customer-billing', [\App\Http\Controllers\CustomerBillingController::class, 'index'])->name('customer-billing.index');
+        Route::post('/customer-billing/{invoice}/collect', [\App\Http\Controllers\CustomerBillingController::class, 'collect'])->name('customer-billing.collect');
+        Route::get('/customer-settlements', [\App\Http\Controllers\CustomerBillingController::class, 'settlements'])->name('customer-settlements.index');
+        Route::post('/customer-settlements/{payment}/approve', [\App\Http\Controllers\CustomerBillingController::class, 'approve'])->name('customer-settlements.approve');
+        Route::post('/customer-settlements/{payment}/cancel', [\App\Http\Controllers\CustomerBillingController::class, 'cancel'])->name('customer-settlements.cancel');
+    });
 
-    // ── Laporan Keuangan Global & Pelanggan ────────────────────────────────
-    Route::get('/financial-reports', [\App\Http\Controllers\FinancialReportController::class, 'index'])->name('financial-reports.index');
-    Route::get('/customer-reports', [\App\Http\Controllers\CustomerReportController::class, 'index'])->name('customer-reports.index');
+    // ── Laporan Keuangan Global & Pajak ───────────────────────────
+    Route::middleware(['permission:menu_financial_reports'])->group(function () {
+        Route::get('tax-reports/print', [\App\Http\Controllers\TaxReportController::class, 'print'])->name('tax.reports.print');
+        Route::get('tax-reports', [\App\Http\Controllers\TaxReportController::class, 'index'])->name('tax.reports.index');
+        Route::get('/financial-reports', [\App\Http\Controllers\FinancialReportController::class, 'index'])->name('financial-reports.index');
+        Route::get('/customer-reports', [\App\Http\Controllers\CustomerReportController::class, 'index'])->name('customer-reports.index');
+    });
 
     // ── Ticketing & Gangguan ───────────────────────────────────
     Route::resource('tickets', TicketController::class);
@@ -474,97 +481,108 @@ Route::middleware(['auth'])->group(function () {
     // Route::resource('schedules', TechnicianScheduleController::class);
 
     // ── Penggajian & Insentif (Payroll) ────────────────────────
-    Route::get('/payroll', [\App\Http\Controllers\PayrollController::class, 'index'])->name('payroll.index');
-    Route::post('/payroll/settings', [\App\Http\Controllers\PayrollController::class, 'updateSettings'])->name('payroll.settings.update');
-    Route::post('/payroll/{user}/incentives', [\App\Http\Controllers\PayrollController::class, 'storeIncentive'])->name('payroll.incentive.store');
-    Route::delete('/payroll/incentives/{incentive}', [\App\Http\Controllers\PayrollController::class, 'destroyIncentive'])->name('payroll.incentive.destroy');
-    Route::post('/payroll/{user}/deductions', [\App\Http\Controllers\PayrollController::class, 'storeDeduction'])->name('payroll.deduction.store');
-    Route::delete('/payroll/deductions/{deduction}', [\App\Http\Controllers\PayrollController::class, 'destroyDeduction'])->name('payroll.deduction.destroy');
-    Route::post('/payroll/{user}/disburse', [\App\Http\Controllers\PayrollController::class, 'disburse'])->name('payroll.disburse');
+    Route::middleware(['permission:menu_payroll'])->group(function () {
+        Route::get('/payroll', [\App\Http\Controllers\PayrollController::class, 'index'])->name('payroll.index');
+        Route::post('/payroll/settings', [\App\Http\Controllers\PayrollController::class, 'updateSettings'])->name('payroll.settings.update');
+        Route::post('/payroll/{user}/incentives', [\App\Http\Controllers\PayrollController::class, 'storeIncentive'])->name('payroll.incentive.store');
+        Route::delete('/payroll/incentives/{incentive}', [\App\Http\Controllers\PayrollController::class, 'destroyIncentive'])->name('payroll.incentive.destroy');
+        Route::post('/payroll/{user}/deductions', [\App\Http\Controllers\PayrollController::class, 'storeDeduction'])->name('payroll.deduction.store');
+        Route::delete('/payroll/deductions/{deduction}', [\App\Http\Controllers\PayrollController::class, 'destroyDeduction'])->name('payroll.deduction.destroy');
+        Route::post('/payroll/{user}/disburse', [\App\Http\Controllers\PayrollController::class, 'disburse'])->name('payroll.disburse');
 
-    // Insentif & Potongan List
-    Route::get('/insentif-potongan', [\App\Http\Controllers\IncentiveDeductionController::class, 'index'])->name('insentif-potongan.index');
-    Route::delete('/insentif-potongan/destroy', [\App\Http\Controllers\IncentiveDeductionController::class, 'destroyRecord'])->name('insentif-potongan.destroy');
+        // Insentif & Potongan List
+        Route::get('/insentif-potongan', [\App\Http\Controllers\IncentiveDeductionController::class, 'index'])->name('insentif-potongan.index');
+        Route::delete('/insentif-potongan/destroy', [\App\Http\Controllers\IncentiveDeductionController::class, 'destroyRecord'])->name('insentif-potongan.destroy');
 
-    // ── Bonus Target Market ────────────────────────────────────
-    Route::get('/bonus-target-market', [\App\Http\Controllers\TargetMarketController::class, 'index'])->name('bonus-target-market.index');
-    Route::post('/bonus-target-market/programs', [\App\Http\Controllers\TargetMarketController::class, 'storeProgram'])->name('bonus-target-market.programs.store');
-    Route::post('/bonus-target-market/programs/{program}/update', [\App\Http\Controllers\TargetMarketController::class, 'updateProgram'])->name('bonus-target-market.programs.update');
-    Route::post('/bonus-target-market/programs/{program}/toggle', [\App\Http\Controllers\TargetMarketController::class, 'toggleProgram'])->name('bonus-target-market.programs.toggle');
-    Route::delete('/bonus-target-market/programs/{program}', [\App\Http\Controllers\TargetMarketController::class, 'destroyProgram'])->name('bonus-target-market.programs.destroy');
-    Route::post('/bonus-target-market/recalculate', [\App\Http\Controllers\TargetMarketController::class, 'recalculate'])->name('bonus-target-market.recalculate');
-    Route::post('/bonus-target-market/sync-payroll', [\App\Http\Controllers\TargetMarketController::class, 'syncToPayroll'])->name('bonus-target-market.sync-payroll');
+        // Bonus Target Market
+        Route::get('/bonus-target-market', [\App\Http\Controllers\TargetMarketController::class, 'index'])->name('bonus-target-market.index');
+        Route::post('/bonus-target-market/programs', [\App\Http\Controllers\TargetMarketController::class, 'storeProgram'])->name('bonus-target-market.programs.store');
+        Route::post('/bonus-target-market/programs/{program}/update', [\App\Http\Controllers\TargetMarketController::class, 'updateProgram'])->name('bonus-target-market.programs.update');
+        Route::post('/bonus-target-market/programs/{program}/toggle', [\App\Http\Controllers\TargetMarketController::class, 'toggleProgram'])->name('bonus-target-market.programs.toggle');
+        Route::delete('/bonus-target-market/programs/{program}', [\App\Http\Controllers\TargetMarketController::class, 'destroyProgram'])->name('bonus-target-market.programs.destroy');
+        Route::post('/bonus-target-market/recalculate', [\App\Http\Controllers\TargetMarketController::class, 'recalculate'])->name('bonus-target-market.recalculate');
+        Route::post('/bonus-target-market/sync-payroll', [\App\Http\Controllers\TargetMarketController::class, 'syncToPayroll'])->name('bonus-target-market.sync-payroll');
+        
+        // Master Insentif & Potongan
+        Route::resource('settings/payroll-categories', \App\Http\Controllers\PayrollCategoryController::class);
+        Route::get('api/payroll-categories/active', [\App\Http\Controllers\PayrollCategoryController::class, 'getActiveCategories'])->name('payroll-categories.active');
+
+        // Master Fee
+        Route::resource('settings/master-fees', \App\Http\Controllers\MasterFeeController::class);
+        Route::get('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'payroll'])->name('settings.payroll');
+        Route::post('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'updatePayroll'])->name('settings.payroll.update');
+    });
+
+    // ── Master Area & Pengeluaran ──────────────────────────────
+    Route::middleware(['permission:menu_settings_areas'])->group(function () {
+        Route::resource('settings/areas', \App\Http\Controllers\AreaController::class);
+        Route::post('settings/areas/{area}/update', [\App\Http\Controllers\AreaController::class, 'update'])->name('areas.update.post');
+        Route::post('settings/areas/{area}/delete', [\App\Http\Controllers\AreaController::class, 'destroy'])->name('areas.destroy.post');
+
+        // Master Kategori Pengeluaran
+        Route::resource('settings/expense-categories', \App\Http\Controllers\ExpenseCategoryController::class);
+        Route::post('settings/expense-categories/{expenseCategory}/toggle', [\App\Http\Controllers\ExpenseCategoryController::class, 'toggleStatus'])->name('expense-categories.toggle');
+        Route::get('api/expense-categories/active', [\App\Http\Controllers\ExpenseCategoryController::class, 'getActiveCategories'])->name('expense-categories.active');
+    });
     
-    // Master Insentif & Potongan
-    Route::resource('settings/payroll-categories', \App\Http\Controllers\PayrollCategoryController::class);
-    Route::get('api/payroll-categories/active', [\App\Http\Controllers\PayrollCategoryController::class, 'getActiveCategories'])->name('payroll-categories.active');
-    
-    // Master Kategori Pengeluaran
-    Route::resource('settings/expense-categories', \App\Http\Controllers\ExpenseCategoryController::class);
-    Route::post('settings/expense-categories/{expenseCategory}/toggle', [\App\Http\Controllers\ExpenseCategoryController::class, 'toggleStatus'])->name('expense-categories.toggle');
-    Route::get('api/expense-categories/active', [\App\Http\Controllers\ExpenseCategoryController::class, 'getActiveCategories'])->name('expense-categories.active');
+    // ── Pengaturan Branding, Billing & API ─────────────────────
+    Route::middleware(['permission:menu_settings_branding|menu_settings_billing|menu_settings_api|menu_settings_roles'])->group(function () {
+        Route::get('/settings/branding', [\App\Http\Controllers\SettingController::class, 'branding'])->name('settings.branding');
+        Route::post('/settings/branding', [\App\Http\Controllers\SettingController::class, 'updateBranding'])->name('settings.branding.update');
+        
+        Route::get('/settings/billing', [\App\Http\Controllers\SettingController::class, 'billing'])->name('settings.billing');
+        Route::post('/settings/billing', [\App\Http\Controllers\SettingController::class, 'updateBilling'])->name('settings.billing.update');
+        Route::get('/settings/invoice-template/preview', [\App\Http\Controllers\SettingController::class, 'previewInvoiceTemplate'])->name('settings.invoice-template.preview');
 
-    // Master Fee
-    Route::resource('settings/master-fees', \App\Http\Controllers\MasterFeeController::class);
+        Route::get('/settings/attendance', [\App\Http\Controllers\SettingController::class, 'attendance'])->name('settings.attendance');
+        Route::post('/settings/attendance', [\App\Http\Controllers\SettingController::class, 'updateAttendance'])->name('settings.attendance.update');
 
-    // ── Master Data & Pengaturan ───────────────────────────────
-    Route::resource('settings/areas', \App\Http\Controllers\AreaController::class);
-    Route::post('settings/areas/{area}/update', [\App\Http\Controllers\AreaController::class, 'update'])->name('areas.update.post');
-    Route::post('settings/areas/{area}/delete', [\App\Http\Controllers\AreaController::class, 'destroy'])->name('areas.destroy.post');
-    
-    Route::get('/settings/branding', [\App\Http\Controllers\SettingController::class, 'branding'])->name('settings.branding');
-    Route::post('/settings/branding', [\App\Http\Controllers\SettingController::class, 'updateBranding'])->name('settings.branding.update');
-    
-    Route::get('/settings/billing', [\App\Http\Controllers\SettingController::class, 'billing'])->name('settings.billing');
-    Route::post('/settings/billing', [\App\Http\Controllers\SettingController::class, 'updateBilling'])->name('settings.billing.update');
-    Route::get('/settings/invoice-template/preview', [\App\Http\Controllers\SettingController::class, 'previewInvoiceTemplate'])->name('settings.invoice-template.preview');
+        Route::get('/settings/api', function () {
+            return inertia('Settings/Api');
+        })->name('settings.api');
+        Route::post('/settings/api/test', [\App\Http\Controllers\SettingController::class, 'apiTest'])->name('settings.api.test');
+        Route::post('/settings/api/sync', [\App\Http\Controllers\SettingController::class, 'apiSync'])->name('settings.api.sync');
+        Route::post('/settings/api/token', function (Illuminate\Http\Request $request) {
+            $user = $request->user();
+            $user->tokens()->delete(); // Hapus token lama
+            $token = $user->createToken('Integrasi-app-LK')->plainTextToken;
+            return response()->json(['token' => $token]);
+        })->name('settings.api.token');
 
-    Route::get('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'payroll'])->name('settings.payroll');
-    Route::post('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'updatePayroll'])->name('settings.payroll.update');
-    Route::get('/settings/attendance', [\App\Http\Controllers\SettingController::class, 'attendance'])->name('settings.attendance');
-    Route::post('/settings/attendance', [\App\Http\Controllers\SettingController::class, 'updateAttendance'])->name('settings.attendance.update');
+        Route::get('/settings/resellers', [\App\Http\Controllers\ResellerSettingController::class, 'index'])->name('settings.resellers.index');
+        Route::post('/settings/resellers/{user}/update', [\App\Http\Controllers\ResellerSettingController::class, 'update'])->name('settings.resellers.update.post');
+    });
 
-    Route::get('/settings/api', function () {
-        return inertia('Settings/Api');
-    })->name('settings.api');
+    // ── Manajemen Role & Hak Akses ─────────────────────────────
+    Route::middleware(['permission:menu_settings_roles'])->group(function () {
+        Route::resource('settings/roles', \App\Http\Controllers\RoleController::class)->except(['create', 'show', 'edit']);
+        Route::post('settings/roles/{role}/update', [\App\Http\Controllers\RoleController::class, 'update'])->name('roles.update.post');
+        Route::post('settings/roles/{role}/delete', [\App\Http\Controllers\RoleController::class, 'destroy'])->name('roles.destroy.post');
+    });
 
-    Route::get('/settings/resellers', [\App\Http\Controllers\ResellerSettingController::class, 'index'])->name('settings.resellers.index');
-    Route::post('/settings/resellers/{user}/update', [\App\Http\Controllers\ResellerSettingController::class, 'update'])->name('settings.resellers.update.post');
-
-    Route::resource('settings/roles', \App\Http\Controllers\RoleController::class)->except(['create', 'show', 'edit']);
-    Route::post('settings/roles/{role}/update', [\App\Http\Controllers\RoleController::class, 'update'])->name('roles.update.post');
-    Route::post('settings/roles/{role}/delete', [\App\Http\Controllers\RoleController::class, 'destroy'])->name('roles.destroy.post');
-    Route::post('/settings/api/test', [\App\Http\Controllers\SettingController::class, 'apiTest'])->name('settings.api.test');
-    Route::post('/settings/api/sync', [\App\Http\Controllers\SettingController::class, 'apiSync'])->name('settings.api.sync');
-
-    Route::post('/settings/api/token', function (Illuminate\Http\Request $request) {
-        $user = $request->user();
-        $user->tokens()->delete(); // Hapus token lama
-        $token = $user->createToken('Integrasi-app-LK')->plainTextToken;
-        return response()->json(['token' => $token]);
-    })->name('settings.api.token');
     Route::resource('internet-packages', \App\Http\Controllers\InternetPackageController::class)->except(['create', 'show', 'edit']);
     Route::post('internet-packages/{internet_package}/update', [\App\Http\Controllers\InternetPackageController::class, 'update'])->name('internet-packages.update.post');
     Route::post('internet-packages/{internet_package}/delete', [\App\Http\Controllers\InternetPackageController::class, 'destroy'])->name('internet-packages.destroy.post');
 
-    // ── Data Router ────────────────────────────────────────────
-    Route::resource('routers', \App\Http\Controllers\RouterController::class)->except(['create', 'show', 'edit']);
-    Route::post('routers/{router}/update', [\App\Http\Controllers\RouterController::class, 'update'])->name('routers.update.post');
-    Route::post('routers/{router}/delete', [\App\Http\Controllers\RouterController::class, 'destroy'])->name('routers.destroy.post');
-    Route::get('routers/{router}/ping', [\App\Http\Controllers\RouterController::class, 'ping'])->name('routers.ping');
+    // ── Data Router & RADIUS ───────────────────────────────────
+    Route::middleware(['permission:menu_routers|menu_radius_nas'])->group(function () {
+        Route::resource('routers', \App\Http\Controllers\RouterController::class)->except(['create', 'show', 'edit']);
+        Route::post('routers/{router}/update', [\App\Http\Controllers\RouterController::class, 'update'])->name('routers.update.post');
+        Route::post('routers/{router}/delete', [\App\Http\Controllers\RouterController::class, 'destroy'])->name('routers.destroy.post');
+        Route::get('routers/{router}/ping', [\App\Http\Controllers\RouterController::class, 'ping'])->name('routers.ping');
 
-    // ── RADIUS Billing System ──────────────────────────────────
-    Route::prefix('radius')->name('radius.')->group(function () {
-        Route::resource('nas', \App\Http\Controllers\Radius\NasController::class)->except(['create', 'show', 'edit']);
-        Route::post('nas/{nas}/update', [\App\Http\Controllers\Radius\NasController::class, 'update'])->name('nas.update.post');
-        Route::post('nas/{nas}/delete', [\App\Http\Controllers\Radius\NasController::class, 'destroy'])->name('nas.destroy.post');
-        Route::post('nas/{nas}/regenerate', [\App\Http\Controllers\Radius\NasController::class, 'regenerate'])->name('nas.regenerate');
-        Route::get('nas/{nas}/ping', [\App\Http\Controllers\Radius\NasController::class, 'ping'])->name('nas.ping');
+        Route::prefix('radius')->name('radius.')->group(function () {
+            Route::resource('nas', \App\Http\Controllers\Radius\NasController::class)->except(['create', 'show', 'edit']);
+            Route::post('nas/{nas}/update', [\App\Http\Controllers\Radius\NasController::class, 'update'])->name('nas.update.post');
+            Route::post('nas/{nas}/delete', [\App\Http\Controllers\Radius\NasController::class, 'destroy'])->name('nas.destroy.post');
+            Route::post('nas/{nas}/regenerate', [\App\Http\Controllers\Radius\NasController::class, 'regenerate'])->name('nas.regenerate');
+            Route::get('nas/{nas}/ping', [\App\Http\Controllers\Radius\NasController::class, 'ping'])->name('nas.ping');
 
-        Route::get('online-users', [\App\Http\Controllers\Radius\OnlineUserController::class, 'index'])->name('online-users.index');
-        Route::post('online-users/disconnect', [\App\Http\Controllers\Radius\OnlineUserController::class, 'disconnect'])->name('online-users.disconnect');
+            Route::get('online-users', [\App\Http\Controllers\Radius\OnlineUserController::class, 'index'])->name('online-users.index');
+            Route::post('online-users/disconnect', [\App\Http\Controllers\Radius\OnlineUserController::class, 'disconnect'])->name('online-users.disconnect');
 
-        Route::get('auth-logs', [\App\Http\Controllers\Radius\AuthLogController::class, 'index'])->name('auth-logs.index');
+            Route::get('auth-logs', [\App\Http\Controllers\Radius\AuthLogController::class, 'index'])->name('auth-logs.index');
+        });
     });
 
     // ── Portal Khusus Mitra Afiliasi & Sales ────────────────────
@@ -575,7 +593,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── Manajemen Afiliasi & Pengaturan Komisi (Admin) ─────────
-    Route::prefix('marketing/affiliates')->name('admin.affiliates.')->group(function () {
+    Route::middleware(['permission:menu_marketing_affiliates'])->prefix('marketing/affiliates')->name('admin.affiliates.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'index'])->name('index');
         Route::post('/settings', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'saveSettings'])->name('settings');
         Route::post('/withdrawals/{withdrawal}/approve', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'approveWithdrawal'])->name('withdrawals.approve');

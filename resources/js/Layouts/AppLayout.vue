@@ -162,6 +162,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import AppLogo from '@/Components/AppLogo.vue';
+import { usePermission } from '@/Composables/usePermission';
 
 defineProps({
     title: { type: String, default: 'Dashboard' },
@@ -169,6 +170,7 @@ defineProps({
 });
 
 const page = usePage();
+const { can, hasRole } = usePermission();
 const sidebarOpen = ref(true);
 const mobileMenuOpen = ref(false);
 const sidebarNav = ref(null);
@@ -183,31 +185,7 @@ const saveScrollPosition = () => {
 
 const hasPermission = (permission) => {
     if (!permission) return true;
-    try {
-        const user = page.props.auth?.user;
-        if (!user) return false;
-        
-        // Super admin bypass
-        if (user.role === 'admin' || user.role === 'Super Admin') return true;
-
-        let roles = [];
-        if (Array.isArray(user.roles)) roles = user.roles;
-        else if (user.roles) roles = Object.values(user.roles);
-        if (roles.includes('admin') || roles.includes('Super Admin')) return true;
-
-        let perms = [];
-        if (Array.isArray(user.permissions)) perms = user.permissions;
-        else if (user.permissions) perms = Object.values(user.permissions);
-
-        if (Array.isArray(permission)) {
-            return permission.some(p => perms.includes(p));
-        }
-
-        return perms.includes(permission);
-    } catch (e) {
-        console.error("Error in hasPermission:", e);
-        return false;
-    }
+    return can(permission);
 };
 
 const menuItems = [
@@ -221,7 +199,7 @@ const menuItems = [
         icon: 'users',
         label: 'Data Pelanggan',
         active: (url) => ['/customers', '/customers/gratis', '/customers/active', '/customers/isolir', '/customers/online', '/customers/offline', '/customers/terminated'].some(path => (url || '') === path || (url || '').startsWith(path + '?')),
-        permission: 'menu_customers_all',
+        permission: ['menu_customers_all', 'menu_customers_active', 'menu_customers_online'],
         children: [
             { href: '/customers', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
             { href: '/customers/gratis', label: 'Pelanggan Gratis', active: (url) => (url || '').startsWith('/customers/gratis'), permission: 'menu_customers_all' },
@@ -245,11 +223,11 @@ const menuItems = [
         icon: 'calendar',
         label: 'Pantauan Pelanggan',
         active: (url) => (url || '').startsWith('/monitoring-pelanggan'),
-        permission: 'menu_customers_all',
+        permission: ['menu_monitoring_pelanggan', 'menu_customers_all'],
         children: [
-            { href: '/monitoring-pelanggan?tab=menunggak', label: 'Sering Menunggak', active: (url) => (url || '').startsWith('/monitoring-pelanggan') && ((url || '').includes('tab=menunggak') || !(url || '').includes('tab=')), permission: 'menu_customers_all' },
-            { href: '/monitoring-pelanggan?tab=janji_bayar', label: 'Janji Bayar', active: (url) => (url || '').startsWith('/monitoring-pelanggan') && (url || '').includes('tab=janji_bayar'), permission: 'menu_customers_all' },
-            { href: '/monitoring-pelanggan?tab=stop_sementara', label: 'Stop Sementara', active: (url) => (url || '').startsWith('/monitoring-pelanggan') && (url || '').includes('tab=stop_sementara'), permission: 'menu_customers_all' },
+            { href: '/monitoring-pelanggan?tab=menunggak', label: 'Sering Menunggak', active: (url) => (url || '').startsWith('/monitoring-pelanggan') && ((url || '').includes('tab=menunggak') || !(url || '').includes('tab=')), permission: ['menu_monitoring_pelanggan', 'menu_customers_all'] },
+            { href: '/monitoring-pelanggan?tab=janji_bayar', label: 'Janji Bayar', active: (url) => (url || '').startsWith('/monitoring-pelanggan') && (url || '').includes('tab=janji_bayar'), permission: ['menu_monitoring_pelanggan', 'menu_customers_all'] },
+            { href: '/monitoring-pelanggan?tab=stop_sementara', label: 'Stop Sementara', active: (url) => (url || '').startsWith('/monitoring-pelanggan') && (url || '').includes('tab=stop_sementara'), permission: ['menu_monitoring_pelanggan', 'menu_customers_all'] },
         ]
     },
     {
@@ -270,16 +248,16 @@ const menuItems = [
 
     // 3. BILLING & KEUANGAN
     { type: 'group', label: 'BILLING & KEUANGAN' },
-    { type: 'link', href: '/invoices', icon: 'document-text', label: 'Invoice Pelanggan', active: (url) => (url || '').length > 0 && url === '/invoices', permission: 'menu_customers_all' },
+    { type: 'link', href: '/invoices', icon: 'document-text', label: 'Invoice Pelanggan', active: (url) => (url || '').length > 0 && url === '/invoices', permission: 'menu_invoices' },
     {
         type: 'dropdown',
         icon: 'cash',
         label: 'Penagihan Lapangan',
         active: (url) => ['/customer-billing', '/customer-settlements'].some(path => (url || '').startsWith(path)),
-        permission: 'menu_customers_all',
+        permission: 'menu_customer_billing',
         children: [
-            { href: '/customer-billing', label: 'Terima Setoran', active: (url) => (url || '').startsWith('/customer-billing'), permission: 'menu_customers_all' },
-            { href: '/customer-settlements', label: 'Validasi Setoran', active: (url) => (url || '').startsWith('/customer-settlements'), permission: 'menu_customers_all' },
+            { href: '/customer-billing', label: 'Terima Setoran', active: (url) => (url || '').startsWith('/customer-billing'), permission: 'menu_customer_billing' },
+            { href: '/customer-settlements', label: 'Validasi Setoran', active: (url) => (url || '').startsWith('/customer-settlements'), permission: 'menu_customer_billing' },
         ]
     },
     {
@@ -287,11 +265,11 @@ const menuItems = [
         icon: 'chart-pie',
         label: 'Laporan Keuangan',
         active: (url) => ['/financial-reports', '/customer-reports', '/tax-reports'].some(path => (url || '').startsWith(path)),
-        permission: 'menu_customers_all',
+        permission: 'menu_financial_reports',
         children: [
-            { href: '/financial-reports', label: 'Buku Kas Global', active: (url) => (url || '').startsWith('/financial-reports'), permission: 'menu_customers_all' },
-            { href: '/customer-reports', label: 'Laporan Pelanggan', active: (url) => (url || '').startsWith('/customer-reports'), permission: 'menu_customers_all' },
-            { href: '/tax-reports', label: 'Laporan Pajak', active: (url) => (url || '').startsWith('/tax-reports'), permission: 'menu_customers_all' },
+            { href: '/financial-reports', label: 'Buku Kas Global', active: (url) => (url || '').startsWith('/financial-reports'), permission: 'menu_financial_reports' },
+            { href: '/customer-reports', label: 'Laporan Pelanggan', active: (url) => (url || '').startsWith('/customer-reports'), permission: 'menu_financial_reports' },
+            { href: '/tax-reports', label: 'Laporan Pajak', active: (url) => (url || '').startsWith('/tax-reports'), permission: 'menu_financial_reports' },
         ]
     },
 
@@ -302,11 +280,11 @@ const menuItems = [
         icon: 'support',
         label: 'Komplain Pelanggan (PGK)',
         active: (url) => (url || '').startsWith('/pgk'),
-        permission: 'menu_tickets',
+        permission: ['menu_pgk', 'menu_tickets'],
         children: [
-            { href: '/pgk', label: '1. Komplain Masuk', active: (url) => (url || '').length > 0 && url === '/pgk', permission: 'menu_tickets' },
-            { href: '/pgk/jadwal', label: '2. Jadwal Teknisi', active: (url) => (url || '').startsWith('/pgk/jadwal'), permission: 'menu_tickets' },
-            { href: '/pgk/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgk/laporan'), permission: 'menu_tickets' },
+            { href: '/pgk', label: '1. Komplain Masuk', active: (url) => (url || '').length > 0 && url === '/pgk', permission: ['menu_pgk', 'menu_tickets'] },
+            { href: '/pgk/jadwal', label: '2. Jadwal Teknisi', active: (url) => (url || '').startsWith('/pgk/jadwal'), permission: ['menu_pgk', 'menu_tickets'] },
+            { href: '/pgk/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgk/laporan'), permission: ['menu_pgk', 'menu_tickets'] },
         ]
     },
     {
@@ -314,11 +292,11 @@ const menuItems = [
         icon: 'git-branch',
         label: 'Gangguan Jalur (PGJ)',
         active: (url) => (url || '').startsWith('/pgj'),
-        permission: 'menu_tickets',
+        permission: ['menu_pgj', 'menu_tickets'],
         children: [
-            { href: '/pgj', label: '1. Temuan Jalur', active: (url) => (url || '').length > 0 && url === '/pgj', permission: 'menu_tickets' },
-            { href: '/pgj/jadwal', label: '2. Jadwal & Material', active: (url) => (url || '').startsWith('/pgj/jadwal'), permission: 'menu_tickets' },
-            { href: '/pgj/laporan', label: '3. Laporan Restorasi', active: (url) => (url || '').startsWith('/pgj/laporan'), permission: 'menu_tickets' },
+            { href: '/pgj', label: '1. Temuan Jalur', active: (url) => (url || '').length > 0 && url === '/pgj', permission: ['menu_pgj', 'menu_tickets'] },
+            { href: '/pgj/jadwal', label: '2. Jadwal & Material', active: (url) => (url || '').startsWith('/pgj/jadwal'), permission: ['menu_pgj', 'menu_tickets'] },
+            { href: '/pgj/laporan', label: '3. Laporan Restorasi', active: (url) => (url || '').startsWith('/pgj/laporan'), permission: ['menu_pgj', 'menu_tickets'] },
         ]
     },
     {
@@ -326,11 +304,11 @@ const menuItems = [
         icon: 'zap',
         label: 'Penanganan Sigap (PGS)',
         active: (url) => (url || '').startsWith('/pgs'),
-        permission: 'menu_tickets',
+        permission: ['menu_pgs', 'menu_tickets'],
         children: [
-            { href: '/pgs', label: '1. Temuan & Tindakan', active: (url) => (url || '').length > 0 && url === '/pgs', permission: 'menu_tickets' },
-            { href: '/pgs/jadwal', label: '2. Jadwal & Material', active: (url) => (url || '').startsWith('/pgs/jadwal'), permission: 'menu_tickets' },
-            { href: '/pgs/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgs/laporan'), permission: 'menu_tickets' },
+            { href: '/pgs', label: '1. Temuan & Tindakan', active: (url) => (url || '').length > 0 && url === '/pgs', permission: ['menu_pgs', 'menu_tickets'] },
+            { href: '/pgs/jadwal', label: '2. Jadwal & Material', active: (url) => (url || '').startsWith('/pgs/jadwal'), permission: ['menu_pgs', 'menu_tickets'] },
+            { href: '/pgs/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgs/laporan'), permission: ['menu_pgs', 'menu_tickets'] },
         ]
     },
     {
@@ -338,12 +316,12 @@ const menuItems = [
         icon: 'alert-circle',
         label: 'Ticketing & CBP',
         active: (url) => ['/tickets', '/cbp'].some(path => (url || '').startsWith(path)),
-        permission: 'menu_tickets',
+        permission: ['menu_tickets', 'menu_cbp'],
         children: [
             { href: '/tickets', label: 'Semua Gangguan', active: (url) => (url || '').length > 0 && url === '/tickets', permission: 'menu_tickets' },
-            { href: '/cbp', label: 'CBP / Cabut Perangkat', active: (url) => (url || '').length > 0 && url === '/cbp', permission: 'menu_tickets' },
-            { href: '/cbp/jadwal', label: 'Jadwal CBP', active: (url) => (url || '').startsWith('/cbp/jadwal'), permission: 'menu_tickets' },
-            { href: '/cbp/laporan', label: 'Laporan CBP', active: (url) => (url || '').startsWith('/cbp/laporan'), permission: 'menu_tickets' },
+            { href: '/cbp', label: 'CBP / Cabut Perangkat', active: (url) => (url || '').length > 0 && url === '/cbp', permission: 'menu_cbp' },
+            { href: '/cbp/jadwal', label: 'Jadwal CBP', active: (url) => (url || '').startsWith('/cbp/jadwal'), permission: 'menu_cbp' },
+            { href: '/cbp/laporan', label: 'Laporan CBP', active: (url) => (url || '').startsWith('/cbp/laporan'), permission: 'menu_cbp' },
         ]
     },
 
@@ -372,9 +350,9 @@ const menuItems = [
         permission: 'menu_resellers',
         children: [
             { href: '/reseller-requests', label: 'Riwayat Saldo', active: (url) => (url || '').startsWith('/reseller-requests'), permission: 'menu_resellers' },
-            { href: '/reseller-billing', label: 'Penagihan Kasbon', active: (url) => (url || '').startsWith('/reseller-billing'), permission: 'menu_customers_all' },
-            { href: '/reseller-settlements', label: 'Pelunasan Kasbon', active: (url) => (url || '').startsWith('/reseller-settlements'), permission: 'menu_customers_all' },
-            { href: '/reseller-reports', label: 'Laporan Reseller', active: (url) => (url || '').startsWith('/reseller-reports'), permission: 'menu_customers_all' },
+            { href: '/reseller-billing', label: 'Penagihan Kasbon', active: (url) => (url || '').startsWith('/reseller-billing'), permission: 'menu_resellers' },
+            { href: '/reseller-settlements', label: 'Pelunasan Kasbon', active: (url) => (url || '').startsWith('/reseller-settlements'), permission: 'menu_resellers' },
+            { href: '/reseller-reports', label: 'Laporan Reseller', active: (url) => (url || '').startsWith('/reseller-reports'), permission: 'menu_resellers' },
         ]
     },
 
@@ -385,12 +363,12 @@ const menuItems = [
         icon: 'gift',
         label: 'Marketing Afiliasi',
         active: (url) => (url || '').startsWith('/marketing/affiliates'),
-        permission: 'menu_customers_all',
+        permission: 'menu_marketing_affiliates',
         children: [
-            { href: '/marketing/affiliates?tab=settings', label: 'Pengaturan Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && ((url || '').includes('tab=settings') || !(url || '').includes('tab=')), permission: 'menu_customers_all' },
-            { href: '/marketing/affiliates?tab=affiliates', label: 'Mitra & Agen Sales', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=affiliates'), permission: 'menu_customers_all' },
-            { href: '/marketing/affiliates?tab=commissions', label: 'Riwayat Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=commissions'), permission: 'menu_customers_all' },
-            { href: '/marketing/affiliates?tab=withdrawals', label: 'Pencairan Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=withdrawals'), permission: 'menu_customers_all' },
+            { href: '/marketing/affiliates?tab=settings', label: 'Pengaturan Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && ((url || '').includes('tab=settings') || !(url || '').includes('tab=')), permission: 'menu_marketing_affiliates' },
+            { href: '/marketing/affiliates?tab=affiliates', label: 'Mitra & Agen Sales', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=affiliates'), permission: 'menu_marketing_affiliates' },
+            { href: '/marketing/affiliates?tab=commissions', label: 'Riwayat Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=commissions'), permission: 'menu_marketing_affiliates' },
+            { href: '/marketing/affiliates?tab=withdrawals', label: 'Pencairan Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=withdrawals'), permission: 'menu_marketing_affiliates' },
         ]
     },
     {
@@ -408,7 +386,7 @@ const menuItems = [
         icon: 'globe',
         label: 'Peta & Topologi',
         active: (url) => ['/network-topology', '/network-radar', '/network-data'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_network_topology', 'menu_network_data'],
+        permission: ['menu_network_topology', 'menu_network_data', 'menu_ftth'],
         children: [
             { href: '/network-topology', label: 'Network Topology', active: (url) => (url || '').startsWith('/network-topology'), permission: 'menu_network_topology' },
             { href: '/network-radar', label: 'Radar Tikor', active: (url) => (url || '').startsWith('/network-radar'), permission: 'menu_network_topology' },
@@ -421,9 +399,9 @@ const menuItems = [
         icon: 'server',
         label: 'Perangkat OSP / FTTH',
         active: (url) => ['/olts', '/odcs', '/odps', '/onts', '/find-onu', '/infrastructure/work-orders'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_network_olt', 'menu_network_odc', 'menu_network_odp', 'menu_network_ont'],
+        permission: ['menu_infrastructure_work_orders', 'menu_network_olt', 'menu_network_odc', 'menu_network_odp', 'menu_network_ont'],
         children: [
-            { href: '/infrastructure/work-orders', label: '⚡ Rollout ODC & ODP', active: (url) => (url || '').startsWith('/infrastructure/work-orders'), permission: ['menu_network_odc', 'menu_network_odp'] },
+            { href: '/infrastructure/work-orders', label: '⚡ Rollout ODC & ODP', active: (url) => (url || '').startsWith('/infrastructure/work-orders'), permission: ['menu_infrastructure_work_orders', 'menu_network_odc', 'menu_network_odp'] },
             { href: '/olts', label: 'Data OLT', active: (url) => (url || '').startsWith('/olts'), permission: 'menu_network_olt' },
             { href: '/odcs', label: 'Data ODC', active: (url) => (url || '').startsWith('/odcs'), permission: 'menu_network_odc' },
             { href: '/odps', label: 'Data ODP', active: (url) => (url || '').startsWith('/odps'), permission: 'menu_network_odp' },
@@ -436,7 +414,7 @@ const menuItems = [
         icon: 'wifi',
         label: 'MikroTik & RADIUS',
         active: (url) => (url || '').startsWith('/routers') || (url || '').startsWith('/radius'),
-        permission: 'menu_routers',
+        permission: ['menu_routers', 'menu_radius_nas', 'menu_radius_online_users', 'menu_radius_auth_logs'],
         children: [
             { href: '/routers', label: 'Data Router', active: (url) => (url || '').startsWith('/routers'), permission: 'menu_routers' },
             { href: '/radius/nas', label: 'NAS / Router', active: (url) => (url || '').startsWith('/radius/nas'), permission: 'menu_radius_nas' },
@@ -452,12 +430,12 @@ const menuItems = [
         icon: 'archive',
         label: 'Inventaris & Stok',
         active: (url) => (url || '').startsWith('/produk') || (url || '').startsWith('/order-toko') || (url || '').startsWith('/stok-in-out') || (url || '').startsWith('/warehouse-stocks'),
-        permission: 'menu_materials',
+        permission: ['menu_materials', 'menu_inventory', 'menu_material_transactions'],
         children: [
             { href: '/produk', label: 'Data Produk & Material', active: (url) => (url || '').startsWith('/produk'), permission: 'menu_materials' },
-            { href: '/order-toko', label: 'Order Toko (Restock)', active: (url) => (url || '').startsWith('/order-toko'), permission: 'menu_materials' },
-            { href: '/stok-in-out', label: 'Stock Opname Per Area', active: (url) => (url || '').startsWith('/stok-in-out'), permission: 'menu_materials' },
-            { href: '/warehouse-stocks', label: 'Inventory Gudang', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: 'menu_materials' },
+            { href: '/order-toko', label: 'Order Toko (Restock)', active: (url) => (url || '').startsWith('/order-toko'), permission: ['menu_materials', 'menu_inventory'] },
+            { href: '/stok-in-out', label: 'Stock Opname Per Area', active: (url) => (url || '').startsWith('/stok-in-out'), permission: ['menu_materials', 'menu_inventory'] },
+            { href: '/warehouse-stocks', label: 'Inventory Gudang', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: ['menu_materials', 'menu_inventory'] },
         ]
     },
 
@@ -468,12 +446,12 @@ const menuItems = [
         icon: 'briefcase',
         label: 'Karyawan & Shift',
         active: (url) => ['/employees', '/positions', '/shifts', '/work-schedules'].some(path => (url || '').startsWith(path)),
-        permission: 'menu_hr_employees',
+        permission: ['menu_hr_employees', 'menu_hr_positions', 'menu_shifts'],
         children: [
             { href: '/employees', label: 'Data Karyawan', active: (url) => (url || '').startsWith('/employees'), permission: 'menu_hr_employees' },
             { href: '/positions', label: 'Posisi / Jabatan', active: (url) => (url || '').startsWith('/positions'), permission: 'menu_hr_positions' },
-            { href: '/shifts', label: 'Shift Kerja', active: (url) => (url || '').startsWith('/shifts'), permission: 'menu_hr_employees' },
-            { href: '/work-schedules', label: 'Jadwal Kerja', active: (url) => (url || '').startsWith('/work-schedules'), permission: 'menu_hr_employees' },
+            { href: '/shifts', label: 'Shift Kerja', active: (url) => (url || '').startsWith('/shifts'), permission: ['menu_shifts', 'menu_hr_employees'] },
+            { href: '/work-schedules', label: 'Jadwal Kerja', active: (url) => (url || '').startsWith('/work-schedules'), permission: ['menu_shifts', 'menu_hr_employees'] },
         ]
     },
     {
@@ -481,13 +459,13 @@ const menuItems = [
         icon: 'badge-check',
         label: 'Sistem Presensi & Absensi',
         active: (url) => ['/attendances', '/absen-terbaik', '/absen-khusus', '/absen-tugas-luar'].some(path => (url || '').startsWith(path)),
-        permission: 'menu_hr_employees',
+        permission: 'menu_attendances',
         children: [
-            { href: '/attendances', label: 'Absensi Reguler', active: (url) => (url || '').startsWith('/attendances'), permission: 'menu_hr_employees' },
-            { href: '/absen-terbaik', label: 'Absen Terbaik', active: (url) => (url || '').startsWith('/absen-terbaik'), permission: 'menu_hr_employees' },
-            { href: '/absen-khusus', label: 'Absen Tim Khusus', active: (url) => (url || '').startsWith('/absen-khusus'), permission: 'menu_hr_employees' },
-            { href: '/absen-tugas-luar', label: 'Absen Tugas Luar', active: (url) => (url || '').startsWith('/absen-tugas-luar'), permission: 'menu_hr_employees' },
-            { href: '/settings/attendance', label: 'Pengaturan Absensi', active: (url) => (url || '').startsWith('/settings/attendance'), permission: 'menu_hr_employees' },
+            { href: '/attendances', label: 'Absensi Reguler', active: (url) => (url || '').startsWith('/attendances'), permission: 'menu_attendances' },
+            { href: '/absen-terbaik', label: 'Absen Terbaik', active: (url) => (url || '').startsWith('/absen-terbaik'), permission: 'menu_attendances' },
+            { href: '/absen-khusus', label: 'Absen Tim Khusus', active: (url) => (url || '').startsWith('/absen-khusus'), permission: 'menu_attendances' },
+            { href: '/absen-tugas-luar', label: 'Absen Tugas Luar', active: (url) => (url || '').startsWith('/absen-tugas-luar'), permission: 'menu_attendances' },
+            { href: '/settings/attendance', label: 'Pengaturan Absensi', active: (url) => (url || '').startsWith('/settings/attendance'), permission: ['menu_settings_attendance', 'menu_attendances'] },
         ]
     },
     {
@@ -495,11 +473,11 @@ const menuItems = [
         icon: 'calculator',
         label: 'Penggajian & Insentif',
         active: (url) => ['/payroll', '/bonus-target-market', '/insentif-potongan'].some(path => (url || '').startsWith(path)),
-        permission: 'menu_hr_employees',
+        permission: 'menu_payroll',
         children: [
-            { href: '/payroll', label: 'Gaji & Payroll', active: (url) => (url || '').length > 0 && url === '/payroll', permission: 'menu_hr_employees' },
-            { href: '/bonus-target-market', label: 'Bonus Target Market', active: (url) => (url || '').startsWith('/bonus-target-market'), permission: 'menu_hr_employees' },
-            { href: '/insentif-potongan', label: 'Histori Insentif', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: 'menu_hr_employees' },
+            { href: '/payroll', label: 'Gaji & Payroll', active: (url) => (url || '').length > 0 && url === '/payroll', permission: 'menu_payroll' },
+            { href: '/bonus-target-market', label: 'Bonus Target Market', active: (url) => (url || '').startsWith('/bonus-target-market'), permission: ['menu_target_market', 'menu_payroll'] },
+            { href: '/insentif-potongan', label: 'Histori Insentif', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: 'menu_payroll' },
         ]
     },
 
@@ -510,11 +488,11 @@ const menuItems = [
         icon: 'cog',
         label: 'Konfigurasi Sistem',
         active: (url) => ['/settings/branding', '/settings/billing', '/settings/payroll', '/settings/resellers', '/settings/api'].some(path => (url || '').startsWith(path)),
-        permission: 'menu_settings_roles',
+        permission: ['menu_settings_branding', 'menu_settings_billing', 'menu_settings_payroll', 'menu_settings_api', 'menu_settings_roles'],
         children: [
             { href: '/settings/branding', label: 'Branding & Tampilan', active: (url) => (url || '').startsWith('/settings/branding'), permission: 'menu_settings_branding' },
-            { href: '/settings/billing', label: 'Billing / Invoice', active: (url) => (url || '').startsWith('/settings/billing'), permission: 'menu_settings_branding' },
-            { href: '/settings/payroll', label: 'Sistem Gaji', active: (url) => (url || '').startsWith('/settings/payroll'), permission: 'menu_hr_employees' },
+            { href: '/settings/billing', label: 'Billing / Invoice', active: (url) => (url || '').startsWith('/settings/billing'), permission: 'menu_settings_billing' },
+            { href: '/settings/payroll', label: 'Sistem Gaji', active: (url) => (url || '').startsWith('/settings/payroll'), permission: 'menu_settings_payroll' },
             { href: '/settings/resellers', label: 'Pengaturan Reseller', active: (url) => (url || '').startsWith('/settings/resellers'), permission: 'menu_settings_roles' },
             { href: '/settings/api', label: 'API & Integrasi', active: (url) => (url || '').startsWith('/settings/api'), permission: 'menu_settings_api' },
         ]
@@ -524,12 +502,12 @@ const menuItems = [
         icon: 'box',
         label: 'Master Data',
         active: (url) => ['/settings/areas', '/settings/payroll-categories', '/settings/master-fees', '/settings/expense-categories'].some(path => (url || '').startsWith(path)),
-        permission: 'menu_settings_areas',
+        permission: ['menu_settings_areas', 'menu_settings_payroll', 'menu_settings_roles'],
         children: [
             { href: '/settings/areas', label: 'Master Area', active: (url) => (url || '').startsWith('/settings/areas'), permission: 'menu_settings_areas' },
             { href: '/settings/expense-categories', label: 'Kategori Pengeluaran', active: (url) => (url || '').startsWith('/settings/expense-categories'), permission: 'menu_settings_areas' },
-            { href: '/settings/master-fees', label: 'Master Fee Teknisi/Sales', active: (url) => (url || '').startsWith('/settings/master-fees'), permission: 'menu_hr_employees' },
-            { href: '/settings/payroll-categories', label: 'Kategori Insentif/Potongan', active: (url) => (url || '').startsWith('/settings/payroll-categories'), permission: 'menu_hr_employees' },
+            { href: '/settings/master-fees', label: 'Master Fee Teknisi/Sales', active: (url) => (url || '').startsWith('/settings/master-fees'), permission: 'menu_settings_payroll' },
+            { href: '/settings/payroll-categories', label: 'Kategori Insentif/Potongan', active: (url) => (url || '').startsWith('/settings/payroll-categories'), permission: 'menu_settings_payroll' },
         ]
     },
     {
@@ -537,7 +515,7 @@ const menuItems = [
         icon: 'lock-closed',
         label: 'Hak Akses Pengguna',
         active: (url) => ['/users', '/settings/roles'].some(path => (url || '').startsWith(path)),
-        permission: 'menu_users',
+        permission: ['menu_users', 'menu_settings_roles'],
         children: [
             { href: '/users', label: 'Manajemen User', active: (url) => (url || '').startsWith('/users'), permission: 'menu_users' },
             { href: '/settings/roles', label: 'Role & Akses', active: (url) => (url || '').startsWith('/settings/roles'), permission: 'menu_settings_roles' },

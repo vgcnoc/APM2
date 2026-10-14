@@ -38,6 +38,23 @@ class InvoiceController extends Controller
         }])->where('is_reseller_balance', false)
            ->whereHas('customer', fn($q) => $q->where('service_status', '!=', 'gratis'));
 
+        $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
+        $userAreaIds = auth()->check() ? auth()->user()->getAccessibleAreaIds() : [];
+
+        $scopedAreaFilter = function($q) use ($isAreaRestricted, $userAreaIds) {
+            if ($isAreaRestricted) {
+                if (auth()->user()->can('invoices_view_area')) {
+                    $q->whereHas('customer', function($cq) use ($userAreaIds) {
+                        $cq->whereIn('area_id', $userAreaIds);
+                    });
+                } else {
+                    $q->where('id', -1);
+                }
+            }
+        };
+
+        $scopedAreaFilter($query);
+
         $tab = $request->query('tab', 'semua');
         if ($tab === 'jatuh_tempo') {
             $query->where('due_date', '<', now())->where('status', '!=', 'paid');
@@ -94,6 +111,7 @@ class InvoiceController extends Controller
         // Get counts for tabs
         $baseQuery = Invoice::where('is_reseller_balance', false)
             ->whereHas('customer', fn($q) => $q->where('service_status', '!=', 'gratis'));
+        $scopedAreaFilter($baseQuery);
         
         $stats = [
             'semua' => (clone $baseQuery)->count(),
@@ -185,7 +203,9 @@ class InvoiceController extends Controller
             'stats' => $stats,
             'invoice_issue_date' => (int) \App\Models\Setting::get('invoice_issue_date', '1'),
             'packages' => \App\Models\InternetPackage::active()->orderBy('price')->get(['id', 'name', 'price', 'speed_mbps']),
-            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'areas' => $isAreaRestricted
+                ? \App\Models\Area::whereIn('id', $userAreaIds)->orderBy('name')->get(['id', 'name'])
+                : \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'lead_technicians' => $leadTechnicians,
             'filters' => $request->only(['search', 'status', 'start_date', 'end_date', 'area_id', 'tab']),
             'payment_banks' => json_decode(\App\Models\Setting::get('payment_banks', '[]'), true),

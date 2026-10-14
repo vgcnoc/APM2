@@ -14,122 +14,138 @@ class RoleAndPermissionSeeder extends Seeder
         // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // create permissions
-        $permissions = [
-            // Menu Dashboard
-            'menu_dashboard',
-            
-            // Menu Customers
-            'menu_customers_booking', 'customers_booking_create', 'customers_booking_edit', 'customers_booking_delete',
-            'menu_customers_survey', 'customers_survey_create', 'customers_survey_edit', 'customers_survey_delete', 'customers_survey_report',
-            'menu_customers_installed', 'customers_installed_create', 'customers_installed_edit', 'customers_installed_delete', 'customers_installed_report',
-            'menu_customers_activation', 'customers_activation_create', 'customers_activation_edit', 'customers_activation_delete',
-            'menu_customers_active', 'customers_active_create', 'customers_active_edit', 'customers_active_delete',
-            'menu_customers_online',
-            'menu_customers_all', 'customers_all_create', 'customers_all_edit', 'customers_all_delete',
-            
-            // Menu Network
-            'menu_ftth', 'ftth_create', 'ftth_edit', 'ftth_delete',
-            'menu_network_topology', 'network_topology_create', 'network_topology_edit', 'network_topology_delete',
-            'menu_network_data', 'network_data_create', 'network_data_edit', 'network_data_delete',
-            'menu_network_olt', 'network_olt_create', 'network_olt_edit', 'network_olt_delete',
-            'menu_network_odc', 'network_odc_create', 'network_odc_edit', 'network_odc_delete',
-            'menu_network_odp', 'network_odp_create', 'network_odp_edit', 'network_odp_delete',
-            'menu_network_ont', 'network_ont_create', 'network_ont_edit', 'network_ont_delete',
-            'menu_infrastructure_work_orders', 'infrastructure_work_orders_create', 'infrastructure_work_orders_edit', 'infrastructure_work_orders_delete', 'infrastructure_work_orders_approve',
-            
-            // Menu Materials
-            'menu_materials', 'materials_create', 'materials_edit', 'materials_delete',
-            'menu_material_transactions', 'material_transactions_create', 'material_transactions_edit', 'material_transactions_delete',
-            
-            // Menu Routers
-            'menu_routers', 'routers_create', 'routers_edit', 'routers_delete',
+        // 1. Register all permissions from master registry
+        $registry = \App\Http\Controllers\RoleController::getPermissionRegistry();
+        $allPermissionNames = [];
 
-            // Menu RADIUS
-            'menu_radius_nas', 'radius_nas_create', 'radius_nas_edit', 'radius_nas_delete',
-            'menu_radius_online_users', 'radius_online_users_disconnect',
-            'menu_radius_auth_logs',
-            
-            // Menu Tickets
-            'menu_tickets', 'tickets_create', 'tickets_edit', 'tickets_delete',
-            
-            // Menu Billing (Invoices & Payments)
-            'menu_invoices', 'invoices_create', 'invoices_edit', 'invoices_delete',
-            'menu_payments', 'payments_create', 'payments_edit', 'payments_delete',
-
-            // Menu Vouchers & Resellers
-            'menu_vouchers', 'vouchers_create', 'vouchers_edit', 'vouchers_delete', 'vouchers_print',
-            'menu_vouchers_profiles', 'vouchers_profiles_create', 'vouchers_profiles_edit', 'vouchers_profiles_delete',
-            'menu_resellers', 'resellers_create', 'resellers_edit', 'resellers_delete',
-            
-            // Menu Settings / HR
-            'menu_hr_employees', 'hr_employees_create', 'hr_employees_edit', 'hr_employees_delete',
-            'menu_hr_positions', 'hr_positions_create', 'hr_positions_edit', 'hr_positions_delete',
-            'menu_settings_areas', 'settings_areas_create', 'settings_areas_edit', 'settings_areas_delete',
-            'menu_settings_roles', 'settings_roles_create', 'settings_roles_edit', 'settings_roles_delete',
-            'menu_settings_branding', 'settings_branding_create', 'settings_branding_edit', 'settings_branding_delete',
-            'menu_settings_api', 'settings_api_create', 'settings_api_edit', 'settings_api_delete',
-            'menu_users', 'users_create', 'users_edit', 'users_delete',
-            'menu_internet_packages', 'internet_packages_create', 'internet_packages_edit', 'internet_packages_delete',
-        ];
-
-        foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
-        }
-
-        // create roles and assign created permissions
-        $roleAdmin = Role::firstOrCreate(['name' => 'admin']);
-        $roleAdmin->givePermissionTo(Permission::all());
-
-        $roleNoc = Role::firstOrCreate(['name' => 'noc']);
-        $roleNoc->givePermissionTo([
-            'menu_dashboard', 'menu_ftth', 'menu_network_topology', 'menu_network_data',
-            'menu_network_olt', 'menu_network_odc', 'menu_network_odp', 'menu_network_ont',
-            'menu_infrastructure_work_orders', 'infrastructure_work_orders_create', 'infrastructure_work_orders_edit', 'infrastructure_work_orders_approve',
-            'menu_customers_installed', 'menu_customers_activation', 'menu_customers_online',
-            'menu_routers', 'routers_create', 'routers_edit', 'routers_delete',
-            'menu_radius_nas', 'radius_nas_create', 'radius_nas_edit', 'radius_nas_delete',
-            'menu_radius_online_users', 'radius_online_users_disconnect',
-            'menu_radius_auth_logs',
-            'menu_tickets', 'tickets_create', 'tickets_edit', 'tickets_delete',
-        ]);
-
-        $roleTeknisi = Role::firstOrCreate(['name' => 'teknisi']);
-        $roleTeknisi->givePermissionTo([
-            'menu_dashboard', 'menu_ftth', 'menu_materials', 'menu_material_transactions',
-            'menu_infrastructure_work_orders', 'menu_network_odc', 'menu_network_odp',
-            'menu_customers_installed', 'customers_installed_report', 'customers_installed_edit',
-            'menu_tickets', 'tickets_edit',
-        ]);
-
-        $roleCs = Role::firstOrCreate(['name' => 'cs']);
-        $roleCs->givePermissionTo([
-            'menu_dashboard', 'menu_customers_booking', 'menu_customers_survey', 
-            'menu_customers_active', 'menu_customers_all', 'menu_customers_online',
-            'customers_booking_create', 'customers_booking_edit',
-            'customers_survey_create', 'customers_survey_edit',
-            'customers_active_create', 'customers_active_edit',
-            'customers_all_create', 'customers_all_edit',
-            'menu_tickets', 'tickets_create', 'tickets_edit', 'tickets_delete',
-            'menu_invoices', 'invoices_create', 'invoices_edit', 'invoices_delete',
-            'menu_payments', 'payments_create', 'payments_edit', 'payments_delete',
-        ]);
-
-        $roleSales = Role::firstOrCreate(['name' => 'sales']);
-        $roleSales->givePermissionTo([
-            'menu_dashboard', 'menu_customers_booking', 'menu_customers_active',
-            'customers_booking_create',
-            'menu_tickets', 'tickets_create'
-        ]);
-
-        // assign role to existing users based on their 'role' column
-        $users = User::all();
-        foreach ($users as $user) {
-            if ($user->role && Role::where('name', $user->role)->exists()) {
-                $user->assignRole($user->role);
-            } else {
-                $user->assignRole('admin'); // fallback to admin so no one gets locked out
+        foreach ($registry as $group) {
+            foreach ($group['permissions'] as $perm) {
+                Permission::firstOrCreate([
+                    'name' => $perm['name'],
+                    'guard_name' => 'web',
+                ]);
+                $allPermissionNames[] = $perm['name'];
             }
         }
+
+        // 2. Role Admin / Superadmin -> all permissions
+        $roleAdmin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $roleAdmin->syncPermissions(Permission::all());
+
+        // 3. Role NOC
+        $roleNoc = Role::firstOrCreate(['name' => 'noc', 'guard_name' => 'web']);
+        $roleNoc->givePermissionTo([
+            'menu_dashboard', 'dashboard_view_stats', 'dashboard_view_charts',
+            // Network & Topologi
+            'menu_network_topology', 'menu_network_data', 'menu_ftth', 'ftth_manage',
+            'menu_network_olt', 'network_olt_create', 'network_olt_edit', 'network_olt_delete', 'network_olt_view_all',
+            'menu_network_odc', 'network_odc_create', 'network_odc_edit', 'network_odc_delete', 'network_odc_view_all',
+            'menu_network_odp', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_view_all',
+            'menu_network_ont', 'network_ont_create', 'network_ont_edit', 'network_ont_delete', 'network_ont_view_all',
+            'menu_network_find_onu',
+            // Rollout ODC & ODP
+            'menu_infrastructure_work_orders', 'infrastructure_work_orders_create', 'infrastructure_work_orders_edit',
+            'infrastructure_work_orders_dispatch', 'infrastructure_work_orders_report', 'infrastructure_work_orders_approve',
+            'infrastructure_work_orders_view_all',
+            // Router & RADIUS
+            'menu_routers', 'routers_create', 'routers_edit', 'routers_delete', 'routers_ping',
+            'menu_radius_nas', 'radius_nas_create', 'radius_nas_edit', 'radius_nas_delete',
+            'menu_radius_online_users', 'radius_online_users_disconnect',
+            'menu_radius_auth_logs',
+            // Pelanggan (Instalasi & Aktivasi)
+            'menu_customers_installed', 'customers_installed_edit', 'customers_installed_report', 'customers_installed_view_all',
+            'menu_customers_activation', 'customers_activation_activate', 'customers_activation_view_all',
+            'menu_customers_active', 'customers_active_suspend', 'customers_active_view_all',
+            'menu_customers_online',
+            'menu_customers_all', 'customers_all_view_all',
+            // Tickets & Gangguan
+            'menu_tickets', 'tickets_create', 'tickets_edit', 'tickets_delete', 'tickets_assign', 'tickets_close', 'tickets_view_all',
+            'menu_cbp', 'cbp_manage',
+            'menu_pgk', 'pgk_manage',
+            'menu_pgj', 'pgj_manage',
+            'menu_pgs', 'pgs_manage',
+        ]);
+
+        // 4. Role Teknisi
+        $roleTeknisi = Role::firstOrCreate(['name' => 'teknisi', 'guard_name' => 'web']);
+        $roleTeknisi->givePermissionTo([
+            'menu_dashboard',
+            // Jaringan Lapangan
+            'menu_ftth',
+            'menu_network_odc', 'network_odc_view_area',
+            'menu_network_odp', 'network_odp_view_area',
+            // Rollout Pekerjaan
+            'menu_infrastructure_work_orders', 'infrastructure_work_orders_report', 'infrastructure_work_orders_view_area',
+            // Material Gudang
+            'menu_materials', 'materials_view_area',
+            'menu_material_transactions', 'material_transactions_create', 'material_transactions_view_area',
+            // Pekerjaan Pelanggan
+            'menu_customers_survey', 'customers_survey_report', 'customers_survey_view_area',
+            'menu_customers_installed', 'customers_installed_report', 'customers_installed_edit', 'customers_installed_view_area',
+            // Tiket Lapangan
+            'menu_tickets', 'tickets_edit', 'tickets_close', 'tickets_view_area',
+            'menu_cbp', 'cbp_manage',
+            'menu_pgk', 'menu_pgj', 'menu_pgs',
+            // Presensi Diri Sendiri
+            'menu_attendances',
+        ]);
+
+        // 5. Role CS (Customer Service)
+        $roleCs = Role::firstOrCreate(['name' => 'cs', 'guard_name' => 'web']);
+        $roleCs->givePermissionTo([
+            'menu_dashboard', 'dashboard_view_stats',
+            // Pelanggan Flow
+            'menu_customers_booking', 'customers_booking_create', 'customers_booking_edit', 'customers_booking_request_survey', 'customers_booking_whatsapp', 'customers_booking_view_all',
+            'menu_customers_survey', 'customers_survey_assign', 'customers_survey_reschedule', 'customers_survey_view_all',
+            'menu_customers_installed', 'customers_installed_assign', 'customers_installed_view_all',
+            'menu_customers_activation', 'customers_activation_view_all',
+            'menu_customers_active', 'customers_active_edit', 'customers_active_view_all',
+            'menu_customers_online',
+            'menu_customers_all', 'customers_all_create', 'customers_all_edit', 'customers_all_export', 'customers_all_view_all',
+            'menu_monitoring_pelanggan', 'monitoring_pelanggan_manage',
+            // Tiket & Gangguan
+            'menu_tickets', 'tickets_create', 'tickets_edit', 'tickets_assign', 'tickets_close', 'tickets_view_all',
+            'menu_pgk', 'pgk_manage',
+            // Billing & Invoice Pelanggan
+            'menu_invoices', 'invoices_create', 'invoices_edit', 'invoices_pay', 'invoices_promise', 'invoices_print', 'invoices_view_all',
+            'menu_customer_billing', 'customer_billing_collect',
+            // Info Paket Internet
+            'menu_internet_packages',
+        ]);
+
+        // 6. Role Sales
+        $roleSales = Role::firstOrCreate(['name' => 'sales', 'guard_name' => 'web']);
+        $roleSales->givePermissionTo([
+            'menu_dashboard',
+            'menu_customers_booking', 'customers_booking_create', 'customers_booking_edit', 'customers_booking_whatsapp', 'customers_booking_view_area',
+            'menu_customers_survey', 'customers_survey_view_area',
+            'menu_customers_active', 'customers_active_view_area',
+            'menu_customers_all', 'customers_all_create', 'customers_all_view_area',
+            'menu_marketing_affiliates',
+            'menu_tickets', 'tickets_create',
+            'menu_internet_packages',
+        ]);
+
+        // 7. Role Reseller
+        $roleReseller = Role::firstOrCreate(['name' => 'reseller', 'guard_name' => 'web']);
+        $roleReseller->givePermissionTo([
+            'menu_dashboard',
+            'menu_vouchers', 'vouchers_create', 'vouchers_print',
+        ]);
+
+        // 8. Assign roles to users based on user->role if they don't have roles assigned
+        $users = User::all();
+        foreach ($users as $user) {
+            if ($user->roles()->count() === 0) {
+                if ($user->role && Role::where('name', $user->role)->exists()) {
+                    $user->assignRole($user->role);
+                } else {
+                    $user->assignRole('admin');
+                }
+            }
+        }
+
+        // Final cache clear
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
     }
 }
