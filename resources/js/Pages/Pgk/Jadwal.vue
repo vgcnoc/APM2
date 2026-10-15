@@ -158,6 +158,19 @@
                                         <div v-else class="text-gray-400 italic text-xs mt-0.5">Belum ada material disiapkan</div>
                                     </div>
 
+                                    <!-- Status Pengembalian / Retur Sisa Material ke Gudang -->
+                                    <div v-if="ticket.materials && ticket.materials.some(m => parseFloat(m.quantity_returned) > 0)" class="mt-2 pt-1 border-t border-gray-100">
+                                        <div class="text-[10px] text-blue-700 font-bold uppercase flex items-center gap-1">
+                                            <span>↩️ Retur Sisa ke Gudang:</span>
+                                        </div>
+                                        <div class="space-y-0.5 mt-0.5">
+                                            <div v-for="m in ticket.materials.filter(m => parseFloat(m.quantity_returned) > 0)" :key="'ret-m-' + m.id" class="text-[11px] bg-blue-50 px-2 py-0.5 rounded border border-blue-200 flex justify-between text-blue-900 font-medium">
+                                                <span>{{ m.material?.name }}</span>
+                                                <span class="font-bold text-blue-800">+{{ parseFloat(m.quantity_returned) }} {{ m.unit || m.material?.unit }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- Status Permintaan Tambahan Material Lapangan -->
                                     <div v-if="ticket.material_requests && ticket.material_requests.length > 0" class="mt-2 pt-2 border-t border-gray-100">
                                         <div class="text-[10px] text-gray-500 font-bold uppercase flex items-center justify-between">

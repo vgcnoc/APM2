@@ -142,6 +142,10 @@
                                         <div v-if="ticket.resolution_notes" class="mt-1 text-[11px] text-gray-500 italic">
                                             "{{ ticket.resolution_notes }}"
                                         </div>
+                                        <div v-if="ticket.materials && ticket.materials.some(m => parseFloat(m.quantity_returned) > 0)" class="mt-1.5 p-1.5 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-900 flex items-center gap-1">
+                                            <span class="font-bold">↩️ Sisa Dikembalikan:</span>
+                                            <span>{{ ticket.materials.filter(m => parseFloat(m.quantity_returned) > 0).map(m => '+' + parseFloat(m.quantity_returned) + ' ' + (m.unit || m.material?.unit) + ' ' + m.material?.name).join(', ') }}</span>
+                                        </div>
                                     </div>
                                     <div v-else class="text-xs text-gray-400 italic">
                                         Menunggu teknisi melaporkan hasil perbaikan lapangan...
@@ -445,6 +449,33 @@
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Banner Rincian Pengembalian Kelebihan Material (Retur Gudang) -->
+                        <div v-if="returnedMaterialsList.length > 0" class="p-3.5 rounded-2xl bg-blue-50/90 border border-blue-200 text-xs text-blue-950 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <div class="font-bold flex items-center gap-1.5 text-blue-900">
+                                    <span class="text-base">↩️</span>
+                                    <span>Alur Pengembalian Kelebihan Material (Retur ke Gudang)</span>
+                                </div>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-200 text-blue-900 border border-blue-300">
+                                    {{ returnedMaterialsList.length }} Item Harus Dikembalikan
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-blue-800 leading-relaxed">
+                                Sisa material yang tidak habis terpakai wajib diserahkan kembali ke kantor/gudang. Saat laporan disimpan, sistem otomatis membuat transaksi retur masuk (<b>IN-PGK-RET-...</b>) dan <b>menambah kembali stok gudang</b>:
+                            </p>
+                            <div class="space-y-1.5">
+                                <div v-for="ret in returnedMaterialsList" :key="'ret-' + ret.material_id" class="p-2.5 rounded-xl bg-white border border-blue-200 flex items-center justify-between shadow-sm">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-gray-900">{{ ret.name }}</span>
+                                        <span class="text-[11px] text-gray-500">(Bawa: {{ ret.quantity_prepared }} {{ ret.unit }} | Terpakai: {{ ret.quantity_used }} {{ ret.unit }})</span>
+                                    </div>
+                                    <span class="font-mono font-black text-xs text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
+                                        ↩️ Sisa Kembali: {{ ret.quantity_returned }} {{ ret.unit }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -1125,6 +1156,10 @@ const countUsedMaterials = computed(() => {
 
 const countReturnedMaterials = computed(() => {
     return reportForm.materials.filter(m => parseFloat(m.quantity_returned) > 0).length;
+});
+
+const returnedMaterialsList = computed(() => {
+    return reportForm.materials.filter(m => parseFloat(m.quantity_returned) > 0);
 });
 
 // Photo Change Handlers

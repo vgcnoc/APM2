@@ -733,7 +733,13 @@ class PgkController extends Controller
             'Teknisi melaporkan penanganan komplain selesai: ' . $validated['action_taken']
         );
 
-        return redirect()->back()->with('success', 'Laporan penanganan komplain berhasil disimpan. Status tiket PGK telah selesai.');
+        $retCount = PgkMaterial::where('pgk_ticket_id', $pgk->id)->where('quantity_returned', '>', 0)->count();
+        $msg = 'Laporan penanganan komplain berhasil disimpan. Status tiket PGK telah selesai.';
+        if ($retCount > 0) {
+            $msg .= ' Sebanyak ' . $retCount . ' jenis kelebihan material otomatis dikembalikan ke stok gudang (Transaksi IN-PGK-RET).';
+        }
+
+        return redirect()->back()->with('success', $msg);
     }
 
     /**
