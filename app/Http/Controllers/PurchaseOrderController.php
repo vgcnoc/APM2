@@ -120,6 +120,16 @@ class PurchaseOrderController extends Controller
                 // Increase Stock & sinkronkan ke Data Produk
                 $material->stock += $convertedQuantity;
                 $material->recalcUnitTotals()->save();
+
+                // Increase Stock in Area
+                if ($area) {
+                    $materialStock = \App\Models\MaterialStock::firstOrCreate([
+                        'material_id' => $material->id,
+                        'area_id' => $area->id,
+                    ], ['stock' => 0, 'initial_stock' => 0]);
+                    
+                    $materialStock->increment('stock', $convertedQuantity);
+                }
             }
 
             $transaction->update(['total_cost' => $totalCost]);
@@ -128,7 +138,7 @@ class PurchaseOrderController extends Controller
             $this->syncOrderExpense($transaction, $totalCost, $validated['date'], $validated['area_name']);
 
             DB::commit();
-            return redirect()->back()->with('success', 'Order Toko berhasil dicatat, stok bertambah, dan tercatat otomatis di Laporan Keuangan.');
+            return redirect()->back()->with('success', 'Order Toko berhasil dicatat, stok bertambah ke gudang & area, serta tercatat di Laporan Keuangan.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal mencatat order: ' . $e->getMessage());
@@ -145,7 +155,7 @@ class PurchaseOrderController extends Controller
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
-            'items.*.purchase_unit' => 'required|string',
+            'items.*.purchase_unit' => 'required|string', 
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.price' => 'nullable|numeric|min:0',
         ]);
@@ -153,12 +163,24 @@ class PurchaseOrderController extends Controller
 
         DB::beginTransaction();
         try {
+            $oldArea = Area::where('name', $transaction->technician_name)->orWhere('id', $transaction->area_id)->first();
+
             // 1. Revert stok lama terlebih dahulu
             foreach ($transaction->items as $oldItem) {
                 $oldMaterial = Material::lockForUpdate()->find($oldItem->material_id);
                 if ($oldMaterial) {
                     $oldMaterial->stock -= $oldItem->quantity;
                     $oldMaterial->recalcUnitTotals()->save();
+                }
+
+                if ($oldArea) {
+                    $oldStock = \App\Models\MaterialStock::where([
+                        'material_id' => $oldItem->material_id,
+                        'area_id' => $oldArea->id,
+                    ])->first();
+                    if ($oldStock) {
+                        $oldStock->decrement('stock', $oldItem->quantity);
+                    }
                 }
             }
 
@@ -218,9 +240,19 @@ class PurchaseOrderController extends Controller
                     'total_price' => $itemTotal
                 ]);
 
-                // Tambah stok baru
+                // Tambah stok baru ke global
                 $material->stock += $convertedQuantity;
                 $material->recalcUnitTotals()->save();
+
+                // Tambah stok baru ke Area
+                if ($area) {
+                    $materialStock = \App\Models\MaterialStock::firstOrCreate([
+                        'material_id' => $material->id,
+                        'area_id' => $area->id,
+                    ], ['stock' => 0, 'initial_stock' => 0]);
+                    
+                    $materialStock->increment('stock', $convertedQuantity);
+                }
             }
 
             $transaction->update(['total_cost' => $totalCost]);
@@ -229,7 +261,7 @@ class PurchaseOrderController extends Controller
             $this->syncOrderExpense($transaction, $totalCost, $validated['date'], $validated['area_name']);
 
             DB::commit();
-            return redirect()->back()->with('success', 'Perubahan Order Toko berhasil disimpan dan disinkronkan ke Keuangan.');
+            return redirect()->back()->with('success', 'Perubahan Order Toko berhasil disimpan dan disinkronkan ke Keuangan & Area.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal memperbarui order: ' . $e->getMessage());
@@ -242,12 +274,24 @@ class PurchaseOrderController extends Controller
 
         DB::beginTransaction();
         try {
+            $area = Area::where('name', $transaction->technician_name)->orWhere('id', $transaction->area_id)->first();
+
             // Revert stock
             foreach ($transaction->items as $item) {
                 $material = $item->material;
                 if ($material) {
                     $material->stock -= $item->quantity;
                     $material->recalcUnitTotals()->save();
+                }
+
+                if ($area) {
+                    $materialStock = \App\Models\MaterialStock::where([
+                        'material_id' => $item->material_id,
+                        'area_id' => $area->id,
+                    ])->first();
+                    if ($materialStock) {
+                        $materialStock->decrement('stock', $item->quantity);
+                    }
                 }
             }
 

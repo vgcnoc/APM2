@@ -565,11 +565,18 @@ const availableMaterialItems = computed(() => {
                             }
                         }
 
-                        if (areaStock > 0) {
+                        // Fallback ke stok master material jika belum tercatat di area
+                        if (areaStock <= 0 && item.material && parseFloat(item.material.stock) > 0) {
+                            areaStock = parseFloat(item.material.stock) || 0;
+                        }
+
+                        const availableQty = areaStock > 0 ? areaStock : (parseFloat(item.quantity) || 0);
+
+                        if (availableQty > 0) {
                             items.push({
                                 ...item,
                                 trx_number: trx.transaction_number,
-                                area_stock: areaStock,
+                                area_stock: availableQty,
                                 unit: item.material ? item.material.unit : item.unit
                             });
                         }

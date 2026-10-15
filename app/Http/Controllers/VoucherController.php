@@ -336,6 +336,9 @@ class VoucherController extends Controller
 
     public function online(Request $request)
     {
+        // 0. Otomatis cek dan sinkronkan status voucher yang durasinya habis menjadi expired
+        self::checkAndExpireVouchers();
+
         $tab = $request->input('tab', 'online');
         $search = $request->input('search');
         $profileId = $request->input('profile_id');
@@ -347,7 +350,7 @@ class VoucherController extends Controller
         $resellers = \App\Models\Reseller::with('customer.areaModel')->get();
         $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
-        // 1. Fetch Online Sessions from RADIUS
+        // 1. Ambil Sesi Online Aktif dari RADIUS
         try {
             $onlineSessions = \App\Models\Radius\RadAcct::online()
                 ->orderByDesc('acctstarttime')
@@ -360,30 +363,13 @@ class VoucherController extends Controller
             $onlineUsernames = [];
         }
 
-        // 2. Fetch Offline Sessions from RADIUS
-        try {
-            $offlineSessions = \App\Models\Radius\RadAcct::whereNotNull('acctstoptime')
-                ->whereNotIn('username', $onlineUsernames)
-                ->orderByDesc('acctstoptime')
-                ->get()
-                ->unique('username')
-                ->keyBy('username');
-            $offlineUsernames = $offlineSessions->keys()->all();
-        } catch (\Exception $e) {
-            $offlineSessions = collect();
-            $offlineUsernames = [];
-        }
+        // 2. Ambil data Voucher yang valid (mengikuti filter reseller jika login sebagai reseller)
+        $vouchersQuery = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel']);
+        $this->applyResellerFilter($vouchersQuery);
+        $allVouchers = $vouchersQuery->get();
 
-        // 3. Eager load Vouchers matching online or offline
-        $allRelevantUsernames = array_unique(array_merge($onlineUsernames, $offlineUsernames));
-        $vouchersMap = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel'])
-            ->where(function($q) use ($allRelevantUsernames) {
-                $q->whereIn('username', $allRelevantUsernames)
-                  ->orWhere('status', 'used')
-                  ->orWhere('status', 'expired');
-            })
-            ->get()
-            ->keyBy('username');
+        $vouchersByUsername = $allVouchers->keyBy('username');
+        $vouchersByCode = $allVouchers->keyBy('code');
 
         // Helper filter matcher for a voucher/session item
         $matchesFilter = function($voucher, $session, $search, $profileId, $resellerId, $areaId) {
@@ -450,24 +436,32 @@ class VoucherController extends Controller
             return true;
         };
 
-        // 4. Build Online List
+        // 3. Build Online List: Hanya sesi online yang benar-benar merupakan voucher aktif
         $onlineList = collect();
         foreach ($onlineSessions as $username => $s) {
-            $v = $vouchersMap->get($username);
-            $resellerCustomer = $v?->reseller?->customer;
-            $areaName = $resellerCustomer?->areaModel?->name ?? ($resellerCustomer?->area ?: ($v?->customer?->areaModel?->name ?? ($v?->customer?->area ?: '-')));
+            $v = $vouchersByUsername->get($username) ?? $vouchersByCode->get($username);
+            if (!$v) {
+                // Bukan voucher hotspot terdaftar (misal PPPoE test / user luar)
+                continue;
+            }
+            if ($v->status === 'expired' || !$v->is_active) {
+                continue;
+            }
 
             if (!$matchesFilter($v, $s, $search, $profileId, $resellerId, $areaId)) {
                 continue;
             }
 
+            $resellerCustomer = $v->reseller?->customer;
+            $areaName = $resellerCustomer?->areaModel?->name ?? ($resellerCustomer?->area ?: ($v->customer?->areaModel?->name ?? ($v->customer?->area ?: '-')));
+
             $onlineList->push([
-                'id' => $v?->id ?? 'acct-' . $s->radacctid,
-                'voucher_id' => $v?->id,
-                'code' => $v?->code ?? $s->username,
+                'id' => $v->id,
+                'voucher_id' => $v->id,
+                'code' => $v->code,
                 'username' => $s->username,
-                'profile' => $v?->profile?->name ?? 'MikroTik Hotspot',
-                'profile_duration' => $v?->profile?->duration,
+                'profile' => $v->profile?->name ?? 'MikroTik Hotspot',
+                'profile_duration' => $v->profile?->duration,
                 'reseller' => $resellerCustomer?->name ?? 'Kantor / System',
                 'area' => $areaName,
                 'ip_address' => $s->framedipaddress ?? '-',
@@ -477,57 +471,87 @@ class VoucherController extends Controller
                 'download' => (int) ($s->acctoutputoctets ?? 0),
                 'upload' => (int) ($s->acctinputoctets ?? 0),
                 'login_time' => $s->acctstarttime ? $s->acctstarttime->toIso8601String() : null,
-                'is_active' => $v ? (bool) $v->is_active : true,
+                'is_active' => (bool) $v->is_active,
                 'status' => 'online',
             ]);
         }
 
-        // 5. Build Offline List
-        $offlineList = collect();
-        $processedOfflineUsernames = [];
-
-        foreach ($offlineSessions as $username => $s) {
-            $v = $vouchersMap->get($username);
-            $resellerCustomer = $v?->reseller?->customer;
-            $areaName = $resellerCustomer?->areaModel?->name ?? ($resellerCustomer?->area ?: ($v?->customer?->areaModel?->name ?? ($v?->customer?->area ?: '-')));
-
-            if (!$matchesFilter($v, $s, $search, $profileId, $resellerId, $areaId)) {
-                continue;
+        // 4. Build Offline List:
+        // KETENTUAN:
+        // 1. Voucher offline adalah voucher yang SUDAH LOGIN dan SEMPAT TIDAK DI PAKAI (offline).
+        // 2. Voucher EXPIRED TIDAK BOLEH masuk ke voucher offline (masuk ke menu Voucher Expired).
+        // 3. STOK VOUCHER yang belum dipakai (status available/belum pernah login) TIDAK BOLEH masuk.
+        $offlineCandidates = $allVouchers->filter(function($v) use ($onlineUsernames) {
+            // Jangan masukkan yang sedang online
+            if (in_array($v->username, $onlineUsernames) || in_array($v->code, $onlineUsernames)) {
+                return false;
             }
+            // Stok voucher yang belum dipakai (available) -> JANGAN MASUK
+            if ($v->status !== 'used') {
+                return false;
+            }
+            // Voucher expired -> JANGAN MASUK
+            if ($v->status === 'expired') {
+                return false;
+            }
+            // Cek masa aktif jika ada limit durasi
+            if ($v->profile && $v->profile->duration && $v->profile->duration !== 'Mengikuti Pelanggan') {
+                $durationLimit = \App\Services\RadiusService::parseDuration($v->profile->duration);
+                if ($durationLimit && $v->used_at) {
+                    $expireAt = \Carbon\Carbon::parse($v->used_at)->addSeconds($durationLimit);
+                    if (now()->greaterThanOrEqualTo($expireAt)) {
+                        $v->status = 'expired';
+                        $v->save();
+                        return false;
+                    }
+                }
+            }
+            return true;
+        });
 
-            $offlineList->push([
-                'id' => $v?->id ?? 'acct-' . $s->radacctid,
-                'voucher_id' => $v?->id,
-                'code' => $v?->code ?? $s->username,
-                'username' => $s->username,
-                'profile' => $v?->profile?->name ?? 'MikroTik Hotspot',
-                'profile_duration' => $v?->profile?->duration,
-                'reseller' => $resellerCustomer?->name ?? 'Kantor / System',
-                'area' => $areaName,
-                'ip_address' => $s->framedipaddress ?? '-',
-                'mac_address' => $s->callingstationid ?? '-',
-                'nas_ip' => $s->nasipaddress ?? '-',
-                'login_time' => $s->acctstarttime ? $s->acctstarttime->toIso8601String() : null,
-                'logout_time' => $s->acctstoptime ? $s->acctstoptime->toIso8601String() : null,
-                'total_time' => (int) ($s->acctsessiontime ?? 0),
-                'download' => (int) ($s->acctoutputoctets ?? 0),
-                'upload' => (int) ($s->acctinputoctets ?? 0),
-                'terminate_cause' => $s->acctterminatecause ?? 'Selesai / Logout',
-                'is_active' => $v ? (bool) $v->is_active : true,
-                'status' => $v?->status ?? 'offline',
-            ]);
-            $processedOfflineUsernames[$username] = true;
+        // Ambil riwayat sesi RADIUS untuk voucher offline ini
+        $voucherUsernames = $offlineCandidates->flatMap(fn($v) => [$v->username, $v->code])->filter()->unique()->toArray();
+        $offlineSessionsMap = collect();
+        if (!empty($voucherUsernames)) {
+            try {
+                $offlineSessionsMap = \App\Models\Radius\RadAcct::whereIn('username', $voucherUsernames)
+                    ->whereNotNull('acctstoptime')
+                    ->orderByDesc('acctstoptime')
+                    ->get()
+                    ->groupBy('username');
+            } catch (\Exception $e) {
+                $offlineSessionsMap = collect();
+            }
         }
 
-        foreach ($vouchersMap as $username => $v) {
-            if (isset($processedOfflineUsernames[$username]) || in_array($username, $onlineUsernames)) {
-                continue;
-            }
-            if ($v->status !== 'used' && $v->status !== 'expired') {
+        $offlineList = collect();
+        foreach ($offlineCandidates as $v) {
+            $userSessions = $offlineSessionsMap->get($v->username) ?? $offlineSessionsMap->get($v->code);
+            $lastSession = $userSessions?->first();
+
+            // Jika sesi terakhir di RADIUS diputus karena masa aktif habis (Session-Timeout / Expired), tandai expired & lewati
+            if ($lastSession && in_array(strtolower($lastSession->acctterminatecause ?? ''), ['session-timeout', 'expired'])) {
+                $v->status = 'expired';
+                $v->save();
                 continue;
             }
 
-            if (!$matchesFilter($v, null, $search, $profileId, $resellerId, $areaId)) {
+            // Hitung akumulasi penggunaan sesi
+            $totalTime = $userSessions ? $userSessions->sum('acctsessiontime') : 0;
+            $download = $userSessions ? $userSessions->sum('acctoutputoctets') : 0;
+            $upload = $userSessions ? $userSessions->sum('acctinputoctets') : 0;
+
+            // Cek jika akumulasi durasi pemakaian sudah mencapai batas
+            if ($v->profile && $v->profile->duration && $v->profile->duration !== 'Mengikuti Pelanggan') {
+                $durationLimit = \App\Services\RadiusService::parseDuration($v->profile->duration);
+                if ($durationLimit && $totalTime >= $durationLimit) {
+                    $v->status = 'expired';
+                    $v->save();
+                    continue;
+                }
+            }
+
+            if (!$matchesFilter($v, $lastSession, $search, $profileId, $resellerId, $areaId)) {
                 continue;
             }
 
@@ -543,21 +567,21 @@ class VoucherController extends Controller
                 'profile_duration' => $v->profile?->duration,
                 'reseller' => $resellerCustomer?->name ?? 'Kantor / System',
                 'area' => $areaName,
-                'ip_address' => '-',
-                'mac_address' => '-',
-                'nas_ip' => '-',
-                'login_time' => $v->used_at ? $v->used_at->toIso8601String() : null,
-                'logout_time' => null,
-                'total_time' => 0,
-                'download' => 0,
-                'upload' => 0,
-                'terminate_cause' => $v->status === 'expired' ? 'Masa Aktif Habis' : 'Offline',
+                'ip_address' => $lastSession?->framedipaddress ?? '-',
+                'mac_address' => $lastSession?->callingstationid ?? '-',
+                'nas_ip' => $lastSession?->nasipaddress ?? '-',
+                'login_time' => $lastSession?->acctstarttime ? $lastSession->acctstarttime->toIso8601String() : ($v->used_at ? $v->used_at->toIso8601String() : null),
+                'logout_time' => $lastSession?->acctstoptime ? $lastSession->acctstoptime->toIso8601String() : null,
+                'total_time' => (int) $totalTime,
+                'download' => (int) $download,
+                'upload' => (int) $upload,
+                'terminate_cause' => $lastSession?->acctterminatecause ?? 'Selesai / Logout',
                 'is_active' => (bool) $v->is_active,
-                'status' => $v->status,
+                'status' => 'offline',
             ]);
         }
 
-        // 6. Aggregate Statistics
+        // 5. Aggregate Statistics
         $totalDownloadBytes = $onlineList->sum('download') + $offlineList->sum('download');
         $totalUploadBytes = $onlineList->sum('upload') + $offlineList->sum('upload');
 

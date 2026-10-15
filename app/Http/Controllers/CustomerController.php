@@ -861,9 +861,26 @@ class CustomerController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $technicians = User::where('is_active', true)->get();
+        $availableOnts = \App\Models\Ont::whereIn('status', ['Sudah Set', 'Belum Set/Baru Input', 'inactive'])
+            ->whereNull('customer_id')
+            ->get();
+            
+        $materialTransactions = \App\Models\MaterialTransaction::where('type', 'in')
+            ->with('items.material.stocks')
+            ->latest()
+            ->limit(100)
+            ->get();
+
+        $areas = \App\Models\Area::orderBy('name')->pluck('name')->toArray();
+
         return Inertia::render('Customers/Active', [
             'customers' => $customers,
             'stats' => $stats,
+            'technicians' => $technicians,
+            'availableOnts' => $availableOnts,
+            'materialTransactions' => $materialTransactions,
+            'areas' => $areas,
             'filters' => $request->only(['search', 'tab', 'date', 'area']),
             'onlineUsernames' => (function() {
                 try {
