@@ -14,14 +14,14 @@ class SyncPermissionsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'permissions:sync';
+    protected $signature = 'permissions:sync {--fresh : Reset ulang seluruh izin role sesuai preset standar}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Sinkronisasi seluruh hak akses granular (menu, card, tab, filter, button, feature) ke database dan refresh cache';
+    protected $description = 'Sinkronisasi seluruh hak akses granular (menu, card, tab, filter, button, feature) ke database, update preset role, dan refresh cache';
 
     /**
      * Execute the console command.
@@ -50,21 +50,41 @@ class SyncPermissionsCommand extends Command
             }
         }
 
-        $this->info("Total Permissions: " . count($allNames));
+        $this->info("Total Master Permissions: " . count($allNames));
         $this->info("Izin baru dibuat: {$createdCount}");
         $this->info("Izin sudah ada: {$existingCount}");
 
         // Ensure admin role has all permissions
-        $roleAdmin = Role::where('name', 'admin')->first();
-        if ($roleAdmin) {
-            $roleAdmin->syncPermissions(Permission::all());
-            $this->info('Role admin berhasil disinkronkan dengan semua permissions.');
+        $roleAdmin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $roleAdmin->syncPermissions(Permission::all());
+        $this->info('Role admin berhasil disinkronkan dengan SEMUA permissions.');
+
+        // Sinkronisasi preset per role
+        $presets = PermissionRegistry::getDefaultRolePresets();
+        $isFresh = $this->option('fresh');
+
+        $this->info($isFresh ? 'Mereset ulang izin role ke template standar (--fresh)...' : 'Memperbarui dan melengkapi izin role dari template standar...');
+
+        foreach ($presets as $roleName => $perms) {
+            if ($roleName === 'admin') continue;
+
+            $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
+            $validPerms = Permission::whereIn('name', $perms)->pluck('name')->toArray();
+
+            if ($isFresh) {
+                $role->syncPermissions($validPerms);
+            } else {
+                $role->givePermissionTo($validPerms);
+            }
+
+            $currentCount = $role->permissions()->count();
+            $this->line("  ✓ Role '{$roleName}': {$currentCount} izin aktif");
         }
 
         // Refresh cache
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        $this->info('✓ Sinkronisasi Permissions berhasil diselesaikan dengan sempurna!');
+        $this->info('✓ Sinkronisasi Permissions & Role Akses berhasil diselesaikan dengan sempurna!');
         return Command::SUCCESS;
     }
 }

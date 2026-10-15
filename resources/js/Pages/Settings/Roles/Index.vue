@@ -147,6 +147,14 @@
                                 </button>
 
                                 <template v-if="selectedRole.name !== 'admin'">
+                                    <button @click="applyPreset(selectedRole.name)"
+                                        type="button"
+                                        class="px-3 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                                        title="Terapkan rekomendasi template hak akses standar untuk role ini">
+                                        <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                        Template Standar
+                                    </button>
+
                                     <button @click="toggleAll" 
                                         class="px-3 py-2 text-xs font-bold rounded-xl border transition-all active:scale-95 flex items-center gap-1.5"
                                         :class="isAllChecked 
@@ -580,6 +588,10 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 const props = defineProps({
     roles: Array,
     permissionGroups: Array,
+    rolePresets: {
+        type: Object,
+        default: () => ({})
+    },
     positions: Array,
 });
 
@@ -866,6 +878,33 @@ const toggleGroupAll = (group) => {
 const getGroupCheckedCount = (group) => {
     if (selectedRole.value?.name === 'admin') return group.permissions.length;
     return group.permissions.filter(p => selectedPermissions.value.includes(p.name)).length;
+};
+
+const applyPreset = (presetName) => {
+    if (selectedRole.value?.name === 'admin') return;
+    const key = (presetName || selectedRole.value?.name || '').toLowerCase().trim();
+    const presets = props.rolePresets || {};
+    
+    let matchingKey = Object.keys(presets).find(k => k.toLowerCase() === key);
+    if (!matchingKey) {
+        if (key.includes('teknisi')) matchingKey = 'teknisi';
+        else if (key.includes('cs') || key.includes('customer')) matchingKey = 'cs';
+        else if (key.includes('sales')) matchingKey = 'sales';
+        else if (key.includes('finance') || key.includes('keuangan')) matchingKey = 'finance';
+        else if (key.includes('noc')) matchingKey = 'noc';
+        else if (key.includes('reseller')) matchingKey = 'reseller';
+        else if (key.includes('manager')) matchingKey = 'manager';
+    }
+
+    if (!matchingKey || !presets[matchingKey]) {
+        alert(`Template standar untuk role "${selectedRole.value?.name}" belum tersedia.`);
+        return;
+    }
+
+    const count = presets[matchingKey].length;
+    if (confirm(`Terapkan template izin standar "${matchingKey}" (${count} hak akses) untuk role "${selectedRole.value?.name}"?\n\nSemua hak akses rekomendasi akan otomatis dicentang. Anda dapat meninjau dan klik "Simpan Perubahan".`)) {
+        selectedPermissions.value = [...presets[matchingKey]];
+    }
 };
 
 const resetChanges = () => {

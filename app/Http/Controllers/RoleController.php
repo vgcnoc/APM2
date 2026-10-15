@@ -50,6 +50,7 @@ class RoleController extends Controller
         return Inertia::render('Settings/Roles/Index', [
             'roles' => $roles,
             'permissionGroups' => $this->getPermissionRegistry(),
+            'rolePresets' => \App\Support\PermissionRegistry::getDefaultRolePresets(),
             'positions' => \App\Models\Position::orderBy('name')->get(),
         ]);
     }
@@ -105,6 +106,37 @@ class RoleController extends Controller
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         return redirect()->back()->with('success', "Role '{$newRole->name}' berhasil diduplikasi dari '{$role->name}'.");
+    }
+
+    public function applyPreset(Request $request, Role $role)
+    {
+        $presetKey = strtolower(trim($request->input('preset', $role->name)));
+        $presets = \App\Support\PermissionRegistry::getDefaultRolePresets();
+
+        // Fallback matching
+        if (!isset($presets[$presetKey])) {
+            foreach ($presets as $k => $v) {
+                if (str_contains($presetKey, $k) || str_contains($k, $presetKey)) {
+                    $presetKey = $k;
+                    break;
+                }
+            }
+        }
+
+        if (!isset($presets[$presetKey])) {
+            return redirect()->back()->with('error', "Template preset untuk '{$presetKey}' tidak ditemukan.");
+        }
+
+        $permissions = $presets[$presetKey];
+        if ($role->name === 'admin') {
+            $role->syncPermissions(\Spatie\Permission\Models\Permission::all());
+        } else {
+            $role->syncPermissions($permissions);
+        }
+
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+        return redirect()->back()->with('success', "Template preset '{$presetKey}' berhasil diterapkan ke role '{$role->name}' (" . count($permissions) . " izin).");
     }
 
     public function destroy(Role $role)

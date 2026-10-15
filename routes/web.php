@@ -578,6 +578,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('settings/roles', \App\Http\Controllers\RoleController::class)->except(['create', 'show', 'edit']);
         Route::post('settings/roles/{role}/update', [\App\Http\Controllers\RoleController::class, 'update'])->name('roles.update.post');
         Route::post('settings/roles/{role}/clone', [\App\Http\Controllers\RoleController::class, 'clone'])->name('roles.clone');
+        Route::post('settings/roles/{role}/apply-preset', [\App\Http\Controllers\RoleController::class, 'applyPreset'])->name('roles.apply-preset');
         Route::post('settings/roles/{role}/delete', [\App\Http\Controllers\RoleController::class, 'destroy'])->name('roles.destroy.post');
     });
 
