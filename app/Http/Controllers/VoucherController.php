@@ -336,93 +336,260 @@ class VoucherController extends Controller
 
     public function online(Request $request)
     {
+        $tab = $request->input('tab', 'online');
+        $search = $request->input('search');
+        $profileId = $request->input('profile_id');
+        $resellerId = $request->input('reseller_id');
+        $areaId = $request->input('area_id');
+
+        // Master dropdown filters
+        $profiles = VoucherProfile::orderBy('name')->get(['id', 'name', 'duration', 'price']);
+        $resellers = \App\Models\Reseller::with('customer.areaModel')->get();
+        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
+
+        // 1. Fetch Online Sessions from RADIUS
         try {
-            $sessions = \App\Models\Radius\RadAcct::online()
+            $onlineSessions = \App\Models\Radius\RadAcct::online()
                 ->orderByDesc('acctstarttime')
-                ->get(['radacctid', 'username', 'framedipaddress', 'callingstationid', 'nasipaddress', 'acctstarttime', 'acctsessiontime', 'acctinputoctets', 'acctoutputoctets'])
+                ->get()
                 ->unique('username')
                 ->keyBy('username');
+            $onlineUsernames = $onlineSessions->keys()->all();
         } catch (\Exception $e) {
-            $sessions = collect();
+            $onlineSessions = collect();
+            $onlineUsernames = [];
         }
 
-        $vouchers = collect();
-        if ($sessions->isNotEmpty()) {
-            $vQuery = Voucher::with('profile', 'reseller.customer.areaModel')
-                ->whereIn('username', $sessions->keys()->all());
-            $this->applyResellerFilter($vQuery);
-            $vouchers = $vQuery->get();
+        // 2. Fetch Offline Sessions from RADIUS
+        try {
+            $offlineSessions = \App\Models\Radius\RadAcct::whereNotNull('acctstoptime')
+                ->whereNotIn('username', $onlineUsernames)
+                ->orderByDesc('acctstoptime')
+                ->get()
+                ->unique('username')
+                ->keyBy('username');
+            $offlineUsernames = $offlineSessions->keys()->all();
+        } catch (\Exception $e) {
+            $offlineSessions = collect();
+            $offlineUsernames = [];
         }
 
-        // Map data
-        $rows = $vouchers->map(function ($v) use ($sessions) {
-            $s = $sessions->get($v->username);
+        // 3. Eager load Vouchers matching online or offline
+        $allRelevantUsernames = array_unique(array_merge($onlineUsernames, $offlineUsernames));
+        $vouchersMap = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel'])
+            ->where(function($q) use ($allRelevantUsernames) {
+                $q->whereIn('username', $allRelevantUsernames)
+                  ->orWhere('status', 'used')
+                  ->orWhere('status', 'expired');
+            })
+            ->get()
+            ->keyBy('username');
+
+        // Helper filter matcher for a voucher/session item
+        $matchesFilter = function($voucher, $session, $search, $profileId, $resellerId, $areaId) {
+            // Filter Profile
+            if (!empty($profileId)) {
+                if (!$voucher || (int)$voucher->voucher_profile_id !== (int)$profileId) {
+                    return false;
+                }
+            }
+
+            // Filter Reseller
+            if (!empty($resellerId)) {
+                if ($resellerId === 'system') {
+                    if ($voucher && !is_null($voucher->reseller_id)) {
+                        return false;
+                    }
+                } else {
+                    if (!$voucher || (int)$voucher->reseller_id !== (int)$resellerId) {
+                        return false;
+                    }
+                }
+            }
+
+            // Filter Area
+            if (!empty($areaId)) {
+                $voucherAreaId = $voucher?->reseller?->customer?->area_id ?? $voucher?->customer?->area_id;
+                $voucherAreaName = $voucher?->reseller?->customer?->areaModel?->name ?? ($voucher?->reseller?->customer?->area ?? ($voucher?->customer?->areaModel?->name ?? ($voucher?->customer?->area ?? null)));
+                $targetArea = \App\Models\Area::find($areaId);
+                $targetAreaName = $targetArea ? $targetArea->name : null;
+
+                $match = false;
+                if ($voucherAreaId && (int)$voucherAreaId === (int)$areaId) {
+                    $match = true;
+                } elseif ($targetAreaName && $voucherAreaName && strcasecmp($voucherAreaName, $targetAreaName) === 0) {
+                    $match = true;
+                }
+                if (!$match) return false;
+            }
+
+            // Filter Search
+            if (!empty($search)) {
+                $q = strtolower(trim($search));
+                $code = strtolower($voucher?->code ?? '');
+                $username = strtolower($voucher?->username ?? ($session?->username ?? ''));
+                $profileName = strtolower($voucher?->profile?->name ?? '');
+                $resellerName = strtolower($voucher?->reseller?->customer?->name ?? 'kantor system');
+                $areaName = strtolower($voucher?->reseller?->customer?->areaModel?->name ?? ($voucher?->reseller?->customer?->area ?? ''));
+                $ip = strtolower($session?->framedipaddress ?? '');
+                $mac = strtolower($session?->callingstationid ?? '');
+
+                if (
+                    strpos($code, $q) === false &&
+                    strpos($username, $q) === false &&
+                    strpos($profileName, $q) === false &&
+                    strpos($resellerName, $q) === false &&
+                    strpos($areaName, $q) === false &&
+                    strpos($ip, $q) === false &&
+                    strpos($mac, $q) === false
+                ) {
+                    return false;
+                }
+            }
+
+            return true;
+        };
+
+        // 4. Build Online List
+        $onlineList = collect();
+        foreach ($onlineSessions as $username => $s) {
+            $v = $vouchersMap->get($username);
+            $resellerCustomer = $v?->reseller?->customer;
+            $areaName = $resellerCustomer?->areaModel?->name ?? ($resellerCustomer?->area ?: ($v?->customer?->areaModel?->name ?? ($v?->customer?->area ?: '-')));
+
+            if (!$matchesFilter($v, $s, $search, $profileId, $resellerId, $areaId)) {
+                continue;
+            }
+
+            $onlineList->push([
+                'id' => $v?->id ?? 'acct-' . $s->radacctid,
+                'voucher_id' => $v?->id,
+                'code' => $v?->code ?? $s->username,
+                'username' => $s->username,
+                'profile' => $v?->profile?->name ?? 'MikroTik Hotspot',
+                'profile_duration' => $v?->profile?->duration,
+                'reseller' => $resellerCustomer?->name ?? 'Kantor / System',
+                'area' => $areaName,
+                'ip_address' => $s->framedipaddress ?? '-',
+                'mac_address' => $s->callingstationid ?? '-',
+                'nas_ip' => $s->nasipaddress ?? '-',
+                'uptime' => $s->liveSessionTime(),
+                'download' => (int) ($s->acctoutputoctets ?? 0),
+                'upload' => (int) ($s->acctinputoctets ?? 0),
+                'login_time' => $s->acctstarttime ? $s->acctstarttime->toIso8601String() : null,
+                'is_active' => $v ? (bool) $v->is_active : true,
+                'status' => 'online',
+            ]);
+        }
+
+        // 5. Build Offline List
+        $offlineList = collect();
+        $processedOfflineUsernames = [];
+
+        foreach ($offlineSessions as $username => $s) {
+            $v = $vouchersMap->get($username);
+            $resellerCustomer = $v?->reseller?->customer;
+            $areaName = $resellerCustomer?->areaModel?->name ?? ($resellerCustomer?->area ?: ($v?->customer?->areaModel?->name ?? ($v?->customer?->area ?: '-')));
+
+            if (!$matchesFilter($v, $s, $search, $profileId, $resellerId, $areaId)) {
+                continue;
+            }
+
+            $offlineList->push([
+                'id' => $v?->id ?? 'acct-' . $s->radacctid,
+                'voucher_id' => $v?->id,
+                'code' => $v?->code ?? $s->username,
+                'username' => $s->username,
+                'profile' => $v?->profile?->name ?? 'MikroTik Hotspot',
+                'profile_duration' => $v?->profile?->duration,
+                'reseller' => $resellerCustomer?->name ?? 'Kantor / System',
+                'area' => $areaName,
+                'ip_address' => $s->framedipaddress ?? '-',
+                'mac_address' => $s->callingstationid ?? '-',
+                'nas_ip' => $s->nasipaddress ?? '-',
+                'login_time' => $s->acctstarttime ? $s->acctstarttime->toIso8601String() : null,
+                'logout_time' => $s->acctstoptime ? $s->acctstoptime->toIso8601String() : null,
+                'total_time' => (int) ($s->acctsessiontime ?? 0),
+                'download' => (int) ($s->acctoutputoctets ?? 0),
+                'upload' => (int) ($s->acctinputoctets ?? 0),
+                'terminate_cause' => $s->acctterminatecause ?? 'Selesai / Logout',
+                'is_active' => $v ? (bool) $v->is_active : true,
+                'status' => $v?->status ?? 'offline',
+            ]);
+            $processedOfflineUsernames[$username] = true;
+        }
+
+        foreach ($vouchersMap as $username => $v) {
+            if (isset($processedOfflineUsernames[$username]) || in_array($username, $onlineUsernames)) {
+                continue;
+            }
+            if ($v->status !== 'used' && $v->status !== 'expired') {
+                continue;
+            }
+
+            if (!$matchesFilter($v, null, $search, $profileId, $resellerId, $areaId)) {
+                continue;
+            }
+
             $resellerCustomer = $v->reseller?->customer;
-            return [
+            $areaName = $resellerCustomer?->areaModel?->name ?? ($resellerCustomer?->area ?: ($v->customer?->areaModel?->name ?? ($v->customer?->area ?: '-')));
+
+            $offlineList->push([
                 'id' => $v->id,
+                'voucher_id' => $v->id,
                 'code' => $v->code,
                 'username' => $v->username,
-                'profile' => $v->profile?->name,
-                'reseller' => $resellerCustomer?->name ?? 'Admin',
-                'area' => $resellerCustomer?->areaModel?->name ?? ($resellerCustomer?->area ?: null),
-                'ip_address' => $s->framedipaddress,
-                'mac_address' => $s->callingstationid,
-                'nas_ip' => $s->nasipaddress,
-                'uptime' => $s->liveSessionTime(),
-                'download' => $s->acctoutputoctets,
-                'upload' => $s->acctinputoctets,
-                'login_time' => $s->acctstarttime ? $s->acctstarttime->toIso8601String() : null,
-                'is_active' => $v->is_active,
-            ];
-        });
+                'profile' => $v->profile?->name ?? 'Hotspot Profile',
+                'profile_duration' => $v->profile?->duration,
+                'reseller' => $resellerCustomer?->name ?? 'Kantor / System',
+                'area' => $areaName,
+                'ip_address' => '-',
+                'mac_address' => '-',
+                'nas_ip' => '-',
+                'login_time' => $v->used_at ? $v->used_at->toIso8601String() : null,
+                'logout_time' => null,
+                'total_time' => 0,
+                'download' => 0,
+                'upload' => 0,
+                'terminate_cause' => $v->status === 'expired' ? 'Masa Aktif Habis' : 'Offline',
+                'is_active' => (bool) $v->is_active,
+                'status' => $v->status,
+            ]);
+        }
+
+        // 6. Aggregate Statistics
+        $totalDownloadBytes = $onlineList->sum('download') + $offlineList->sum('download');
+        $totalUploadBytes = $onlineList->sum('upload') + $offlineList->sum('upload');
+
+        $stats = [
+            'online_count' => $onlineList->count(),
+            'offline_count' => $offlineList->count(),
+            'total_count' => $onlineList->count() + $offlineList->count(),
+            'total_download' => $totalDownloadBytes,
+            'total_upload' => $totalUploadBytes,
+        ];
 
         return Inertia::render('Vouchers/Online', [
-            'onlineUsers' => $rows->values()
+            'tab' => $tab,
+            'onlineUsers' => $onlineList->values(),
+            'offlineUsers' => $offlineList->values(),
+            'stats' => $stats,
+            'profiles' => $profiles,
+            'resellers' => $resellers,
+            'areas' => $areas,
+            'filters' => [
+                'tab' => $tab,
+                'search' => $search ?: '',
+                'profile_id' => $profileId ?: '',
+                'reseller_id' => $resellerId ?: '',
+                'area_id' => $areaId ?: '',
+            ],
         ]);
     }
 
     public function offline(Request $request)
     {
-        try {
-            $onlineUsernames = \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
-            
-            // Get latest offline session for each voucher
-            $latestSessions = \App\Models\Radius\RadAcct::whereNotIn('username', $onlineUsernames)
-                ->whereNotNull('acctstoptime')
-                ->orderByDesc('acctstoptime')
-                ->get()
-                ->unique('username')
-                ->keyBy('username');
-        } catch (\Exception $e) {
-            $onlineUsernames = [];
-            $latestSessions = collect();
-        }
-
-        $vQuery = Voucher::with('profile', 'reseller.customer')
-            ->whereNotIn('username', $onlineUsernames);
-        $this->applyResellerFilter($vQuery);
-        $vouchers = $vQuery->get();
-
-        // Map data
-        $rows = $vouchers->map(function ($v) use ($latestSessions) {
-            $s = $latestSessions->get($v->username);
-            return [
-                'id' => $v->id,
-                'code' => $v->code,
-                'username' => $v->username,
-                'profile' => $v->profile?->name,
-                'reseller' => $v->reseller?->customer?->name ?? 'Admin',
-                'ip_address' => $s?->framedipaddress,
-                'mac_address' => $s?->callingstationid,
-                'last_logout' => $s?->acctstoptime ? $s->acctstoptime->toIso8601String() : null,
-                'total_time' => $s?->acctsessiontime,
-                'is_active' => $v->is_active,
-            ];
-        });
-
-        return Inertia::render('Vouchers/Offline', [
-            'offlineUsers' => $rows->values()
-        ]);
+        return redirect()->route('vouchers.online', array_merge($request->all(), ['tab' => 'offline']));
     }
 
     public function expired(Request $request)

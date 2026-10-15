@@ -339,7 +339,7 @@ const menuItems = [
         permission: 'menu_vouchers',
         children: [
             { href: '/vouchers', label: 'Data Voucher', active: (url) => (url || '') === '/vouchers' || (url || '').startsWith('/vouchers?'), permission: 'menu_vouchers' },
-            { href: '/vouchers/online', label: 'Voucher Online', active: (url) => (url || '').startsWith('/vouchers/online'), permission: 'menu_vouchers' },
+            { href: '/vouchers/online', label: 'Monitoring Sesi Voucher', active: (url) => (url || '').startsWith('/vouchers/online') || (url || '').startsWith('/vouchers/offline'), permission: ['menu_vouchers_monitoring', 'menu_vouchers'] },
             { href: '/vouchers/expired', label: 'Voucher Expired', active: (url) => (url || '').startsWith('/vouchers/expired'), permission: 'menu_vouchers' },
             { href: '/vouchers/profiles', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers_profiles' },
             { href: '/vouchers/free', label: 'Voucher Gratis', active: (url) => (url || '').startsWith('/vouchers/free'), permission: 'menu_vouchers' },
