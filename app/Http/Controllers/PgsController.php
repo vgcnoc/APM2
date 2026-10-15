@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PgsTicket;
 use App\Models\PgsMaterial;
+use App\Models\PgsMaterialRequest;
 use App\Models\Customer;
 use App\Models\Area;
 use App\Models\User;
@@ -152,6 +153,9 @@ class PgsController extends Controller
             'leadTechnician',
             'technicians',
             'materials.material',
+            'materialRequests.material',
+            'materialRequests.requester',
+            'materialRequests.reviewer',
         ])->whereIn('status', ['escalated_to_lead', 'scheduled', 'in_progress']);
 
         if ($request->filled('search')) {
@@ -211,7 +215,10 @@ class PgsController extends Controller
             'leadTechnician',
             'technicians',
             'materials.material',
-            'resolvedByUser'
+            'resolvedByUser',
+            'materialRequests.material',
+            'materialRequests.requester',
+            'materialRequests.reviewer',
         ])->whereIn('status', ['scheduled', 'in_progress', 'completed']);
 
         // Teknisi hanya melihat tugas miliknya kecuali admin / kepala teknisi
@@ -500,7 +507,7 @@ class PgsController extends Controller
     }
 
     /**
-     * Step 3: Teknisi membuat laporan penanganan
+     * Step 3: Teknisi membuat laporan penanganan PGS
      */
     public function submitReport(Request $request, PgsTicket $pgs)
     {
@@ -510,14 +517,20 @@ class PgsController extends Controller
             'optical_power_after' => 'nullable|string|max:50',
             'start_time' => 'nullable|string|max:50',
             'end_time' => 'nullable|string|max:50',
-            'resolution_notes' => 'required|string',
-            'photo_before' => 'nullable|image|max:4096',
-            'photo_after' => 'nullable|image|max:4096',
+            'resolution_notes' => 'nullable|string',
+            'photo_before' => 'nullable|image|max:5120',
+            'photo_after' => 'nullable|image|max:5120',
             'materials' => 'nullable|array',
-            'materials.*.id' => 'nullable|exists:pgs_materials,id',
-            'materials.*.material_id' => 'required|exists:materials,id',
-            'materials.*.quantity_used' => 'required|numeric|min:0',
+            'materials.*.id' => 'nullable',
+            'materials.*.pgs_material_id' => 'nullable',
+            'materials.*.material_id' => 'nullable|exists:materials,id',
+            'materials.*.quantity_used' => 'nullable|numeric|min:0',
             'materials.*.quantity_returned' => 'nullable|numeric|min:0',
+            'additional_materials' => 'nullable|array',
+            'additional_materials.*.material_id' => 'required|exists:materials,id',
+            'additional_materials.*.quantity' => 'required|numeric|min:0.01',
+            'additional_materials.*.unit' => 'nullable|string',
+            'additional_materials.*.notes' => 'nullable|string',
         ]);
 
         $photoBeforePath = $pgs->photo_before;
@@ -530,55 +543,149 @@ class PgsController extends Controller
             $photoAfterPath = $request->file('photo_after')->store('pgs_photos', 'public');
         }
 
-        // Handle Material adjustments (kembalikan material jika ada yang tidak terpakai)
-        if (!empty($validated['materials'])) {
-            foreach ($validated['materials'] as $matInput) {
-                if (!empty($matInput['id'])) {
-                    $pgsMat = PgsMaterial::find($matInput['id']);
-                    if ($pgsMat) {
-                        $qtyUsed = (float) $matInput['quantity_used'];
-                        $qtyReturned = (float) ($matInput['quantity_returned'] ?? max(0, $pgsMat->quantity_prepared - $qtyUsed));
+        $areaId = $pgs->area_id ?? $pgs->customer?->area_id;
 
-                        $pgsMat->update([
-                            'quantity_used' => $qtyUsed,
-                            'quantity_returned' => $qtyReturned,
-                        ]);
+        // 1. Handle Rekonsiliasi Material Bekal Awal (Kembalikan sisa material yang tidak terpakai ke gudang)
+        if (!empty($request->materials) && is_array($request->materials)) {
+            foreach ($request->materials as $matInput) {
+                $pgsMatId = $matInput['id'] ?? $matInput['pgs_material_id'] ?? null;
+                if (!$pgsMatId) continue;
 
-                        // Jika ada material yang dikembalikan (tidak terpakai), kembalikan ke stok gudang
-                        if ($qtyReturned > 0) {
-                            $material = Material::find($pgsMat->material_id);
-                            if ($material) {
-                                $material->increment('stock', $qtyReturned);
+                $pgsMat = PgsMaterial::find($pgsMatId);
+                if ($pgsMat) {
+                    $qtyUsed = (float) ($matInput['quantity_used'] ?? 0);
+                    $prepQty = (float) $pgsMat->quantity_prepared;
+                    $qtyReturned = isset($matInput['quantity_returned']) 
+                        ? (float) $matInput['quantity_returned'] 
+                        : max(0, $prepQty - $qtyUsed);
 
-                                // Catat transaksi in untuk pengembalian
-                                $inTrans = MaterialTransaction::create([
-                                    'transaction_number' => 'IN-PGS-' . date('YmdHis') . rand(10, 99),
-                                    'type' => 'in',
-                                    'status' => 'approved',
-                                    'date' => now(),
-                                    'technician_name' => auth()->user()->name,
-                                    'purpose' => 'Pengembalian Sisa Material PGS ' . $pgs->ticket_number,
-                                    'user_id' => auth()->id(),
-                                    'customer_id' => $pgs->customer_id,
-                                    'area_id' => $pgs->area_id ?? $pgs->customer?->area_id,
-                                ]);
+                    $pgsMat->update([
+                        'quantity_used' => $qtyUsed,
+                        'quantity_returned' => $qtyReturned,
+                    ]);
 
-                                $unitRet = $pgsMat->unit ?? $material->unit;
-                                $ppuRet = $material->selling_price ?: ($material->price_per_unit ?? 0);
-                                if (strtolower($material->category ?? '') === 'kabel' && strtolower($unitRet) === 'meter') {
-                                    $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
-                                    $ppuRet = $ppuRet / $mpr;
-                                }
+                    // Jika ada sisa material yang dikembalikan, tambahkan kembali ke stok gudang & stok area
+                    if ($qtyReturned > 0) {
+                        $material = Material::find($pgsMat->material_id);
+                        if ($material) {
+                            $stockBefore = (float) $material->stock;
+                            $stockAfter = $stockBefore + $qtyReturned;
 
-                                MaterialTransactionItem::create([
-                                    'material_transaction_id' => $inTrans->id,
-                                    'material_id' => $material->id,
-                                    'quantity' => $qtyReturned,
-                                    'unit' => $unitRet,
-                                    'price_per_unit' => $ppuRet,
-                                    'total_price' => $ppuRet * $qtyReturned,
-                                ]);
+                            $returnTrans = MaterialTransaction::create([
+                                'transaction_number' => 'IN-PGS-RET-' . date('YmdHis') . rand(10, 99),
+                                'type' => 'in',
+                                'status' => 'approved',
+                                'date' => now(),
+                                'technician_name' => auth()->user()->name,
+                                'purpose' => 'Pengembalian Sisa Material PGS: ' . $pgs->ticket_number,
+                                'user_id' => auth()->id(),
+                                'customer_id' => $pgs->customer_id,
+                                'area_id' => $areaId,
+                            ]);
+
+                            $unitRet = $pgsMat->unit ?? $material->unit;
+                            $ppuRet = $material->selling_price ?: ($material->price_per_unit ?? 0);
+                            if (strtolower($material->category ?? '') === 'kabel' && strtolower($unitRet) === 'meter') {
+                                $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
+                                $ppuRet = $ppuRet / $mpr;
                             }
+
+                            MaterialTransactionItem::create([
+                                'material_transaction_id' => $returnTrans->id,
+                                'material_id' => $material->id,
+                                'quantity' => $qtyReturned,
+                                'unit' => $unitRet,
+                                'price_per_unit' => $ppuRet,
+                                'total_price' => $ppuRet * $qtyReturned,
+                                'stock_before' => $stockBefore,
+                                'stock_after' => $stockAfter,
+                            ]);
+
+                            $material->increment('stock', $qtyReturned);
+
+                            if ($areaId) {
+                                $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                                    ->where('area_id', $areaId)
+                                    ->first();
+                                if ($matStock) {
+                                    $matStock->increment('stock', $qtyReturned);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Handle Permintaan / Material Tambahan di Lapangan (Extra Materials)
+        if (!empty($request->additional_materials) && is_array($request->additional_materials)) {
+            $extraItems = array_filter($request->additional_materials, function ($item) {
+                return !empty($item['material_id']) && (float) ($item['quantity'] ?? 0) > 0;
+            });
+
+            if (!empty($extraItems)) {
+                $outTrans = MaterialTransaction::create([
+                    'transaction_number' => 'OUT-PGS-EXTRA-' . date('YmdHis') . rand(10, 99),
+                    'type' => 'out',
+                    'status' => 'approved',
+                    'date' => now(),
+                    'technician_name' => auth()->user()->name,
+                    'purpose' => 'Material Tambahan Lapangan PGS: ' . $pgs->ticket_number . ' (' . ($pgs->customer?->name ?? '') . ')',
+                    'user_id' => auth()->id(),
+                    'customer_id' => $pgs->customer_id,
+                    'area_id' => $areaId,
+                ]);
+
+                foreach ($extraItems as $extra) {
+                    $matId = $extra['material_id'];
+                    $extraQty = (float) $extra['quantity'];
+                    $material = Material::find($matId);
+                    if (!$material) continue;
+
+                    $stockBefore = (float) $material->stock;
+                    $stockAfter = max(0, $stockBefore - $extraQty);
+
+                    $unit = $extra['unit'] ?? $material->unit;
+                    $notes = !empty($extra['notes']) ? 'Tambahan: ' . $extra['notes'] : 'Material Tambahan di Lapangan';
+
+                    // Catat ke PgsMaterial agar tampil di riwayat dan cetak SPK
+                    PgsMaterial::create([
+                        'pgs_ticket_id' => $pgs->id,
+                        'material_id' => $material->id,
+                        'quantity_prepared' => $extraQty,
+                        'quantity_used' => $extraQty,
+                        'quantity_returned' => 0,
+                        'unit' => $unit,
+                        'notes' => $notes,
+                    ]);
+
+                    $ppu = $material->selling_price ?: ($material->price_per_unit ?? 0);
+                    if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
+                        $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
+                        $ppu = $ppu / $mpr;
+                    }
+
+                    MaterialTransactionItem::create([
+                        'material_transaction_id' => $outTrans->id,
+                        'material_id' => $material->id,
+                        'quantity' => $extraQty,
+                        'unit' => $unit,
+                        'price_per_unit' => $ppu,
+                        'total_price' => $ppu * $extraQty,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $stockAfter,
+                    ]);
+
+                    // Kurangkan stok gudang
+                    $material->decrement('stock', $extraQty);
+
+                    // Kurangkan stok area jika ada
+                    if ($areaId) {
+                        $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                            ->where('area_id', $areaId)
+                            ->first();
+                        if ($matStock) {
+                            $matStock->decrement('stock', $extraQty);
                         }
                     }
                 }
@@ -590,13 +697,13 @@ class PgsController extends Controller
         $pgs->update([
             'status' => 'completed',
             'action_taken' => $validated['action_taken'],
-            'optical_power_before' => $validated['optical_power_before'] ?? $pgs->optical_power_before,
-            'optical_power_after' => $validated['optical_power_after'] ?? $pgs->optical_power_after,
-            'start_time' => $validated['start_time'] ?? $pgs->start_time,
-            'end_time' => $validated['end_time'] ?? $pgs->end_time,
-            'resolution_notes' => $validated['resolution_notes'],
+            'optical_power_before' => $validated['optical_power_before'] ?? null,
+            'optical_power_after' => $validated['optical_power_after'] ?? null,
+            'start_time' => $validated['start_time'] ?? null,
+            'end_time' => $validated['end_time'] ?? null,
             'photo_before' => $photoBeforePath,
             'photo_after' => $photoAfterPath,
+            'resolution_notes' => $validated['resolution_notes'] ?? null,
             'resolved_by' => auth()->id(),
             'resolved_at' => now(),
         ]);
@@ -606,10 +713,179 @@ class PgsController extends Controller
             $pgs,
             $oldStatus,
             'completed',
-            'Teknisi telah menyelesaikan penanganan dan menyerahkan laporan: ' . $validated['action_taken']
+            'Teknisi melaporkan penanganan PGS selesai: ' . $validated['action_taken']
         );
 
-        return redirect()->back()->with('success', 'Laporan penanganan berhasil disimpan dan gangguan dinyatakan selesai.');
+        $retCount = PgsMaterial::where('pgs_ticket_id', $pgs->id)->where('quantity_returned', '>', 0)->count();
+        $msg = 'Laporan penanganan berhasil disimpan. Status tiket PGS telah selesai.';
+        if ($retCount > 0) {
+            $msg .= ' Sebanyak ' . $retCount . ' jenis kelebihan material otomatis dikembalikan ke stok gudang (Transaksi IN-PGS-RET).';
+        }
+
+        return redirect()->back()->with('success', $msg);
+    }
+
+    /**
+     * Teknisi Lapangan mengajukan permintaan tambahan material ke Kepala Teknisi
+     */
+    public function requestMaterial(Request $request, PgsTicket $pgs)
+    {
+        $validated = $request->validate([
+            'material_id' => 'required|exists:materials,id',
+            'quantity' => 'required|numeric|min:0.01',
+            'unit' => 'nullable|string',
+            'notes' => 'required|string', // Alasan kebutuhan darurat di lapangan
+        ]);
+
+        $material = Material::findOrFail($validated['material_id']);
+
+        PgsMaterialRequest::create([
+            'pgs_ticket_id' => $pgs->id,
+            'material_id' => $material->id,
+            'requested_by' => auth()->id(),
+            'quantity' => $validated['quantity'],
+            'unit' => $validated['unit'] ?? $material->unit,
+            'notes' => $validated['notes'],
+            'status' => 'pending',
+        ]);
+
+        AuditLog::createLog(
+            'Permintaan Tambahan Material PGS',
+            $pgs,
+            'pending',
+            'pending',
+            'Teknisi ' . auth()->user()->name . ' meminta tambahan ' . $validated['quantity'] . ' ' . ($validated['unit'] ?? $material->unit) . ' ' . $material->name . '. Alasan: ' . $validated['notes']
+        );
+
+        return redirect()->back()->with('success', 'Permintaan tambahan material berhasil diajukan ke Kepala Teknisi.');
+    }
+
+    /**
+     * Kepala Teknisi menyetujui permintaan tambahan material dari teknisi lapangan
+     */
+    public function approveMaterialRequest(Request $request, PgsTicket $pgs, PgsMaterialRequest $materialRequest)
+    {
+        if ($materialRequest->status !== 'pending') {
+            return redirect()->back()->with('error', 'Permintaan material ini sudah diproses sebelumnya.');
+        }
+
+        $material = Material::findOrFail($materialRequest->material_id);
+        $qty = (float) $materialRequest->quantity;
+        $areaId = $pgs->area_id ?? $pgs->customer?->area_id;
+
+        // Potong stok gudang
+        $stockBefore = (float) $material->stock;
+        $stockAfter = max(0, $stockBefore - $qty);
+
+        // Catat transaksi pengeluaran barang
+        $outTrans = MaterialTransaction::create([
+            'transaction_number' => 'OUT-PGS-REQ-' . date('YmdHis') . rand(10, 99),
+            'type' => 'out',
+            'status' => 'approved',
+            'date' => now(),
+            'technician_name' => $materialRequest->requester?->name ?: auth()->user()->name,
+            'purpose' => 'Persetujuan Material Tambahan PGS: ' . $pgs->ticket_number . ' (' . ($pgs->customer?->name ?? '') . ')',
+            'user_id' => auth()->id(),
+            'customer_id' => $pgs->customer_id,
+            'area_id' => $areaId,
+            'notes' => 'Disetujui Ka. Teknisi. Alasan teknisi: ' . ($materialRequest->notes ?? '-'),
+        ]);
+
+        $unit = $materialRequest->unit ?? $material->unit;
+        $ppu = $material->selling_price ?: ($material->price_per_unit ?? 0);
+        if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
+            $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
+            $ppu = $ppu / $mpr;
+        }
+
+        MaterialTransactionItem::create([
+            'material_transaction_id' => $outTrans->id,
+            'material_id' => $material->id,
+            'quantity' => $qty,
+            'unit' => $unit,
+            'price_per_unit' => $ppu,
+            'total_price' => $ppu * $qty,
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+        ]);
+
+        $material->decrement('stock', $qty);
+
+        if ($areaId) {
+            $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                ->where('area_id', $areaId)
+                ->first();
+            if ($matStock) {
+                $matStock->decrement('stock', $qty);
+            }
+        }
+
+        // Tambahkan ke pgs_materials (jika sudah ada, tambahkan quantity_prepared, jika belum buat baru)
+        $existingPgsMat = PgsMaterial::where('pgs_ticket_id', $pgs->id)
+            ->where('material_id', $material->id)
+            ->first();
+
+        if ($existingPgsMat) {
+            $newPrep = (float) $existingPgsMat->quantity_prepared + $qty;
+            $existingPgsMat->update([
+                'quantity_prepared' => $newPrep,
+                'quantity_used' => (float) $existingPgsMat->quantity_used + $qty,
+                'notes' => trim(($existingPgsMat->notes ?? '') . ' | Tambahan disetujui: +' . $qty . ' ' . $unit),
+            ]);
+        } else {
+            PgsMaterial::create([
+                'pgs_ticket_id' => $pgs->id,
+                'material_id' => $material->id,
+                'quantity_prepared' => $qty,
+                'quantity_used' => $qty,
+                'quantity_returned' => 0,
+                'unit' => $unit,
+                'notes' => 'Tambahan Lapangan disetujui Ka. Teknisi: ' . ($materialRequest->notes ?? '-'),
+            ]);
+        }
+
+        $materialRequest->update([
+            'status' => 'approved',
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
+
+        AuditLog::createLog(
+            'Setujui Permintaan Material PGS',
+            $pgs,
+            'pending',
+            'approved',
+            'Kepala Teknisi menyetujui tambahan ' . $qty . ' ' . $unit . ' ' . $material->name . ' untuk teknisi ' . ($materialRequest->requester?->name ?? '-')
+        );
+
+        return redirect()->back()->with('success', 'Permintaan tambahan material disetujui dan ditambahkan ke penugasan teknisi.');
+    }
+
+    /**
+     * Kepala Teknisi menolak permintaan tambahan material dari teknisi lapangan
+     */
+    public function rejectMaterialRequest(Request $request, PgsTicket $pgs, PgsMaterialRequest $materialRequest)
+    {
+        $validated = $request->validate([
+            'rejection_reason' => 'required|string',
+        ]);
+
+        $materialRequest->update([
+            'status' => 'rejected',
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+            'rejection_reason' => $validated['rejection_reason'],
+        ]);
+
+        AuditLog::createLog(
+            'Tolak Permintaan Material PGS',
+            $pgs,
+            'pending',
+            'rejected',
+            'Kepala Teknisi menolak permintaan material: ' . $validated['rejection_reason']
+        );
+
+        return redirect()->back()->with('success', 'Permintaan tambahan material telah ditolak.');
     }
 
     /**

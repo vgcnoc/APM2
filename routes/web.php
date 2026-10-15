@@ -455,6 +455,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('pgs/{pgs}/escalate', [\App\Http\Controllers\PgsController::class, 'escalateToLead'])->name('pgs.escalate');
     Route::post('pgs/{pgs}/schedule', [\App\Http\Controllers\PgsController::class, 'schedule'])->name('pgs.schedule');
     Route::post('pgs/{pgs}/report', [\App\Http\Controllers\PgsController::class, 'submitReport'])->name('pgs.report');
+    Route::post('pgs/{pgs}/request-material', [\App\Http\Controllers\PgsController::class, 'requestMaterial'])->name('pgs.request-material');
+    Route::post('pgs/{pgs}/material-requests/{materialRequest}/approve', [\App\Http\Controllers\PgsController::class, 'approveMaterialRequest'])->name('pgs.material-requests.approve');
+    Route::post('pgs/{pgs}/material-requests/{materialRequest}/reject', [\App\Http\Controllers\PgsController::class, 'rejectMaterialRequest'])->name('pgs.material-requests.reject');
     Route::delete('pgs/{pgs}', [\App\Http\Controllers\PgsController::class, 'destroy'])->name('pgs.destroy');
 
     // ── Penanganan Gangguan Komplain (PGK) ───────────────────────

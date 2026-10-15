@@ -83,6 +83,11 @@ class PgsTicket extends Model
         return $this->hasMany(PgsMaterial::class, 'pgs_ticket_id');
     }
 
+    public function materialRequests(): HasMany
+    {
+        return $this->hasMany(PgsMaterialRequest::class, 'pgs_ticket_id');
+    }
+
     public function resolvedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'resolved_by');
