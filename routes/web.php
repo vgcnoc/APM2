@@ -584,6 +584,13 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/settings/resellers', [\App\Http\Controllers\ResellerSettingController::class, 'index'])->name('settings.resellers.index');
         Route::post('/settings/resellers/{user}/update', [\App\Http\Controllers\ResellerSettingController::class, 'update'])->name('settings.resellers.update.post');
+
+        // Data Migration Center
+        Route::get('/settings/data-migration', [\App\Http\Controllers\DataMigrationController::class, 'index'])->name('settings.data-migration.index');
+        Route::get('/settings/data-migration/template/{category}', [\App\Http\Controllers\DataMigrationController::class, 'downloadTemplate'])->name('settings.data-migration.template');
+        Route::post('/settings/data-migration/dry-run', [\App\Http\Controllers\DataMigrationController::class, 'dryRun'])->name('settings.data-migration.dry-run');
+        Route::post('/settings/data-migration/execute', [\App\Http\Controllers\DataMigrationController::class, 'execute'])->name('settings.data-migration.execute');
+        Route::post('/settings/data-migration/error-report', [\App\Http\Controllers\DataMigrationController::class, 'downloadErrorReport'])->name('settings.data-migration.error-report');
     });
 
     // ── Manajemen Role & Hak Akses ─────────────────────────────

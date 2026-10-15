@@ -665,6 +665,20 @@ class PermissionRegistry
                     ['name' => 'monitoring_teknisi_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Data Teknisi Sesuai Area'],
                 ],
             ],
+
+            // ── 24. DATA MIGRATION CENTER ──────────────────────────────
+            [
+                'group' => 'Data Migration Center',
+                'category' => 'setting',
+                'icon' => 'database',
+                'menu_parent' => 'menu_data_migration',
+                'permissions' => [
+                    ['name' => 'menu_data_migration', 'type' => 'menu', 'label' => 'Akses Menu Data Migration Center'],
+                    ['name' => 'data_migration_template_download', 'type' => 'button', 'label' => 'Tombol Unduh Template Excel / CSV'],
+                    ['name' => 'data_migration_dry_run', 'type' => 'button', 'label' => 'Tombol Jalankan Validasi & Dry Run'],
+                    ['name' => 'data_migration_execute', 'type' => 'button', 'label' => 'Tombol Eksekusi Impor Database'],
+                ],
+            ],
         ];
     }
 
