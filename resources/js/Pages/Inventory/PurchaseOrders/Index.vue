@@ -531,13 +531,15 @@ const viewOrder = (trx) => {
 };
 
 const hasOnt = (trx) => {
-    return trx.items.some(item => {
-        if (item.material && item.material.category === 'ONT') {
+    return !!(trx.items && trx.items.some(item => {
+        if (!item.material) return false;
+        const isOnt = (item.material.category || '').toUpperCase() === 'ONT' || (item.material.name || '').toLowerCase().includes('ont');
+        if (isOnt) {
             const alreadySent = item.onts ? item.onts.length : 0;
             return alreadySent < item.quantity;
         }
         return false;
-    });
+    }));
 };
 
 const sendOnt = (id) => {

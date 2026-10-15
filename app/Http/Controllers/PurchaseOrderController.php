@@ -7,6 +7,8 @@ use App\Models\MaterialTransaction;
 use App\Models\MaterialTransactionItem;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Models\Area;
+use App\Models\Ont;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +19,7 @@ class PurchaseOrderController extends Controller
     {
         // Only get transactions with purpose indicating it's a purchase
         $transactions = MaterialTransaction::where('purpose', 'Pembelian Toko / Supplier')
-                            ->with(['items.material', 'expense.category'])
+                            ->with(['items.material', 'items.onts', 'expense.category'])
                             ->latest()
                             ->paginate(15);
 
@@ -56,12 +58,16 @@ class PurchaseOrderController extends Controller
             $count = MaterialTransaction::whereDate('created_at', today())->count() + 1;
             $transactionNumber = 'PO-' . now()->format('Ymd') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
 
+            $area = Area::where('name', $validated['area_name'])->first();
+
             $transaction = MaterialTransaction::create([
                 'transaction_number' => $transactionNumber,
                 'type' => 'in',
                 'date' => $validated['date'],
                 'purpose' => 'Pembelian Toko / Supplier',
                 'technician_name' => $validated['area_name'], // Reusing this column for area/wilayah name
+                'area_id' => $area ? $area->id : null,
+                'area' => $validated['area_name'],
                 'notes' => $validated['notes'] ?? null,
                 'user_id' => auth()->id(),
                 'total_cost' => 0 // Will calculate below
@@ -159,10 +165,14 @@ class PurchaseOrderController extends Controller
             // Hapus items lama
             $transaction->items()->delete();
 
+            $area = Area::where('name', $validated['area_name'])->first();
+
             // 2. Update info transaksi
             $transaction->update([
                 'date' => $validated['date'],
                 'technician_name' => $validated['area_name'],
+                'area_id' => $area ? $area->id : null,
+                'area' => $validated['area_name'],
                 'notes' => $validated['notes'] ?? null,
             ]);
 
@@ -313,5 +323,55 @@ class PurchaseOrderController extends Controller
         ]);
 
         $transaction->update(['expense_id' => $expense->id]);
+    }
+
+    public function sendOnt(Request $request, $id)
+    {
+        $transaction = MaterialTransaction::with('items.material')->findOrFail($id);
+        
+        $areaId = $transaction->area_id;
+        if (!$areaId && $transaction->technician_name) {
+            $area = Area::where('name', $transaction->technician_name)->first();
+            if ($area) {
+                $areaId = $area->id;
+            }
+        }
+
+        $ontsCreated = 0;
+        DB::beginTransaction();
+        try {
+            foreach ($transaction->items as $item) {
+                $mat = $item->material;
+                $isOnt = $mat && (
+                    strtoupper($mat->category ?? '') === 'ONT' ||
+                    stripos($mat->name ?? '', 'ont') !== false
+                );
+
+                if ($isOnt) {
+                    $alreadySent = Ont::where('material_transaction_item_id', $item->id)->count();
+                    $needed = max(0, (int) $item->quantity - $alreadySent);
+                    
+                    for ($i = 0; $i < $needed; $i++) {
+                        Ont::create([
+                            'serial_number' => 'TBA-' . time() . '-' . uniqid(),
+                            'brand' => $mat->name,
+                            'status' => 'Belum Set/Baru Input',
+                            'area_id' => $areaId,
+                            'material_transaction_item_id' => $item->id,
+                        ]);
+                        $ontsCreated++;
+                    }
+                }
+            }
+            DB::commit();
+            if ($ontsCreated > 0) {
+                return redirect()->back()->with('success', "{$ontsCreated} data ONT berhasil dikirim ke tabel Data ONT.");
+            } else {
+                return redirect()->back()->with('success', 'Semua data ONT untuk order ini sudah terkirim.');
+            }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal mengirim data ONT: ' . $e->getMessage());
+        }
     }
 }
