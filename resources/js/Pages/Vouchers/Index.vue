@@ -4,46 +4,196 @@
             <h1 class="text-2xl font-bold text-gray-900">Data Voucher</h1>
             <p class="text-sm text-gray-500">Kelola dan lihat semua voucher Anda</p>
         </div>
-        <!-- HEADER -->
-        <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div class="flex gap-2 w-full sm:w-auto">
-                <div class="relative flex-1 sm:w-64">
+        <!-- EXECUTIVE KPI CARDS -->
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-4 mb-6">
+            <!-- Card 1: Total Voucher -->
+            <div 
+                @click="filterByStatus('')" 
+                :class="statusFilter === '' && !search && !resellerFilter && !areaFilter ? 'ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50/20' : 'border-gray-200 bg-white hover:border-indigo-300 hover:shadow-md'"
+                class="border rounded-2xl p-4 shadow-xs transition-all duration-200 cursor-pointer relative overflow-hidden group flex flex-col justify-between"
+            >
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Voucher</span>
+                    <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="text-2xl font-black text-gray-900 tracking-tight">
+                        {{ Number(stats?.total || 0).toLocaleString('id-ID') }}
+                    </div>
+                    <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5 font-medium">
+                        <span>Semua data voucher</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Voucher Tersedia -->
+            <div 
+                @click="filterByStatus('available')" 
+                :class="statusFilter === 'available' ? 'ring-2 ring-blue-500 border-blue-500 bg-blue-50/25' : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'"
+                class="border rounded-2xl p-4 shadow-xs transition-all duration-200 cursor-pointer relative overflow-hidden group flex flex-col justify-between"
+            >
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold text-blue-700 uppercase tracking-wider">Tersedia</span>
+                    <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="text-2xl font-black text-blue-900 tracking-tight">
+                        {{ Number(stats?.available || 0).toLocaleString('id-ID') }}
+                    </div>
+                    <div class="text-[11px] text-blue-600 font-semibold mt-0.5 truncate" :title="'Potensi Rp ' + Number(stats?.nominal_available || 0).toLocaleString('id-ID')">
+                        Potensi Rp {{ Number(stats?.nominal_available || 0).toLocaleString('id-ID') }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Voucher Digunakan -->
+            <div 
+                @click="filterByStatus('used')" 
+                :class="statusFilter === 'used' ? 'ring-2 ring-emerald-500 border-emerald-500 bg-emerald-50/25' : 'border-gray-200 bg-white hover:border-emerald-300 hover:shadow-md'"
+                class="border rounded-2xl p-4 shadow-xs transition-all duration-200 cursor-pointer relative overflow-hidden group flex flex-col justify-between"
+            >
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider">Digunakan</span>
+                    <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="text-2xl font-black text-emerald-900 tracking-tight">
+                        {{ Number(stats?.used || 0).toLocaleString('id-ID') }}
+                    </div>
+                    <div class="text-[11px] text-emerald-700 font-semibold mt-0.5 flex items-center gap-1.5">
+                        <span class="relative flex h-2 w-2">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <span>{{ Number(stats?.online || 0) }} Online Hotspot</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4: Voucher Expired -->
+            <div 
+                @click="filterByStatus('expired')" 
+                :class="statusFilter === 'expired' ? 'ring-2 ring-rose-500 border-rose-500 bg-rose-50/25' : 'border-gray-200 bg-white hover:border-rose-300 hover:shadow-md'"
+                class="border rounded-2xl p-4 shadow-xs transition-all duration-200 cursor-pointer relative overflow-hidden group flex flex-col justify-between"
+            >
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold text-rose-700 uppercase tracking-wider">Expired</span>
+                    <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="text-2xl font-black text-rose-900 tracking-tight">
+                        {{ Number(stats?.expired || 0).toLocaleString('id-ID') }}
+                    </div>
+                    <div class="text-[11px] text-rose-600 font-medium mt-0.5">
+                        Masa aktif habis
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 5: Omset Terpakai -->
+            <div 
+                class="border border-purple-200 bg-gradient-to-br from-purple-50/60 via-white to-indigo-50/40 rounded-2xl p-4 shadow-xs transition-all duration-200 relative overflow-hidden group flex flex-col justify-between col-span-2 sm:col-span-1 lg:col-span-1"
+            >
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold text-purple-700 uppercase tracking-wider">Omset Terpakai</span>
+                    <div class="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="text-lg sm:text-xl font-black text-purple-950 tracking-tight truncate" :title="'Rp ' + Number(stats?.nominal_used || 0).toLocaleString('id-ID')">
+                        Rp {{ Number(stats?.nominal_used || 0).toLocaleString('id-ID') }}
+                    </div>
+                    <div class="text-[11px] text-purple-700 font-semibold mt-0.5">
+                        Voucher berbayar terjual
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FILTER BAR & ACTIONS -->
+        <div class="mb-6 flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
+            <div class="flex flex-wrap items-center gap-2 flex-1">
+                <!-- Search Input -->
+                <div class="relative flex-1 min-w-[200px]">
                     <input 
                         v-model="search" 
                         type="text" 
                         placeholder="Cari kode/username/reseller..." 
-                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                        class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm shadow-2xs"
                         @keyup.enter="doFilter"
                     >
                     <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
                 </div>
-                <select v-model="statusFilter" @change="doFilter" class="border-gray-300 rounded-lg text-sm">
-                    <option value="">Semua Status (Aktif & Tersedia)</option>
+
+                <!-- Status Filter -->
+                <select v-model="statusFilter" @change="doFilter" class="bg-white border-gray-300 rounded-xl text-sm shadow-2xs focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">Semua Status</option>
                     <option value="available">Tersedia</option>
                     <option value="used">Digunakan</option>
+                    <option value="expired">Expired</option>
                 </select>
-                <select v-if="layoutComponent === AppLayout" v-model="resellerFilter" @change="doFilter" class="border-gray-300 rounded-lg text-sm">
+
+                <!-- Reseller Filter -->
+                <select v-if="layoutComponent === AppLayout" v-model="resellerFilter" @change="doFilter" class="bg-white border-gray-300 rounded-xl text-sm shadow-2xs focus:ring-indigo-500 focus:border-indigo-500 max-w-[220px]">
                     <option value="">Semua Pemilik / Reseller</option>
                     <option value="system">🏢 Kantor / System</option>
                     <option v-for="res in resellers" :key="res.id" :value="res.id">
                         👤 {{ res.customer?.name || ('Reseller #' + res.id) }}
                     </option>
                 </select>
+
+                <!-- Area / Wilayah Filter -->
+                <select v-if="layoutComponent === AppLayout" v-model="areaFilter" @change="doFilter" class="bg-white border-gray-300 rounded-xl text-sm shadow-2xs focus:ring-indigo-500 focus:border-indigo-500 max-w-[220px]">
+                    <option value="">Semua Area / Wilayah</option>
+                    <option v-for="area in areas" :key="area.id" :value="area.id">
+                        📍 {{ area.name }}
+                    </option>
+                </select>
+
+                <!-- Reset Button -->
+                <button 
+                    v-if="search || statusFilter || resellerFilter || areaFilter" 
+                    @click="resetFilter" 
+                    class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                    title="Reset Filter"
+                >
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <span>Reset</span>
+                </button>
             </div>
             
-            <div class="flex gap-2">
-                <button v-if="selectedVouchers.length > 0" @click="printSelected" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 shadow-sm flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            <div class="flex items-center gap-2 shrink-0">
+                <button v-if="selectedVouchers.length > 0" @click="printSelected" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 shadow-sm flex items-center gap-2 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                     Print ({{ selectedVouchers.length }})
                 </button>
-                <button v-if="selectedVouchers.length > 0" @click="bulkDelete" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 shadow-sm flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                <button v-if="selectedVouchers.length > 0" @click="bulkDelete" class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 shadow-sm flex items-center gap-2 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     Hapus ({{ selectedVouchers.length }})
                 </button>
-                <button @click="openGenerateModal" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 shadow-sm flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                <button @click="openGenerateModal" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm flex items-center gap-2 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
                     Generate Voucher
                 </button>
             </div>
@@ -61,7 +211,7 @@
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Kode / User</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Password</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Profil</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reseller</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Pemilik / Area</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Terpakai Sejak</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Aktif Sampai</th>
@@ -107,7 +257,10 @@
                                         </svg>
                                         <span class="font-bold">{{ voucher.reseller.customer.name }}</span>
                                     </div>
-                                    <div class="flex items-center gap-1">
+                                    <div class="flex items-center gap-1 flex-wrap">
+                                        <span v-if="voucher.reseller?.customer?.area_model?.name || voucher.reseller?.customer?.areaModel?.name || voucher.reseller?.customer?.area" class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                            📍 {{ voucher.reseller?.customer?.area_model?.name || voucher.reseller?.customer?.areaModel?.name || voucher.reseller?.customer?.area }}
+                                        </span>
                                         <span v-if="voucher.payment_method === 'cash'" class="text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200" title="Bayar Tunai di Kantor">
                                             💵 Tunai (Kantor)
                                         </span>
@@ -116,11 +269,16 @@
                                         </span>
                                     </div>
                                 </div>
-                                <div v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
-                                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                                    </svg>
-                                    <span>Kantor / System</span>
+                                <div v-else class="flex flex-col items-start gap-1">
+                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                        </svg>
+                                        <span>Kantor / System</span>
+                                    </div>
+                                    <span v-if="voucher.customer?.area_model?.name || voucher.customer?.areaModel?.name || voucher.customer?.area" class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                        📍 {{ voucher.customer?.area_model?.name || voucher.customer?.areaModel?.name || voucher.customer?.area }}
+                                    </span>
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -676,6 +834,8 @@ const props = defineProps({
     filters: Object,
     onlineUsernames: Array,
     usageStats: Object,
+    areas: Array,
+    stats: Object,
 });
 
 const isReseller = computed(() => {
@@ -721,9 +881,10 @@ const calculateExpiration = (firstLoginIso, durationStr) => {
     return date.toLocaleString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
-const search = ref(props.filters.search || '');
-const statusFilter = ref(props.filters.status || '');
-const resellerFilter = ref(props.filters.reseller_id || '');
+const search = ref(props.filters?.search || '');
+const statusFilter = ref(props.filters?.status || '');
+const resellerFilter = ref(props.filters?.reseller_id || '');
+const areaFilter = ref(props.filters?.area_id || '');
 const showModal = ref(false);
 const activeTab = ref('single');
 const showSinglePassword = ref(false);
@@ -812,8 +973,26 @@ const doFilter = () => {
     router.get(route('vouchers.index'), { 
         search: search.value, 
         status: statusFilter.value,
-        reseller_id: resellerFilter.value 
+        reseller_id: resellerFilter.value,
+        area_id: areaFilter.value,
     }, { preserveState: true, replace: true });
+};
+
+const filterByStatus = (status) => {
+    if (statusFilter.value === status) {
+        statusFilter.value = '';
+    } else {
+        statusFilter.value = status;
+    }
+    doFilter();
+};
+
+const resetFilter = () => {
+    search.value = '';
+    statusFilter.value = '';
+    resellerFilter.value = '';
+    areaFilter.value = '';
+    doFilter();
 };
 
 const openGenerateModal = () => {

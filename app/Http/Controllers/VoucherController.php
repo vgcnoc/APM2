@@ -139,7 +139,7 @@ class VoucherController extends Controller
         // Jalankan pengecekan voucher expired terlebih dahulu
         self::checkAndExpireVouchers();
 
-        $query = Voucher::with('profile');
+        $query = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel']);
 
         if ($request->filled('profile_id')) {
             $query->where('voucher_profile_id', $request->profile_id);
@@ -153,33 +153,144 @@ class VoucherController extends Controller
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('code', 'like', "%{$search}%")
-                  ->orWhere('username', 'like', "%{$search}%");
+                  ->orWhere('username', 'like', "%{$search}%")
+                  ->orWhereHas('reseller.customer', function($sub) use ($search) {
+                      $sub->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Filter Pemilik / Reseller
+        if ($request->filled('reseller_id')) {
+            if ($request->reseller_id === 'system') {
+                $query->whereNull('reseller_id');
+            } else {
+                $query->where('reseller_id', $request->reseller_id);
+            }
+        }
+
+        // Filter Wilayah / Area
+        if ($request->filled('area_id')) {
+            $areaId = $request->area_id;
+            $selectedArea = \App\Models\Area::find($areaId);
+            $areaName = $selectedArea ? $selectedArea->name : null;
+
+            $query->where(function ($q) use ($areaId, $areaName) {
+                $q->whereHas('reseller.customer', function ($sub) use ($areaId, $areaName) {
+                    $sub->where('area_id', $areaId);
+                    if ($areaName) {
+                        $sub->orWhere('area', $areaName);
+                    }
+                })->orWhereHas('customer', function ($sub) use ($areaId, $areaName) {
+                    $sub->where('area_id', $areaId);
+                    if ($areaName) {
+                        $sub->orWhere('area', $areaName);
+                    }
+                });
             });
         }
         
         $this->applyResellerFilter($query);
 
-        $vouchers = $query->latest()->paginate(20)->withQueryString();
+        $vouchers = $query->latest('id')->paginate(20)->withQueryString();
         $user = auth()->user();
-        if ($user->isAdmin()) {
+        $isAdminLike = $user && ($user->isAdmin() || in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin']));
+
+        if ($isAdminLike) {
             $profiles = VoucherProfile::all();
         } else {
             $profiles = $user->voucherProfiles()->get();
+            if ($profiles->isEmpty()) {
+                $profiles = VoucherProfile::where('is_customer_free', false)->get();
+            }
         }
-        $resellers = \App\Models\Reseller::with('customer')->get();
+        
+        $resellers = \App\Models\Reseller::with('customer.areaModel')->get();
+        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
+
+        // Online Usernames dari RADIUS
+        $onlineUsernames = (function() {
+            try {
+                return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
+            } catch (\Exception $e) {
+                return [];
+            }
+        })();
+
+        // Query Dasar Statistik (mengikuti batasan user / reseller / area yang dipilih)
+        $statsBase = Voucher::query();
+        $this->applyResellerFilter($statsBase);
+
+        if ($request->filled('reseller_id')) {
+            if ($request->reseller_id === 'system') {
+                $statsBase->whereNull('reseller_id');
+            } else {
+                $statsBase->where('reseller_id', $request->reseller_id);
+            }
+        }
+
+        if ($request->filled('area_id')) {
+            $areaId = $request->area_id;
+            $selectedArea = \App\Models\Area::find($areaId);
+            $areaName = $selectedArea ? $selectedArea->name : null;
+
+            $statsBase->where(function ($q) use ($areaId, $areaName) {
+                $q->whereHas('reseller.customer', function ($sub) use ($areaId, $areaName) {
+                    $sub->where('area_id', $areaId);
+                    if ($areaName) {
+                        $sub->orWhere('area', $areaName);
+                    }
+                })->orWhereHas('customer', function ($sub) use ($areaId, $areaName) {
+                    $sub->where('area_id', $areaId);
+                    if ($areaName) {
+                        $sub->orWhere('area', $areaName);
+                    }
+                });
+            });
+        }
+
+        $totalCount = (clone $statsBase)->count();
+        $availableCount = (clone $statsBase)->where('status', 'available')->count();
+        $usedCount = (clone $statsBase)->where('status', 'used')->count();
+        $expiredCount = (clone $statsBase)->where('status', 'expired')->count();
+        $onlineCount = (clone $statsBase)->whereIn('username', $onlineUsernames)->count();
+
+        // Nominal omset dari voucher terpakai / terjual (berbayar)
+        $totalNominalUsed = (float) (clone $statsBase)->where('vouchers.status', 'used')
+            ->where('vouchers.is_free', false)
+            ->join('voucher_profiles', 'vouchers.voucher_profile_id', '=', 'voucher_profiles.id')
+            ->sum('voucher_profiles.price');
+
+        // Nominal potensi dari voucher yang tersedia (berbayar)
+        $totalNominalAvailable = (float) (clone $statsBase)->where('vouchers.status', 'available')
+            ->where('vouchers.is_free', false)
+            ->join('voucher_profiles', 'vouchers.voucher_profile_id', '=', 'voucher_profiles.id')
+            ->sum('voucher_profiles.price');
+
+        $stats = [
+            'total' => $totalCount,
+            'available' => $availableCount,
+            'used' => $usedCount,
+            'expired' => $expiredCount,
+            'online' => $onlineCount,
+            'nominal_used' => $totalNominalUsed,
+            'nominal_available' => $totalNominalAvailable,
+        ];
 
         return Inertia::render('Vouchers/Index', [
             'vouchers' => $vouchers,
             'profiles' => $profiles,
             'resellers' => $resellers,
-            'filters' => $request->only(['search', 'profile_id', 'status']),
-            'onlineUsernames' => (function() {
-                try {
-                    return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
-                } catch (\Exception $e) {
-                    return [];
-                }
-            })(),
+            'areas' => $areas,
+            'stats' => $stats,
+            'filters' => [
+                'search' => $request->input('search', ''),
+                'profile_id' => $request->input('profile_id', ''),
+                'status' => $request->input('status', ''),
+                'reseller_id' => $request->input('reseller_id', ''),
+                'area_id' => $request->input('area_id', ''),
+            ],
+            'onlineUsernames' => $onlineUsernames,
             'usageStats' => (function() use ($vouchers) {
                 try {
                     $usernames = $vouchers->pluck('username')->filter()->toArray();
