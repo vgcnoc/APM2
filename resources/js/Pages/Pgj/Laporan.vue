@@ -200,54 +200,142 @@
             </div>
         </div>
 
-        <!-- ════════════ MODAL INPUT LAPORAN RESTORASI JALUR ════════════ -->
-        <div v-if="showReportModal" class="fixed inset-0 z-50 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-100 overflow-hidden animate-fade-in-up">
-                <div class="px-6 py-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex justify-between items-center">
+        <!-- ════════════ MODAL INPUT LAPORAN RESTORASI JALUR (PGJ) ════════════ -->
+        <div v-if="showReportModal" class="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div class="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-gray-100 overflow-hidden animate-fade-in-up my-auto flex flex-col max-h-[92vh]">
+                <!-- Modal Header -->
+                <div class="px-6 py-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex justify-between items-center shrink-0">
                     <div>
-                        <h3 class="font-black text-lg">Laporan Restorasi Lapangan PGJ #{{ selectedTicket?.ticket_number }}</h3>
-                        <p class="text-xs text-emerald-100 mt-0.5">Catat tindakan perbaikan, detail core FO, optical loss, foto, dan material terpakai</p>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-black text-lg">Laporan Restorasi Lapangan PGJ</h3>
+                            <span class="px-2 py-0.5 rounded-md bg-white/20 text-white font-mono text-xs font-bold">#{{ selectedTicket?.ticket_number }}</span>
+                        </div>
+                        <p class="text-xs text-emerald-100 mt-0.5">Catat tindakan perbaikan, detail core FO, optical loss, rekonsiliasi material & dokumentasi</p>
                     </div>
-                    <button @click="showReportModal = false" class="text-white/80 hover:text-white text-2xl font-bold">&times;</button>
+                    <div class="flex items-center gap-3">
+                        <span v-if="hasSavedDraft" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-400/20 text-amber-200 border border-amber-300/30 text-[11px] font-medium" title="Data tersimpan otomatis di browser ini">
+                            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                            Draft Otomatis Tersimpan
+                        </span>
+                        <button @click="closeReportModal" class="text-white/80 hover:text-white text-2xl font-bold leading-none p-1 rounded-lg hover:bg-white/10 transition-colors">&times;</button>
+                    </div>
                 </div>
 
-                <form @submit.prevent="submitReport" class="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+                <form @submit.prevent="submitReport" class="p-6 space-y-6 overflow-y-auto flex-1">
+                    <!-- Alert Draft Restored -->
+                    <div v-if="hasSavedDraft" class="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">💾</span>
+                            <span><strong>Draft Terdeteksi:</strong> Formulir dan timer pengerjaan telah dimuat otomatis dari sesi sebelumnya.</span>
+                        </div>
+                        <button type="button" @click="clearDraft" class="text-rose-600 hover:text-rose-800 font-bold hover:underline shrink-0 text-xs">
+                            Buang Draft
+                        </button>
+                    </div>
+
                     <!-- Ringkasan Gangguan & Dampak -->
-                    <div class="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-100 text-xs text-emerald-950 space-y-1">
-                        <div class="font-bold flex justify-between">
-                            <span>Titik: {{ selectedTicket?.location_name }}</span>
-                            <span class="uppercase font-bold text-emerald-800">Segmen: {{ selectedTicket?.segment_type }}</span>
+                    <div class="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100 text-xs text-emerald-950 space-y-2">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div class="font-bold text-sm text-gray-900 flex items-center gap-2">
+                                <span>Titik: {{ selectedTicket?.location_name }}</span>
+                                <span class="px-2 py-0.5 rounded text-xs font-bold border uppercase" :class="getSegmentBadgeClass(selectedTicket?.segment_type)">
+                                    Segmen: {{ selectedTicket?.segment_type }}
+                                </span>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-lg bg-emerald-100/80 font-bold text-emerald-800 text-[11px]">
+                                Area: {{ selectedTicket?.area?.name || '-' }}
+                            </span>
                         </div>
-                        <div>Kerusakan: <span class="text-red-700 font-medium">"{{ selectedTicket?.reported_issue }}"</span></div>
-                        <div v-if="selectedTicket?.lead_notes" class="text-amber-800 font-semibold">
-                            Instruksi Ka. Teknisi: "{{ selectedTicket?.lead_notes }}"
+                        <div class="text-gray-700">
+                            <strong>Temuan Gangguan:</strong> <span class="text-red-700 font-medium">"{{ selectedTicket?.reported_issue }}"</span>
+                        </div>
+                        <div v-if="selectedTicket?.odc || selectedTicket?.odp" class="text-gray-600 flex flex-wrap gap-3">
+                            <span v-if="selectedTicket?.odc"><strong>ODC:</strong> {{ selectedTicket.odc.name }}</span>
+                            <span v-if="selectedTicket?.odp"><strong>ODP:</strong> {{ selectedTicket.odp.name }}</span>
+                        </div>
+                        <div v-if="selectedTicket?.lead_notes" class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-medium">
+                            <span class="font-bold text-amber-800">Instruksi Ka. Teknisi:</span> "{{ selectedTicket?.lead_notes }}"
                         </div>
                     </div>
 
-                    <!-- Tindakan Restorasi Fisik -->
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tindakan Restorasi Fisik Lapangan <span class="text-red-500">*</span></label>
-                        <textarea 
-                            v-model="reportForm.action_taken" 
-                            rows="2" 
-                            placeholder="Contoh: Penarikan span kabel FO 24 core baru sepanjang 65 meter, penggantian closure dome di tiang no 12, dan penyambungan (splicing) seluruh core."
-                            class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm" 
-                            required
-                        ></textarea>
+                    <!-- ════════ SECTION 1: JAM MULAI PENGERJAAN & LIVE STOPWATCH ════════ -->
+                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                    ⏱️ 1. Jam Mulai Pengerjaan Lapangan
+                                </label>
+                                <p class="text-[11px] text-gray-500">Tekan tombol mulai saat Anda tiba di lokasi jalur FO. Waktu akan terus berjalan meski keluar aplikasi.</p>
+                            </div>
+                            <!-- Live Running Stopwatch Indicator -->
+                            <div v-if="isWorking" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 self-start sm:self-auto">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-ping"></span>
+                                <span class="text-xs font-bold uppercase tracking-wider">Sedang Berjalan:</span>
+                                <span class="font-mono text-sm font-black text-emerald-950">{{ formatSecondsToClock(elapsedSeconds) }}</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center pt-1">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <input 
+                                        type="time" 
+                                        v-model="reportForm.start_time" 
+                                        :readonly="isWorking"
+                                        class="flex-1 rounded-xl border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm font-semibold text-gray-800 bg-white" 
+                                        required
+                                    />
+                                    <button 
+                                        type="button" 
+                                        @click="startWork" 
+                                        :class="isWorking ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-emerald-600 hover:bg-emerald-700'"
+                                        class="px-4 py-2 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 shrink-0"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span>{{ reportForm.start_time ? 'Reset Jam Mulai' : 'Mulai Pengerjaan' }}</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-gray-500 italic">
+                                <span v-if="reportForm.start_time" class="text-emerald-700 font-semibold">
+                                    ✓ Dimulai pukul <strong>{{ reportForm.start_time }} WIB</strong>. Data isian otomatis tersimpan aman di perangkat Anda.
+                                </span>
+                                <span v-else class="text-amber-700">
+                                    * Klik tombol "Mulai Pengerjaan" saat penanganan lapangan dimulai.
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Detail Core FO yang Diperbaiki -->
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Detail Core FO / Tube yang Disambung</label>
-                        <input 
-                            type="text" 
-                            v-model="reportForm.core_details" 
-                            placeholder="Contoh: Core 1-8 tube biru active (ODC-02), Core 9-12 tube orange standby spare"
-                            class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm" 
-                        />
+                    <!-- ════════ SECTION 2: TINDAKAN RESTORASI & DETAIL CORE FO ════════ -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">
+                                Tindakan Restorasi Fisik Lapangan <span class="text-red-500">*</span>
+                            </label>
+                            <textarea 
+                                v-model="reportForm.action_taken" 
+                                rows="2" 
+                                placeholder="Contoh: Penarikan span kabel FO 24 core baru sepanjang 65 meter, penggantian closure dome di tiang no 12, dan penyambungan (splicing) seluruh core."
+                                class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm" 
+                                required
+                            ></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">
+                                Detail Core FO / Tube yang Disambung
+                            </label>
+                            <input 
+                                type="text" 
+                                v-model="reportForm.core_details" 
+                                placeholder="Contoh: Core 1-8 tube biru active (ODC-02), Core 9-12 tube orange standby spare"
+                                class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm" 
+                            />
+                        </div>
                     </div>
 
-                    <!-- Optical Loss Sebelum & Sesudah -->
+                    <!-- ════════ SECTION 3: OPTICAL LOSS SEBELUM & SESUDAH ════════ -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Optical Loss Sebelum (dB / dBm)</label>
@@ -269,85 +357,184 @@
                         </div>
                     </div>
 
-                    <!-- Jam Kerja Restorasi -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Jam Mulai Pengerjaan</label>
-                            <input 
-                                type="time" 
-                                v-model="reportForm.start_time" 
-                                class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm" 
-                            />
+                    <!-- ════════ SECTION 4: REKONSILIASI MATERIAL FO TERPAKAI CANGGIH ════════ -->
+                    <div class="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="block text-xs font-black text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>📦</span> Rekonsiliasi Material FO Terpakai & Pengembalian
+                                </label>
+                                <p class="text-[11px] text-amber-800">
+                                    Catat jumlah material terpakai. Sisa material otomatis dikembalikan ke stok gudang.
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Jam Selesai Restorasi</label>
-                            <input 
-                                type="time" 
-                                v-model="reportForm.end_time" 
-                                class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm" 
-                            />
-                        </div>
-                    </div>
 
-                    <!-- Rekonsiliasi Material FO Terpakai & Kembali -->
-                    <div v-if="reportForm.materials.length > 0" class="space-y-2">
-                        <label class="block text-xs font-bold text-gray-700 uppercase">Rekonsiliasi Material FO Terpakai</label>
+                        <!-- Daftar Material Disiapkan Gudang / Jadwal -->
                         <div class="space-y-2">
-                            <div v-for="(m, idx) in reportForm.materials" :key="idx" class="p-3 rounded-xl bg-gray-50 border border-gray-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
-                                <div class="flex-1">
-                                    <div class="font-bold text-gray-800">{{ m.name }}</div>
-                                    <div class="text-[11px] text-gray-500">Disiapkan: <strong class="text-gray-900">{{ m.quantity_prepared }} {{ m.unit }}</strong></div>
-                                </div>
+                            <div class="text-[11px] font-bold text-gray-600 uppercase flex items-center justify-between">
+                                <span>Material Disiapkan Gudang / Jadwal</span>
+                                <span class="text-gray-400 font-normal">({{ reportForm.materials.length }} jenis)</span>
+                            </div>
 
-                                <div class="flex items-center gap-3">
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-500 uppercase">Terpakai:</label>
-                                        <input 
-                                            type="number" 
-                                            step="0.01" 
-                                            min="0" 
-                                            :max="m.quantity_prepared"
-                                            v-model="m.quantity_used" 
-                                            @input="calculateReturned(m)"
-                                            class="w-20 rounded-lg border-gray-200 text-xs py-1 text-center font-bold text-emerald-700 focus:border-emerald-500" 
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-500 uppercase">Sisa Gudang:</label>
-                                        <div class="w-20 py-1 text-center font-bold text-blue-700 bg-blue-50 rounded-lg border border-blue-200">
-                                            {{ m.quantity_returned }} {{ m.unit }}
+                            <div v-if="reportForm.materials.length === 0" class="p-3 rounded-xl bg-white border border-gray-200 text-xs text-gray-400 italic text-center">
+                                Tidak ada material yang disiapkan di jadwal penanganan jalur ini.
+                            </div>
+
+                            <div v-else class="space-y-2">
+                                <div 
+                                    v-for="(m, idx) in reportForm.materials" 
+                                    :key="idx" 
+                                    class="p-3 rounded-2xl bg-white border transition-all shadow-sm"
+                                    :class="m.quantity_used == m.quantity_prepared ? 'border-emerald-300 bg-emerald-50/20' : (m.quantity_used == 0 ? 'border-amber-300 bg-amber-50/20' : 'border-blue-300 bg-blue-50/20')"
+                                >
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2">
+                                                <h4 class="font-bold text-gray-900 text-sm truncate">{{ m.name }}</h4>
+                                                <span 
+                                                    class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
+                                                    :class="m.quantity_used == m.quantity_prepared ? 'bg-emerald-100 text-emerald-800' : (m.quantity_used == 0 ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800')"
+                                                >
+                                                    {{ m.quantity_used == m.quantity_prepared ? '✓ Habis Terpakai' : (m.quantity_used == 0 ? '↩️ Retur Penuh' : '↩️ Sebagian Sisa') }}
+                                                </span>
+                                            </div>
+                                            <div class="text-xs text-gray-500 mt-0.5">
+                                                Disiapkan: <strong class="text-gray-800">{{ m.quantity_prepared }} {{ m.unit }}</strong>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center gap-3 shrink-0">
+                                            <!-- Control Terpakai Stepper -->
+                                            <div class="flex flex-col items-center">
+                                                <span class="text-[10px] font-bold text-gray-500 uppercase mb-0.5">Terpakai:</span>
+                                                <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm">
+                                                    <button 
+                                                        type="button" 
+                                                        @click="stepPreparedMaterial(m, -1)" 
+                                                        class="px-2.5 py-1 text-gray-600 hover:bg-gray-100 font-bold text-sm select-none"
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <input 
+                                                        type="number" 
+                                                        step="0.01" 
+                                                        min="0" 
+                                                        :max="m.quantity_prepared"
+                                                        v-model="m.quantity_used" 
+                                                        @input="calculateReturned(m)"
+                                                        class="w-16 border-0 text-xs py-1 text-center font-black text-emerald-700 focus:ring-0 p-0" 
+                                                        required
+                                                    />
+                                                    <button 
+                                                        type="button" 
+                                                        @click="stepPreparedMaterial(m, 1)" 
+                                                        class="px-2.5 py-1 text-gray-600 hover:bg-gray-100 font-bold text-sm select-none"
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <!-- Tombol Cepat (All vs 0) -->
+                                            <div class="flex flex-col gap-1">
+                                                <button 
+                                                    type="button" 
+                                                    @click="setPreparedMaterialQty(m, m.quantity_prepared)"
+                                                    class="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                                                    title="Set terpakai semua"
+                                                >
+                                                    Semua
+                                                </button>
+                                                <button 
+                                                    type="button" 
+                                                    @click="setPreparedMaterialQty(m, 0)"
+                                                    class="px-2 py-0.5 text-[10px] font-bold rounded bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 transition-colors"
+                                                    title="Set tidak terpakai (retur semua)"
+                                                >
+                                                    Nol
+                                                </button>
+                                            </div>
+
+                                            <!-- Sisa Gudang (Dikembalikan) -->
+                                            <div class="flex flex-col items-center">
+                                                <span class="text-[10px] font-bold text-blue-700 uppercase mb-0.5">Sisa Kembali:</span>
+                                                <div class="w-20 py-1 text-center font-black text-xs text-blue-800 bg-blue-50/90 rounded-xl border border-blue-200">
+                                                    {{ m.quantity_returned }} {{ m.unit }}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <p class="text-[11px] text-gray-400 italic">* Sisa material/kabel FO yang tidak terpakai akan otomatis dikembalikan ke stok gudang.</p>
+
+                        <!-- Banner Rincian Pengembalian Kelebihan Material (Retur Gudang) -->
+                        <div v-if="returnedMaterialsList.length > 0" class="p-3.5 rounded-2xl bg-blue-50/90 border border-blue-200 text-xs text-blue-950 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <div class="font-bold flex items-center gap-1.5 text-blue-900">
+                                    <span class="text-base">↩️</span>
+                                    <span>Alur Pengembalian Kelebihan Material (Retur ke Gudang)</span>
+                                </div>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-200 text-blue-900 border border-blue-300">
+                                    {{ returnedMaterialsList.length }} Item Harus Dikembalikan
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-blue-800 leading-relaxed">
+                                Sisa material yang tidak habis terpakai wajib diserahkan kembali ke gudang/kantor. Saat laporan disimpan, sistem otomatis membuat transaksi retur masuk (<b>IN-PGJ-RET-...</b>) dan <b>menambah kembali stok gudang</b>:
+                            </p>
+                            <div class="space-y-1.5">
+                                <div v-for="ret in returnedMaterialsList" :key="'ret-' + ret.pgj_material_id" class="p-2.5 rounded-xl bg-white border border-blue-200 flex items-center justify-between shadow-sm">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-gray-900">{{ ret.name }}</span>
+                                        <span class="text-[11px] text-gray-500">(Bawa: {{ ret.quantity_prepared }} {{ ret.unit }} | Terpakai: {{ ret.quantity_used }} {{ ret.unit }})</span>
+                                    </div>
+                                    <span class="font-mono font-black text-xs text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
+                                        ↩️ Sisa Kembali: {{ ret.quantity_returned }} {{ ret.unit }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Catatan Ringkas Gudang -->
+                        <div class="p-2.5 rounded-xl bg-white border border-gray-200 text-[11px] text-gray-500 flex items-center justify-between flex-wrap gap-2">
+                            <span>* Sisa material/kabel FO disiapkan akan otomatis dikembalikan ke stok gudang saat laporan disimpan.</span>
+                            <div class="flex items-center gap-2 font-bold text-gray-700">
+                                <span>Terpakai: {{ countUsedMaterials }} item</span> · 
+                                <span class="text-blue-700">Kembali: {{ countReturnedMaterials }} item</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Upload Foto Lapangan -->
+                    <!-- ════════ SECTION 5: UPLOAD FOTO BUKTI LAPANGAN ════════ -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Foto Bukti Kerusakan Fisik</label>
+                        <div class="space-y-1">
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Foto Bukti Kerusakan Fisik (Sebelum)</label>
                             <input 
                                 type="file" 
                                 accept="image/*"
                                 @change="onPhotoBeforeChange"
                                 class="w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" 
                             />
+                            <div v-if="photoBeforePreview" class="mt-1">
+                                <img :src="photoBeforePreview" class="h-20 w-auto rounded-lg border border-gray-200 object-cover" />
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Foto Hasil Restorasi / Splicing</label>
+                        <div class="space-y-1">
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Foto Hasil Restorasi / Splicing (Sesudah)</label>
                             <input 
                                 type="file" 
                                 accept="image/*"
                                 @change="onPhotoAfterChange"
                                 class="w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" 
                             />
+                            <div v-if="photoAfterPreview" class="mt-1">
+                                <img :src="photoAfterPreview" class="h-20 w-auto rounded-lg border border-gray-200 object-cover" />
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Catatan Akhir Restorasi -->
+                    <!-- ════════ SECTION 6: CATATAN AKHIR RESTORASI ════════ -->
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan Akhir Restorasi & Hasil Uji Coba</label>
                         <textarea 
@@ -358,15 +545,76 @@
                         ></textarea>
                     </div>
 
-                    <div class="pt-3 border-t flex justify-end gap-2">
-                        <button type="button" @click="showReportModal = false" class="px-4 py-2 border rounded-xl text-gray-600 text-sm font-semibold hover:bg-gray-50">Batal</button>
-                        <button 
-                            type="submit" 
-                            :disabled="reportForm.processing" 
-                            class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/20 disabled:opacity-50"
-                        >
-                            {{ reportForm.processing ? 'Menyimpan...' : 'Simpan Restorasi & Nyatakan Pulih' }}
-                        </button>
+                    <!-- ════════ SECTION 7: JAM SELESAI RESTORASI DI BAWAH ════════ -->
+                    <div class="p-4 rounded-2xl bg-gradient-to-r from-blue-50/70 via-indigo-50/60 to-blue-50/70 border border-blue-200 space-y-3">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                                <label class="block text-xs font-black text-blue-950 uppercase tracking-wider">
+                                    🏁 2. Jam Selesai Restorasi Lapangan
+                                </label>
+                                <p class="text-[11px] text-blue-800">Tekan tombol di bawah saat pengerjaan lapangan telah selesai tuntas.</p>
+                            </div>
+                            <div v-if="reportForm.end_time" class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto">
+                                <span>✓ Selesai: {{ reportForm.end_time }} WIB</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-1">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <input 
+                                        type="time" 
+                                        v-model="reportForm.end_time" 
+                                        class="flex-1 rounded-xl border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm font-semibold text-gray-800 bg-white" 
+                                        required
+                                    />
+                                    <button 
+                                        type="button" 
+                                        @click="finishWork" 
+                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 shrink-0"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        <span>{{ reportForm.end_time ? 'Update Jam Selesai' : 'Selesai Sekarang' }}</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Durasi Text Display -->
+                            <div class="p-2.5 rounded-xl bg-white border border-blue-100 shadow-sm flex items-center justify-between">
+                                <span class="text-xs text-gray-500 font-medium">Total Waktu Pengerjaan:</span>
+                                <span class="text-sm font-black text-blue-900">{{ calculatedDurationText }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Action Buttons -->
+                    <div class="pt-4 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                        <div>
+                            <button 
+                                v-if="hasSavedDraft" 
+                                type="button" 
+                                @click="clearDraft" 
+                                class="text-xs text-gray-400 hover:text-rose-600 transition-colors font-medium underline"
+                            >
+                                🗑️ Hapus Draft & Muat Ulang
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-end gap-2">
+                            <button 
+                                type="button" 
+                                @click="closeReportModal" 
+                                class="px-5 py-2.5 border border-gray-200 rounded-xl text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="submit" 
+                                :disabled="reportForm.processing || !reportForm.action_taken" 
+                                class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-black shadow-lg shadow-emerald-600/20 disabled:opacity-50 transition-all flex items-center gap-2"
+                            >
+                                <svg v-if="reportForm.processing" class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>{{ reportForm.processing ? 'Menyimpan...' : 'Simpan Restorasi & Nyatakan Pulih' }}</span>
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -375,7 +623,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed, watch, onUnmounted } from 'vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -390,6 +638,17 @@ const filterArea = ref(props.filters?.area_id || '');
 
 const showReportModal = ref(false);
 const selectedTicket = ref(null);
+const hasSavedDraft = ref(false);
+
+// Timer & Stopwatch State
+const startedAt = ref(null);
+const elapsedSeconds = ref(0);
+const isWorking = ref(false);
+let timerInterval = null;
+
+// Photo Previews
+const photoBeforePreview = ref(null);
+const photoAfterPreview = ref(null);
 
 const reportForm = useForm({
     action_taken: '',
@@ -411,57 +670,299 @@ const performSearch = () => {
     }, { preserveState: true, replace: true });
 };
 
-const openReportModal = (ticket) => {
+// ── Live Timer Logic ───────────────────────────────────────────
+const startLiveTimer = () => {
+    stopLiveTimer();
+    updateElapsed();
+    timerInterval = setInterval(() => {
+        updateElapsed();
+    }, 1000);
+};
+
+const stopLiveTimer = () => {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+};
+
+const updateElapsed = () => {
+    if (startedAt.value) {
+        const diff = Math.floor((Date.now() - startedAt.value) / 1000);
+        elapsedSeconds.value = Math.max(0, diff);
+    }
+};
+
+const formatSecondsToClock = (totalSec) => {
+    if (!totalSec || totalSec < 0) totalSec = 0;
+    const hours = Math.floor(totalSec / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    const seconds = totalSec % 60;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+};
+
+const calculatedDurationText = computed(() => {
+    if (!reportForm.start_time) return 'Belum dimulai';
+    if (!reportForm.end_time) {
+        if (isWorking.value) {
+            return `${formatSecondsToClock(elapsedSeconds.value)} (Sedang berjalan)`;
+        }
+        return 'Sedang berjalan';
+    }
+
+    try {
+        const [sh, sm] = reportForm.start_time.split(':').map(Number);
+        const [eh, em] = reportForm.end_time.split(':').map(Number);
+        let diffMinutes = (eh * 60 + em) - (sh * 60 + sm);
+        if (diffMinutes < 0) diffMinutes += 24 * 60; // Cross midnight
+        const hours = Math.floor(diffMinutes / 60);
+        const mins = diffMinutes % 60;
+        if (hours > 0) {
+            return `${hours} Jam ${mins} Menit`;
+        }
+        return `${mins} Menit`;
+    } catch (e) {
+        return '-';
+    }
+});
+
+const startWork = () => {
+    const now = new Date();
+    const hrs = String(now.getHours()).padStart(2, '0');
+    const mins = String(now.getMinutes()).padStart(2, '0');
+    reportForm.start_time = `${hrs}:${mins}`;
+    
+    // Reset end_time when starting/restarting
+    reportForm.end_time = '';
+    
+    startedAt.value = Date.now();
+    isWorking.value = true;
+    startLiveTimer();
+    saveDraft();
+};
+
+const finishWork = () => {
+    const now = new Date();
+    const hrs = String(now.getHours()).padStart(2, '0');
+    const mins = String(now.getMinutes()).padStart(2, '0');
+    reportForm.end_time = `${hrs}:${mins}`;
+    
+    isWorking.value = false;
+    stopLiveTimer();
+    saveDraft();
+};
+
+// ── Draft Persistence (localStorage) ───────────────────────────
+const getDraftKey = (ticketId) => `pgj_report_draft_${ticketId}`;
+
+const saveDraft = () => {
+    if (!selectedTicket.value) return;
+    try {
+        const draft = {
+            ticket_id: selectedTicket.value.id,
+            action_taken: reportForm.action_taken,
+            core_details: reportForm.core_details,
+            optical_loss_before: reportForm.optical_loss_before,
+            optical_loss_after: reportForm.optical_loss_after,
+            start_time: reportForm.start_time,
+            end_time: reportForm.end_time,
+            resolution_notes: reportForm.resolution_notes,
+            started_at: startedAt.value,
+            is_working: isWorking.value,
+            materials: reportForm.materials.map(m => ({
+                pgj_material_id: m.pgj_material_id,
+                material_id: m.material_id,
+                name: m.name,
+                unit: m.unit,
+                quantity_prepared: m.quantity_prepared,
+                quantity_used: m.quantity_used,
+                quantity_returned: m.quantity_returned,
+            })),
+            saved_at: new Date().toISOString(),
+        };
+        localStorage.setItem(getDraftKey(selectedTicket.value.id), JSON.stringify(draft));
+        hasSavedDraft.value = true;
+    } catch (e) {
+        console.error('Gagal menyimpan draft:', e);
+    }
+};
+
+const clearDraft = () => {
+    if (!selectedTicket.value) return;
+    if (confirm('Apakah Anda yakin ingin membuang draft tersimpan dan memuat ulang data awal tiket?')) {
+        localStorage.removeItem(getDraftKey(selectedTicket.value.id));
+        hasSavedDraft.value = false;
+        openReportModal(selectedTicket.value, true);
+    }
+};
+
+// ── Modal Actions & Initialization ──────────────────────────────
+const openReportModal = (ticket, ignoreDraft = false) => {
     selectedTicket.value = ticket;
+    stopLiveTimer();
     reportForm.reset();
+    hasSavedDraft.value = false;
+    photoBeforePreview.value = ticket.photo_before ? `/storage/${ticket.photo_before}` : null;
+    photoAfterPreview.value = ticket.photo_after ? `/storage/${ticket.photo_after}` : null;
 
-    reportForm.action_taken = ticket.action_taken || '';
-    reportForm.core_details = ticket.core_details || '';
-    reportForm.optical_loss_before = ticket.optical_loss_before || '';
-    reportForm.optical_loss_after = ticket.optical_loss_after || '';
-    reportForm.start_time = ticket.start_time || '';
-    reportForm.end_time = ticket.end_time || '';
-    reportForm.resolution_notes = ticket.resolution_notes || '';
+    const draftKey = getDraftKey(ticket.id);
+    const savedDraftRaw = !ignoreDraft ? localStorage.getItem(draftKey) : null;
+    let draftLoaded = false;
 
+    if (savedDraftRaw) {
+        try {
+            const draft = JSON.parse(savedDraftRaw);
+            reportForm.action_taken = draft.action_taken || '';
+            reportForm.core_details = draft.core_details || '';
+            reportForm.optical_loss_before = draft.optical_loss_before || '';
+            reportForm.optical_loss_after = draft.optical_loss_after || '';
+            reportForm.start_time = draft.start_time || '';
+            reportForm.end_time = draft.end_time || '';
+            reportForm.resolution_notes = draft.resolution_notes || '';
+
+            if (Array.isArray(draft.materials) && draft.materials.length > 0) {
+                reportForm.materials = draft.materials;
+            } else {
+                initPreparedMaterials(ticket);
+            }
+
+            if (draft.started_at && !draft.end_time) {
+                startedAt.value = draft.started_at;
+                isWorking.value = true;
+                const elapsed = Math.floor((Date.now() - draft.started_at) / 1000);
+                elapsedSeconds.value = Math.max(0, elapsed);
+                startLiveTimer();
+            } else if (draft.started_at && draft.end_time) {
+                startedAt.value = draft.started_at;
+                isWorking.value = false;
+            }
+
+            hasSavedDraft.value = true;
+            draftLoaded = true;
+        } catch (e) {
+            console.error('Error loading draft:', e);
+        }
+    }
+
+    if (!draftLoaded) {
+        reportForm.action_taken = ticket.action_taken || '';
+        reportForm.core_details = ticket.core_details || '';
+        reportForm.optical_loss_before = ticket.optical_loss_before || '';
+        reportForm.optical_loss_after = ticket.optical_loss_after || '';
+        reportForm.start_time = ticket.start_time || '';
+        reportForm.end_time = ticket.end_time || '';
+        reportForm.resolution_notes = ticket.resolution_notes || '';
+
+        initPreparedMaterials(ticket);
+
+        if (ticket.start_time && !ticket.end_time) {
+            isWorking.value = true;
+            const [h, m] = ticket.start_time.split(':').map(Number);
+            const d = new Date();
+            d.setHours(h, m, 0, 0);
+            startedAt.value = d.getTime();
+            elapsedSeconds.value = Math.max(0, Math.floor((Date.now() - startedAt.value) / 1000));
+            startLiveTimer();
+        } else {
+            isWorking.value = false;
+            startedAt.value = null;
+            elapsedSeconds.value = 0;
+        }
+    }
+
+    showReportModal.value = true;
+};
+
+const closeReportModal = () => {
+    stopLiveTimer();
+    showReportModal.value = false;
+    selectedTicket.value = null;
+};
+
+const initPreparedMaterials = (ticket) => {
     if (ticket.materials && ticket.materials.length > 0) {
         reportForm.materials = ticket.materials.map(m => {
             const prep = parseFloat(m.quantity_prepared) || 0;
             const used = m.quantity_used !== null ? parseFloat(m.quantity_used) : prep;
             return {
                 pgj_material_id: m.id,
+                material_id: m.material_id,
                 name: m.material?.name || 'Material FO',
                 unit: m.unit || m.material?.unit || '',
                 quantity_prepared: prep,
                 quantity_used: used,
-                quantity_returned: Math.max(0, prep - used),
+                quantity_returned: Math.max(0, parseFloat((prep - used).toFixed(2))),
             };
         });
     } else {
         reportForm.materials = [];
     }
-
-    showReportModal.value = true;
 };
 
+// ── Material Reconciliation Helpers ────────────────────────────
 const calculateReturned = (item) => {
     const prep = parseFloat(item.quantity_prepared) || 0;
-    const used = parseFloat(item.quantity_used) || 0;
-    item.quantity_returned = Math.max(0, prep - used);
+    let used = parseFloat(item.quantity_used);
+    if (isNaN(used) || used < 0) used = 0;
+    if (used > prep) used = prep;
+    item.quantity_used = used;
+    item.quantity_returned = Math.max(0, parseFloat((prep - used).toFixed(2)));
+    saveDraft();
 };
 
+const stepPreparedMaterial = (item, delta) => {
+    let current = parseFloat(item.quantity_used) || 0;
+    current = Math.max(0, Math.min(parseFloat(item.quantity_prepared) || 0, current + delta));
+    item.quantity_used = current;
+    calculateReturned(item);
+};
+
+const setPreparedMaterialQty = (item, qty) => {
+    item.quantity_used = qty;
+    calculateReturned(item);
+};
+
+const countUsedMaterials = computed(() => {
+    return reportForm.materials.filter(m => parseFloat(m.quantity_used) > 0).length;
+});
+
+const countReturnedMaterials = computed(() => {
+    return reportForm.materials.filter(m => parseFloat(m.quantity_returned) > 0).length;
+});
+
+const returnedMaterialsList = computed(() => {
+    return reportForm.materials.filter(m => parseFloat(m.quantity_returned) > 0);
+});
+
+// Photo Change Handlers
 const onPhotoBeforeChange = (e) => {
-    reportForm.photo_before = e.target.files[0] || null;
+    const file = e.target.files[0] || null;
+    reportForm.photo_before = file;
+    if (file) {
+        photoBeforePreview.value = URL.createObjectURL(file);
+    }
 };
 
 const onPhotoAfterChange = (e) => {
-    reportForm.photo_after = e.target.files[0] || null;
+    const file = e.target.files[0] || null;
+    reportForm.photo_after = file;
+    if (file) {
+        photoAfterPreview.value = URL.createObjectURL(file);
+    }
 };
 
+// ── Submit Report ──────────────────────────────────────────────
 const submitReport = () => {
     if (!selectedTicket.value) return;
+
     reportForm.post(`/pgj/${selectedTicket.value.id}/report`, {
         forceFormData: true,
         onSuccess: () => {
+            if (selectedTicket.value) {
+                localStorage.removeItem(getDraftKey(selectedTicket.value.id));
+            }
+            stopLiveTimer();
             showReportModal.value = false;
             selectedTicket.value = null;
         }
@@ -487,4 +988,24 @@ const getSegmentBadgeClass = (segment) => {
         default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
 };
+
+// Deep Watcher to Auto-Save to localStorage
+watch([
+    () => reportForm.action_taken,
+    () => reportForm.core_details,
+    () => reportForm.optical_loss_before,
+    () => reportForm.optical_loss_after,
+    () => reportForm.start_time,
+    () => reportForm.end_time,
+    () => reportForm.resolution_notes,
+    () => reportForm.materials,
+], () => {
+    if (showReportModal.value && selectedTicket.value) {
+        saveDraft();
+    }
+}, { deep: true });
+
+onUnmounted(() => {
+    stopLiveTimer();
+});
 </script>
