@@ -610,68 +610,6 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Optional: Bekal Mobil Darurat Langsung -->
-                            <div class="pt-2 border-t border-dashed border-gray-200">
-                                <details class="group">
-                                    <summary class="cursor-pointer text-[11px] font-bold text-gray-500 hover:text-gray-700 flex items-center justify-between">
-                                        <span>+ Catat Material Tambahan Cadangan Mobil (Opsional)</span>
-                                        <span class="text-xs group-open:rotate-180 transition-transform">▼</span>
-                                    </summary>
-                                    <div class="mt-2 space-y-2">
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-[10px] text-gray-400">Gunakan jika membawa bekal mobil darurat tanpa menunggu approval:</span>
-                                            <button 
-                                                type="button" 
-                                                @click="addAdditionalMaterial" 
-                                                class="px-2.5 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-[10px] font-bold"
-                                            >
-                                                + Baris Bekal Mobil
-                                            </button>
-                                        </div>
-
-                                        <div v-if="additionalMaterials.length > 0" class="space-y-1.5">
-                                            <div 
-                                                v-for="(item, idx) in additionalMaterials" 
-                                                :key="'extra-' + idx"
-                                                class="p-2 rounded-xl bg-white border border-gray-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
-                                            >
-                                                <select 
-                                                    v-model="item.material_id" 
-                                                    @change="onAdditionalMaterialSelected(item)"
-                                                    class="flex-1 rounded-lg border-gray-300 text-xs py-1 focus:border-amber-500 bg-white"
-                                                >
-                                                    <option value="">-- Pilih Material --</option>
-                                                    <option v-for="mat in materials" :key="mat.id" :value="mat.id">
-                                                        {{ mat.name }} (Stok: {{ parseFloat(mat.stock) }} {{ mat.unit }})
-                                                    </option>
-                                                </select>
-                                                <input 
-                                                    type="number" 
-                                                    step="0.01" 
-                                                    min="0.01" 
-                                                    placeholder="Qty"
-                                                    v-model="item.quantity" 
-                                                    class="w-16 rounded-lg border-gray-300 text-xs py-1 text-center font-bold"
-                                                />
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="Keterangan" 
-                                                    v-model="item.notes"
-                                                    class="flex-1 rounded-lg border-gray-300 text-xs py-1"
-                                                />
-                                                <button 
-                                                    type="button" 
-                                                    @click="removeAdditionalMaterial(idx)" 
-                                                    class="p-1 text-rose-500 hover:text-rose-700"
-                                                >
-                                                    &times;
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </details>
-                            </div>
                         </div>
 
                         <!-- 4C. Catatan Otomatis Gudang -->
@@ -1182,8 +1120,7 @@ const sendMaterialRequest = () => {
 };
 
 const countUsedMaterials = computed(() => {
-    return reportForm.materials.filter(m => parseFloat(m.quantity_used) > 0).length + 
-           additionalMaterials.value.filter(am => am.material_id && parseFloat(am.quantity) > 0).length;
+    return reportForm.materials.filter(m => parseFloat(m.quantity_used) > 0).length;
 });
 
 const countReturnedMaterials = computed(() => {
