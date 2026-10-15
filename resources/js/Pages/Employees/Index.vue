@@ -1,8 +1,9 @@
 <template>
-    <AppLayout title="Data Karyawan" subtitle="Kelola data personalia karyawan perusahaan">
+    <AppLayout title="Data Karyawan" subtitle="Kelola data personalia, masa kerja, dan status karyawan perusahaan">
         <div class="space-y-6">
             <!-- Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- 1. Total Karyawan -->
                 <div class="glass-card p-5 border-2 border-blue-500/10 hover:border-blue-500/30 transition-all">
                     <div class="flex items-center gap-4">
                         <div class="p-3 bg-blue-100 text-blue-600 rounded-xl">
@@ -14,6 +15,8 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 2. Pegawai Tetap -->
                 <div class="glass-card p-5 border-2 border-emerald-500/10 hover:border-emerald-500/30 transition-all">
                     <div class="flex items-center gap-4">
                         <div class="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
@@ -25,53 +28,133 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 3. Kontrak & Lainnya -->
                 <div class="glass-card p-5 border-2 border-amber-500/10 hover:border-amber-500/30 transition-all">
                     <div class="flex items-center gap-4">
                         <div class="p-3 bg-amber-100 text-amber-600 rounded-xl">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Kontrak</p>
+                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Kontrak / PKWT</p>
                             <p class="text-2xl font-bold text-gray-900">{{ countByType('Kontrak') }}</p>
                         </div>
                     </div>
                 </div>
-                <div class="glass-card p-5 border-2 border-purple-500/10 hover:border-purple-500/30 transition-all">
+
+                <!-- 4. Rata-Rata Lama Bekerja (NEW) -->
+                <div class="glass-card p-5 border-2 border-indigo-500/10 hover:border-indigo-500/30 transition-all">
                     <div class="flex items-center gap-4">
-                        <div class="p-3 bg-purple-100 text-purple-600 rounded-xl">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <div class="p-3 bg-indigo-100 text-indigo-600 rounded-xl">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Freelance</p>
-                            <p class="text-2xl font-bold text-gray-900">{{ countByType('Freelance') }}</p>
+                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Rata-Rata Masa Kerja</p>
+                            <p class="text-2xl font-bold text-indigo-900">{{ avg_tenure || '-' }}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Filter Bar -->
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                <div class="w-full md:w-auto flex flex-col sm:flex-row gap-3 flex-1">
-                    <div class="relative w-full sm:w-80">
+            <!-- Filter Bar & Search -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+                <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
+                    <!-- Search Input -->
+                    <div class="relative flex-1 min-w-[240px]">
                         <input 
                             type="text" 
                             v-model="search" 
-                            placeholder="Cari nama, posisi, No IAK..." 
+                            placeholder="Cari nama, posisi, email, telepon, No IAK..." 
                             class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm"
-                            @keyup.enter="performSearch"
+                            @keyup.enter="applyFilters"
                         >
-                        <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
                     </div>
+
+                    <!-- Action: Tambah Karyawan -->
+                    <button @click="openModal()" class="btn-primary shrink-0 flex items-center justify-center gap-2 py-2.5 px-4">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                        </svg>
+                        <span>Tambah Karyawan</span>
+                    </button>
                 </div>
 
-                <button @click="openModal()" class="btn-primary w-full md:w-auto shrink-0 flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
-                    </svg>
-                    Tambah Karyawan
-                </button>
+                <!-- Sub-filters: Masa Kerja, Tipe Pegawai, Area, Urutan -->
+                <div class="flex flex-wrap items-center gap-2.5 pt-2 border-t border-gray-100 text-xs">
+                    <!-- Filter Lama Bekerja (Tenure) -->
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-gray-500 font-semibold uppercase text-[10px] tracking-wider">⏱️ Masa Kerja:</span>
+                        <select 
+                            v-model="filterTenure" 
+                            @change="applyFilters" 
+                            class="rounded-xl border-gray-200 text-xs py-1.5 px-3 focus:border-blue-500 bg-gray-50 font-medium"
+                        >
+                            <option value="">Semua Masa Kerja</option>
+                            <option value="senior">⭐ Senior (> 3 Tahun)</option>
+                            <option value="middle">🔷 Menengah (1 - 3 Tahun)</option>
+                            <option value="junior">🔹 Junior (3 - 12 Bulan)</option>
+                            <option value="new">🌱 Baru (< 3 Bulan)</option>
+                            <option value="unset">⚪ Belum Diset</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Tipe Pegawai -->
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-gray-500 font-semibold uppercase text-[10px] tracking-wider">Tipe:</span>
+                        <select 
+                            v-model="filterType" 
+                            @change="applyFilters" 
+                            class="rounded-xl border-gray-200 text-xs py-1.5 px-3 focus:border-blue-500 bg-gray-50 font-medium"
+                        >
+                            <option value="">Semua Tipe</option>
+                            <option value="Tetap">Tetap</option>
+                            <option value="Kontrak">Kontrak</option>
+                            <option value="Freelance">Freelance</option>
+                            <option value="Magang">Magang</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Area -->
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-gray-500 font-semibold uppercase text-[10px] tracking-wider">Area:</span>
+                        <select 
+                            v-model="filterArea" 
+                            @change="applyFilters" 
+                            class="rounded-xl border-gray-200 text-xs py-1.5 px-3 focus:border-blue-500 bg-gray-50 font-medium"
+                        >
+                            <option value="">Semua Area</option>
+                            <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                        </select>
+                    </div>
+
+                    <!-- Sorting -->
+                    <div class="flex items-center gap-1.5 ml-auto">
+                        <span class="text-gray-500 font-semibold uppercase text-[10px] tracking-wider">Urutkan:</span>
+                        <select 
+                            v-model="sortBy" 
+                            @change="applyFilters" 
+                            class="rounded-xl border-gray-200 text-xs py-1.5 px-3 focus:border-blue-500 bg-gray-50 font-medium"
+                        >
+                            <option value="">Terbaru Ditambahkan</option>
+                            <option value="senior">⏱️ Paling Lama Bekerja (Senior)</option>
+                            <option value="newest_joined">🌱 Paling Baru Bergabung</option>
+                            <option value="name_asc">🔤 Nama A - Z</option>
+                        </select>
+                    </div>
+
+                    <!-- Reset Filter Button -->
+                    <button 
+                        v-if="hasActiveFilter" 
+                        type="button" 
+                        @click="resetFilters" 
+                        class="px-2.5 py-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                    >
+                        <span>&times; Reset Filter</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Flash Messages -->
@@ -98,15 +181,22 @@
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Posisi</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Kontak</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Area</th>
+                                <th class="py-4 px-6 text-xs font-semibold text-gray-700 uppercase tracking-wider bg-slate-100/50">
+                                    <div class="flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span>Lama Bekerja</span>
+                                    </div>
+                                </th>
+                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Area</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="emp in employees.data" :key="emp.id" class="hover:bg-gray-50/50 transition-colors group">
+                                <!-- 1. Karyawan Info -->
                                 <td class="py-4 px-6">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden shrink-0">
+                                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden shrink-0 shadow-sm">
                                             <img v-if="emp.photo" :src="`/storage/${emp.photo}`" class="w-full h-full object-cover" alt="">
                                             <span v-else>{{ emp.name?.charAt(0)?.toUpperCase() }}</span>
                                         </div>
@@ -116,33 +206,64 @@
                                         </div>
                                     </div>
                                 </td>
+
+                                <!-- 2. Posisi -->
                                 <td class="py-4 px-6">
                                     <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
                                         {{ emp.position || '-' }}
                                     </span>
                                 </td>
+
+                                <!-- 3. Kontak -->
                                 <td class="py-4 px-6">
-                                    <p v-if="emp.phone" class="text-sm text-gray-700">{{ emp.phone }}</p>
+                                    <p v-if="emp.phone" class="text-sm text-gray-700 font-medium">{{ emp.phone }}</p>
                                     <p v-if="emp.email" class="text-xs text-gray-400 mt-0.5">{{ emp.email }}</p>
                                     <p v-if="!emp.phone && !emp.email" class="text-xs text-gray-300">-</p>
                                 </td>
+
+                                <!-- 4. Status Tipe -->
                                 <td class="py-4 px-6">
-                                    <span :class="employeeTypeBadge(emp.employee_type)" class="px-2.5 py-1 rounded-full text-xs font-medium border">
+                                    <span :class="employeeTypeBadge(emp.employee_type)" class="px-2.5 py-1 rounded-full text-xs font-medium border inline-block">
                                         {{ emp.employee_type || '-' }}
                                     </span>
-                                    <p v-if="emp.join_date" class="text-[10px] text-gray-400 mt-1">Gabung: {{ formatDate(emp.join_date) }}</p>
                                 </td>
-                                <td class="py-4 px-6 text-right">
-                                    <p class="text-sm font-semibold text-gray-900">{{ emp.area?.name || '-' }}</p>
+
+                                <!-- 5. Lama Bekerja (KOLOM UTAMA FITUR BARU) -->
+                                <td class="py-4 px-6 bg-slate-50/30">
+                                    <div v-if="emp.join_date" class="space-y-1">
+                                        <!-- Badge Lama Bekerja -->
+                                        <span 
+                                            :class="getTenureBadgeClass(emp.join_date)" 
+                                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs shadow-xs"
+                                        >
+                                            <span>{{ getTenureIcon(emp.join_date) }}</span>
+                                            <span>{{ emp.lama_bekerja || calculateTenure(emp.join_date) }}</span>
+                                        </span>
+                                        <!-- Tanggal Mulai Gabung -->
+                                        <div class="text-[11px] text-gray-500 flex items-center gap-1">
+                                            <span>Mulai:</span>
+                                            <span class="font-medium text-gray-700">{{ formatDate(emp.join_date) }}</span>
+                                        </div>
+                                    </div>
+                                    <div v-else class="text-xs text-gray-400 italic">
+                                        Belum diset
+                                    </div>
                                 </td>
+
+                                <!-- 6. Area -->
+                                <td class="py-4 px-6">
+                                    <p class="text-sm font-semibold text-gray-800">{{ emp.area?.name || '-' }}</p>
+                                </td>
+
+                                <!-- 7. Aksi -->
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex items-center justify-end gap-2">
-                                        <button @click="openModal(emp)" title="Edit" class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                                        <button @click="openModal(emp)" title="Edit Data Karyawan" class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                                             </svg>
                                         </button>
-                                        <button @click="deleteEmployee(emp.id)" class="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+                                        <button @click="deleteEmployee(emp.id)" title="Hapus Karyawan" class="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                             </svg>
@@ -151,13 +272,13 @@
                                 </td>
                             </tr>
                             <tr v-if="employees.data.length === 0">
-                                <td colspan="6" class="py-12 text-center">
+                                <td colspan="7" class="py-12 text-center">
                                     <div class="flex flex-col items-center justify-center text-gray-400">
                                         <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                                         </svg>
-                                        <p class="text-sm font-medium">Belum ada data karyawan</p>
-                                        <p class="text-xs text-gray-300 mt-1">Klik "Tambah Karyawan" untuk memulai</p>
+                                        <p class="text-sm font-medium">Belum ada data karyawan yang cocok</p>
+                                        <p class="text-xs text-gray-300 mt-1">Coba sesuaikan filter pencarian atau klik "Tambah Karyawan"</p>
                                     </div>
                                 </td>
                             </tr>
@@ -185,7 +306,7 @@
             </div>
         </div>
 
-        <!-- Modal Form -->
+        <!-- Modal Form (Tambah / Edit Karyawan) -->
         <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" @click="closeModal"></div>
             <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-y-auto max-h-[90vh] animate-fade-in-up">
@@ -256,17 +377,36 @@
                             </div>
                         </div>
 
-                        <!-- Join Date -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- FITUR LAMA BEKERJA: Tanggal Gabung & Live Preview Masa Kerja -->
+                        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">
-                                    <span class="flex items-center gap-1.5">
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                        Tanggal Gabung
-                                    </span>
+                                <label class="block text-sm font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                    <span>Tanggal Mulai Bekerja (Join Date)</span>
                                 </label>
-                                <input v-model="form.join_date" type="date" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                                <input 
+                                    v-model="form.join_date" 
+                                    type="date" 
+                                    class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white text-sm"
+                                >
                             </div>
+
+                            <!-- Live Tenure Preview Banner -->
+                            <div v-if="form.join_date" class="p-3 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between text-xs animate-fade-in-up">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-base">{{ getTenureIcon(form.join_date) }}</span>
+                                    <div>
+                                        <span class="text-gray-500">Estimasi Masa Kerja:</span>
+                                        <strong class="text-gray-900 ml-1 font-black">{{ calculateTenure(form.join_date) }}</strong>
+                                    </div>
+                                </div>
+                                <span :class="getTenureBadgeClass(form.join_date)" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                                    {{ getTenureLevelLabel(form.join_date) }}
+                                </span>
+                            </div>
+                            <p v-else class="text-[11px] text-gray-500 italic">
+                                * Masukkan tanggal bergabung agar sistem otomatis menghitung lama bekerja karyawan.
+                            </p>
                         </div>
 
                         <!-- Employee Type -->
@@ -336,10 +476,16 @@ const props = defineProps({
     employees: Object,
     areas: Array,
     positions: Array,
+    avg_tenure: String,
     filters: Object,
 });
 
 const search = ref(props.filters?.search || '');
+const filterArea = ref(props.filters?.area_id || '');
+const filterType = ref(props.filters?.employee_type || '');
+const filterTenure = ref(props.filters?.tenure || '');
+const sortBy = ref(props.filters?.sort || '');
+
 const showModal = ref(false);
 const isEditing = ref(false);
 const editingId = ref(null);
@@ -359,14 +505,139 @@ const form = useForm({
     photo: null,
 });
 
-const formatNumber = (num) => {
-    if (!num) return '0';
-    return Number(num).toLocaleString('id-ID');
+const hasActiveFilter = computed(() => {
+    return !!(search.value || filterArea.value || filterType.value || filterTenure.value || sortBy.value);
+});
+
+const applyFilters = () => {
+    router.get('/employees', {
+        search: search.value || undefined,
+        area_id: filterArea.value || undefined,
+        employee_type: filterType.value || undefined,
+        tenure: filterTenure.value || undefined,
+        sort: sortBy.value || undefined,
+    }, { preserveState: true, preserveScroll: true });
+};
+
+const resetFilters = () => {
+    search.value = '';
+    filterArea.value = '';
+    filterType.value = '';
+    filterTenure.value = '';
+    sortBy.value = '';
+    router.get('/employees', {}, { preserveState: true, preserveScroll: true });
+};
+
+// ── Kalkulasi Lama Bekerja (Masa Kerja) ─────────────────────────
+const calculateTenure = (joinDateStr) => {
+    if (!joinDateStr) return '-';
+    try {
+        const join = new Date(joinDateStr);
+        if (isNaN(join.getTime())) return '-';
+
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        join.setHours(0, 0, 0, 0);
+
+        if (join > now) {
+            return 'Akan Mulai';
+        }
+
+        let years = now.getFullYear() - join.getFullYear();
+        let months = now.getMonth() - join.getMonth();
+        let days = now.getDate() - join.getDate();
+
+        if (days < 0) {
+            months--;
+            const prevMonthLastDay = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+            days += prevMonthLastDay;
+        }
+        if (months < 0) {
+            years--;
+            months += 12;
+        }
+
+        const parts = [];
+        if (years > 0) parts.push(`${years} Tahun`);
+        if (months > 0) parts.push(`${months} Bulan`);
+        if (parts.length === 0 || (years === 0 && months === 0)) {
+            parts.push(`${Math.max(1, days)} Hari`);
+        }
+        return parts.join(' ');
+    } catch (e) {
+        return '-';
+    }
+};
+
+const getTenureLevel = (joinDateStr) => {
+    if (!joinDateStr) return 'unset';
+    try {
+        const join = new Date(joinDateStr);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        join.setHours(0, 0, 0, 0);
+
+        if (join > now) return 'future';
+
+        const diffMonths = (now.getFullYear() - join.getFullYear()) * 12 + (now.getMonth() - join.getMonth());
+        if (diffMonths >= 36) return 'senior';
+        if (diffMonths >= 12) return 'middle';
+        if (diffMonths >= 3) return 'junior';
+        return 'new';
+    } catch (e) {
+        return 'unset';
+    }
+};
+
+const getTenureBadgeClass = (joinDateStr) => {
+    const level = getTenureLevel(joinDateStr);
+    switch (level) {
+        case 'senior':
+            return 'bg-amber-100 text-amber-900 border border-amber-300 font-bold';
+        case 'middle':
+            return 'bg-indigo-100 text-indigo-900 border border-indigo-200 font-semibold';
+        case 'junior':
+            return 'bg-blue-100 text-blue-900 border border-blue-200 font-medium';
+        case 'new':
+            return 'bg-emerald-100 text-emerald-900 border border-emerald-200 font-medium';
+        case 'future':
+            return 'bg-purple-100 text-purple-900 border border-purple-200 font-medium';
+        default:
+            return 'bg-gray-100 text-gray-600 border border-gray-200';
+    }
+};
+
+const getTenureIcon = (joinDateStr) => {
+    const level = getTenureLevel(joinDateStr);
+    switch (level) {
+        case 'senior': return '⭐';
+        case 'middle': return '🔷';
+        case 'junior': return '🔹';
+        case 'new': return '🌱';
+        case 'future': return '⏳';
+        default: return '⏱️';
+    }
+};
+
+const getTenureLevelLabel = (joinDateStr) => {
+    const level = getTenureLevel(joinDateStr);
+    switch (level) {
+        case 'senior': return 'Senior (> 3 Thn)';
+        case 'middle': return 'Menengah (1 - 3 Thn)';
+        case 'junior': return 'Junior (3 - 12 Bln)';
+        case 'new': return 'Karyawan Baru (< 3 Bln)';
+        case 'future': return 'Akan Mulai';
+        default: return 'Belum Diset';
+    }
 };
 
 const formatDate = (date) => {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    try {
+        return new Date(date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch (e) {
+        return date;
+    }
 };
 
 const countByType = (type) => {
@@ -381,10 +652,6 @@ const employeeTypeBadge = (type) => {
         'Magang': 'bg-sky-50 text-sky-700 border-sky-200',
     };
     return map[type] || 'bg-gray-50 text-gray-700 border-gray-200';
-};
-
-const performSearch = () => {
-    router.get('/employees', { search: search.value }, { preserveState: true, preserveScroll: true });
 };
 
 const handlePhoto = (event) => {
@@ -405,7 +672,12 @@ function openModal(emp = null) {
         form.email = emp.email || '';
         form.phone = emp.phone || '';
         form.area_id = emp.area_id || '';
-        form.join_date = emp.join_date || '';
+        // If join_date is a formatted string or ISO, ensure YYYY-MM-DD
+        if (emp.join_date) {
+            form.join_date = emp.join_date.substring(0, 10);
+        } else {
+            form.join_date = '';
+        }
         form.employee_type = emp.employee_type || '';
         form.payment_method = emp.payment_method || '';
         form.address = emp.address || '';

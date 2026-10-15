@@ -10,32 +10,91 @@ class EmployeeController extends Controller
     {
         $query = \App\Models\Employee::query();
         
-        if ($request->search) {
-            $query->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('iak_number', 'like', "%{$request->search}%")
-                  ->orWhere('position', 'like', "%{$request->search}%");
+        if ($request->filled('search')) {
+            $search = strtolower($request->search);
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('iak_number', 'like', "%{$search}%")
+                  ->orWhere('position', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('area_id')) {
+            $query->where('area_id', $request->area_id);
+        }
+
+        if ($request->filled('employee_type')) {
+            $query->where('employee_type', $request->employee_type);
+        }
+
+        if ($request->filled('tenure')) {
+            $today = \Carbon\Carbon::now()->startOfDay();
+            if ($request->tenure === 'senior') {
+                $query->whereNotNull('join_date')->where('join_date', '<=', $today->copy()->subYears(3));
+            } elseif ($request->tenure === 'middle') {
+                $query->whereNotNull('join_date')->whereBetween('join_date', [$today->copy()->subYears(3), $today->copy()->subYear()]);
+            } elseif ($request->tenure === 'junior') {
+                $query->whereNotNull('join_date')->whereBetween('join_date', [$today->copy()->subYear(), $today->copy()->subMonths(3)]);
+            } elseif ($request->tenure === 'new') {
+                $query->whereNotNull('join_date')->where('join_date', '>=', $today->copy()->subMonths(3));
+            } elseif ($request->tenure === 'unset') {
+                $query->whereNull('join_date');
+            }
         }
 
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_view_all')) {
             if (auth()->user()->can('hr_employees_view_area')) {
                 $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
             } else {
-                // If they don't have view_all or view_area, they only see themselves (or nothing, depending on logic)
-                // Let's just limit to their area anyway, or their own employee record. Let's do their own email.
                 $query->where('email', auth()->user()->email);
             }
         }
 
-        $employees = $query->with('area')->latest()->paginate(10)->withQueryString();
+        // Sorting
+        if ($request->sort === 'senior') {
+            $query->orderByRaw('CASE WHEN join_date IS NULL THEN 1 ELSE 0 END, join_date ASC');
+        } elseif ($request->sort === 'newest_joined') {
+            $query->orderByRaw('CASE WHEN join_date IS NULL THEN 1 ELSE 0 END, join_date DESC');
+        } elseif ($request->sort === 'name_asc') {
+            $query->orderBy('name', 'asc');
+        } else {
+            $query->latest();
+        }
+
+        $employees = $query->with('area')->paginate(10)->withQueryString();
         
         $areas = \App\Models\Area::orderBy('name')->get();
         $positions = \App\Models\Position::orderBy('name')->get();
+
+        // Hitung rata-rata masa kerja seluruh karyawan yang memiliki tanggal gabung
+        $now = \Carbon\Carbon::now()->startOfDay();
+        $joinDates = \App\Models\Employee::whereNotNull('join_date')->pluck('join_date');
+        $avgTenureText = '-';
+        if ($joinDates->count() > 0) {
+            $totalDays = $joinDates->reduce(function ($carry, $date) use ($now) {
+                $c = \Carbon\Carbon::parse($date)->startOfDay();
+                return $carry + ($c->isPast() ? $c->diffInDays($now) : 0);
+            }, 0);
+            $avgDays = (int) round($totalDays / $joinDates->count());
+            $years = floor($avgDays / 365);
+            $months = floor(($avgDays % 365) / 30);
+            if ($years > 0) {
+                $avgTenureText = "{$years} Thn " . ($months > 0 ? "{$months} Bln" : "");
+            } elseif ($months > 0) {
+                $avgTenureText = "{$months} Bulan";
+            } else {
+                $avgTenureText = "{$avgDays} Hari";
+            }
+        }
 
         return \Inertia\Inertia::render('Employees/Index', [
             'employees' => $employees,
             'areas' => $areas,
             'positions' => $positions,
-            'filters' => $request->only(['search'])
+            'avg_tenure' => trim($avgTenureText),
+            'filters' => $request->only(['search', 'area_id', 'employee_type', 'tenure', 'sort'])
         ]);
     }
 
