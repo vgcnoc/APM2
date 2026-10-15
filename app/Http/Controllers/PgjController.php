@@ -240,7 +240,7 @@ class PgjController extends Controller
                     $q->where('odc_id', $odcId);
                 })->count();
             } elseif ($areaId) {
-                return Customer::where('customer_area_id', $areaId)->count();
+                return Customer::where('area_id', $areaId)->count();
             }
         }
 

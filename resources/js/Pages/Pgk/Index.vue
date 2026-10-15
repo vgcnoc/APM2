@@ -665,8 +665,16 @@ const escalateForm = useForm({
 
 // Pelanggan terfilter berdasarkan area yang dipilih di form
 const filteredCustomers = computed(() => {
-    if (!createForm.area_id) return props.customers || [];
-    return (props.customers || []).filter(c => c.customer_area_id == createForm.area_id);
+    if (!props.customers || !props.customers.length) return [];
+    if (!createForm.area_id) return props.customers;
+    const selectedArea = props.areas?.find(a => String(a.id) === String(createForm.area_id));
+    return props.customers.filter(c => {
+        if (c.area_id && String(c.area_id) === String(createForm.area_id)) return true;
+        if (c.customer_area_id && String(c.customer_area_id) === String(createForm.area_id)) return true;
+        if (selectedArea && c.area && c.area.trim().toLowerCase() === selectedArea.name.trim().toLowerCase()) return true;
+        if (selectedArea && c.area_model?.name && c.area_model.name.trim().toLowerCase() === selectedArea.name.trim().toLowerCase()) return true;
+        return false;
+    });
 });
 
 // Info pelanggan terpilih
@@ -677,17 +685,32 @@ const selectedCustomerInfo = computed(() => {
 
 const customerAreaName = computed(() => {
     if (!selectedCustomerInfo.value) return null;
-    return selectedCustomerInfo.value.area_model?.name || '-';
+    if (selectedCustomerInfo.value.area_model?.name) return selectedCustomerInfo.value.area_model.name;
+    if (selectedCustomerInfo.value.area) return selectedCustomerInfo.value.area;
+    const a = props.areas?.find(ar => String(ar.id) === String(selectedCustomerInfo.value.area_id || selectedCustomerInfo.value.customer_area_id));
+    return a?.name || '-';
 });
 
 const onAreaChange = () => {
-    createForm.customer_id = '';
+    if (createForm.customer_id && createForm.area_id) {
+        const cust = props.customers?.find(c => c.id === createForm.customer_id);
+        const selectedArea = props.areas?.find(a => String(a.id) === String(createForm.area_id));
+        const matchesAreaId = cust && (String(cust.area_id) === String(createForm.area_id) || String(cust.customer_area_id) === String(createForm.area_id));
+        const matchesAreaName = selectedArea && cust && (cust.area?.trim().toLowerCase() === selectedArea.name.trim().toLowerCase() || cust.area_model?.name?.trim().toLowerCase() === selectedArea.name.trim().toLowerCase());
+        if (!matchesAreaId && !matchesAreaName) {
+            createForm.customer_id = '';
+        }
+    }
 };
 
 const onCustomerChange = () => {
     if (selectedCustomerInfo.value) {
-        if (!createForm.area_id && selectedCustomerInfo.value.customer_area_id) {
-            createForm.area_id = selectedCustomerInfo.value.customer_area_id;
+        const custAreaId = selectedCustomerInfo.value.area_id || selectedCustomerInfo.value.customer_area_id;
+        if (!createForm.area_id && custAreaId) {
+            createForm.area_id = custAreaId;
+        } else if (!createForm.area_id && selectedCustomerInfo.value.area) {
+            const foundArea = props.areas?.find(a => a.name.trim().toLowerCase() === selectedCustomerInfo.value.area.trim().toLowerCase());
+            if (foundArea) createForm.area_id = foundArea.id;
         }
         // Auto-fill nama dan no telepon pelapor dengan data pelanggan jika masih kosong
         if (!createForm.complainant_name) {
@@ -718,6 +741,9 @@ const openCreateModal = () => {
     createForm.channel = 'whatsapp';
     createForm.category = 'LOS / Kabel Putus';
     createForm.priority = 'medium';
+    if (filterArea.value) {
+        createForm.area_id = filterArea.value;
+    }
     showCreateModal.value = true;
 };
 

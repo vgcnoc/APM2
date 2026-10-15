@@ -76,10 +76,13 @@ class PgsController extends Controller
 
         // Filter area
         if ($request->filled('area_id')) {
-            $query->where(function($q) use ($request) {
+            $areaModel = Area::find($request->area_id);
+            $areaName = $areaModel?->name;
+            $query->where(function($q) use ($request, $areaName) {
                 $q->where('area_id', $request->area_id)
-                  ->orWhereHas('customer', function($cq) use ($request) {
-                      $cq->where('area_id', $request->area_id);
+                  ->orWhereHas('customer', function($cq) use ($request, $areaName) {
+                      $cq->where('area_id', $request->area_id)
+                         ->when($areaName, fn($sub) => $sub->orWhere('area', $areaName));
                   });
             });
         }
@@ -106,8 +109,8 @@ class PgsController extends Controller
         ];
 
         $customers = Customer::whereIn('status', ['active', 'suspended', 'isolir', 'installing'])
-            ->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id')
-            ->with(['package:id,name', 'ont:id,customer_id,serial_number,status,rx_power,odp_id', 'ont.odp:id,name'])
+            ->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'area', 'package_id')
+            ->with(['package:id,name', 'areaModel:id,name', 'ont:id,customer_id,serial_number,status,rx_power,odp_id', 'ont.odp:id,name'])
             ->get();
 
         $technicians = User::role(['teknisi', 'kepala teknisi'])->select('id', 'name', 'phone')->get();
@@ -164,10 +167,13 @@ class PgsController extends Controller
         }
 
         if ($request->filled('area_id')) {
-            $query->where(function($q) use ($request) {
+            $areaModel = Area::find($request->area_id);
+            $areaName = $areaModel?->name;
+            $query->where(function($q) use ($request, $areaName) {
                 $q->where('area_id', $request->area_id)
-                  ->orWhereHas('customer', function($cq) use ($request) {
-                      $cq->where('area_id', $request->area_id);
+                  ->orWhereHas('customer', function($cq) use ($request, $areaName) {
+                      $cq->where('area_id', $request->area_id)
+                         ->when($areaName, fn($sub) => $sub->orWhere('area', $areaName));
                   });
             });
         }
@@ -228,10 +234,13 @@ class PgsController extends Controller
         }
 
         if ($request->filled('area_id')) {
-            $query->where(function($q) use ($request) {
+            $areaModel = Area::find($request->area_id);
+            $areaName = $areaModel?->name;
+            $query->where(function($q) use ($request, $areaName) {
                 $q->where('area_id', $request->area_id)
-                  ->orWhereHas('customer', function($cq) use ($request) {
-                      $cq->where('area_id', $request->area_id);
+                  ->orWhereHas('customer', function($cq) use ($request, $areaName) {
+                      $cq->where('area_id', $request->area_id)
+                         ->when($areaName, fn($sub) => $sub->orWhere('area', $areaName));
                   });
             });
         }
@@ -266,6 +275,10 @@ class PgsController extends Controller
         if (empty($validated['area_id'])) {
             $customer = Customer::find($validated['customer_id']);
             $validated['area_id'] = $customer?->area_id;
+            if (empty($validated['area_id']) && $customer?->area) {
+                $matchedArea = Area::where('name', $customer->area)->first();
+                $validated['area_id'] = $matchedArea?->id;
+            }
         }
 
         $validated['status'] = 'admin_handling';

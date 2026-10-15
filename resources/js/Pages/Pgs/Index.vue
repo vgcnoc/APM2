@@ -685,9 +685,16 @@ const escalateForm = useForm({
 });
 
 const filteredCustomers = computed(() => {
-    if (!props.customers) return [];
+    if (!props.customers || !props.customers.length) return [];
     if (!createForm.area_id) return props.customers;
-    return props.customers.filter(c => c.area_id == createForm.area_id);
+    const selectedArea = props.areas?.find(a => String(a.id) === String(createForm.area_id));
+    return props.customers.filter(c => {
+        if (c.area_id && String(c.area_id) === String(createForm.area_id)) return true;
+        if (c.customer_area_id && String(c.customer_area_id) === String(createForm.area_id)) return true;
+        if (selectedArea && c.area && c.area.trim().toLowerCase() === selectedArea.name.trim().toLowerCase()) return true;
+        if (selectedArea && c.area_model?.name && c.area_model.name.trim().toLowerCase() === selectedArea.name.trim().toLowerCase()) return true;
+        return false;
+    });
 });
 
 const selectedCustomerInfo = computed(() => {
@@ -696,14 +703,19 @@ const selectedCustomerInfo = computed(() => {
 
 const customerAreaName = computed(() => {
     if (!selectedCustomerInfo.value) return '';
-    const a = props.areas?.find(ar => ar.id === selectedCustomerInfo.value.area_id);
+    if (selectedCustomerInfo.value.area_model?.name) return selectedCustomerInfo.value.area_model.name;
+    if (selectedCustomerInfo.value.area) return selectedCustomerInfo.value.area;
+    const a = props.areas?.find(ar => String(ar.id) === String(selectedCustomerInfo.value.area_id || selectedCustomerInfo.value.customer_area_id));
     return a?.name || '';
 });
 
 function onAreaChange() {
     if (createForm.customer_id && createForm.area_id) {
         const cust = props.customers?.find(c => c.id === createForm.customer_id);
-        if (cust && cust.area_id != createForm.area_id) {
+        const selectedArea = props.areas?.find(a => String(a.id) === String(createForm.area_id));
+        const matchesAreaId = cust && (String(cust.area_id) === String(createForm.area_id) || String(cust.customer_area_id) === String(createForm.area_id));
+        const matchesAreaName = selectedArea && cust && (cust.area?.trim().toLowerCase() === selectedArea.name.trim().toLowerCase() || cust.area_model?.name?.trim().toLowerCase() === selectedArea.name.trim().toLowerCase());
+        if (!matchesAreaId && !matchesAreaName) {
             createForm.customer_id = '';
         }
     }
@@ -712,8 +724,12 @@ function onAreaChange() {
 function onCustomerChange() {
     if (createForm.customer_id) {
         const cust = props.customers?.find(c => c.id === createForm.customer_id);
-        if (cust && cust.area_id && !createForm.area_id) {
-            createForm.area_id = cust.area_id;
+        const custAreaId = cust?.area_id || cust?.customer_area_id;
+        if (custAreaId && !createForm.area_id) {
+            createForm.area_id = custAreaId;
+        } else if (!createForm.area_id && cust?.area) {
+            const foundArea = props.areas?.find(a => a.name.trim().toLowerCase() === cust.area.trim().toLowerCase());
+            if (foundArea) createForm.area_id = foundArea.id;
         }
     }
 }
@@ -734,6 +750,9 @@ function filterByStatus(st) {
 
 function openCreateModal() {
     createForm.reset();
+    if (filterArea.value) {
+        createForm.area_id = filterArea.value;
+    }
     showCreateModal.value = true;
 }
 
