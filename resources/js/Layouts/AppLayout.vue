@@ -199,15 +199,15 @@ const menuItems = [
         icon: 'users',
         label: 'Data Pelanggan',
         active: (url) => ['/customers', '/customers/gratis', '/customers/active', '/customers/isolir', '/customers/online', '/customers/offline', '/customers/terminated'].some(path => (url || '') === path || (url || '').startsWith(path + '?')),
-        permission: ['menu_customers_all', 'menu_customers_active', 'menu_customers_online'],
+        permission: ['menu_customers_all', 'menu_customers_active', 'menu_customers_online', 'menu_customers_gratis', 'menu_customers_isolir', 'menu_customers_terminated'],
         children: [
             { href: '/customers', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
-            { href: '/customers/gratis', label: 'Pelanggan Gratis', active: (url) => (url || '').startsWith('/customers/gratis'), permission: 'menu_customers_all' },
-            { href: '/customers/active', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: 'menu_customers_active' },
-            { href: '/customers/isolir', label: 'Pelanggan Isolir', active: (url) => (url || '').startsWith('/customers/isolir'), permission: 'menu_customers_active' },
-            { href: '/customers/online', label: 'Status Online', active: (url) => (url || '').startsWith('/customers/online'), permission: 'menu_customers_online' },
-            { href: '/customers/offline', label: 'Status Offline', active: (url) => (url || '').startsWith('/customers/offline'), permission: 'menu_customers_online' },
-            { href: '/customers/terminated', label: 'Stop Permanen', active: (url) => (url || '').startsWith('/customers/terminated'), permission: 'menu_customers_all' },
+            { href: '/customers/gratis', label: 'Pelanggan Gratis', active: (url) => (url || '').startsWith('/customers/gratis'), permission: ['menu_customers_gratis', 'menu_customers_all'] },
+            { href: '/customers/active', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: ['menu_customers_active', 'menu_customers_all'] },
+            { href: '/customers/isolir', label: 'Pelanggan Isolir', active: (url) => (url || '').startsWith('/customers/isolir'), permission: ['menu_customers_isolir', 'menu_customers_active', 'menu_customers_all'] },
+            { href: '/customers/online', label: 'Status Online', active: (url) => (url || '').startsWith('/customers/online'), permission: ['menu_customers_online', 'menu_customers_all'] },
+            { href: '/customers/offline', label: 'Status Offline', active: (url) => (url || '').startsWith('/customers/offline'), permission: ['menu_customers_online', 'menu_customers_all'] },
+            { href: '/customers/terminated', label: 'Stop Permanen', active: (url) => (url || '').startsWith('/customers/terminated'), permission: ['menu_customers_terminated', 'menu_customers_all'] },
         ]
     },
     { 
@@ -216,7 +216,7 @@ const menuItems = [
         icon: 'gift', 
         label: 'Pelanggan Gratis', 
         active: (url) => (url || '').startsWith('/customers/gratis'), 
-        permission: 'menu_customers_all' 
+        permission: ['menu_customers_gratis', 'menu_customers_all'] 
     },
     {
         type: 'dropdown',
@@ -364,6 +364,7 @@ const menuItems = [
         icon: 'zap',
         label: '⚡ WhatsApp Blast & QR',
         active: (url) => (url || '').startsWith('/whatsapp-blast'),
+        permission: 'menu_whatsapp_blast',
     },
     {
         type: 'dropdown',

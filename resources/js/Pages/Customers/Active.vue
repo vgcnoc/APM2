@@ -2,7 +2,7 @@
     <AppLayout title="Pelanggan Terpasang" subtitle="Pelanggan yang sedang/sudah diinstalasi">
         
         <!-- Statistik Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div v-can="'customers_card_summary'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard 
                 title="Belum Jadwal Pasang" 
                 :value="stats?.jadwal_pasang || 0" 
@@ -39,7 +39,7 @@
             v-model:selected="selectedIds"
         >
             <template #filters>
-                <select v-model="status" @change="applyFilter" class="form-select w-40">
+                <select v-can="'customers_filter_status'" v-model="status" @change="applyFilter" class="form-select w-40">
                     <option value="">Semua</option>
                     <option value="installing">Proses Pasang</option>
                     <option value="active">Aktif</option>
@@ -49,7 +49,7 @@
             
             <template #actions>
                 <div class="flex items-center gap-2">
-                    <button v-if="canDelete && selectedIds.length > 0" 
+                    <button v-can="'customers_delete'" v-if="canDelete && selectedIds.length > 0" 
                         @click="bulkDelete" 
                         class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-medium text-sm rounded-lg transition-colors border border-red-200 flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -133,7 +133,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                         </svg>
                     </Link>
-                    <button @click="confirmDelete(row)" class="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 border border-transparent hover:border-red-200 transition-all shadow-sm hover:shadow" title="Hapus Pelanggan">
+                    <button v-can="'customers_delete'" @click="confirmDelete(row)" class="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 border border-transparent hover:border-red-200 transition-all shadow-sm hover:shadow" title="Hapus Pelanggan">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
                 </div>

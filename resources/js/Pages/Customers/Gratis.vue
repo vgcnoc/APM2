@@ -26,6 +26,7 @@
                 </div>
                 <div class="relative z-10 flex items-center gap-2">
                     <Link 
+                        v-can="'customers_all_create'"
                         :href="route('customers.create', { service_status: 'gratis' })"
                         class="inline-flex items-center gap-2 bg-white text-emerald-800 hover:bg-emerald-50 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all hover:shadow-lg cursor-pointer"
                     >
@@ -36,7 +37,7 @@
             </div>
 
             <!-- ── 4 RINGKASAN METRIK CERDAS ── -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div v-can="'customers_card_summary'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
                 <!-- Card 1: Total Pelanggan Gratis -->
                 <div class="bg-white rounded-2xl p-5 border border-emerald-100 shadow-sm hover:border-emerald-300 transition-all">
@@ -113,7 +114,7 @@
             </div>
 
             <!-- ── FILTER BAR ── -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 transition-all">
+            <div v-can="'customers_filter_search'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 transition-all">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
                     
                     <!-- Search Input -->
@@ -336,6 +337,7 @@
 
                                         <!-- Edit -->
                                         <Link 
+                                            v-can="'customers_all_edit'"
                                             :href="route('customers.edit', c.id)" 
                                             class="p-2 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-amber-600 transition" 
                                             title="Edit Data"
@@ -345,6 +347,7 @@
 
                                         <!-- Ubah ke Berbayar -->
                                         <button 
+                                            v-can="'customers_all_edit'"
                                             @click="openSwitchModal(c)" 
                                             class="inline-flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-700 px-3 py-1.5 rounded-xl border border-amber-200 transition text-xs font-bold cursor-pointer"
                                             title="Ubah status ke Berbayar"

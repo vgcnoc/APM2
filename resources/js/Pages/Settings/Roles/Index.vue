@@ -1,6 +1,6 @@
 <template>
-    <AppLayout title="Manajemen Role & Akses" subtitle="Atur role dan hak akses pengguna secara detail">
-        <div class="flex flex-col lg:flex-row gap-6 items-start pb-16">
+    <AppLayout title="Manajemen Role & Hak Akses" subtitle="Atur izin akses Menu, Card, Tab, Filter, dan Tombol secara detail">
+        <div class="flex flex-col lg:flex-row gap-6 items-start pb-20">
             
             <!-- ── 1. SIDEBAR: DAFTAR ROLE ──────────────────────────── -->
             <div class="w-full lg:w-80 shrink-0 space-y-4 lg:sticky lg:top-4">
@@ -70,13 +70,18 @@
                                 </div>
 
                                 <!-- Action Buttons -->
-                                <div v-if="role.name !== 'admin'" class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                    <button @click.stop="openEditModal(role)" class="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-100/60 rounded-md transition-colors" title="Ubah Nama">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                    <button @click.stop="openCloneModal(role)" class="p-1 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" title="Duplikasi Role (Clone)">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
                                     </button>
-                                    <button @click.stop="confirmDeleteRole(role)" class="p-1 text-gray-400 hover:text-red-600 hover:bg-red-100/60 rounded-md transition-colors" title="Hapus Role">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                    </button>
+                                    <template v-if="role.name !== 'admin'">
+                                        <button @click.stop="openEditModal(role)" class="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-100/60 rounded-md transition-colors" title="Ubah Nama">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                        </button>
+                                        <button @click.stop="confirmDeleteRole(role)" class="p-1 text-gray-400 hover:text-red-600 hover:bg-red-100/60 rounded-md transition-colors" title="Hapus Role">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
+                                    </template>
                                 </div>
                             </div>
 
@@ -123,7 +128,7 @@
                                             Ada perubahan belum disimpan
                                         </span>
                                     </div>
-                                    <p class="text-xs text-gray-500 mt-1 flex items-center gap-3">
+                                    <p class="text-xs text-gray-500 mt-1 flex items-center gap-3 flex-wrap">
                                         <span>Aktif: <b class="text-blue-600 font-semibold">{{ checkedCount }}</b> dari {{ totalCount }} izin</span>
                                         <span>•</span>
                                         <span>Persentase: <b class="text-emerald-600 font-semibold">{{ Math.round((checkedCount / totalCount) * 100) }}%</b></span>
@@ -134,10 +139,16 @@
                             </div>
 
                             <!-- Action Buttons -->
-                            <div class="flex items-center gap-2.5 shrink-0 flex-wrap">
+                            <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                                <button @click="openCloneModal(selectedRole)"
+                                    class="px-3 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
+                                    Duplikasi Role
+                                </button>
+
                                 <template v-if="selectedRole.name !== 'admin'">
                                     <button @click="toggleAll" 
-                                        class="px-3.5 py-2 text-xs font-bold rounded-xl border transition-all active:scale-95 flex items-center gap-1.5"
+                                        class="px-3 py-2 text-xs font-bold rounded-xl border transition-all active:scale-95 flex items-center gap-1.5"
                                         :class="isAllChecked 
                                             ? 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200' 
                                             : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'">
@@ -148,7 +159,7 @@
                                     </button>
 
                                     <button @click="resetChanges" v-if="hasUnsavedChanges"
-                                        class="px-3.5 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-all">
+                                        class="px-3 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-all">
                                         Reset
                                     </button>
 
@@ -167,6 +178,40 @@
                             </div>
                         </div>
 
+                        <!-- ── GRANULAR TYPE BREAKDOWN COUNTERS ────────── -->
+                        <div class="mt-4 pt-3 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-center">
+                            <div @click="typeFilter = typeFilter === 'menu' ? 'all' : 'menu'" class="p-2 rounded-xl border cursor-pointer transition-all"
+                                :class="typeFilter === 'menu' ? 'bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200' : 'bg-gray-50/70 border-gray-100 hover:bg-gray-100/60'">
+                                <span class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">📑 Menu</span>
+                                <span class="text-sm font-extrabold text-gray-900">{{ typeCounts.menu.checked }} / {{ typeCounts.menu.total }}</span>
+                            </div>
+                            <div @click="typeFilter = typeFilter === 'card' ? 'all' : 'card'" class="p-2 rounded-xl border cursor-pointer transition-all"
+                                :class="typeFilter === 'card' ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-200' : 'bg-gray-50/70 border-gray-100 hover:bg-gray-100/60'">
+                                <span class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">📊 Card</span>
+                                <span class="text-sm font-extrabold text-gray-900">{{ typeCounts.card.checked }} / {{ typeCounts.card.total }}</span>
+                            </div>
+                            <div @click="typeFilter = typeFilter === 'tab' ? 'all' : 'tab'" class="p-2 rounded-xl border cursor-pointer transition-all"
+                                :class="typeFilter === 'tab' ? 'bg-violet-50 border-violet-300 ring-2 ring-violet-200' : 'bg-gray-50/70 border-gray-100 hover:bg-gray-100/60'">
+                                <span class="text-[10px] font-bold text-violet-700 uppercase tracking-wider block">📑 Tabs</span>
+                                <span class="text-sm font-extrabold text-gray-900">{{ typeCounts.tab.checked }} / {{ typeCounts.tab.total }}</span>
+                            </div>
+                            <div @click="typeFilter = typeFilter === 'filter' ? 'all' : 'filter'" class="p-2 rounded-xl border cursor-pointer transition-all"
+                                :class="typeFilter === 'filter' ? 'bg-sky-50 border-sky-300 ring-2 ring-sky-200' : 'bg-gray-50/70 border-gray-100 hover:bg-gray-100/60'">
+                                <span class="text-[10px] font-bold text-sky-700 uppercase tracking-wider block">🔍 Filter</span>
+                                <span class="text-sm font-extrabold text-gray-900">{{ typeCounts.filter.checked }} / {{ typeCounts.filter.total }}</span>
+                            </div>
+                            <div @click="typeFilter = typeFilter === 'button' ? 'all' : 'button'" class="p-2 rounded-xl border cursor-pointer transition-all"
+                                :class="typeFilter === 'button' ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-200' : 'bg-gray-50/70 border-gray-100 hover:bg-gray-100/60'">
+                                <span class="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">⚡ Tombol</span>
+                                <span class="text-sm font-extrabold text-gray-900">{{ typeCounts.button.checked }} / {{ typeCounts.button.total }}</span>
+                            </div>
+                            <div @click="typeFilter = typeFilter === 'feature' ? 'all' : 'feature'" class="p-2 rounded-xl border cursor-pointer transition-all"
+                                :class="typeFilter === 'feature' ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-200' : 'bg-gray-50/70 border-gray-100 hover:bg-gray-100/60'">
+                                <span class="text-[10px] font-bold text-rose-700 uppercase tracking-wider block">🌐 Scope</span>
+                                <span class="text-sm font-extrabold text-gray-900">{{ typeCounts.feature.checked }} / {{ typeCounts.feature.total }}</span>
+                            </div>
+                        </div>
+
                         <!-- Progress Bar Visual -->
                         <div class="mt-4 pt-3 border-t border-gray-100">
                             <div class="flex items-center justify-between text-xs text-gray-500 mb-1.5">
@@ -176,7 +221,7 @@
                             <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
                                 <div :class="[
                                     'h-2.5 rounded-full transition-all duration-500 ease-out',
-                                    selectedRole.name === 'admin' ? 'bg-amber-500' : 'bg-gradient-to-r from-blue-600 to-indigo-600'
+                                    selectedRole.name === 'admin' ? 'bg-amber-500' : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600'
                                 ]" :style="{ width: (checkedCount / totalCount * 100) + '%' }"></div>
                             </div>
                         </div>
@@ -197,7 +242,7 @@
                             <!-- Live Search Input -->
                             <div class="relative flex-1">
                                 <input v-model="searchQuery" type="text"
-                                    placeholder="Cari izin berdasarkan nama atau kode (misal: invoice, tambah, odp, hapus)..."
+                                    placeholder="Cari izin berdasarkan nama, tipe, atau kode (misal: invoice, tambah, odp, hapus, card)..."
                                     class="w-full pl-9 pr-9 py-2 text-xs md:text-sm rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-gray-400" />
                                 <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5 md:top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -208,7 +253,18 @@
                             </div>
 
                             <!-- Filter & Tool Actions -->
-                            <div class="flex items-center gap-2 shrink-0">
+                            <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                                <!-- Type Filter Pill -->
+                                <select v-model="typeFilter" class="text-xs rounded-xl border-gray-200 py-2 pl-3 pr-8 bg-gray-50 font-medium focus:ring-blue-500">
+                                    <option value="all">Semua Tipe Izin</option>
+                                    <option value="menu">📑 Menu Navigasi</option>
+                                    <option value="card">📊 Card & Statistik</option>
+                                    <option value="tab">📑 Tab Halaman</option>
+                                    <option value="filter">🔍 Filter & Cari</option>
+                                    <option value="button">⚡ Tombol Aksi</option>
+                                    <option value="feature">🌐 Fitur / Scope</option>
+                                </select>
+
                                 <!-- Status Filter -->
                                 <select v-model="statusFilter" class="text-xs rounded-xl border-gray-200 py-2 pl-3 pr-8 bg-gray-50 font-medium focus:ring-blue-500">
                                     <option value="all">Semua Status</option>
@@ -256,7 +312,7 @@
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </div>
                             <h4 class="font-bold text-gray-800 text-sm">Tidak ada hak akses yang cocok</h4>
-                            <p class="text-xs text-gray-500 mt-1">Coba sesuaikan kata kunci pencarian atau ubah filter status.</p>
+                            <p class="text-xs text-gray-500 mt-1">Coba sesuaikan kata kunci pencarian atau ubah filter status/tipe.</p>
                             <button @click="resetFilters" class="mt-3 px-3.5 py-1.5 bg-blue-50 text-blue-600 font-bold text-xs rounded-lg hover:bg-blue-100 transition-colors">
                                 Reset Filter
                             </button>
@@ -279,7 +335,7 @@
                                     </div>
                                     <!-- Title & Stats -->
                                     <div class="min-w-0 text-left">
-                                        <div class="flex items-center gap-2">
+                                        <div class="flex items-center gap-2 flex-wrap">
                                             <h4 class="font-bold text-gray-900 text-sm truncate">{{ group.group }}</h4>
                                             <span :class="[
                                                 'text-[10px] font-bold px-2 py-0.5 rounded-full border',
@@ -299,7 +355,7 @@
                                 </div>
 
                                 <!-- Right Group Actions -->
-                                <div class="flex items-center gap-3 shrink-0" @click.stop>
+                                <div class="flex items-center gap-2 shrink-0 flex-wrap" @click.stop>
                                     <!-- Quick Toggle Group -->
                                     <button v-if="selectedRole.name !== 'admin'" 
                                         @click="toggleGroupAll(group)" 
@@ -322,8 +378,8 @@
                             <!-- Group Card Body: 2-Column Responsive Grid -->
                             <div v-show="isGroupOpen(group.group)" class="border-t border-gray-100 p-3.5 bg-gray-50/40">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                                    <div v-for="perm in getFilteredPermissions(group.permissions)" :key="perm.name"
-                                        @click="selectedRole.name !== 'admin' && togglePermission(perm.name)"
+                                    <div v-for="perm in group.permissions" :key="perm.name"
+                                        @click="selectedRole.name !== 'admin' && togglePermissionWithAutoParent(perm, group)"
                                         :class="[
                                             'p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none',
                                             isPermActive(perm.name)
@@ -336,11 +392,9 @@
                                             <!-- Type Badge -->
                                             <span :class="[
                                                 'shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide border mt-0.5',
-                                                perm.type === 'menu' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
-                                                perm.type === 'feature' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                                'bg-amber-50 text-amber-700 border-amber-200'
+                                                getTypeBadgeClass(perm.type)
                                             ]">
-                                                {{ perm.type === 'menu' ? 'Menu' : perm.type === 'feature' ? 'Fitur' : 'Aksi' }}
+                                                {{ getTypeLabel(perm.type) }}
                                             </span>
 
                                             <!-- Labels -->
@@ -362,7 +416,7 @@
                                             <label class="relative inline-flex items-center cursor-pointer">
                                                 <input type="checkbox" 
                                                     :checked="isPermActive(perm.name)"
-                                                    @change="togglePermission(perm.name)" 
+                                                    @change="togglePermissionWithAutoParent(perm, group)" 
                                                     class="sr-only peer" 
                                                     :disabled="selectedRole?.name === 'admin'">
                                                 <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 shadow-inner"></div>
@@ -456,6 +510,40 @@
             </div>
         </Teleport>
 
+        <!-- ── MODAL KLONING / DUPLIKASI ROLE ───────────────────── -->
+        <Teleport to="body">
+            <div v-if="showCloneModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showCloneModal = false"></div>
+                <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up">
+                    <form @submit.prevent="submitCloneForm">
+                        <div class="px-6 pt-6 pb-5">
+                            <div class="flex items-center gap-3 mb-5">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-base font-bold text-gray-900">Duplikasi Role Akses</h3>
+                                    <p class="text-xs text-gray-500">Salin seluruh izin dari role <b class="capitalize text-gray-800">{{ roleToClone?.name }}</b></p>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nama Role Baru</label>
+                                <input v-model="cloneFormName" required type="text" placeholder="Contoh: koordinator-teknisi"
+                                    class="w-full rounded-xl border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm" />
+                                <p class="mt-2 text-[11px] text-gray-500">Semua pengaturan Menu, Card, Tab, Filter, dan Tombol dari role sumber akan langsung disalin ke role baru ini.</p>
+                            </div>
+                        </div>
+                        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2.5">
+                            <button type="button" @click="showCloneModal = false" class="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">Batal</button>
+                            <button type="submit" :disabled="isSubmitting" class="px-5 py-2 text-xs font-bold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-all shadow-sm disabled:opacity-50">
+                                {{ isSubmitting ? 'Menduplikasi...' : 'Duplikasi Sekarang' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
         <!-- ── MODAL KONFIRMASI HAPUS ROLE ──────────────────────── -->
         <Teleport to="body">
             <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -505,6 +593,7 @@ const isSaving = ref(false);
 const roleSearch = ref('');
 const searchQuery = ref('');
 const selectedCategory = ref('all');
+const typeFilter = ref('all'); // 'all', 'menu', 'card', 'tab', 'filter', 'button', 'feature'
 const statusFilter = ref('all');
 
 // Modal State
@@ -514,6 +603,11 @@ const editingId = ref(null);
 const formName = ref('');
 const isSubmitting = ref(false);
 
+// Clone Modal State
+const showCloneModal = ref(false);
+const roleToClone = ref(null);
+const cloneFormName = ref('');
+
 // Delete Modal State
 const showDeleteModal = ref(false);
 const roleToDelete = ref(null);
@@ -522,13 +616,12 @@ const isDeleting = ref(false);
 // ── Category Definitions ───────────────────────────
 const categoryMap = {
     'pelanggan': [
-        'Data Booking',
-        'Survey',
-        'Instalasi Jaringan',
-        'Aktivasi Layanan',
-        'Pelanggan Aktif & Layanan',
-        'Semua Pelanggan',
-        'Pantauan Pelanggan',
+        'Data Pelanggan (Semua & Status)',
+        'Pemasangan Baru (PSB) - 1. Booking',
+        'Pemasangan Baru (PSB) - 2. Survey',
+        'Pemasangan Baru (PSB) - 3. Instalasi',
+        'Pemasangan Baru (PSB) - 4. Aktivasi Layanan',
+        'Pantauan Pelanggan (Menunggak & Janji Bayar)',
     ],
     'billing': [
         'Billing & Invoice Pelanggan',
@@ -536,17 +629,13 @@ const categoryMap = {
         'Laporan Keuangan & Pajak',
     ],
     'jaringan': [
-        'Topologi & Radar Jaringan',
-        'OLT',
-        'ODC',
-        'ODP',
+        'Topologi & Radar Jaringan FTTH',
+        'Perangkat OSP (OLT, ODC, ODP, ONT)',
         'Rollout Pembangunan ODC & ODP',
-        'ONT & Find ONU',
-        'MikroTik & Router',
-        'RADIUS Billing System',
+        'MikroTik & RADIUS Billing',
     ],
     'tiket': [
-        'Ticketing & CBP',
+        'Ticketing & CBP (Cabut Perangkat)',
         'Penanganan Khusus (PGK, PGJ, PGS)',
     ],
     'gudang': [
@@ -558,15 +647,15 @@ const categoryMap = {
         'Penggajian & Insentif (Payroll)',
     ],
     'voucher': [
-        'Voucher & Reseller',
-        'Marketing Afiliasi',
-        'Paket Internet',
+        'Voucher & Mitra Reseller',
+        'Marketing Afiliasi & Komisi',
+    ],
+    'whatsapp': [
+        'WhatsApp Gateway & Smart Blast',
     ],
     'setting': [
-        'Master Area & Wilayah',
-        'Master Konfigurasi & Kategori',
-        'Manajemen Pengguna (User)',
-        'Manajemen Role & Hak Akses',
+        'Master Paket, Area & Pengaturan',
+        'Manajemen Pengguna & Role Akses',
     ],
 };
 
@@ -607,45 +696,76 @@ const categoryTabs = computed(() => {
     return [
         { id: 'all', label: 'Semua Modul', count: totalCount.value },
         { id: 'pelanggan', label: 'Pelanggan & PSB', count: countPermissionsByCategory('pelanggan') },
-        { id: 'billing', label: 'Billing & Keuangan', count: countPermissionsByCategory('billing') },
-        { id: 'jaringan', label: 'Jaringan & FTTH', count: countPermissionsByCategory('jaringan') },
-        { id: 'tiket', label: 'Operasional & Tiket', count: countPermissionsByCategory('tiket') },
-        { id: 'gudang', label: 'Logistik & Gudang', count: countPermissionsByCategory('gudang') },
+        { id: 'billing', label: 'Billing & Kas', count: countPermissionsByCategory('billing') },
+        { id: 'jaringan', label: 'Jaringan & OSP', count: countPermissionsByCategory('jaringan') },
+        { id: 'tiket', label: 'Tiket & Operasional', count: countPermissionsByCategory('tiket') },
+        { id: 'gudang', label: 'Gudang & Stok', count: countPermissionsByCategory('gudang') },
         { id: 'hrd', label: 'HRD & Payroll', count: countPermissionsByCategory('hrd') },
-        { id: 'voucher', label: 'Voucher & Afiliasi', count: countPermissionsByCategory('voucher') },
-        { id: 'setting', label: 'Pengaturan Sistem', count: countPermissionsByCategory('setting') },
+        { id: 'voucher', label: 'Voucher & Reseller', count: countPermissionsByCategory('voucher') },
+        { id: 'whatsapp', label: '⚡ WhatsApp Blast', count: countPermissionsByCategory('whatsapp') },
+        { id: 'setting', label: 'Master & Pengaturan', count: countPermissionsByCategory('setting') },
     ];
 });
 
 const countPermissionsByCategory = (catKey) => {
     const targetGroups = categoryMap[catKey] || [];
     return props.permissionGroups
-        .filter(g => targetGroups.includes(g.group))
+        .filter(g => targetGroups.includes(g.group) || g.category === catKey)
         .reduce((sum, g) => sum + g.permissions.length, 0);
 };
 
-// Filtered Groups based on search, category, and status
+// Type Breakdown Counts for selected role
+const typeCounts = computed(() => {
+    const types = ['menu', 'card', 'tab', 'filter', 'button', 'feature'];
+    const res = {};
+    types.forEach(t => {
+        res[t] = { total: 0, checked: 0 };
+    });
+
+    props.permissionGroups.forEach(g => {
+        g.permissions.forEach(p => {
+            const t = p.type || 'button';
+            if (res[t]) {
+                res[t].total++;
+                if (selectedRole.value?.name === 'admin' || selectedPermissions.value.includes(p.name)) {
+                    res[t].checked++;
+                }
+            }
+        });
+    });
+
+    return res;
+});
+
+// Filtered Groups based on search, category, type, and status
 const filteredGroups = computed(() => {
     let groups = props.permissionGroups;
 
     // 1. Filter by category
     if (selectedCategory.value !== 'all') {
         const allowedGroups = categoryMap[selectedCategory.value] || [];
-        groups = groups.filter(g => allowedGroups.includes(g.group));
+        groups = groups.filter(g => allowedGroups.includes(g.group) || g.category === selectedCategory.value);
     }
 
-    // 2. Filter by search or status
+    // 2. Filter by search, type or status
     const q = searchQuery.value.toLowerCase().trim();
     const status = statusFilter.value;
+    const type = typeFilter.value;
 
     return groups.map(g => {
         let perms = g.permissions;
+
+        // Type filter
+        if (type !== 'all') {
+            perms = perms.filter(p => p.type === type);
+        }
 
         // Search query filter
         if (q) {
             perms = perms.filter(p => 
                 p.label.toLowerCase().includes(q) || 
                 p.name.toLowerCase().includes(q) ||
+                (p.type && p.type.toLowerCase().includes(q)) ||
                 g.group.toLowerCase().includes(q)
             );
         }
@@ -668,7 +788,6 @@ const filteredGroups = computed(() => {
 const selectRole = (role) => {
     selectedRole.value = role;
     selectedPermissions.value = [...role.permissions];
-    // Open all groups by default
     openGroups.value = props.permissionGroups.map(g => g.group);
 };
 
@@ -693,11 +812,25 @@ const isPermActive = (name) => {
     return selectedPermissions.value.includes(name);
 };
 
-const togglePermission = (name) => {
+// Cerdas: If enabling a card/tab/filter/button, automatically enable parent menu if specified
+const togglePermissionWithAutoParent = (perm, group) => {
     if (selectedRole.value?.name === 'admin') return;
-    const i = selectedPermissions.value.indexOf(name);
-    if (i >= 0) selectedPermissions.value.splice(i, 1);
-    else selectedPermissions.value.push(name);
+
+    const isActive = isPermActive(perm.name);
+    if (isActive) {
+        // Turn off
+        const idx = selectedPermissions.value.indexOf(perm.name);
+        if (idx >= 0) selectedPermissions.value.splice(idx, 1);
+    } else {
+        // Turn on
+        selectedPermissions.value.push(perm.name);
+
+        // Auto-enable parent menu if specified and not yet enabled
+        const parentMenu = group.menu_parent;
+        if (parentMenu && perm.name !== parentMenu && !selectedPermissions.value.includes(parentMenu)) {
+            selectedPermissions.value.push(parentMenu);
+        }
+    }
 };
 
 const toggleAll = () => {
@@ -735,10 +868,6 @@ const getGroupCheckedCount = (group) => {
     return group.permissions.filter(p => selectedPermissions.value.includes(p.name)).length;
 };
 
-const getFilteredPermissions = (permissions) => {
-    return permissions;
-};
-
 const resetChanges = () => {
     if (selectedRole.value) {
         selectedPermissions.value = [...(selectedRole.value.permissions || [])];
@@ -748,6 +877,7 @@ const resetChanges = () => {
 const resetFilters = () => {
     searchQuery.value = '';
     selectedCategory.value = 'all';
+    typeFilter.value = 'all';
     statusFilter.value = 'all';
 };
 
@@ -768,6 +898,31 @@ const savePermissions = () => {
         },
         onFinish: () => isSaving.value = false,
     });
+};
+
+// ── Type Badges & Labels ────────────────────────────
+const getTypeLabel = (type) => {
+    switch (type) {
+        case 'menu': return '📑 Menu';
+        case 'card': return '📊 Card';
+        case 'tab': return '📑 Tab';
+        case 'filter': return '🔍 Filter';
+        case 'button': return '⚡ Tombol';
+        case 'feature': return '🌐 Scope';
+        default: return 'Aksi';
+    }
+};
+
+const getTypeBadgeClass = (type) => {
+    switch (type) {
+        case 'menu': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+        case 'card': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        case 'tab': return 'bg-violet-50 text-violet-700 border-violet-200';
+        case 'filter': return 'bg-sky-50 text-sky-700 border-sky-200';
+        case 'button': return 'bg-amber-50 text-amber-700 border-amber-200';
+        case 'feature': return 'bg-rose-50 text-rose-700 border-rose-200';
+        default: return 'bg-gray-50 text-gray-700 border-gray-200';
+    }
 };
 
 // ── Create/Edit Modal ──────────────────────────────
@@ -808,6 +963,27 @@ const submitForm = () => {
             onFinish: () => isSubmitting.value = false,
         });
     }
+};
+
+// ── Clone Modal ────────────────────────────────────
+const openCloneModal = (role) => {
+    roleToClone.value = role;
+    cloneFormName.value = `${role.name}-copy`;
+    showCloneModal.value = true;
+};
+
+const submitCloneForm = () => {
+    if (!roleToClone.value) return;
+    isSubmitting.value = true;
+    router.post(`/settings/roles/${roleToClone.value.id}/clone`, {
+        name: cloneFormName.value,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showCloneModal.value = false;
+        },
+        onFinish: () => isSubmitting.value = false,
+    });
 };
 
 // ── Delete Modal ────────────────────────────────────
@@ -866,8 +1042,6 @@ const getGroupColor = (icon) => {
         'package': 'bg-sky-100 text-sky-700',
         'map': 'bg-emerald-100 text-emerald-700',
         'lock-closed': 'bg-indigo-100 text-indigo-700',
-        'color-swatch': 'bg-fuchsia-100 text-fuchsia-700',
-        'code': 'bg-slate-100 text-slate-700',
     };
     return colors[icon] || 'bg-gray-100 text-gray-700';
 };
@@ -901,14 +1075,11 @@ const iconPaths = {
     package: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
     map: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
     'lock-closed': 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
-    'color-swatch': 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01',
-    code: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4',
 };
 
 // Auto-select first role on mount if none selected
 onMounted(() => {
     if (props.roles.length > 0 && !selectedRole.value) {
-        // Prefer 'noc' or non-admin if available, or first role
         const defaultRole = props.roles.find(r => r.name !== 'admin') || props.roles[0];
         selectRole(defaultRole);
     }
@@ -916,7 +1087,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Hide scrollbar for category tabs */
 .no-scrollbar::-webkit-scrollbar {
     display: none;
 }
@@ -926,12 +1096,8 @@ onMounted(() => {
 }
 
 @keyframes bounceSubtle {
-    0%, 100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-4px);
-    }
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
 }
 .animate-bounce-subtle {
     animation: bounceSubtle 3s ease-in-out infinite;

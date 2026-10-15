@@ -23,7 +23,7 @@
         </div>
 
         <!-- KPI Statistik Ringkasan -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+        <div v-can="'customers_card_summary'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
             <!-- 1. Total Terminated -->
             <div class="glass-card p-5 animate-fade-in-up border border-slate-200/80 hover:shadow-md transition-shadow" style="animation-delay: 0.05s">
                 <div class="flex items-center justify-between">
@@ -101,7 +101,7 @@
         >
             <!-- Slot Filters -->
             <template #filters>
-                <div class="flex flex-wrap items-center gap-3 w-full text-xs">
+                <div v-can="'customers_filter_area'" class="flex flex-wrap items-center gap-3 w-full text-xs">
                     <!-- Filter Area -->
                     <div class="flex items-center gap-1.5">
                         <label class="font-semibold text-slate-600">Area:</label>
@@ -326,6 +326,7 @@
                     <div class="flex items-center justify-end gap-1.5 py-1">
                         <!-- Quick Reaktivasi Button -->
                         <button 
+                            v-can="'customers_active_terminate'"
                             @click="openReactivateModal(row)"
                             class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all flex items-center gap-1"
                             title="Aktifkan Kembali Layanan Pelanggan Ini"
@@ -386,6 +387,7 @@
                                     <!-- WhatsApp Pilihan -->
                                     <button 
                                         v-if="row.phone"
+                                        v-can="'customers_btn_whatsapp'"
                                         @click="openWhatsAppModal(row); activeDropdownId = null"
                                         class="w-full text-left px-3 py-2 text-emerald-700 hover:bg-emerald-50 rounded-lg flex items-center gap-2 font-medium"
                                     >
@@ -406,6 +408,7 @@
                                 <div class="p-1">
                                     <!-- Hapus Permanen -->
                                     <button 
+                                        v-can="'customers_delete'"
                                         @click="openDeleteModal(row); activeDropdownId = null"
                                         class="w-full text-left px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 font-medium"
                                     >

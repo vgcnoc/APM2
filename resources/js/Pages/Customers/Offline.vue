@@ -1,7 +1,7 @@
 <template>
     <AppLayout title="Pelanggan Offline" subtitle="Daftar pelanggan aktif/suspend yang sedang tidak terhubung">
         <!-- Summary -->
-        <div class="flex flex-wrap items-center gap-3 mb-4">
+        <div v-can="'customers_card_summary'" class="flex flex-wrap items-center gap-3 mb-4">
             <div class="glass-card px-4 py-3 flex items-center gap-3">
                 <span class="relative flex h-3 w-3">
                     <span class="relative inline-flex rounded-full h-3 w-3 bg-gray-400"></span>

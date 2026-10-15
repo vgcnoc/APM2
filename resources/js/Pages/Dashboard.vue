@@ -3,7 +3,7 @@
         <!-- ═══ Stat Cards ═══ -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
             <!-- Pelanggan Aktif -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+            <div v-can="'dashboard_card_stats'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
@@ -29,7 +29,7 @@
             </div>
 
             <!-- Pelanggan Sudah Bayar -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+            <div v-can="'dashboard_card_revenue'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
@@ -52,7 +52,7 @@
             </div>
 
             <!-- Pelanggan Belum Bayar -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+            <div v-can="'dashboard_card_revenue'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
@@ -65,17 +65,17 @@
                         <p class="text-xs text-gray-500 mt-1">Bulan Ini</p>
                     </div>
                     <span class="inline-flex items-center text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded-lg">
-                        {{ ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) > 0 ? Math.round((invoiceStats?.unpaid_this_month || 0) / ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) * 100) : 0 }}%
+                        {{ ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) > 0 ? Math.round((invoiceStats?.paid_this_month || 0) / ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) * 100) : 0 }}%
                     </span>
                 </div>
                 <div class="mt-3 w-full bg-gray-100 rounded-full h-2">
                     <div class="bg-gradient-to-r from-red-400 to-red-600 h-2 rounded-full transition-all"
-                        :style="{ width: (((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) > 0 ? (invoiceStats?.unpaid_this_month || 0) / ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) * 100 : 0) + '%' }"></div>
+                        :style="{ width: (((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) > 0 ? (invoiceStats?.paid_this_month || 0) / ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) * 100 : 0) + '%' }"></div>
                 </div>
             </div>
 
             <!-- Reseller Voucher Belum Bayar -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+            <div v-can="'dashboard_card_revenue'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
@@ -104,7 +104,7 @@
         </div>
 
         <!-- ═══ Pipeline Pelanggan ═══ -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div v-can="'dashboard_view_stats'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
                 <div class="flex items-center justify-between mb-5">
                     <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
                         <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
@@ -122,22 +122,22 @@
                         class="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors">
                         Terbaru
                     </button>
-                    <button @click="pipelineTab = 'booking'"
+                    <button v-can="'menu_customers_booking'" @click="pipelineTab = 'booking'"
                         :class="pipelineTab === 'booking' ? 'bg-yellow-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                         class="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors">
                         Booking <span class="ml-1 px-1.5 py-0.5 rounded-md text-[10px]" :class="pipelineTab === 'booking' ? 'bg-white/20' : 'bg-gray-200'">{{ customerStats.total_booking }}</span>
                     </button>
-                    <button @click="pipelineTab = 'survey'"
+                    <button v-can="'menu_customers_survey'" @click="pipelineTab = 'survey'"
                         :class="pipelineTab === 'survey' ? 'bg-cyan-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                         class="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors">
                         Survey <span class="ml-1 px-1.5 py-0.5 rounded-md text-[10px]" :class="pipelineTab === 'survey' ? 'bg-white/20' : 'bg-gray-200'">{{ customerStats.total_survey }}</span>
                     </button>
-                    <button @click="pipelineTab = 'instalasi'"
+                    <button v-can="'menu_customers_installed'" @click="pipelineTab = 'instalasi'"
                         :class="pipelineTab === 'instalasi' ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                         class="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors">
                         Instalasi <span class="ml-1 px-1.5 py-0.5 rounded-md text-[10px]" :class="pipelineTab === 'instalasi' ? 'bg-white/20' : 'bg-gray-200'">{{ customerStats.total_installing }}</span>
                     </button>
-                    <button @click="pipelineTab = 'aktivasi'"
+                    <button v-can="'menu_customers_activation'" @click="pipelineTab = 'aktivasi'"
                         :class="pipelineTab === 'aktivasi' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                         class="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors">
                         Aktivasi <span class="ml-1 px-1.5 py-0.5 rounded-md text-[10px]" :class="pipelineTab === 'aktivasi' ? 'bg-white/20' : 'bg-gray-200'">{{ customerStats.total_activation }}</span>
@@ -207,7 +207,7 @@
             </div>
 
             <!-- Distribusi Paket -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div v-can="'dashboard_view_charts'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div class="flex items-center justify-between mb-5">
                     <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
                         <svg class="w-5 h-5 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
@@ -260,7 +260,7 @@
             </div>
 
             <!-- Top 5 Area -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div v-can="'dashboard_card_stats'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div class="flex items-center justify-between mb-5">
                     <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>

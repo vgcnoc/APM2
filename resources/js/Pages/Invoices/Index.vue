@@ -1,7 +1,7 @@
 <template>
     <AppLayout title="Invoice Pelanggan" subtitle="Kelola tagihan pelanggan dan status pembayarannya">
         <!-- Summary Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div v-can="'invoices_card_summary'" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <!-- Card 1: Total Belum Lunas -->
             <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
@@ -49,39 +49,39 @@
 
         <!-- Tabs Section -->
         <div class="flex flex-wrap gap-3 mb-5 border-b border-gray-200 pb-3 overflow-x-auto custom-scrollbar">
-            <button @click="filterTab('semua')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'semua' || !filterTabVal ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700']">
+            <button v-can="'invoices_tab_all'" @click="filterTab('semua')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'semua' || !filterTabVal ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Daftar Tagihan <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.semua }}</span>
             </button>
-            <button @click="filterTab('jatuh_tempo')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'jatuh_tempo' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-500 hover:text-gray-700']">
+            <button v-can="'invoices_tab_unpaid'" @click="filterTab('jatuh_tempo')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'jatuh_tempo' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 Tagihan Jatuh Tempo <span class="bg-red-50 text-red-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.jatuh_tempo }}</span>
             </button>
-            <button @click="filterTab('piutang')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'piutang' ? 'text-amber-600 border-b-2 border-amber-600' : 'text-gray-500 hover:text-gray-700']">
+            <button v-can="'invoices_tab_unpaid'" @click="filterTab('piutang')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'piutang' ? 'text-amber-600 border-b-2 border-amber-600' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 Piutang (Bayar Sebagian) <span class="bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.piutang }}</span>
             </button>
-            <button @click="filterTab('lunas')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'lunas' ? 'text-emerald-600 border-b-2 border-emerald-600' : 'text-gray-500 hover:text-gray-700']">
+            <button v-can="'invoices_tab_paid'" @click="filterTab('lunas')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'lunas' ? 'text-emerald-600 border-b-2 border-emerald-600' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 Lunas <span class="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.lunas }}</span>
             </button>
-            <button @click="filterTab('prorata')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'prorata' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700']">
+            <button v-can="'invoices_tab_all'" @click="filterTab('prorata')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'prorata' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                 Pelanggan Prorata <span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.prorata }}</span>
             </button>
-            <button @click="filterTab('upgrade')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'upgrade' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700']">
+            <button v-can="'invoices_change_package'" @click="filterTab('upgrade')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'upgrade' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
                 Upgrade / Downgrade <span class="bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.upgrade || 0 }}</span>
             </button>
-            <button @click="filterTab('janji_bayar')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'janji_bayar' ? 'text-yellow-600 border-b-2 border-yellow-600' : 'text-gray-500 hover:text-gray-700']">
+            <button v-can="'invoices_promise'" @click="filterTab('janji_bayar')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'janji_bayar' ? 'text-yellow-600 border-b-2 border-yellow-600' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 Janji Bayar <span class="bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.janji_bayar }}</span>
             </button>
-            <button @click="filterTab('stop_sementara')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'stop_sementara' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-500 hover:text-gray-700']">
+            <button v-can="'invoices_tab_isolated'" @click="filterTab('stop_sementara')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'stop_sementara' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 Stop Sementara <span class="bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.stop_sementara || 0 }}</span>
             </button>
-            <button @click="filterTab('stop_permanen')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'stop_permanen' ? 'text-red-800 border-b-2 border-red-800' : 'text-gray-500 hover:text-gray-700']">
+            <button v-can="'invoices_tab_isolated'" @click="filterTab('stop_permanen')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'stop_permanen' ? 'text-red-800 border-b-2 border-red-800' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                 Stop Permanen <span class="bg-red-50 text-red-800 px-2 py-0.5 rounded-full text-[10px]">{{ stats.stop_permanen || 0 }}</span>
             </button>
@@ -98,7 +98,7 @@
             <template #filters>
                 <div class="flex items-center gap-2 w-full sm:w-auto">
                     <!-- Tanggal (Start Date -> End Date) -->
-                    <div class="flex items-center gap-2 whitespace-nowrap text-sm text-gray-600 font-medium ml-2">
+                    <div v-can="'invoices_filter_period'" class="flex items-center gap-2 whitespace-nowrap text-sm text-gray-600 font-medium ml-2">
                         <span>Tanggal</span>
                         <input type="date" v-model="filterStartDate" class="form-input text-sm rounded-lg border-gray-300 w-[130px]" />
                         <span>s/d</span>
@@ -106,7 +106,7 @@
                     </div>
 
                     <!-- Status -->
-                    <select v-model="filterStatusVal" class="form-select text-sm rounded-lg border-gray-300 text-gray-700 min-w-[140px]">
+                    <select v-can="'invoices_filter_status'" v-model="filterStatusVal" class="form-select text-sm rounded-lg border-gray-300 text-gray-700 min-w-[140px]">
                         <option value="">Semua Status</option>
                         <option value="unpaid">Unpaid</option>
                         <option value="paid">Paid</option>
@@ -114,7 +114,7 @@
                     </select>
 
                     <!-- Area -->
-                    <select v-model="filterAreaVal" class="form-select text-sm rounded-lg border-gray-300 text-gray-700 min-w-[140px]">
+                    <select v-can="'invoices_filter_area'" v-model="filterAreaVal" class="form-select text-sm rounded-lg border-gray-300 text-gray-700 min-w-[140px]">
                         <option value="">Semua Area</option>
                         <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
                     </select>
@@ -127,11 +127,11 @@
             </template>
             
             <template #actions>
-                <button class="btn-secondary bg-white border border-gray-200 text-emerald-600 hover:bg-emerald-50 text-sm py-2 px-4 flex items-center gap-2">
+                <button v-can="'invoices_btn_export'" class="btn-secondary bg-white border border-gray-200 text-emerald-600 hover:bg-emerald-50 text-sm py-2 px-4 flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                     Export Excel
                 </button>
-                <button class="btn-secondary bg-white border border-gray-200 text-red-600 hover:bg-red-50 text-sm py-2 px-4 flex items-center gap-2">
+                <button v-can="'invoices_print'" class="btn-secondary bg-white border border-gray-200 text-red-600 hover:bg-red-50 text-sm py-2 px-4 flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                     Cetak PDF
                 </button>
@@ -278,6 +278,7 @@
                 <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
                     <!-- Tombol Bayar Lunas (Unpaid) -->
                     <button 
+                        v-can="'invoices_pay'"
                         v-if="row.status === 'unpaid'" 
                         type="button"
                         @click="openPaymentModal(row)" 
@@ -290,6 +291,7 @@
 
                     <!-- Tombol Lunasi Sisa (Bayar Sebagian) -->
                     <button 
+                        v-can="'invoices_pay'"
                         v-else-if="row.status === 'partial'" 
                         type="button"
                         @click="openPaymentModal(row)" 
@@ -302,6 +304,7 @@
 
                     <!-- Tombol Rollback (Paid atau Partial) -->
                     <button 
+                        v-can="'invoices_rollback'"
                         v-if="row.status === 'paid' || row.status === 'partial'" 
                         type="button"
                         @click="rollbackInvoice(row)" 
@@ -314,6 +317,7 @@
 
                     <!-- Tombol Cetak Cepat -->
                     <a 
+                        v-can="'invoices_print'"
                         :href="'/invoices/' + row.id + '/print'" 
                         target="_blank" 
                         class="inline-flex items-center justify-center p-1.5 bg-white hover:bg-indigo-50 text-gray-500 hover:text-indigo-600 border border-gray-200 hover:border-indigo-200 rounded-lg transition-colors shadow-2xs" 
@@ -364,6 +368,7 @@
                     <div class="py-1">
                         <!-- Janji Bayar -->
                         <button 
+                            v-can="'invoices_promise'"
                             v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial'"
                             type="button" 
                             @click="openPromiseModal(activeDropdownRow); closeDropdown()"
@@ -380,6 +385,7 @@
 
                         <!-- Edit Tagihan -->
                         <button 
+                            v-can="'invoices_edit'"
                             type="button" 
                             @click="openEditModal(activeDropdownRow); closeDropdown()"
                             class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-800 transition-colors font-medium cursor-pointer"
@@ -395,6 +401,7 @@
 
                         <!-- Cetak Tagihan -->
                         <a 
+                            v-can="'invoices_print'"
                             :href="'/invoices/' + activeDropdownRow.id + '/print'" 
                             target="_blank"
                             @click="closeDropdown"
@@ -414,6 +421,7 @@
                     <div v-if="activeDropdownRow.customer" class="py-1">
                         <!-- Upgrade / Downgrade -->
                         <button 
+                            v-can="'invoices_change_package'"
                             type="button" 
                             @click="openUpgradeModal(activeDropdownRow); closeDropdown()"
                             class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-gray-700 hover:bg-purple-50 hover:text-purple-800 transition-colors font-medium cursor-pointer"
@@ -429,6 +437,7 @@
 
                         <!-- Stop Sementara -->
                         <button 
+                            v-can="'customers_active_suspend'"
                             v-if="activeDropdownRow.customer.status !== 'suspended'"
                             type="button" 
                             @click="stopSementara(activeDropdownRow); closeDropdown()"
@@ -445,6 +454,7 @@
 
                         <!-- Stop Permanen & CBP -->
                         <button 
+                            v-can="'customers_active_terminate'"
                             v-if="activeDropdownRow.customer.status !== 'terminated'"
                             type="button" 
                             @click="openStopPermanenModal(activeDropdownRow); closeDropdown()"
@@ -463,6 +473,7 @@
                     <!-- Grup 3: Hapus -->
                     <div class="py-1">
                         <button 
+                            v-can="'invoices_delete'"
                             type="button" 
                             @click="deleteInvoice(activeDropdownRow); closeDropdown()"
                             class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors font-medium cursor-pointer"

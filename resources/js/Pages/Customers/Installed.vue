@@ -2,7 +2,7 @@
     <AppLayout title="Pelanggan Instalasi" subtitle="Pelanggan yang sedang diinstalasi">
         
         <!-- Statistik Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div v-can="'customers_installed_card_stats'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard 
                 title="Jadwal Pasang" 
                 :value="stats?.jadwal_pasang || 0" 
@@ -58,7 +58,7 @@
             v-model:selected="selectedIds"
         >
             <template #filters>
-                <form @submit.prevent="applyFilter" class="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 w-full">
+                <form v-can="'customers_installed_filter'" @submit.prevent="applyFilter" class="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 w-full">
                     <select v-model="filterState.area" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
                         <option value="">Semua Area</option>
                         <option v-for="area in areas" :key="area" :value="area">

@@ -2,7 +2,7 @@
     <AppLayout title="Aktivasi Pelanggan" subtitle="Pelanggan yang menunggu proses aktivasi">
         
         <!-- Statistik Cards -->
-        <div class="grid grid-cols-1 mb-6">
+        <div v-can="'customers_activation_card_stats'" class="grid grid-cols-1 mb-6">
             <StatCard 
                 title="Menunggu Aktivasi" 
                 :value="stats?.aktivasi || 0" 
@@ -24,6 +24,7 @@
             <template #actions>
                 <div class="flex items-center gap-2">
                     <button v-if="canDelete && selectedIds.length > 0" 
+                        v-can="'customers_delete'"
                         @click="bulkDelete" 
                         class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-medium text-sm rounded-lg transition-colors border border-red-200 flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -79,7 +80,7 @@
                     
                     <!-- 3.5. Sudah Audit, Menunggu Aktivasi -->
                     <div v-if="row.status === 'installing' && row.ont && row.is_audited" class="flex gap-1.5">
-                        <button @click="openActivationModal(row)" 
+                        <button v-can="'customers_activation_activate'" @click="openActivationModal(row)" 
                             class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Proses Aktivasi Pelanggan">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                             Aktivasi
@@ -622,7 +623,7 @@
                     </div>
                     <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
                         <button type="button" @click="showActivationModal = false" class="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">Batal</button>
-                        <button type="submit" :disabled="activationForm.processing" class="px-6 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                        <button v-can="'customers_activation_activate'" type="submit" :disabled="activationForm.processing" class="px-6 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
                             <svg v-if="activationForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             {{ activationForm.processing ? 'Memproses...' : 'Aktivasi Sekarang' }}
                         </button>

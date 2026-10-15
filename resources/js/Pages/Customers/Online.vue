@@ -1,7 +1,7 @@
 <template>
     <AppLayout title="Pelanggan Online" subtitle="Daftar pelanggan yang sedang terhubung (tanpa voucher)">
         <!-- Summary -->
-        <div class="flex flex-wrap items-center gap-3 mb-4">
+        <div v-can="'customers_card_summary'" class="flex flex-wrap items-center gap-3 mb-4">
             <div class="glass-card px-4 py-3 flex items-center gap-3">
                 <span class="relative flex h-3 w-3">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -82,6 +82,7 @@
                                     {{ row.name }}
                                 </Link>
                                 <button
+                                    v-can="'customers_active_suspend'"
                                     :id="`btn-kick-${row.id}`"
                                     @click="kickSession(row)"
                                     :disabled="kicking === row.username"

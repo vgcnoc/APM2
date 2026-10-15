@@ -516,7 +516,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── WhatsApp Gateway & Blast Cerdas ───────────────────────
-    Route::prefix('whatsapp-blast')->name('whatsapp-blast.')->group(function () {
+    Route::middleware(['permission:menu_whatsapp_blast'])->prefix('whatsapp-blast')->name('whatsapp-blast.')->group(function () {
         Route::get('/', [\App\Http\Controllers\WhatsAppBlastController::class, 'index'])->name('index');
         Route::get('/status', [\App\Http\Controllers\WhatsAppBlastController::class, 'getStatus'])->name('status');
         Route::post('/logout', [\App\Http\Controllers\WhatsAppBlastController::class, 'logout'])->name('logout');
@@ -573,6 +573,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['permission:menu_settings_roles'])->group(function () {
         Route::resource('settings/roles', \App\Http\Controllers\RoleController::class)->except(['create', 'show', 'edit']);
         Route::post('settings/roles/{role}/update', [\App\Http\Controllers\RoleController::class, 'update'])->name('roles.update.post');
+        Route::post('settings/roles/{role}/clone', [\App\Http\Controllers\RoleController::class, 'clone'])->name('roles.clone');
         Route::post('settings/roles/{role}/delete', [\App\Http\Controllers\RoleController::class, 'destroy'])->name('roles.destroy.post');
     });
 

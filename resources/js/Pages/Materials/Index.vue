@@ -2,7 +2,7 @@
     <AppLayout title="Data Material / Barang" subtitle="Kelola persediaan material infrastruktur jaringan">
         <div class="space-y-6">
             <!-- Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div v-can="'materials_card_stats'" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div class="glass-card p-5 border-2 border-blue-500/10 hover:border-blue-500/30 transition-all">
                     <div class="flex items-center gap-4">
                         <div class="p-3 bg-blue-100 text-blue-600 rounded-xl">
@@ -65,12 +65,12 @@
                         </svg>
                     </div>
                     
-                    <select v-model="filterCategory" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
+                    <select v-can="'materials_filter_category'" v-model="filterCategory" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
                         <option value="all">Semua Kategori</option>
                         <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
                     </select>
 
-                    <select v-model="filterStockStatus" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
+                    <select v-can="'materials_filter_category'" v-model="filterStockStatus" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
                         <option value="">Status Stok</option>
                         <option value="available">Stok Tersedia (>10)</option>
                         <option value="low">Stok Menipis (1-10)</option>
@@ -80,6 +80,7 @@
 
                 <div class="w-full md:w-auto flex flex-col sm:flex-row gap-3 shrink-0">
                     <button 
+                        v-can="'materials_delete'"
                         v-if="selectedItems.length > 0"
                         @click="deleteSelected"
                         class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-medium text-sm transition-all"
@@ -87,7 +88,7 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         Hapus ({{ selectedItems.length }})
                     </button>
-                    <button @click="openModal()" class="btn-primary w-full md:w-auto flex items-center justify-center gap-2">
+                    <button v-can="'materials_create'" @click="openModal()" class="btn-primary w-full md:w-auto flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
@@ -182,17 +183,17 @@
                                 </td>
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex items-center justify-end gap-2">
-                                        <button @click="openAddStockModal(item)" title="Tambah Stok Masuk" class="p-1.5 text-emerald-500 hover:text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors">
+                                        <button v-can="'materials_add_stock'" @click="openAddStockModal(item)" title="Tambah Stok Masuk" class="p-1.5 text-emerald-500 hover:text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                             </svg>
                                         </button>
-                                        <button @click="openModal(item)" title="Edit Data Barang" class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                                        <button v-can="'materials_edit'" @click="openModal(item)" title="Edit Data Barang" class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                                             </svg>
                                         </button>
-                                        <button @click="deleteData(item.id)" class="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+                                        <button v-can="'materials_delete'" @click="deleteData(item.id)" class="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                             </svg>

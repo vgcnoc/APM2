@@ -11,6 +11,9 @@ git reset --hard origin/main
 echo "Running Database Migrations..."
 php artisan migrate --force
 
+echo "Syncing Master Permissions (Granular Menu/Card/Tab/Filter/Button)..."
+php artisan permissions:sync
+
 echo "Fixing corrupted ONTs..."
 php artisan app:fix-corrupted-onts
 

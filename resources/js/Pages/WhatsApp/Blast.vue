@@ -21,7 +21,7 @@
                     </div>
 
                     <!-- Connection Status Badge Card -->
-                    <div class="bg-white/10 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-white/15 flex items-center justify-between gap-4 shrink-0 shadow-lg">
+                    <div v-can="'whatsapp_card_gateway_status'" class="bg-white/10 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-white/15 flex items-center justify-between gap-4 shrink-0 shadow-lg">
                         <div class="flex items-center gap-3.5">
                             <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
                                 :class="{
@@ -67,6 +67,7 @@
                 <!-- NAVIGATION TABS -->
                 <div class="mt-8 flex items-center gap-2 overflow-x-auto border-t border-white/10 pt-4 scrollbar-none">
                     <button 
+                        v-can="'whatsapp_tab_blast'"
                         @click="activeTab = 'campaign'" 
                         :class="activeTab === 'campaign' ? 'bg-emerald-500 text-white font-extrabold shadow-md' : 'text-slate-300 hover:text-white hover:bg-white/10 font-bold'"
                         class="px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-2 shrink-0 cursor-pointer"
@@ -76,6 +77,7 @@
                     </button>
 
                     <button 
+                        v-can="'whatsapp_tab_device'"
                         @click="activeTab = 'device'" 
                         :class="activeTab === 'device' ? 'bg-emerald-500 text-white font-extrabold shadow-md' : 'text-slate-300 hover:text-white hover:bg-white/10 font-bold'"
                         class="px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-2 shrink-0 cursor-pointer"
@@ -86,6 +88,7 @@
                     </button>
 
                     <button 
+                        v-can="'whatsapp_tab_history'"
                         @click="activeTab = 'history'" 
                         :class="activeTab === 'history' ? 'bg-emerald-500 text-white font-extrabold shadow-md' : 'text-slate-300 hover:text-white hover:bg-white/10 font-bold'"
                         class="px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-2 shrink-0 cursor-pointer"
@@ -95,6 +98,7 @@
                     </button>
 
                     <button 
+                        v-can="'whatsapp_tab_settings'"
                         @click="activeTab = 'settings'" 
                         :class="activeTab === 'settings' ? 'bg-emerald-500 text-white font-extrabold shadow-md' : 'text-slate-300 hover:text-white hover:bg-white/10 font-bold'"
                         class="px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-2 shrink-0 cursor-pointer"
@@ -159,6 +163,7 @@
                             <!-- Tombol Aksi Logout & Test Send -->
                             <div class="mt-6 flex flex-wrap gap-2.5 justify-center">
                                 <button 
+                                    v-can="'whatsapp_btn_test_send'"
                                     @click="openTestSendModal" 
                                     class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
                                 >
@@ -166,6 +171,7 @@
                                     <span>Kirim Pesan Uji Coba</span>
                                 </button>
                                 <button 
+                                    v-can="'whatsapp_btn_logout'"
                                     @click="logoutDevice" 
                                     :disabled="isLoggingOut"
                                     class="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
@@ -263,7 +269,7 @@
                     <div class="lg:col-span-7 space-y-6">
                         
                         <!-- 1. SEGMENTASI TARGET PENERIMA -->
-                        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
+                        <div v-can="'whatsapp_filter_target'" class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
                             <div class="flex items-center justify-between">
                                 <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                                     <span class="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs">1</span>
@@ -414,6 +420,7 @@
                             </div>
 
                             <button 
+                                v-can="'whatsapp_btn_start_blast'"
                                 type="button"
                                 @click="startBlastCampaign"
                                 :disabled="recipientList.length === 0 || liveStatus.status !== 'connected' || !campaignForm.message || !campaignForm.title"

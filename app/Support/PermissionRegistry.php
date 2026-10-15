@@ -1,0 +1,638 @@
+<?php
+
+namespace App\Support;
+
+class PermissionRegistry
+{
+    /**
+     * Master registry of all permissions in APM2 ISP Management.
+     * Categorized across 5 Granular Types:
+     * - 'menu': Menu / Submenu Navigasi
+     * - 'card': Widget & Kartu Statistik
+     * - 'tab': Tab Navigasi Halaman
+     * - 'filter': Filter Data & Pencarian
+     * - 'button': Tombol Aksi (Create, Edit, Delete, Cetak, Bayar, Kirim WA, dll)
+     * - 'feature': Fitur Khusus & Hak Scope Data (View All vs View Area)
+     */
+    public static function get(): array
+    {
+        return [
+            // ── 1. DASHBOARD ─────────────────────────────────────────
+            [
+                'group' => 'Dashboard Utama & Statistik',
+                'category' => 'dashboard',
+                'icon' => 'dashboard',
+                'menu_parent' => 'menu_dashboard',
+                'permissions' => [
+                    ['name' => 'menu_dashboard', 'type' => 'menu', 'label' => 'Akses Menu Dashboard'],
+                    ['name' => 'dashboard_card_stats', 'type' => 'card', 'label' => 'Card Statistik (Total Pelanggan, Aktif, Isolir, Omset)'],
+                    ['name' => 'dashboard_card_tickets', 'type' => 'card', 'label' => 'Card Tiket & Gangguan Masuk'],
+                    ['name' => 'dashboard_card_revenue', 'type' => 'card', 'label' => 'Card Ringkasan Finansial & Penerimaan'],
+                    ['name' => 'dashboard_card_infra', 'type' => 'card', 'label' => 'Card Status OLT & Port Kapasitas'],
+                    ['name' => 'dashboard_view_stats', 'type' => 'card', 'label' => 'Lihat Ringkasan Statistik Global'],
+                    ['name' => 'dashboard_view_charts', 'type' => 'card', 'label' => 'Lihat Grafik Pendapatan & Pertumbuhan'],
+                    ['name' => 'dashboard_filter_period', 'type' => 'filter', 'label' => 'Filter Rentang Periode & Cabang'],
+                    ['name' => 'dashboard_btn_refresh', 'type' => 'button', 'label' => 'Tombol Sinkron / Refresh Data'],
+                    ['name' => 'dashboard_btn_quick_action', 'type' => 'button', 'label' => 'Tombol Pintasan Cepat (Booking, Tiket, Kas)'],
+                ],
+            ],
+
+            // ── 2. DATA PELANGGAN & STATUS ──────────────────────────
+            [
+                'group' => 'Data Pelanggan (Semua & Status)',
+                'category' => 'pelanggan',
+                'icon' => 'users',
+                'menu_parent' => 'menu_customers_all',
+                'permissions' => [
+                    ['name' => 'menu_customers_all', 'type' => 'menu', 'label' => 'Akses Menu Semua Pelanggan'],
+                    ['name' => 'menu_customers_active', 'type' => 'menu', 'label' => 'Akses Menu Pelanggan Aktif'],
+                    ['name' => 'menu_customers_isolir', 'type' => 'menu', 'label' => 'Akses Menu Pelanggan Isolir'],
+                    ['name' => 'menu_customers_online', 'type' => 'menu', 'label' => 'Akses Menu Pelanggan Online / Offline'],
+                    ['name' => 'menu_customers_gratis', 'type' => 'menu', 'label' => 'Akses Menu Pelanggan Gratis'],
+                    ['name' => 'menu_customers_terminated', 'type' => 'menu', 'label' => 'Akses Menu Stop Permanen'],
+                    
+                    // Card
+                    ['name' => 'customers_card_summary', 'type' => 'card', 'label' => 'Card Ringkasan Jumlah & Status Pelanggan'],
+                    ['name' => 'customers_card_billing_status', 'type' => 'card', 'label' => 'Card Status Tagihan & Piutang'],
+                    
+                    // Tab
+                    ['name' => 'customers_tab_profile', 'type' => 'tab', 'label' => 'Tab Profil & Biodata Pelanggan'],
+                    ['name' => 'customers_tab_services', 'type' => 'tab', 'label' => 'Tab Layanan & Paket'],
+                    ['name' => 'customers_tab_invoices', 'type' => 'tab', 'label' => 'Tab Riwayat Invoice & Pembayaran'],
+                    ['name' => 'customers_tab_tickets', 'type' => 'tab', 'label' => 'Tab Riwayat Tiket & Pengaduan'],
+                    ['name' => 'customers_tab_logs', 'type' => 'tab', 'label' => 'Tab Log Aktivitas & Perubahan'],
+                    
+                    // Filter
+                    ['name' => 'customers_filter_search', 'type' => 'filter', 'label' => 'Filter Pencarian Nama, ID & HP'],
+                    ['name' => 'customers_filter_area', 'type' => 'filter', 'label' => 'Filter Berdasarkan Area / Cabang'],
+                    ['name' => 'customers_filter_package', 'type' => 'filter', 'label' => 'Filter Berdasarkan Paket Layanan'],
+                    ['name' => 'customers_filter_status', 'type' => 'filter', 'label' => 'Filter Status Layanan (Aktif, Isolir, Off)'],
+                    
+                    // Tombol / Action
+                    ['name' => 'customers_all_create', 'type' => 'button', 'label' => 'Tombol Tambah Pelanggan Baru'],
+                    ['name' => 'customers_all_edit', 'type' => 'button', 'label' => 'Tombol Edit Data Pelanggan'],
+                    ['name' => 'customers_active_edit', 'type' => 'button', 'label' => 'Tombol Edit Pelanggan Aktif'],
+                    ['name' => 'customers_delete', 'type' => 'button', 'label' => 'Tombol Hapus Pelanggan'],
+                    ['name' => 'customers_active_suspend', 'type' => 'button', 'label' => 'Tombol Isolir / Buka Isolir'],
+                    ['name' => 'customers_active_terminate', 'type' => 'button', 'label' => 'Tombol Putus Permanen / Terminate'],
+                    ['name' => 'customers_all_export', 'type' => 'button', 'label' => 'Tombol Export Data Pelanggan (Excel/PDF)'],
+                    ['name' => 'customers_btn_whatsapp', 'type' => 'button', 'label' => 'Tombol Chat WhatsApp Cepat'],
+                    ['name' => 'customers_btn_reset_secret', 'type' => 'button', 'label' => 'Tombol Reset Password PPPoE / Secret'],
+                    
+                    // Scope
+                    ['name' => 'customers_all_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Data Pelanggan'],
+                    ['name' => 'customers_all_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Data Sesuai Wilayah/Area User'],
+                    ['name' => 'customers_active_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Pelanggan Aktif'],
+                    ['name' => 'customers_active_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Pelanggan Aktif Sesuai Area'],
+                ],
+            ],
+
+            // ── 3. PSB FLOW (BOOKING, SURVEY, PASANG, AKTIVASI) ─────
+            [
+                'group' => 'Pemasangan Baru (PSB) - 1. Booking',
+                'category' => 'pelanggan',
+                'icon' => 'document-add',
+                'menu_parent' => 'menu_customers_booking',
+                'permissions' => [
+                    ['name' => 'menu_customers_booking', 'type' => 'menu', 'label' => 'Akses Menu Booking Baru'],
+                    ['name' => 'customers_booking_card_stats', 'type' => 'card', 'label' => 'Card Total Calon Pelanggan & Menunggu Survey'],
+                    ['name' => 'customers_booking_filter_area', 'type' => 'filter', 'label' => 'Filter Wilayah / Sales / Tanggal Booking'],
+                    ['name' => 'customers_booking_create', 'type' => 'button', 'label' => 'Tombol Tambah Booking Baru'],
+                    ['name' => 'customers_booking_edit', 'type' => 'button', 'label' => 'Tombol Edit Data Booking'],
+                    ['name' => 'customers_booking_delete', 'type' => 'button', 'label' => 'Tombol Hapus / Batalkan Booking'],
+                    ['name' => 'customers_booking_request_survey', 'type' => 'button', 'label' => 'Tombol Jadwalkan Survey / Kirim ke Tim Survey'],
+                    ['name' => 'customers_booking_whatsapp', 'type' => 'button', 'label' => 'Tombol Kirim Notifikasi WhatsApp'],
+                    ['name' => 'customers_booking_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Seluruh Data Booking'],
+                    ['name' => 'customers_booking_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Data Booking Per Area'],
+                ],
+            ],
+            [
+                'group' => 'Pemasangan Baru (PSB) - 2. Survey',
+                'category' => 'pelanggan',
+                'icon' => 'clipboard-check',
+                'menu_parent' => 'menu_customers_survey',
+                'permissions' => [
+                    ['name' => 'menu_customers_survey', 'type' => 'menu', 'label' => 'Akses Menu Survey Lokasi'],
+                    ['name' => 'customers_survey_card_stats', 'type' => 'card', 'label' => 'Card Rekap Antrean & Hasil Survey'],
+                    ['name' => 'customers_survey_filter', 'type' => 'filter', 'label' => 'Filter Status Survey & Teknisi'],
+                    ['name' => 'customers_survey_assign', 'type' => 'button', 'label' => 'Tombol Tugaskan Teknisi Survey'],
+                    ['name' => 'customers_survey_reschedule', 'type' => 'button', 'label' => 'Tombol Jadwalkan Ulang Survey'],
+                    ['name' => 'customers_survey_report', 'type' => 'button', 'label' => 'Tombol Input Laporan Hasil Survey'],
+                    ['name' => 'customers_survey_mark_ready', 'type' => 'button', 'label' => 'Tombol Validasi Siap Pasang (Ready Install)'],
+                    ['name' => 'customers_survey_edit', 'type' => 'button', 'label' => 'Tombol Edit Data Hasil Survey'],
+                    ['name' => 'customers_survey_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Data Survey'],
+                    ['name' => 'customers_survey_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Data Survey Per Area'],
+                ],
+            ],
+            [
+                'group' => 'Pemasangan Baru (PSB) - 3. Instalasi',
+                'category' => 'pelanggan',
+                'icon' => 'cog',
+                'menu_parent' => 'menu_customers_installed',
+                'permissions' => [
+                    ['name' => 'menu_customers_installed', 'type' => 'menu', 'label' => 'Akses Menu Instalasi Jaringan'],
+                    ['name' => 'customers_installed_card_stats', 'type' => 'card', 'label' => 'Card Rekap Terpasang & Menunggu QC'],
+                    ['name' => 'customers_installed_filter', 'type' => 'filter', 'label' => 'Filter Tim Teknisi & Wilayah Instalasi'],
+                    ['name' => 'customers_installed_assign', 'type' => 'button', 'label' => 'Tombol Jadwalkan Teknisi Pasang'],
+                    ['name' => 'customers_installed_report', 'type' => 'button', 'label' => 'Tombol Submit Laporan Pemasangan & Foto'],
+                    ['name' => 'customers_installed_audit', 'type' => 'button', 'label' => 'Tombol Verifikasi & QC Audit Instalasi'],
+                    ['name' => 'customers_installed_edit', 'type' => 'button', 'label' => 'Tombol Edit Data Instalasi / Perangkat'],
+                    ['name' => 'customers_installed_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Seluruh Data Instalasi'],
+                    ['name' => 'customers_installed_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Data Instalasi Per Area'],
+                ],
+            ],
+            [
+                'group' => 'Pemasangan Baru (PSB) - 4. Aktivasi Layanan',
+                'category' => 'pelanggan',
+                'icon' => 'key',
+                'menu_parent' => 'menu_customers_activation',
+                'permissions' => [
+                    ['name' => 'menu_customers_activation', 'type' => 'menu', 'label' => 'Akses Menu Aktivasi Layanan'],
+                    ['name' => 'customers_activation_card_stats', 'type' => 'card', 'label' => 'Card Pelanggan Siap Aktivasi MikroTik / OLT'],
+                    ['name' => 'customers_activation_filter', 'type' => 'filter', 'label' => 'Filter Router / OLT / Tanggal'],
+                    ['name' => 'customers_activation_activate', 'type' => 'button', 'label' => 'Tombol Eksekusi Aktivasi Layanan Internet'],
+                    ['name' => 'customers_activation_btn_test_onu', 'type' => 'button', 'label' => 'Tombol Tes Redaman & Status ONU'],
+                    ['name' => 'customers_activation_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Antrean Aktivasi'],
+                    ['name' => 'customers_activation_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Aktivasi Sesuai Area'],
+                ],
+            ],
+
+            // ── 4. PANTAUAN PELANGGAN ───────────────────────────────
+            [
+                'group' => 'Pantauan Pelanggan (Menunggak & Janji Bayar)',
+                'category' => 'pelanggan',
+                'icon' => 'calendar',
+                'menu_parent' => 'menu_monitoring_pelanggan',
+                'permissions' => [
+                    ['name' => 'menu_monitoring_pelanggan', 'type' => 'menu', 'label' => 'Akses Menu Pantauan Pelanggan'],
+                    ['name' => 'monitoring_card_unpaid', 'type' => 'card', 'label' => 'Card Total Pelanggan Menunggak'],
+                    ['name' => 'monitoring_card_promise', 'type' => 'card', 'label' => 'Card Janji Bayar Hari Ini'],
+                    ['name' => 'monitoring_tab_menunggak', 'type' => 'tab', 'label' => 'Tab Sering Menunggak'],
+                    ['name' => 'monitoring_tab_janji_bayar', 'type' => 'tab', 'label' => 'Tab Janji Bayar'],
+                    ['name' => 'monitoring_tab_stop_sementara', 'type' => 'tab', 'label' => 'Tab Stop Sementara / Cuti'],
+                    ['name' => 'monitoring_filter_area', 'type' => 'filter', 'label' => 'Filter Wilayah & ODP Penunggak'],
+                    ['name' => 'monitoring_pelanggan_manage', 'type' => 'button', 'label' => 'Tombol Kelola Janji Bayar & Dispensasi'],
+                    ['name' => 'monitoring_btn_wa_reminder', 'type' => 'button', 'label' => 'Tombol Kirim Pengingat WA Manual'],
+                ],
+            ],
+
+            // ── 5. BILLING & INVOICE ─────────────────────────────────
+            [
+                'group' => 'Billing & Invoice Pelanggan',
+                'category' => 'billing',
+                'icon' => 'document-text',
+                'menu_parent' => 'menu_invoices',
+                'permissions' => [
+                    ['name' => 'menu_invoices', 'type' => 'menu', 'label' => 'Akses Menu Invoice'],
+                    ['name' => 'invoices_card_summary', 'type' => 'card', 'label' => 'Card Ringkasan Tagihan (Lunas, Belum Lunas, Total)'],
+                    ['name' => 'invoices_card_revenue', 'type' => 'card', 'label' => 'Card Penerimaan Kas Hari Ini & Bulan Ini'],
+                    ['name' => 'invoices_tab_all', 'type' => 'tab', 'label' => 'Tab Semua Invoice'],
+                    ['name' => 'invoices_tab_unpaid', 'type' => 'tab', 'label' => 'Tab Belum Lunas'],
+                    ['name' => 'invoices_tab_paid', 'type' => 'tab', 'label' => 'Tab Lunas'],
+                    ['name' => 'invoices_tab_isolated', 'type' => 'tab', 'label' => 'Tab Terisolir'],
+                    ['name' => 'invoices_filter_search', 'type' => 'filter', 'label' => 'Filter Pencarian Nomor Invoice / Pelanggan'],
+                    ['name' => 'invoices_filter_status', 'type' => 'filter', 'label' => 'Filter Status Tagihan'],
+                    ['name' => 'invoices_filter_period', 'type' => 'filter', 'label' => 'Filter Periode Bulan & Tahun Tagihan'],
+                    ['name' => 'invoices_filter_area', 'type' => 'filter', 'label' => 'Filter Berdasarkan Area Penagihan'],
+                    ['name' => 'invoices_create', 'type' => 'button', 'label' => 'Tombol Terbitkan Invoice Baru (Manual)'],
+                    ['name' => 'invoices_edit', 'type' => 'button', 'label' => 'Tombol Edit Nominal / Data Tagihan'],
+                    ['name' => 'invoices_delete', 'type' => 'button', 'label' => 'Tombol Hapus Tagihan'],
+                    ['name' => 'invoices_pay', 'type' => 'button', 'label' => 'Tombol Terima Pembayaran (Set Lunas)'],
+                    ['name' => 'invoices_rollback', 'type' => 'button', 'label' => 'Tombol Batalkan Pembayaran (Rollback)'],
+                    ['name' => 'invoices_promise', 'type' => 'button', 'label' => 'Tombol Buat Janji Bayar / Dispensasi'],
+                    ['name' => 'invoices_change_package', 'type' => 'button', 'label' => 'Tombol Ubah Paket pada Tagihan'],
+                    ['name' => 'invoices_print', 'type' => 'button', 'label' => 'Tombol Cetak Struk / Invoice Thermal / PDF'],
+                    ['name' => 'invoices_btn_whatsapp', 'type' => 'button', 'label' => 'Tombol Kirim Tagihan via WhatsApp'],
+                    ['name' => 'invoices_btn_export', 'type' => 'button', 'label' => 'Tombol Export Laporan Tagihan ke Excel'],
+                    ['name' => 'invoices_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Invoice'],
+                    ['name' => 'invoices_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Invoice Sesuai Wilayah User'],
+                ],
+            ],
+
+            // ── 6. PENAGIHAN LAPANGAN & SETORAN ──────────────────────
+            [
+                'group' => 'Penagihan Lapangan & Setoran',
+                'category' => 'billing',
+                'icon' => 'cash',
+                'menu_parent' => 'menu_customer_billing',
+                'permissions' => [
+                    ['name' => 'menu_customer_billing', 'type' => 'menu', 'label' => 'Akses Penagihan Lapangan & Validasi'],
+                    ['name' => 'customer_billing_card_summary', 'type' => 'card', 'label' => 'Card Total Tagihan Tertagih Petugas'],
+                    ['name' => 'customer_billing_filter', 'type' => 'filter', 'label' => 'Filter Petugas Penagih & Wilayah'],
+                    ['name' => 'customer_billing_collect', 'type' => 'button', 'label' => 'Tombol Terima Setoran Tagihan'],
+                    ['name' => 'customer_settlements_approve', 'type' => 'button', 'label' => 'Tombol Validasi / Approve Setoran Kasir'],
+                    ['name' => 'customer_billing_btn_print', 'type' => 'button', 'label' => 'Tombol Cetak Bukti Setoran'],
+                ],
+            ],
+
+            // ── 7. LAPORAN KEUANGAN & PAJAK ──────────────────────────
+            [
+                'group' => 'Laporan Keuangan & Pajak',
+                'category' => 'billing',
+                'icon' => 'chart-pie',
+                'menu_parent' => 'menu_financial_reports',
+                'permissions' => [
+                    ['name' => 'menu_financial_reports', 'type' => 'menu', 'label' => 'Akses Menu Laporan Keuangan'],
+                    ['name' => 'financial_reports_card_income', 'type' => 'card', 'label' => 'Card Total Pemasukan Bersih & Kotor'],
+                    ['name' => 'financial_reports_card_expense', 'type' => 'card', 'label' => 'Card Total Pengeluaran Operasional'],
+                    ['name' => 'financial_reports_tab_global', 'type' => 'tab', 'label' => 'Tab Buku Kas Global'],
+                    ['name' => 'financial_reports_tab_customer', 'type' => 'tab', 'label' => 'Tab Rekap Pendapatan Pelanggan'],
+                    ['name' => 'financial_reports_tab_tax', 'type' => 'tab', 'label' => 'Tab Laporan Pajak (PPN, BHP, USO)'],
+                    ['name' => 'financial_reports_filter_date', 'type' => 'filter', 'label' => 'Filter Rentang Tanggal & Bulan'],
+                    ['name' => 'financial_reports_view', 'type' => 'feature', 'label' => 'Lihat Rincian Transaksi Buku Kas'],
+                    ['name' => 'financial_reports_export', 'type' => 'button', 'label' => 'Tombol Export Laporan Kas (Excel/PDF)'],
+                    ['name' => 'tax_reports_view', 'type' => 'feature', 'label' => 'Lihat & Cetak Laporan Pajak Resmi'],
+                ],
+            ],
+
+            // ── 8. OPERASIONAL, TIKET & CBP ──────────────────────────
+            [
+                'group' => 'Ticketing & CBP (Cabut Perangkat)',
+                'category' => 'tiket',
+                'icon' => 'alert-circle',
+                'menu_parent' => 'menu_tickets',
+                'permissions' => [
+                    ['name' => 'menu_tickets', 'type' => 'menu', 'label' => 'Akses Menu Ticketing Gangguan'],
+                    ['name' => 'menu_cbp', 'type' => 'menu', 'label' => 'Akses Cabut Perangkat (CBP)'],
+                    ['name' => 'tickets_card_summary', 'type' => 'card', 'label' => 'Card Statistik Tiket (Open, Proses, Closed)'],
+                    ['name' => 'tickets_tab_all', 'type' => 'tab', 'label' => 'Tab Semua Tiket'],
+                    ['name' => 'tickets_tab_open', 'type' => 'tab', 'label' => 'Tab Tiket Terbuka'],
+                    ['name' => 'tickets_tab_progress', 'type' => 'tab', 'label' => 'Tab Tiket Dalam Penanganan'],
+                    ['name' => 'tickets_tab_closed', 'type' => 'tab', 'label' => 'Tab Tiket Selesai'],
+                    ['name' => 'tickets_filter_priority', 'type' => 'filter', 'label' => 'Filter Prioritas (Low, Medium, Urgent)'],
+                    ['name' => 'tickets_filter_area', 'type' => 'filter', 'label' => 'Filter Area & ODP Gangguan'],
+                    ['name' => 'tickets_create', 'type' => 'button', 'label' => 'Tombol Buat Tiket Gangguan Baru'],
+                    ['name' => 'tickets_edit', 'type' => 'button', 'label' => 'Tombol Edit Status / Data Tiket'],
+                    ['name' => 'tickets_delete', 'type' => 'button', 'label' => 'Tombol Hapus Tiket'],
+                    ['name' => 'tickets_assign', 'type' => 'button', 'label' => 'Tombol Tugaskan / Disposisi Teknisi'],
+                    ['name' => 'tickets_close', 'type' => 'button', 'label' => 'Tombol Selesaikan / Tutup Tiket'],
+                    ['name' => 'cbp_manage', 'type' => 'button', 'label' => 'Tombol Kelola Jadwal & Eksekusi CBP'],
+                    ['name' => 'tickets_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Tiket'],
+                    ['name' => 'tickets_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Tiket Sesuai Area'],
+                ],
+            ],
+
+            // ── 9. PENANGANAN KHUSUS (PGK, PGJ, PGS) ────────────────
+            [
+                'group' => 'Penanganan Khusus (PGK, PGJ, PGS)',
+                'category' => 'tiket',
+                'icon' => 'support',
+                'menu_parent' => 'menu_pgk',
+                'permissions' => [
+                    ['name' => 'menu_pgk', 'type' => 'menu', 'label' => 'Akses Komplain Pelanggan (PGK)'],
+                    ['name' => 'menu_pgj', 'type' => 'menu', 'label' => 'Akses Gangguan Jalur (PGJ)'],
+                    ['name' => 'menu_pgs', 'type' => 'menu', 'label' => 'Akses Penanganan Sigap (PGS)'],
+                    ['name' => 'pgk_card_summary', 'type' => 'card', 'label' => 'Card Rekap Komplain Pelanggan'],
+                    ['name' => 'pgj_card_summary', 'type' => 'card', 'label' => 'Card Rekap Kerusakan Jalur Kabel'],
+                    ['name' => 'pgs_card_summary', 'type' => 'card', 'label' => 'Card Rekap Respon Cepat PGS'],
+                    ['name' => 'pgk_tab_flow', 'type' => 'tab', 'label' => 'Tab Alur Komplain Masuk, Jadwal, Laporan PGK'],
+                    ['name' => 'pgj_tab_flow', 'type' => 'tab', 'label' => 'Tab Temuan, Jadwal Material, Laporan PGJ'],
+                    ['name' => 'pgs_tab_flow', 'type' => 'tab', 'label' => 'Tab Tindakan Langsung & Laporan PGS'],
+                    ['name' => 'pgk_manage', 'type' => 'button', 'label' => 'Tombol Kelola & Selesaikan PGK'],
+                    ['name' => 'pgj_manage', 'type' => 'button', 'label' => 'Tombol Kelola & Restorasi Jalur PGJ'],
+                    ['name' => 'pgs_manage', 'type' => 'button', 'label' => 'Tombol Tindakan Cepat & Lapor PGS'],
+                ],
+            ],
+
+            // ── 10. TOPOLOGI & RADAR JARINGAN ────────────────────────
+            [
+                'group' => 'Topologi & Radar Jaringan FTTH',
+                'category' => 'jaringan',
+                'icon' => 'globe',
+                'menu_parent' => 'menu_network_topology',
+                'permissions' => [
+                    ['name' => 'menu_network_topology', 'type' => 'menu', 'label' => 'Akses Menu Network Topology'],
+                    ['name' => 'menu_network_radar', 'type' => 'menu', 'label' => 'Akses Menu Radar Tikor Jaringan'],
+                    ['name' => 'menu_network_data', 'type' => 'menu', 'label' => 'Akses Menu Data Jaringan'],
+                    ['name' => 'menu_ftth', 'type' => 'menu', 'label' => 'Akses FTTH Mapping'],
+                    ['name' => 'ftth_card_coverage', 'type' => 'card', 'label' => 'Card Statistik Coverage ODP & Pelanggan'],
+                    ['name' => 'ftth_filter_layers', 'type' => 'filter', 'label' => 'Filter Layer OLT, ODC, ODP, Jalur FO'],
+                    ['name' => 'ftth_manage', 'type' => 'button', 'label' => 'Tombol Kelola Rute & Tambah Desain FTTH'],
+                    ['name' => 'ftth_btn_recalculate', 'type' => 'button', 'label' => 'Tombol Hitung Ulang Jarak & Redaman Optik'],
+                ],
+            ],
+
+            // ── 11. PERANGKAT OSP (OLT, ODC, ODP, ONT) ───────────────
+            [
+                'group' => 'Perangkat OSP (OLT, ODC, ODP, ONT)',
+                'category' => 'jaringan',
+                'icon' => 'server',
+                'menu_parent' => 'menu_network_olt',
+                'permissions' => [
+                    ['name' => 'menu_network_olt', 'type' => 'menu', 'label' => 'Akses Menu OLT'],
+                    ['name' => 'menu_network_odc', 'type' => 'menu', 'label' => 'Akses Menu ODC'],
+                    ['name' => 'menu_network_odp', 'type' => 'menu', 'label' => 'Akses Menu ODP'],
+                    ['name' => 'menu_network_ont', 'type' => 'menu', 'label' => 'Akses Menu ONT / Modem'],
+                    ['name' => 'menu_network_find_onu', 'type' => 'menu', 'label' => 'Akses Menu Find Unregistered ONU'],
+                    
+                    // Card
+                    ['name' => 'network_card_capacity', 'type' => 'card', 'label' => 'Card Kapasitas Port OLT / ODC / ODP'],
+                    ['name' => 'network_card_redaman', 'type' => 'card', 'label' => 'Card Monitoring Redaman dBm'],
+                    
+                    // Filter
+                    ['name' => 'network_filter_area', 'type' => 'filter', 'label' => 'Filter Berdasarkan Wilayah OSP'],
+                    ['name' => 'network_filter_status', 'type' => 'filter', 'label' => 'Filter Port Tersedia vs Penuh'],
+                    
+                    // Action Buttons
+                    ['name' => 'network_olt_create', 'type' => 'button', 'label' => 'Tombol Tambah OLT Baru'],
+                    ['name' => 'network_olt_edit', 'type' => 'button', 'label' => 'Tombol Edit Data OLT'],
+                    ['name' => 'network_olt_delete', 'type' => 'button', 'label' => 'Tombol Hapus OLT'],
+                    ['name' => 'network_odc_create', 'type' => 'button', 'label' => 'Tombol Tambah ODC Baru'],
+                    ['name' => 'network_odc_edit', 'type' => 'button', 'label' => 'Tombol Edit Data ODC'],
+                    ['name' => 'network_odc_delete', 'type' => 'button', 'label' => 'Tombol Hapus ODC'],
+                    ['name' => 'network_odp_create', 'type' => 'button', 'label' => 'Tombol Tambah ODP Baru'],
+                    ['name' => 'network_odp_edit', 'type' => 'button', 'label' => 'Tombol Edit Data ODP'],
+                    ['name' => 'network_odp_delete', 'type' => 'button', 'label' => 'Tombol Hapus ODP'],
+                    ['name' => 'network_ont_create', 'type' => 'button', 'label' => 'Tombol Tambah Data ONT'],
+                    ['name' => 'network_ont_edit', 'type' => 'button', 'label' => 'Tombol Edit Data ONT'],
+                    ['name' => 'network_ont_delete', 'type' => 'button', 'label' => 'Tombol Hapus ONT'],
+                    ['name' => 'network_btn_sync_onu', 'type' => 'button', 'label' => 'Tombol Sync / Scan ONU Otomatis'],
+                    
+                    // Scopes
+                    ['name' => 'network_olt_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua OLT'],
+                    ['name' => 'network_olt_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi OLT Per Area'],
+                    ['name' => 'network_odc_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua ODC'],
+                    ['name' => 'network_odc_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi ODC Per Area'],
+                    ['name' => 'network_odp_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua ODP'],
+                    ['name' => 'network_odp_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi ODP Per Area'],
+                    ['name' => 'network_ont_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua ONT'],
+                    ['name' => 'network_ont_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi ONT Per Area'],
+                ],
+            ],
+
+            // ── 12. ROLLOUT INFRASTRUKTUR (WORK ORDERS) ──────────────
+            [
+                'group' => 'Rollout Pembangunan ODC & ODP',
+                'category' => 'jaringan',
+                'icon' => 'zap',
+                'menu_parent' => 'menu_infrastructure_work_orders',
+                'permissions' => [
+                    ['name' => 'menu_infrastructure_work_orders', 'type' => 'menu', 'label' => 'Akses Menu Rollout Work Orders'],
+                    ['name' => 'infra_wo_card_stats', 'type' => 'card', 'label' => 'Card Total Penugasan Pembangunan & Rollout'],
+                    ['name' => 'infra_wo_filter', 'type' => 'filter', 'label' => 'Filter Tim Pelaksana & Wilayah Proyek'],
+                    ['name' => 'infrastructure_work_orders_create', 'type' => 'button', 'label' => 'Tombol Buat Penugasan Rollout Baru'],
+                    ['name' => 'infrastructure_work_orders_edit', 'type' => 'button', 'label' => 'Tombol Edit Penugasan'],
+                    ['name' => 'infrastructure_work_orders_dispatch', 'type' => 'button', 'label' => 'Tombol Approve Pengeluaran Material Rollout'],
+                    ['name' => 'infrastructure_work_orders_report', 'type' => 'button', 'label' => 'Tombol Submit Laporan & Hasil QC OPM'],
+                    ['name' => 'infrastructure_work_orders_approve', 'type' => 'button', 'label' => 'Tombol Approve & Komisioning Otomatis ke Peta'],
+                    ['name' => 'infra_wo_btn_print_sj', 'type' => 'button', 'label' => 'Tombol Cetak Surat Jalan Material'],
+                    ['name' => 'infrastructure_work_orders_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Work Orders'],
+                    ['name' => 'infrastructure_work_orders_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Work Orders Per Area'],
+                ],
+            ],
+
+            // ── 13. MIKROTIK & RADIUS ────────────────────────────────
+            [
+                'group' => 'MikroTik & RADIUS Billing',
+                'category' => 'jaringan',
+                'icon' => 'wifi',
+                'menu_parent' => 'menu_routers',
+                'permissions' => [
+                    ['name' => 'menu_routers', 'type' => 'menu', 'label' => 'Akses Menu Router MikroTik'],
+                    ['name' => 'menu_radius_nas', 'type' => 'menu', 'label' => 'Akses Menu NAS / RADIUS Server'],
+                    ['name' => 'menu_radius_online_users', 'type' => 'menu', 'label' => 'Akses Monitor Pengguna Online'],
+                    ['name' => 'menu_radius_auth_logs', 'type' => 'menu', 'label' => 'Akses Log Autentikasi RADIUS'],
+                    ['name' => 'radius_card_online_stats', 'type' => 'card', 'label' => 'Card Jumlah User Online & Traffic'],
+                    ['name' => 'radius_filter_nas', 'type' => 'filter', 'label' => 'Filter Router NAS & Profil Kecepatan'],
+                    ['name' => 'routers_create', 'type' => 'button', 'label' => 'Tombol Tambah Router MikroTik'],
+                    ['name' => 'routers_edit', 'type' => 'button', 'label' => 'Tombol Edit Konfigurasi Router'],
+                    ['name' => 'routers_delete', 'type' => 'button', 'label' => 'Tombol Hapus Router'],
+                    ['name' => 'routers_ping', 'type' => 'button', 'label' => 'Tombol Test Ping & Tes Koneksi API MikroTik'],
+                    ['name' => 'radius_nas_create', 'type' => 'button', 'label' => 'Tombol Tambah Server NAS'],
+                    ['name' => 'radius_nas_edit', 'type' => 'button', 'label' => 'Tombol Edit Server NAS'],
+                    ['name' => 'radius_nas_delete', 'type' => 'button', 'label' => 'Tombol Hapus Server NAS'],
+                    ['name' => 'radius_online_users_disconnect', 'type' => 'button', 'label' => 'Tombol Kick / Disconnect Pengguna Online'],
+                ],
+            ],
+
+            // ── 14. MATERIAL & LOGISTIK GUDANG ───────────────────────
+            [
+                'group' => 'Material & Logistik Gudang',
+                'category' => 'gudang',
+                'icon' => 'archive',
+                'menu_parent' => 'menu_materials',
+                'permissions' => [
+                    ['name' => 'menu_materials', 'type' => 'menu', 'label' => 'Akses Menu Data Material & Produk'],
+                    ['name' => 'menu_material_transactions', 'type' => 'menu', 'label' => 'Akses Transaksi Pengambilan'],
+                    ['name' => 'menu_inventory', 'type' => 'menu', 'label' => 'Akses Inventaris & Stock Opname'],
+                    ['name' => 'materials_card_stats', 'type' => 'card', 'label' => 'Card Total Stok & Peringatan Stok Menipis'],
+                    ['name' => 'materials_tab_stocks', 'type' => 'tab', 'label' => 'Tab Stok Material Per Area'],
+                    ['name' => 'materials_tab_transactions', 'type' => 'tab', 'label' => 'Tab Mutasi & Pengeluaran'],
+                    ['name' => 'materials_filter_category', 'type' => 'filter', 'label' => 'Filter Kategori (Kabel, Dropcore, ONT, Splicer)'],
+                    ['name' => 'materials_filter_area', 'type' => 'filter', 'label' => 'Filter Gudang Cabang / Area'],
+                    ['name' => 'materials_create', 'type' => 'button', 'label' => 'Tombol Tambah Master Material'],
+                    ['name' => 'materials_edit', 'type' => 'button', 'label' => 'Tombol Edit Data Material'],
+                    ['name' => 'materials_delete', 'type' => 'button', 'label' => 'Tombol Hapus Material'],
+                    ['name' => 'materials_add_stock', 'type' => 'button', 'label' => 'Tombol Restock / Tambah Stok Masuk'],
+                    ['name' => 'material_transactions_create', 'type' => 'button', 'label' => 'Tombol Buat Transaksi Pengambilan Teknisi'],
+                    ['name' => 'material_transactions_delete', 'type' => 'button', 'label' => 'Tombol Hapus / Batal Transaksi'],
+                    ['name' => 'inventory_manage', 'type' => 'button', 'label' => 'Tombol Kelola Stock Opname & Koreksi Stok'],
+                    ['name' => 'materials_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Gudang'],
+                    ['name' => 'materials_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Gudang Sesuai Area User'],
+                    ['name' => 'material_transactions_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Transaksi'],
+                    ['name' => 'material_transactions_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Transaksi Sesuai Area'],
+                ],
+            ],
+
+            // ── 15. KEPEGAWAIAN (HRD), SHIFT & JABATAN ──────────────
+            [
+                'group' => 'Karyawan & SDM (HR)',
+                'category' => 'hrd',
+                'icon' => 'briefcase',
+                'menu_parent' => 'menu_hr_employees',
+                'permissions' => [
+                    ['name' => 'menu_hr_employees', 'type' => 'menu', 'label' => 'Akses Data Karyawan'],
+                    ['name' => 'menu_hr_positions', 'type' => 'menu', 'label' => 'Akses Master Posisi / Jabatan'],
+                    ['name' => 'menu_shifts', 'type' => 'menu', 'label' => 'Akses Shift & Jadwal Roster'],
+                    ['name' => 'hr_card_stats', 'type' => 'card', 'label' => 'Card Total Karyawan Aktif, On Duty, Cuti'],
+                    ['name' => 'hr_filter_department', 'type' => 'filter', 'label' => 'Filter Departemen & Jabatan'],
+                    ['name' => 'hr_filter_area', 'type' => 'filter', 'label' => 'Filter Cabang Penempatan'],
+                    ['name' => 'hr_employees_create', 'type' => 'button', 'label' => 'Tombol Tambah Karyawan'],
+                    ['name' => 'hr_employees_edit', 'type' => 'button', 'label' => 'Tombol Edit Biodata Karyawan'],
+                    ['name' => 'hr_employees_delete', 'type' => 'button', 'label' => 'Tombol Hapus Karyawan'],
+                    ['name' => 'hr_positions_create', 'type' => 'button', 'label' => 'Tombol Tambah Jabatan'],
+                    ['name' => 'hr_positions_edit', 'type' => 'button', 'label' => 'Tombol Edit Jabatan'],
+                    ['name' => 'hr_positions_delete', 'type' => 'button', 'label' => 'Tombol Hapus Jabatan'],
+                    ['name' => 'shifts_manage', 'type' => 'button', 'label' => 'Tombol Kelola Shift & Roster Jadwal'],
+                    ['name' => 'hr_employees_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Karyawan'],
+                    ['name' => 'hr_employees_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Karyawan Per Area'],
+                ],
+            ],
+
+            // ── 16. PRESENSI & ABSENSI ──────────────────────────────
+            [
+                'group' => 'Presensi & Absensi Karyawan',
+                'category' => 'hrd',
+                'icon' => 'badge-check',
+                'menu_parent' => 'menu_attendances',
+                'permissions' => [
+                    ['name' => 'menu_attendances', 'type' => 'menu', 'label' => 'Akses Presensi & Absensi'],
+                    ['name' => 'attendance_card_stats', 'type' => 'card', 'label' => 'Card Rekap Kehadiran, Terlambat & Izin'],
+                    ['name' => 'attendance_tab_reguler', 'type' => 'tab', 'label' => 'Tab Absensi Reguler'],
+                    ['name' => 'attendance_tab_special', 'type' => 'tab', 'label' => 'Tab Absen Tim Khusus'],
+                    ['name' => 'attendance_tab_field', 'type' => 'tab', 'label' => 'Tab Absen Tugas Luar'],
+                    ['name' => 'attendance_tab_best', 'type' => 'tab', 'label' => 'Tab Peringkat Disiplin Terbaik'],
+                    ['name' => 'attendance_filter_date', 'type' => 'filter', 'label' => 'Filter Tanggal & Status Kehadiran'],
+                    ['name' => 'attendance_filter_area', 'type' => 'filter', 'label' => 'Filter Wilayah / Kantor Cabang'],
+                    ['name' => 'attendances_manage', 'type' => 'button', 'label' => 'Tombol Validasi / Edit Absensi Manual'],
+                    ['name' => 'attendance_btn_export', 'type' => 'button', 'label' => 'Tombol Export Laporan Absensi'],
+                    ['name' => 'attendances_view_all', 'type' => 'feature', 'label' => 'Scope: Lihat Absensi All Area'],
+                    ['name' => 'attendances_view_area', 'type' => 'feature', 'label' => 'Scope: Lihat Absensi Per Area'],
+                ],
+            ],
+
+            // ── 17. PENGGAJIAN (PAYROLL) & INSENTIF ──────────────────
+            [
+                'group' => 'Penggajian & Insentif (Payroll)',
+                'category' => 'hrd',
+                'icon' => 'calculator',
+                'menu_parent' => 'menu_payroll',
+                'permissions' => [
+                    ['name' => 'menu_payroll', 'type' => 'menu', 'label' => 'Akses Menu Payroll & Gaji'],
+                    ['name' => 'menu_target_market', 'type' => 'menu', 'label' => 'Akses Bonus Target Market'],
+                    ['name' => 'payroll_card_summary', 'type' => 'card', 'label' => 'Card Total Beban Gaji & Bonus Periode'],
+                    ['name' => 'payroll_tab_slip', 'type' => 'tab', 'label' => 'Tab Slip Gaji Karyawan'],
+                    ['name' => 'payroll_tab_incentives', 'type' => 'tab', 'label' => 'Tab Insentif & Potongan'],
+                    ['name' => 'payroll_tab_target', 'type' => 'tab', 'label' => 'Tab Pencapaian Target'],
+                    ['name' => 'payroll_filter_period', 'type' => 'filter', 'label' => 'Filter Bulan Gaji & Status Pembayaran'],
+                    ['name' => 'payroll_manage', 'type' => 'button', 'label' => 'Tombol Generate & Hitung Gaji'],
+                    ['name' => 'payroll_disburse', 'type' => 'button', 'label' => 'Tombol Pencairan / Disburse Gaji'],
+                    ['name' => 'payroll_incentives', 'type' => 'button', 'label' => 'Tombol Tambah Insentif & Potongan'],
+                    ['name' => 'target_market_manage', 'type' => 'button', 'label' => 'Tombol Kelola Program Target Sales'],
+                    ['name' => 'payroll_btn_print_slip', 'type' => 'button', 'label' => 'Tombol Cetak / Unduh Slip Gaji PDF'],
+                    ['name' => 'payroll_btn_auto_transfer', 'type' => 'button', 'label' => 'Tombol Auto Transfer Payroll'],
+                    ['name' => 'payroll_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Data Gaji'],
+                    ['name' => 'payroll_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Data Gaji Per Area'],
+                ],
+            ],
+
+            // ── 18. RESELLER & VOUCHER ───────────────────────────────
+            [
+                'group' => 'Voucher & Mitra Reseller',
+                'category' => 'voucher',
+                'icon' => 'ticket',
+                'menu_parent' => 'menu_vouchers',
+                'permissions' => [
+                    ['name' => 'menu_vouchers', 'type' => 'menu', 'label' => 'Akses Menu Voucher'],
+                    ['name' => 'menu_vouchers_profiles', 'type' => 'menu', 'label' => 'Akses Profil Paket Voucher'],
+                    ['name' => 'menu_resellers', 'type' => 'menu', 'label' => 'Akses Data Reseller'],
+                    ['name' => 'voucher_card_stats', 'type' => 'card', 'label' => 'Card Total Voucher Aktif, Terjual & Omset'],
+                    ['name' => 'reseller_card_stats', 'type' => 'card', 'label' => 'Card Total Saldo & Kasbon Reseller'],
+                    ['name' => 'voucher_filter_profile', 'type' => 'filter', 'label' => 'Filter Profil & Status Voucher'],
+                    ['name' => 'vouchers_create', 'type' => 'button', 'label' => 'Tombol Generate Batch Voucher Baru'],
+                    ['name' => 'vouchers_delete', 'type' => 'button', 'label' => 'Tombol Hapus Voucher'],
+                    ['name' => 'vouchers_print', 'type' => 'button', 'label' => 'Tombol Cetak Lembar Voucher'],
+                    ['name' => 'resellers_create', 'type' => 'button', 'label' => 'Tombol Tambah Reseller Baru'],
+                    ['name' => 'resellers_edit', 'type' => 'button', 'label' => 'Tombol Edit Reseller'],
+                    ['name' => 'resellers_delete', 'type' => 'button', 'label' => 'Tombol Hapus Reseller'],
+                    ['name' => 'resellers_balance_approve', 'type' => 'button', 'label' => 'Tombol Top Up / Approve Saldo Reseller'],
+                    ['name' => 'resellers_billing_collect', 'type' => 'button', 'label' => 'Tombol Penagihan & Pelunasan Kasbon Reseller'],
+                ],
+            ],
+
+            // ── 19. MARKETING & AFILIASI ─────────────────────────────
+            [
+                'group' => 'Marketing Afiliasi & Komisi',
+                'category' => 'voucher',
+                'icon' => 'gift',
+                'menu_parent' => 'menu_marketing_affiliates',
+                'permissions' => [
+                    ['name' => 'menu_marketing_affiliates', 'type' => 'menu', 'label' => 'Akses Menu Marketing Afiliasi'],
+                    ['name' => 'affiliate_card_stats', 'type' => 'card', 'label' => 'Card Total Agen, Leads & Komisi'],
+                    ['name' => 'affiliate_tab_settings', 'type' => 'tab', 'label' => 'Tab Pengaturan Komisi'],
+                    ['name' => 'affiliate_tab_affiliates', 'type' => 'tab', 'label' => 'Tab Data Mitra & Agen'],
+                    ['name' => 'affiliate_tab_commissions', 'type' => 'tab', 'label' => 'Tab Riwayat Komisi'],
+                    ['name' => 'affiliate_tab_withdrawals', 'type' => 'tab', 'label' => 'Tab Pencairan Dana'],
+                    ['name' => 'marketing_affiliates_manage', 'type' => 'button', 'label' => 'Tombol Kelola Mitra & Atur Komisi'],
+                    ['name' => 'marketing_affiliates_withdraw_approve', 'type' => 'button', 'label' => 'Tombol Approve Pencairan Komisi'],
+                ],
+            ],
+
+            // ── 20. WHATSAPP GATEWAY & BLAST ─────────────────────────
+            [
+                'group' => 'WhatsApp Gateway & Smart Blast',
+                'category' => 'whatsapp',
+                'icon' => 'zap',
+                'menu_parent' => 'menu_whatsapp_blast',
+                'permissions' => [
+                    ['name' => 'menu_whatsapp_blast', 'type' => 'menu', 'label' => 'Akses Menu WhatsApp Blast & QR'],
+                    ['name' => 'whatsapp_card_gateway_status', 'type' => 'card', 'label' => 'Card Status Koneksi WhatsApp Web'],
+                    ['name' => 'whatsapp_card_blast_summary', 'type' => 'card', 'label' => 'Card Rekap Pesan Terkirim & Gagal'],
+                    ['name' => 'whatsapp_tab_device', 'type' => 'tab', 'label' => 'Tab Perangkat & Scan Barcode QR'],
+                    ['name' => 'whatsapp_tab_blast', 'type' => 'tab', 'label' => 'Tab Kirim Blast Cerdas'],
+                    ['name' => 'whatsapp_tab_history', 'type' => 'tab', 'label' => 'Tab Riwayat & Log Kampanye'],
+                    ['name' => 'whatsapp_tab_settings', 'type' => 'tab', 'label' => 'Tab Pengaturan Anti-Ban & Jeda'],
+                    ['name' => 'whatsapp_filter_target', 'type' => 'filter', 'label' => 'Filter Target Penerima (Aktif, Isolir, Area)'],
+                    ['name' => 'whatsapp_btn_scan_qr', 'type' => 'button', 'label' => 'Tombol / Aksi Scan Barcode QR'],
+                    ['name' => 'whatsapp_btn_logout', 'type' => 'button', 'label' => 'Tombol Putus Koneksi / Logout WA'],
+                    ['name' => 'whatsapp_btn_restart', 'type' => 'button', 'label' => 'Tombol Restart Gateway Service'],
+                    ['name' => 'whatsapp_btn_test_send', 'type' => 'button', 'label' => 'Tombol Kirim Pesan Uji Coba'],
+                    ['name' => 'whatsapp_btn_start_blast', 'type' => 'button', 'label' => 'Tombol Mulai Eksekusi Blast Massal'],
+                    ['name' => 'whatsapp_btn_pause_blast', 'type' => 'button', 'label' => 'Tombol Jeda / Lanjutkan / Stop Blast'],
+                ],
+            ],
+
+            // ── 21. MASTER PENGATURAN & WILAYAH ──────────────────────
+            [
+                'group' => 'Master Paket, Area & Pengaturan',
+                'category' => 'setting',
+                'icon' => 'cog',
+                'menu_parent' => 'menu_settings_branding',
+                'permissions' => [
+                    ['name' => 'menu_internet_packages', 'type' => 'menu', 'label' => 'Akses Menu Paket Internet'],
+                    ['name' => 'internet_packages_create', 'type' => 'button', 'label' => 'Tombol Tambah Paket Internet'],
+                    ['name' => 'internet_packages_edit', 'type' => 'button', 'label' => 'Tombol Edit Paket Internet'],
+                    ['name' => 'internet_packages_delete', 'type' => 'button', 'label' => 'Tombol Hapus Paket Internet'],
+                    ['name' => 'menu_settings_areas', 'type' => 'menu', 'label' => 'Akses Master Area & Cabang'],
+                    ['name' => 'settings_areas_create', 'type' => 'button', 'label' => 'Tombol Tambah Master Area'],
+                    ['name' => 'settings_areas_edit', 'type' => 'button', 'label' => 'Tombol Edit Master Area'],
+                    ['name' => 'settings_areas_delete', 'type' => 'button', 'label' => 'Tombol Hapus Master Area'],
+                    ['name' => 'menu_settings_branding', 'type' => 'menu', 'label' => 'Akses Pengaturan Branding Perusahaan'],
+                    ['name' => 'settings_branding_edit', 'type' => 'button', 'label' => 'Tombol Simpan Branding & Logo'],
+                    ['name' => 'menu_settings_billing', 'type' => 'menu', 'label' => 'Akses Pengaturan Billing & Pajak'],
+                    ['name' => 'menu_settings_payroll', 'type' => 'menu', 'label' => 'Akses Pengaturan Payroll & Master Fee'],
+                    ['name' => 'menu_settings_attendance', 'type' => 'menu', 'label' => 'Akses Pengaturan Radius & Lokasi Absensi'],
+                    ['name' => 'menu_settings_api', 'type' => 'menu', 'label' => 'Akses API Setting & Token'],
+                    ['name' => 'settings_api_generate_token', 'type' => 'button', 'label' => 'Tombol Generate Token API'],
+                    ['name' => 'settings_api_sync', 'type' => 'button', 'label' => 'Tombol Sinkronisasi Data API'],
+                ],
+            ],
+
+            // ── 22. MANAJEMEN USER & ROLE ────────────────────────────
+            [
+                'group' => 'Manajemen Pengguna & Role Akses',
+                'category' => 'setting',
+                'icon' => 'lock-closed',
+                'menu_parent' => 'menu_users',
+                'permissions' => [
+                    ['name' => 'menu_users', 'type' => 'menu', 'label' => 'Akses Menu Pengguna (User)'],
+                    ['name' => 'users_card_stats', 'type' => 'card', 'label' => 'Card Total Pengguna & Status Online'],
+                    ['name' => 'users_filter_role', 'type' => 'filter', 'label' => 'Filter Berdasarkan Peran & Area'],
+                    ['name' => 'users_create', 'type' => 'button', 'label' => 'Tombol Tambah Pengguna Baru'],
+                    ['name' => 'users_edit', 'type' => 'button', 'label' => 'Tombol Edit Data Pengguna'],
+                    ['name' => 'users_delete', 'type' => 'button', 'label' => 'Tombol Hapus Pengguna'],
+                    ['name' => 'users_assign_role', 'type' => 'button', 'label' => 'Tombol Tetapkan Role Pengguna'],
+                    ['name' => 'menu_settings_roles', 'type' => 'menu', 'label' => 'Akses Manajemen Role & Hak Akses'],
+                    ['name' => 'settings_roles_create', 'type' => 'button', 'label' => 'Tombol Tambah Role Baru'],
+                    ['name' => 'settings_roles_edit', 'type' => 'button', 'label' => 'Tombol Edit Nama & Izin Role'],
+                    ['name' => 'settings_roles_delete', 'type' => 'button', 'label' => 'Tombol Hapus Role'],
+                    ['name' => 'settings_roles_clone', 'type' => 'button', 'label' => 'Tombol Duplikasi / Kloning Role'],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Get flat list of all permission names.
+     */
+    public static function allNames(): array
+    {
+        $names = [];
+        foreach (self::get() as $group) {
+            foreach ($group['permissions'] as $p) {
+                $names[] = $p['name'];
+            }
+        }
+        return array_unique($names);
+    }
+}
