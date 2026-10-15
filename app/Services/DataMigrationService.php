@@ -19,6 +19,7 @@ use App\Models\Payment;
 use App\Models\AuditLog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class DataMigrationService
@@ -55,6 +56,7 @@ class DataMigrationService
                     'username_sales' => ['label' => 'Username / Email Sales', 'required' => false, 'db' => 'sales_ref'],
                     'latitude' => ['label' => 'Latitude Koordinat', 'required' => false, 'db' => 'latitude'],
                     'longitude' => ['label' => 'Longitude Koordinat', 'required' => false, 'db' => 'longitude'],
+                    'foto_ktp' => ['label' => 'Nama Berkas / URL Foto KTP (Opsional)', 'required' => false, 'db' => 'identity_photo'],
                     'catatan' => ['label' => 'Catatan Tambahan', 'required' => false, 'db' => 'notes'],
                 ],
                 'sample' => [
@@ -106,6 +108,7 @@ class DataMigrationService
                     'nama_area' => ['label' => 'Nama Area Wilayah ODP', 'required' => true, 'db' => 'area_name'],
                     'latitude' => ['label' => 'Latitude ODP', 'required' => false, 'db' => 'latitude'],
                     'longitude' => ['label' => 'Longitude ODP', 'required' => false, 'db' => 'longitude'],
+                    'foto_odp' => ['label' => 'Nama Berkas / URL Foto Fisik ODP (Opsional)', 'required' => false, 'db' => 'photo'],
                 ],
                 'sample' => [
                     [
@@ -182,6 +185,11 @@ class DataMigrationService
                     'lulus_audit_qc' => ['label' => 'Status Audit QC (1 = Lulus, 0 = Belum)', 'required' => false, 'db' => 'is_audited'],
                     'jam_pasang_mulai' => ['label' => 'Jam Pasang Mulai (HH:MM)', 'required' => false, 'db' => 'start_time'],
                     'jam_pasang_selesai' => ['label' => 'Jam Pasang Selesai (HH:MM)', 'required' => false, 'db' => 'end_time'],
+                    'foto_redaman' => ['label' => 'Nama Berkas / URL Foto Redaman (Opsional)', 'required' => false, 'db' => 'photo_redaman'],
+                    'foto_odp' => ['label' => 'Nama Berkas / URL Foto ODP (Opsional)', 'required' => false, 'db' => 'photo_odp'],
+                    'foto_modem' => ['label' => 'Nama Berkas / URL Foto Modem ONT (Opsional)', 'required' => false, 'db' => 'photo_ont'],
+                    'foto_pelanggan' => ['label' => 'Nama Berkas / URL Foto Pelanggan / Rumah (Opsional)', 'required' => false, 'db' => 'photo_customer'],
+                    'foto_instalasi' => ['label' => 'Nama Berkas / URL Foto Jalur Instalasi (Opsional)', 'required' => false, 'db' => 'photo_installation'],
                 ],
                 'sample' => [
                     [
@@ -527,6 +535,43 @@ class DataMigrationService
         }
     }
 
+    /**
+     * Resolve photo: download from URL or normalize local storage path
+     */
+    protected function resolvePhotoPath(?string $pathOrUrl, string $subfolder): ?string
+    {
+        if (empty($pathOrUrl)) return null;
+        $pathOrUrl = trim($pathOrUrl);
+        if ($pathOrUrl === '' || $pathOrUrl === '-') return null;
+
+        // If it's a web URL, download and save to public disk
+        if (filter_var($pathOrUrl, FILTER_VALIDATE_URL)) {
+            try {
+                $ctx = stream_context_create([
+                    'http' => ['timeout' => 5],
+                    'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
+                ]);
+                $content = @file_get_contents($pathOrUrl, false, $ctx);
+                if ($content) {
+                    $ext = pathinfo(parse_url($pathOrUrl, PHP_URL_PATH), PATHINFO_EXTENSION) ?: 'jpg';
+                    $fileName = $subfolder . '/' . Str::random(32) . '.' . strtolower($ext);
+                    Storage::disk('public')->put($fileName, $content);
+                    return $fileName;
+                }
+            } catch (\Throwable $e) {
+                Log::warning("[DataMigrationService] Failed downloading photo from URL {$pathOrUrl}: " . $e->getMessage());
+            }
+        }
+
+        // If it's a relative path or filename
+        $cleaned = ltrim($pathOrUrl, '/\\');
+        if (str_starts_with($cleaned, 'storage/')) {
+            $cleaned = substr($cleaned, 8);
+        }
+
+        return $cleaned;
+    }
+
     // ── Row Validators ──────────────────────────────────────────────
 
     protected function validateCustomerRow($row, &$errors, &$warnings, &$mapped, $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache, $options)
@@ -623,6 +668,7 @@ class DataMigrationService
             'sales_id' => $salesId,
             'latitude' => !empty($row['latitude']) ? (float)$row['latitude'] : null,
             'longitude' => !empty($row['longitude']) ? (float)$row['longitude'] : null,
+            'identity_photo' => $row['foto_ktp'] ?? $row['identity_photo'] ?? null,
             'notes' => $row['catatan'] ?? null,
             'is_existing' => $isExisting,
         ];
@@ -753,6 +799,11 @@ class DataMigrationService
             'is_audited' => !empty($row['lulus_audit_qc']) ? (bool)$row['lulus_audit_qc'] : true,
             'start_time' => $row['jam_pasang_mulai'] ?? null,
             'end_time' => $row['jam_pasang_selesai'] ?? null,
+            'photo_redaman' => $row['foto_redaman'] ?? $row['photo_redaman'] ?? null,
+            'photo_odp' => $row['foto_odp'] ?? $row['photo_odp'] ?? null,
+            'photo_ont' => $row['foto_modem'] ?? $row['foto_ont'] ?? $row['photo_ont'] ?? null,
+            'photo_customer' => $row['foto_pelanggan'] ?? $row['foto_customer'] ?? $row['photo_customer'] ?? null,
+            'photo_installation' => $row['foto_instalasi'] ?? $row['foto_installation'] ?? $row['photo_installation'] ?? null,
         ];
     }
 
@@ -847,6 +898,8 @@ class DataMigrationService
             if ($dupMode === 'skip') {
                 return 'skipped';
             }
+            $identityPhoto = $this->resolvePhotoPath($data['identity_photo'] ?? null, 'customers');
+
             // Update
             $existing->update([
                 'name' => $data['name'],
@@ -864,10 +917,13 @@ class DataMigrationService
                 'sales_id' => $data['sales_id'] ?: $existing->sales_id,
                 'latitude' => $data['latitude'] ?: $existing->latitude,
                 'longitude' => $data['longitude'] ?: $existing->longitude,
+                'identity_photo' => $identityPhoto ?: $existing->identity_photo,
                 'notes' => $data['notes'] ?: $existing->notes,
             ]);
             return 'updated';
         }
+
+        $identityPhoto = $this->resolvePhotoPath($data['identity_photo'] ?? null, 'customers');
 
         // Insert new
         Customer::create([
@@ -889,6 +945,7 @@ class DataMigrationService
             'sales_id' => $data['sales_id'],
             'latitude' => $data['latitude'],
             'longitude' => $data['longitude'],
+            'identity_photo' => $identityPhoto,
             'notes' => $data['notes'],
         ]);
 
@@ -1015,6 +1072,12 @@ class DataMigrationService
         $sn = $data['serial_number'];
         $ont = Ont::where('serial_number', $sn)->first();
 
+        $photoRedaman = $this->resolvePhotoPath($data['photo_redaman'] ?? null, 'onts');
+        $photoOdp = $this->resolvePhotoPath($data['photo_odp'] ?? null, 'onts');
+        $photoOnt = $this->resolvePhotoPath($data['photo_ont'] ?? null, 'onts');
+        $photoCustomer = $this->resolvePhotoPath($data['photo_customer'] ?? null, 'onts');
+        $photoInstallation = $this->resolvePhotoPath($data['photo_installation'] ?? null, 'onts');
+
         if ($ont) {
             if ($dupMode === 'skip') {
                 return 'skipped';
@@ -1030,6 +1093,11 @@ class DataMigrationService
                 'access_mode' => $data['access_mode'],
                 'start_time' => $data['start_time'],
                 'end_time' => $data['end_time'],
+                'photo_redaman' => $photoRedaman ?: $ont->photo_redaman,
+                'photo_odp' => $photoOdp ?: $ont->photo_odp,
+                'photo_ont' => $photoOnt ?: $ont->photo_ont,
+                'photo_customer' => $photoCustomer ?: $ont->photo_customer,
+                'photo_installation' => $photoInstallation ?: $ont->photo_installation,
                 'status' => 'active',
             ]);
         } else {
@@ -1048,6 +1116,11 @@ class DataMigrationService
                 'access_mode' => $data['access_mode'],
                 'start_time' => $data['start_time'],
                 'end_time' => $data['end_time'],
+                'photo_redaman' => $photoRedaman,
+                'photo_odp' => $photoOdp,
+                'photo_ont' => $photoOnt,
+                'photo_customer' => $photoCustomer,
+                'photo_installation' => $photoInstallation,
                 'status' => 'active',
             ]);
         }
