@@ -439,7 +439,7 @@ class PgjController extends Controller
                 'transaction_number' => 'OUT-PGJ-' . date('YmdHis') . rand(10, 99),
                 'user_id' => auth()->id(),
                 'type' => 'out',
-                'status' => 'completed',
+                'status' => 'approved',
                 'technician_name' => $techNames ?: auth()->user()->name,
                 'purpose' => "Material Jalur PGJ #{$pgj->ticket_number} ({$pgj->segment_type}: {$pgj->category})",
                 'date' => now(),
@@ -552,10 +552,14 @@ class PgjController extends Controller
                     if ($qtyReturned > 0) {
                         if (!$returnTransaction) {
                             $returnTransaction = MaterialTransaction::create([
+                                'transaction_number' => 'IN-PGJ-RET-' . date('YmdHis') . rand(10, 99),
                                 'user_id' => auth()->id(),
                                 'type' => 'in',
-                                'description' => "Pengembalian Sisa Material Jalur PGJ #{$pgj->ticket_number}",
-                                'transaction_date' => now(),
+                                'status' => 'approved',
+                                'technician_name' => auth()->user()->name,
+                                'purpose' => "Pengembalian Sisa Material Jalur PGJ #{$pgj->ticket_number}",
+                                'date' => now(),
+                                'area_id' => $pgj->area_id,
                             ]);
                         }
 

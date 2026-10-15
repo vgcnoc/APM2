@@ -425,7 +425,7 @@ class PgsController extends Controller
             $trans = MaterialTransaction::create([
                 'transaction_number' => 'OUT-PGS-' . date('YmdHis') . rand(10, 99),
                 'type' => 'out',
-                'status' => 'completed',
+                'status' => 'approved',
                 'date' => now(),
                 'technician_name' => $techNames ?: auth()->user()->name,
                 'purpose' => 'Penyiapan Material PGS: ' . $pgs->ticket_number . ' (' . ($pgs->customer?->name ?? '') . ')',
@@ -554,12 +554,13 @@ class PgsController extends Controller
                                 $inTrans = MaterialTransaction::create([
                                     'transaction_number' => 'IN-PGS-' . date('YmdHis') . rand(10, 99),
                                     'type' => 'in',
-                                    'status' => 'completed',
+                                    'status' => 'approved',
                                     'date' => now(),
                                     'technician_name' => auth()->user()->name,
                                     'purpose' => 'Pengembalian Sisa Material PGS ' . $pgs->ticket_number,
                                     'user_id' => auth()->id(),
                                     'customer_id' => $pgs->customer_id,
+                                    'area_id' => $pgs->area_id ?? $pgs->customer?->area_id,
                                 ]);
 
                                 $unitRet = $pgsMat->unit ?? $material->unit;

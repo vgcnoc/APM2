@@ -442,7 +442,7 @@ class PgkController extends Controller
             $trans = MaterialTransaction::create([
                 'transaction_number' => 'OUT-PGK-' . date('YmdHis') . rand(10, 99),
                 'type' => 'out',
-                'status' => 'completed',
+                'status' => 'approved',
                 'date' => now(),
                 'technician_name' => $techNames ?: auth()->user()->name,
                 'purpose' => 'Penyiapan Material PGK: ' . $pgk->ticket_number . ' (' . ($pgk->customer?->name ?? '') . ')',
@@ -571,12 +571,13 @@ class PgkController extends Controller
                                 $returnTrans = MaterialTransaction::create([
                                     'transaction_number' => 'IN-PGK-RET-' . date('YmdHis') . rand(10, 99),
                                     'type' => 'in',
-                                    'status' => 'completed',
+                                    'status' => 'approved',
                                     'date' => now(),
                                     'technician_name' => auth()->user()->name,
                                     'purpose' => 'Pengembalian Sisa Material PGK: ' . $pgk->ticket_number,
                                     'user_id' => auth()->id(),
                                     'customer_id' => $pgk->customer_id,
+                                    'area_id' => $pgk->area_id ?? $pgk->customer?->area_id,
                                 ]);
 
                                 $unitRet = $pgkMat->unit ?? $material->unit;
