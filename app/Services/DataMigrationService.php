@@ -283,6 +283,8 @@ class DataMigrationService
         $output = fopen('php://memory', 'r+');
         // Add UTF-8 BOM so Excel opens it with correct encoding
         fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+        // Add Excel separator directive so Windows Excel immediately splits columns by comma
+        fwrite($output, "sep=,\r\n");
 
         // Write header row
         fputcsv($output, $headers, ',');
@@ -315,9 +317,15 @@ class DataMigrationService
         $lines = explode("\n", str_replace(["\r\n", "\r"], "\n", $content));
         if (empty($lines)) return [];
 
-        // Detect delimiter: check first line
-        $firstLine = $lines[0];
-        $delimiter = (substr_count($firstLine, ';') > substr_count($firstLine, ',')) ? ';' : ',';
+        // Check if first line specifies Excel separator directive "sep=," or "sep=;"
+        if (preg_match('/^sep=([;,|\t])/i', trim($lines[0]), $m)) {
+            $delimiter = $m[1];
+            array_shift($lines);
+        } else {
+            // Detect delimiter: check first line
+            $firstLine = $lines[0] ?? '';
+            $delimiter = (substr_count($firstLine, ';') > substr_count($firstLine, ',')) ? ';' : ',';
+        }
 
         $data = [];
         $headers = null;

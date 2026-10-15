@@ -129,16 +129,30 @@
                                 Panduan Kolom
                             </button>
 
-                            <!-- Download Template Button -->
+                            <!-- Download Template Excel Button -->
+                            <button
+                                @click="downloadExcelTemplate"
+                                type="button"
+                                class="px-3.5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition flex items-center gap-2 shadow-sm shadow-emerald-600/20"
+                                title="Unduh berkas Microsoft Excel (.xlsx) dengan kolom yang otomatis terpisah rapi"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                Unduh Template Excel (.xlsx)
+                            </button>
+
+                            <!-- Download Template CSV Button -->
                             <a
                                 :href="`/settings/data-migration/template/${selectedCategoryKey}`"
                                 target="_blank"
-                                class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition flex items-center gap-2 shadow-sm shadow-indigo-600/20"
+                                class="px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl transition flex items-center gap-1.5 shadow-sm"
+                                title="Unduh berkas format teks CSV"
                             >
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                 </svg>
-                                Unduh Template CSV Resmi (.csv)
+                                Unduh CSV (.csv)
                             </a>
                         </div>
                     </div>
@@ -918,6 +932,41 @@ async function processFile(file) {
     }
 }
 
+// Download native Excel template (.xlsx) using SheetJS
+async function downloadExcelTemplate() {
+    try {
+        const XLSX = await loadSheetJs();
+        const def = currentCategory.value;
+        if (!def) return;
+
+        const headers = Object.keys(def.headers || {});
+        const sampleRow = def.sample?.[0] || {};
+
+        // Build data: row 1 headers, row 2 sample row
+        const data = [
+            headers,
+            headers.map(h => sampleRow[h] !== undefined ? sampleRow[h] : '')
+        ];
+
+        const ws = XLSX.utils.aoa_to_sheet(data);
+
+        // Auto column widths
+        ws['!cols'] = headers.map(h => ({
+            wch: Math.max(h.length + 4, 16)
+        }));
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Template ' + (def.title || 'Data').slice(0, 20));
+
+        const fileName = `template_migrasi_${selectedCategoryKey.value}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+    } catch (err) {
+        console.error('Error downloading Excel template:', err);
+        // Fallback to CSV
+        window.open(`/settings/data-migration/template/${selectedCategoryKey.value}`, '_blank');
+    }
+}
+
 // Client-side CSV Parser
 function parseCsvFile(file) {
     return new Promise((resolve, reject) => {
@@ -951,6 +1000,24 @@ function parseCsvText(text) {
         text = text.slice(1);
     }
 
+    // Strip sep= directive if present at the top
+    if (text.startsWith('sep=')) {
+        const nlIdx = text.indexOf('\n');
+        if (nlIdx !== -1) {
+            text = text.slice(nlIdx + 1);
+        }
+    }
+
+    // Detect delimiter: check first line
+    let delimiter = ',';
+    const firstLineEnd = text.indexOf('\n');
+    const sampleLine = firstLineEnd !== -1 ? text.slice(0, firstLineEnd) : text;
+    if ((sampleLine.match(/;/g) || []).length > (sampleLine.match(/,/g) || []).length) {
+        delimiter = ';';
+    } else if ((sampleLine.match(/\t/g) || []).length > (sampleLine.match(/,/g) || []).length) {
+        delimiter = '\t';
+    }
+
     while (i < text.length) {
         const char = text[i];
         const next = text[i + 1];
@@ -967,7 +1034,7 @@ function parseCsvText(text) {
             }
         }
 
-        if (char === ',' && !inQuotes) {
+        if (char === delimiter && !inQuotes) {
             row.push('');
             i++;
             continue;
