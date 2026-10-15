@@ -74,7 +74,7 @@
                     </div>
 
                     <!-- Action: Tambah Karyawan -->
-                    <button @click="openModal()" class="btn-primary shrink-0 flex items-center justify-center gap-2 py-2.5 px-4">
+                    <button v-if="can('hr_employees_create')" @click="openModal()" class="btn-primary shrink-0 flex items-center justify-center gap-2 py-2.5 px-4">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
                         </svg>
@@ -257,13 +257,39 @@
 
                                 <!-- 7. Aksi -->
                                 <td class="py-4 px-6 text-right">
-                                    <div class="flex items-center justify-end gap-2">
-                                        <button @click="openModal(emp)" title="Edit Data Karyawan" class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        <!-- Aksi View / Detail Karyawan -->
+                                        <button 
+                                            v-if="can(['hr_employees_view', 'menu_hr_employees'])"
+                                            @click="openDetail(emp)" 
+                                            title="Lihat Detail Karyawan (View)" 
+                                            class="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                        </button>
+
+                                        <!-- Aksi Update / Edit Data Karyawan -->
+                                        <button 
+                                            v-if="can(['hr_employees_update', 'hr_employees_edit'])"
+                                            @click="openModal(emp)" 
+                                            title="Update Data Karyawan (Update)" 
+                                            class="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                                        >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                                             </svg>
                                         </button>
-                                        <button @click="deleteEmployee(emp.id)" title="Hapus Karyawan" class="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+
+                                        <!-- Aksi Hapus Karyawan -->
+                                        <button 
+                                            v-if="can('hr_employees_delete')"
+                                            @click="deleteEmployee(emp.id)" 
+                                            title="Hapus Karyawan" 
+                                            class="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                        >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                             </svg>
@@ -302,6 +328,136 @@
                             v-html="link.label"
                         />
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Detail Karyawan (View) -->
+        <div v-if="showDetailModal && selectedEmployee" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" @click="closeDetail"></div>
+            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up border border-gray-100">
+                <!-- Header Card -->
+                <div class="relative px-6 pt-6 pb-5 bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white">
+                    <button @click="closeDetail" class="absolute top-4 right-4 text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                    <div class="flex items-center gap-4">
+                        <div class="w-16 h-16 rounded-2xl bg-white/10 ring-4 ring-white/20 flex items-center justify-center text-white font-bold text-2xl overflow-hidden shrink-0 shadow-lg">
+                            <img v-if="selectedEmployee.photo" :src="`/storage/${selectedEmployee.photo}`" class="w-full h-full object-cover" alt="">
+                            <span v-else>{{ selectedEmployee.name?.charAt(0)?.toUpperCase() }}</span>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h3 class="text-lg font-bold text-white truncate">{{ selectedEmployee.name }}</h3>
+                                <span v-if="selectedEmployee.iak_number" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/20 text-white tracking-wider">
+                                    IAK: {{ selectedEmployee.iak_number }}
+                                </span>
+                            </div>
+                            <p class="text-sm text-blue-100 mt-0.5">{{ selectedEmployee.position || 'Staf Karyawan' }}</p>
+                            <div class="flex items-center gap-2 mt-2">
+                                <span :class="employeeTypeBadge(selectedEmployee.employee_type)" class="px-2.5 py-0.5 rounded-full text-[11px] font-medium border bg-white text-gray-800">
+                                    {{ selectedEmployee.employee_type || 'Karyawan' }}
+                                </span>
+                                <span class="text-xs text-blue-100 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    <span>{{ selectedEmployee.area?.name || 'Semua Area' }}</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Body -->
+                <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                    <!-- Highlight Masa Kerja (Lama Bekerja) -->
+                    <div class="p-4 rounded-xl bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-100/80">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="p-2.5 rounded-xl bg-white shadow-xs text-blue-600">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </div>
+                                <div>
+                                    <span class="text-[11px] uppercase tracking-wider text-gray-500 font-semibold">Lama Bekerja (Masa Kerja)</span>
+                                    <div class="flex items-center gap-2 mt-0.5">
+                                        <span v-if="selectedEmployee.join_date" :class="getTenureBadgeClass(selectedEmployee.join_date)" class="px-2.5 py-0.5 rounded-md text-xs font-semibold inline-flex items-center gap-1">
+                                            <span>{{ getTenureIcon(selectedEmployee.join_date) }}</span>
+                                            <span>{{ selectedEmployee.lama_bekerja || calculateTenure(selectedEmployee.join_date) }}</span>
+                                        </span>
+                                        <span v-else class="text-xs text-gray-400 italic">Belum diset</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-if="selectedEmployee.join_date" class="text-right">
+                                <span class="text-[10px] text-gray-400 block uppercase">Mulai Bergabung</span>
+                                <span class="text-xs font-semibold text-gray-700">{{ formatDate(selectedEmployee.join_date) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detail Grid Info -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <!-- Kontak Telepon -->
+                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                            <p class="text-gray-400 uppercase tracking-wider text-[10px] font-semibold mb-1">Nomor Telepon / WA</p>
+                            <p class="font-semibold text-gray-800 text-sm flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                                <span>{{ selectedEmployee.phone || '-' }}</span>
+                            </p>
+                        </div>
+
+                        <!-- Email -->
+                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                            <p class="text-gray-400 uppercase tracking-wider text-[10px] font-semibold mb-1">Email Karyawan</p>
+                            <p class="font-semibold text-gray-800 text-sm truncate flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                <span class="truncate">{{ selectedEmployee.email || '-' }}</span>
+                            </p>
+                        </div>
+
+                        <!-- Metode Pembayaran -->
+                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                            <p class="text-gray-400 uppercase tracking-wider text-[10px] font-semibold mb-1">Metode Pembayaran Gaji</p>
+                            <p class="font-semibold text-gray-800 text-sm flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                <span>{{ selectedEmployee.payment_method || '-' }}</span>
+                            </p>
+                        </div>
+
+                        <!-- Area Cabang -->
+                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                            <p class="text-gray-400 uppercase tracking-wider text-[10px] font-semibold mb-1">Wilayah / Area Penempatan</p>
+                            <p class="font-semibold text-gray-800 text-sm">
+                                {{ selectedEmployee.area?.name || 'Semua Area' }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Alamat Domisili -->
+                    <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <p class="text-gray-400 uppercase tracking-wider text-[10px] font-semibold mb-1">Alamat Tinggal / Domisili</p>
+                        <p class="text-xs text-gray-700 leading-relaxed">
+                            {{ selectedEmployee.address || 'Belum ada informasi alamat domisili.' }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-6 py-4 bg-gray-50/70 border-t border-gray-100 flex items-center justify-between">
+                    <button @click="closeDetail" class="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-100 text-sm font-semibold transition-colors">
+                        Tutup
+                    </button>
+                    <button 
+                        v-if="can(['hr_employees_update', 'hr_employees_edit'])"
+                        @click="openEditFromDetail" 
+                        class="btn-primary py-2 px-4 text-sm flex items-center gap-1.5"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                        </svg>
+                        <span>Update Data Karyawan</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -471,6 +627,9 @@
 import { ref, computed } from 'vue';
 import { router, useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { usePermission } from '@/Composables/usePermission';
+
+const { can } = usePermission();
 
 const props = defineProps({
     employees: Object,
@@ -487,6 +646,8 @@ const filterTenure = ref(props.filters?.tenure || '');
 const sortBy = ref(props.filters?.sort || '');
 
 const showModal = ref(false);
+const showDetailModal = ref(false);
+const selectedEmployee = ref(null);
 const isEditing = ref(false);
 const editingId = ref(null);
 const photoPreview = ref(null);
@@ -662,8 +823,30 @@ const handlePhoto = (event) => {
     }
 };
 
+function openDetail(emp) {
+    selectedEmployee.value = emp;
+    showDetailModal.value = true;
+}
+
+function closeDetail() {
+    showDetailModal.value = false;
+    selectedEmployee.value = null;
+}
+
+function openEditFromDetail() {
+    const emp = selectedEmployee.value;
+    closeDetail();
+    if (emp) {
+        openModal(emp);
+    }
+}
+
 function openModal(emp = null) {
     if (emp) {
+        if (!can(['hr_employees_update', 'hr_employees_edit'])) {
+            alert('Anda tidak memiliki hak akses untuk mengubah data karyawan.');
+            return;
+        }
         isEditing.value = true;
         editingId.value = emp.id;
         form.name = emp.name || '';
@@ -684,6 +867,10 @@ function openModal(emp = null) {
         form.photo = null;
         photoPreview.value = emp.photo ? `/storage/${emp.photo}` : null;
     } else {
+        if (!can('hr_employees_create')) {
+            alert('Anda tidak memiliki hak akses untuk menambah karyawan baru.');
+            return;
+        }
         isEditing.value = false;
         editingId.value = null;
         form.reset();
@@ -700,12 +887,20 @@ function closeModal() {
 
 function submit() {
     if (isEditing.value) {
+        if (!can(['hr_employees_update', 'hr_employees_edit'])) {
+            alert('Anda tidak memiliki hak akses untuk memperbarui data karyawan.');
+            return;
+        }
         form.post(`/employees/${editingId.value}/update`, {
             preserveScroll: true,
             forceFormData: true,
             onSuccess: () => closeModal(),
         });
     } else {
+        if (!can('hr_employees_create')) {
+            alert('Anda tidak memiliki hak akses untuk menambah karyawan baru.');
+            return;
+        }
         form.post('/employees', {
             preserveScroll: true,
             forceFormData: true,
@@ -715,6 +910,10 @@ function submit() {
 }
 
 function deleteEmployee(id) {
+    if (!can('hr_employees_delete')) {
+        alert('Anda tidak memiliki hak akses untuk menghapus data karyawan.');
+        return;
+    }
     if (confirm('Apakah Anda yakin ingin menghapus data karyawan ini?')) {
         router.post(`/employees/${id}/delete`);
     }

@@ -8,6 +8,10 @@ class EmployeeController extends Controller
 {
     public function index(Request $request)
     {
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('menu_hr_employees') && !auth()->user()->can('hr_employees_view')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengakses halaman data karyawan.');
+        }
+
         $query = \App\Models\Employee::query();
         
         if ($request->filled('search')) {
@@ -98,8 +102,21 @@ class EmployeeController extends Controller
         ]);
     }
 
+    public function show(\App\Models\Employee $employee)
+    {
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_view') && !auth()->user()->can('menu_hr_employees')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melihat detail data karyawan.');
+        }
+
+        return response()->json($employee->load('area'));
+    }
+
     public function store(Request $request)
     {
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_create')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menambah data karyawan.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'iak_number' => 'nullable|string|max:255|unique:employees,iak_number',
@@ -140,6 +157,10 @@ class EmployeeController extends Controller
 
     public function update(Request $request, \App\Models\Employee $employee)
     {
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_update') && !auth()->user()->can('hr_employees_edit')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk memperbarui data karyawan.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'iak_number' => 'nullable|string|max:255|unique:employees,iak_number,' . $employee->id,
@@ -200,6 +221,10 @@ class EmployeeController extends Controller
 
     public function destroy(\App\Models\Employee $employee)
     {
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_delete')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus data karyawan.');
+        }
+
         if ($employee->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($employee->photo)) {
             \Illuminate\Support\Facades\Storage::disk('public')->delete($employee->photo);
         }
