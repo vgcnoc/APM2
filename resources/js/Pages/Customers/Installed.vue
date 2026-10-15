@@ -178,6 +178,18 @@
                         </Link>
                     </div>
 
+                    <!-- WhatsApp Notifikasi Teknisi (Muncul jika teknisi telah dijadwalkan) -->
+                    <button 
+                        v-if="row.technician_schedules?.length > 0"
+                        v-can="['customers_installed_whatsapp', 'customers_installed_assign', 'customers_btn_whatsapp']"
+                        @click="openTechnicianWaModal(row)" 
+                        class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-bold transition-all shadow-sm"
+                        title="Kirim / Lihat Pemberitahuan WhatsApp ke Teknisi"
+                    >
+                        <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.89 9.885m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.712 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.415z"/></svg>
+                        <span>WA Teknisi</span>
+                    </button>
+
                     <button @click="openDetailModal(row)" class="p-1.5 rounded-lg text-gray-400 hover:bg-white hover:text-blue-500 border border-transparent hover:border-gray-200 transition-all shadow-sm hover:shadow" title="Detail Lengkap">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -579,6 +591,20 @@
                             <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Catatan (Opsional)</label>
                             <textarea v-model="assignForm.notes" rows="2" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all resize-none"></textarea>
                         </div>
+
+                        <!-- Opsi Kirim WhatsApp Otomatis ke Teknisi -->
+                        <div class="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3.5 flex items-center justify-between">
+                            <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                                <input type="checkbox" v-model="assignForm.send_wa" class="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
+                                <div>
+                                    <span class="text-xs font-bold text-emerald-950 block">Kirim Notifikasi WhatsApp ke Teknisi</span>
+                                    <span class="text-[11px] text-emerald-700">Kirim rincian jadwal, alamat pelanggan, ODP & bahan ke WA teknisi</span>
+                                </div>
+                            </label>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                WA Otomatis
+                            </span>
+                        </div>
                     </div>
                     <div class="p-5 bg-slate-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl shrink-0">
                         <button type="button" @click="showAssignModal = false" class="px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-slate-900 transition-all shadow-sm">Batal</button>
@@ -847,6 +873,170 @@
             </div>
         </Teleport>
 
+        <!-- Modal Pemberitahuan WhatsApp Teknisi -->
+        <Teleport to="body">
+            <div v-if="showTechnicianWaModal && waCustomer" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer" @click="showTechnicianWaModal = false"></div>
+                <div class="relative bg-white border border-gray-200 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-fade-in-up">
+                    
+                    <!-- Header Modal -->
+                    <div class="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shrink-0">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shadow-inner">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.89 9.885m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.712 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.415z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base sm:text-lg font-black tracking-tight leading-tight">Pemberitahuan Pemasangan ke Teknisi</h3>
+                                <p class="text-xs text-emerald-100">Kirim rincian jadwal, alamat, ODP, dan kontak pelanggan via WhatsApp</p>
+                            </div>
+                        </div>
+                        <button @click="showTechnicianWaModal = false" class="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Body Modal -->
+                    <div class="p-6 space-y-4 overflow-y-auto min-h-0 flex-1">
+                        
+                        <!-- Alert Flash / Status -->
+                        <div v-if="waSuccessStatus" class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 flex items-center gap-2">
+                            <span>✅</span>
+                            <span>{{ waSuccessStatus }}</span>
+                        </div>
+                        <div v-if="waErrorStatus" class="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs font-semibold text-rose-800 flex items-center gap-2">
+                            <span>⚠️</span>
+                            <span>{{ waErrorStatus }}</span>
+                        </div>
+
+                        <!-- Pilih Teknisi Tujuan -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                                Teknisi Tujuan Pemberitahuan
+                            </label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <label 
+                                    class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all"
+                                    :class="waSelectedTechId === 'all' ? 'border-emerald-600 bg-emerald-50/40 ring-1 ring-emerald-600' : 'border-gray-200 hover:border-gray-300'"
+                                >
+                                    <input type="radio" value="all" v-model="waSelectedTechId" @change="updateWaMessagePreview" class="text-emerald-600 focus:ring-emerald-500">
+                                    <div>
+                                        <span class="text-xs font-bold text-gray-900 block">Kirim ke Semua Teknisi</span>
+                                        <span class="text-[10px] text-gray-500">({{ getAssignedTechnicians(waCustomer).length }} teknisi terdaftar di jadwal)</span>
+                                    </div>
+                                </label>
+
+                                <label 
+                                    v-for="t in getAssignedTechnicians(waCustomer)" 
+                                    :key="t.id"
+                                    class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all"
+                                    :class="waSelectedTechId == t.id ? 'border-emerald-600 bg-emerald-50/40 ring-1 ring-emerald-600' : 'border-gray-200 hover:border-gray-300'"
+                                >
+                                    <input type="radio" :value="t.id" v-model="waSelectedTechId" @change="updateWaMessagePreview" class="text-emerald-600 focus:ring-emerald-500">
+                                    <div class="min-w-0">
+                                        <span class="text-xs font-bold text-gray-900 block truncate">{{ t.name }}</span>
+                                        <span class="text-[10px] text-gray-500 font-mono">{{ t.phone || 'Nomor HP -' }}</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Ringkasan Info Pelanggan & Jadwal -->
+                        <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-xs space-y-2">
+                            <div class="flex items-center justify-between pb-2 border-b border-slate-200/60">
+                                <div>
+                                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Pelanggan</span>
+                                    <span class="text-sm font-bold text-gray-900">{{ waCustomer.name }}</span>
+                                    <span class="text-[11px] text-gray-500 font-mono ml-1.5">({{ waCustomer.customer_code }})</span>
+                                </div>
+                                <span class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
+                                    {{ waCustomer.package?.name || '-' }}
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-[11px]">
+                                <div>
+                                    <span class="text-gray-500 block">Jadwal:</span>
+                                    <span class="font-semibold text-gray-800">
+                                        {{ waCustomer.technician_schedules?.[0]?.scheduled_date ? formatDateIndo(waCustomer.technician_schedules[0].scheduled_date) : '-' }} 
+                                        ({{ waCustomer.technician_schedules?.[0]?.scheduled_time || '10:00' }} WIB)
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 block">ODP:</span>
+                                    <span class="font-semibold text-gray-800">
+                                        {{ waCustomer.surveys?.[0]?.odp?.name || waCustomer.ont?.odp?.name || '-' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Template Pesan WhatsApp yang Bisa Diedit -->
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>📝</span> Pratinjau Pesan WhatsApp
+                                </label>
+                                <button 
+                                    @click="copyWaText" 
+                                    type="button" 
+                                    class="text-[11px] text-gray-600 hover:text-emerald-700 font-semibold flex items-center gap-1 hover:underline cursor-pointer"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                    <span>{{ waCopySuccess ? '✅ Tersalin!' : 'Salin Pesan' }}</span>
+                                </button>
+                            </div>
+                            <textarea 
+                                v-model="waCustomMessage" 
+                                rows="9" 
+                                class="w-full bg-white border border-gray-300 rounded-xl p-3.5 text-xs text-gray-800 font-sans focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all leading-relaxed"
+                                placeholder="Tuliskan pesan..."
+                            ></textarea>
+                            <p class="text-[10px] text-gray-400 mt-1">Pesan dapat disesuaikan sebelum dikirim. Tag <code class="bg-gray-100 px-1 rounded">{nama_teknisi}</code> akan otomatis diganti sesuai nama masing-masing teknisi.</p>
+                        </div>
+                    </div>
+
+                    <!-- Footer Action Modal -->
+                    <div class="p-4 bg-slate-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+                        <div class="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
+                            <!-- Direct WhatsApp Links per Technician -->
+                            <template v-for="t in getAssignedTechnicians(waCustomer)" :key="t.id">
+                                <button 
+                                    v-if="t.phone"
+                                    type="button" 
+                                    @click="openWhatsAppDirect(t)"
+                                    class="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 hover:border-emerald-300 rounded-xl text-xs font-bold transition-all shadow-2xs shrink-0"
+                                    :title="`Buka chat WA langsung dengan ${t.name} (${t.phone})`"
+                                >
+                                    <svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.89 9.885m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.712 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.415z"/></svg>
+                                    <span>Chat WA: {{ t.name.split(' ')[0] }}</span>
+                                </button>
+                            </template>
+                        </div>
+
+                        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                            <button 
+                                type="button" 
+                                @click="showTechnicianWaModal = false" 
+                                class="px-4 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-100 transition-colors shadow-2xs"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="sendWaViaGateway" 
+                                :disabled="waSending" 
+                                class="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                            >
+                                <svg v-if="waSending" class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <svg v-else class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                <span>{{ waSending ? 'Mengirim...' : 'Kirim via WA Gateway' }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </Teleport>
+
     </AppLayout>
 </template>
 
@@ -889,6 +1079,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { Link, router, useForm , usePage} from '@inertiajs/vue3';
+import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
@@ -1187,6 +1378,7 @@ const assignForm = useForm({
     material_transaction_ids: [''],
     material_items: [],
     notes: '',
+    send_wa: true,
 });
 
 const filteredOnts = computed(() => {
@@ -1203,6 +1395,7 @@ const filteredMaterialTransactions = computed(() => {
 function openAssignModal(customer) {
     activeCustomer.value = customer;
     assignForm.reset();
+    assignForm.send_wa = true;
     assignForm.scheduled_date = new Date().toISOString().split('T')[0];
     assignForm.scheduled_time = '10:00';
     showAssignModal.value = true;
@@ -1400,11 +1593,21 @@ const hardwareItems = computed(() => {
     return items;
 });
 
-const getAssignedTechnicians = (customer, type) => {
-    if (!customer?.technician_schedules) return '-';
-    const schedules = customer.technician_schedules.filter(s => s.type === type);
-    if (schedules.length === 0) return '-';
-    return schedules.map(s => s.technician?.name).filter(Boolean).join(', ') || '-';
+const getAssignedTechnicians = (customer, type = null) => {
+    if (!customer?.technician_schedules) return type ? '-' : [];
+    let schedules = customer.technician_schedules;
+    if (type) {
+        schedules = schedules.filter(s => s.type === type);
+        if (schedules.length === 0) return '-';
+        return schedules.map(s => s.technician?.name).filter(Boolean).join(', ') || '-';
+    }
+    const techMap = new Map();
+    schedules.forEach(s => {
+        if (s.technician && !techMap.has(s.technician.id)) {
+            techMap.set(s.technician.id, s.technician);
+        }
+    });
+    return Array.from(techMap.values());
 };
 
 // ── Batal Pasang ───────────────────────────────────────────────
@@ -1441,6 +1644,147 @@ function submitCancel() {
             isCanceling.value = false;
         }
     });
+}
+
+// ── WhatsApp Notifikasi Teknisi ────────────────────────────────
+const showTechnicianWaModal = ref(false);
+const waCustomer = ref(null);
+const waSelectedTechId = ref('all');
+const waCustomMessage = ref('');
+const waSending = ref(false);
+const waSuccessStatus = ref('');
+const waErrorStatus = ref('');
+const waCopySuccess = ref(false);
+
+function cleanPhoneNumber(phone) {
+    if (!phone) return '';
+    let cleaned = String(phone).replace(/[^0-9]/g, '');
+    if (cleaned.startsWith('0')) {
+        cleaned = '62' + cleaned.substring(1);
+    }
+    return cleaned;
+}
+
+function formatDateIndo(dateStr) {
+    if (!dateStr) return '-';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleDateString('id-ID', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+function updateWaMessagePreview() {
+    if (!waCustomer.value) return;
+    const c = waCustomer.value;
+    const latestSchedule = c.technician_schedules?.find(s => s.type === 'installation') || c.technician_schedules?.[0];
+    const dateFormatted = latestSchedule?.scheduled_date ? formatDateIndo(latestSchedule.scheduled_date) : '-';
+    const timeFormatted = latestSchedule?.scheduled_time || '10:00';
+    const odpName = c.surveys?.[0]?.odp?.name || c.ont?.odp?.name || '-';
+    const portOdp = c.ont?.port_number ? `Port ${c.ont.port_number}` : (c.surveys?.[0]?.port_number ? `Port ${c.surveys[0].port_number}` : '-');
+    const cableDist = c.surveys?.[0]?.cable_distance ? `${c.surveys[0].cable_distance} meter` : '-';
+    const notes = latestSchedule?.notes || '';
+    const mapsLink = (c.latitude && c.longitude) ? `https://www.google.com/maps?q=${c.latitude},${c.longitude}` : (c.address_url || '');
+
+    let techTarget = '{nama_teknisi}';
+    if (waSelectedTechId.value !== 'all') {
+        const t = getAssignedTechnicians(c).find(tech => tech.id == waSelectedTechId.value);
+        if (t) techTarget = t.name;
+    }
+
+    let msg = `Halo Rekan Teknisi *${techTarget}*,\n`;
+    msg += `Berikut penugasan *Jadwal Pasang Baru (PSB)*:\n\n`;
+    msg += `👤 *Data Pelanggan:*\n`;
+    msg += `• Nama: *${c.name}*\n`;
+    msg += `• ID Pelanggan: ${c.customer_code || '-'}\n`;
+    msg += `• No. HP / WhatsApp: ${c.phone || '-'}\n`;
+    msg += `• Wilayah / Area: ${c.area || '-'}\n`;
+    msg += `• Alamat: ${c.address || '-'}\n`;
+    if (mapsLink) {
+        msg += `• Titik Maps: ${mapsLink}\n`;
+    }
+    msg += `\n📦 *Paket & Waktu Pasang:*\n`;
+    msg += `• Paket: *${c.package?.name || '-'}*\n`;
+    msg += `• Tanggal Pasang: *${dateFormatted}*\n`;
+    msg += `• Jam: *${timeFormatted}* WIB\n`;
+    msg += `\n📡 *Data ODP / Jaringan:*\n`;
+    msg += `• ODP: *${odpName}* (${portOdp})\n`;
+    msg += `• Estimasi Kabel: ${cableDist}\n`;
+    if (notes) {
+        msg += `\n🔧 *Alokasi Perangkat & Material:*\n${notes}\n`;
+    }
+    msg += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `⚡ _Silakan konfirmasi ke pelanggan sebelum berangkat ke lokasi. Tetap utamakan K3 & submit laporan selesai instalasi di sistem!_`;
+
+    waCustomMessage.value = msg;
+}
+
+function openTechnicianWaModal(customer) {
+    waCustomer.value = customer;
+    waSelectedTechId.value = 'all';
+    waSuccessStatus.value = '';
+    waErrorStatus.value = '';
+    waCopySuccess.value = false;
+    updateWaMessagePreview();
+    showTechnicianWaModal.value = true;
+}
+
+async function copyWaText() {
+    try {
+        await navigator.clipboard.writeText(waCustomMessage.value);
+        waCopySuccess.value = true;
+        setTimeout(() => {
+            waCopySuccess.value = false;
+        }, 3000);
+    } catch (err) {
+        console.error('Failed to copy text: ', err);
+    }
+}
+
+function openWhatsAppDirect(tech) {
+    if (!tech?.phone) {
+        alert('Nomor HP teknisi ini belum diisi di sistem.');
+        return;
+    }
+    const cleanPhone = cleanPhoneNumber(tech.phone);
+    const resolvedMsg = waCustomMessage.value.replace(/\{nama_teknisi\}/g, tech.name);
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(resolvedMsg)}`;
+    window.open(url, '_blank');
+}
+
+async function sendWaViaGateway() {
+    if (!waCustomer.value) return;
+    waSending.value = true;
+    waSuccessStatus.value = '';
+    waErrorStatus.value = '';
+
+    const payload = {
+        custom_message: waCustomMessage.value,
+        technician_ids: waSelectedTechId.value === 'all' 
+            ? getAssignedTechnicians(waCustomer.value).map(t => t.id)
+            : [parseInt(waSelectedTechId.value)]
+    };
+
+    try {
+        const response = await axios.post(`/customers/${waCustomer.value.id}/notify-technician-wa`, payload);
+        if (response.data?.success) {
+            waSuccessStatus.value = response.data.message || 'Pemberitahuan WhatsApp berhasil dikirim ke teknisi!';
+        } else {
+            waErrorStatus.value = response.data.message || 'Gagal mengirim melalui Gateway. Silakan gunakan tombol Chat WA langsung.';
+        }
+    } catch (error) {
+        console.error('Error sending WA notification:', error);
+        waErrorStatus.value = error.response?.data?.message || 'Terjadi kesalahan saat menghubungi server gateway. Silakan gunakan tombol Chat WA langsung.';
+    } finally {
+        waSending.value = false;
+    }
 }
 
 </script>

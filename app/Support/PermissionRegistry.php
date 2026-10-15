@@ -134,6 +134,7 @@ class PermissionRegistry
                     ['name' => 'customers_installed_card_stats', 'type' => 'card', 'label' => 'Card Rekap Terpasang & Menunggu QC'],
                     ['name' => 'customers_installed_filter', 'type' => 'filter', 'label' => 'Filter Tim Teknisi & Wilayah Instalasi'],
                     ['name' => 'customers_installed_assign', 'type' => 'button', 'label' => 'Tombol Jadwalkan Teknisi Pasang'],
+                    ['name' => 'customers_installed_whatsapp', 'type' => 'button', 'label' => 'Tombol Kirim Notifikasi WhatsApp Teknisi'],
                     ['name' => 'customers_installed_report', 'type' => 'button', 'label' => 'Tombol Submit Laporan Pemasangan & Foto'],
                     ['name' => 'customers_installed_audit', 'type' => 'button', 'label' => 'Tombol Verifikasi & QC Audit Instalasi'],
                     ['name' => 'customers_installed_edit', 'type' => 'button', 'label' => 'Tombol Edit Data Instalasi / Perangkat'],

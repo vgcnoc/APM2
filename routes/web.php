@@ -144,6 +144,10 @@ Route::middleware(['auth'])->group(function () {
         // Jadwalkan Pasang
         Route::post('/{customer}/assign-install', [CustomerController::class, 'assignInstall'])
             ->name('assign-install');
+
+        // Notifikasi WhatsApp Teknisi Instalasi
+        Route::post('/{customer}/notify-technician-wa', [CustomerController::class, 'notifyTechnicianInstallationWa'])
+            ->name('notify-technician-wa');
             
         // Audit Instalasi
         Route::post('/{customer}/audit', [CustomerController::class, 'audit'])

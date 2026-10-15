@@ -2501,6 +2501,7 @@ class CustomerController extends Controller
             'material_items.*.qty' => 'nullable|numeric',
             'material_items.*.unit' => 'nullable|string',
             'notes' => 'nullable|string',
+            'send_wa' => 'nullable|boolean',
         ]);
 
         \Log::info('assignInstall validated OK', ['customer_id' => $customer->id]);
@@ -2539,7 +2540,8 @@ class CustomerController extends Controller
         }
 
         // 3. EXECUTE UPDATES
-        DB::transaction(function () use ($ontsToUpdate, $transactionsToUpdate, $validated, $customer, &$customNotes) {
+        $finalNotes = '';
+        DB::transaction(function () use ($ontsToUpdate, $transactionsToUpdate, $validated, $customer, &$customNotes, &$finalNotes) {
             
             // Update ONT
             if (count($ontsToUpdate) > 0) {
@@ -2600,8 +2602,181 @@ class CustomerController extends Controller
             \App\Models\AuditLog::createLog('Jadwal Instalasi', $customer, 'installing', 'installing', 'Menjadwalkan pemasangan');
         });
 
+        // 4. Kirim Notifikasi WhatsApp Otomatis ke Teknisi jika diminta
+        $waNotifiedCount = 0;
+        if ($request->boolean('send_wa', true)) {
+            try {
+                $waService = app(\App\Services\WhatsAppGatewayService::class);
+                $technicians = User::whereIn('id', $validated['technician_ids'])->get();
+                foreach ($technicians as $tech) {
+                    if (!empty($tech->phone)) {
+                        $msg = $this->formatInstallationWaMessage(
+                            $customer,
+                            $tech,
+                            $validated['scheduled_date'],
+                            $validated['scheduled_time'],
+                            $finalNotes
+                        );
+                        $res = $waService->sendMessage($tech->phone, $msg);
+                        if (!empty($res['success'])) {
+                            $waNotifiedCount++;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('[assignInstall] Auto WA notification exception: ' . $e->getMessage());
+            }
+        }
+
+        $successMsg = 'Jadwal pemasangan berhasil ditugaskan kepada teknisi.';
+        if ($waNotifiedCount > 0) {
+            $successMsg .= " 💬 Notifikasi WhatsApp berhasil terkirim ke {$waNotifiedCount} teknisi.";
+        }
+
         return redirect()->route('customers.installed')
-            ->with('success', 'Jadwal pemasangan berhasil ditugaskan kepada teknisi.');
+            ->with('success', $successMsg);
+    }
+
+    /**
+     * Format template pesan WhatsApp notifikasi penugasan jadwal pemasangan ke teknisi
+     */
+    public function formatInstallationWaMessage(Customer $customer, User $technician, string $date, string $time, ?string $notes = null): string
+    {
+        $companyName = Setting::get('company_name', config('app.name', 'APM2 Network'));
+        $packageName = $customer->package?->name ?? 'Internet Broadband';
+        $customerPhone = $customer->phone ?? '-';
+        $address = $customer->address ?? '-';
+        $areaName = $customer->areaModel?->name ?? $customer->area ?? '-';
+
+        $mapsLink = '';
+        if ($customer->latitude && $customer->longitude) {
+            $mapsLink = "https://www.google.com/maps?q={$customer->latitude},{$customer->longitude}";
+        }
+
+        $survey = $customer->surveys()->latest()->first();
+        $odpName = $survey?->odp?->name ?? '-';
+        $portOdp = $survey?->port_number ? "Port " . $survey->port_number : '-';
+        $cableDist = $survey?->distance_meters ? $survey->distance_meters . " meter" : '-';
+
+        $dateFormatted = date('d-m-Y', strtotime($date));
+
+        $msg = "🛠️ *PENUGASAN INSTALASI PASANG BARU*\n";
+        $msg .= "🏢 *{$companyName}*\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━\n";
+        $msg .= "Halo Teknisi *{$technician->name}*,\n";
+        $msg .= "Anda telah ditugaskan untuk pekerjaan instalasi internet pelanggan baru:\n\n";
+
+        $msg .= "👤 *Data Pelanggan:*\n";
+        $msg .= "• Nama: *{$customer->name}*\n";
+        $msg .= "• ID Pelanggan: `{$customer->customer_code}`\n";
+        $msg .= "• No. HP / WhatsApp: {$customerPhone}\n";
+        $msg .= "• Wilayah / Area: {$areaName}\n";
+        $msg .= "• Alamat: {$address}\n";
+        if ($mapsLink) {
+            $msg .= "• Titik Maps: {$mapsLink}\n";
+        }
+
+        $msg .= "\n📦 *Paket & Waktu Pasang:*\n";
+        $msg .= "• Paket Internet: *{$packageName}*\n";
+        $msg .= "• Tanggal Pasang: *{$dateFormatted}*\n";
+        $msg .= "• Jam Pemasangan: *{$time}* WIB\n";
+
+        $msg .= "\n📡 *Data ODP / Jaringan (Hasil Survey):*\n";
+        $msg .= "• ODP: *{$odpName}* ({$portOdp})\n";
+        $msg .= "• Estimasi Jarak Kabel: {$cableDist}\n";
+
+        if (!empty($notes)) {
+            $msg .= "\n🔧 *Alokasi Perangkat & Material:*\n";
+            $msg .= "{$notes}\n";
+        }
+
+        $msg .= "\n━━━━━━━━━━━━━━━━━━━━\n";
+        $msg .= "⚡ _Silakan hubungi pelanggan untuk konfirmasi sebelum meluncur ke lokasi. Setelah pekerjaan instalasi selesai, mohon submit laporan & foto instalasi di sistem. Terima kasih & utamakan K3!_";
+
+        return $msg;
+    }
+
+    /**
+     * Kirim Pemberitahuan WhatsApp ke Teknisi untuk Jadwal Pasang (API)
+     */
+    public function notifyTechnicianInstallationWa(Request $request, Customer $customer)
+    {
+        if (!auth()->user()->can('customers_installed_assign') && !auth()->user()->can('customers_installed_whatsapp') && !auth()->user()->can('customers_btn_whatsapp')) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk mengirim notifikasi WhatsApp teknisi.'], 403);
+        }
+
+        $validated = $request->validate([
+            'technician_ids' => 'nullable|array',
+            'technician_ids.*' => 'exists:users,id',
+            'custom_message' => 'nullable|string',
+            'scheduled_date' => 'nullable|string',
+            'scheduled_time' => 'nullable|string',
+        ]);
+
+        $techIds = $validated['technician_ids'] ?? [];
+        if (empty($techIds)) {
+            $techIds = $customer->technicianSchedules()
+                ->where('type', 'installation')
+                ->pluck('technician_id')
+                ->unique()
+                ->toArray();
+        }
+
+        if (empty($techIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Belum ada teknisi yang ditugaskan pada jadwal instalasi pelanggan ini.'
+            ], 422);
+        }
+
+        $technicians = User::whereIn('id', $techIds)->get();
+        $latestSchedule = $customer->technicianSchedules()->where('type', 'installation')->latest()->first();
+        $date = $validated['scheduled_date'] ?? ($latestSchedule?->scheduled_date?->format('Y-m-d') ?? date('Y-m-d'));
+        $time = $validated['scheduled_time'] ?? ($latestSchedule?->scheduled_time?->format('H:i') ?? '10:00');
+        $notes = $latestSchedule?->notes ?? '';
+
+        $waService = app(\App\Services\WhatsAppGatewayService::class);
+        $results = [];
+        $sentCount = 0;
+
+        foreach ($technicians as $tech) {
+            $cleanPhone = preg_replace('/[^0-9]/', '', $tech->phone ?? '');
+            if (str_starts_with($cleanPhone, '0')) {
+                $cleanPhone = '62' . substr($cleanPhone, 1);
+            }
+
+            $message = !empty($validated['custom_message'])
+                ? str_replace('{nama_teknisi}', $tech->name, $validated['custom_message'])
+                : $this->formatInstallationWaMessage($customer, $tech, $date, $time, $notes);
+
+            $sendRes = ['success' => false, 'message' => 'Nomor HP teknisi belum diatur di sistem'];
+            if (!empty($tech->phone)) {
+                $sendRes = $waService->sendMessage($tech->phone, $message);
+                if (!empty($sendRes['success'])) {
+                    $sentCount++;
+                }
+            }
+
+            $results[] = [
+                'technician_id' => $tech->id,
+                'name' => $tech->name,
+                'phone' => $tech->phone,
+                'clean_phone' => $cleanPhone,
+                'wa_url' => $cleanPhone ? "https://wa.me/{$cleanPhone}?text=" . urlencode($message) : null,
+                'message' => $message,
+                'success' => !empty($sendRes['success']),
+                'status_message' => $sendRes['message'] ?? ($sendRes['success'] ? 'Terkirim via Gateway' : 'Gagal'),
+            ];
+        }
+
+        return response()->json([
+            'success' => $sentCount > 0,
+            'message' => $sentCount > 0
+                ? "Pemberitahuan WhatsApp berhasil dikirim ke {$sentCount} teknisi via Gateway."
+                : "Gateway sedang tidak terhubung atau nomor tidak valid. Anda dapat membuka WhatsApp Web/App secara manual.",
+            'sent_count' => $sentCount,
+            'results' => $results,
+        ]);
     }
 
     /**
