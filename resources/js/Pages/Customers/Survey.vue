@@ -71,7 +71,9 @@
                     <!-- Filter Area / Wilayah -->
                     <select v-model="selectedArea" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
                         <option value="">Semua Area / Wilayah</option>
-                        <option v-for="area in areas" :key="area" :value="area">{{ area }}</option>
+                        <option v-for="area in areas" :key="typeof area === 'object' && area !== null ? area.id : area" :value="typeof area === 'object' && area !== null ? area.name : area">
+                            {{ typeof area === 'object' && area !== null ? area.name : area }}
+                        </option>
                     </select>
 
                     <!-- Tombol Tampilkan & Reset -->

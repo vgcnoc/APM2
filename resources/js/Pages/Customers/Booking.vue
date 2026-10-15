@@ -63,7 +63,9 @@
                     <input type="date" v-model="filterDate" class="form-input w-36 text-sm" title="Tanggal Daftar" />
                     <select v-model="filterArea" class="form-select w-36 text-sm">
                         <option value="">Semua Area</option>
-                        <option v-for="area in areas" :key="area" :value="area">{{ area }}</option>
+                        <option v-for="area in areas" :key="typeof area === 'object' && area !== null ? area.id : area" :value="typeof area === 'object' && area !== null ? area.name : area">
+                            {{ typeof area === 'object' && area !== null ? area.name : area }}
+                        </option>
                     </select>
                     <select v-model="filterStatus" class="form-select w-36 text-sm">
                         <option value="">Semua Status</option>

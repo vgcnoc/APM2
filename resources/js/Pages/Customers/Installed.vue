@@ -61,8 +61,8 @@
                 <form v-can="'customers_installed_filter'" @submit.prevent="applyFilter" class="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 w-full">
                     <select v-model="filterState.area" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
                         <option value="">Semua Area</option>
-                        <option v-for="area in areas" :key="area" :value="area">
-                            {{ area }}
+                        <option v-for="area in areas" :key="typeof area === 'object' && area !== null ? area.id : area" :value="typeof area === 'object' && area !== null ? area.name : area">
+                            {{ typeof area === 'object' && area !== null ? area.name : area }}
                         </option>
                     </select>
                     
@@ -1187,10 +1187,46 @@ const columns = [
     { key: 'signal', label: 'Redaman' },
 ];
 
+const activeCustomer = ref(null);
+
+const customerAreaId = computed(() => {
+    if (!activeCustomer.value) return null;
+    if (activeCustomer.value.area_id) return activeCustomer.value.area_id;
+    if (activeCustomer.value.area && props.areas) {
+        const custArea = String(activeCustomer.value.area).toLowerCase().trim();
+        const found = props.areas.find(a => {
+            if (typeof a === 'object' && a !== null) {
+                return String(a.id) === custArea || a.name?.toLowerCase().trim() === custArea;
+            }
+            return String(a).toLowerCase().trim() === custArea;
+        });
+        if (found && typeof found === 'object') return found.id;
+    }
+    return null;
+});
+
+const filteredOnts = computed(() => {
+    let onts = (props.availableOnts || []).filter(ont => ont.status === 'Sudah Set');
+    const areaId = customerAreaId.value;
+    if (!areaId) return onts;
+    const matched = onts.filter(ont => ont.area_id == areaId);
+    return matched.length > 0 ? matched : onts;
+});
+
+const filteredMaterialTransactions = computed(() => {
+    const allTrx = props.materialTransactions || [];
+    const areaId = customerAreaId.value;
+    if (!areaId) return allTrx;
+    const matched = allTrx.filter(trx => !trx.area_id || trx.area_id == areaId);
+    return matched.length > 0 ? matched : allTrx;
+});
+
 const availableMaterialItems = computed(() => {
     let items = [];
-    if (props.materialTransactions) {
-        props.materialTransactions.forEach(trx => {
+    const trxs = filteredMaterialTransactions.value || [];
+    const areaId = customerAreaId.value;
+    if (trxs) {
+        trxs.forEach(trx => {
             if (trx.items) {
                 trx.items.forEach(item => {
                     const name = item.material && item.material.name ? item.material.name.toLowerCase() : '';
@@ -1199,8 +1235,8 @@ const availableMaterialItems = computed(() => {
                     
                     if (!name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem') && !isRegistered) {
                         let areaStock = 0;
-                        if (item.material && item.material.stocks && activeCustomer.value) {
-                            const stockObj = item.material.stocks.find(s => s.area_id == activeCustomer.value.area_id);
+                        if (item.material && item.material.stocks && areaId) {
+                            const stockObj = item.material.stocks.find(s => s.area_id == areaId);
                             if (stockObj) {
                                 areaStock = parseFloat(stockObj.stock) || 0;
                             }
@@ -1376,7 +1412,6 @@ function signalClass(rx) {
 }
 
 const showAssignModal = ref(false);
-const activeCustomer = ref(null);
 const assignForm = useForm({
     technician_ids: [],
     scheduled_date: '',
@@ -1386,17 +1421,6 @@ const assignForm = useForm({
     material_items: [],
     notes: '',
     send_wa: true,
-});
-
-const filteredOnts = computed(() => {
-    let onts = props.availableOnts.filter(ont => ont.status === 'Sudah Set');
-    if (!activeCustomer.value || !activeCustomer.value.area_id) return onts;
-    return onts.filter(ont => ont.area_id == activeCustomer.value.area_id);
-});
-
-const filteredMaterialTransactions = computed(() => {
-    if (!activeCustomer.value || !activeCustomer.value.area_id) return props.materialTransactions;
-    return props.materialTransactions.filter(trx => trx.area_id == activeCustomer.value.area_id);
 });
 
 function openAssignModal(customer) {

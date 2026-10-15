@@ -74,8 +74,19 @@ class CustomerController extends Controller
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
             ->when($request->service_status, fn ($q, $ss) => $q->where('service_status', $ss))
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
-            ->when($request->area_id, fn ($q, $area) => $q->where('area_id', $area))
-            ->when($request->odp_id, fn ($q, $odp) => $q->whereHas('ont', fn ($oq) => $oq->where('odp_id', $odp))->orWhereHas('surveys', fn ($sq) => $sq->where('odp_id', $odp)))
+            ->when($request->area_id, function ($q, $areaId) {
+                $q->where(function ($sub) use ($areaId) {
+                    $sub->where('area_id', $areaId);
+                    $areaName = \App\Models\Area::where('id', $areaId)->value('name');
+                    if ($areaName) {
+                        $sub->orWhere('area', $areaName);
+                    }
+                });
+            })
+            ->when($request->odp_id, fn ($q, $odp) => $q->where(fn ($sub) =>
+                $sub->whereHas('ont', fn ($oq) => $oq->where('odp_id', $odp))
+                    ->orWhereHas('surveys', fn ($sq) => $sq->where('odp_id', $odp))
+            ))
             ->when($request->sort_by, function ($q, $sort) {
                 return match($sort) {
                     'terlama' => $q->orderBy('created_at', 'asc'),
@@ -146,7 +157,13 @@ class CustomerController extends Controller
                         $q->where('sales_id', auth()->id());
                     }
                 })
-                ->when($request->area_id, fn ($q, $area) => $q->where('area_id', $area))
+                ->when($request->area_id, function ($q, $areaId) {
+                    $q->where(function ($sub) use ($areaId) {
+                        $sub->where('area_id', $areaId);
+                        $areaName = \App\Models\Area::where('id', $areaId)->value('name');
+                        if ($areaName) $sub->orWhere('area', $areaName);
+                    });
+                })
                 ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
                 ->get();
         }
@@ -239,7 +256,13 @@ class CustomerController extends Controller
                     $q->where('sales_id', auth()->id());
                 }
             })
-            ->when($request->area_id, fn ($q, $area) => $q->where('area_id', $area))
+            ->when($request->area_id, function ($q, $areaId) {
+                $q->where(function ($sub) use ($areaId) {
+                    $sub->where('area_id', $areaId);
+                    $areaName = \App\Models\Area::where('id', $areaId)->value('name');
+                    if ($areaName) $sub->orWhere('area', $areaName);
+                });
+            })
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
             ->get();
 
@@ -357,7 +380,14 @@ class CustomerController extends Controller
                        ->orWhereHas('ont', fn($oq) => $oq->where('pppoe_user', 'like', "%{$search}%"));
                 });
             })
-            ->when($request->filled('area_id'), fn($q) => $q->where('area_id', $request->area_id))
+            ->when($request->filled('area_id'), function ($q) use ($request) {
+                $areaId = $request->area_id;
+                $q->where(function ($sub) use ($areaId) {
+                    $sub->where('area_id', $areaId);
+                    $areaName = \App\Models\Area::where('id', $areaId)->value('name');
+                    if ($areaName) $sub->orWhere('area', $areaName);
+                });
+            })
             ->when($request->filled('package_id'), fn($q) => $q->where('package_id', $request->package_id))
             ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
             ->latest('id')
@@ -441,11 +471,16 @@ class CustomerController extends Controller
             ->when($request->date, function ($q, $date) {
                 $q->whereDate('created_at', $date);
             })
-            ->when($request->area, function ($q, $area) {
-                $q->where(function($sub) use ($area) {
-                    $sub->whereHas('areaModel', function($q2) use ($area) {
-                        $q2->where('name', $area);
-                    })->orWhere('area', $area);
+            ->when($request->area || $request->area_id, function ($q) use ($request) {
+                $areaVal = $request->area ?? $request->area_id;
+                $areaName = is_numeric($areaVal) ? \App\Models\Area::where('id', $areaVal)->value('name') : $areaVal;
+                $q->where(function($sub) use ($areaVal, $areaName) {
+                    $sub->where('area_id', $areaVal)
+                        ->orWhere('area', $areaVal);
+                    if ($areaName) {
+                        $sub->orWhereHas('areaModel', fn($q2) => $q2->where('name', $areaName))
+                            ->orWhere('area', $areaName);
+                    }
                 });
             })
             ->when($request->status, function ($q, $status) {
@@ -560,11 +595,16 @@ class CustomerController extends Controller
             ->when($request->date, function ($q, $date) {
                 $q->whereDate('created_at', $date);
             })
-            ->when($request->area, function ($q, $area) {
-                $q->where(function($sub) use ($area) {
-                    $sub->whereHas('areaModel', function($q2) use ($area) {
-                        $q2->where('name', $area);
-                    })->orWhere('area', $area);
+            ->when($request->area || $request->area_id, function ($q) use ($request) {
+                $areaVal = $request->area ?? $request->area_id;
+                $areaName = is_numeric($areaVal) ? \App\Models\Area::where('id', $areaVal)->value('name') : $areaVal;
+                $q->where(function($sub) use ($areaVal, $areaName) {
+                    $sub->where('area_id', $areaVal)
+                        ->orWhere('area', $areaVal);
+                    if ($areaName) {
+                        $sub->orWhereHas('areaModel', fn($q2) => $q2->where('name', $areaName))
+                            ->orWhere('area', $areaName);
+                    }
                 });
             })
             ->search($request->search);
@@ -736,11 +776,16 @@ class CustomerController extends Controller
                     $sub->where('scheduled_date', '<=', $dateTo)->where('type', 'installation');
                 });
             })
-            ->when($request->area, function($q, $area) {
-                $q->where(function($sub) use ($area) {
-                    $sub->whereHas('areaModel', function($q2) use ($area) {
-                        $q2->where('name', $area);
-                    })->orWhere('area', $area);
+            ->when($request->area || $request->area_id, function ($q) use ($request) {
+                $areaVal = $request->area ?? $request->area_id;
+                $areaName = is_numeric($areaVal) ? \App\Models\Area::where('id', $areaVal)->value('name') : $areaVal;
+                $q->where(function($sub) use ($areaVal, $areaName) {
+                    $sub->where('area_id', $areaVal)
+                        ->orWhere('area', $areaVal);
+                    if ($areaName) {
+                        $sub->orWhereHas('areaModel', fn($q2) => $q2->where('name', $areaName))
+                            ->orWhere('area', $areaName);
+                    }
                 });
             })
             ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'sales', 'technicianSchedules' => function ($q) {
@@ -763,7 +808,7 @@ class CustomerController extends Controller
             ->limit(100)
             ->get();
 
-        $areas = \App\Models\Area::orderBy('name')->pluck('name')->toArray();
+        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Customers/Installed', [
             'customers' => $customers,
@@ -810,6 +855,18 @@ class CustomerController extends Controller
             ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'installation')->with('technician');
             }])
+            ->when($request->area || $request->area_id, function ($q) use ($request) {
+                $val = $request->area_id ?: $request->area;
+                $q->where(function ($sub) use ($val) {
+                    if (is_numeric($val)) {
+                        $sub->where('area_id', $val);
+                        $name = \App\Models\Area::where('id', $val)->value('name');
+                        if ($name) $sub->orWhere('area', $name);
+                    } else {
+                        $sub->where('area', $val)->orWhereHas('areaModel', fn ($aq) => $aq->where('name', $val));
+                    }
+                });
+            })
             ->search($request->search)
             ->orderByDesc('created_at')
             ->paginate(15)
@@ -818,6 +875,7 @@ class CustomerController extends Controller
         return Inertia::render('Customers/Activation', [
             'customers' => $customers,
             'stats' => $stats,
+            'areas' => \App\Models\Area::orderBy('name')->pluck('name')->toArray(),
             'filters' => $request->only(['search', 'tab', 'date', 'area']),
             'taxSettings' => [
                 'tax_ppn' => \App\Models\Setting::get('tax_ppn', '0'),
@@ -847,48 +905,63 @@ class CustomerController extends Controller
                 });
             }
         }
-        
+
+        $onlineUsernames = (function() {
+            try {
+                return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
+            } catch (\Exception $e) {
+                return [];
+            }
+        })();
+
+        // Calculate statistics based on baseQuery
+        $totalAktif = (clone $baseQuery)->count();
+        $onlineAktif = (clone $baseQuery)->whereHas('ont', fn ($q) => $q->whereIn('pppoe_user', $onlineUsernames))->count();
+        $offlineAktif = (clone $baseQuery)->where(fn ($q) => $q->doesntHave('ont')->orWhereHas('ont', fn ($oq) => $oq->whereNotIn('pppoe_user', $onlineUsernames)->orWhereNull('pppoe_user')))->count();
+        $totalOmset = (clone $baseQuery)->with('package')->get()->sum(fn ($c) => $c->base_amount > 0 ? (float)$c->base_amount : (float)($c->package?->price ?? 0));
+
         $stats = [
-            'aktif' => (clone $baseQuery)->count(),
+            'total' => $totalAktif,
+            'aktif' => $totalAktif,
+            'online' => $onlineAktif,
+            'offline' => $offlineAktif,
+            'total_omset' => $totalOmset,
         ];
 
         $customers = (clone $baseQuery)
             ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'installation')->with('technician');
             }])
+            ->when($request->area || $request->area_id, function ($q) use ($request) {
+                $val = $request->area_id ?: $request->area;
+                $q->where(function ($sub) use ($val) {
+                    if (is_numeric($val)) {
+                        $sub->where('area_id', $val);
+                        $name = \App\Models\Area::where('id', $val)->value('name');
+                        if ($name) $sub->orWhere('area', $name);
+                    } else {
+                        $sub->where('area', $val)->orWhereHas('areaModel', fn ($aq) => $aq->where('name', $val));
+                    }
+                });
+            })
+            ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
+            ->when($request->connection_status === 'online', fn ($q) => $q->whereHas('ont', fn ($oq) => $oq->whereIn('pppoe_user', $onlineUsernames)))
+            ->when($request->connection_status === 'offline', fn ($q) => $q->where(fn ($sq) => $sq->doesntHave('ont')->orWhereHas('ont', fn ($oq) => $oq->whereNotIn('pppoe_user', $onlineUsernames)->orWhereNull('pppoe_user'))))
             ->search($request->search)
             ->orderByDesc('created_at')
             ->paginate(15)
             ->withQueryString();
 
-        $technicians = User::where('is_active', true)->get();
-        $availableOnts = \App\Models\Ont::whereIn('status', ['Sudah Set', 'Belum Set/Baru Input', 'inactive'])
-            ->whereNull('customer_id')
-            ->get();
-            
-        $materialTransactions = \App\Models\MaterialTransaction::where('type', 'in')
-            ->with('items.material.stocks')
-            ->latest()
-            ->limit(100)
-            ->get();
-
-        $areas = \App\Models\Area::orderBy('name')->pluck('name')->toArray();
+        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
+        $packages = \App\Models\InternetPackage::active()->get(['id', 'name', 'price']);
 
         return Inertia::render('Customers/Active', [
             'customers' => $customers,
             'stats' => $stats,
-            'technicians' => $technicians,
-            'availableOnts' => $availableOnts,
-            'materialTransactions' => $materialTransactions,
+            'packages' => $packages,
             'areas' => $areas,
-            'filters' => $request->only(['search', 'tab', 'date', 'area']),
-            'onlineUsernames' => (function() {
-                try {
-                    return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
-                } catch (\Exception $e) {
-                    return [];
-                }
-            })(),
+            'filters' => $request->only(['search', 'area_id', 'area', 'package_id', 'connection_status']),
+            'onlineUsernames' => $onlineUsernames,
         ]);
     }
 
@@ -913,23 +986,47 @@ class CustomerController extends Controller
             }
         }
         
+        $totalIsolir = (clone $baseQuery)->count();
+        $totalTunggakan = (float) Invoice::whereHas('customer', function ($q) {
+            $q->where('status', 'suspended');
+        })->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false)->sum('amount');
+
         $stats = [
-            'isolir' => (clone $baseQuery)->count(),
+            'isolir' => $totalIsolir,
+            'total_tunggakan' => $totalTunggakan,
         ];
 
         $customers = (clone $baseQuery)
             ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'installation')->with('technician');
             }])
+            ->when($request->area || $request->area_id, function ($q) use ($request) {
+                $val = $request->area_id ?: $request->area;
+                $q->where(function ($sub) use ($val) {
+                    if (is_numeric($val)) {
+                        $sub->where('area_id', $val);
+                        $name = \App\Models\Area::where('id', $val)->value('name');
+                        if ($name) $sub->orWhere('area', $name);
+                    } else {
+                        $sub->where('area', $val)->orWhereHas('areaModel', fn ($aq) => $aq->where('name', $val));
+                    }
+                });
+            })
+            ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
             ->search($request->search)
             ->orderByDesc('created_at')
             ->paginate(15)
             ->withQueryString();
 
+        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
+        $packages = \App\Models\InternetPackage::active()->get(['id', 'name', 'price']);
+
         return Inertia::render('Customers/Isolir', [
             'customers' => $customers,
             'stats' => $stats,
-            'filters' => $request->only(['search', 'tab', 'date', 'area']),
+            'areas' => $areas,
+            'packages' => $packages,
+            'filters' => $request->only(['search', 'area_id', 'area', 'package_id']),
             'onlineUsernames' => (function() {
                 try {
                     return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
@@ -994,7 +1091,13 @@ class CustomerController extends Controller
                 $q->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false);
             }], 'amount')
             ->search($request->search)
-            ->when($request->area_id, fn($q, $area) => $q->where('area_id', $area))
+            ->when($request->area_id, function ($q, $areaId) {
+                $q->where(function ($sub) use ($areaId) {
+                    $sub->where('area_id', $areaId);
+                    $areaName = \App\Models\Area::where('id', $areaId)->value('name');
+                    if ($areaName) $sub->orWhere('area', $areaName);
+                });
+            })
             ->when($request->package_id, fn($q, $pkg) => $q->where('package_id', $pkg))
             ->when($request->ont_status === 'pending', fn($q) => $q->whereHas('ont'))
             ->when($request->ont_status === 'returned', fn($q) => $q->whereDoesntHave('ont'))
@@ -1305,6 +1408,7 @@ class CustomerController extends Controller
     {
         $customer->load([
             'package',
+            'areaModel',
             'ont.odp.odc.olt',
             'ont.odp.odc.pon',
             'invoices' => fn ($q) => $q->orderByDesc('period_year')->orderByDesc('period_month')->limit(12),
@@ -2062,12 +2166,14 @@ class CustomerController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        if ($customer->status === 'installing' && !$customer->is_audited && $customer->ont) {
-            $customer->update([
-                'is_audited' => true,
-                'notes' => $validated['notes'] ? $customer->notes . "\n[Audit]: " . $validated['notes'] : $customer->notes,
-            ]);
+        if ($customer->status !== 'installing' || !$customer->ont) {
+            return redirect()->back()->withErrors(['error' => 'Pelanggan belum memiliki perangkat ONT terpasang atau status bukan dalam proses instalasi.']);
         }
+
+        $customer->update([
+            'is_audited' => true,
+            'notes' => $validated['notes'] ? ($customer->notes ? $customer->notes . "\n" : '') . "[Audit]: " . $validated['notes'] : $customer->notes,
+        ]);
 
         \App\Models\AuditLog::createLog('Audit Instalasi', $customer, 'installing', 'installing', 'Melakukan audit instalasi: ' . ($validated['notes'] ?? 'Disetujui'));
 
@@ -2345,7 +2451,7 @@ class CustomerController extends Controller
 
             \App\Models\AuditLog::createLog('Aktivasi Layanan', $customer, 'installing', 'active', 'Mengaktifkan layanan pelanggan');
 
-            return redirect()->route('customers.installed')->with('success', 'Pelanggan berhasil diaktivasi!');
+            return redirect()->back()->with('success', 'Pelanggan berhasil diaktivasi!');
         }
         return redirect()->back()->with('error', 'Pelanggan belum siap diaktivasi.');
     }
@@ -2534,9 +2640,15 @@ class CustomerController extends Controller
                 $ontsToUpdate = Ont::whereIn('id', $ontIds)->get();
                 
                 // VALIDASI AREA ONT
-                foreach ($ontsToUpdate as $ont) {
-                    if ($ont->area_id !== $customer->area_id) {
-                        return redirect()->back()->withErrors(['ont_models' => 'ONT ' . $ont->serial_number . ' tidak sesuai dengan Area/Wilayah pelanggan.'])->with('error', 'Data ONT/Material tidak sesuai dengan Area/Wilayah pelanggan.');
+                $customerAreaId = $customer->area_id ?: \App\Models\Area::where('name', $customer->area)->value('id');
+                if (!$customer->area_id && $customerAreaId) {
+                    $customer->update(['area_id' => $customerAreaId]);
+                }
+                if ($customerAreaId) {
+                    foreach ($ontsToUpdate as $ont) {
+                        if ($ont->area_id && (int) $ont->area_id !== (int) $customerAreaId) {
+                            return redirect()->back()->withErrors(['ont_models' => 'ONT ' . $ont->serial_number . ' tidak sesuai dengan Area/Wilayah pelanggan.'])->with('error', 'Data ONT/Material tidak sesuai dengan Area/Wilayah pelanggan.');
+                        }
                     }
                 }
             }
@@ -2548,9 +2660,12 @@ class CustomerController extends Controller
             if (count($trxs) > 0) {
                 $transactionsToUpdate = \App\Models\MaterialTransaction::whereIn('transaction_number', $trxs)->get();
                 // VALIDASI AREA MATERIAL TRANSACTION
-                foreach ($transactionsToUpdate as $trx) {
-                    if ($trx->area_id !== $customer->area_id) {
-                        return redirect()->back()->withErrors(['material_transaction_ids' => 'Material/Surat Jalan ' . $trx->transaction_number . ' tidak sesuai dengan Area/Wilayah pelanggan.'])->with('error', 'Data ONT/Material tidak sesuai dengan Area/Wilayah pelanggan.');
+                $customerAreaId = $customer->area_id ?: \App\Models\Area::where('name', $customer->area)->value('id');
+                if ($customerAreaId) {
+                    foreach ($transactionsToUpdate as $trx) {
+                        if ($trx->area_id && (int) $trx->area_id !== (int) $customerAreaId) {
+                            return redirect()->back()->withErrors(['material_transaction_ids' => 'Material/Surat Jalan ' . $trx->transaction_number . ' tidak sesuai dengan Area/Wilayah pelanggan.'])->with('error', 'Data ONT/Material tidak sesuai dengan Area/Wilayah pelanggan.');
+                        }
                     }
                 }
             }
@@ -3237,6 +3352,32 @@ class CustomerController extends Controller
         });
 
         return redirect()->back()->with('success', "$count data pelanggan berhasil dihapus secara permanen.");
+    }
+
+    /**
+     * Buka Isolir Pelanggan (unsuspend)
+     */
+    public function unsuspend(Request $request, Customer $customer, RadiusService $radius): RedirectResponse
+    {
+        if ($customer->status !== 'suspended') {
+            return redirect()->back()->with('info', 'Pelanggan tidak dalam status isolir.');
+        }
+
+        $customer->update([
+            'status' => 'active',
+            'suspend_start' => null,
+            'suspend_end' => null,
+        ]);
+
+        try {
+            $radius->syncCustomer($customer);
+        } catch (\Throwable $e) {
+            \Log::warning('[RADIUS] Unsuspend sync error: ' . $e->getMessage());
+        }
+
+        \App\Models\AuditLog::createLog('Buka Isolir', $customer, 'suspended', 'active', 'Membuka isolir pelanggan');
+
+        return redirect()->back()->with('success', "Isolir pelanggan {$customer->name} berhasil dibuka.");
     }
 }
 

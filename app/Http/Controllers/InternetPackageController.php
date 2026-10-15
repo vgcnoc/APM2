@@ -12,10 +12,12 @@ class InternetPackageController extends Controller
     {
         $query = InternetPackage::query();
 
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where('name', 'like', "%{$search}%")
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%");
+            });
         }
 
         $packages = $query->orderBy('price', 'asc')->paginate(10)->withQueryString();

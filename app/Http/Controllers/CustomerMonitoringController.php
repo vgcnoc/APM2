@@ -137,7 +137,8 @@ class CustomerMonitoringController extends Controller
             }
 
             if ($areaId) {
-                $q->whereHas('customer', fn($c) => $c->where('area_id', $areaId));
+                $areaName = Area::find($areaId)?->name;
+                $q->whereHas('customer', fn($c) => $c->where(fn($sub) => $sub->where('area_id', $areaId)->when($areaName, fn($s) => $s->orWhere('area', $areaName))));
             }
 
             if ($promiseFilter === 'today') {
@@ -175,7 +176,8 @@ class CustomerMonitoringController extends Controller
             }
 
             if ($areaId) {
-                $q->where('area_id', $areaId);
+                $areaName = Area::find($areaId)?->name;
+                $q->where(fn($sub) => $sub->where('area_id', $areaId)->when($areaName, fn($s) => $s->orWhere('area', $areaName)));
             }
 
             if ($stopReason === 'tunggakan') {
@@ -231,7 +233,8 @@ class CustomerMonitoringController extends Controller
             }
 
             if ($areaId) {
-                $q->where('area_id', $areaId);
+                $areaName = Area::find($areaId)?->name;
+                $q->where(fn($sub) => $sub->where('area_id', $areaId)->when($areaName, fn($s) => $s->orWhere('area', $areaName)));
             }
 
             if ($severity === '1_month') {
