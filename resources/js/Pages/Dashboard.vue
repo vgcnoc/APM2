@@ -1,5 +1,8 @@
 <template>
     <AppLayout title="Dashboard" subtitle="Ringkasan statistik jaringan & pelanggan ISP">
+        <!-- ═══ Presensi Reguler Staf Widget ═══ -->
+        <DashboardAttendanceWidget :attendance-data="attendanceData" class="mb-6" />
+
         <!-- ═══ Stat Cards ═══ -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
             <!-- Pelanggan Aktif -->
@@ -301,6 +304,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import DashboardAttendanceWidget from '@/Components/Attendance/DashboardAttendanceWidget.vue';
 
 const props = defineProps({
     customerStats: Object,
@@ -321,6 +325,7 @@ const props = defineProps({
     packageDistribution: Array,
     topAreas: Array,
     totalCustomersInAreas: Number,
+    attendanceData: { type: Object, default: () => ({}) },
 });
 
 // ── Pipeline Tab ──────────────────────────────────

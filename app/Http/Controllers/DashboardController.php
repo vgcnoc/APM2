@@ -12,16 +12,22 @@ use App\Models\Ticket;
 use App\Models\AuditLog;
 use App\Models\InternetPackage;
 use App\Models\Area;
+use App\Models\Employee;
+use App\Models\Attendance;
+use App\Models\WorkSchedule;
+use App\Models\Shift;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         if (auth()->check() && auth()->user()->role === 'teknisi') {
-            return $this->teknisiDashboard();
+            return $this->teknisiDashboard($request);
         }
 
         if (auth()->check() && (auth()->user()->role === 'sales' || auth()->user()->role === 'affiliate')) {
@@ -217,6 +223,8 @@ class DashboardController extends Controller
 
         $totalCustomersInAreas = $topAreas->sum('total');
 
+        $attendanceData = $this->getAttendanceDashboardData($request->input('employee_id'));
+
         return Inertia::render('Dashboard', [
             'customerStats'        => $customerStats,
             'infraStats'           => $infraStats,
@@ -236,12 +244,14 @@ class DashboardController extends Controller
             'packageDistribution'  => $packageDistribution,
             'topAreas'             => $topAreas,
             'totalCustomersInAreas' => $totalCustomersInAreas,
+            'attendanceData'       => $attendanceData,
         ]);
     }
 
-    private function teknisiDashboard(): Response
+    private function teknisiDashboard(Request $request): Response
     {
         $userId = auth()->id();
+        $attendanceData = $this->getAttendanceDashboardData($request->input('employee_id'));
 
         // ── Statistik Tugas ─────────────────────────────────
         $stats = [
@@ -311,6 +321,92 @@ class DashboardController extends Controller
             'surveyTasks' => $surveyTasks,
             'installationTasks' => $installationTasks,
             'ticketTasks' => $ticketTasks,
+            'attendanceData' => $attendanceData,
         ]);
+    }
+
+    /**
+     * Ambil data presensi reguler hari ini untuk widget dashboard
+     */
+    protected function getAttendanceDashboardData(?int $employeeId = null): array
+    {
+        $user = auth()->user();
+        $today = Carbon::today()->format('Y-m-d');
+        $now = Carbon::now();
+
+        $currentEmployee = null;
+        if ($employeeId && $user && in_array($user->role, ['superadmin', 'admin', 'hrd'])) {
+            $currentEmployee = Employee::with(['area', 'shift'])->find($employeeId);
+        }
+
+        if (!$currentEmployee && $user) {
+            $currentEmployee = Employee::with(['area', 'shift'])->where('email', $user->email)->first();
+        }
+
+        if (!$currentEmployee && $user && in_array($user->role, ['superadmin', 'admin', 'hrd'])) {
+            $currentEmployee = Employee::with(['area', 'shift'])->first();
+        }
+
+        $todaySchedule = null;
+        $shiftToday = null;
+        $todayAttendance = null;
+        $officeLocation = null;
+
+        if ($currentEmployee) {
+            $todaySchedule = WorkSchedule::with('shift')
+                ->where('employee_id', $currentEmployee->id)
+                ->where('date', $today)
+                ->first();
+
+            $shiftToday = $todaySchedule?->shift ?: $currentEmployee->shift;
+
+            $todayAttendance = Attendance::with('shift')
+                ->where('employee_id', $currentEmployee->id)
+                ->where('date', $today)
+                ->first();
+
+            if ($currentEmployee->area) {
+                $officeLocation = [
+                    'id' => $currentEmployee->area->id,
+                    'name' => $currentEmployee->area->name,
+                    'address' => $currentEmployee->area->address,
+                    'latitude' => $currentEmployee->area->latitude ? (float) $currentEmployee->area->latitude : null,
+                    'longitude' => $currentEmployee->area->longitude ? (float) $currentEmployee->area->longitude : null,
+                    'radius_meters' => $currentEmployee->area->radius_meters ? (int) $currentEmployee->area->radius_meters : 200,
+                ];
+            }
+        }
+
+        $allShifts = Shift::where('is_active', true)->orderBy('start_time')->get(['id', 'name', 'start_time', 'end_time']);
+
+        $allEmployees = [];
+        if ($user && in_array($user->role, ['superadmin', 'admin', 'hrd'])) {
+            $allEmployees = Employee::with(['area', 'shift'])
+                ->orderBy('name')
+                ->get(['id', 'name', 'position', 'branch', 'area_id', 'shift_id', 'email', 'iak_number']);
+        }
+
+        $totalEmployees = Employee::count();
+        $presentToday = Attendance::where('date', $today)->whereNotNull('clock_in')->count();
+        $lateToday = Attendance::where('date', $today)->where('status', 'late')->count();
+        $completedToday = Attendance::where('date', $today)->whereNotNull('clock_out')->count();
+
+        return [
+            'todayDateStr' => $now->translatedFormat('l, d F Y'),
+            'todayIso' => $today,
+            'currentEmployee' => $currentEmployee,
+            'allEmployees' => $allEmployees,
+            'allShifts' => $allShifts,
+            'todaySchedule' => $todaySchedule,
+            'shiftToday' => $shiftToday,
+            'todayAttendance' => $todayAttendance,
+            'officeLocation' => $officeLocation,
+            'attendanceSummary' => [
+                'total_employees' => $totalEmployees,
+                'present_today' => $presentToday,
+                'late_today' => $lateToday,
+                'completed_today' => $completedToday,
+            ],
+        ];
     }
 }
