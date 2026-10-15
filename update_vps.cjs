@@ -17,18 +17,28 @@ php artisan app:fix-corrupted-onts
 echo "Creating storage symlink if missing..."
 php artisan storage:link
 
-echo "Installing npm dependencies..."
+echo "Installing root npm dependencies..."
 npm install --no-audit --no-fund --legacy-peer-deps
 
 echo "Rebuilding assets..."
 npm run build
 
+echo "Setting up WhatsApp Gateway Node Service..."
+cd /var/www/APM2/wa-gateway
+npm install --no-audit --no-fund
+which pm2 > /dev/null 2>&1 || npm install -g pm2
+pm2 describe apm2-wa-gateway > /dev/null 2>&1 && pm2 restart apm2-wa-gateway --update-env || pm2 start server.js --name "apm2-wa-gateway"
+pm2 save
+
+cd /var/www/APM2
 echo "Clearing cache..."
 php artisan optimize:clear
 
 echo "Fixing permissions..."
 chown -R www-data:www-data /var/www/APM2/public/build
 chown -R www-data:www-data /var/www/APM2/storage
+mkdir -p /var/www/APM2/wa-gateway/sessions
+chown -R www-data:www-data /var/www/APM2/wa-gateway/sessions
 
 echo "--- Update Complete ---"
 `;

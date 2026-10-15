@@ -357,7 +357,14 @@ const menuItems = [
     },
 
     // 6. MARKETING & AFILIASI
-    { type: 'group', label: 'MARKETING & AFILIASI' },
+    { type: 'group', label: 'MARKETING & KOMUNIKASI' },
+    {
+        type: 'link',
+        href: '/whatsapp-blast',
+        icon: 'zap',
+        label: '⚡ WhatsApp Blast & QR',
+        active: (url) => (url || '').startsWith('/whatsapp-blast'),
+    },
     {
         type: 'dropdown',
         icon: 'gift',

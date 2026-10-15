@@ -515,6 +515,20 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/settings/payroll/test-xendit', [\App\Http\Controllers\SettingController::class, 'testXendit'])->name('settings.payroll.test-xendit');
     });
 
+    // ── WhatsApp Gateway & Blast Cerdas ───────────────────────
+    Route::prefix('whatsapp-blast')->name('whatsapp-blast.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\WhatsAppBlastController::class, 'index'])->name('index');
+        Route::get('/status', [\App\Http\Controllers\WhatsAppBlastController::class, 'getStatus'])->name('status');
+        Route::post('/logout', [\App\Http\Controllers\WhatsAppBlastController::class, 'logout'])->name('logout');
+        Route::post('/restart', [\App\Http\Controllers\WhatsAppBlastController::class, 'restart'])->name('restart');
+        Route::post('/recipients', [\App\Http\Controllers\WhatsAppBlastController::class, 'getRecipients'])->name('recipients');
+        Route::post('/campaigns', [\App\Http\Controllers\WhatsAppBlastController::class, 'createCampaign'])->name('campaigns.create');
+        Route::post('/campaigns/{campaign}/dispatch', [\App\Http\Controllers\WhatsAppBlastController::class, 'dispatchRecipient'])->name('campaigns.dispatch');
+        Route::post('/campaigns/{campaign}/complete', [\App\Http\Controllers\WhatsAppBlastController::class, 'completeCampaign'])->name('campaigns.complete');
+        Route::post('/test-send', [\App\Http\Controllers\WhatsAppBlastController::class, 'testSend'])->name('test-send');
+        Route::post('/settings', [\App\Http\Controllers\WhatsAppBlastController::class, 'updateSettings'])->name('settings.update');
+    });
+
     // ── Master Area & Pengeluaran ──────────────────────────────
     Route::middleware(['permission:menu_settings_areas'])->group(function () {
         Route::resource('settings/areas', \App\Http\Controllers\AreaController::class);
