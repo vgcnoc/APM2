@@ -328,7 +328,7 @@ class TechnicianMonitoringController extends Controller
 
         // 8. ROLLOUT ODC & ODP (Work Orders)
         $rolloutQuery = InfrastructureWorkOrder::where(function ($q) use ($techId) {
-            $q->where('team_leader_id', $techId)
+            $q->where('technician_id', $techId)
               ->orWhereHas('technicians', fn($r) => $r->where('users.id', $techId));
         })->whereBetween('created_at', [$startDate, $endDate]);
 
