@@ -382,15 +382,39 @@ class PgjController extends Controller
      */
     public function schedule(Request $request, PgjTicket $pgj)
     {
+        // Normalisasi parameter teknisi
+        if ($request->has('technicians') && !$request->has('technician_ids')) {
+            $request->merge(['technician_ids' => $request->technicians]);
+        }
+        if ($request->has('technician_ids') && !$request->has('technicians')) {
+            $request->merge(['technicians' => $request->technician_ids]);
+        }
+
+        // Normalisasi parameter materials
+        if ($request->has('materials') && is_array($request->materials)) {
+            $mats = $request->materials;
+            foreach ($mats as $k => $m) {
+                if (isset($m['quantity_prepared']) && !isset($m['quantity'])) {
+                    $mats[$k]['quantity'] = $m['quantity_prepared'];
+                } elseif (isset($m['quantity']) && !isset($m['quantity_prepared'])) {
+                    $mats[$k]['quantity_prepared'] = $m['quantity'];
+                }
+            }
+            $request->merge(['materials' => $mats]);
+        }
+
         $validated = $request->validate([
             'scheduled_date' => 'required|date',
             'scheduled_time' => 'nullable|string|max:100',
             'lead_notes' => 'nullable|string',
-            'technician_ids' => 'required|array|min:1',
+            'technician_ids' => 'required_without:technicians|array|min:1',
             'technician_ids.*' => 'exists:users,id',
+            'technicians' => 'sometimes|array',
+            'technicians.*' => 'exists:users,id',
             'materials' => 'nullable|array',
             'materials.*.material_id' => 'required|exists:materials,id',
-            'materials.*.quantity' => 'required|numeric|min:0.01',
+            'materials.*.quantity' => 'nullable|numeric|min:0.01',
+            'materials.*.quantity_prepared' => 'nullable|numeric|min:0.01',
         ]);
 
         $oldStatus = $pgj->status;
@@ -404,29 +428,55 @@ class PgjController extends Controller
         ]);
 
         // Simpan penugasan tim teknisi
-        $pgj->technicians()->sync($validated['technician_ids']);
+        $techIds = $request->technician_ids ?? $request->technicians ?? [];
+        $pgj->technicians()->sync($techIds);
 
         // Kelola alokasi material gudang jalur
         if (!empty($validated['materials'])) {
+            $techNames = User::whereIn('id', $techIds)->pluck('name')->join(', ');
+
             $transaction = MaterialTransaction::create([
+                'transaction_number' => 'OUT-PGJ-' . date('YmdHis') . rand(10, 99),
                 'user_id' => auth()->id(),
                 'type' => 'out',
-                'description' => "Material Jalur PGJ #{$pgj->ticket_number} ({$pgj->segment_type}: {$pgj->category})",
-                'transaction_date' => now(),
+                'status' => 'completed',
+                'technician_name' => $techNames ?: auth()->user()->name,
+                'purpose' => "Material Jalur PGJ #{$pgj->ticket_number} ({$pgj->segment_type}: {$pgj->category})",
+                'date' => now(),
+                'area_id' => $pgj->area_id,
             ]);
 
             foreach ($validated['materials'] as $matItem) {
+                if (empty($matItem['material_id'])) continue;
                 $material = Material::find($matItem['material_id']);
-                $qty = (float) $matItem['quantity'];
+                $qty = (float) ($matItem['quantity'] ?? $matItem['quantity_prepared'] ?? 0);
+                if ($qty <= 0) continue;
 
                 if ($material) {
+                    $stockBefore = (float) $material->stock;
+                    $stockAfter = max(0, $stockBefore - $qty);
+
+                    // Kurangkan stok area jika ada
+                    if ($pgj->area_id) {
+                        $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                            ->where('area_id', $pgj->area_id)
+                            ->first();
+                        if ($matStock) {
+                            $matStock->decrement('stock', $qty);
+                        }
+                    }
+
                     $material->decrement('stock', $qty);
 
                     MaterialTransactionItem::create([
                         'material_transaction_id' => $transaction->id,
                         'material_id' => $material->id,
                         'quantity' => $qty,
-                        'price' => $material->price ?? 0,
+                        'unit' => $material->unit,
+                        'price_per_unit' => $material->price ?? 0,
+                        'total_price' => ($material->price ?? 0) * $qty,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $stockAfter,
                     ]);
 
                     PgjMaterial::create([

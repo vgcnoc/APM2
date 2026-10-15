@@ -257,6 +257,7 @@
                             </label>
                         </div>
                         <p v-if="scheduleForm.technician_ids.length === 0" class="text-[11px] text-red-500 mt-1">Pilih minimal 1 orang teknisi pelaksana.</p>
+                        <p v-if="scheduleForm.errors.technicians || scheduleForm.errors.technician_ids" class="text-[11px] text-red-500 mt-1 font-semibold">{{ scheduleForm.errors.technicians || scheduleForm.errors.technician_ids }}</p>
                     </div>
 
                     <!-- Catatan Instruksi Ka. Teknisi -->
@@ -356,6 +357,7 @@ const scheduleForm = useForm({
     scheduled_time: '',
     lead_notes: '',
     technician_ids: [],
+    technicians: [],
     materials: [],
 });
 
@@ -373,13 +375,16 @@ const openScheduleModal = (ticket) => {
     scheduleForm.scheduled_date = ticket.scheduled_date || new Date().toISOString().split('T')[0];
     scheduleForm.scheduled_time = ticket.scheduled_time || '09:00 - 12:00';
     scheduleForm.lead_notes = ticket.lead_notes || '';
-    scheduleForm.technician_ids = ticket.technicians ? ticket.technicians.map(t => t.id) : [];
+    const techIds = ticket.technicians ? ticket.technicians.map(t => t.id) : [];
+    scheduleForm.technician_ids = [...techIds];
+    scheduleForm.technicians = [...techIds];
 
     // Muat data material yang sudah disiapkan sebelumnya jika ada
     if (ticket.materials && ticket.materials.length > 0) {
         scheduleForm.materials = ticket.materials.map(m => ({
             material_id: m.material_id,
-            quantity: parseFloat(m.quantity_prepared),
+            quantity: parseFloat(m.quantity_prepared || m.quantity || 1),
+            quantity_prepared: parseFloat(m.quantity_prepared || m.quantity || 1),
             unit: m.unit || m.material?.unit || '',
         }));
     } else {
@@ -393,6 +398,7 @@ const addMaterialRow = () => {
     scheduleForm.materials.push({
         material_id: '',
         quantity: 1,
+        quantity_prepared: 1,
         unit: '',
     });
 };
@@ -410,10 +416,25 @@ const onMaterialSelected = (item) => {
 
 const submitSchedule = () => {
     if (!selectedTicket.value) return;
+
+    // Pastikan technicians dan technician_ids terisi sinkron
+    scheduleForm.technicians = [...scheduleForm.technician_ids];
+
+    // Pastikan quantity dan quantity_prepared terisi
+    scheduleForm.materials.forEach(m => {
+        m.quantity_prepared = m.quantity;
+    });
+
     scheduleForm.post(`/pgk/${selectedTicket.value.id}/schedule`, {
+        preserveScroll: true,
         onSuccess: () => {
             showScheduleModal.value = false;
             selectedTicket.value = null;
+        },
+        onError: (errors) => {
+            console.error('Validation errors:', errors);
+            const msg = Object.values(errors).flat().join('\n');
+            alert('Gagal menyimpan jadwal:\n' + msg);
         }
     });
 };

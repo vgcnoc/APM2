@@ -362,15 +362,39 @@ class PgsController extends Controller
      */
     public function schedule(Request $request, PgsTicket $pgs)
     {
+        // Normalisasi parameter teknisi
+        if ($request->has('technician_ids') && !$request->has('technicians')) {
+            $request->merge(['technicians' => $request->technician_ids]);
+        }
+        if ($request->has('technicians') && !$request->has('technician_ids')) {
+            $request->merge(['technician_ids' => $request->technicians]);
+        }
+
+        // Normalisasi parameter materials
+        if ($request->has('materials') && is_array($request->materials)) {
+            $mats = $request->materials;
+            foreach ($mats as $k => $m) {
+                if (isset($m['quantity']) && !isset($m['quantity_prepared'])) {
+                    $mats[$k]['quantity_prepared'] = $m['quantity'];
+                } elseif (isset($m['quantity_prepared']) && !isset($m['quantity'])) {
+                    $mats[$k]['quantity'] = $m['quantity_prepared'];
+                }
+            }
+            $request->merge(['materials' => $mats]);
+        }
+
         $validated = $request->validate([
             'scheduled_date' => 'required|date',
             'scheduled_time' => 'nullable|string|max:50',
-            'technicians' => 'required|array|min:1',
+            'technicians' => 'required_without:technician_ids|array|min:1',
             'technicians.*' => 'exists:users,id',
+            'technician_ids' => 'sometimes|array',
+            'technician_ids.*' => 'exists:users,id',
             'lead_notes' => 'nullable|string',
             'materials' => 'nullable|array',
             'materials.*.material_id' => 'required|exists:materials,id',
-            'materials.*.quantity_prepared' => 'required|numeric|min:0.01',
+            'materials.*.quantity_prepared' => 'nullable|numeric|min:0.01',
+            'materials.*.quantity' => 'nullable|numeric|min:0.01',
             'materials.*.unit' => 'nullable|string',
             'materials.*.notes' => 'nullable|string',
         ]);
@@ -386,14 +410,16 @@ class PgsController extends Controller
         ]);
 
         // Sync assigned technicians
-        $pgs->technicians()->sync($validated['technicians']);
+        $techIds = $request->technicians ?? $request->technician_ids ?? [];
+        $pgs->technicians()->sync($techIds);
 
         // Handle Material preparation & deduction
         if (!empty($validated['materials'])) {
             // Hapus material prepared sebelumnya jika ada revisi jadwal
             $pgs->materials()->delete();
 
-            $techNames = User::whereIn('id', $validated['technicians'])->pluck('name')->join(', ');
+            $techNames = User::whereIn('id', $techIds)->pluck('name')->join(', ');
+            $areaId = $pgs->area_id ?? $pgs->customer?->area_id;
 
             // Buat transaksi material keluar
             $trans = MaterialTransaction::create([
@@ -405,12 +431,16 @@ class PgsController extends Controller
                 'purpose' => 'Penyiapan Material PGS: ' . $pgs->ticket_number . ' (' . ($pgs->customer?->name ?? '') . ')',
                 'user_id' => auth()->id(),
                 'customer_id' => $pgs->customer_id,
+                'area_id' => $areaId,
             ]);
 
             foreach ($validated['materials'] as $matItem) {
+                if (empty($matItem['material_id'])) continue;
                 $material = Material::find($matItem['material_id']);
                 if ($material) {
-                    $qty = (float) $matItem['quantity_prepared'];
+                    $qty = (float) ($matItem['quantity_prepared'] ?? $matItem['quantity'] ?? 0);
+                    if ($qty <= 0) continue;
+
                     $stockBefore = (float) $material->stock;
                     $stockAfter = max(0, $stockBefore - $qty);
 
@@ -441,6 +471,16 @@ class PgsController extends Controller
                         'stock_before' => $stockBefore,
                         'stock_after' => $stockAfter,
                     ]);
+
+                    // Kurangkan stok area jika ada
+                    if ($areaId) {
+                        $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                            ->where('area_id', $areaId)
+                            ->first();
+                        if ($matStock) {
+                            $matStock->decrement('stock', $qty);
+                        }
+                    }
 
                     // Kurangkan stok gudang
                     $material->decrement('stock', $qty);
