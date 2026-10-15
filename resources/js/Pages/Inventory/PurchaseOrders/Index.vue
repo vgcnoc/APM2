@@ -17,7 +17,7 @@
                             </div>
                             <h1 class="text-3xl font-black text-gray-900 tracking-tight">Order Toko (Restock)</h1>
                             <p class="mt-2 text-sm text-gray-500 max-w-xl">
-                                Order material dari area/wilayah ke toko. Sistem otomatis mengkonversi satuan order menjadi stok gudang serta mencatat biaya pengeluaran ke <strong>Buku Kas Umum / Laporan Keuangan</strong>.
+                                Order material dari area/wilayah ke toko. Sistem memotong stok Gudang Utama dan mendistribusikannya ke Area tujuan, serta mencatat pengeluaran ke <strong>Buku Kas Umum / Laporan Keuangan</strong>.
                             </p>
                         </div>
 
@@ -220,7 +220,7 @@
 
                                         <!-- Cart items -->
                                         <TransitionGroup tag="ul" name="cart" class="mt-3 space-y-2">
-                                            <li v-for="(item, index) in form.items" :key="item.material_id" class="group flex flex-col gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-200 hover:shadow-sm transition-all">
+                                            <li v-for="(item, index) in form.items" :key="item.material_id" class="group flex flex-col gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-200 hover:shadow-sm transition-all" :class="{'!border-rose-300 bg-rose-50/20': isOverstock(item)}">
                                                 <div class="flex items-center gap-3">
                                                     <div class="w-9 h-9 shrink-0 rounded-lg bg-gradient-to-br from-indigo-50 to-blue-100 text-indigo-600 flex items-center justify-center text-xs font-black uppercase">
                                                         {{ (materialById(item.material_id)?.name || '?').slice(0, 2) }}
@@ -228,8 +228,12 @@
                                                     <div class="min-w-0 flex-1">
                                                         <div class="text-sm font-semibold text-gray-900 truncate">{{ materialById(item.material_id)?.name }}</div>
                                                         <div class="text-[11px] text-slate-400 truncate">
-                                                            <template v-if="conversionText(item)">= <span class="font-semibold text-emerald-600">{{ conversionText(item) }}</span> masuk stok</template>
+                                                            <template v-if="conversionText(item)">= <span class="font-semibold text-emerald-600">{{ conversionText(item) }}</span> masuk ke stok area</template>
                                                             <template v-else>{{ materialById(item.material_id)?.category || 'Umum' }}</template>
+                                                        </div>
+                                                        <div v-if="isOverstock(item)" class="text-[11px] font-semibold text-rose-600 flex items-center gap-1 mt-0.5">
+                                                            <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                                                            Stok Gudang Utama kurang (Tersedia: {{ formatNumber(getAvailableStock(item)) }} {{ materialById(item.material_id)?.unit }})
                                                         </div>
                                                     </div>
                                                 <div class="flex items-center rounded-lg border border-slate-200 overflow-hidden">
@@ -259,7 +263,11 @@
                                 <!-- Footer -->
                                 <div class="px-6 py-4 border-t border-slate-100 bg-white/80 backdrop-blur flex items-center justify-between gap-3 shrink-0">
                                     <div class="text-xs text-slate-400">
-                                        <span v-if="form.items.length">{{ form.items.length }} produk di keranjang</span>
+                                        <span v-if="hasOverstockItems" class="text-rose-600 font-bold flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                                            Stok Gudang Utama tidak mencukupi untuk item tertentu
+                                        </span>
+                                        <span v-else-if="form.items.length">{{ form.items.length }} produk di keranjang</span>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <button id="btn-cancel-order" type="button" @click="closeModal" class="px-5 py-2.5 text-sm font-bold text-gray-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">{{ isViewing ? 'Tutup' : 'Batal' }}</button>
@@ -402,25 +410,39 @@ const reverseQty = (item) => {
     return qty;
 };
 
+const getAvailableStock = (item) => {
+    const mat = materialById(item.material_id);
+    if (!mat) return 0;
+    return Number(mat.stock) + (Number(item.original_qty) || 0);
+};
+
+const isOverstock = (item) => {
+    return convertedQty(item) > getAvailableStock(item);
+};
+
 const hasOverstockItems = computed(() => {
-    return form.items.some(item => {
-        const mat = materialById(item.material_id);
-        if (!mat) return false;
-        const availableStock = Number(mat.stock) + (Number(item.original_qty) || 0);
-        return convertedQty(item) > availableStock;
-    });
+    return form.items.some(item => isOverstock(item));
 });
 
 const convertedQty = (item) => {
     const mat = materialById(item.material_id);
     const qty = Number(item.quantity) || 0;
     if (!mat) return qty;
-    if ((mat.category === 'Isolasi' || (mat.name && mat.name.toLowerCase().includes('isolasi'))) && (item.purchase_unit === 'pack' || item.purchase_unit === 'bungkus')) {
+    const isIsolasi = (mat.category === 'Isolasi' || (mat.name && mat.name.toLowerCase().includes('isolasi')));
+    if (item.purchase_unit === 'roll' && Number(mat.meter_per_roll) > 0) {
+        return qty * Number(mat.meter_per_roll);
+    }
+    if (isIsolasi && (item.purchase_unit === 'pack' || item.purchase_unit === 'bungkus' || item.purchase_unit === 'base')) {
         const ppp = Number(mat.pcs_per_pack) > 0 ? Number(mat.pcs_per_pack) : 1;
         const cpp = Number(mat.cm_per_pcs) > 0 ? Number(mat.cm_per_pcs) : 50;
         return qty * ppp * cpp;
     }
-    if (item.purchase_unit === 'pack' && Number(mat.pcs_per_pack) > 0) return qty * Number(mat.pcs_per_pack);
+    if (item.purchase_unit === 'pack' && Number(mat.pcs_per_pack) > 0) {
+        return qty * Number(mat.pcs_per_pack);
+    }
+    if (item.purchase_unit === 'pcs' && Number(mat.cm_per_pcs) > 0) {
+        return qty * Number(mat.cm_per_pcs);
+    }
     return qty;
 };
 
@@ -607,7 +629,7 @@ const submitForm = () => {
 };
 
 const confirmDelete = (id) => {
-    if (confirm('Yakin ingin membatalkan transaksi ini? Stok barang akan dikurangi kembali!')) {
+    if (confirm('Yakin ingin membatalkan transaksi ini? Stok barang akan dikembalikan ke Gudang Utama dan ditarik dari Area!')) {
         useForm({}).delete(`/order-toko/${id}`, { preserveScroll: true });
     }
 };

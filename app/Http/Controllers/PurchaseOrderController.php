@@ -108,6 +108,11 @@ class PurchaseOrderController extends Controller
                 }
                 $totalCost += $itemTotal;
 
+                // Validasi kecukupan stok di Gudang Utama (Data Produk)
+                if ($material->stock < $convertedQuantity) {
+                    throw new \Exception("Stok {$material->name} di Gudang Utama tidak mencukupi (Tersedia: {$material->stock} {$material->unit}, diminta: {$convertedQuantity} {$material->unit}).");
+                }
+
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
@@ -117,11 +122,11 @@ class PurchaseOrderController extends Controller
                     'total_price' => $itemTotal
                 ]);
 
-                // Increase Stock & sinkronkan ke Data Produk
-                $material->stock += $convertedQuantity;
+                // Kurangi Stok Gudang Utama (Data Produk) & sinkronkan
+                $material->stock -= $convertedQuantity;
                 $material->recalcUnitTotals()->save();
 
-                // Increase Stock in Area
+                // Tambah Stok di Area
                 if ($area) {
                     $materialStock = \App\Models\MaterialStock::firstOrCreate([
                         'material_id' => $material->id,
@@ -138,7 +143,7 @@ class PurchaseOrderController extends Controller
             $this->syncOrderExpense($transaction, $totalCost, $validated['date'], $validated['area_name']);
 
             DB::commit();
-            return redirect()->back()->with('success', 'Order Toko berhasil dicatat, stok bertambah ke gudang & area, serta tercatat di Laporan Keuangan.');
+            return redirect()->back()->with('success', 'Order Toko berhasil dicatat, stok didistribusikan ke area, dan tercatat di Laporan Keuangan.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal mencatat order: ' . $e->getMessage());
@@ -165,11 +170,11 @@ class PurchaseOrderController extends Controller
         try {
             $oldArea = Area::where('name', $transaction->technician_name)->orWhere('id', $transaction->area_id)->first();
 
-            // 1. Revert stok lama terlebih dahulu
+            // 1. Revert stok lama terlebih dahulu (kembalikan ke Gudang Utama, kurangi dari Area)
             foreach ($transaction->items as $oldItem) {
                 $oldMaterial = Material::lockForUpdate()->find($oldItem->material_id);
                 if ($oldMaterial) {
-                    $oldMaterial->stock -= $oldItem->quantity;
+                    $oldMaterial->stock += $oldItem->quantity;
                     $oldMaterial->recalcUnitTotals()->save();
                 }
 
@@ -231,6 +236,12 @@ class PurchaseOrderController extends Controller
                 }
                 $totalCost += $itemTotal;
 
+                // Cek ketersediaan stok di Gudang Utama
+                $material->refresh();
+                if ($material->stock < $convertedQuantity) {
+                    throw new \Exception("Stok {$material->name} di Gudang Utama tidak mencukupi (Tersedia: {$material->stock} {$material->unit}, diminta: {$convertedQuantity} {$material->unit}).");
+                }
+
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
@@ -240,8 +251,8 @@ class PurchaseOrderController extends Controller
                     'total_price' => $itemTotal
                 ]);
 
-                // Tambah stok baru ke global
-                $material->stock += $convertedQuantity;
+                // Kurangi stok dari Gudang Utama
+                $material->stock -= $convertedQuantity;
                 $material->recalcUnitTotals()->save();
 
                 // Tambah stok baru ke Area
@@ -276,11 +287,11 @@ class PurchaseOrderController extends Controller
         try {
             $area = Area::where('name', $transaction->technician_name)->orWhere('id', $transaction->area_id)->first();
 
-            // Revert stock
+            // Revert stock (kembalikan ke Gudang Utama, kurangi dari Area)
             foreach ($transaction->items as $item) {
                 $material = $item->material;
                 if ($material) {
-                    $material->stock -= $item->quantity;
+                    $material->stock += $item->quantity;
                     $material->recalcUnitTotals()->save();
                 }
 
@@ -302,7 +313,7 @@ class PurchaseOrderController extends Controller
 
             $transaction->delete();
             DB::commit();
-            return redirect()->back()->with('success', 'Order Toko berhasil dihapus, stok dikurangi, dan pengeluaran kas ditarik kembali.');
+            return redirect()->back()->with('success', 'Order Toko berhasil dihapus, stok dikembalikan ke Gudang Utama, dan pengeluaran kas ditarik kembali.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal menghapus order: ' . $e->getMessage());
