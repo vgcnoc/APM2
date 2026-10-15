@@ -16,6 +16,7 @@ use App\Models\Survey;
 use App\Models\TechnicianSchedule;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\Employee;
 use App\Models\AuditLog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -272,6 +273,60 @@ class DataMigrationService
                     ]
                 ]
             ],
+
+            'employees' => [
+                'title' => 'Data Karyawan & SDM',
+                'description' => 'Migrasi data personalia, jabatan, area, tanggal bergabung (masa kerja), status kepegawaian, dan akun login user.',
+                'target_table' => 'employees',
+                'id_column' => 'email',
+                'headers' => [
+                    'nama_lengkap' => ['label' => 'Nama Lengkap Karyawan', 'required' => true, 'db' => 'name'],
+                    'nomor_iak' => ['label' => 'Nomor IAK / NIP Karyawan (Opsional)', 'required' => false, 'db' => 'iak_number'],
+                    'posisi_jabatan' => ['label' => 'Posisi / Jabatan (Teknisi/CS/Sales/HRD/Manager/dll)', 'required' => false, 'db' => 'position'],
+                    'email' => ['label' => 'Email Karyawan (Unik / Akun Login)', 'required' => true, 'db' => 'email'],
+                    'nomor_telepon' => ['label' => 'Nomor HP / WhatsApp', 'required' => false, 'db' => 'phone'],
+                    'nama_area' => ['label' => 'Nama Area Wilayah Penempatan', 'required' => false, 'db' => 'area_name'],
+                    'tgl_bergabung' => ['label' => 'Tanggal Bergabung / Join Date (YYYY-MM-DD)', 'required' => false, 'db' => 'join_date'],
+                    'tipe_karyawan' => ['label' => 'Tipe Kepegawaian (Tetap/Kontrak/Freelance/Magang)', 'required' => false, 'db' => 'employee_type'],
+                    'gaji_pokok' => ['label' => 'Gaji Pokok (Rp, opsional)', 'required' => false, 'db' => 'base_salary'],
+                    'metode_gaji' => ['label' => 'Metode Pembayaran (Transfer Bank/Cash/dll)', 'required' => false, 'db' => 'payment_method'],
+                    'alamat' => ['label' => 'Alamat Domisili Karyawan', 'required' => false, 'db' => 'address'],
+                    'buat_akun_login' => ['label' => 'Buat Akun Login User? (ya/tidak - default: ya)', 'required' => false, 'db' => 'create_user'],
+                    'password_login' => ['label' => 'Password Login Awal (Kosongkan = password123)', 'required' => false, 'db' => 'initial_password'],
+                ],
+                'sample' => [
+                    [
+                        'nama_lengkap' => 'Budi Santoso',
+                        'nomor_iak' => 'EMP-2024-001',
+                        'posisi_jabatan' => 'Teknisi',
+                        'email' => 'budi.santoso@example.com',
+                        'nomor_telepon' => '081234567891',
+                        'nama_area' => 'Area Timur',
+                        'tgl_bergabung' => '2023-03-15',
+                        'tipe_karyawan' => 'Tetap',
+                        'gaji_pokok' => 3500000,
+                        'metode_gaji' => 'Transfer Bank',
+                        'alamat' => 'Jl. Merdeka No. 45, Bandung',
+                        'buat_akun_login' => 'ya',
+                        'password_login' => '',
+                    ],
+                    [
+                        'nama_lengkap' => 'Siti Rahmawati',
+                        'nomor_iak' => 'EMP-2025-002',
+                        'posisi_jabatan' => 'CS',
+                        'email' => 'siti.rahmawati@example.com',
+                        'nomor_telepon' => '081987654321',
+                        'nama_area' => 'Area Barat',
+                        'tgl_bergabung' => '2025-06-01',
+                        'tipe_karyawan' => 'Kontrak',
+                        'gaji_pokok' => 3000000,
+                        'metode_gaji' => 'Transfer Bank',
+                        'alamat' => 'Jl. Kenanga No. 12, Bandung',
+                        'buat_akun_login' => 'ya',
+                        'password_login' => '',
+                    ],
+                ]
+            ],
         ];
     }
 
@@ -386,6 +441,8 @@ class DataMigrationService
         $customersCache = Customer::pluck('id', 'customer_code')->toArray();
         $odpsCache = Odp::with('area')->get()->keyBy(fn($o) => strtolower($o->name));
         $invoicesCache = Invoice::pluck('id', 'invoice_number')->toArray();
+        $employeesCache = Employee::pluck('id', 'email')->mapWithKeys(fn($id, $email) => [strtolower($email) => $id])->toArray();
+        $employeesIakCache = Employee::whereNotNull('iak_number')->pluck('id', 'iak_number')->mapWithKeys(fn($id, $iak) => [strtolower($iak) => $id])->toArray();
 
         foreach ($rows as $index => $row) {
             $rowNum = $index + 1;
@@ -411,6 +468,9 @@ class DataMigrationService
                     break;
                 case 'payments':
                     $this->validatePaymentRow($row, $rowErrors, $rowWarnings, $mapped, $invoicesCache, $usersCache);
+                    break;
+                case 'employees':
+                    $this->validateEmployeeRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $employeesCache, $employeesIakCache, $options);
                     break;
             }
 
@@ -494,6 +554,9 @@ class DataMigrationService
                     case 'payments':
                         $res = $this->importPaymentItem($data, $duplicateMode);
                         break;
+                    case 'employees':
+                        $res = $this->importEmployeeItem($data, $duplicateMode, $autoCreateArea);
+                        break;
                     default:
                         $res = 'skip';
                 }
@@ -504,9 +567,16 @@ class DataMigrationService
             }
 
             // Record to Audit Log
+            $logEntity = match($category) {
+                'employees' => new Employee(),
+                'invoices' => new Invoice(),
+                'payments' => new Payment(),
+                default => new Customer(),
+            };
+
             AuditLog::createLog(
                 "Data Migration ({$category})",
-                new Customer(), // entity placeholder
+                $logEntity,
                 null,
                 'imported',
                 "Batch {$batchId}: Sukses {$insertedCount} baru, {$updatedCount} diperbarui, {$skippedCount} dilewati."
@@ -1223,5 +1293,174 @@ class DataMigrationService
         }
 
         return 'inserted';
+    }
+
+    protected function validateEmployeeRow($row, &$errors, &$warnings, &$mapped, $areasCache, $employeesCache, $employeesIakCache, $options)
+    {
+        $name = trim($row['nama_lengkap'] ?? $row['nama'] ?? $row['name'] ?? '');
+        $email = trim(strtolower($row['email'] ?? $row['alamat_email'] ?? ''));
+        $iak = trim($row['nomor_iak'] ?? $row['iak_number'] ?? $row['nip'] ?? $row['no_iak'] ?? '');
+        $position = trim($row['posisi_jabatan'] ?? $row['posisi'] ?? $row['jabatan'] ?? $row['position'] ?? '');
+        $phone = trim($row['nomor_telepon'] ?? $row['phone'] ?? $row['telepon'] ?? $row['no_hp'] ?? $row['nomor_hp'] ?? $row['no_wa'] ?? '');
+        $areaName = trim($row['nama_area'] ?? $row['area'] ?? $row['cabang'] ?? $row['wilayah'] ?? '');
+        $joinDateStr = trim($row['tgl_bergabung'] ?? $row['tanggal_bergabung'] ?? $row['join_date'] ?? $row['tgl_masuk'] ?? '');
+        $empType = trim($row['tipe_karyawan'] ?? $row['employee_type'] ?? $row['tipe_pegawai'] ?? $row['status_karyawan'] ?? 'Tetap');
+        $baseSalary = $row['gaji_pokok'] ?? $row['base_salary'] ?? $row['gaji'] ?? 0;
+        $payMethod = trim($row['metode_gaji'] ?? $row['payment_method'] ?? $row['metode_pembayaran'] ?? 'Transfer Bank');
+        $address = trim($row['alamat'] ?? $row['address'] ?? $row['domisili'] ?? '');
+        
+        $createUserRaw = strtolower(trim($row['buat_akun_login'] ?? $row['create_user'] ?? 'ya'));
+        $createUser = !in_array($createUserRaw, ['tidak', 'no', 'false', '0', 'n', 't']);
+        $initialPassword = trim($row['password_login'] ?? $row['password'] ?? $row['initial_password'] ?? '');
+
+        if (empty($name)) {
+            $errors[] = 'Nama Lengkap Karyawan wajib diisi.';
+        }
+
+        if (empty($email)) {
+            $errors[] = 'Email Karyawan wajib diisi (sebagai identitas & akun login).';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors[] = "Format email '{$email}' tidak valid.";
+        } else {
+            // Check existing employee by email
+            if (isset($employeesCache[$email])) {
+                if (($options['duplicate_mode'] ?? 'skip') === 'update') {
+                    $warnings[] = "Karyawan dengan email '{$email}' sudah ada; data profil akan diperbarui.";
+                } else {
+                    $warnings[] = "Karyawan dengan email '{$email}' sudah terdaftar; baris ini akan dilewati.";
+                }
+            }
+        }
+
+        // Check duplicate IAK
+        if (!empty($iak) && isset($employeesIakCache[strtolower($iak)])) {
+            $existingId = $employeesIakCache[strtolower($iak)];
+            $currentEmpId = $employeesCache[$email] ?? null;
+            if (!$currentEmpId || $existingId != $currentEmpId) {
+                $warnings[] = "Nomor IAK/NIP '{$iak}' telah digunakan oleh karyawan lain.";
+            }
+        }
+
+        // Area check
+        $areaId = null;
+        if (!empty($areaName)) {
+            $areaKey = strtolower($areaName);
+            if (isset($areasCache[$areaKey])) {
+                $areaId = $areasCache[$areaKey];
+            } else {
+                if (!empty($options['auto_create_areas'])) {
+                    $warnings[] = "Area '{$areaName}' belum ada di database; akan otomatis dibuatkan baru.";
+                } else {
+                    $errors[] = "Area penempatan '{$areaName}' tidak ditemukan di database.";
+                }
+            }
+        }
+
+        // Join Date & Tenure preview
+        $joinDate = null;
+        if (!empty($joinDateStr) && $joinDateStr !== '-') {
+            try {
+                $c = \Carbon\Carbon::parse($joinDateStr);
+                $joinDate = $c->format('Y-m-d');
+                $now = \Carbon\Carbon::now()->startOfDay();
+                if ($c->isAfter($now)) {
+                    $warnings[] = "Tanggal bergabung ({$joinDate}) di masa depan (status: Akan Mulai).";
+                }
+            } catch (\Throwable $e) {
+                $errors[] = "Format tanggal bergabung '{$joinDateStr}' tidak valid (gunakan format YYYY-MM-DD).";
+            }
+        }
+
+        // Clean salary
+        if (is_string($baseSalary)) {
+            $cleanSalary = preg_replace('/[^0-9.]/', '', str_replace(',', '.', $baseSalary));
+            $baseSalary = (float) $cleanSalary;
+        }
+
+        $mapped = [
+            'name' => $name,
+            'email' => $email,
+            'iak_number' => $iak ?: null,
+            'position' => $position ?: null,
+            'phone' => $phone ?: null,
+            'area_id' => $areaId,
+            'area_name' => $areaName ?: null,
+            'join_date' => $joinDate,
+            'employee_type' => $empType ?: 'Tetap',
+            'base_salary' => (float) $baseSalary,
+            'payment_method' => $payMethod ?: 'Transfer Bank',
+            'address' => $address ?: null,
+            'create_user' => $createUser,
+            'initial_password' => $initialPassword ?: 'password123',
+        ];
+    }
+
+    protected function importEmployeeItem(array $data, string $dupMode, bool $autoCreateArea): string
+    {
+        $email = strtolower($data['email']);
+        $existing = \App\Models\Employee::whereRaw('LOWER(email) = ?', [$email])->first();
+
+        if ($existing && $dupMode === 'skip') {
+            return 'skipped';
+        }
+
+        // Resolve area_id
+        $areaId = $data['area_id'] ?? null;
+        if (!$areaId && !empty($data['area_name']) && $autoCreateArea) {
+            $area = Area::firstOrCreate(['name' => trim($data['area_name'])]);
+            $areaId = $area->id;
+        }
+
+        $payload = [
+            'name' => $data['name'],
+            'iak_number' => $data['iak_number'] ?: null,
+            'position' => $data['position'] ?: null,
+            'email' => $data['email'],
+            'phone' => $data['phone'] ?: null,
+            'area_id' => $areaId,
+            'join_date' => $data['join_date'] ?: null,
+            'employee_type' => $data['employee_type'] ?: 'Tetap',
+            'base_salary' => $data['base_salary'] ?? 0,
+            'payment_method' => $data['payment_method'] ?: 'Transfer Bank',
+            'address' => $data['address'] ?: null,
+        ];
+
+        $isUpdated = false;
+        if ($existing) {
+            $existing->update($payload);
+            $employee = $existing;
+            $isUpdated = true;
+        } else {
+            $employee = \App\Models\Employee::create($payload);
+        }
+
+        // Auto Create or Sync User Account
+        if (!empty($data['create_user'])) {
+            $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
+            $initialPassword = !empty($data['initial_password']) ? $data['initial_password'] : 'password123';
+
+            if (!$user) {
+                $user = User::create([
+                    'name' => $data['name'],
+                    'email' => $data['email'],
+                    'password' => bcrypt($initialPassword),
+                    'area_id' => $areaId,
+                ]);
+            } else {
+                $user->update([
+                    'name' => $data['name'],
+                    'area_id' => $areaId,
+                ]);
+            }
+
+            // Sync role based on position
+            if (!empty($data['position'])) {
+                $roleName = strtolower(trim($data['position']));
+                \Spatie\Permission\Models\Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
+                $user->syncRoles([$roleName]);
+            }
+        }
+
+        return $isUpdated ? 'updated' : 'inserted';
     }
 }

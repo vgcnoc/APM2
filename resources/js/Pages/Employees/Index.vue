@@ -73,13 +73,29 @@
                         </svg>
                     </div>
 
-                    <!-- Action: Tambah Karyawan -->
-                    <button v-if="can('hr_employees_create')" @click="openModal()" class="btn-primary shrink-0 flex items-center justify-center gap-2 py-2.5 px-4">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
-                        </svg>
-                        <span>Tambah Karyawan</span>
-                    </button>
+                    <!-- Actions -->
+                    <div class="flex items-center gap-2 shrink-0">
+                        <!-- Action: Migrasi Excel/CSV -->
+                        <Link 
+                            v-if="can('menu_data_migration')"
+                            href="/settings/data-migration" 
+                            class="inline-flex items-center justify-center gap-2 py-2.5 px-3.5 rounded-xl border border-indigo-200 bg-indigo-50/70 text-indigo-700 hover:bg-indigo-100/80 font-semibold text-sm transition-all shadow-xs"
+                            title="Migrasi Data Karyawan Massal dari Excel / CSV"
+                        >
+                            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                            </svg>
+                            <span>Migrasi Excel/CSV</span>
+                        </Link>
+
+                        <!-- Action: Tambah Karyawan -->
+                        <button v-if="can('hr_employees_create')" @click="openModal()" class="btn-primary shrink-0 flex items-center justify-center gap-2 py-2.5 px-4">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                            </svg>
+                            <span>Tambah Karyawan</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Sub-filters: Masa Kerja, Tipe Pegawai, Area, Urutan -->

@@ -51,6 +51,7 @@ class DataMigrationController extends Controller
             'olts' => Olt::select('id', 'name', 'ip_address')->orderBy('name')->get(),
             'odcs' => Odc::select('id', 'name', 'olt_id')->orderBy('name')->get(),
             'odps' => Odp::select('id', 'name', 'odc_id', 'area_id', 'total_ports', 'used_ports')->orderBy('name')->get(),
+            'employees_count' => \App\Models\Employee::count(),
         ];
 
         return Inertia::render('Settings/DataMigration/Index', [
