@@ -142,10 +142,17 @@
         <!-- 6 EXECUTIVE KPI STAT CARDS -->
         <div v-if="can('monitoring_teknisi_card_stats')" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 mb-6">
             <!-- 1. Total Gangguan Ditangani -->
-            <div class="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+            <div 
+                @click="switchTab('gangguan')"
+                :class="[
+                    'bg-white rounded-2xl p-4 border shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer',
+                    activeTab === 'gangguan' ? 'border-rose-400 ring-2 ring-rose-200/70 shadow-rose-50' : 'border-gray-200/80 hover:border-rose-200'
+                ]"
+                title="Klik untuk membuka tab Penanganan Gangguan"
+            >
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Gangguan</span>
-                    <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+                    <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 group-hover:scale-105 transition-transform">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                     </div>
                 </div>
@@ -160,10 +167,17 @@
             </div>
 
             <!-- 2. Gangguan Terselesaikan -->
-            <div class="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+            <div 
+                @click="switchTab('gangguan')"
+                :class="[
+                    'bg-white rounded-2xl p-4 border shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer',
+                    activeTab === 'gangguan' ? 'border-emerald-400 ring-2 ring-emerald-200/70 shadow-emerald-50' : 'border-gray-200/80 hover:border-emerald-200'
+                ]"
+                title="Klik untuk membuka tab Penanganan Gangguan"
+            >
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Gangguan Selesai</span>
-                    <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                    <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 group-hover:scale-105 transition-transform">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
                 </div>
@@ -178,10 +192,17 @@
             </div>
 
             <!-- 3. Gangguan Dalam Proses / Pending -->
-            <div class="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+            <div 
+                @click="switchTab('gangguan')"
+                :class="[
+                    'bg-white rounded-2xl p-4 border shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer',
+                    activeTab === 'gangguan' ? 'border-amber-400 ring-2 ring-amber-200/70 shadow-amber-50' : 'border-gray-200/80 hover:border-amber-200'
+                ]"
+                title="Klik untuk membuka tab Penanganan Gangguan"
+            >
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pending Gangguan</span>
-                    <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                    <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 group-hover:scale-105 transition-transform">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
                 </div>
@@ -196,10 +217,17 @@
             </div>
 
             <!-- 4. Total Instalasi PSB -->
-            <div class="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+            <div 
+                @click="switchTab('instalasi')"
+                :class="[
+                    'bg-white rounded-2xl p-4 border shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer',
+                    activeTab === 'instalasi' ? 'border-blue-400 ring-2 ring-blue-200/70 shadow-blue-50' : 'border-gray-200/80 hover:border-blue-200'
+                ]"
+                title="Klik untuk membuka tab Instalasi Pemasangan"
+            >
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Pasang (PSB)</span>
-                    <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+                    <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 group-hover:scale-105 transition-transform">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                     </div>
                 </div>
@@ -214,10 +242,17 @@
             </div>
 
             <!-- 5. Instalasi Selesai -->
-            <div class="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+            <div 
+                @click="switchTab('instalasi')"
+                :class="[
+                    'bg-white rounded-2xl p-4 border shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer',
+                    activeTab === 'instalasi' ? 'border-teal-400 ring-2 ring-teal-200/70 shadow-teal-50' : 'border-gray-200/80 hover:border-teal-200'
+                ]"
+                title="Klik untuk membuka tab Instalasi Pemasangan"
+            >
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pasang Selesai</span>
-                    <div class="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center border border-teal-100">
+                    <div class="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center border border-teal-100 group-hover:scale-105 transition-transform">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                     </div>
                 </div>
@@ -232,10 +267,17 @@
             </div>
 
             <!-- 6. Instalasi Pending / Terjadwal -->
-            <div class="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+            <div 
+                @click="switchTab('instalasi')"
+                :class="[
+                    'bg-white rounded-2xl p-4 border shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer',
+                    activeTab === 'instalasi' ? 'border-violet-400 ring-2 ring-violet-200/70 shadow-violet-50' : 'border-gray-200/80 hover:border-violet-200'
+                ]"
+                title="Klik untuk membuka tab Instalasi Pemasangan"
+            >
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pasang Pending</span>
-                    <div class="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center border border-violet-100">
+                    <div class="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center border border-violet-100 group-hover:scale-105 transition-transform">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     </div>
                 </div>
@@ -253,8 +295,12 @@
         <!-- TOP ACHIEVERS / SMART PODIUM CARD -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <!-- Best Troubleshooter -->
-            <div class="bg-gradient-to-br from-rose-500/10 via-white to-white rounded-2xl p-4 border border-rose-200/60 shadow-sm flex items-center gap-3.5">
-                <div class="w-12 h-12 rounded-2xl bg-rose-500 text-white flex items-center justify-center font-black text-xl shadow-md shadow-rose-200 shrink-0">
+            <div 
+                @click="switchTab('gangguan')"
+                class="bg-gradient-to-br from-rose-500/10 via-white to-white rounded-2xl p-4 border border-rose-200/60 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-all cursor-pointer hover:border-rose-400 group"
+                title="Klik untuk melihat tab Penanganan Gangguan"
+            >
+                <div class="w-12 h-12 rounded-2xl bg-rose-500 text-white flex items-center justify-center font-black text-xl shadow-md shadow-rose-200 shrink-0 group-hover:scale-105 transition-transform">
                     🛠️
                 </div>
                 <div class="min-w-0">
@@ -269,8 +315,12 @@
             </div>
 
             <!-- Best Installer -->
-            <div class="bg-gradient-to-br from-blue-500/10 via-white to-white rounded-2xl p-4 border border-blue-200/60 shadow-sm flex items-center gap-3.5">
-                <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-xl shadow-md shadow-blue-200 shrink-0">
+            <div 
+                @click="switchTab('instalasi')"
+                class="bg-gradient-to-br from-blue-500/10 via-white to-white rounded-2xl p-4 border border-blue-200/60 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-all cursor-pointer hover:border-blue-400 group"
+                title="Klik untuk melihat tab Instalasi Pemasangan"
+            >
+                <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-xl shadow-md shadow-blue-200 shrink-0 group-hover:scale-105 transition-transform">
                     ⚡
                 </div>
                 <div class="min-w-0">
@@ -285,8 +335,12 @@
             </div>
 
             <!-- MVP Overall -->
-            <div class="bg-gradient-to-br from-amber-500/10 via-white to-white rounded-2xl p-4 border border-amber-200/60 shadow-sm flex items-center gap-3.5">
-                <div class="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black text-xl shadow-md shadow-amber-200 shrink-0">
+            <div 
+                @click="switchTab('leaderboard')"
+                class="bg-gradient-to-br from-amber-500/10 via-white to-white rounded-2xl p-4 border border-amber-200/60 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-all cursor-pointer hover:border-amber-400 group"
+                title="Klik untuk melihat tab Leaderboard & Analitik"
+            >
+                <div class="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black text-xl shadow-md shadow-amber-200 shrink-0 group-hover:scale-105 transition-transform">
                     👑
                 </div>
                 <div class="min-w-0">

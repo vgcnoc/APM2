@@ -272,16 +272,12 @@ const menuItems = [
     // 4. OPERASIONAL & GANGGUAN (TIKET)
     { type: 'group', label: 'OPERASIONAL & GANGGUAN' },
     {
-        type: 'dropdown',
+        type: 'link',
+        href: '/monitoring-teknisi',
         icon: 'presentation-chart-line',
         label: 'Monitor Kinerja Teknisi',
         active: (url) => (url || '').startsWith('/monitoring-teknisi'),
         permission: ['menu_monitoring_teknisi', 'menu_tickets', 'menu_customers_installed'],
-        children: [
-            { href: '/monitoring-teknisi?tab=gangguan', label: '1. Penanganan Gangguan', active: (url) => (url || '').startsWith('/monitoring-teknisi') && (url || '').includes('tab=gangguan'), permission: ['monitoring_teknisi_tab_gangguan', 'menu_monitoring_teknisi'] },
-            { href: '/monitoring-teknisi?tab=instalasi', label: '2. Instalasi Pemasangan', active: (url) => (url || '').startsWith('/monitoring-teknisi') && (url || '').includes('tab=instalasi'), permission: ['monitoring_teknisi_tab_instalasi', 'menu_monitoring_teknisi'] },
-            { href: '/monitoring-teknisi?tab=leaderboard', label: '3. Leaderboard & Rekap', active: (url) => (url || '').startsWith('/monitoring-teknisi') && ((url || '').includes('tab=leaderboard') || (!(url || '').includes('tab=gangguan') && !(url || '').includes('tab=instalasi'))), permission: ['monitoring_teknisi_tab_leaderboard', 'menu_monitoring_teknisi'] },
-        ]
     },
     {
         type: 'dropdown',
