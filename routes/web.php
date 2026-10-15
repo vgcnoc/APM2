@@ -467,6 +467,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('pgk/{pgk}/escalate', [\App\Http\Controllers\PgkController::class, 'escalateToLead'])->name('pgk.escalate');
     Route::post('pgk/{pgk}/schedule', [\App\Http\Controllers\PgkController::class, 'schedule'])->name('pgk.schedule');
     Route::post('pgk/{pgk}/report', [\App\Http\Controllers\PgkController::class, 'submitReport'])->name('pgk.report');
+    Route::post('pgk/{pgk}/request-material', [\App\Http\Controllers\PgkController::class, 'requestMaterial'])->name('pgk.request-material');
+    Route::post('pgk/{pgk}/material-requests/{materialRequest}/approve', [\App\Http\Controllers\PgkController::class, 'approveMaterialRequest'])->name('pgk.material-requests.approve');
+    Route::post('pgk/{pgk}/material-requests/{materialRequest}/reject', [\App\Http\Controllers\PgkController::class, 'rejectMaterialRequest'])->name('pgk.material-requests.reject');
     Route::delete('pgk/{pgk}', [\App\Http\Controllers\PgkController::class, 'destroy'])->name('pgk.destroy');
 
     // ── Penanganan Gangguan Jalur (PGJ) ──────────────────────────

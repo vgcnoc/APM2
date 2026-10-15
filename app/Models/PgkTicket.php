@@ -87,6 +87,11 @@ class PgkTicket extends Model
         return $this->hasMany(PgkMaterial::class, 'pgk_ticket_id');
     }
 
+    public function materialRequests(): HasMany
+    {
+        return $this->hasMany(PgkMaterialRequest::class, 'pgk_ticket_id');
+    }
+
     public function resolvedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'resolved_by');

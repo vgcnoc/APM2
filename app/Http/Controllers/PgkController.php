@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PgkTicket;
 use App\Models\PgkMaterial;
+use App\Models\PgkMaterialRequest;
 use App\Models\Customer;
 use App\Models\Area;
 use App\Models\User;
@@ -159,6 +160,9 @@ class PgkController extends Controller
             'leadTechnician',
             'technicians',
             'materials.material',
+            'materialRequests.material',
+            'materialRequests.requester',
+            'materialRequests.reviewer',
         ])->whereIn('status', ['escalated_to_lead', 'scheduled', 'in_progress']);
 
         if ($request->filled('search')) {
@@ -219,7 +223,10 @@ class PgkController extends Controller
             'leadTechnician',
             'technicians',
             'materials.material',
-            'resolvedByUser'
+            'resolvedByUser',
+            'materialRequests.material',
+            'materialRequests.requester',
+            'materialRequests.reviewer',
         ])->whereIn('status', ['scheduled', 'in_progress', 'completed']);
 
         // Teknisi hanya melihat tugas miliknya kecuali admin / kepala teknisi
@@ -727,6 +734,169 @@ class PgkController extends Controller
         );
 
         return redirect()->back()->with('success', 'Laporan penanganan komplain berhasil disimpan. Status tiket PGK telah selesai.');
+    }
+
+    /**
+     * Teknisi Lapangan mengajukan permintaan tambahan material ke Kepala Teknisi
+     */
+    public function requestMaterial(Request $request, PgkTicket $pgk)
+    {
+        $validated = $request->validate([
+            'material_id' => 'required|exists:materials,id',
+            'quantity' => 'required|numeric|min:0.01',
+            'unit' => 'nullable|string',
+            'notes' => 'required|string', // Alasan kebutuhan darurat di lapangan
+        ]);
+
+        $material = Material::findOrFail($validated['material_id']);
+
+        PgkMaterialRequest::create([
+            'pgk_ticket_id' => $pgk->id,
+            'material_id' => $material->id,
+            'requested_by' => auth()->id(),
+            'quantity' => $validated['quantity'],
+            'unit' => $validated['unit'] ?? $material->unit,
+            'notes' => $validated['notes'],
+            'status' => 'pending',
+        ]);
+
+        AuditLog::createLog(
+            'Permintaan Tambahan Material PGK',
+            $pgk,
+            'pending',
+            'pending',
+            'Teknisi ' . auth()->user()->name . ' meminta tambahan ' . $validated['quantity'] . ' ' . ($validated['unit'] ?? $material->unit) . ' ' . $material->name . '. Alasan: ' . $validated['notes']
+        );
+
+        return redirect()->back()->with('success', 'Permintaan tambahan material berhasil diajukan ke Kepala Teknisi.');
+    }
+
+    /**
+     * Kepala Teknisi menyetujui permintaan tambahan material dari teknisi lapangan
+     */
+    public function approveMaterialRequest(Request $request, PgkTicket $pgk, PgkMaterialRequest $materialRequest)
+    {
+        if ($materialRequest->status !== 'pending') {
+            return redirect()->back()->with('error', 'Permintaan material ini sudah diproses sebelumnya.');
+        }
+
+        $material = Material::findOrFail($materialRequest->material_id);
+        $qty = (float) $materialRequest->quantity;
+        $areaId = $pgk->area_id ?? $pgk->customer?->area_id;
+
+        // Potong stok gudang
+        $stockBefore = (float) $material->stock;
+        $stockAfter = max(0, $stockBefore - $qty);
+
+        // Catat transaksi pengeluaran barang
+        $outTrans = MaterialTransaction::create([
+            'transaction_number' => 'OUT-PGK-REQ-' . date('YmdHis') . rand(10, 99),
+            'type' => 'out',
+            'status' => 'approved',
+            'date' => now(),
+            'technician_name' => $materialRequest->requester?->name ?: auth()->user()->name,
+            'purpose' => 'Persetujuan Material Tambahan PGK: ' . $pgk->ticket_number . ' (' . ($pgk->customer?->name ?? '') . ')',
+            'user_id' => auth()->id(),
+            'customer_id' => $pgk->customer_id,
+            'area_id' => $areaId,
+            'notes' => 'Disetujui Ka. Teknisi. Alasan teknisi: ' . ($materialRequest->notes ?? '-'),
+        ]);
+
+        $unit = $materialRequest->unit ?? $material->unit;
+        $ppu = $material->selling_price ?: ($material->price_per_unit ?? 0);
+        if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
+            $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
+            $ppu = $ppu / $mpr;
+        }
+
+        MaterialTransactionItem::create([
+            'material_transaction_id' => $outTrans->id,
+            'material_id' => $material->id,
+            'quantity' => $qty,
+            'unit' => $unit,
+            'price_per_unit' => $ppu,
+            'total_price' => $ppu * $qty,
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+        ]);
+
+        $material->decrement('stock', $qty);
+
+        if ($areaId) {
+            $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                ->where('area_id', $areaId)
+                ->first();
+            if ($matStock) {
+                $matStock->decrement('stock', $qty);
+            }
+        }
+
+        // Tambahkan ke pgk_materials (jika sudah ada, tambahkan quantity_prepared, jika belum buat baru)
+        $existingPgkMat = PgkMaterial::where('pgk_ticket_id', $pgk->id)
+            ->where('material_id', $material->id)
+            ->first();
+
+        if ($existingPgkMat) {
+            $newPrep = (float) $existingPgkMat->quantity_prepared + $qty;
+            $existingPgkMat->update([
+                'quantity_prepared' => $newPrep,
+                'quantity_used' => (float) $existingPgkMat->quantity_used + $qty,
+                'notes' => trim(($existingPgkMat->notes ?? '') . ' | Tambahan disetujui: +' . $qty . ' ' . $unit),
+            ]);
+        } else {
+            PgkMaterial::create([
+                'pgk_ticket_id' => $pgk->id,
+                'material_id' => $material->id,
+                'quantity_prepared' => $qty,
+                'quantity_used' => $qty,
+                'quantity_returned' => 0,
+                'unit' => $unit,
+                'notes' => 'Tambahan Lapangan disetujui Ka. Teknisi: ' . ($materialRequest->notes ?? '-'),
+            ]);
+        }
+
+        $materialRequest->update([
+            'status' => 'approved',
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
+
+        AuditLog::createLog(
+            'Setujui Permintaan Material PGK',
+            $pgk,
+            'pending',
+            'approved',
+            'Kepala Teknisi menyetujui tambahan ' . $qty . ' ' . $unit . ' ' . $material->name . ' untuk teknisi ' . ($materialRequest->requester?->name ?? '-')
+        );
+
+        return redirect()->back()->with('success', 'Permintaan tambahan material disetujui dan ditambahkan ke penugasan teknisi.');
+    }
+
+    /**
+     * Kepala Teknisi menolak permintaan tambahan material dari teknisi lapangan
+     */
+    public function rejectMaterialRequest(Request $request, PgkTicket $pgk, PgkMaterialRequest $materialRequest)
+    {
+        $validated = $request->validate([
+            'rejection_reason' => 'required|string',
+        ]);
+
+        $materialRequest->update([
+            'status' => 'rejected',
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+            'rejection_reason' => $validated['rejection_reason'],
+        ]);
+
+        AuditLog::createLog(
+            'Tolak Permintaan Material PGK',
+            $pgk,
+            'pending',
+            'rejected',
+            'Kepala Teknisi menolak permintaan material: ' . $validated['rejection_reason']
+        );
+
+        return redirect()->back()->with('success', 'Permintaan tambahan material telah ditolak.');
     }
 
     /**

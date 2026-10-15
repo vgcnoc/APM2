@@ -449,84 +449,228 @@
                             </div>
                         </div>
 
-                        <!-- 4B. Permintaan / Material Tambahan di Lapangan -->
-                        <div class="pt-2 border-t border-amber-200/60 space-y-3">
-                            <div class="flex items-center justify-between">
+                        <!-- 4B. Permintaan Tambahan Material Lapangan ke Ka. Teknisi -->
+                        <div class="pt-3 border-t border-amber-200/60 space-y-3">
+                            <div class="flex items-center justify-between flex-wrap gap-2">
                                 <div>
-                                    <div class="text-[11px] font-bold text-gray-700 uppercase flex items-center gap-1.5">
-                                        <span>➕</span> B. Material Tambahan di Lapangan (Bila Ada)
+                                    <div class="text-[11px] font-bold text-gray-800 uppercase flex items-center gap-1.5">
+                                        <span class="text-amber-500">📢</span> B. Permintaan Tambahan Material ke Kepala Teknisi
                                     </div>
-                                    <p class="text-[10px] text-gray-500">Material tak terduga yang digunakan dari bekal mobil/stok lapangan</p>
+                                    <p class="text-[10px] text-gray-500">
+                                        Kekurangan material di lapangan? Ajukan ke Kepala Teknisi untuk disetujui di tab <b>Jadwal & Material</b>.
+                                    </p>
                                 </div>
                                 <button 
                                     type="button" 
-                                    @click="addAdditionalMaterial" 
-                                    class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1 shrink-0"
+                                    @click="isRequestFormOpen = !isRequestFormOpen" 
+                                    class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1 shrink-0"
                                 >
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                    <span>Tambah Material</span>
+                                    <span>{{ isRequestFormOpen ? 'Tutup Form Pengajuan' : '+ Ajukan Tambahan Material' }}</span>
                                 </button>
                             </div>
 
-                            <div v-if="additionalMaterials.length === 0" class="p-3 rounded-xl bg-white/70 border border-dashed border-gray-300 text-xs text-gray-400 italic text-center">
-                                Tidak ada material tambahan lapangan. Klik tombol "+ Tambah Material" jika ada material ekstra yang digunakan.
-                            </div>
-
-                            <div v-else class="space-y-2">
-                                <div 
-                                    v-for="(item, idx) in additionalMaterials" 
-                                    :key="'extra-' + idx"
-                                    class="p-3 rounded-2xl bg-white border border-gray-200 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5"
-                                >
-                                    <!-- Dropdown Material -->
-                                    <div class="flex-1">
+                            <!-- Form Ajukan Material ke Ka. Teknisi -->
+                            <div v-if="isRequestFormOpen" class="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200 shadow-sm space-y-3 transition-all animate-fade-in-up">
+                                <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                                    <span>📝</span> Form Permintaan Material Baru ke Ka. Teknisi
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                                    <!-- Pilih Material -->
+                                    <div class="sm:col-span-6">
+                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Pilih Material Gudang *</label>
                                         <select 
-                                            v-model="item.material_id" 
-                                            @change="onAdditionalMaterialSelected(item)"
-                                            class="w-full rounded-xl border-gray-300 text-xs py-1.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 bg-white"
-                                            required
+                                            v-model="materialRequestForm.material_id" 
+                                            @change="onReqMaterialChange"
+                                            class="w-full rounded-xl border-gray-300 text-xs py-1.5 focus:border-amber-500 bg-white"
                                         >
-                                            <option value="">-- Pilih Material dari Stok Gudang --</option>
+                                            <option value="">-- Pilih Material dari Gudang --</option>
                                             <option v-for="mat in materials" :key="mat.id" :value="mat.id">
                                                 {{ mat.name }} (Stok: {{ parseFloat(mat.stock) }} {{ mat.unit }})
                                             </option>
                                         </select>
                                     </div>
-
-                                    <!-- Qty & Unit -->
-                                    <div class="flex items-center gap-1.5 shrink-0">
+                                    <!-- Qty -->
+                                    <div class="sm:col-span-3">
+                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Jumlah ({{ materialRequestForm.unit || 'Satuan' }}) *</label>
                                         <input 
                                             type="number" 
                                             step="0.01" 
                                             min="0.01" 
-                                            placeholder="Qty"
-                                            v-model="item.quantity" 
-                                            class="w-20 rounded-xl border-gray-300 text-xs py-1.5 text-center font-bold text-gray-900 focus:border-emerald-500"
-                                            required
+                                            v-model="materialRequestForm.quantity" 
+                                            class="w-full rounded-xl border-gray-300 text-xs py-1.5 text-center font-bold focus:border-amber-500 bg-white"
+                                            placeholder="1"
                                         />
-                                        <span class="text-xs text-gray-600 font-semibold w-12 truncate">{{ item.unit || '-' }}</span>
                                     </div>
-
-                                    <!-- Keterangan / Alasan Tambahan -->
-                                    <div class="flex-1">
+                                    <!-- Satuan Readonly -->
+                                    <div class="sm:col-span-3">
+                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Satuan</label>
                                         <input 
                                             type="text" 
-                                            placeholder="Keterangan (cth: Ganti dropcore putus)" 
-                                            v-model="item.notes"
-                                            class="w-full rounded-xl border-gray-300 text-xs py-1.5 focus:border-emerald-500"
+                                            readonly 
+                                            :value="materialRequestForm.unit || '-'" 
+                                            class="w-full rounded-xl border-gray-200 bg-gray-100 text-xs py-1.5 text-center font-semibold text-gray-600"
                                         />
                                     </div>
-
-                                    <!-- Tombol Hapus Baris -->
+                                    <!-- Alasan Permintaan -->
+                                    <div class="sm:col-span-12">
+                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Alasan Kebutuhan di Lapangan *</label>
+                                        <input 
+                                            type="text" 
+                                            v-model="materialRequestForm.notes" 
+                                            placeholder="Contoh: Kabel dropcore 40 meter putus tertimpa pohon, butuh penarikan baru..." 
+                                            class="w-full rounded-xl border-gray-300 text-xs py-1.5 focus:border-amber-500 bg-white"
+                                        />
+                                    </div>
+                                </div>
+                                <div class="flex justify-end gap-2 pt-1">
                                     <button 
                                         type="button" 
-                                        @click="removeAdditionalMaterial(idx)" 
-                                        class="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors self-end sm:self-center"
-                                        title="Hapus baris ini"
+                                        @click="isRequestFormOpen = false" 
+                                        class="px-3 py-1.5 rounded-xl border border-gray-300 bg-white text-gray-600 text-xs font-semibold hover:bg-gray-50"
                                     >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        Batal
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="sendMaterialRequest" 
+                                        :disabled="materialRequestForm.processing || !materialRequestForm.material_id || !materialRequestForm.notes"
+                                        class="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                                        <span>{{ materialRequestForm.processing ? 'Mengirim...' : 'Kirim Permintaan ke Ka. Teknisi' }}</span>
                                     </button>
                                 </div>
+                            </div>
+
+                            <!-- Daftar Riwayat Permintaan Material Tiket Ini -->
+                            <div class="space-y-2">
+                                <div class="text-[11px] font-bold text-gray-600 uppercase flex items-center justify-between">
+                                    <span>Status Permintaan Material ke Ka. Teknisi ({{ selectedTicket?.material_requests?.length || 0 }})</span>
+                                    <span v-if="selectedTicket?.material_requests?.some(r => r.status === 'pending')" class="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300 animate-pulse">
+                                        ⏳ Menunggu Respon Ka. Teknisi
+                                    </span>
+                                </div>
+
+                                <div v-if="!selectedTicket?.material_requests || selectedTicket.material_requests.length === 0" class="p-3 rounded-xl bg-white/70 border border-dashed border-gray-300 text-xs text-gray-400 italic text-center">
+                                    Belum ada pengajuan permintaan tambahan material ke Ka. Teknisi untuk tiket ini.
+                                </div>
+
+                                <div v-else class="space-y-2">
+                                    <div 
+                                        v-for="req in selectedTicket.material_requests" 
+                                        :key="req.id"
+                                        class="p-3 rounded-2xl border transition-all text-xs"
+                                        :class="{
+                                            'bg-amber-50/80 border-amber-300': req.status === 'pending',
+                                            'bg-emerald-50/80 border-emerald-300': req.status === 'approved',
+                                            'bg-rose-50/80 border-rose-300': req.status === 'rejected'
+                                        }"
+                                    >
+                                        <div class="flex items-start justify-between gap-2 flex-wrap">
+                                            <div class="font-bold text-gray-900 flex items-center gap-1.5">
+                                                <span class="text-sm">📦</span>
+                                                <span>{{ req.material?.name || 'Material' }}</span>
+                                                <span class="font-mono text-xs px-2 py-0.5 rounded-lg bg-white border font-bold text-gray-800">
+                                                    {{ parseFloat(req.quantity) }} {{ req.unit || req.material?.unit }}
+                                                </span>
+                                            </div>
+
+                                            <!-- Status Pill -->
+                                            <div>
+                                                <span v-if="req.status === 'pending'" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300 inline-flex items-center gap-1">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse"></span>
+                                                    <span>Menunggu Ka. Teknisi</span>
+                                                </span>
+                                                <span v-else-if="req.status === 'approved'" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-900 border border-emerald-300 inline-flex items-center gap-1">
+                                                    <span>✅ Disetujui (Masuk Bekal)</span>
+                                                </span>
+                                                <span v-else-if="req.status === 'rejected'" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-200 text-rose-900 border border-rose-300 inline-flex items-center gap-1">
+                                                    <span>❌ Ditolak</span>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-1.5 text-gray-700 bg-white/80 p-2 rounded-xl border border-gray-100">
+                                            <span class="font-semibold text-gray-500">Alasan Kebutuhan:</span> "{{ req.notes }}"
+                                        </div>
+
+                                        <!-- Detail info persetujuan/penolakan -->
+                                        <div v-if="req.status === 'approved'" class="mt-1.5 text-[11px] text-emerald-800 font-medium flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            <span>Disetujui oleh <b>{{ req.reviewer?.name || 'Kepala Teknisi' }}</b>. Stok gudang telah dipotong & otomatis ditambahkan ke daftar Bagian A di atas.</span>
+                                        </div>
+                                        <div v-else-if="req.status === 'rejected'" class="mt-1.5 text-[11px] text-rose-800 font-medium flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            <span>Ditolak oleh <b>{{ req.reviewer?.name || 'Kepala Teknisi' }}</b>: "{{ req.rejection_reason || '-' }}"</span>
+                                        </div>
+                                        <div v-else class="mt-1.5 text-[10px] text-amber-800 italic">
+                                            ⏳ Permintaan ini sedang menunggu persetujuan Kepala Teknisi di tab <b>Jadwal & Material</b>.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Optional: Bekal Mobil Darurat Langsung -->
+                            <div class="pt-2 border-t border-dashed border-gray-200">
+                                <details class="group">
+                                    <summary class="cursor-pointer text-[11px] font-bold text-gray-500 hover:text-gray-700 flex items-center justify-between">
+                                        <span>+ Catat Material Tambahan Cadangan Mobil (Opsional)</span>
+                                        <span class="text-xs group-open:rotate-180 transition-transform">▼</span>
+                                    </summary>
+                                    <div class="mt-2 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[10px] text-gray-400">Gunakan jika membawa bekal mobil darurat tanpa menunggu approval:</span>
+                                            <button 
+                                                type="button" 
+                                                @click="addAdditionalMaterial" 
+                                                class="px-2.5 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-[10px] font-bold"
+                                            >
+                                                + Baris Bekal Mobil
+                                            </button>
+                                        </div>
+
+                                        <div v-if="additionalMaterials.length > 0" class="space-y-1.5">
+                                            <div 
+                                                v-for="(item, idx) in additionalMaterials" 
+                                                :key="'extra-' + idx"
+                                                class="p-2 rounded-xl bg-white border border-gray-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
+                                            >
+                                                <select 
+                                                    v-model="item.material_id" 
+                                                    @change="onAdditionalMaterialSelected(item)"
+                                                    class="flex-1 rounded-lg border-gray-300 text-xs py-1 focus:border-amber-500 bg-white"
+                                                >
+                                                    <option value="">-- Pilih Material --</option>
+                                                    <option v-for="mat in materials" :key="mat.id" :value="mat.id">
+                                                        {{ mat.name }} (Stok: {{ parseFloat(mat.stock) }} {{ mat.unit }})
+                                                    </option>
+                                                </select>
+                                                <input 
+                                                    type="number" 
+                                                    step="0.01" 
+                                                    min="0.01" 
+                                                    placeholder="Qty"
+                                                    v-model="item.quantity" 
+                                                    class="w-16 rounded-lg border-gray-300 text-xs py-1 text-center font-bold"
+                                                />
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Keterangan" 
+                                                    v-model="item.notes"
+                                                    class="flex-1 rounded-lg border-gray-300 text-xs py-1"
+                                                />
+                                                <button 
+                                                    type="button" 
+                                                    @click="removeAdditionalMaterial(idx)" 
+                                                    class="p-1 text-rose-500 hover:text-rose-700"
+                                                >
+                                                    &times;
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </details>
                             </div>
                         </div>
 
@@ -686,6 +830,15 @@ let timerInterval = null;
 
 // Material Tambahan Lapangan State
 const additionalMaterials = ref([]);
+
+// Permintaan Tambahan Material ke Ka. Teknisi State
+const isRequestFormOpen = ref(false);
+const materialRequestForm = useForm({
+    material_id: '',
+    quantity: 1,
+    unit: '',
+    notes: '',
+});
 
 // Photo Previews
 const photoBeforePreview = ref(null);
@@ -995,6 +1148,39 @@ const onAdditionalMaterialSelected = (item) => {
     saveDraft();
 };
 
+// ── Pengajuan Material Tambahan ke Ka. Teknisi ─────────────────
+const onReqMaterialChange = () => {
+    const mat = (props.materials || []).find(m => m.id == materialRequestForm.material_id);
+    if (mat) {
+        materialRequestForm.unit = mat.unit || 'pcs';
+    }
+};
+
+const sendMaterialRequest = () => {
+    if (!selectedTicket.value) return;
+    if (!materialRequestForm.material_id) {
+        alert('Silakan pilih material yang dibutuhkan.');
+        return;
+    }
+    if (!materialRequestForm.notes) {
+        alert('Mohon tulis alasan kebutuhan material di lapangan.');
+        return;
+    }
+
+    materialRequestForm.post(`/pgk/${selectedTicket.value.id}/request-material`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            materialRequestForm.reset();
+            isRequestFormOpen.value = false;
+            // Sinkronkan selectedTicket dengan data terbaru di props
+            const fresh = props.tickets?.data?.find(t => t.id === selectedTicket.value?.id);
+            if (fresh) {
+                selectedTicket.value = fresh;
+            }
+        }
+    });
+};
+
 const countUsedMaterials = computed(() => {
     return reportForm.materials.filter(m => parseFloat(m.quantity_used) > 0).length + 
            additionalMaterials.value.filter(am => am.material_id && parseFloat(am.quantity) > 0).length;
@@ -1064,6 +1250,37 @@ watch([
 ], () => {
     if (showReportModal.value && selectedTicket.value) {
         saveDraft();
+    }
+}, { deep: true });
+
+// Sinkronkan data jika ada material baru disetujui oleh Ka. Teknisi
+watch(() => props.tickets, (newVal) => {
+    if (selectedTicket.value && newVal?.data) {
+        const fresh = newVal.data.find(t => t.id === selectedTicket.value.id);
+        if (fresh) {
+            selectedTicket.value = fresh;
+            if (fresh.materials && fresh.materials.length > 0) {
+                fresh.materials.forEach(fm => {
+                    const existing = reportForm.materials.find(rm => rm.pgk_material_id === fm.id || rm.material_id === fm.material_id);
+                    const prep = parseFloat(fm.quantity_prepared) || 0;
+                    if (existing) {
+                        existing.quantity_prepared = prep;
+                        calculateReturned(existing);
+                    } else {
+                        const used = fm.quantity_used !== null ? parseFloat(fm.quantity_used) : prep;
+                        reportForm.materials.push({
+                            pgk_material_id: fm.id,
+                            material_id: fm.material_id,
+                            name: fm.material?.name || 'Material',
+                            unit: fm.unit || fm.material?.unit || '',
+                            quantity_prepared: prep,
+                            quantity_used: used,
+                            quantity_returned: Math.max(0, prep - used),
+                        });
+                    }
+                });
+            }
+        }
     }
 }, { deep: true });
 
