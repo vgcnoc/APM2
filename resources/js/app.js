@@ -10,7 +10,17 @@ router.on('invalid', (event) => {
     }
 });
 
+router.on('navigate', (event) => {
+    if (event.detail?.page?.props) {
+        window.__pageProps = event.detail.page.props;
+    }
+});
 
+router.on('success', (event) => {
+    if (event.detail?.page?.props) {
+        window.__pageProps = event.detail.page.props;
+    }
+});
 
 import { canDirective, checkUserPermission } from './Directives/can';
 import Can from './Components/Can.vue';
@@ -22,6 +32,7 @@ createInertiaApp({
         return pages[`./Pages/${name}.vue`];
     },
     setup({ el, App, props, plugin }) {
+        window.__pageProps = props.initialPage.props;
         const app = createApp({ render: () => h(App, props) });
         app.config.globalProperties.route = window.route;
 

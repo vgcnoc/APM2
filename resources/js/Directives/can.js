@@ -1,21 +1,71 @@
-/**
- * Vue 3 Directive: v-can
- * Penggunaan:
- *   <button v-can="'customers_booking_create'">Tambah Booking</button>
- *   <div v-can="['customers_survey_report', 'customers_survey_assign']">...</div>
- *   <div v-can:all="['perm_a', 'perm_b']">...</div>
- */
-export function checkUserPermission(bindingValue, bindingArg, user) {
-    if (!bindingValue) return true;
-    if (!user) return false;
+import { router } from '@inertiajs/vue3';
 
-    // Super Admin / Admin bypass
+/**
+ * Helper terpusat untuk mengambil data user yang sedang login di Inertia.
+ */
+export function getAuthUser(vnode = null) {
+    // 1. Dari cache window.__pageProps yang sinkron dengan Inertia router
+    if (window.__pageProps?.auth?.user) {
+        return window.__pageProps.auth.user;
+    }
+
+    // 2. Dari router.page.props bawaan @inertiajs/vue3
+    if (router.page?.props?.auth?.user) {
+        return router.page.props.auth.user;
+    }
+
+    // 3. Dari context vnode jika tersedia
+    const vnodeProps = vnode?.appContext?.config?.globalProperties?.$page?.props;
+    if (vnodeProps?.auth?.user) {
+        return vnodeProps.auth.user;
+    }
+
+    // 4. Fallback dari elemen DOM #app data-page
+    try {
+        const appEl = document.getElementById('app');
+        if (appEl?.dataset?.page) {
+            const parsed = JSON.parse(appEl.dataset.page);
+            if (parsed?.props?.auth?.user) {
+                window.__pageProps = parsed.props;
+                return parsed.props.auth.user;
+            }
+        }
+    } catch (e) {}
+
+    return null;
+}
+
+/**
+ * Pengecekan izin granular (menu, card, tab, filter, button, feature)
+ */
+export function checkUserPermission(bindingValue, bindingArg, user = null) {
+    if (!bindingValue) return true;
+
+    // Jika user tidak diteruskan, coba ambil otomatis
+    if (!user) {
+        user = getAuthUser();
+    }
+
+    // Jika user belum terhidrasi (misal SSR atau first tick sebelum auth siap),
+    // default IZINKAN agar komponen tidak hilang secara salah
+    if (!user) {
+        return true;
+    }
+
+    // Super Admin / Admin bypass penuh (semua card, aksi, filter, menu selalu aktif)
     const role = String(user.role || '').toLowerCase();
     const roles = Array.isArray(user.roles) 
         ? user.roles.map(r => String(r).toLowerCase()) 
         : (user.roles ? Object.values(user.roles).map(r => String(r).toLowerCase()) : []);
     
-    if (role === 'admin' || role === 'super admin' || role === 'superadmin' || roles.includes('admin') || roles.includes('super admin')) {
+    if (
+        role === 'admin' || 
+        role === 'super admin' || 
+        role === 'superadmin' || 
+        roles.includes('admin') || 
+        roles.includes('super admin') || 
+        roles.includes('superadmin')
+    ) {
         return true;
     }
 
@@ -33,7 +83,13 @@ export function checkUserPermission(bindingValue, bindingArg, user) {
     return userPerms.includes(bindingValue);
 }
 
+/**
+ * Vue 3 Directive: v-can
+ */
 export const canDirective = {
+    beforeMount(el, binding, vnode) {
+        applyPermission(el, binding, vnode);
+    },
     mounted(el, binding, vnode) {
         applyPermission(el, binding, vnode);
     },
@@ -43,9 +99,7 @@ export const canDirective = {
 };
 
 function applyPermission(el, binding, vnode) {
-    const pageProps = vnode?.appContext?.config?.globalProperties?.$page?.props || window.__pageProps;
-    const user = pageProps?.auth?.user;
-
+    const user = getAuthUser(vnode);
     const allowed = checkUserPermission(binding.value, binding.arg, user);
 
     if (!allowed) {

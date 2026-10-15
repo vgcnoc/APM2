@@ -627,6 +627,9 @@ const isDeleting = ref(false);
 
 // ── Category Definitions ───────────────────────────
 const categoryMap = {
+    'dashboard': [
+        'Dashboard Utama & Statistik',
+    ],
     'pelanggan': [
         'Data Pelanggan (Semua & Status)',
         'Pemasangan Baru (PSB) - 1. Booking',
@@ -708,6 +711,7 @@ const filteredRoles = computed(() => {
 const categoryTabs = computed(() => {
     return [
         { id: 'all', label: 'Semua Modul', count: totalCount.value },
+        { id: 'dashboard', label: 'Dashboard & Statistik', count: countPermissionsByCategory('dashboard') },
         { id: 'pelanggan', label: 'Pelanggan & PSB', count: countPermissionsByCategory('pelanggan') },
         { id: 'billing', label: 'Billing & Kas', count: countPermissionsByCategory('billing') },
         { id: 'jaringan', label: 'Jaringan & OSP', count: countPermissionsByCategory('jaringan') },
