@@ -43,6 +43,10 @@ chown -R www-data:www-data /var/www/APM2/storage
 mkdir -p /var/www/APM2/wa-gateway/sessions
 chown -R www-data:www-data /var/www/APM2/wa-gateway/sessions
 
+echo "Restarting PHP-FPM to flush OPcache and re-reading bytecode..."
+systemctl restart php8.5-fpm || systemctl restart php-fpm
+systemctl reload nginx
+
 echo "--- Update Complete ---"
 `;
 
