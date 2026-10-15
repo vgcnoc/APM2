@@ -3,10 +3,17 @@
         <!-- 4 Top KPI Stat Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <!-- Card 1: Sering Menunggak -->
-            <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+            <div 
+                @click="switchTab('menunggak')"
+                :class="[
+                    'bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer',
+                    tab === 'menunggak' ? 'border-rose-400 ring-2 ring-rose-200/70 shadow-rose-50' : 'border-gray-100 hover:border-rose-200'
+                ]"
+                title="Klik untuk membuka tab Sering Menunggak"
+            >
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pelanggan Menunggak</span>
-                    <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+                    <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 group-hover:scale-105 transition-transform">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
                 </div>
@@ -21,10 +28,17 @@
             </div>
 
             <!-- Card 2: Janji Bayar -->
-            <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+            <div 
+                @click="switchTab('janji_bayar')"
+                :class="[
+                    'bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer',
+                    tab === 'janji_bayar' ? 'border-amber-400 ring-2 ring-amber-200/70 shadow-amber-50' : 'border-gray-100 hover:border-amber-200'
+                ]"
+                title="Klik untuk membuka tab Janji Bayar"
+            >
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Komitmen Janji Bayar</span>
-                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 group-hover:scale-105 transition-transform">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     </div>
                 </div>
@@ -42,10 +56,17 @@
             </div>
 
             <!-- Card 3: Stop Sementara (Isolir) -->
-            <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+            <div 
+                @click="switchTab('stop_sementara')"
+                :class="[
+                    'bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer',
+                    tab === 'stop_sementara' ? 'border-orange-400 ring-2 ring-orange-200/70 shadow-orange-50' : 'border-gray-100 hover:border-orange-200'
+                ]"
+                title="Klik untuk membuka tab Stop Sementara (Isolir)"
+            >
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Stop Sementara (Isolir)</span>
-                    <div class="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100">
+                    <div class="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100 group-hover:scale-105 transition-transform">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
                 </div>

@@ -87,6 +87,24 @@ class PermissionRegistry
                 ],
             ],
 
+            // ── 2B. PANTAUAN PELANGGAN (MENUNGGAK & ISOLIR) ───────────
+            [
+                'group' => 'Pantauan Pelanggan (Menunggak & Isolir)',
+                'category' => 'pelanggan',
+                'icon' => 'calendar',
+                'menu_parent' => 'menu_monitoring_pelanggan',
+                'permissions' => [
+                    ['name' => 'menu_monitoring_pelanggan', 'type' => 'menu', 'label' => 'Akses Menu Pantauan Pelanggan'],
+                    ['name' => 'monitoring_pelanggan_card_stats', 'type' => 'card', 'label' => 'Card Statistik Pelanggan Menunggak & Janji Bayar'],
+                    ['name' => 'monitoring_pelanggan_tab_menunggak', 'type' => 'tab', 'label' => 'Tab Pelanggan Sering Menunggak'],
+                    ['name' => 'monitoring_pelanggan_tab_janji_bayar', 'type' => 'tab', 'label' => 'Tab Komitmen Janji Bayar'],
+                    ['name' => 'monitoring_pelanggan_tab_stop_sementara', 'type' => 'tab', 'label' => 'Tab Stop Sementara / Isolir'],
+                    ['name' => 'monitoring_pelanggan_filter', 'type' => 'filter', 'label' => 'Filter Pencarian & Kategori Pantauan'],
+                    ['name' => 'monitoring_pelanggan_btn_whatsapp', 'type' => 'button', 'label' => 'Tombol Kirim WhatsApp Penagihan'],
+                    ['name' => 'monitoring_pelanggan_btn_action', 'type' => 'button', 'label' => 'Tombol Tindakan Suspend / Unsuspend / Janji Bayar'],
+                ],
+            ],
+
             // ── 3. PSB FLOW (BOOKING, SURVEY, PASANG, AKTIVASI) ─────
             [
                 'group' => 'Pemasangan Baru (PSB) - 1. Booking',
@@ -788,6 +806,7 @@ class PermissionRegistry
                 'whatsapp_tab_device', 'whatsapp_tab_blast', 'whatsapp_tab_history', 'whatsapp_tab_settings',
                 'whatsapp_filter_target', 'whatsapp_btn_scan_qr', 'whatsapp_btn_test_send', 'whatsapp_btn_start_blast', 'whatsapp_btn_pause_blast',
                 'menu_internet_packages', 'menu_attendances',
+                'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_all',
             ],
             'admin cs' => [
@@ -810,6 +829,7 @@ class PermissionRegistry
                 'whatsapp_tab_device', 'whatsapp_tab_blast', 'whatsapp_tab_history', 'whatsapp_tab_settings',
                 'whatsapp_filter_target', 'whatsapp_btn_scan_qr', 'whatsapp_btn_test_send', 'whatsapp_btn_start_blast', 'whatsapp_btn_pause_blast',
                 'menu_internet_packages', 'menu_attendances',
+                'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_all',
             ],
             'sales' => [
@@ -832,6 +852,7 @@ class PermissionRegistry
                 'menu_reseller_billing',
                 'menu_settings_billing', 'menu_settings_payroll',
                 'menu_customers_all', 'customers_card_summary', 'customers_all_view_all', 'customers_tab_invoices',
+                'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
                 'menu_attendances',
             ],
             'reseller' => [
@@ -854,6 +875,7 @@ class PermissionRegistry
                 'menu_material_transactions', 'material_transactions_view_all',
                 'menu_employees', 'menu_attendances', 'menu_payroll',
                 'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_card_blast_summary',
+                'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_export', 'monitoring_teknisi_view_all',
             ],
         ];
