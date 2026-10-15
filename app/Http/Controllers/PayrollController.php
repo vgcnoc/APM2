@@ -208,12 +208,17 @@ class PayrollController extends Controller
                     'bpjs_kesehatan_no' => $user->bpjs_kesehatan_no,
                     'bpjs_ketenagakerjaan' => (bool) $user->bpjs_ketenagakerjaan,
                     'bpjs_tk_no' => $user->bpjs_tk_no,
+                    'disbursement_channel' => $payroll ? ($payroll->disbursement_channel ?? 'manual') : 'manual',
+                    'disbursement_id' => $payroll ? ($payroll->disbursement_id ?? null) : null,
+                    'disbursement_status' => $payroll ? ($payroll->disbursement_status ?? null) : null,
+                    'disbursement_error' => $payroll ? ($payroll->disbursement_error ?? null) : null,
                     'incentives_list' => $user->incentives->toArray(),
                     'deductions_list' => $user->deductions->toArray()
                 ];
             });
 
         $categories = \App\Models\PayrollCategory::where('is_active', true)->get();
+        $xenditService = new \App\Services\XenditDisbursementService();
 
         return Inertia::render('Payroll/Index', [
             'month' => $month,
@@ -223,6 +228,7 @@ class PayrollController extends Controller
                 'disbursement_date' => $disbursementDate,
                 ...$bpjsSettings,
             ],
+            'xenditConfig' => $xenditService->getConfig(),
             'recapBpjs' => $recapBpjs,
             'payrollCategories' => $categories
         ]);
@@ -271,6 +277,20 @@ class PayrollController extends Controller
         }
         if ($request->has('bpjs_tk_jkm_company_pct')) {
             Setting::set('bpjs_tk_jkm_company_pct', $request->bpjs_tk_jkm_company_pct);
+        }
+
+        // Xendit Auto Transfer Settings
+        if ($request->has('xendit_disbursement_enabled')) {
+            Setting::set('xendit_disbursement_enabled', $request->boolean('xendit_disbursement_enabled') ? '1' : '0');
+        }
+        if ($request->has('xendit_secret_key')) {
+            Setting::set('xendit_secret_key', $request->xendit_secret_key ?? '');
+        }
+        if ($request->has('xendit_webhook_token')) {
+            Setting::set('xendit_webhook_token', $request->xendit_webhook_token ?? '');
+        }
+        if ($request->has('xendit_auto_disburse_on_approve')) {
+            Setting::set('xendit_auto_disburse_on_approve', $request->boolean('xendit_auto_disburse_on_approve') ? '1' : '0');
         }
 
         return back()->with('success', 'Pengaturan penggajian & tarif BPJS berhasil disimpan.');
@@ -454,6 +474,7 @@ class PayrollController extends Controller
                     'payment_date' => now(),
                     'expense_id' => $expense->id,
                     'notes' => 'Cair otomatis via sistem' . $bpjsNotesStr,
+                    'disbursement_channel' => 'manual',
                 ]
             );
 
@@ -473,8 +494,29 @@ class PayrollController extends Controller
                 ]);
             }
 
+            // 5. Cek opsi Auto Transfer via Xendit
+            $xenditService = new \App\Services\XenditDisbursementService();
+            $shouldUseXendit = $request->boolean('use_xendit') || ($xenditService->isEnabled() && Setting::get('xendit_auto_disburse_on_approve') === '1');
+            $xenditMsg = '';
+
+            if ($shouldUseXendit && $netSalary > 0) {
+                $xenditResult = $xenditService->disbursePayroll(
+                    $payroll,
+                    $user,
+                    $netSalary,
+                    "Gaji {$user->name} Periode " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}"
+                );
+
+                if ($xenditResult['status'] === 'error') {
+                    DB::rollBack();
+                    return back()->with('error', "Gagal Auto Transfer Xendit: " . $xenditResult['message']);
+                }
+
+                $xenditMsg = " | Auto Transfer Xendit Berhasil dikirim ({$xenditResult['disbursement_status']}) Ref: {$xenditResult['disbursement_id']}";
+            }
+
             DB::commit();
-            return back()->with('success', "Gaji {$user->name} berhasil dicairkan (Net: Rp " . number_format($netSalary, 0, ',', '.') . "). Pengeluaran otomatis dicatat di Buku Kas.");
+            return back()->with('success', "Gaji {$user->name} berhasil dicairkan (Net: Rp " . number_format($netSalary, 0, ',', '.') . "){$xenditMsg}. Pengeluaran otomatis dicatat di Buku Kas.");
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal mencairkan gaji: ' . $e->getMessage());
@@ -492,6 +534,11 @@ class PayrollController extends Controller
         $users = User::where('is_active', true)->get();
         $disbursedCount = 0;
         $totalNetDisbursed = 0;
+
+        $xenditService = new \App\Services\XenditDisbursementService();
+        $shouldUseXendit = $request->boolean('use_xendit') || ($xenditService->isEnabled() && Setting::get('xendit_auto_disburse_on_approve') === '1');
+        $xenditTransferred = 0;
+        $xenditErrors = [];
 
         DB::beginTransaction();
         try {
@@ -559,6 +606,7 @@ class PayrollController extends Controller
                         'payment_date' => now(),
                         'expense_id' => $expense->id,
                         'notes' => 'Batch Auto Disburse via sistem' . $bpjsNotesStr,
+                        'disbursement_channel' => $shouldUseXendit ? 'xendit' : 'manual',
                     ]
                 );
 
@@ -569,15 +617,74 @@ class PayrollController extends Controller
                     $ded->update(['status' => 'applied', 'payroll_id' => $payroll->id]);
                 }
 
+                // Jika aktifkan Xendit transfer
+                if ($shouldUseXendit && $netSalary > 0) {
+                    $xenditResult = $xenditService->disbursePayroll(
+                        $payroll,
+                        $user,
+                        $netSalary,
+                        "Gaji Batch {$user->name} " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}"
+                    );
+
+                    if ($xenditResult['status'] === 'error') {
+                        $xenditErrors[] = "{$user->name}: " . $xenditResult['message'];
+                    } else {
+                        $xenditTransferred++;
+                    }
+                }
+
                 $disbursedCount++;
                 $totalNetDisbursed += $netSalary;
             }
 
             DB::commit();
-            return back()->with('success', "Berhasil mencairkan gaji massal untuk {$disbursedCount} staf (Total Net: Rp " . number_format($totalNetDisbursed, 0, ',', '.') . "). Pengeluaran otomatis dicatat di Buku Kas.");
+
+            $extraMsg = "";
+            if ($shouldUseXendit) {
+                $extraMsg = ". Auto Transfer Xendit: {$xenditTransferred} staf berhasil ditransfer.";
+                if (!empty($xenditErrors)) {
+                    $extraMsg .= " Beberapa gagal: " . implode('; ', array_slice($xenditErrors, 0, 2));
+                }
+            }
+
+            return back()->with('success', "Berhasil mencairkan gaji massal untuk {$disbursedCount} staf (Total Net: Rp " . number_format($totalNetDisbursed, 0, ',', '.') . "){$extraMsg}. Pengeluaran otomatis dicatat di Buku Kas.");
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal mencairkan gaji massal: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Webhook Callback dari Xendit untuk status disbursement
+     */
+    public function handleXenditWebhook(Request $request)
+    {
+        $xenditService = new \App\Services\XenditDisbursementService();
+        $expectedToken = $xenditService->getWebhookToken();
+        if ($expectedToken) {
+            $receivedToken = $request->header('x-callback-token');
+            if ($receivedToken !== $expectedToken) {
+                return response()->json(['error' => 'Invalid callback token'], 403);
+            }
+        }
+
+        $id = $request->input('id');
+        $externalId = $request->input('external_id');
+        $status = strtoupper($request->input('status', ''));
+
+        if ($id || $externalId) {
+            $payroll = Payroll::where('disbursement_id', $id)
+                ->orWhere('disbursement_reference', $externalId)
+                ->first();
+
+            if ($payroll) {
+                $payroll->update([
+                    'disbursement_status' => $status,
+                    'disbursement_error' => $request->input('failure_code') ? ('Failure: ' . $request->input('failure_code')) : null,
+                ]);
+            }
+        }
+
+        return response()->json(['status' => 'success']);
     }
 }

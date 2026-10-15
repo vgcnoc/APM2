@@ -512,6 +512,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('settings/master-fees', \App\Http\Controllers\MasterFeeController::class);
         Route::get('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'payroll'])->name('settings.payroll');
         Route::post('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'updatePayroll'])->name('settings.payroll.update');
+        Route::post('/settings/payroll/test-xendit', [\App\Http\Controllers\SettingController::class, 'testXendit'])->name('settings.payroll.test-xendit');
     });
 
     // ── Master Area & Pengeluaran ──────────────────────────────

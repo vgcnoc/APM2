@@ -58,6 +58,10 @@ class SettingController extends Controller
             'payroll_components' => json_decode(Setting::get('payroll_components', '["insentif", "potongan"]'), true),
             'payroll_note' => Setting::get('payroll_note', ''),
             'payroll_incentive_mode' => Setting::get('payroll_incentive_mode', 'Bulanan (sekali sebulan)'),
+            'xendit_disbursement_enabled' => Setting::get('xendit_disbursement_enabled', '0') === '1',
+            'xendit_secret_key' => Setting::get('xendit_secret_key', ''),
+            'xendit_webhook_token' => Setting::get('xendit_webhook_token', ''),
+            'xendit_auto_disburse_on_approve' => Setting::get('xendit_auto_disburse_on_approve', '0') === '1',
         ]);
     }
 
@@ -69,6 +73,10 @@ class SettingController extends Controller
             'payroll_components' => 'nullable|array',
             'payroll_note' => 'nullable|string',
             'payroll_incentive_mode' => 'required|string',
+            'xendit_disbursement_enabled' => 'nullable|boolean',
+            'xendit_secret_key' => 'nullable|string',
+            'xendit_webhook_token' => 'nullable|string',
+            'xendit_auto_disburse_on_approve' => 'nullable|boolean',
         ]);
 
         Setting::set('payroll_cutoff_date', $request->payroll_cutoff_date);
@@ -77,7 +85,28 @@ class SettingController extends Controller
         Setting::set('payroll_note', $request->payroll_note ?? '');
         Setting::set('payroll_incentive_mode', $request->payroll_incentive_mode);
 
-        return redirect()->back()->with('success', 'Pengaturan sistem gaji berhasil diperbarui.');
+        if ($request->has('xendit_disbursement_enabled')) {
+            Setting::set('xendit_disbursement_enabled', $request->boolean('xendit_disbursement_enabled') ? '1' : '0');
+        }
+        if ($request->has('xendit_secret_key')) {
+            Setting::set('xendit_secret_key', $request->xendit_secret_key ?? '');
+        }
+        if ($request->has('xendit_webhook_token')) {
+            Setting::set('xendit_webhook_token', $request->xendit_webhook_token ?? '');
+        }
+        if ($request->has('xendit_auto_disburse_on_approve')) {
+            Setting::set('xendit_auto_disburse_on_approve', $request->boolean('xendit_auto_disburse_on_approve') ? '1' : '0');
+        }
+
+        return redirect()->back()->with('success', 'Pengaturan sistem gaji & Xendit auto transfer berhasil diperbarui.');
+    }
+
+    public function testXendit(Request $request)
+    {
+        $apiKey = $request->input('api_key') ?: Setting::get('xendit_secret_key');
+        $service = new \App\Services\XenditDisbursementService();
+        $result = $service->testConnection($apiKey);
+        return response()->json($result);
     }
 
     public function attendance()

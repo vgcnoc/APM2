@@ -43,6 +43,16 @@
 
                 <!-- Tombol Pengaturan BPJS & Batch Disburse -->
                 <div class="flex items-center gap-2 w-full lg:w-auto justify-end flex-wrap">
+                    <a
+                        :href="route('settings.payroll')"
+                        class="px-3.5 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 border shadow-2xs"
+                        :class="xenditConfig?.enabled ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100' : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-700'"
+                        :title="xenditConfig?.enabled ? 'Auto Transfer Xendit Aktif (' + xenditConfig.environment + ')' : 'Atur API Key Xendit untuk Auto Transfer'"
+                    >
+                        <span>⚡</span>
+                        <span>{{ xenditConfig?.enabled ? 'Xendit: Aktif' : 'Setup Xendit' }}</span>
+                    </a>
+
                     <button
                         type="button"
                         @click="showSettingsModal = true"
@@ -239,6 +249,21 @@
                                         <span>⏳</span>
                                         <span>MENUNGGU</span>
                                     </span>
+
+                                    <!-- Status Xendit jika ada -->
+                                    <div v-if="user.disbursement_channel === 'xendit'" class="mt-1">
+                                        <span 
+                                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold"
+                                            :class="{
+                                                'bg-indigo-50 text-indigo-700 border border-indigo-200': user.disbursement_status === 'COMPLETED',
+                                                'bg-amber-50 text-amber-700 border border-amber-200': user.disbursement_status === 'PENDING',
+                                                'bg-rose-50 text-rose-700 border border-rose-200': user.disbursement_status === 'FAILED',
+                                            }"
+                                            :title="user.disbursement_error || ('Xendit Ref: ' + user.disbursement_id)"
+                                        >
+                                            <span>⚡ Xendit: {{ user.disbursement_status || 'PENDING' }}</span>
+                                        </span>
+                                    </div>
                                     <div v-if="user.is_paid && user.payment_date" class="text-[9px] text-slate-400 mt-0.5">
                                         {{ new Date(user.payment_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) }}
                                     </div>
@@ -627,6 +652,7 @@ const props = defineProps({
     year: Number,
     users: Array,
     settings: Object,
+    xenditConfig: Object,
     recapBpjs: Object,
     payrollCategories: Array
 });
@@ -801,10 +827,15 @@ const submitManual = () => {
 // ── Disburse Single ──
 const disburse = (user) => {
     const bpjsInfo = user.bpjs?.total_employee > 0 ? ` (Sudah dipotong iuran BPJS Staf: Rp ${formatRupiah(user.bpjs.total_employee)})` : '';
-    if (confirm(`Cairkan gaji dan insentif untuk ${user.name} bulan ini?\nNet Diterima: Rp ${formatRupiah(user.net_salary)}${bpjsInfo}\n\nPERINGATAN: Aksi ini akan otomatis mencatat pengeluaran di Buku Kas.`)) {
+    const xenditNotice = props.xenditConfig?.enabled 
+        ? `\n\n⚡ XENDIT AUTO TRANSFER AKTIF:\nSistem akan otomatis mentransfer Rp ${formatRupiah(user.net_salary)} ke ${user.bank_name || 'Bank'} (${user.bank_account_number || 'Belum diatur'}) a.n ${user.bank_account_holder || user.name}.`
+        : '';
+
+    if (confirm(`Cairkan gaji dan insentif untuk ${user.name} bulan ini?\nNet Diterima: Rp ${formatRupiah(user.net_salary)}${bpjsInfo}${xenditNotice}\n\nPERINGATAN: Aksi ini akan otomatis mencatat pengeluaran di Buku Kas.`)) {
         router.post(route('payroll.disburse', user.id), {
             month: props.month,
-            year: props.year
+            year: props.year,
+            use_xendit: Boolean(props.xenditConfig?.enabled)
         }, {
             preserveScroll: true
         });
@@ -813,10 +844,15 @@ const disburse = (user) => {
 
 // ── Disburse Batch (All) ──
 const disburseAll = () => {
-    if (confirm(`Cairkan gaji dan insentif untuk SEMUA ${totalPendingCount.value} staf yang belum cair?\n\nTotal Pengeluaran Bersih: Rp ${formatRupiah(totalNetSalary.value)}\n\nPERINGATAN: Aksi ini akan mencatat pengeluaran di Buku Kas untuk semua staf sekaligus.`)) {
+    const xenditNotice = props.xenditConfig?.enabled 
+        ? `\n\n⚡ XENDIT AUTO TRANSFER AKTIF:\nSemua staf dengan rekening bank valid akan otomatis ditransfer langsung via Xendit.`
+        : '';
+
+    if (confirm(`Cairkan gaji dan insentif untuk SEMUA ${totalPendingCount.value} staf yang belum cair?\n\nTotal Pengeluaran Bersih: Rp ${formatRupiah(totalNetSalary.value)}${xenditNotice}\n\nPERINGATAN: Aksi ini akan mencatat pengeluaran di Buku Kas untuk semua staf sekaligus.`)) {
         router.post(route('payroll.disburse-all'), {
             month: props.month,
-            year: props.year
+            year: props.year,
+            use_xendit: Boolean(props.xenditConfig?.enabled)
         }, {
             preserveScroll: true
         });

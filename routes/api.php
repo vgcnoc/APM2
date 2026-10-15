@@ -21,3 +21,6 @@ Route::middleware('auth:sanctum')->post('/customers/booking', [BookingController
 // Webhook Callback Payment Gateway (Tripay, Midtrans, dll)
 Route::post('/payment-gateway/callback', [\App\Http\Controllers\PaymentGatewayController::class, 'callback'])->name('api.payment-gateway.callback');
 
+// Webhook Callback Xendit Disbursement (Auto Transfer Payroll)
+Route::post('/webhooks/xendit/disbursement', [\App\Http\Controllers\PayrollController::class, 'handleXenditWebhook'])->name('api.xendit.webhook');
+
