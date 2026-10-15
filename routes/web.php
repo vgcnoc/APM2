@@ -418,6 +418,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/monitoring-pelanggan/{invoice}/set-promise', [\App\Http\Controllers\CustomerMonitoringController::class, 'setPromise'])->name('monitoring-pelanggan.set-promise');
     });
 
+    // ── Monitoring Kinerja Teknisi (Penanganan Gangguan & Pemasangan Instalasi) ──
+    Route::middleware(['permission:menu_monitoring_teknisi|menu_tickets|menu_customers_installed'])->group(function () {
+        Route::get('/monitoring-teknisi', [\App\Http\Controllers\TechnicianMonitoringController::class, 'index'])->name('technician-monitoring.index');
+        Route::get('/monitoring-teknisi/detail/{technician}', [\App\Http\Controllers\TechnicianMonitoringController::class, 'technicianDetail'])->name('technician-monitoring.detail');
+    });
+
     // ── Customer Billing (Penagihan Lapangan) ─────────────────────
     Route::middleware(['permission:menu_customer_billing'])->group(function () {
         Route::get('/customer-billing', [\App\Http\Controllers\CustomerBillingController::class, 'index'])->name('customer-billing.index');

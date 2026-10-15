@@ -649,6 +649,7 @@ const categoryMap = {
     'tiket': [
         'Ticketing & CBP (Cabut Perangkat)',
         'Penanganan Khusus (PGK, PGJ, PGS)',
+        'Monitoring Kinerja Teknisi',
     ],
     'gudang': [
         'Material & Logistik Gudang',

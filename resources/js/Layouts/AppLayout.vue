@@ -277,6 +277,18 @@ const menuItems = [
     { type: 'group', label: 'OPERASIONAL & GANGGUAN' },
     {
         type: 'dropdown',
+        icon: 'presentation-chart-line',
+        label: 'Monitor Kinerja Teknisi',
+        active: (url) => (url || '').startsWith('/monitoring-teknisi'),
+        permission: ['menu_monitoring_teknisi', 'menu_tickets', 'menu_customers_installed'],
+        children: [
+            { href: '/monitoring-teknisi?tab=gangguan', label: '1. Penanganan Gangguan', active: (url) => (url || '').startsWith('/monitoring-teknisi') && (url || '').includes('tab=gangguan'), permission: ['monitoring_teknisi_tab_gangguan', 'menu_monitoring_teknisi'] },
+            { href: '/monitoring-teknisi?tab=instalasi', label: '2. Instalasi Pemasangan', active: (url) => (url || '').startsWith('/monitoring-teknisi') && (url || '').includes('tab=instalasi'), permission: ['monitoring_teknisi_tab_instalasi', 'menu_monitoring_teknisi'] },
+            { href: '/monitoring-teknisi?tab=leaderboard', label: '3. Leaderboard & Rekap', active: (url) => (url || '').startsWith('/monitoring-teknisi') && ((url || '').includes('tab=leaderboard') || (!(url || '').includes('tab=gangguan') && !(url || '').includes('tab=instalasi'))), permission: ['monitoring_teknisi_tab_leaderboard', 'menu_monitoring_teknisi'] },
+        ]
+    },
+    {
+        type: 'dropdown',
         icon: 'support',
         label: 'Komplain Pelanggan (PGK)',
         active: (url) => (url || '').startsWith('/pgk'),
@@ -654,6 +666,8 @@ const iconPaths = {
     'chart-pie': 'M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z',
     scissors: 'M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879a3 3 0 11-1.414-1.414L10.586 12 7.707 9.121a3 3 0 111.414-1.414L12 10.586m0 0L19 12',
     gift: 'M12 8v13m0-13V4.5a2.5 2.5 0 115 0v3.5m-5 0V4.5a2.5 2.5 0 10-5 0v3.5m-5 0h20a1 1 0 011 1v3a1 1 0 01-1 1H2a1 1 0 01-1-1V9a1 1 0 011-1zm1 5v7a2 2 0 002 2h14a2 2 0 002-2v-7',
-    sparkles: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.286L13 21l-2.286-6.857L5 12l5.714-2.286L13 3z'
+    sparkles: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.286L13 21l-2.286-6.857L5 12l5.714-2.286L13 3z',
+    'presentation-chart-line': 'M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z',
+    'desktop-computer': 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
 };
 </script>

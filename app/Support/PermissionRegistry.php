@@ -620,6 +620,26 @@ class PermissionRegistry
                     ['name' => 'settings_roles_clone', 'type' => 'button', 'label' => 'Tombol Duplikasi / Kloning Role'],
                 ],
             ],
+
+            // ── 23. MONITORING KINERJA TEKNISI ─────────────────────────
+            [
+                'group' => 'Monitoring Kinerja Teknisi',
+                'category' => 'tiket',
+                'icon' => 'desktop-computer',
+                'menu_parent' => 'menu_monitoring_teknisi',
+                'permissions' => [
+                    ['name' => 'menu_monitoring_teknisi', 'type' => 'menu', 'label' => 'Akses Menu Monitoring Kinerja Teknisi'],
+                    ['name' => 'monitoring_teknisi_card_stats', 'type' => 'card', 'label' => 'Card Statistik Gangguan & Pemasangan'],
+                    ['name' => 'monitoring_teknisi_tab_gangguan', 'type' => 'tab', 'label' => 'Tab Monitor Penanganan Gangguan'],
+                    ['name' => 'monitoring_teknisi_tab_instalasi', 'type' => 'tab', 'label' => 'Tab Monitor Pemasangan Instalasi'],
+                    ['name' => 'monitoring_teknisi_tab_leaderboard', 'type' => 'tab', 'label' => 'Tab Leaderboard & Rekap Total'],
+                    ['name' => 'monitoring_teknisi_filter_period', 'type' => 'filter', 'label' => 'Filter Periode Tanggal & Area'],
+                    ['name' => 'monitoring_teknisi_btn_export', 'type' => 'button', 'label' => 'Tombol Cetak & Ekspor Data Kinerja'],
+                    ['name' => 'monitoring_teknisi_btn_whatsapp', 'type' => 'button', 'label' => 'Tombol WhatsApp Koordinasi Teknisi'],
+                    ['name' => 'monitoring_teknisi_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Teknisi Seluruh Cabang'],
+                    ['name' => 'monitoring_teknisi_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Data Teknisi Sesuai Area'],
+                ],
+            ],
         ];
     }
 
@@ -671,6 +691,7 @@ class PermissionRegistry
                 'menu_pgj', 'pgj_manage',
                 'menu_pgs', 'pgs_manage',
                 'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_btn_scan_qr', 'whatsapp_btn_restart',
+                'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_view_all',
             ],
             'teknisi' => [
                 'menu_dashboard', 'dashboard_card_tickets', 'dashboard_card_infra',
@@ -692,6 +713,7 @@ class PermissionRegistry
                 'menu_pgj', 'pgj_manage',
                 'menu_pgs', 'pgs_manage',
                 'menu_attendances',
+                'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_view_area',
             ],
             'kepala teknisi' => [
                 'menu_dashboard', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_card_stats',
@@ -713,6 +735,7 @@ class PermissionRegistry
                 'menu_pgj', 'pgj_manage',
                 'menu_pgs', 'pgs_manage',
                 'menu_attendances',
+                'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_export', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_all',
             ],
             'Dispatcher' => [
                 'menu_dashboard', 'dashboard_card_tickets',
@@ -721,6 +744,7 @@ class PermissionRegistry
                 'menu_customers_installed', 'customers_installed_assign', 'customers_installed_whatsapp', 'customers_installed_audit', 'customers_installed_view_all',
                 'menu_infrastructure_work_orders', 'infrastructure_work_orders_dispatch', 'infrastructure_work_orders_view_all',
                 'menu_tickets', 'tickets_assign', 'tickets_btn_whatsapp', 'tickets_view_all',
+                'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_all',
             ],
             'cs' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_btn_quick_action',
@@ -742,6 +766,7 @@ class PermissionRegistry
                 'whatsapp_tab_device', 'whatsapp_tab_blast', 'whatsapp_tab_history', 'whatsapp_tab_settings',
                 'whatsapp_filter_target', 'whatsapp_btn_scan_qr', 'whatsapp_btn_test_send', 'whatsapp_btn_start_blast', 'whatsapp_btn_pause_blast',
                 'menu_internet_packages', 'menu_attendances',
+                'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_view_all',
             ],
             'admin cs' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_btn_quick_action',
@@ -763,6 +788,7 @@ class PermissionRegistry
                 'whatsapp_tab_device', 'whatsapp_tab_blast', 'whatsapp_tab_history', 'whatsapp_tab_settings',
                 'whatsapp_filter_target', 'whatsapp_btn_scan_qr', 'whatsapp_btn_test_send', 'whatsapp_btn_start_blast', 'whatsapp_btn_pause_blast',
                 'menu_internet_packages', 'menu_attendances',
+                'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_view_all',
             ],
             'sales' => [
                 'menu_dashboard',
@@ -806,6 +832,7 @@ class PermissionRegistry
                 'menu_material_transactions', 'material_transactions_view_all',
                 'menu_employees', 'menu_attendances', 'menu_payroll',
                 'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_card_blast_summary',
+                'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_export', 'monitoring_teknisi_view_all',
             ],
         ];
     }
