@@ -237,11 +237,18 @@
                                     <p v-if="!emp.phone && !emp.email" class="text-xs text-gray-300">-</p>
                                 </td>
 
-                                <!-- 4. Status Tipe -->
+                                <!-- 4. Status Tipe & Pembayaran -->
                                 <td class="py-4 px-6">
                                     <span :class="employeeTypeBadge(emp.employee_type)" class="px-2.5 py-1 rounded-full text-xs font-medium border inline-block">
                                         {{ emp.employee_type || '-' }}
                                     </span>
+                                    <div v-if="emp.bank_account_number" class="text-[11px] font-mono text-slate-600 mt-1.5 flex items-center gap-1">
+                                        <span class="font-bold text-slate-800">{{ emp.bank_name || 'Bank' }}:</span>
+                                        <span class="text-blue-700 font-semibold">{{ emp.bank_account_number }}</span>
+                                    </div>
+                                    <div v-else-if="emp.payment_method === 'Cash'" class="text-[11px] text-emerald-600 font-medium mt-1">
+                                        💵 Tunai (Cash)
+                                    </div>
                                 </td>
 
                                 <!-- 5. Lama Bekerja (KOLOM UTAMA FITUR BARU) -->
@@ -433,12 +440,25 @@
                         </div>
 
                         <!-- Metode Pembayaran -->
-                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 sm:col-span-2">
                             <p class="text-gray-400 uppercase tracking-wider text-[10px] font-semibold mb-1">Metode Pembayaran Gaji</p>
-                            <p class="font-semibold text-gray-800 text-sm flex items-center gap-1.5">
-                                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                                <span>{{ selectedEmployee.payment_method || '-' }}</span>
-                            </p>
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <p class="font-semibold text-gray-800 text-sm flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                    <span>{{ selectedEmployee.payment_method || 'Belum diatur' }}</span>
+                                    <span v-if="selectedEmployee.bank_name" class="ml-1 px-2 py-0.5 rounded-md text-xs font-bold bg-blue-100 text-blue-800">
+                                        {{ selectedEmployee.bank_name }}
+                                    </span>
+                                </p>
+                                <div v-if="selectedEmployee.bank_account_number" class="text-right">
+                                    <span class="font-mono font-bold text-sm text-blue-700 bg-white px-2.5 py-1 rounded-lg border border-blue-200 inline-block">
+                                        {{ selectedEmployee.bank_account_number }}
+                                    </span>
+                                    <span v-if="selectedEmployee.bank_account_holder" class="block text-[11px] text-gray-500 mt-0.5">
+                                        a.n {{ selectedEmployee.bank_account_holder }}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Area Cabang -->
@@ -598,20 +618,183 @@
                             </select>
                         </div>
 
-                        <!-- Payment Method -->
-                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                            <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                                Informasi Pembayaran
-                            </h4>
+                        <!-- Payment Method Section -->
+                        <div class="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                                    </svg>
+                                    <span>Informasi Pembayaran Gaji</span>
+                                </h4>
+                                <span v-if="form.payment_method" class="text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                                    :class="form.payment_method === 'Transfer Bank' ? 'bg-blue-100 text-blue-700' : (form.payment_method === 'E-Wallet' ? 'bg-cyan-100 text-cyan-700' : 'bg-emerald-100 text-emerald-700')">
+                                    {{ form.payment_method }}
+                                </span>
+                            </div>
+
+                            <!-- Dropdown Metode Pembayaran Utama -->
                             <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Metode Pembayaran</label>
-                                <select v-model="form.payment_method" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                                <label class="block text-xs font-semibold text-slate-700 mb-1.5">Metode Pembayaran</label>
+                                <select 
+                                    v-model="form.payment_method" 
+                                    @change="onPaymentMethodChange"
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white text-sm"
+                                >
                                     <option value="">Pilih metode</option>
                                     <option value="Transfer Bank">Transfer Bank</option>
                                     <option value="Cash">Cash</option>
                                     <option value="E-Wallet">E-Wallet</option>
                                 </select>
+                            </div>
+
+                            <!-- Opsi Khusus Transfer Bank -->
+                            <div v-if="form.payment_method === 'Transfer Bank'" class="p-3.5 bg-white rounded-xl border border-blue-100 shadow-xs space-y-3.5 animate-fade-in-up">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">Pilih Bank</label>
+                                    <!-- Quick Bank Buttons -->
+                                    <div class="flex flex-wrap gap-1.5 mb-2">
+                                        <button 
+                                            v-for="b in popularBanks" 
+                                            :key="b" 
+                                            type="button"
+                                            @click="selectBank(b)"
+                                            class="px-2.5 py-1 text-xs rounded-lg font-medium transition-all"
+                                            :class="form.bank_name === b && !isCustomBank ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                                        >
+                                            {{ b }}
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            @click="toggleCustomBank"
+                                            class="px-2.5 py-1 text-xs rounded-lg font-medium border border-dashed transition-all"
+                                            :class="isCustomBank || (!popularBanks.includes(form.bank_name) && form.bank_name) ? 'border-blue-500 text-blue-600 bg-blue-50' : 'border-slate-300 text-slate-500 hover:bg-slate-50'"
+                                        >
+                                            + Bank Lainnya
+                                        </button>
+                                    </div>
+
+                                    <!-- Input jika bank lain dipilih -->
+                                    <input 
+                                        v-if="isCustomBank || (!popularBanks.includes(form.bank_name) && form.bank_name)"
+                                        v-model="form.bank_name" 
+                                        type="text" 
+                                        class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 mt-1" 
+                                        placeholder="Ketik nama bank (cth: Bank Jateng, CIMB Niaga, dll)"
+                                    >
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                            <span>Nomor Rekening {{ form.bank_name ? `(${form.bank_name})` : '' }} *</span>
+                                        </label>
+                                        <input 
+                                            v-model="form.bank_account_number" 
+                                            type="text" 
+                                            class="w-full px-3.5 py-2 text-xs font-mono font-bold tracking-wider rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white" 
+                                            placeholder="Contoh: 1234567890"
+                                        >
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="text-xs font-semibold text-slate-700">Nama Pemilik Rekening (a.n)</label>
+                                            <button 
+                                                v-if="form.name && form.bank_account_holder !== form.name"
+                                                type="button" 
+                                                @click="form.bank_account_holder = form.name" 
+                                                class="text-[10px] text-blue-600 hover:underline font-semibold"
+                                            >
+                                                Pakai Nama Karyawan
+                                            </button>
+                                        </div>
+                                        <input 
+                                            v-model="form.bank_account_holder" 
+                                            type="text" 
+                                            class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white" 
+                                            placeholder="Sesuai buku tabungan"
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Opsi Khusus E-Wallet (DANA, GoPay, OVO, dll) -->
+                            <div v-if="form.payment_method === 'E-Wallet'" class="p-3.5 bg-white rounded-xl border border-cyan-100 shadow-xs space-y-3.5 animate-fade-in-up">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">Pilih E-Wallet</label>
+                                    <!-- Quick E-Wallet Buttons -->
+                                    <div class="flex flex-wrap gap-1.5 mb-2">
+                                        <button 
+                                            v-for="w in popularEWallets" 
+                                            :key="w" 
+                                            type="button"
+                                            @click="selectEWallet(w)"
+                                            class="px-2.5 py-1 text-xs rounded-lg font-medium transition-all"
+                                            :class="form.bank_name === w && !isCustomEWallet ? 'bg-cyan-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                                        >
+                                            {{ w }}
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            @click="toggleCustomEWallet"
+                                            class="px-2.5 py-1 text-xs rounded-lg font-medium border border-dashed transition-all"
+                                            :class="isCustomEWallet || (!popularEWallets.includes(form.bank_name) && form.bank_name) ? 'border-cyan-500 text-cyan-600 bg-cyan-50' : 'border-slate-300 text-slate-500 hover:bg-slate-50'"
+                                        >
+                                            + E-Wallet Lainnya
+                                        </button>
+                                    </div>
+
+                                    <!-- Input jika e-wallet lain dipilih -->
+                                    <input 
+                                        v-if="isCustomEWallet || (!popularEWallets.includes(form.bank_name) && form.bank_name)"
+                                        v-model="form.bank_name" 
+                                        type="text" 
+                                        class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 mt-1" 
+                                        placeholder="Ketik nama e-wallet (cth: i.saku, AstraPay, dll)"
+                                    >
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                            <span>{{ form.bank_name === 'DANA' ? 'Nomor DANA (No. HP)' : `Nomor ${form.bank_name || 'E-Wallet'} (No. HP)` }} *</span>
+                                        </label>
+                                        <input 
+                                            v-model="form.bank_account_number" 
+                                            type="text" 
+                                            class="w-full px-3.5 py-2 text-xs font-mono font-bold tracking-wider rounded-xl border border-slate-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 bg-white" 
+                                            placeholder="Contoh: 081234567890"
+                                        >
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="text-xs font-semibold text-slate-700">Nama Pemilik Akun (a.n)</label>
+                                            <button 
+                                                v-if="form.name && form.bank_account_holder !== form.name"
+                                                type="button" 
+                                                @click="form.bank_account_holder = form.name" 
+                                                class="text-[10px] text-cyan-600 hover:underline font-semibold"
+                                            >
+                                                Pakai Nama Karyawan
+                                            </button>
+                                        </div>
+                                        <input 
+                                            v-model="form.bank_account_holder" 
+                                            type="text" 
+                                            class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 bg-white" 
+                                            placeholder="Nama terdaftar di akun"
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Opsi Khusus Cash -->
+                            <div v-if="form.payment_method === 'Cash'" class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2.5 animate-fade-in-up">
+                                <span class="text-lg">💵</span>
+                                <div>
+                                    <p class="font-bold">Pembayaran Gaji Tunai (Cash)</p>
+                                    <p class="text-[11px] text-emerald-600">Gaji diserahkan langsung secara fisik tanpa transfer rekening bank atau e-wallet.</p>
+                                </div>
                             </div>
                         </div>
 
@@ -668,6 +851,61 @@ const isEditing = ref(false);
 const editingId = ref(null);
 const photoPreview = ref(null);
 
+const popularBanks = ['BCA', 'Bank Mandiri', 'BRI', 'BNI', 'BSI', 'Bank Jago', 'SeaBank'];
+const popularEWallets = ['DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja'];
+const isCustomBank = ref(false);
+const isCustomEWallet = ref(false);
+
+const selectBank = (bank) => {
+    isCustomBank.value = false;
+    form.bank_name = bank;
+    if (!form.bank_account_holder && form.name) {
+        form.bank_account_holder = form.name;
+    }
+};
+
+const toggleCustomBank = () => {
+    isCustomBank.value = !isCustomBank.value;
+    if (isCustomBank.value && popularBanks.includes(form.bank_name)) {
+        form.bank_name = '';
+    }
+};
+
+const selectEWallet = (wallet) => {
+    isCustomEWallet.value = false;
+    form.bank_name = wallet;
+    if (!form.bank_account_holder && form.name) {
+        form.bank_account_holder = form.name;
+    }
+};
+
+const toggleCustomEWallet = () => {
+    isCustomEWallet.value = !isCustomEWallet.value;
+    if (isCustomEWallet.value && popularEWallets.includes(form.bank_name)) {
+        form.bank_name = '';
+    }
+};
+
+const onPaymentMethodChange = () => {
+    if (form.payment_method === 'Transfer Bank') {
+        if (!form.bank_name || popularEWallets.includes(form.bank_name)) {
+            form.bank_name = 'BCA';
+            isCustomBank.value = false;
+        }
+        if (!form.bank_account_holder && form.name) {
+            form.bank_account_holder = form.name;
+        }
+    } else if (form.payment_method === 'E-Wallet') {
+        if (!form.bank_name || popularBanks.includes(form.bank_name)) {
+            form.bank_name = 'DANA';
+            isCustomEWallet.value = false;
+        }
+        if (!form.bank_account_holder && form.name) {
+            form.bank_account_holder = form.name;
+        }
+    }
+};
+
 const form = useForm({
     name: '',
     iak_number: '',
@@ -678,6 +916,9 @@ const form = useForm({
     join_date: '',
     employee_type: '',
     payment_method: '',
+    bank_name: '',
+    bank_account_number: '',
+    bank_account_holder: '',
     address: '',
     photo: null,
 });
@@ -879,6 +1120,11 @@ function openModal(emp = null) {
         }
         form.employee_type = emp.employee_type || '';
         form.payment_method = emp.payment_method || '';
+        form.bank_name = emp.bank_name || '';
+        form.bank_account_number = emp.bank_account_number || '';
+        form.bank_account_holder = emp.bank_account_holder || emp.name || '';
+        isCustomBank.value = !!(emp.bank_name && !popularBanks.includes(emp.bank_name) && form.payment_method === 'Transfer Bank');
+        isCustomEWallet.value = !!(emp.bank_name && !popularEWallets.includes(emp.bank_name) && form.payment_method === 'E-Wallet');
         form.address = emp.address || '';
         form.photo = null;
         photoPreview.value = emp.photo ? `/storage/${emp.photo}` : null;
@@ -890,6 +1136,11 @@ function openModal(emp = null) {
         isEditing.value = false;
         editingId.value = null;
         form.reset();
+        form.bank_name = '';
+        form.bank_account_number = '';
+        form.bank_account_holder = '';
+        isCustomBank.value = false;
+        isCustomEWallet.value = false;
         photoPreview.value = null;
     }
     showModal.value = true;
@@ -898,6 +1149,11 @@ function openModal(emp = null) {
 function closeModal() {
     showModal.value = false;
     form.reset();
+    form.bank_name = '';
+    form.bank_account_number = '';
+    form.bank_account_holder = '';
+    isCustomBank.value = false;
+    isCustomEWallet.value = false;
     photoPreview.value = null;
 }
 

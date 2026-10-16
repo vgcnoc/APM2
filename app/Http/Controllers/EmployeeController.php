@@ -68,6 +68,19 @@ class EmployeeController extends Controller
         }
 
         $employees = $query->with('area')->paginate(10)->withQueryString();
+
+        // Isi data bank dari tabel users jika belum terisi di employees
+        $employees->getCollection()->transform(function ($emp) {
+            if (!$emp->bank_name || !$emp->bank_account_number) {
+                $user = \App\Models\User::where('email', $emp->email)->first();
+                if ($user) {
+                    if (!$emp->bank_name) $emp->bank_name = $user->bank_name;
+                    if (!$emp->bank_account_number) $emp->bank_account_number = $user->bank_account_number;
+                    if (!$emp->bank_account_holder) $emp->bank_account_holder = $user->bank_account_holder;
+                }
+            }
+            return $emp;
+        });
         
         $areas = \App\Models\Area::orderBy('name')->get();
         $positions = \App\Models\Position::orderBy('name')->get();
@@ -127,6 +140,9 @@ class EmployeeController extends Controller
             'join_date' => 'nullable|date',
             'employee_type' => 'nullable|string|max:50',
             'payment_method' => 'nullable|string|max:50',
+            'bank_name' => 'nullable|string|max:50',
+            'bank_account_number' => 'nullable|string|max:50',
+            'bank_account_holder' => 'nullable|string|max:100',
             'address' => 'nullable|string',
             'photo' => 'nullable|image|max:2048',
         ]);
@@ -144,6 +160,9 @@ class EmployeeController extends Controller
             'email' => $validated['email'],
             'password' => bcrypt('password123'), // Default password
             'area_id' => $validated['area_id'] ?? null,
+            'bank_name' => $validated['bank_name'] ?? null,
+            'bank_account_number' => $validated['bank_account_number'] ?? null,
+            'bank_account_holder' => $validated['bank_account_holder'] ?? null,
         ]);
 
         if (!empty($validated['position'])) {
@@ -171,6 +190,9 @@ class EmployeeController extends Controller
             'join_date' => 'nullable|date',
             'employee_type' => 'nullable|string|max:50',
             'payment_method' => 'nullable|string|max:50',
+            'bank_name' => 'nullable|string|max:50',
+            'bank_account_number' => 'nullable|string|max:50',
+            'bank_account_holder' => 'nullable|string|max:100',
             'address' => 'nullable|string',
             'photo' => 'nullable|image|max:2048',
         ]);
@@ -206,6 +228,9 @@ class EmployeeController extends Controller
                     'name' => $validated['name'],
                     'email' => $validated['email'],
                     'area_id' => $validated['area_id'] ?? null,
+                    'bank_name' => $validated['bank_name'] ?? null,
+                    'bank_account_number' => $validated['bank_account_number'] ?? null,
+                    'bank_account_holder' => $validated['bank_account_holder'] ?? null,
                 ]);
                 
                 if (!empty($validated['position'])) {
