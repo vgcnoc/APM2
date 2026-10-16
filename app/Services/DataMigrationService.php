@@ -1943,11 +1943,13 @@ class DataMigrationService
         if (!empty($data['create_user'])) {
             $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
             $initialPassword = !empty($data['initial_password']) ? $data['initial_password'] : 'password123';
+            $mappedRole = !empty($data['position']) ? \App\Http\Controllers\EmployeeController::mapPositionToRole($data['position']) : 'cs';
 
             if (!$user) {
                 $user = User::create([
                     'name' => $data['name'],
                     'email' => $data['email'],
+                    'role' => $mappedRole,
                     'password' => bcrypt($initialPassword),
                     'phone' => $data['phone'] ?: null,
                     'area_id' => $areaId,
@@ -1958,6 +1960,7 @@ class DataMigrationService
             } else {
                 $user->update([
                     'name' => $data['name'],
+                    'role' => $mappedRole,
                     'phone' => $data['phone'] ?: ($user->phone ?? null),
                     'area_id' => $areaId,
                     'bank_name' => $data['bank_name'] ?: ($user->bank_name ?? null),

@@ -47,10 +47,13 @@ class DataMigrationController extends Controller
             'areas' => Area::select('id', 'name')->orderBy('name')->get(),
             'sales' => User::select('id', 'name', 'email', 'role', 'phone')
                 ->where('is_active', true)
+                ->whereNotIn('role', ['customer'])
+                ->with(['employee:id,email,phone,name,position'])
                 ->orderBy('name')
                 ->get()
                 ->map(function ($u) {
-                    $u->display_name = $u->name . ($u->role ? " (" . ucfirst($u->role) . ")" : "");
+                    $pos = $u->job_position;
+                    $u->display_name = "{$u->name} ({$pos})";
                     return $u;
                 }),
             'technicians' => User::select('id', 'name', 'email', 'role')->whereIn('role', ['admin', 'teknisi', 'noc', 'maintenance'])->orderBy('name')->get(),

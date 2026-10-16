@@ -54,7 +54,55 @@ class User extends Authenticatable
         ];
     }
 
+    protected $appends = [
+        'job_position',
+    ];
+
     // ── Relationships ──────────────────────────────────────────
+
+    public function employee(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Employee::class, 'email', 'email');
+    }
+
+    /**
+     * Dapatkan posisi/jabatan riil karyawan (dari Employee HR) atau Spatie role / role sistem
+     */
+    public function getJobPositionAttribute(): string
+    {
+        // 1. Cek dari relasi data Karyawan (HR)
+        $emp = $this->relationLoaded('employee') ? $this->employee : null;
+        if (!$emp && !empty($this->email)) {
+            $emp = Employee::where('email', $this->email)->first();
+        }
+        if (!$emp && !empty($this->phone)) {
+            $emp = Employee::where('phone', $this->phone)->first();
+        }
+        if (!$emp && !empty($this->name)) {
+            $emp = Employee::where('name', $this->name)->first();
+        }
+
+        if ($emp && !empty($emp->position)) {
+            return trim($emp->position);
+        }
+
+        // 2. Cek dari Spatie Roles
+        $spatieRole = method_exists($this, 'getRoleNames') ? $this->getRoleNames()->first() : null;
+        if ($spatieRole && !in_array(strtolower($spatieRole), ['cs', 'karyawan'])) {
+            return ucwords(str_replace(['_', '-'], ' ', $spatieRole));
+        }
+
+        // 3. Cek dari kolom role bawaan jika bukan 'cs'
+        if (!empty($this->role) && !in_array(strtolower($this->role), ['cs', 'karyawan'])) {
+            return ucwords(str_replace(['_', '-'], ' ', $this->role));
+        }
+
+        if ($spatieRole) {
+            return ucwords(str_replace(['_', '-'], ' ', $spatieRole));
+        }
+
+        return $this->role ? ucwords(str_replace(['_', '-'], ' ', $this->role)) : 'Karyawan';
+    }
 
     public function assignedTickets(): HasMany
     {

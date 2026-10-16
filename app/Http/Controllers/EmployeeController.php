@@ -183,9 +183,11 @@ class EmployeeController extends Controller
         \App\Models\Employee::create($validated);
 
         // Auto-create user
+        $roleName = !empty($validated['position']) ? self::mapPositionToRole($validated['position']) : 'cs';
         $user = \App\Models\User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'role' => $roleName,
             'password' => bcrypt('password123'), // Default password
             'area_id' => $validated['area_id'] ?? null,
             'bank_name' => $validated['bank_name'] ?? null,
@@ -194,9 +196,9 @@ class EmployeeController extends Controller
         ]);
 
         if (!empty($validated['position'])) {
-            $roleName = strtolower($validated['position']);
-            \Spatie\Permission\Models\Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
-            $user->syncRoles([$roleName]);
+            $spatieRole = strtolower($validated['position']);
+            \Spatie\Permission\Models\Role::firstOrCreate(['name' => $spatieRole, 'guard_name' => 'web']);
+            $user->syncRoles([$spatieRole]);
         }
 
         return redirect()->route('employees.index')->with('success', 'Data karyawan berhasil ditambahkan.');
@@ -252,9 +254,11 @@ class EmployeeController extends Controller
         if ($oldEmail) {
             $user = \App\Models\User::where('email', $oldEmail)->first();
             if ($user) {
+                $roleName = !empty($validated['position']) ? self::mapPositionToRole($validated['position']) : ($user->role ?: 'cs');
                 $user->update([
                     'name' => $validated['name'],
                     'email' => $validated['email'],
+                    'role' => $roleName,
                     'area_id' => $validated['area_id'] ?? null,
                     'bank_name' => $validated['bank_name'] ?? null,
                     'bank_account_number' => $validated['bank_account_number'] ?? null,
@@ -262,9 +266,9 @@ class EmployeeController extends Controller
                 ]);
                 
                 if (!empty($validated['position'])) {
-                    $roleName = strtolower($validated['position']);
-                    \Spatie\Permission\Models\Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
-                    $user->syncRoles([$roleName]);
+                    $spatieRole = strtolower($validated['position']);
+                    \Spatie\Permission\Models\Role::firstOrCreate(['name' => $spatieRole, 'guard_name' => 'web']);
+                    $user->syncRoles([$spatieRole]);
                 }
             }
         }
@@ -434,5 +438,23 @@ class EmployeeController extends Controller
         });
 
         return redirect()->back()->with('success', "Karyawan {$employee->name} berhasil diaktifkan kembali.");
+    }
+
+    /**
+     * Map posisi pekerjaan HR ke kode role sistem APM2
+     */
+    public static function mapPositionToRole(?string $pos): string
+    {
+        $p = strtolower(trim((string)$pos));
+        if (str_contains($p, 'teknisi') || str_contains($p, 'tim serbu') || str_contains($p, 'infrastruktur')) return 'teknisi';
+        if (str_contains($p, 'maintenance')) return 'maintenance';
+        if (str_contains($p, 'sales') || str_contains($p, 'kolektor')) return 'sales';
+        if (str_contains($p, 'finance') || str_contains($p, 'keuangan')) return 'finance';
+        if (str_contains($p, 'hrd')) return 'hrd';
+        if (str_contains($p, 'noc')) return 'noc';
+        if (str_contains($p, 'manajer') || str_contains($p, 'manager')) return 'manager';
+        if (str_contains($p, 'customer care') || str_contains($p, 'cs')) return 'cs';
+        if (str_contains($p, 'admin') || str_contains($p, 'administrasi')) return 'admin';
+        return $p ?: 'karyawan';
     }
 }

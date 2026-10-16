@@ -489,7 +489,7 @@ class CustomerController extends Controller
             ->search($request->search);
 
         $customers = (clone $query)
-            ->with(['package', 'sales'])
+            ->with(['package', 'sales.employee'])
             ->orderByDesc('created_at')
             ->paginate(15)
             ->withQueryString();
@@ -1282,16 +1282,19 @@ class CustomerController extends Controller
         $areas = \App\Models\Area::pluck('name');
         
         $sales = User::where('is_active', true)
+            ->whereNotIn('role', ['customer'])
+            ->with(['employee:id,email,phone,name,position'])
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'phone', 'role'])
             ->map(function ($u) {
-                $roleLabel = $u->role ? ucwords(str_replace('_', ' ', $u->role)) : 'Karyawan';
+                $pos = $u->job_position;
                 return [
                     'id' => $u->id,
                     'name' => $u->name,
-                    'role' => $roleLabel,
+                    'role' => $pos,
+                    'job_position' => $pos,
                     'email' => $u->email,
-                    'display_name' => "{$u->name} ({$roleLabel})",
+                    'display_name' => "{$u->name} ({$pos})",
                 ];
             });
 
@@ -1519,16 +1522,19 @@ class CustomerController extends Controller
         $areas = \App\Models\Area::pluck('name');
 
         $sales = User::where('is_active', true)
+            ->whereNotIn('role', ['customer'])
+            ->with(['employee:id,email,phone,name,position'])
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'phone', 'role'])
             ->map(function ($u) {
-                $roleLabel = $u->role ? ucwords(str_replace('_', ' ', $u->role)) : 'Karyawan';
+                $pos = $u->job_position;
                 return [
                     'id' => $u->id,
                     'name' => $u->name,
-                    'role' => $roleLabel,
+                    'role' => $pos,
+                    'job_position' => $pos,
                     'email' => $u->email,
-                    'display_name' => "{$u->name} ({$roleLabel})",
+                    'display_name' => "{$u->name} ({$pos})",
                 ];
             });
 
