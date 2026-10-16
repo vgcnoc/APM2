@@ -192,13 +192,13 @@
                                     <span>Pilih Teknisi</span>
                                     <span class="text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full lowercase font-medium tracking-normal">Bisa pilih lebih dari 1</span>
                                 </label>
-                                <div class="relative">
+                                <div class="relative" v-click-outside="() => showDropdown = false">
                                     <!-- Trigger Button -->
                                     <div @click="showDropdown = !showDropdown" class="w-full min-h-[56px] px-4 py-3 bg-white border-2 border-slate-200 rounded-2xl text-sm cursor-pointer flex items-center justify-between hover:border-blue-400 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all duration-300 shadow-sm">
                                         <div class="flex flex-wrap gap-2 flex-1">
                                             <template v-if="assignForm.technicians.length">
                                                 <div v-for="tId in assignForm.technicians" :key="tId" class="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-800 px-3 py-1.5 rounded-xl text-xs font-bold border border-blue-200/60 shadow-sm animate-fade-in-up">
-                                                    <div class="w-4 h-4 rounded-full bg-blue-200 flex items-center justify-center text-[8px] text-blue-700">
+                                                    <div class="w-4 h-4 rounded-full bg-blue-200 flex items-center justify-center text-[8px] text-blue-700 font-bold">
                                                         {{ getTechnicianName(tId).charAt(0) }}
                                                     </div>
                                                     {{ getTechnicianName(tId) }}
@@ -230,21 +230,27 @@
                                     >
                                         <div v-if="showDropdown" class="absolute z-50 w-full mt-2 bg-white/95 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] max-h-64 overflow-y-auto custom-scrollbar p-2">
                                             <div class="space-y-1">
-                                                <label v-for="tech in technicians" :key="tech.id" class="flex items-center p-3 rounded-xl cursor-pointer transition-all duration-200 group relative overflow-hidden" :class="assignForm.technicians.includes(tech.id) ? 'bg-blue-50/50' : 'hover:bg-slate-50'">
-                                                    <div class="absolute inset-0 bg-blue-100/50 transform scale-x-0 origin-left transition-transform duration-300" :class="{'scale-x-100': assignForm.technicians.includes(tech.id)}"></div>
+                                                <div v-for="tech in technicians" :key="tech.id" 
+                                                    @click="toggleTechnician(tech.id)"
+                                                    class="flex items-center p-3 rounded-xl cursor-pointer transition-all duration-200 group relative overflow-hidden select-none" 
+                                                    :class="isTechnicianSelected(tech.id) ? 'bg-blue-50/70 border border-blue-200/60' : 'hover:bg-slate-50 border border-transparent'">
+                                                    <div class="absolute inset-0 bg-blue-100/50 transform scale-x-0 origin-left transition-transform duration-300 pointer-events-none" :class="{'scale-x-100': isTechnicianSelected(tech.id)}"></div>
                                                     
                                                     <div class="relative z-10 flex items-center w-full">
-                                                        <div class="flex items-center justify-center w-5 h-5 rounded-md border-2 transition-colors duration-200" :class="assignForm.technicians.includes(tech.id) ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300 group-hover:border-blue-400'">
-                                                            <svg v-if="assignForm.technicians.includes(tech.id)" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                                        <div class="flex items-center justify-center w-5 h-5 rounded-md border-2 transition-colors duration-200 shrink-0" :class="isTechnicianSelected(tech.id) ? 'bg-blue-600 border-blue-600 shadow-sm' : 'bg-white border-slate-300 group-hover:border-blue-400'">
+                                                            <svg v-if="isTechnicianSelected(tech.id)" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
                                                         </div>
                                                         <div class="ml-3 flex items-center gap-3">
-                                                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 transition-colors" :class="{'bg-white text-blue-700 shadow-sm': assignForm.technicians.includes(tech.id)}">
+                                                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 transition-colors shrink-0" :class="{'bg-white text-blue-700 shadow-sm border border-blue-100': isTechnicianSelected(tech.id)}">
                                                                 {{ tech.name.charAt(0) }}
                                                             </div>
-                                                            <span class="text-sm font-bold transition-colors" :class="assignForm.technicians.includes(tech.id) ? 'text-blue-900' : 'text-slate-700 group-hover:text-slate-900'">{{ tech.name }}</span>
+                                                            <span class="text-sm font-bold transition-colors" :class="isTechnicianSelected(tech.id) ? 'text-blue-900' : 'text-slate-700 group-hover:text-slate-900'">{{ tech.name }}</span>
                                                         </div>
                                                     </div>
-                                                </label>
+                                                </div>
+                                                <div v-if="!technicians || technicians.length === 0" class="p-4 text-center text-xs text-slate-400">
+                                                    Tidak ada data teknisi tersedia.
+                                                </div>
                                             </div>
                                         </div>
                                     </transition>
@@ -326,6 +332,21 @@ function performSearch() {
     }, { preserveState: true, preserveScroll: true });
 }
 
+// Click outside directive implementation
+const vClickOutside = {
+    mounted(el, binding) {
+        el.clickOutsideEvent = (event) => {
+            if (!(el === event.target || el.contains(event.target))) {
+                binding.value();
+            }
+        };
+        document.body.addEventListener('click', el.clickOutsideEvent);
+    },
+    unmounted(el) {
+        document.body.removeEventListener('click', el.clickOutsideEvent);
+    }
+};
+
 // Assign Modal
 const showAssignModal = ref(false);
 const showDropdown = ref(false);
@@ -336,7 +357,7 @@ const assignForm = useForm({
 
 function openAssignModal(req) {
     selectedCbp.value = req;
-    assignForm.technicians = req.technicians ? req.technicians.map(t => t.id) : [];
+    assignForm.technicians = req.technicians ? req.technicians.map(t => Number(t.id)) : [];
     showAssignModal.value = true;
     showDropdown.value = false;
 }
@@ -348,6 +369,21 @@ function closeAssignModal() {
     assignForm.reset();
 }
 
+function isTechnicianSelected(id) {
+    const numId = Number(id);
+    return assignForm.technicians.some(t => Number(t) === numId);
+}
+
+function toggleTechnician(id) {
+    const numId = Number(id);
+    const index = assignForm.technicians.findIndex(t => Number(t) === numId);
+    if (index === -1) {
+        assignForm.technicians.push(numId);
+    } else {
+        assignForm.technicians.splice(index, 1);
+    }
+}
+
 function submitAssign() {
     assignForm.post(`/cbp/${selectedCbp.value.id}/assign`, {
         preserveScroll: true,
@@ -356,12 +392,14 @@ function submitAssign() {
 }
 
 function getTechnicianName(id) {
-    const tech = props.technicians.find(t => t.id === id);
+    const numId = Number(id);
+    const tech = props.technicians?.find(t => Number(t.id) === numId);
     return tech ? tech.name : '';
 }
 
 function removeTechnician(id) {
-    assignForm.technicians = assignForm.technicians.filter(t => t !== id);
+    const numId = Number(id);
+    assignForm.technicians = assignForm.technicians.filter(t => Number(t) !== numId);
 }
 
 // History Modal
