@@ -159,12 +159,18 @@ class PgjController extends Controller
         })->orWhere('role', 'teknisi')->orderBy('name')->get();
 
         $materials = Material::where('is_active', true)->orderBy('name')->get();
+        $materialTransactions = MaterialTransaction::where('type', 'in')
+            ->with(['items.material.stocks', 'areaModel'])
+            ->latest('id')
+            ->limit(200)
+            ->get();
 
         return Inertia::render('Pgj/Jadwal', [
             'tickets' => $tickets,
             'areas' => $areas,
             'technicians' => $technicians,
             'materials' => $materials,
+            'materialTransactions' => $materialTransactions,
             'filters' => $request->only(['search', 'area_id']),
         ]);
     }
@@ -413,8 +419,12 @@ class PgjController extends Controller
             'technicians.*' => 'exists:users,id',
             'materials' => 'nullable|array',
             'materials.*.material_id' => 'required|exists:materials,id',
+            'materials.*.material_transaction_item_id' => 'nullable',
+            'materials.*.trx_number' => 'nullable|string|max:100',
             'materials.*.quantity' => 'nullable|numeric|min:0.01',
             'materials.*.quantity_prepared' => 'nullable|numeric|min:0.01',
+            'materials.*.unit' => 'nullable|string',
+            'materials.*.notes' => 'nullable|string',
         ]);
 
         $oldStatus = $pgj->status;
@@ -433,7 +443,12 @@ class PgjController extends Controller
 
         // Kelola alokasi material gudang jalur
         if (!empty($validated['materials'])) {
+            $pgj->materials()->delete();
+
             $techNames = User::whereIn('id', $techIds)->pluck('name')->join(', ');
+
+            $sourceOrders = array_filter(array_unique(array_column($validated['materials'], 'trx_number')));
+            $orderRefStr = !empty($sourceOrders) ? ' (Ref Order/SJ: ' . implode(', ', $sourceOrders) . ')' : '';
 
             $transaction = MaterialTransaction::create([
                 'transaction_number' => 'OUT-PGJ-' . date('YmdHis') . rand(10, 99),
@@ -441,7 +456,7 @@ class PgjController extends Controller
                 'type' => 'out',
                 'status' => 'approved',
                 'technician_name' => $techNames ?: auth()->user()->name,
-                'purpose' => "Material Jalur PGJ #{$pgj->ticket_number} ({$pgj->segment_type}: {$pgj->category})",
+                'purpose' => "Material Jalur PGJ #{$pgj->ticket_number} ({$pgj->segment_type}: {$pgj->category}){$orderRefStr}",
                 'date' => now(),
                 'area_id' => $pgj->area_id,
             ]);
@@ -468,13 +483,16 @@ class PgjController extends Controller
 
                     $material->decrement('stock', $qty);
 
+                    $unit = $matItem['unit'] ?? $material->unit;
+                    $ppu = $material->price ?? ($material->selling_price ?: ($material->price_per_unit ?? 0));
+
                     MaterialTransactionItem::create([
                         'material_transaction_id' => $transaction->id,
                         'material_id' => $material->id,
                         'quantity' => $qty,
-                        'unit' => $material->unit,
-                        'price_per_unit' => $material->price ?? 0,
-                        'total_price' => ($material->price ?? 0) * $qty,
+                        'unit' => $unit,
+                        'price_per_unit' => $ppu,
+                        'total_price' => $ppu * $qty,
                         'stock_before' => $stockBefore,
                         'stock_after' => $stockAfter,
                     ]);
@@ -482,10 +500,13 @@ class PgjController extends Controller
                     PgjMaterial::create([
                         'pgj_ticket_id' => $pgj->id,
                         'material_id' => $material->id,
+                        'material_transaction_item_id' => $matItem['material_transaction_item_id'] ?? null,
+                        'trx_number' => $matItem['trx_number'] ?? null,
                         'quantity_prepared' => $qty,
                         'quantity_used' => 0,
                         'quantity_returned' => 0,
-                        'unit' => $material->unit,
+                        'unit' => $unit,
+                        'notes' => $matItem['notes'] ?? null,
                     ]);
                 }
             }

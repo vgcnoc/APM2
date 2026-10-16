@@ -190,6 +190,11 @@ class PgsController extends Controller
         }
 
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get();
+        $materialTransactions = MaterialTransaction::where('type', 'in')
+            ->with(['items.material.stocks', 'areaModel'])
+            ->latest('id')
+            ->limit(200)
+            ->get();
         $areas = Area::select('id', 'name')->orderBy('name')->get();
 
         return Inertia::render('Pgs/Jadwal', [
@@ -197,6 +202,7 @@ class PgsController extends Controller
             'areas' => $areas,
             'technicians' => $technicians,
             'materials' => $materials,
+            'materialTransactions' => $materialTransactions,
             'filters' => $request->only(['search', 'area_id']),
         ]);
     }
@@ -255,12 +261,18 @@ class PgsController extends Controller
         $tickets = $query->latest('id')->paginate($request->per_page ?? 15)->withQueryString();
 
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->get();
+        $materialTransactions = MaterialTransaction::where('type', 'in')
+            ->with(['items.material.stocks', 'areaModel'])
+            ->latest('id')
+            ->limit(200)
+            ->get();
         $areas = Area::select('id', 'name')->orderBy('name')->get();
 
         return Inertia::render('Pgs/Laporan', [
             'tickets' => $tickets,
             'areas' => $areas,
             'materials' => $materials,
+            'materialTransactions' => $materialTransactions,
             'filters' => $request->only(['search', 'area_id']),
         ]);
     }
@@ -400,6 +412,8 @@ class PgsController extends Controller
             'lead_notes' => 'nullable|string',
             'materials' => 'nullable|array',
             'materials.*.material_id' => 'required|exists:materials,id',
+            'materials.*.material_transaction_item_id' => 'nullable',
+            'materials.*.trx_number' => 'nullable|string|max:100',
             'materials.*.quantity_prepared' => 'nullable|numeric|min:0.01',
             'materials.*.quantity' => 'nullable|numeric|min:0.01',
             'materials.*.unit' => 'nullable|string',
@@ -428,6 +442,9 @@ class PgsController extends Controller
             $techNames = User::whereIn('id', $techIds)->pluck('name')->join(', ');
             $areaId = $pgs->area_id ?? $pgs->customer?->area_id;
 
+            $sourceOrders = array_filter(array_unique(array_column($validated['materials'], 'trx_number')));
+            $orderRefStr = !empty($sourceOrders) ? ' (Ref Order/SJ: ' . implode(', ', $sourceOrders) . ')' : '';
+
             // Buat transaksi material keluar
             $trans = MaterialTransaction::create([
                 'transaction_number' => 'OUT-PGS-' . date('YmdHis') . rand(10, 99),
@@ -435,7 +452,7 @@ class PgsController extends Controller
                 'status' => 'approved',
                 'date' => now(),
                 'technician_name' => $techNames ?: auth()->user()->name,
-                'purpose' => 'Penyiapan Material PGS: ' . $pgs->ticket_number . ' (' . ($pgs->customer?->name ?? '') . ')',
+                'purpose' => 'Penyiapan Material PGS: ' . $pgs->ticket_number . ' (' . ($pgs->customer?->name ?? '') . ')' . $orderRefStr,
                 'user_id' => auth()->id(),
                 'customer_id' => $pgs->customer_id,
                 'area_id' => $areaId,
@@ -454,6 +471,8 @@ class PgsController extends Controller
                     PgsMaterial::create([
                         'pgs_ticket_id' => $pgs->id,
                         'material_id' => $material->id,
+                        'material_transaction_item_id' => $matItem['material_transaction_item_id'] ?? null,
+                        'trx_number' => $matItem['trx_number'] ?? null,
                         'quantity_prepared' => $qty,
                         'quantity_used' => $qty, // default awal sama, bisa disesuaikan teknisi saat lapor
                         'quantity_returned' => 0,

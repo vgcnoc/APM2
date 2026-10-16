@@ -198,6 +198,11 @@ class PgkController extends Controller
         }
 
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get();
+        $materialTransactions = MaterialTransaction::where('type', 'in')
+            ->with(['items.material.stocks', 'areaModel'])
+            ->latest('id')
+            ->limit(200)
+            ->get();
         $areas = Area::select('id', 'name')->orderBy('name')->get();
 
         return Inertia::render('Pgk/Jadwal', [
@@ -205,6 +210,7 @@ class PgkController extends Controller
             'areas' => $areas,
             'technicians' => $technicians,
             'materials' => $materials,
+            'materialTransactions' => $materialTransactions,
             'filters' => $request->only(['search', 'area_id']),
         ]);
     }
@@ -264,12 +270,18 @@ class PgkController extends Controller
         $tickets = $query->latest('id')->paginate($request->per_page ?? 15)->withQueryString();
 
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->with('stocks')->get();
+        $materialTransactions = MaterialTransaction::where('type', 'in')
+            ->with(['items.material.stocks', 'areaModel'])
+            ->latest('id')
+            ->limit(200)
+            ->get();
         $areas = Area::select('id', 'name')->orderBy('name')->get();
 
         return Inertia::render('Pgk/Laporan', [
             'tickets' => $tickets,
             'areas' => $areas,
             'materials' => $materials,
+            'materialTransactions' => $materialTransactions,
             'filters' => $request->only(['search', 'area_id']),
         ]);
     }
@@ -419,6 +431,8 @@ class PgkController extends Controller
             'lead_notes' => 'nullable|string',
             'materials' => 'nullable|array',
             'materials.*.material_id' => 'required|exists:materials,id',
+            'materials.*.material_transaction_item_id' => 'nullable',
+            'materials.*.trx_number' => 'nullable|string|max:100',
             'materials.*.quantity_prepared' => 'nullable|numeric|min:0.01',
             'materials.*.quantity' => 'nullable|numeric|min:0.01',
             'materials.*.unit' => 'nullable|string',
@@ -439,12 +453,15 @@ class PgkController extends Controller
         $techIds = $request->technicians ?? $request->technician_ids ?? [];
         $pgk->technicians()->sync($techIds);
 
-        // Penyiapan material dari gudang
+        // Penyiapan material dari gudang / order
         if (!empty($validated['materials'])) {
             $pgk->materials()->delete();
 
             $techNames = User::whereIn('id', $techIds)->pluck('name')->join(', ');
             $areaId = $pgk->area_id ?? $pgk->customer?->area_id;
+
+            $sourceOrders = array_filter(array_unique(array_column($validated['materials'], 'trx_number')));
+            $orderRefStr = !empty($sourceOrders) ? ' (Ref Order/SJ: ' . implode(', ', $sourceOrders) . ')' : '';
 
             $trans = MaterialTransaction::create([
                 'transaction_number' => 'OUT-PGK-' . date('YmdHis') . rand(10, 99),
@@ -452,7 +469,7 @@ class PgkController extends Controller
                 'status' => 'approved',
                 'date' => now(),
                 'technician_name' => $techNames ?: auth()->user()->name,
-                'purpose' => 'Penyiapan Material PGK: ' . $pgk->ticket_number . ' (' . ($pgk->customer?->name ?? '') . ')',
+                'purpose' => 'Penyiapan Material PGK: ' . $pgk->ticket_number . ' (' . ($pgk->customer?->name ?? '') . ')' . $orderRefStr,
                 'user_id' => auth()->id(),
                 'customer_id' => $pgk->customer_id,
                 'area_id' => $areaId,
@@ -471,6 +488,8 @@ class PgkController extends Controller
                     PgkMaterial::create([
                         'pgk_ticket_id' => $pgk->id,
                         'material_id' => $material->id,
+                        'material_transaction_item_id' => $matItem['material_transaction_item_id'] ?? null,
+                        'trx_number' => $matItem['trx_number'] ?? null,
                         'quantity_prepared' => $qty,
                         'quantity_used' => $qty,
                         'quantity_returned' => 0,
