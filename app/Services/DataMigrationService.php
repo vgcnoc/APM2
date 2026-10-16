@@ -142,7 +142,7 @@ class DataMigrationService
                     'status_pelanggan' => ['label' => 'Status Pelanggan (active/booking/survey/installing/suspended/terminated)', 'required' => true, 'db' => 'status'],
                     'tgl_registrasi' => ['label' => 'Tanggal Registrasi (YYYY-MM-DD)', 'required' => false, 'db' => 'registration_date'],
                     'tgl_aktivasi' => ['label' => 'Tanggal Aktivasi (YYYY-MM-DD)', 'required' => false, 'db' => 'activation_date'],
-                    'username_sales' => ['label' => 'Username / Email Sales', 'required' => false, 'db' => 'sales_ref'],
+                    'username_sales' => ['label' => 'Sales / Karyawan Referral (Nama / Email / No HP / Kode Referral)', 'required' => false, 'db' => 'sales_ref'],
                     'latitude' => ['label' => 'Latitude Koordinat', 'required' => false, 'db' => 'latitude'],
                     'longitude' => ['label' => 'Longitude Koordinat', 'required' => false, 'db' => 'longitude'],
                     'foto_ktp' => ['label' => 'Nama Berkas / URL Foto KTP (Opsional)', 'required' => false, 'db' => 'identity_photo'],
@@ -167,10 +167,33 @@ class DataMigrationService
                         'status_pelanggan' => 'active',
                         'tgl_registrasi' => '2026-01-10',
                         'tgl_aktivasi' => '2026-01-12',
-                        'username_sales' => 'sales1',
+                        'username_sales' => 'sales1@example.com',
                         'latitude' => '-6.891234',
                         'longitude' => '107.567890',
-                        'catatan' => 'Migrasi dari billing lama',
+                        'catatan' => 'Migrasi dari billing lama (Sales)',
+                    ],
+                    [
+                        'kode_pelanggan' => 'CUS-001002',
+                        'nama_lengkap' => 'Bambang Irawan',
+                        'nomor_wa' => '085712345678',
+                        'email' => '',
+                        'nama_area' => 'Area Barat',
+                        'alamat_jalan' => 'Jl. Anggrek No. 45',
+                        'rt_rw' => '01/03',
+                        'kelurahan_desa' => 'Bojongsoang',
+                        'kecamatan' => 'Bojongsoang',
+                        'nama_paket' => 'Home 30 Mbps',
+                        'tarif_bulanan' => 220000,
+                        'biaya_pasang' => 50000,
+                        'status_layanan' => 'berbayar',
+                        'jenis_billing' => 'prabayar',
+                        'status_pelanggan' => 'booking',
+                        'tgl_registrasi' => '2026-02-01',
+                        'tgl_aktivasi' => '',
+                        'username_sales' => 'Deden Kurnia (Teknisi)',
+                        'latitude' => '-6.912345',
+                        'longitude' => '107.612345',
+                        'catatan' => 'Booking referral dari Teknisi Deden',
                     ],
                 ]
             ],
@@ -638,6 +661,39 @@ class DataMigrationService
         $employeesCache = Employee::pluck('id', 'email')->mapWithKeys(fn($id, $email) => [strtolower($email) => $id])->toArray();
         $employeesIakCache = Employee::whereNotNull('iak_number')->pluck('id', 'iak_number')->mapWithKeys(fn($id, $iak) => [strtolower($iak) => $id])->toArray();
 
+        // Phone caches for users and employees
+        $userPhonesCache = [];
+        foreach (User::whereNotNull('phone')->get(['id', 'phone']) as $u) {
+            $digits = preg_replace('/[^0-9]/', '', (string)$u->phone);
+            if ($digits !== '') {
+                $userPhonesCache[$digits] = $u->id;
+                if (str_starts_with($digits, '62')) {
+                    $userPhonesCache['0' . substr($digits, 2)] = $u->id;
+                } elseif (str_starts_with($digits, '0')) {
+                    $userPhonesCache['62' . substr($digits, 1)] = $u->id;
+                }
+            }
+        }
+        foreach (Employee::whereNotNull('phone')->get(['id', 'email', 'phone']) as $emp) {
+            $digits = preg_replace('/[^0-9]/', '', (string)$emp->phone);
+            if ($digits !== '' && $emp->email && isset($usersCache[strtolower(trim($emp->email))])) {
+                $uId = $usersCache[strtolower(trim($emp->email))];
+                $userPhonesCache[$digits] = $uId;
+                if (str_starts_with($digits, '62')) {
+                    $userPhonesCache['0' . substr($digits, 2)] = $uId;
+                } elseif (str_starts_with($digits, '0')) {
+                    $userPhonesCache['62' . substr($digits, 1)] = $uId;
+                }
+            }
+        }
+
+        $affiliateCodesCache = [];
+        try {
+            $affiliateCodesCache = \App\Models\AffiliateProfile::pluck('user_id', 'referral_code')
+                ->mapWithKeys(fn($uid, $code) => [strtolower(trim((string)$code)) => $uid])
+                ->toArray();
+        } catch (\Throwable $e) {}
+
         foreach ($rows as $index => $row) {
             $rowNum = $index + 1;
             $rowErrors = [];
@@ -646,7 +702,7 @@ class DataMigrationService
 
             switch ($category) {
                 case 'customers':
-                    $this->validateCustomerRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache, $options, $areasNormalizedCache);
+                    $this->validateCustomerRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache, $options, $areasNormalizedCache, $userPhonesCache, $affiliateCodesCache, $employeesIakCache);
                     break;
                 case 'network':
                     $this->validateNetworkRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $customersCache, $odpsCache, $options);
@@ -838,8 +894,22 @@ class DataMigrationService
 
     // ── Row Validators ──────────────────────────────────────────────
 
-    protected function validateCustomerRow($row, &$errors, &$warnings, &$mapped, $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache, $options, $areasNormalizedCache = [])
-    {
+    protected function validateCustomerRow(
+        $row,
+        &$errors,
+        &$warnings,
+        &$mapped,
+        $areasCache,
+        $packagesCache,
+        $usersCache,
+        $userNamesCache,
+        $customersCache,
+        $options,
+        $areasNormalizedCache = [],
+        $userPhonesCache = [],
+        $affiliateCodesCache = [],
+        $employeesIakCache = []
+    ) {
         $name = $row['nama_lengkap'] ?? $row['nama'] ?? '';
         $phone = $row['nomor_wa'] ?? $row['phone'] ?? $row['no_wa'] ?? '';
         $areaName = $row['nama_area'] ?? $row['area'] ?? '';
@@ -876,13 +946,51 @@ class DataMigrationService
             }
         }
 
-        // Sales check
-        $salesRef = $row['username_sales'] ?? $row['sales'] ?? '';
+        // Sales / Referrer check (Bisa semua karyawan: sales, teknisi, maintenance, cs, noc, hrd, finance, dll)
+        $salesRef = trim((string)($row['username_sales'] ?? $row['sales'] ?? $row['sales_karyawan'] ?? $row['karyawan'] ?? $row['referral'] ?? $row['petugas_booking'] ?? $row['nama_sales'] ?? ''));
         $salesId = null;
         if (!empty($salesRef)) {
-            $salesId = $usersCache[strtolower($salesRef)] ?? ($userNamesCache[strtolower($salesRef)] ?? null);
+            $lowerRef = strtolower($salesRef);
+            
+            // 1. Cek langsung via Email User
+            if (isset($usersCache[$lowerRef])) {
+                $salesId = $usersCache[$lowerRef];
+            }
+            // 2. Cek via Nama Lengkap User
+            elseif (isset($userNamesCache[$lowerRef])) {
+                $salesId = $userNamesCache[$lowerRef];
+            }
+            // 3. Cek via Kode Referral Afiliasi
+            elseif (!empty($affiliateCodesCache) && isset($affiliateCodesCache[$lowerRef])) {
+                $salesId = $affiliateCodesCache[$lowerRef];
+            }
+            // 4. Cek toleransi nama dengan jabatan/label (misal: "Deden Kurnia (Teknisi)" atau "Ahmad Fauzi - Sales")
+            else {
+                $strippedName = strtolower(trim(preg_replace('/\s*[\(\[\-].*?[\)\]\-]?$/', '', $salesRef)));
+                if (!empty($strippedName) && isset($userNamesCache[$strippedName])) {
+                    $salesId = $userNamesCache[$strippedName];
+                }
+            }
+
+            // 5. Cek via Nomor WA / Telepon Karyawan
+            if (!$salesId && !empty($userPhonesCache)) {
+                $cleanDigits = preg_replace('/[^0-9]/', '', $salesRef);
+                if (strlen($cleanDigits) >= 8 && isset($userPhonesCache[$cleanDigits])) {
+                    $salesId = $userPhonesCache[$cleanDigits];
+                }
+            }
+
+            // 6. Cek via Nomor IAK / NIK Karyawan
+            if (!$salesId && !empty($employeesIakCache) && isset($employeesIakCache[$lowerRef])) {
+                $empId = $employeesIakCache[$lowerRef];
+                $emp = \App\Models\Employee::find($empId);
+                if ($emp && $emp->email && isset($usersCache[strtolower(trim($emp->email))])) {
+                    $salesId = $usersCache[strtolower(trim($emp->email))];
+                }
+            }
+
             if (!$salesId) {
-                $warnings[] = "Petugas sales '{$salesRef}' tidak ditemukan. Sales dikosongkan.";
+                $warnings[] = "Petugas sales / karyawan '{$salesRef}' tidak ditemukan di sistem. Kolom sales dikosongkan.";
             }
         }
 

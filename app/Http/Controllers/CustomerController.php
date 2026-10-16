@@ -1281,13 +1281,19 @@ class CustomerController extends Controller
     {
         $areas = \App\Models\Area::pluck('name');
         
-        $sales = User::permission('customers_booking_create')->where('is_active', true)->get();
-        if (!auth()->user()->hasRole('admin')) {
-            $currentUser = auth()->user();
-            if (!$sales->contains('id', $currentUser->id)) {
-                $sales->push($currentUser);
-            }
-        }
+        $sales = User::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'phone', 'role'])
+            ->map(function ($u) {
+                $roleLabel = $u->role ? ucwords(str_replace('_', ' ', $u->role)) : 'Karyawan';
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'role' => $roleLabel,
+                    'email' => $u->email,
+                    'display_name' => "{$u->name} ({$roleLabel})",
+                ];
+            });
 
         // Kumpulkan desa yang pernah di-input saat booking per area untuk saran autocomplete
         $areaVillagesMap = [];
@@ -1354,7 +1360,7 @@ class CustomerController extends Controller
             'service_status' => 'nullable|in:berbayar,gratis',
         ]);
 
-        if (!auth()->user()->hasRole('admin')) {
+        if (empty($validated['sales_id'])) {
             $validated['sales_id'] = auth()->id();
         }
 
@@ -1512,16 +1518,19 @@ class CustomerController extends Controller
         
         $areas = \App\Models\Area::pluck('name');
 
-        $sales = User::permission('customers_booking_create')->where('is_active', true)->get();
-        if (!auth()->user()->hasRole('admin')) {
-            $currentUser = auth()->user();
-            if (!$sales->contains('id', $currentUser->id)) {
-                $sales->push($currentUser);
-            }
-            if ($customer->sales_id && !$sales->contains('id', $customer->sales_id)) {
-                $sales->push(User::find($customer->sales_id));
-            }
-        }
+        $sales = User::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'phone', 'role'])
+            ->map(function ($u) {
+                $roleLabel = $u->role ? ucwords(str_replace('_', ' ', $u->role)) : 'Karyawan';
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'role' => $roleLabel,
+                    'email' => $u->email,
+                    'display_name' => "{$u->name} ({$roleLabel})",
+                ];
+            });
 
         $isAffiliate = auth()->user()->role === 'sales'
             || auth()->user()->role === 'affiliate'
@@ -1589,7 +1598,7 @@ class CustomerController extends Controller
             $validated['tax_uso'] = 0;
         }
 
-        if (!auth()->user()->hasRole('admin')) {
+        if (!auth()->user()->hasRole('admin') && !auth()->user()->can('customers_booking_edit') && !auth()->user()->can('customers_all_edit')) {
             unset($validated['sales_id']);
         }
 

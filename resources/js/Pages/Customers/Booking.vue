@@ -123,9 +123,12 @@
                     <span v-else class="text-xs text-gray-400 italic">-</span>
                 </td>
                 <td class="text-xs text-gray-700 font-medium">
-                    <span v-if="row.sales" class="flex items-center gap-1">
-                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                        {{ row.sales.name }}
+                    <span v-if="row.sales" class="inline-flex items-center gap-1.5 flex-wrap">
+                        <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                        <span>{{ row.sales.name }}</span>
+                        <span v-if="row.sales.role && row.sales.role !== 'sales'" class="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold uppercase tracking-wider">
+                            {{ row.sales.role }}
+                        </span>
                     </span>
                     <span v-else class="text-gray-400 italic">-</span>
                 </td>

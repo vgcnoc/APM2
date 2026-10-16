@@ -252,11 +252,11 @@
                                 </div>
                                 
                                 <div>
-                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Sales / Afiliator</label>
-                                    <select v-model="form.sales_id" :disabled="!isAdmin" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
-                                        <option value="">-- Tanpa Sales --</option>
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Petugas Sales / Karyawan Referral</label>
+                                    <select v-model="form.sales_id" :disabled="!canChangeSales" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
+                                        <option value="">-- Tanpa Sales / Referral --</option>
                                         <option v-for="person in sales" :key="person.id" :value="person.id">
-                                            {{ person.name }}
+                                            {{ person.display_name || person.name }}
                                         </option>
                                     </select>
                                 </div>
@@ -330,19 +330,29 @@ const isAdmin = computed(() => {
     return roles.includes('admin') || roles.includes('super-admin') || roles.includes('Super Admin');
 });
 
+const canChangeSales = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user) return false;
+    if (isAdmin.value) return true;
+    
+    // External purely affiliate accounts cannot change referrer
+    if (props.isAffiliate || (user.is_affiliate && user.role === 'affiliate')) {
+        return false;
+    }
+    
+    return true;
+});
+
 const isAffiliateAccount = computed(() => {
     if (props.isAffiliate) return true;
     const user = page.props.auth?.user;
     if (!user) return false;
-    if (user.is_affiliate) return true;
-    if (user.role === 'sales' || user.role === 'affiliate') return true;
+    if (user.is_affiliate && (user.role === 'affiliate' || user.role === 'reseller')) return true;
+    if (user.role === 'affiliate' || user.role === 'reseller') return true;
     let roles = [];
-    if (Array.isArray(user.roles)) roles = user.roles;
-    else if (user.roles) roles = Object.values(user.roles);
-    if (roles.includes('sales') || roles.includes('affiliate')) return true;
-    if (!isAdmin.value && user.role !== 'teknisi' && !roles.includes('teknisi')) {
-        return true;
-    }
+    if (Array.isArray(user.roles)) roles = user.roles.map(r => typeof r === 'string' ? r : r.name);
+    else if (user.roles) roles = Object.values(user.roles).map(r => typeof r === 'string' ? r : r.name);
+    if (roles.includes('affiliate') || roles.includes('reseller')) return true;
     return false;
 });
 

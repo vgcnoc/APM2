@@ -45,8 +45,14 @@ class DataMigrationController extends Controller
         // Master Reference summary
         $references = [
             'areas' => Area::select('id', 'name')->orderBy('name')->get(),
-            'packages' => InternetPackage::select('id', 'name', 'speed_mbps', 'price')->where('is_active', true)->orderBy('name')->get(),
-            'sales' => User::select('id', 'name', 'email', 'role')->whereIn('role', ['admin', 'sales', 'affiliate', 'staff'])->orderBy('name')->get(),
+            'sales' => User::select('id', 'name', 'email', 'role', 'phone')
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get()
+                ->map(function ($u) {
+                    $u->display_name = $u->name . ($u->role ? " (" . ucfirst($u->role) . ")" : "");
+                    return $u;
+                }),
             'technicians' => User::select('id', 'name', 'email', 'role')->whereIn('role', ['admin', 'teknisi', 'noc', 'maintenance'])->orderBy('name')->get(),
             'olts' => Olt::select('id', 'name', 'ip_address')->orderBy('name')->get(),
             'odcs' => Odc::select('id', 'name', 'olt_id', 'pon_port', 'splitter_ratio')->orderBy('name')->get(),
