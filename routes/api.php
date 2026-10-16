@@ -24,3 +24,6 @@ Route::post('/payment-gateway/callback', [\App\Http\Controllers\PaymentGatewayCo
 // Webhook Callback Xendit Disbursement (Auto Transfer Payroll)
 Route::post('/webhooks/xendit/disbursement', [\App\Http\Controllers\PayrollController::class, 'handleXenditWebhook'])->name('api.xendit.webhook');
 
+// Webhook Callback Flip for Business (Auto Transfer Payroll)
+Route::post('/webhooks/flip/disbursement', [\App\Http\Controllers\PayrollController::class, 'handleFlipWebhook'])->name('api.flip.webhook');
+

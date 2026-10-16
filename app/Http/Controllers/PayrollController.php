@@ -219,6 +219,16 @@ class PayrollController extends Controller
 
         $categories = \App\Models\PayrollCategory::where('is_active', true)->get();
         $xenditService = new \App\Services\XenditDisbursementService();
+        $flipService = new \App\Services\FlipDisbursementService();
+
+        $activeProvider = Setting::get('active_disbursement_provider', 'none');
+        if ($activeProvider === 'none') {
+            if ($flipService->isEnabled()) {
+                $activeProvider = 'flip';
+            } elseif ($xenditService->isEnabled()) {
+                $activeProvider = 'xendit';
+            }
+        }
 
         return Inertia::render('Payroll/Index', [
             'month' => $month,
@@ -228,7 +238,14 @@ class PayrollController extends Controller
                 'disbursement_date' => $disbursementDate,
                 ...$bpjsSettings,
             ],
+            'activeProvider' => $activeProvider,
+            'flipConfig' => $flipService->getConfig(),
             'xenditConfig' => $xenditService->getConfig(),
+            'disbursementConfig' => [
+                'active_provider' => $activeProvider,
+                'flip' => $flipService->getConfig(),
+                'xendit' => $xenditService->getConfig(),
+            ],
             'recapBpjs' => $recapBpjs,
             'payrollCategories' => $categories
         ]);
@@ -494,29 +511,56 @@ class PayrollController extends Controller
                 ]);
             }
 
-            // 5. Cek opsi Auto Transfer via Xendit
+            // 5. Cek opsi Auto Transfer via Flip atau Xendit
+            $flipService = new \App\Services\FlipDisbursementService();
             $xenditService = new \App\Services\XenditDisbursementService();
-            $shouldUseXendit = $request->boolean('use_xendit') || ($xenditService->isEnabled() && Setting::get('xendit_auto_disburse_on_approve') === '1');
-            $xenditMsg = '';
 
-            if ($shouldUseXendit && $netSalary > 0) {
-                $xenditResult = $xenditService->disbursePayroll(
-                    $payroll,
-                    $user,
-                    $netSalary,
-                    "Gaji {$user->name} Periode " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}"
-                );
+            $activeProvider = Setting::get('active_disbursement_provider', 'none');
+            $requestedProvider = $request->input('provider');
+            if ($request->boolean('use_flip')) $requestedProvider = 'flip';
+            if ($request->boolean('use_xendit')) $requestedProvider = 'xendit';
 
-                if ($xenditResult['status'] === 'error') {
-                    DB::rollBack();
-                    return back()->with('error', "Gagal Auto Transfer Xendit: " . $xenditResult['message']);
+            $provider = $requestedProvider ?: $activeProvider;
+            $autoDisburseMsg = '';
+
+            if ($provider === 'flip' && $netSalary > 0) {
+                $shouldDisburseFlip = $request->boolean('use_flip') || ($flipService->isEnabled() && Setting::get('flip_auto_disburse_on_approve') === '1') || $request->filled('provider');
+                if ($shouldDisburseFlip && $flipService->isEnabled()) {
+                    $flipResult = $flipService->disbursePayroll(
+                        $payroll,
+                        $user,
+                        $netSalary,
+                        "Gaji {$user->name} Periode " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}"
+                    );
+
+                    if ($flipResult['status'] === 'error') {
+                        DB::rollBack();
+                        return back()->with('error', "Gagal Auto Transfer Flip: " . $flipResult['message']);
+                    }
+
+                    $autoDisburseMsg = " | Auto Transfer Flip Berhasil ({$flipResult['disbursement_status']}) Ref ID: {$flipResult['disbursement_id']}";
                 }
+            } elseif ($provider === 'xendit' && $netSalary > 0) {
+                $shouldDisburseXendit = $request->boolean('use_xendit') || ($xenditService->isEnabled() && Setting::get('xendit_auto_disburse_on_approve') === '1') || $request->filled('provider');
+                if ($shouldDisburseXendit && $xenditService->isEnabled()) {
+                    $xenditResult = $xenditService->disbursePayroll(
+                        $payroll,
+                        $user,
+                        $netSalary,
+                        "Gaji {$user->name} Periode " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}"
+                    );
 
-                $xenditMsg = " | Auto Transfer Xendit Berhasil dikirim ({$xenditResult['disbursement_status']}) Ref: {$xenditResult['disbursement_id']}";
+                    if ($xenditResult['status'] === 'error') {
+                        DB::rollBack();
+                        return back()->with('error', "Gagal Auto Transfer Xendit: " . $xenditResult['message']);
+                    }
+
+                    $autoDisburseMsg = " | Auto Transfer Xendit Berhasil ({$xenditResult['disbursement_status']}) Ref: {$xenditResult['disbursement_id']}";
+                }
             }
 
             DB::commit();
-            return back()->with('success', "Gaji {$user->name} berhasil dicairkan (Net: Rp " . number_format($netSalary, 0, ',', '.') . "){$xenditMsg}. Pengeluaran otomatis dicatat di Buku Kas.");
+            return back()->with('success', "Gaji {$user->name} berhasil dicairkan (Net: Rp " . number_format($netSalary, 0, ',', '.') . "){$autoDisburseMsg}. Pengeluaran otomatis dicatat di Buku Kas.");
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal mencairkan gaji: ' . $e->getMessage());
@@ -535,10 +579,21 @@ class PayrollController extends Controller
         $disbursedCount = 0;
         $totalNetDisbursed = 0;
 
+        $flipService = new \App\Services\FlipDisbursementService();
         $xenditService = new \App\Services\XenditDisbursementService();
-        $shouldUseXendit = $request->boolean('use_xendit') || ($xenditService->isEnabled() && Setting::get('xendit_auto_disburse_on_approve') === '1');
-        $xenditTransferred = 0;
-        $xenditErrors = [];
+
+        $activeProvider = Setting::get('active_disbursement_provider', 'none');
+        $requestedProvider = $request->input('provider');
+        if ($request->boolean('use_flip')) $requestedProvider = 'flip';
+        if ($request->boolean('use_xendit')) $requestedProvider = 'xendit';
+
+        $provider = $requestedProvider ?: $activeProvider;
+
+        $shouldUseFlip = ($provider === 'flip') && ($request->boolean('use_flip') || ($flipService->isEnabled() && Setting::get('flip_auto_disburse_on_approve') === '1') || $request->filled('provider'));
+        $shouldUseXendit = ($provider === 'xendit') && ($request->boolean('use_xendit') || ($xenditService->isEnabled() && Setting::get('xendit_auto_disburse_on_approve') === '1') || $request->filled('provider'));
+
+        $transferredCount = 0;
+        $transferErrors = [];
 
         DB::beginTransaction();
         try {
@@ -574,6 +629,10 @@ class PayrollController extends Controller
                 }
                 $bpjsNotesStr = !empty($bpjsNotes) ? " [" . implode(' | ', $bpjsNotes) . "]" : "";
 
+                $channel = 'manual';
+                if ($shouldUseFlip) $channel = 'flip';
+                elseif ($shouldUseXendit) $channel = 'xendit';
+
                 $expense = Expense::create([
                     'amount' => $netSalary,
                     'description' => "Pencairan Gaji Batch - {$user->name} (Periode: " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}){$bpjsNotesStr}",
@@ -606,7 +665,7 @@ class PayrollController extends Controller
                         'payment_date' => now(),
                         'expense_id' => $expense->id,
                         'notes' => 'Batch Auto Disburse via sistem' . $bpjsNotesStr,
-                        'disbursement_channel' => $shouldUseXendit ? 'xendit' : 'manual',
+                        'disbursement_channel' => $channel,
                     ]
                 );
 
@@ -617,8 +676,21 @@ class PayrollController extends Controller
                     $ded->update(['status' => 'applied', 'payroll_id' => $payroll->id]);
                 }
 
-                // Jika aktifkan Xendit transfer
-                if ($shouldUseXendit && $netSalary > 0) {
+                // Eksekusi transfer otomatis jika aktif
+                if ($shouldUseFlip && $netSalary > 0) {
+                    $flipResult = $flipService->disbursePayroll(
+                        $payroll,
+                        $user,
+                        $netSalary,
+                        "Gaji Batch {$user->name} " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}"
+                    );
+
+                    if ($flipResult['status'] === 'error') {
+                        $transferErrors[] = "{$user->name}: " . $flipResult['message'];
+                    } else {
+                        $transferredCount++;
+                    }
+                } elseif ($shouldUseXendit && $netSalary > 0) {
                     $xenditResult = $xenditService->disbursePayroll(
                         $payroll,
                         $user,
@@ -627,9 +699,9 @@ class PayrollController extends Controller
                     );
 
                     if ($xenditResult['status'] === 'error') {
-                        $xenditErrors[] = "{$user->name}: " . $xenditResult['message'];
+                        $transferErrors[] = "{$user->name}: " . $xenditResult['message'];
                     } else {
-                        $xenditTransferred++;
+                        $transferredCount++;
                     }
                 }
 
@@ -640,10 +712,11 @@ class PayrollController extends Controller
             DB::commit();
 
             $extraMsg = "";
-            if ($shouldUseXendit) {
-                $extraMsg = ". Auto Transfer Xendit: {$xenditTransferred} staf berhasil ditransfer.";
-                if (!empty($xenditErrors)) {
-                    $extraMsg .= " Beberapa gagal: " . implode('; ', array_slice($xenditErrors, 0, 2));
+            if ($shouldUseFlip || $shouldUseXendit) {
+                $providerName = $shouldUseFlip ? 'Flip' : 'Xendit';
+                $extraMsg = ". Auto Transfer {$providerName}: {$transferredCount} staf berhasil dikirim.";
+                if (!empty($transferErrors)) {
+                    $extraMsg .= " Beberapa gagal: " . implode('; ', array_slice($transferErrors, 0, 2));
                 }
             }
 
@@ -681,6 +754,52 @@ class PayrollController extends Controller
                 $payroll->update([
                     'disbursement_status' => $status,
                     'disbursement_error' => $request->input('failure_code') ? ('Failure: ' . $request->input('failure_code')) : null,
+                ]);
+            }
+        }
+
+        return response()->json(['status' => 'success']);
+    }
+
+    /**
+     * Webhook Callback dari Flip for Business untuk status disbursement
+     */
+    public function handleFlipWebhook(Request $request)
+    {
+        $flipService = new \App\Services\FlipDisbursementService();
+        $expectedToken = $flipService->getValidationToken();
+
+        if ($expectedToken) {
+            $receivedToken = $request->header('x-callback-token') 
+                ?: $request->input('token') 
+                ?: $request->header('token');
+
+            if ($receivedToken && $receivedToken !== $expectedToken) {
+                return response()->json(['error' => 'Invalid validation token'], 403);
+            }
+        }
+
+        // Flip data payload can come as JSON or form string 'data'
+        $payload = $request->input('data');
+        if (is_string($payload)) {
+            $data = json_decode($payload, true) ?: [];
+        } else {
+            $data = $request->all();
+        }
+
+        $id = $data['id'] ?? null;
+        $rawStatus = strtoupper($data['status'] ?? '');
+        $mappedStatus = ($rawStatus === 'DONE') ? 'COMPLETED' : $rawStatus;
+
+        if ($id) {
+            $payroll = Payroll::where('disbursement_id', (string) $id)
+                ->first();
+
+            if ($payroll) {
+                $payroll->update([
+                    'disbursement_status' => $mappedStatus,
+                    'disbursement_error' => in_array($mappedStatus, ['FAILED', 'CANCELLED']) ? ($data['error'] ?? 'Transfer dibatalkan / gagal di Flip') : null,
+                    'disbursement_payload' => json_encode($data),
                 ]);
             }
         }

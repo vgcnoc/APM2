@@ -58,6 +58,14 @@ class SettingController extends Controller
             'payroll_components' => json_decode(Setting::get('payroll_components', '["insentif", "potongan"]'), true),
             'payroll_note' => Setting::get('payroll_note', ''),
             'payroll_incentive_mode' => Setting::get('payroll_incentive_mode', 'Bulanan (sekali sebulan)'),
+            'active_disbursement_provider' => Setting::get('active_disbursement_provider', 'none'),
+            // Flip for Business (Big Flip)
+            'flip_disbursement_enabled' => Setting::get('flip_disbursement_enabled', '0') === '1',
+            'flip_secret_key' => Setting::get('flip_secret_key', ''),
+            'flip_validation_token' => Setting::get('flip_validation_token', ''),
+            'flip_environment' => Setting::get('flip_environment', 'sandbox'),
+            'flip_auto_disburse_on_approve' => Setting::get('flip_auto_disburse_on_approve', '0') === '1',
+            // Xendit
             'xendit_disbursement_enabled' => Setting::get('xendit_disbursement_enabled', '0') === '1',
             'xendit_secret_key' => Setting::get('xendit_secret_key', ''),
             'xendit_webhook_token' => Setting::get('xendit_webhook_token', ''),
@@ -73,6 +81,14 @@ class SettingController extends Controller
             'payroll_components' => 'nullable|array',
             'payroll_note' => 'nullable|string',
             'payroll_incentive_mode' => 'required|string',
+            'active_disbursement_provider' => 'nullable|string|in:none,flip,xendit',
+            // Flip
+            'flip_disbursement_enabled' => 'nullable|boolean',
+            'flip_secret_key' => 'nullable|string',
+            'flip_validation_token' => 'nullable|string',
+            'flip_environment' => 'nullable|string|in:sandbox,production',
+            'flip_auto_disburse_on_approve' => 'nullable|boolean',
+            // Xendit
             'xendit_disbursement_enabled' => 'nullable|boolean',
             'xendit_secret_key' => 'nullable|string',
             'xendit_webhook_token' => 'nullable|string',
@@ -85,6 +101,28 @@ class SettingController extends Controller
         Setting::set('payroll_note', $request->payroll_note ?? '');
         Setting::set('payroll_incentive_mode', $request->payroll_incentive_mode);
 
+        if ($request->has('active_disbursement_provider')) {
+            Setting::set('active_disbursement_provider', $request->active_disbursement_provider ?? 'none');
+        }
+
+        // Flip Settings
+        if ($request->has('flip_disbursement_enabled')) {
+            Setting::set('flip_disbursement_enabled', $request->boolean('flip_disbursement_enabled') ? '1' : '0');
+        }
+        if ($request->has('flip_secret_key')) {
+            Setting::set('flip_secret_key', $request->flip_secret_key ?? '');
+        }
+        if ($request->has('flip_validation_token')) {
+            Setting::set('flip_validation_token', $request->flip_validation_token ?? '');
+        }
+        if ($request->has('flip_environment')) {
+            Setting::set('flip_environment', $request->flip_environment ?? 'sandbox');
+        }
+        if ($request->has('flip_auto_disburse_on_approve')) {
+            Setting::set('flip_auto_disburse_on_approve', $request->boolean('flip_auto_disburse_on_approve') ? '1' : '0');
+        }
+
+        // Xendit Settings
         if ($request->has('xendit_disbursement_enabled')) {
             Setting::set('xendit_disbursement_enabled', $request->boolean('xendit_disbursement_enabled') ? '1' : '0');
         }
@@ -98,7 +136,7 @@ class SettingController extends Controller
             Setting::set('xendit_auto_disburse_on_approve', $request->boolean('xendit_auto_disburse_on_approve') ? '1' : '0');
         }
 
-        return redirect()->back()->with('success', 'Pengaturan sistem gaji & Xendit auto transfer berhasil diperbarui.');
+        return redirect()->back()->with('success', 'Pengaturan sistem gaji & auto transfer disbursement berhasil diperbarui.');
     }
 
     public function testXendit(Request $request)
@@ -106,6 +144,15 @@ class SettingController extends Controller
         $apiKey = $request->input('api_key') ?: Setting::get('xendit_secret_key');
         $service = new \App\Services\XenditDisbursementService();
         $result = $service->testConnection($apiKey);
+        return response()->json($result);
+    }
+
+    public function testFlip(Request $request)
+    {
+        $secretKey = $request->input('secret_key') ?: Setting::get('flip_secret_key');
+        $environment = $request->input('environment') ?: Setting::get('flip_environment', 'sandbox');
+        $service = new \App\Services\FlipDisbursementService();
+        $result = $service->testConnection($secretKey, $environment);
         return response()->json($result);
     }
 

@@ -46,11 +46,26 @@
                     <a
                         :href="route('settings.payroll')"
                         class="px-3.5 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 border shadow-2xs"
-                        :class="xenditConfig?.enabled ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100' : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-700'"
-                        :title="xenditConfig?.enabled ? 'Auto Transfer Xendit Aktif (' + xenditConfig.environment + ')' : 'Atur API Key Xendit untuk Auto Transfer'"
+                        :class="activeProvider === 'flip' && flipConfig?.enabled 
+                            ? 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100' 
+                            : (activeProvider === 'xendit' && xenditConfig?.enabled 
+                                ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100' 
+                                : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-700')"
+                        :title="activeProvider === 'flip' && flipConfig?.enabled 
+                            ? 'Auto Transfer Flip Aktif (' + flipConfig.environment + ')' 
+                            : (activeProvider === 'xendit' && xenditConfig?.enabled 
+                                ? 'Auto Transfer Xendit Aktif (' + xenditConfig.environment + ')' 
+                                : 'Atur Flip for Business atau Xendit')"
                     >
-                        <span>⚡</span>
-                        <span>{{ xenditConfig?.enabled ? 'Xendit: Aktif' : 'Setup Xendit' }}</span>
+                        <span>{{ activeProvider === 'flip' && flipConfig?.enabled ? '🟠' : (activeProvider === 'xendit' && xenditConfig?.enabled ? '⚡' : '⚙️') }}</span>
+                        <span>
+                            {{ activeProvider === 'flip' && flipConfig?.enabled 
+                                ? 'Flip: Aktif (' + flipConfig.environment + ')' 
+                                : (activeProvider === 'xendit' && xenditConfig?.enabled 
+                                    ? 'Xendit: Aktif (' + xenditConfig.environment + ')' 
+                                    : 'Setup Auto Transfer') 
+                            }}
+                        </span>
                     </a>
 
                     <button
@@ -249,6 +264,21 @@
                                         <span>⏳</span>
                                         <span>MENUNGGU</span>
                                     </span>
+
+                                    <!-- Status Flip jika ada -->
+                                    <div v-if="user.disbursement_channel === 'flip'" class="mt-1">
+                                        <span 
+                                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold"
+                                            :class="{
+                                                'bg-orange-50 text-orange-700 border border-orange-200': user.disbursement_status === 'COMPLETED',
+                                                'bg-amber-50 text-amber-700 border border-amber-200': user.disbursement_status === 'PENDING',
+                                                'bg-rose-50 text-rose-700 border border-rose-200': user.disbursement_status === 'FAILED',
+                                            }"
+                                            :title="user.disbursement_error || ('Flip Ref: ' + user.disbursement_id)"
+                                        >
+                                            <span>🟠 Flip: {{ user.disbursement_status || 'PENDING' }}</span>
+                                        </span>
+                                    </div>
 
                                     <!-- Status Xendit jika ada -->
                                     <div v-if="user.disbursement_channel === 'xendit'" class="mt-1">
@@ -652,7 +682,10 @@ const props = defineProps({
     year: Number,
     users: Array,
     settings: Object,
+    activeProvider: String,
+    flipConfig: Object,
     xenditConfig: Object,
+    disbursementConfig: Object,
     recapBpjs: Object,
     payrollCategories: Array
 });
@@ -827,15 +860,23 @@ const submitManual = () => {
 // ── Disburse Single ──
 const disburse = (user) => {
     const bpjsInfo = user.bpjs?.total_employee > 0 ? ` (Sudah dipotong iuran BPJS Staf: Rp ${formatRupiah(user.bpjs.total_employee)})` : '';
-    const xenditNotice = props.xenditConfig?.enabled 
-        ? `\n\n⚡ XENDIT AUTO TRANSFER AKTIF:\nSistem akan otomatis mentransfer Rp ${formatRupiah(user.net_salary)} ke ${user.bank_name || 'Bank'} (${user.bank_account_number || 'Belum diatur'}) a.n ${user.bank_account_holder || user.name}.`
-        : '';
+    
+    const activeProv = props.activeProvider || (props.flipConfig?.enabled ? 'flip' : (props.xenditConfig?.enabled ? 'xendit' : 'none'));
+    let transferNotice = '';
 
-    if (confirm(`Cairkan gaji dan insentif untuk ${user.name} bulan ini?\nNet Diterima: Rp ${formatRupiah(user.net_salary)}${bpjsInfo}${xenditNotice}\n\nPERINGATAN: Aksi ini akan otomatis mencatat pengeluaran di Buku Kas.`)) {
+    if (activeProv === 'flip' && props.flipConfig?.enabled) {
+        transferNotice = `\n\n🟠 FLIP FOR BUSINESS AUTO TRANSFER AKTIF:\nSistem akan otomatis mentransfer Rp ${formatRupiah(user.net_salary)} ke ${user.bank_name || 'Bank'} (${user.bank_account_number || 'Belum diatur'}) a.n ${user.bank_account_holder || user.name} via Flip (${props.flipConfig.environment}). Biaya transfer hemat.`;
+    } else if (activeProv === 'xendit' && props.xenditConfig?.enabled) {
+        transferNotice = `\n\n⚡ XENDIT AUTO TRANSFER AKTIF:\nSistem akan otomatis mentransfer Rp ${formatRupiah(user.net_salary)} ke ${user.bank_name || 'Bank'} (${user.bank_account_number || 'Belum diatur'}) a.n ${user.bank_account_holder || user.name} via Xendit (${props.xenditConfig.environment}).`;
+    }
+
+    if (confirm(`Cairkan gaji dan insentif untuk ${user.name} bulan ini?\nNet Diterima: Rp ${formatRupiah(user.net_salary)}${bpjsInfo}${transferNotice}\n\nPERINGATAN: Aksi ini akan otomatis mencatat pengeluaran di Buku Kas.`)) {
         router.post(route('payroll.disburse', user.id), {
             month: props.month,
             year: props.year,
-            use_xendit: Boolean(props.xenditConfig?.enabled)
+            provider: activeProv,
+            use_flip: activeProv === 'flip',
+            use_xendit: activeProv === 'xendit'
         }, {
             preserveScroll: true
         });
@@ -844,15 +885,22 @@ const disburse = (user) => {
 
 // ── Disburse Batch (All) ──
 const disburseAll = () => {
-    const xenditNotice = props.xenditConfig?.enabled 
-        ? `\n\n⚡ XENDIT AUTO TRANSFER AKTIF:\nSemua staf dengan rekening bank valid akan otomatis ditransfer langsung via Xendit.`
-        : '';
+    const activeProv = props.activeProvider || (props.flipConfig?.enabled ? 'flip' : (props.xenditConfig?.enabled ? 'xendit' : 'none'));
+    let transferNotice = '';
 
-    if (confirm(`Cairkan gaji dan insentif untuk SEMUA ${totalPendingCount.value} staf yang belum cair?\n\nTotal Pengeluaran Bersih: Rp ${formatRupiah(totalNetSalary.value)}${xenditNotice}\n\nPERINGATAN: Aksi ini akan mencatat pengeluaran di Buku Kas untuk semua staf sekaligus.`)) {
+    if (activeProv === 'flip' && props.flipConfig?.enabled) {
+        transferNotice = `\n\n🟠 FLIP FOR BUSINESS AUTO TRANSFER AKTIF:\nSemua staf dengan rekening/e-wallet valid akan otomatis ditransfer langsung via Flip for Business (${props.flipConfig.environment}). Biaya transfer super hemat Rp 1.500 - 3.000/tx.`;
+    } else if (activeProv === 'xendit' && props.xenditConfig?.enabled) {
+        transferNotice = `\n\n⚡ XENDIT AUTO TRANSFER AKTIF:\nSemua staf dengan rekening bank valid akan otomatis ditransfer langsung via Xendit (${props.xenditConfig.environment}).`;
+    }
+
+    if (confirm(`Cairkan gaji dan insentif untuk SEMUA ${totalPendingCount.value} staf yang belum cair?\n\nTotal Pengeluaran Bersih: Rp ${formatRupiah(totalNetSalary.value)}${transferNotice}\n\nPERINGATAN: Aksi ini akan mencatat pengeluaran di Buku Kas untuk semua staf sekaligus.`)) {
         router.post(route('payroll.disburse-all'), {
             month: props.month,
             year: props.year,
-            use_xendit: Boolean(props.xenditConfig?.enabled)
+            provider: activeProv,
+            use_flip: activeProv === 'flip',
+            use_xendit: activeProv === 'xendit'
         }, {
             preserveScroll: true
         });
