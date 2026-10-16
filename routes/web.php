@@ -232,6 +232,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('odps/{odp}/update', [OdpController::class, 'update'])->name('odps.update.post');
     Route::post('odps/{odp}/delete', [OdpController::class, 'destroy'])->name('odps.destroy.post');
 
+    // ── Monitoring Kapasitas ODC & ODP ───────────────────────
+    Route::middleware(['permission:menu_network_capacity|menu_network_odc|menu_network_odp|menu_customers_booking'])->get('network/capacity-monitoring', [\App\Http\Controllers\CapacityMonitoringController::class, 'index'])->name('network.capacity-monitoring');
+
     // ── Rollout & Penugasan Pembangunan ODC & ODP ─────────────
     Route::middleware(['permission:menu_infrastructure_work_orders|menu_network_odc|menu_network_odp'])->prefix('infrastructure/work-orders')->name('infrastructure.work-orders.')->group(function () {
         Route::get('/', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'index'])->name('index');

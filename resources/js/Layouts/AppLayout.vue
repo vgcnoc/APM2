@@ -410,9 +410,10 @@ const menuItems = [
         type: 'dropdown',
         icon: 'server',
         label: 'Perangkat OSP / FTTH',
-        active: (url) => ['/olts', '/odcs', '/odps', '/onts', '/find-onu', '/infrastructure/work-orders'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_infrastructure_work_orders', 'menu_network_olt', 'menu_network_odc', 'menu_network_odp', 'menu_network_ont'],
+        active: (url) => ['/olts', '/odcs', '/odps', '/onts', '/find-onu', '/infrastructure/work-orders', '/network/capacity-monitoring'].some(path => (url || '').startsWith(path)),
+        permission: ['menu_network_capacity', 'menu_infrastructure_work_orders', 'menu_network_olt', 'menu_network_odc', 'menu_network_odp', 'menu_network_ont'],
         children: [
+            { href: '/network/capacity-monitoring', label: '📊 Monitoring Kapasitas ODC/ODP', active: (url) => (url || '').startsWith('/network/capacity-monitoring'), permission: ['menu_network_capacity', 'menu_network_odc', 'menu_network_odp'] },
             { href: '/infrastructure/work-orders', label: '⚡ Rollout ODC & ODP', active: (url) => (url || '').startsWith('/infrastructure/work-orders'), permission: ['menu_infrastructure_work_orders', 'menu_network_odc', 'menu_network_odp'] },
             { href: '/olts', label: 'Data OLT', active: (url) => (url || '').startsWith('/olts'), permission: 'menu_network_olt' },
             { href: '/odcs', label: 'Data ODC', active: (url) => (url || '').startsWith('/odcs'), permission: 'menu_network_odc' },
