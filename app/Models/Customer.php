@@ -77,6 +77,14 @@ class Customer extends Model
     }
 
     /**
+     * Alias areaRef untuk kompatibilitas WhatsApp Blast & Notifikasi
+     */
+    public function areaRef(): BelongsTo
+    {
+        return $this->belongsTo(Area::class, 'area_id');
+    }
+
+    /**
      * Paket internet yang diambil pelanggan
      */
     public function package(): BelongsTo

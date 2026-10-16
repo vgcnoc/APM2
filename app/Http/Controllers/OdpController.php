@@ -6,6 +6,7 @@ use App\Models\Odc;
 use App\Models\Odp;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -156,10 +157,13 @@ class OdpController extends Controller
             foreach ($odp->onts as $ont) {
                 $ont->update([
                     'odp_id' => null, 
+                    'odp_port_id' => null,
                     'status' => 'Belum Set/Baru Input',
                     'port_number' => null
                 ]);
             }
+            // Hapus port ODP jika ada
+            $odp->ports()->delete();
             $odp->delete();
         });
 

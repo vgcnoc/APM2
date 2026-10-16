@@ -154,6 +154,11 @@ class OdcController extends Controller
 
     public function destroy(Odc $odc): RedirectResponse
     {
+        if ($odc->odps()->count() > 0) {
+            return redirect()->route('odcs.index')
+                ->with('error', 'ODC tidak dapat dihapus karena masih memiliki ' . $odc->odps()->count() . ' ODP yang terhubung. Hapus atau pindahkan ODP terlebih dahulu.');
+        }
+
         $odc->delete();
 
         return redirect()->route('odcs.index')

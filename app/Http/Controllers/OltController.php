@@ -133,6 +133,11 @@ class OltController extends Controller
 
     public function destroy(Olt $olt): RedirectResponse
     {
+        if ($olt->odcs()->count() > 0) {
+            return redirect()->route('olts.index')
+                ->with('error', 'OLT tidak dapat dihapus karena masih memiliki ' . $olt->odcs()->count() . ' ODC yang terhubung. Hapus atau pindahkan ODC terlebih dahulu.');
+        }
+
         $olt->delete();
 
         return redirect()->route('olts.index')
