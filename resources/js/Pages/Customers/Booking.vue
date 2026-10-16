@@ -132,7 +132,7 @@
                     </span>
                     <span v-else class="text-gray-400 italic">-</span>
                 </td>
-                <td class="text-xs text-gray-500">{{ row.registration_date }}</td>
+                <td class="text-xs text-gray-500">{{ formatDate(row.registration_date) }}</td>
                 <td>
                     <div v-if="row.area" class="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded-md inline-block">
                         {{ row.area }}
@@ -438,6 +438,20 @@ function resetFilters() {
     filterArea.value = '';
     filterStatus.value = '';
     router.get('/customers/booking', {}, { preserveState: true, preserveScroll: true });
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    try {
+        const clean = String(dateStr).split(' ')[0];
+        const parts = clean.split('-');
+        if (parts.length === 3 && parts[0].length === 4) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return clean;
+    } catch (e) {
+        return dateStr;
+    }
 }
 
 const columns = [

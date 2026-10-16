@@ -239,8 +239,8 @@
                             </div>
                             <div class="flex items-center gap-2 mt-0.5">
                                 <span class="text-[10px] text-gray-500 font-mono">{{ row.customer_code }}</span>
-                                <span v-if="row.registration_date" class="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100/70 px-1.5 py-0.2 rounded font-medium" title="Tanggal Daftar">
-                                    📅 {{ row.registration_date }}
+                                <span v-if="row.registration_date" class="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100/70 px-1.5 py-0.5 rounded font-medium" title="Tanggal Daftar">
+                                    📅 {{ formatDate(row.registration_date) }}
                                 </span>
                             </div>
                         </div>
@@ -598,6 +598,20 @@ const columns = [
     { key: 'status', label: 'STATUS' },
     { key: 'odp', label: 'ODP' },
 ];
+
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    try {
+        const clean = String(dateStr).split(' ')[0];
+        const parts = clean.split('-');
+        if (parts.length === 3 && parts[0].length === 4) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return clean;
+    } catch (e) {
+        return dateStr;
+    }
+}
 
 function getAvatarColor(name) {
     const colors = ['bg-indigo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-pink-500', 'bg-orange-500'];

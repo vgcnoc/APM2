@@ -92,8 +92,8 @@
                             </Link>
                             <div class="flex items-center gap-2 mt-0.5">
                                 <span class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</span>
-                                <span v-if="row.registration_date" class="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100/70 px-1.5 py-0.2 rounded font-medium" title="Tanggal Daftar">
-                                    📅 {{ row.registration_date }}
+                                <span v-if="row.registration_date" class="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100/70 px-1.5 py-0.5 rounded font-medium" title="Tanggal Daftar">
+                                    📅 {{ formatDate(row.registration_date) }}
                                 </span>
                                 <span v-if="row.areaModel?.name || row.area" class="text-[11px] px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded">
                                     {{ row.areaModel?.name || row.area }}
@@ -240,6 +240,20 @@ function resetFilters() {
     filterPackage.value = '';
     filterConnection.value = '';
     router.get('/customers/active', {}, { preserveState: true, replace: true });
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    try {
+        const clean = String(dateStr).split(' ')[0];
+        const parts = clean.split('-');
+        if (parts.length === 3 && parts[0].length === 4) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return clean;
+    } catch (e) {
+        return dateStr;
+    }
 }
 
 function formatRupiah(val) {

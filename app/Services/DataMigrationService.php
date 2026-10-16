@@ -47,7 +47,7 @@ class DataMigrationService
 
         $str = trim((string) $value);
 
-        // DD/MM/YYYY or DD-MM-YYYY
+        // 1. DD/MM/YYYY or DD-MM-YYYY (Tanggal, Bulan, Tahun)
         if (preg_match('/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{4})$/', $str, $matches)) {
             $d = (int) $matches[1];
             $m = (int) $matches[2];
@@ -57,7 +57,17 @@ class DataMigrationService
             }
         }
 
-        // Standard Carbon parse
+        // 2. YYYY-MM-DD or YYYY/MM/DD (Tahun, Bulan, Tanggal)
+        if (preg_match('/^(\d{4})[\/\.-](\d{1,2})[\/\.-](\d{1,2})$/', $str, $matches)) {
+            $y = (int) $matches[1];
+            $m = (int) $matches[2];
+            $d = (int) $matches[3];
+            if (checkdate($m, $d, $y)) {
+                return sprintf('%04d-%02d-%02d', $y, $m, $d);
+            }
+        }
+
+        // 3. Standard Carbon parse
         try {
             return \Carbon\Carbon::parse($str)->format('Y-m-d');
         } catch (\Throwable $e) {
@@ -192,8 +202,8 @@ class DataMigrationService
                     'status_layanan' => ['label' => 'Status Layanan (berbayar/gratis)', 'required' => false, 'db' => 'service_status'],
                     'jenis_billing' => ['label' => 'Jenis Billing (prabayar/pascabayar)', 'required' => false, 'db' => 'billing_type'],
                     'status_pelanggan' => ['label' => 'Status Pelanggan (active/booking/survey/installing/suspended/terminated)', 'required' => true, 'db' => 'status'],
-                    'tgl_registrasi' => ['label' => 'Tanggal Registrasi (YYYY-MM-DD)', 'required' => false, 'db' => 'registration_date'],
-                    'tgl_aktivasi' => ['label' => 'Tanggal Aktivasi (YYYY-MM-DD)', 'required' => false, 'db' => 'activation_date'],
+                    'tgl_registrasi' => ['label' => 'Tanggal Registrasi (Tanggal/Bulan/Tahun: DD/MM/YYYY atau YYYY-MM-DD)', 'required' => false, 'db' => 'registration_date'],
+                    'tgl_aktivasi' => ['label' => 'Tanggal Aktivasi (Tanggal/Bulan/Tahun: DD/MM/YYYY atau YYYY-MM-DD)', 'required' => false, 'db' => 'activation_date'],
                     'username_sales' => ['label' => 'Sales / Karyawan Referral (Nama / Email / No HP / Kode Referral)', 'required' => false, 'db' => 'sales_ref'],
                     'latitude' => ['label' => 'Latitude Koordinat', 'required' => false, 'db' => 'latitude'],
                     'longitude' => ['label' => 'Longitude Koordinat', 'required' => false, 'db' => 'longitude'],
