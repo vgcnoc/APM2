@@ -66,6 +66,54 @@ class DataMigrationService
     }
 
     /**
+     * Resolve area ID from cache supporting tolerant matching (e.g. 'BC-3', 'BC 3', 'BC_3' -> 'bc3')
+     */
+    public static function resolveAreaIdFromCache(?string $name, array $areasCache, array $areasNormalizedCache = []): ?int
+    {
+        if (empty($name)) {
+            return null;
+        }
+        $lower = strtolower(trim($name));
+        if (isset($areasCache[$lower])) {
+            return $areasCache[$lower];
+        }
+        $norm = preg_replace('/[^a-z0-9]/', '', $lower);
+        if ($norm !== '' && isset($areasNormalizedCache[$norm])) {
+            return $areasNormalizedCache[$norm];
+        }
+        return null;
+    }
+
+    /**
+     * Find area model by flexible name (e.g. 'BC-3' matches 'BC 3')
+     */
+    public static function findAreaByFlexibleName(?string $name): ?Area
+    {
+        if (empty($name)) {
+            return null;
+        }
+        $trimmed = trim($name);
+        $direct = Area::whereRaw('LOWER(name) = ?', [strtolower($trimmed)])->first();
+        if ($direct) {
+            return $direct;
+        }
+
+        $norm = preg_replace('/[^a-z0-9]/', '', strtolower($trimmed));
+        if ($norm === '') {
+            return null;
+        }
+
+        $allAreas = Area::all();
+        foreach ($allAreas as $area) {
+            if (preg_replace('/[^a-z0-9]/', '', strtolower($area->name)) === $norm) {
+                return $area;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Master schema definition per category
      */
     public static function getCategoryDefinitions(): array
@@ -396,8 +444,8 @@ class DataMigrationService
                     'nomor_iak' => ['label' => 'Nomor IAK / NIP Karyawan (Opsional)', 'required' => false, 'db' => 'iak_number'],
                     'posisi_jabatan' => ['label' => 'Posisi / Jabatan (Teknisi/CS/Sales/HRD/Manager/dll)', 'required' => false, 'db' => 'position'],
                     'email' => ['label' => 'Email Karyawan (Unik / Akun Login)', 'required' => true, 'db' => 'email'],
-                    'nomor_telepon' => ['label' => 'Nomor HP / WhatsApp', 'required' => false, 'db' => 'phone'],
-                    'nama_area' => ['label' => 'Nama Area Wilayah Penempatan', 'required' => false, 'db' => 'area_name'],
+                    'nomor_telepon' => ['label' => 'Nomor HP / WhatsApp (Contoh: 085737412700)', 'required' => false, 'db' => 'phone'],
+                    'nama_area' => ['label' => 'Nama Area Penempatan (Contoh: BC 1, BC 2, BC 3)', 'required' => false, 'db' => 'area_name'],
                     'tgl_bergabung' => ['label' => 'Tanggal Bergabung / Join Date (YYYY-MM-DD)', 'required' => false, 'db' => 'join_date'],
                     'tipe_karyawan' => ['label' => 'Tipe Kepegawaian (Tetap/Kontrak/Freelance/Magang)', 'required' => false, 'db' => 'employee_type'],
                     'gaji_pokok' => ['label' => 'Gaji Pokok (Rp, opsional)', 'required' => false, 'db' => 'base_salary'],
@@ -415,8 +463,8 @@ class DataMigrationService
                         'nomor_iak' => 'EMP-2024-001',
                         'posisi_jabatan' => 'Teknisi',
                         'email' => 'budi.santoso@example.com',
-                        'nomor_telepon' => '081234567891',
-                        'nama_area' => 'Area Timur',
+                        'nomor_telepon' => '085737412700',
+                        'nama_area' => 'BC 1',
                         'tgl_bergabung' => '2023-03-15',
                         'tipe_karyawan' => 'Tetap',
                         'gaji_pokok' => 3500000,
@@ -433,14 +481,14 @@ class DataMigrationService
                         'nomor_iak' => 'EMP-2025-002',
                         'posisi_jabatan' => 'CS',
                         'email' => 'siti.rahmawati@example.com',
-                        'nomor_telepon' => '081987654321',
-                        'nama_area' => 'Area Barat',
+                        'nomor_telepon' => '085603000044',
+                        'nama_area' => 'BC 2',
                         'tgl_bergabung' => '2025-06-01',
                         'tipe_karyawan' => 'Kontrak',
                         'gaji_pokok' => 3000000,
                         'metode_gaji' => 'Transfer Bank',
                         'nama_bank' => 'DANA',
-                        'nomor_rekening' => '081987654321',
+                        'nomor_rekening' => '085603000044',
                         'nama_pemilik_rekening' => 'Siti Rahmawati',
                         'alamat' => 'Jl. Kenanga No. 12, Bandung',
                         'buat_akun_login' => 'ya',
@@ -451,14 +499,14 @@ class DataMigrationService
                         'nomor_iak' => 'EMP-2025-003',
                         'posisi_jabatan' => 'Sales',
                         'email' => 'ahmad.fauzi@example.com',
-                        'nomor_telepon' => '082198765432',
-                        'nama_area' => 'Area Pusat',
+                        'nomor_telepon' => '088213360441',
+                        'nama_area' => 'BC 3',
                         'tgl_bergabung' => '2025-01-10',
                         'tipe_karyawan' => 'Tetap',
                         'gaji_pokok' => 3200000,
                         'metode_gaji' => 'Transfer Bank',
                         'nama_bank' => 'GoPay',
-                        'nomor_rekening' => '082198765432',
+                        'nomor_rekening' => '088213360441',
                         'nama_pemilik_rekening' => 'Ahmad Fauzi',
                         'alamat' => 'Jl. Asia Afrika No. 88, Bandung',
                         'buat_akun_login' => 'ya',
@@ -573,7 +621,14 @@ class DataMigrationService
         $totalErrors = 0;
 
         // Preload caches for fast lookups
-        $areasCache = Area::pluck('id', 'name')->mapWithKeys(fn($id, $name) => [strtolower($name) => $id])->toArray();
+        $areasCache = Area::pluck('id', 'name')->mapWithKeys(fn($id, $name) => [strtolower(trim($name)) => $id])->toArray();
+        $areasNormalizedCache = [];
+        foreach ($areasCache as $aName => $aId) {
+            $norm = preg_replace('/[^a-z0-9]/', '', $aName);
+            if ($norm !== '') {
+                $areasNormalizedCache[$norm] = $aId;
+            }
+        }
         $packagesCache = InternetPackage::pluck('id', 'name')->mapWithKeys(fn($id, $name) => [strtolower($name) => $id])->toArray();
         $usersCache = User::pluck('id', 'email')->mapWithKeys(fn($id, $email) => [strtolower($email) => $id])->toArray();
         $userNamesCache = User::pluck('id', 'name')->mapWithKeys(fn($id, $name) => [strtolower($name) => $id])->toArray();
@@ -591,7 +646,7 @@ class DataMigrationService
 
             switch ($category) {
                 case 'customers':
-                    $this->validateCustomerRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache, $options);
+                    $this->validateCustomerRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache, $options, $areasNormalizedCache);
                     break;
                 case 'network':
                     $this->validateNetworkRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $customersCache, $odpsCache, $options);
@@ -609,7 +664,7 @@ class DataMigrationService
                     $this->validatePaymentRow($row, $rowErrors, $rowWarnings, $mapped, $invoicesCache, $usersCache);
                     break;
                 case 'employees':
-                    $this->validateEmployeeRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $employeesCache, $employeesIakCache, $options);
+                    $this->validateEmployeeRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $employeesCache, $employeesIakCache, $options, $areasNormalizedCache);
                     break;
             }
 
@@ -783,7 +838,7 @@ class DataMigrationService
 
     // ── Row Validators ──────────────────────────────────────────────
 
-    protected function validateCustomerRow($row, &$errors, &$warnings, &$mapped, $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache, $options)
+    protected function validateCustomerRow($row, &$errors, &$warnings, &$mapped, $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache, $options, $areasNormalizedCache = [])
     {
         $name = $row['nama_lengkap'] ?? $row['nama'] ?? '';
         $phone = $row['nomor_wa'] ?? $row['phone'] ?? $row['no_wa'] ?? '';
@@ -805,9 +860,9 @@ class DataMigrationService
             }
         }
 
-        // Area check
-        $areaId = $areasCache[strtolower($areaName)] ?? null;
-        if (!$areaId) {
+        // Area check (flexible matching: 'BC-3' matches 'BC 3')
+        $areaId = self::resolveAreaIdFromCache($areaName, $areasCache, $areasNormalizedCache);
+        if (!$areaId && !empty($areaName)) {
             $warnings[] = "Area '{$areaName}' belum ada di master data; sistem akan otomatis membuatnya.";
         }
 
@@ -1104,11 +1159,16 @@ class DataMigrationService
 
     protected function importCustomerItem(array $data, string $dupMode, bool $autoCreateArea): string
     {
-        // 1. Resolve area
-        $areaId = $data['area_id'];
-        if (!$areaId && $autoCreateArea && !empty($data['area'])) {
-            $area = Area::firstOrCreate(['name' => $data['area']]);
-            $areaId = $area->id;
+        // 1. Resolve area flexibly
+        $areaId = $data['area_id'] ?? null;
+        if (!$areaId && !empty($data['area'])) {
+            $matchedArea = self::findAreaByFlexibleName($data['area']);
+            if ($matchedArea) {
+                $areaId = $matchedArea->id;
+            } elseif ($autoCreateArea) {
+                $area = Area::firstOrCreate(['name' => trim($data['area'])]);
+                $areaId = $area->id;
+            }
         }
 
         $customerCode = $data['customer_code'];
@@ -1515,7 +1575,7 @@ class DataMigrationService
         return 'inserted';
     }
 
-    protected function validateEmployeeRow($row, &$errors, &$warnings, &$mapped, $areasCache, $employeesCache, $employeesIakCache, $options)
+    protected function validateEmployeeRow($row, &$errors, &$warnings, &$mapped, $areasCache, $employeesCache, $employeesIakCache, $options, $areasNormalizedCache = [])
     {
         $name = trim($row['nama_lengkap'] ?? $row['nama'] ?? $row['name'] ?? '');
         $email = trim(strtolower($row['email'] ?? $row['alamat_email'] ?? ''));
@@ -1575,13 +1635,11 @@ class DataMigrationService
             }
         }
 
-        // Area check
+        // Area check (flexible matching: 'BC-3' matches 'BC 3')
         $areaId = null;
         if (!empty($areaName)) {
-            $areaKey = strtolower($areaName);
-            if (isset($areasCache[$areaKey])) {
-                $areaId = $areasCache[$areaKey];
-            } else {
+            $areaId = self::resolveAreaIdFromCache($areaName, $areasCache, $areasNormalizedCache);
+            if (!$areaId) {
                 if (!empty($options['auto_create_areas'])) {
                     $warnings[] = "Area '{$areaName}' belum ada di database; akan otomatis dibuatkan baru.";
                 } else {
@@ -1642,11 +1700,16 @@ class DataMigrationService
             return 'skipped';
         }
 
-        // Resolve area_id
+        // Resolve area_id flexibly
         $areaId = $data['area_id'] ?? null;
-        if (!$areaId && !empty($data['area_name']) && $autoCreateArea) {
-            $area = Area::firstOrCreate(['name' => trim($data['area_name'])]);
-            $areaId = $area->id;
+        if (!$areaId && !empty($data['area_name'])) {
+            $matchedArea = self::findAreaByFlexibleName($data['area_name']);
+            if ($matchedArea) {
+                $areaId = $matchedArea->id;
+            } elseif ($autoCreateArea) {
+                $area = Area::firstOrCreate(['name' => trim($data['area_name'])]);
+                $areaId = $area->id;
+            }
         }
 
         $payload = [
@@ -1685,6 +1748,7 @@ class DataMigrationService
                     'name' => $data['name'],
                     'email' => $data['email'],
                     'password' => bcrypt($initialPassword),
+                    'phone' => $data['phone'] ?: null,
                     'area_id' => $areaId,
                     'bank_name' => $data['bank_name'] ?: null,
                     'bank_account_number' => $data['bank_account_number'] ?: null,
@@ -1693,6 +1757,7 @@ class DataMigrationService
             } else {
                 $user->update([
                     'name' => $data['name'],
+                    'phone' => $data['phone'] ?: ($user->phone ?? null),
                     'area_id' => $areaId,
                     'bank_name' => $data['bank_name'] ?: ($user->bank_name ?? null),
                     'bank_account_number' => $data['bank_account_number'] ?: ($user->bank_account_number ?? null),
