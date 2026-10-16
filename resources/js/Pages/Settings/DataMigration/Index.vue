@@ -683,6 +683,16 @@
                                 </span>
                                 <span class="text-slate-400">/payments →</span>
                             </a>
+                            <a
+                                href="/employees"
+                                class="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 border border-slate-100 transition text-xs font-semibold text-slate-700"
+                            >
+                                <span class="flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-violet-500"></span>
+                                    Menu Data Karyawan (HR)
+                                </span>
+                                <span class="text-slate-400">/employees →</span>
+                            </a>
                         </div>
                     </div>
 
@@ -831,7 +841,9 @@ const props = defineProps({
 });
 
 // Category State
-const selectedCategoryKey = ref('customers');
+const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+const initialCategory = urlParams?.get('category');
+const selectedCategoryKey = ref(initialCategory && props.categories[initialCategory] ? initialCategory : 'customers');
 const currentCategory = computed(() => props.categories[selectedCategoryKey.value] || {});
 
 // File State
@@ -951,12 +963,12 @@ async function downloadExcelTemplate() {
         if (!def) return;
 
         const headers = Object.keys(def.headers || {});
-        const sampleRow = def.sample?.[0] || {};
+        const sampleRows = (def.sample && def.sample.length > 0) ? def.sample : [{}];
 
-        // Build data: row 1 headers, row 2 sample row
+        // Build data: row 1 headers, subsequent rows sample rows
         const data = [
             headers,
-            headers.map(h => sampleRow[h] !== undefined ? sampleRow[h] : '')
+            ...sampleRows.map(row => headers.map(h => row[h] !== undefined ? row[h] : ''))
         ];
 
         const ws = XLSX.utils.aoa_to_sheet(data);

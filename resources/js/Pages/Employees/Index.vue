@@ -78,7 +78,7 @@
                         <!-- Action: Migrasi Excel/CSV -->
                         <Link 
                             v-if="can('menu_data_migration')"
-                            href="/settings/data-migration" 
+                            href="/settings/data-migration?category=employees" 
                             class="inline-flex items-center justify-center gap-2 py-2.5 px-3.5 rounded-xl border border-indigo-200 bg-indigo-50/70 text-indigo-700 hover:bg-indigo-100/80 font-semibold text-sm transition-all shadow-xs"
                             title="Migrasi Data Karyawan Massal dari Excel / CSV"
                         >

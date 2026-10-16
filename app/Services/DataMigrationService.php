@@ -276,7 +276,7 @@ class DataMigrationService
 
             'employees' => [
                 'title' => 'Data Karyawan & SDM',
-                'description' => 'Migrasi data personalia, jabatan, area, tanggal bergabung (masa kerja), status kepegawaian, dan akun login user.',
+                'description' => 'Migrasi data personalia, jabatan, area, tanggal bergabung (masa kerja), status kepegawaian, rekening bank/DANA/GoPay, dan akun login user.',
                 'target_table' => 'employees',
                 'id_column' => 'email',
                 'headers' => [
@@ -290,6 +290,9 @@ class DataMigrationService
                     'tipe_karyawan' => ['label' => 'Tipe Kepegawaian (Tetap/Kontrak/Freelance/Magang)', 'required' => false, 'db' => 'employee_type'],
                     'gaji_pokok' => ['label' => 'Gaji Pokok (Rp, opsional)', 'required' => false, 'db' => 'base_salary'],
                     'metode_gaji' => ['label' => 'Metode Pembayaran (Transfer Bank/Cash/dll)', 'required' => false, 'db' => 'payment_method'],
+                    'nama_bank' => ['label' => 'Nama Bank / E-Wallet (BCA/Mandiri/BRI/BNI/BSI/DANA/GoPay/dll)', 'required' => false, 'db' => 'bank_name'],
+                    'nomor_rekening' => ['label' => 'Nomor Rekening / No. HP E-Wallet (DANA/GoPay)', 'required' => false, 'db' => 'bank_account_number'],
+                    'nama_pemilik_rekening' => ['label' => 'Nama Pemilik Rekening / Akun (Atas Nama / a.n)', 'required' => false, 'db' => 'bank_account_holder'],
                     'alamat' => ['label' => 'Alamat Domisili Karyawan', 'required' => false, 'db' => 'address'],
                     'buat_akun_login' => ['label' => 'Buat Akun Login User? (ya/tidak - default: ya)', 'required' => false, 'db' => 'create_user'],
                     'password_login' => ['label' => 'Password Login Awal (Kosongkan = password123)', 'required' => false, 'db' => 'initial_password'],
@@ -306,6 +309,9 @@ class DataMigrationService
                         'tipe_karyawan' => 'Tetap',
                         'gaji_pokok' => 3500000,
                         'metode_gaji' => 'Transfer Bank',
+                        'nama_bank' => 'BCA',
+                        'nomor_rekening' => '1234567890',
+                        'nama_pemilik_rekening' => 'Budi Santoso',
                         'alamat' => 'Jl. Merdeka No. 45, Bandung',
                         'buat_akun_login' => 'ya',
                         'password_login' => '',
@@ -321,7 +327,28 @@ class DataMigrationService
                         'tipe_karyawan' => 'Kontrak',
                         'gaji_pokok' => 3000000,
                         'metode_gaji' => 'Transfer Bank',
+                        'nama_bank' => 'DANA',
+                        'nomor_rekening' => '081987654321',
+                        'nama_pemilik_rekening' => 'Siti Rahmawati',
                         'alamat' => 'Jl. Kenanga No. 12, Bandung',
+                        'buat_akun_login' => 'ya',
+                        'password_login' => '',
+                    ],
+                    [
+                        'nama_lengkap' => 'Ahmad Fauzi',
+                        'nomor_iak' => 'EMP-2025-003',
+                        'posisi_jabatan' => 'Sales',
+                        'email' => 'ahmad.fauzi@example.com',
+                        'nomor_telepon' => '082198765432',
+                        'nama_area' => 'Area Pusat',
+                        'tgl_bergabung' => '2025-01-10',
+                        'tipe_karyawan' => 'Tetap',
+                        'gaji_pokok' => 3200000,
+                        'metode_gaji' => 'Transfer Bank',
+                        'nama_bank' => 'GoPay',
+                        'nomor_rekening' => '082198765432',
+                        'nama_pemilik_rekening' => 'Ahmad Fauzi',
+                        'alamat' => 'Jl. Asia Afrika No. 88, Bandung',
                         'buat_akun_login' => 'ya',
                         'password_login' => '',
                     ],
@@ -1394,6 +1421,20 @@ class DataMigrationService
         $createUser = !in_array($createUserRaw, ['tidak', 'no', 'false', '0', 'n', 't']);
         $initialPassword = trim($row['password_login'] ?? $row['password'] ?? $row['initial_password'] ?? '');
 
+        // Bank / E-Wallet fields
+        $bankName = trim($row['nama_bank'] ?? $row['bank_name'] ?? $row['bank'] ?? $row['ewallet'] ?? $row['nama_ewallet'] ?? '');
+        $bankAccountNum = trim($row['nomor_rekening'] ?? $row['no_rekening'] ?? $row['bank_account_number'] ?? $row['rekening'] ?? $row['no_rek'] ?? $row['nomor_dana'] ?? $row['no_dana'] ?? $row['nomor_gopay'] ?? $row['no_gopay'] ?? $row['account_number'] ?? '');
+        $bankAccountHolder = trim($row['nama_pemilik_rekening'] ?? $row['nama_pemilik'] ?? $row['bank_account_holder'] ?? $row['pemilik_rekening'] ?? $row['atas_nama'] ?? $row['an_rekening'] ?? $row['account_holder'] ?? '');
+
+        // Auto-assign bank account holder with employee name if account number is filled but holder name is empty
+        if (!empty($bankAccountNum) && empty($bankAccountHolder)) {
+            $bankAccountHolder = $name;
+        }
+
+        if (!empty($bankAccountNum) && empty($bankName)) {
+            $warnings[] = "Nomor rekening/DANA ({$bankAccountNum}) terisi tetapi Nama Bank / E-Wallet kosong.";
+        }
+
         if (empty($name)) {
             $errors[] = 'Nama Lengkap Karyawan wajib diisi.';
         }
@@ -1470,6 +1511,9 @@ class DataMigrationService
             'employee_type' => $empType ?: 'Tetap',
             'base_salary' => (float) $baseSalary,
             'payment_method' => $payMethod ?: 'Transfer Bank',
+            'bank_name' => $bankName ?: null,
+            'bank_account_number' => $bankAccountNum ?: null,
+            'bank_account_holder' => $bankAccountHolder ?: null,
             'address' => $address ?: null,
             'create_user' => $createUser,
             'initial_password' => $initialPassword ?: 'password123',
@@ -1503,6 +1547,9 @@ class DataMigrationService
             'employee_type' => $data['employee_type'] ?: 'Tetap',
             'base_salary' => $data['base_salary'] ?? 0,
             'payment_method' => $data['payment_method'] ?: 'Transfer Bank',
+            'bank_name' => $data['bank_name'] ?: null,
+            'bank_account_number' => $data['bank_account_number'] ?: null,
+            'bank_account_holder' => $data['bank_account_holder'] ?: null,
             'address' => $data['address'] ?: null,
         ];
 
@@ -1526,11 +1573,17 @@ class DataMigrationService
                     'email' => $data['email'],
                     'password' => bcrypt($initialPassword),
                     'area_id' => $areaId,
+                    'bank_name' => $data['bank_name'] ?: null,
+                    'bank_account_number' => $data['bank_account_number'] ?: null,
+                    'bank_account_holder' => $data['bank_account_holder'] ?: null,
                 ]);
             } else {
                 $user->update([
                     'name' => $data['name'],
                     'area_id' => $areaId,
+                    'bank_name' => $data['bank_name'] ?: ($user->bank_name ?? null),
+                    'bank_account_number' => $data['bank_account_number'] ?: ($user->bank_account_number ?? null),
+                    'bank_account_holder' => $data['bank_account_holder'] ?: ($user->bank_account_holder ?? null),
                 ]);
             }
 
