@@ -7,10 +7,14 @@ use App\Models\AffiliateCommission;
 use App\Models\AffiliateProfile;
 use App\Models\AffiliateWithdrawal;
 use App\Models\Customer;
+use App\Models\User;
 use App\Services\AffiliateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
+use Spatie\Permission\Models\Role;
 
 class AffiliateManagementController extends Controller
 {
@@ -47,6 +51,7 @@ class AffiliateManagementController extends Controller
                     'email' => $aff->user?->email,
                     'whatsapp' => $aff->whatsapp ?? $aff->user?->phone,
                     'referral_code' => $aff->referral_code,
+                    'upline_id' => $aff->upline_id,
                     'upline_name' => $aff->upline?->name ?? '-',
                     'balance' => (float) $aff->balance,
                     'total_earned' => (float) $aff->total_earned,
@@ -54,6 +59,9 @@ class AffiliateManagementController extends Controller
                     'total_customers' => $aff->customers()->count(),
                     'total_downlines' => $aff->downlinesLevel1()->count(),
                     'bank_info' => $aff->bank_name ? "{$aff->bank_name} - {$aff->bank_account_number} ({$aff->bank_account_holder})" : '-',
+                    'bank_name' => $aff->bank_name,
+                    'bank_account_number' => $aff->bank_account_number,
+                    'bank_account_holder' => $aff->bank_account_holder,
                     'status' => $aff->status,
                     'is_employee' => AffiliateService::isInternalEmployee($aff->user),
                     'joined_at' => $aff->created_at->format('d M Y'),
@@ -249,10 +257,28 @@ class AffiliateManagementController extends Controller
             'pending_withdrawals_amount' => (float) AffiliateWithdrawal::where('status', 'pending')->sum('amount'),
         ];
 
+        $availableUplines = AffiliateProfile::with('user:id,name,email,role')
+            ->where('status', 'active')
+            ->get()
+            ->map(fn($a) => [
+                'id' => $a->id,
+                'user_id' => $a->user_id,
+                'name' => $a->user?->name ?? 'Unknown',
+                'email' => $a->user?->email,
+                'referral_code' => $a->referral_code,
+            ]);
+
+        $candidateUsers = User::whereDoesntHave('affiliateProfile')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'phone', 'role']);
+
         return Inertia::render('Marketing/Affiliates/Index', [
             'tab' => $tab,
             'settings' => $settings,
             'affiliates' => $affiliates,
+            'available_uplines' => $availableUplines,
+            'candidate_users' => $candidateUsers,
             'commissions' => $commissions,
             'withdrawals' => $withdrawals,
             'kpi' => $kpi,
@@ -338,5 +364,131 @@ class AffiliateManagementController extends Controller
         $affiliate->update(['status' => $newStatus]);
 
         return back()->with('success', "Status akun afiliasi {$affiliate->user?->name} diubah menjadi {$newStatus}.");
+    }
+
+    /**
+     * Daftarkan agen afiliasi / downline baru secara manual dari Admin.
+     */
+    public function storeAffiliate(Request $request)
+    {
+        $mode = $request->input('mode', 'new_user'); // 'new_user' or 'existing_user'
+
+        if ($mode === 'existing_user') {
+            $validated = $request->validate([
+                'user_id' => 'required|exists:users,id',
+                'upline_id' => 'nullable|exists:users,id|different:user_id',
+                'whatsapp' => 'nullable|string|max:25',
+                'bank_name' => 'nullable|string|max:50',
+                'bank_account_number' => 'nullable|string|max:50',
+                'bank_account_holder' => 'nullable|string|max:100',
+            ], [
+                'user_id.required' => 'Pilih pengguna/karyawan yang ingin dijadikan agen.',
+                'upline_id.different' => 'Agen tidak boleh menjadi upline bagi dirinya sendiri.',
+            ]);
+
+            $targetUser = User::findOrFail($validated['user_id']);
+            if (AffiliateProfile::where('user_id', $targetUser->id)->exists()) {
+                return back()->with('error', "Pengguna {$targetUser->name} sudah terdaftar sebagai agen afiliasi.");
+            }
+
+            AffiliateService::ensureAffiliateProfile(
+                $targetUser,
+                !empty($validated['upline_id']) ? (int) $validated['upline_id'] : null,
+                [
+                    'whatsapp' => $validated['whatsapp'] ?? $targetUser->phone,
+                    'bank_name' => $validated['bank_name'] ?? null,
+                    'bank_account_number' => $validated['bank_account_number'] ?? null,
+                    'bank_account_holder' => $validated['bank_account_holder'] ?? $targetUser->name,
+                ]
+            );
+
+            return back()->with('success', "Pengguna {$targetUser->name} berhasil didaftarkan sebagai Agen Afiliasi!");
+        }
+
+        // Mode: Akun Baru (New User)
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'phone' => 'required|string|max:25',
+            'password' => 'required|string|min:6',
+            'upline_id' => 'nullable|exists:users,id',
+            'bank_name' => 'nullable|string|max:50',
+            'bank_account_number' => 'nullable|string|max:50',
+            'bank_account_holder' => 'nullable|string|max:100',
+            'address' => 'nullable|string|max:500',
+        ], [
+            'name.required' => 'Nama lengkap agen wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
+            'email.unique' => 'Email ini sudah digunakan oleh akun lain.',
+            'phone.required' => 'Nomor WhatsApp wajib diisi.',
+            'password.required' => 'Password wajib diisi (minimal 6 karakter).',
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => strtolower(trim($validated['email'])),
+                'phone' => $validated['phone'],
+                'password' => Hash::make($validated['password']),
+                'role' => 'sales',
+                'is_active' => true,
+            ]);
+
+            try {
+                $role = Role::firstOrCreate(['name' => 'sales', 'guard_name' => 'web']);
+                $user->assignRole($role);
+            } catch (\Exception $e) {
+                // Ignore fallback
+            }
+
+            AffiliateService::ensureAffiliateProfile(
+                $user,
+                !empty($validated['upline_id']) ? (int) $validated['upline_id'] : null,
+                [
+                    'whatsapp' => $validated['phone'],
+                    'address' => $validated['address'] ?? null,
+                    'bank_name' => $validated['bank_name'] ?? null,
+                    'bank_account_number' => $validated['bank_account_number'] ?? null,
+                    'bank_account_holder' => $validated['bank_account_holder'] ?? $validated['name'],
+                ]
+            );
+        });
+
+        return back()->with('success', "Agen Afiliasi {$validated['name']} berhasil didaftarkan secara manual!");
+    }
+
+    /**
+     * Update Upline Sponsor untuk agen tertentu.
+     */
+    public function updateUpline(Request $request, AffiliateProfile $affiliate)
+    {
+        $validated = $request->validate([
+            'upline_id' => 'nullable|exists:users,id',
+        ]);
+
+        $newUplineId = !empty($validated['upline_id']) ? (int) $validated['upline_id'] : null;
+
+        // Cegah circular / self-referral
+        if ($newUplineId) {
+            if ($newUplineId === $affiliate->user_id) {
+                return back()->with('error', 'Agen tidak dapat menjadi Upline bagi dirinya sendiri.');
+            }
+
+            // Cek apakah calon upline adalah downline dari agen ini (mencegah loop)
+            $isDownline = AffiliateProfile::where('upline_id', $affiliate->user_id)
+                ->where('user_id', $newUplineId)
+                ->exists();
+
+            if ($isDownline) {
+                return back()->with('error', 'Tidak dapat memilih agen yang merupakan downline langsung dari agen ini sebagai upline (akan menyebabkan loop).');
+            }
+        }
+
+        $affiliate->update([
+            'upline_id' => $newUplineId,
+        ]);
+
+        $uplineName = $affiliate->upline?->name ?? 'Tanpa Upline (Upline Utama)';
+        return back()->with('success', "Upline sponsor untuk {$affiliate->user?->name} berhasil diatur ke: {$uplineName}.");
     }
 }

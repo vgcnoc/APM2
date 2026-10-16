@@ -643,6 +643,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['permission:menu_marketing_affiliates'])->prefix('marketing/affiliates')->name('admin.affiliates.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'index'])->name('index');
         Route::post('/settings', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'saveSettings'])->name('settings');
+        Route::post('/store', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'storeAffiliate'])->name('store');
+        Route::post('/{affiliate}/update-upline', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'updateUpline'])->name('update-upline');
         Route::post('/withdrawals/{withdrawal}/approve', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'approveWithdrawal'])->name('withdrawals.approve');
         Route::post('/withdrawals/{withdrawal}/reject', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'rejectWithdrawal'])->name('withdrawals.reject');
         Route::post('/{affiliate}/toggle-status', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'toggleStatus'])->name('toggle-status');

@@ -1118,6 +1118,17 @@
                                 🔍
                             </div>
                         </div>
+
+                        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                            <button
+                                type="button"
+                                @click="openCreateAffiliateModal"
+                                class="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+                            >
+                                <span>➕</span>
+                                <span>Daftarkan Agen / Downline Baru</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div v-if="affiliates.data && affiliates.data.length > 0" class="overflow-x-auto">
@@ -1145,7 +1156,21 @@
                                         <div class="text-[11px] text-slate-400">{{ a.email }} &bull; {{ a.whatsapp || '-' }}</div>
                                     </td>
                                     <td class="px-4 py-3 font-mono font-bold text-indigo-600">{{ a.referral_code }}</td>
-                                    <td class="px-4 py-3 text-slate-600">{{ a.upline_name }}</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-1.5">
+                                            <span :class="a.upline_name !== '-' ? 'font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100' : 'text-slate-400'">
+                                                {{ a.upline_name }}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                @click="openUplineModal(a)"
+                                                class="text-[10px] text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-1.5 py-0.5 rounded transition-colors"
+                                                title="Ubah Upline Sponsor"
+                                            >
+                                                ✏️
+                                            </button>
+                                        </div>
+                                    </td>
                                     <td class="px-4 py-3 font-semibold text-slate-800">{{ a.total_customers }} Pelanggan</td>
                                     <td class="px-4 py-3 font-semibold text-purple-600">{{ a.total_downlines }} Mitra</td>
                                     <td class="px-4 py-3 font-extrabold text-emerald-600">{{ formatRupiah(a.balance) }}</td>
@@ -1156,14 +1181,25 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        <button
-                                            type="button"
-                                            @click="toggleAffiliateStatus(a)"
-                                            class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors border"
-                                            :class="a.status === 'active' ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'"
-                                        >
-                                            {{ a.status === 'active' ? 'Suspend' : 'Aktifkan' }}
-                                        </button>
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button
+                                                type="button"
+                                                @click="openUplineModal(a)"
+                                                class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 flex items-center gap-1 shadow-2xs"
+                                                title="Atur siapa Upline Sponsor dari agen ini"
+                                            >
+                                                <span>🔗</span>
+                                                <span>Atur Upline</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                @click="toggleAffiliateStatus(a)"
+                                                class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors border shadow-2xs"
+                                                :class="a.status === 'active' ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'"
+                                            >
+                                                {{ a.status === 'active' ? 'Suspend' : 'Aktifkan' }}
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>
@@ -1577,6 +1613,176 @@
                     </button>
                 </div>
             </div>
+
+            <!-- ════ MODAL: DAFTARKAN AGEN / DOWNLINE BARU ════ -->
+            <div v-if="showCreateAffiliateModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="showCreateAffiliateModal = false">
+                <div class="bg-white rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-100 p-6 sm:p-7">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">Daftarkan Agen / Downline Baru</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">Tambah agen penjualan baru dan hubungkan ke Upline Sponsor di jaringan multi-tier.</p>
+                        </div>
+                        <button type="button" @click="showCreateAffiliateModal = false" class="text-slate-400 hover:text-slate-600">✕</button>
+                    </div>
+
+                    <!-- Mode Tab: Akun Baru vs User yang Ada -->
+                    <div class="flex items-center gap-2 p-1 bg-slate-100 rounded-xl mb-4 text-xs font-bold">
+                        <button
+                            type="button"
+                            @click="createForm.mode = 'new_user'"
+                            class="flex-1 py-1.5 rounded-lg transition-all"
+                            :class="createForm.mode === 'new_user' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                        >
+                            ➕ Akun Mitra Baru
+                        </button>
+                        <button
+                            type="button"
+                            @click="createForm.mode = 'existing_user'"
+                            class="flex-1 py-1.5 rounded-lg transition-all"
+                            :class="createForm.mode === 'existing_user' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                        >
+                            👤 Dari User/Karyawan Ada ({{ (candidate_users || []).length }})
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitCreateAffiliate" class="space-y-4 text-xs">
+                        <!-- Mode Existing User -->
+                        <div v-if="createForm.mode === 'existing_user'" class="space-y-3">
+                            <div>
+                                <label class="block text-slate-700 font-bold mb-1">Pilih User / Karyawan *</label>
+                                <select v-model="createForm.user_id" required class="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500">
+                                    <option value="" disabled>-- Pilih Pengguna --</option>
+                                    <option v-for="u in candidate_users" :key="u.id" :value="u.id">
+                                        {{ u.name }} ({{ u.email }}) - Role: {{ u.role || 'user' }}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Mode New User -->
+                        <div v-else class="space-y-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-slate-700 font-bold mb-1">Nama Lengkap *</label>
+                                    <input v-model="createForm.name" type="text" placeholder="Nama Lengkap Agen" required class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-700 font-bold mb-1">Email Aktif *</label>
+                                    <input v-model="createForm.email" type="email" placeholder="email@contoh.com" required class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-slate-700 font-bold mb-1">Nomor WhatsApp *</label>
+                                    <input v-model="createForm.phone" type="text" placeholder="08xxxxxxxxxx" required class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-700 font-bold mb-1">Password Akun *</label>
+                                    <input v-model="createForm.password" type="password" placeholder="Minimal 6 karakter" required class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- UPLINE SPONSOR (KUNCI DOWNLINE) -->
+                        <div class="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-2xl space-y-1.5">
+                            <label class="block font-bold text-indigo-900">
+                                🌳 Upline Sponsor (Induk Jaringan / Atasan Langsung)
+                            </label>
+                            <p class="text-[11px] text-indigo-700 leading-relaxed">
+                                Jika dipilih Upline, maka agen ini otomatis menjadi <strong>Downline Level 1</strong> dari agen tersebut. Komisi berjenjang (Tier 1 & Tier 2) akan mengalir ke upline tersebut saat ada pelanggan aktif.
+                            </p>
+                            <select v-model="createForm.upline_id" class="w-full mt-1 px-3 py-2 bg-white border border-indigo-300 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500">
+                                <option value="">-- Tanpa Upline (Menjadi Upline Utama / Direct Kantor) --</option>
+                                <option v-for="up in available_uplines" :key="up.user_id" :value="up.user_id">
+                                    {{ up.name }} (Kode: {{ up.referral_code }})
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- DATA BANK / E-WALLET -->
+                        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
+                            <span class="font-bold text-slate-800 uppercase tracking-wider text-[10px] block">Rekening Bank / E-Wallet Pencairan Komisi</span>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <div>
+                                    <label class="block text-slate-600 font-bold mb-1 text-[11px]">Nama Bank / E-Wallet</label>
+                                    <input v-model="createForm.bank_name" type="text" placeholder="BCA / BRI / DANA" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-600 font-bold mb-1 text-[11px]">Nomor Rekening / No. WA</label>
+                                    <input v-model="createForm.bank_account_number" type="text" placeholder="1234567890" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-600 font-bold mb-1 text-[11px]">Atas Nama Rekening</label>
+                                    <input v-model="createForm.bank_account_holder" type="text" placeholder="Nama Pemilik" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer Actions -->
+                        <div class="pt-2 flex justify-end gap-2">
+                            <button type="button" @click="showCreateAffiliateModal = false" class="px-4 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-50">
+                                Batal
+                            </button>
+                            <button type="submit" :disabled="createForm.processing" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors">
+                                {{ createForm.processing ? 'Menyimpan...' : 'Daftarkan Agen' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ════ MODAL: ATUR / EDIT UPLINE SPONSOR ════ -->
+            <div v-if="showUplineModal && selectedAffiliateForUpline" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="showUplineModal = false">
+                <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 p-6 sm:p-7">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">Atur Upline Sponsor</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">Tentukan atasan / sponsor untuk agen ini di jaringan multi-tier.</p>
+                        </div>
+                        <button type="button" @click="showUplineModal = false" class="text-slate-400 hover:text-slate-600">✕</button>
+                    </div>
+
+                    <form @submit.prevent="submitUpline" class="space-y-4 text-xs">
+                        <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-1">
+                            <div class="text-[11px] text-slate-500">Agen yang diatur:</div>
+                            <div class="font-bold text-sm text-slate-900">{{ selectedAffiliateForUpline.name }}</div>
+                            <div class="text-[11px] font-mono text-indigo-600 font-bold">Kode Referral: {{ selectedAffiliateForUpline.referral_code }}</div>
+                            <div class="text-[11px] text-slate-600 mt-1">
+                                Upline saat ini: <strong :class="selectedAffiliateForUpline.upline_name !== '-' ? 'text-indigo-900' : 'text-slate-500'">{{ selectedAffiliateForUpline.upline_name || '-' }}</strong>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-slate-800 font-bold mb-1.5">
+                                Pilih Upline Sponsor Baru:
+                            </label>
+                            <select v-model="uplineForm.upline_id" class="w-full px-3.5 py-2.5 border border-indigo-300 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 bg-white">
+                                <option value="">-- Tanpa Upline (Jadikan Upline Utama / Direct Kantor) --</option>
+                                <option
+                                    v-for="up in (available_uplines || []).filter(u => u.user_id !== selectedAffiliateForUpline.user_id)"
+                                    :key="up.user_id"
+                                    :value="up.user_id"
+                                >
+                                    {{ up.name }} (Kode: {{ up.referral_code }})
+                                </option>
+                            </select>
+                            <p class="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                                💡 Jika Anda memilih salah satu agen di atas, maka <strong>{{ selectedAffiliateForUpline.name }}</strong> akan menjadi <strong>Downline</strong>-nya.
+                            </p>
+                        </div>
+
+                        <!-- Footer Actions -->
+                        <div class="pt-2 flex justify-end gap-2">
+                            <button type="button" @click="showUplineModal = false" class="px-4 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-50">
+                                Batal
+                            </button>
+                            <button type="submit" :disabled="uplineForm.processing" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors">
+                                {{ uplineForm.processing ? 'Menyimpan...' : 'Simpan Upline' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </AppLayout>
 </template>
@@ -1590,6 +1796,8 @@ const props = defineProps({
     tab: String,
     settings: Object,
     affiliates: Object,
+    available_uplines: Array,
+    candidate_users: Array,
     commissions: Object,
     withdrawals: Object,
     kpi: Object,
@@ -1803,6 +2011,62 @@ const submitReject = () => {
         onSuccess: () => {
             showRejectModal.value = false;
             rejectForm.reset();
+        },
+    });
+};
+
+// ── Manual Create Affiliate State & Methods ──
+const showCreateAffiliateModal = ref(false);
+const createForm = useForm({
+    mode: 'new_user',
+    user_id: '',
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    upline_id: '',
+    bank_name: '',
+    bank_account_number: '',
+    bank_account_holder: '',
+    address: '',
+});
+
+const openCreateAffiliateModal = () => {
+    createForm.reset();
+    createForm.mode = 'new_user';
+    showCreateAffiliateModal.value = true;
+};
+
+const submitCreateAffiliate = () => {
+    createForm.post(route('admin.affiliates.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showCreateAffiliateModal.value = false;
+            createForm.reset();
+        },
+    });
+};
+
+// ── Set / Update Upline State & Methods ──
+const showUplineModal = ref(false);
+const selectedAffiliateForUpline = ref(null);
+const uplineForm = useForm({
+    upline_id: '',
+});
+
+const openUplineModal = (affiliate) => {
+    selectedAffiliateForUpline.value = affiliate;
+    uplineForm.upline_id = affiliate.upline_id || '';
+    showUplineModal.value = true;
+};
+
+const submitUpline = () => {
+    if (!selectedAffiliateForUpline.value) return;
+    uplineForm.post(route('admin.affiliates.update-upline', selectedAffiliateForUpline.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showUplineModal.value = false;
+            uplineForm.reset();
         },
     });
 };
