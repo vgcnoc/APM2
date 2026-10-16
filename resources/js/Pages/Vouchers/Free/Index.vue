@@ -6,7 +6,7 @@
         </div>
 
         <!-- EXECUTIVE KPI STATS CARDS -->
-        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-4 mb-6">
+        <div v-if="can('voucher_free_card_stats')" class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-4 mb-6">
             <!-- Card 1: Total Voucher Gratis -->
             <div 
                 @click="filterByStatus('')" 
@@ -109,6 +109,7 @@
 
             <!-- Card 5: Pelanggan ONT -->
             <div 
+                v-if="can('voucher_free_tab_customers')"
                 @click="switchTab('customers')" 
                 :class="currentTab === 'customers' ? 'ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50/30' : 'border-gray-200 bg-white hover:border-indigo-300 hover:shadow-md'"
                 class="border rounded-2xl p-4 shadow-xs transition-all duration-200 cursor-pointer relative overflow-hidden group flex flex-col justify-between col-span-2 sm:col-span-1 lg:col-span-1"
@@ -137,6 +138,7 @@
             <!-- Tab Buttons -->
             <div class="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
                 <button 
+                    v-if="can('voucher_free_tab_generated') || can('menu_vouchers_free')"
                     @click="switchTab('vouchers')"
                     :class="currentTab === 'vouchers' 
                         ? 'bg-emerald-600 text-white shadow-xs font-bold' 
@@ -156,6 +158,7 @@
                 </button>
 
                 <button 
+                    v-if="can('voucher_free_tab_customers')"
                     @click="switchTab('customers')"
                     :class="currentTab === 'customers' 
                         ? 'bg-indigo-600 text-white shadow-xs font-bold' 
@@ -179,7 +182,7 @@
             <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <!-- Bulk Print Button -->
                 <button 
-                    v-if="currentTab === 'vouchers' && selectedVouchers.length > 0" 
+                    v-if="currentTab === 'vouchers' && selectedVouchers.length > 0 && can('vouchers_free_print')" 
                     @click="printSelected" 
                     class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs flex items-center gap-2 transition-colors animate-fade-in"
                 >
@@ -191,7 +194,7 @@
 
                 <!-- Bulk Delete Button -->
                 <button 
-                    v-if="currentTab === 'vouchers' && selectedVouchers.length > 0" 
+                    v-if="currentTab === 'vouchers' && selectedVouchers.length > 0 && can('vouchers_free_delete')" 
                     @click="bulkDelete" 
                     class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs flex items-center gap-2 transition-colors animate-fade-in"
                 >
@@ -203,6 +206,7 @@
 
                 <!-- Main Generate Voucher Gratis Button -->
                 <button 
+                    v-if="can('vouchers_free_create')"
                     @click="openGenerateModal" 
                     class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
                 >
@@ -406,6 +410,7 @@
                                     <div class="flex items-center justify-end gap-2.5">
                                         <!-- Cetak Satuan -->
                                         <button 
+                                            v-if="can('vouchers_free_print')"
                                             @click="printSingle(voucher.id)" 
                                             class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" 
                                             title="Cetak Voucher"
@@ -415,6 +420,7 @@
 
                                         <!-- Toggle Status -->
                                         <button 
+                                            v-if="can('vouchers_free_toggle')"
                                             @click="toggleStatus(voucher)" 
                                             :disabled="toggling === voucher.id"
                                             :class="voucher.is_active ? 'text-amber-600 hover:bg-amber-50' : 'text-emerald-600 hover:bg-emerald-50'"
@@ -427,6 +433,7 @@
 
                                         <!-- Delete -->
                                         <button 
+                                            v-if="can('vouchers_free_delete')"
                                             @click="deleteVoucher(voucher.id)" 
                                             class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" 
                                             title="Hapus Voucher"
@@ -446,6 +453,7 @@
                                         <h3 class="text-base font-bold text-gray-900 mb-1">Belum Ada Voucher Gratis yang Di-generate</h3>
                                         <p class="text-xs text-gray-500 mb-4">Mulai buat voucher hotspot gratis untuk kebutuhan promosi, trial kuota, atau pelanggan ONT dengan tombol di bawah.</p>
                                         <button 
+                                            v-if="can('vouchers_free_create')"
                                             @click="openGenerateModal" 
                                             class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
                                         >
@@ -616,6 +624,7 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-xs font-semibold">
                                     <button 
+                                        v-if="can('vouchers_free_sync_customer')"
                                         @click="syncVoucherForCustomer(customer)" 
                                         :disabled="syncingCustomer === customer.id"
                                         class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold border border-indigo-200 transition-all flex items-center gap-1.5 ml-auto disabled:opacity-50"
@@ -929,8 +938,10 @@ import { useForm, router, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ClientAreaLayout from '@/Layouts/ClientAreaLayout.vue';
 import Swal from 'sweetalert2';
+import { usePermission } from '@/Composables/usePermission';
 
 const page = usePage();
+const { can, hasRole } = usePermission();
 const layoutComponent = computed(() => {
     return page.props.auth?.user?.role === 'reseller' ? ClientAreaLayout : AppLayout;
 });

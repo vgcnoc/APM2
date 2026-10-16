@@ -16,6 +16,11 @@ class VoucherController extends Controller
 {
     public function free(Request $request)
     {
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->can('menu_vouchers_free') && !$user->can('menu_vouchers') && !$user->hasRole('reseller')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuka Menu Voucher Gratis.');
+        }
+
         // Jalankan pengecekan voucher expired terlebih dahulu
         self::checkAndExpireVouchers();
 
@@ -752,6 +757,11 @@ class VoucherController extends Controller
     {
         $mode = $request->input('mode', 'bulk');
         $isFree = $request->boolean('is_free', false) || $request->input('cost_type') === 'free';
+        $user = auth()->user();
+
+        if ($isFree && $user && !$user->isAdmin() && !$user->can('vouchers_free_create') && !$user->can('vouchers_create')) {
+            return redirect()->back()->withErrors(['voucher_profile_id' => 'Anda tidak memiliki hak akses untuk mengenerate voucher gratis.'])->withInput();
+        }
 
         // ── Single Voucher ──────────────────────────────────────────
         if ($mode === 'single') {
@@ -944,6 +954,11 @@ class VoucherController extends Controller
 
     public function generateForCustomer(Request $request, Customer $customer)
     {
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->can('vouchers_free_sync_customer') && !$user->can('vouchers_free_create')) {
+            return redirect()->back()->withErrors(['message' => 'Anda tidak memiliki izin untuk menyinkronkan voucher gratis pelanggan.']);
+        }
+
         $profileId = $request->voucher_profile_id;
         $profile = $profileId ? VoucherProfile::find($profileId) : VoucherProfile::where('is_customer_free', true)->first();
         if (!$profile) {
