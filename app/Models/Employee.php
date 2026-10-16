@@ -11,6 +11,7 @@ class Employee extends Model
 
     protected $casts = [
         'join_date' => 'date',
+        'resign_date' => 'date',
         'base_salary' => 'decimal:2',
     ];
 
@@ -19,10 +20,23 @@ class Employee extends Model
         'tenure_level',
         'tenure_badge_label',
         'tenure_months',
+        'is_resigned',
+        'is_active',
     ];
+
+    public function getIsResignedAttribute(): bool
+    {
+        return $this->status === 'resigned';
+    }
+
+    public function getIsActiveAttribute(): bool
+    {
+        return $this->status === 'active' || empty($this->status);
+    }
 
     /**
      * Hitung teks deskriptif lama bekerja (contoh: "2 Tahun 4 Bulan" atau "5 Bulan 12 Hari")
+     * Jika karyawan sudah resign, hitung hingga tanggal resign (bukan tanggal hari ini).
      */
     public function getLamaBekerjaAttribute(): string
     {
@@ -31,13 +45,15 @@ class Employee extends Model
         }
 
         $join = Carbon::parse($this->join_date)->startOfDay();
-        $now = Carbon::now()->startOfDay();
+        $endDate = ($this->status === 'resigned' && $this->resign_date)
+            ? Carbon::parse($this->resign_date)->startOfDay()
+            : Carbon::now()->startOfDay();
 
-        if ($join->isAfter($now)) {
+        if ($join->isAfter($endDate)) {
             return 'Belum Mulai';
         }
 
-        $diff = $join->diff($now);
+        $diff = $join->diff($endDate);
         $parts = [];
         if ($diff->y > 0) {
             $parts[] = $diff->y . ' Tahun';

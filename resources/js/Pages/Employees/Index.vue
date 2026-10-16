@@ -4,45 +4,57 @@
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- 1. Total Karyawan -->
-                <div class="glass-card p-5 border-2 border-blue-500/10 hover:border-blue-500/30 transition-all">
+                <div 
+                    @click="setStatusFilter('all')" 
+                    class="glass-card p-5 border-2 transition-all cursor-pointer group"
+                    :class="statusFilter === 'all' ? 'border-blue-500 bg-blue-50/30 shadow-md ring-2 ring-blue-500/20' : 'border-blue-500/10 hover:border-blue-500/30'"
+                >
                     <div class="flex items-center gap-4">
-                        <div class="p-3 bg-blue-100 text-blue-600 rounded-xl">
+                        <div class="p-3 bg-blue-100 text-blue-600 rounded-xl group-hover:scale-105 transition-transform">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                         </div>
                         <div>
                             <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Karyawan</p>
-                            <p class="text-2xl font-bold text-gray-900">{{ employees.total || 0 }}</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ counts?.all ?? employees.total ?? 0 }}</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- 2. Pegawai Tetap -->
-                <div class="glass-card p-5 border-2 border-emerald-500/10 hover:border-emerald-500/30 transition-all">
+                <!-- 2. Karyawan Aktif -->
+                <div 
+                    @click="setStatusFilter('active')" 
+                    class="glass-card p-5 border-2 transition-all cursor-pointer group"
+                    :class="statusFilter === 'active' ? 'border-emerald-500 bg-emerald-50/30 shadow-md ring-2 ring-emerald-500/20' : 'border-emerald-500/10 hover:border-emerald-500/30'"
+                >
                     <div class="flex items-center gap-4">
-                        <div class="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
+                        <div class="p-3 bg-emerald-100 text-emerald-600 rounded-xl group-hover:scale-105 transition-transform">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Pegawai Tetap</p>
-                            <p class="text-2xl font-bold text-gray-900">{{ countByType('Tetap') }}</p>
+                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Karyawan Aktif</p>
+                            <p class="text-2xl font-bold text-emerald-700">{{ counts?.active ?? 0 }}</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- 3. Kontrak & Lainnya -->
-                <div class="glass-card p-5 border-2 border-amber-500/10 hover:border-amber-500/30 transition-all">
+                <!-- 3. Karyawan Resign / Nonaktif -->
+                <div 
+                    @click="setStatusFilter('resigned')" 
+                    class="glass-card p-5 border-2 transition-all cursor-pointer group"
+                    :class="statusFilter === 'resigned' ? 'border-rose-500 bg-rose-50/30 shadow-md ring-2 ring-rose-500/20' : 'border-rose-500/10 hover:border-rose-500/30'"
+                >
                     <div class="flex items-center gap-4">
-                        <div class="p-3 bg-amber-100 text-amber-600 rounded-xl">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <div class="p-3 bg-rose-100 text-rose-600 rounded-xl group-hover:scale-105 transition-transform">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Kontrak / PKWT</p>
-                            <p class="text-2xl font-bold text-gray-900">{{ countByType('Kontrak') }}</p>
+                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Resign / Nonaktif</p>
+                            <p class="text-2xl font-bold text-rose-700">{{ counts?.resigned ?? 0 }}</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- 4. Rata-Rata Lama Bekerja (NEW) -->
+                <!-- 4. Rata-Rata Lama Bekerja -->
                 <div class="glass-card p-5 border-2 border-indigo-500/10 hover:border-indigo-500/30 transition-all">
                     <div class="flex items-center gap-4">
                         <div class="p-3 bg-indigo-100 text-indigo-600 rounded-xl">
@@ -54,6 +66,48 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Status Tabs: Aktif, Resign, Semua -->
+            <div class="flex items-center gap-2 p-1.5 bg-gray-100/90 rounded-2xl w-fit border border-gray-200 shadow-xs">
+                <button 
+                    type="button" 
+                    @click="setStatusFilter('active')"
+                    :class="statusFilter === 'active' ? 'bg-white text-emerald-800 font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900 font-medium'"
+                    class="px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer"
+                >
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-xs"></span>
+                    <span>Karyawan Aktif</span>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold" :class="statusFilter === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-700'">
+                        {{ counts?.active ?? 0 }}
+                    </span>
+                </button>
+
+                <button 
+                    type="button" 
+                    @click="setStatusFilter('resigned')"
+                    :class="statusFilter === 'resigned' ? 'bg-white text-rose-800 font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900 font-medium'"
+                    class="px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer"
+                >
+                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-xs"></span>
+                    <span>Resign / Nonaktif</span>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold" :class="statusFilter === 'resigned' ? 'bg-rose-100 text-rose-800' : 'bg-gray-200 text-gray-700'">
+                        {{ counts?.resigned ?? 0 }}
+                    </span>
+                </button>
+
+                <button 
+                    type="button" 
+                    @click="setStatusFilter('all')"
+                    :class="statusFilter === 'all' ? 'bg-white text-blue-800 font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900 font-medium'"
+                    class="px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer"
+                >
+                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-xs"></span>
+                    <span>Semua Status</span>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold" :class="statusFilter === 'all' ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-700'">
+                        {{ counts?.all ?? 0 }}
+                    </span>
+                </button>
             </div>
 
             <!-- Filter Bar & Search -->
@@ -283,35 +337,65 @@
                                     <p v-if="!emp.phone && !emp.email" class="text-xs text-gray-300">-</p>
                                 </td>
 
-                                <!-- 4. Status Tipe & Pembayaran -->
+                                <!-- 4. Status Tipe & Status Kerja (Aktif / Resign) -->
                                 <td class="py-4 px-6">
-                                    <span :class="employeeTypeBadge(emp.employee_type)" class="px-2.5 py-1 rounded-full text-xs font-medium border inline-block">
-                                        {{ emp.employee_type || '-' }}
-                                    </span>
-                                    <div v-if="emp.bank_account_number" class="text-[11px] font-mono text-slate-600 mt-1.5 flex items-center gap-1">
-                                        <span class="font-bold text-slate-800">{{ emp.bank_name || 'Bank' }}:</span>
-                                        <span class="text-blue-700 font-semibold">{{ emp.bank_account_number }}</span>
-                                    </div>
-                                    <div v-else-if="emp.payment_method === 'Cash'" class="text-[11px] text-emerald-600 font-medium mt-1">
-                                        💵 Tunai (Cash)
+                                    <div class="space-y-1.5">
+                                        <!-- Status Resign vs Aktif Badge -->
+                                        <div v-if="emp.status === 'resigned'">
+                                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 inline-flex items-center gap-1 shadow-xs">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                                <span>Resign</span>
+                                            </span>
+                                            <div v-if="emp.resign_date" class="text-[11px] text-rose-600 font-medium mt-0.5">
+                                                Tgl: {{ formatDate(emp.resign_date) }}
+                                            </div>
+                                            <div v-if="emp.resign_reason" class="text-[10px] text-gray-500 truncate max-w-[140px]" :title="emp.resign_reason">
+                                                {{ emp.resign_reason }}
+                                            </div>
+                                        </div>
+                                        <div v-else>
+                                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                <span>Aktif</span>
+                                            </span>
+                                        </div>
+
+                                        <!-- Tipe Pegawai -->
+                                        <div>
+                                            <span :class="employeeTypeBadge(emp.employee_type)" class="px-2 py-0.5 rounded-md text-[10px] font-medium border inline-block">
+                                                {{ emp.employee_type || '-' }}
+                                            </span>
+                                        </div>
+
+                                        <!-- Bank / Payment -->
+                                        <div v-if="emp.bank_account_number" class="text-[11px] font-mono text-slate-600 flex items-center gap-1">
+                                            <span class="font-bold text-slate-700">{{ emp.bank_name || 'Bank' }}:</span>
+                                            <span class="text-blue-700 font-semibold">{{ emp.bank_account_number }}</span>
+                                        </div>
+                                        <div v-else-if="emp.payment_method === 'Cash'" class="text-[11px] text-emerald-600 font-medium">
+                                            💵 Tunai (Cash)
+                                        </div>
                                     </div>
                                 </td>
 
-                                <!-- 5. Lama Bekerja (KOLOM UTAMA FITUR BARU) -->
+                                <!-- 5. Lama Bekerja (Masa Kerja) -->
                                 <td class="py-4 px-6 bg-slate-50/30">
                                     <div v-if="emp.join_date" class="space-y-1">
                                         <!-- Badge Lama Bekerja -->
                                         <span 
-                                            :class="getTenureBadgeClass(emp.join_date)" 
-                                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs shadow-xs"
+                                            :class="emp.status === 'resigned' ? 'bg-gray-100 text-gray-700 border-gray-300' : getTenureBadgeClass(emp.join_date)" 
+                                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs shadow-xs border"
                                         >
-                                            <span>{{ getTenureIcon(emp.join_date) }}</span>
-                                            <span>{{ emp.lama_bekerja || calculateTenure(emp.join_date) }}</span>
+                                            <span>{{ emp.status === 'resigned' ? '🛑' : getTenureIcon(emp.join_date) }}</span>
+                                            <span>{{ emp.lama_bekerja || calculateTenure(emp.join_date, emp.resign_date) }}</span>
                                         </span>
                                         <!-- Tanggal Mulai Gabung -->
                                         <div class="text-[11px] text-gray-500 flex items-center gap-1">
                                             <span>Mulai:</span>
                                             <span class="font-medium text-gray-700">{{ formatDate(emp.join_date) }}</span>
+                                        </div>
+                                        <div v-if="emp.status === 'resigned' && emp.resign_date" class="text-[10px] text-rose-500 font-medium">
+                                            s.d {{ formatDate(emp.resign_date) }}
                                         </div>
                                     </div>
                                     <div v-else class="text-xs text-gray-400 italic">
@@ -349,6 +433,30 @@
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                            </svg>
+                                        </button>
+
+                                        <!-- Aksi: Aktifkan Kembali (jika status resign) -->
+                                        <button 
+                                            v-if="emp.status === 'resigned' && can(['hr_employees_reactivate', 'admin'])"
+                                            @click="confirmReactivate(emp)" 
+                                            title="Aktifkan Kembali Karyawan" 
+                                            class="p-1.5 text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                            </svg>
+                                        </button>
+
+                                        <!-- Aksi: Proses Resign (jika masih aktif) -->
+                                        <button 
+                                            v-if="emp.status !== 'resigned' && can(['hr_employees_resign', 'admin'])"
+                                            @click="openResignModal(emp)" 
+                                            title="Proses Resign Karyawan" 
+                                            class="p-1.5 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors border border-rose-200"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                                             </svg>
                                         </button>
 
@@ -440,6 +548,28 @@
 
                 <!-- Body -->
                 <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                    <!-- Status Resigned Banner (jika karyawan sudah resign) -->
+                    <div v-if="selectedEmployee.status === 'resigned'" class="p-4 rounded-xl bg-gradient-to-r from-rose-50 to-orange-50 border border-rose-200">
+                        <div class="flex items-start gap-3">
+                            <div class="p-2 rounded-xl bg-rose-100 text-rose-600 shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                </svg>
+                            </div>
+                            <div class="text-xs space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-600 text-white uppercase tracking-wider">Status: Resign</span>
+                                    <span class="text-rose-700 font-semibold">Tgl: {{ formatDate(selectedEmployee.resign_date) }}</span>
+                                </div>
+                                <p v-if="selectedEmployee.resign_reason" class="text-gray-700">
+                                    <span class="font-bold text-gray-900">Alasan:</span> {{ selectedEmployee.resign_reason }}
+                                </p>
+                                <p v-if="selectedEmployee.resign_notes" class="text-gray-600 italic">
+                                    <span class="font-bold not-italic text-gray-900">Catatan / Serah Terima:</span> "{{ selectedEmployee.resign_notes }}"
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                     <!-- Highlight Masa Kerja (Lama Bekerja) -->
                     <div class="p-4 rounded-xl bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-100/80">
                         <div class="flex items-center justify-between">
@@ -947,6 +1077,145 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal Proses Resign Karyawan -->
+        <div v-if="showResignModal && resignTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" @click="closeResignModal"></div>
+            <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up border border-gray-100">
+                <!-- Header -->
+                <div class="px-6 py-5 bg-gradient-to-r from-rose-600 via-rose-700 to-amber-700 text-white flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 bg-white/10 rounded-2xl backdrop-blur-xs">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Proses Resign Karyawan</h3>
+                            <p class="text-xs text-rose-100">Form pemberhentian / pengunduran diri karyawan</p>
+                        </div>
+                    </div>
+                    <button @click="closeResignModal" class="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <!-- Target Employee Info -->
+                <div class="p-5 border-b border-gray-100 bg-amber-50/60">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-amber-600 text-white font-bold flex items-center justify-center text-base shrink-0 shadow-sm overflow-hidden">
+                            <img v-if="resignTarget.photo" :src="`/storage/${resignTarget.photo}`" class="w-full h-full object-cover">
+                            <span v-else>{{ resignTarget.name?.charAt(0)?.toUpperCase() }}</span>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h4 class="font-bold text-gray-900 text-base leading-tight truncate">{{ resignTarget.name }}</h4>
+                            <p class="text-xs text-gray-600 mt-0.5">
+                                <span class="font-semibold text-rose-700">{{ resignTarget.position || 'Staf' }}</span> • Area: {{ resignTarget.area?.name || '-' }}
+                            </p>
+                            <p v-if="resignTarget.join_date" class="text-[11px] text-gray-500 mt-0.5">
+                                Mulai kerja: <span class="font-semibold">{{ formatDate(resignTarget.join_date) }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Body -->
+                <form @submit.prevent="submitResign" class="p-6 space-y-4">
+                    <!-- Tanggal Resign -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            Tanggal Efektif Resign / Terakhir Kerja <span class="text-rose-500">*</span>
+                        </label>
+                        <input 
+                            type="date" 
+                            v-model="resignForm.resign_date" 
+                            required 
+                            class="w-full rounded-xl border-gray-300 text-sm focus:border-rose-500 focus:ring-rose-200"
+                        />
+                    </div>
+
+                    <!-- Alasan Resign -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            Alasan Resign / Status Berhenti <span class="text-rose-500">*</span>
+                        </label>
+                        <select 
+                            v-model="resignForm.resign_reason" 
+                            required 
+                            class="w-full rounded-xl border-gray-300 text-sm focus:border-rose-500 focus:ring-rose-200"
+                        >
+                            <option value="" disabled>Pilih Alasan Resign...</option>
+                            <option value="Mengundurkan Diri (Pribadi)">Mengundurkan Diri (Pribadi)</option>
+                            <option value="Mendapat Tawaran Pekerjaan Lain">Mendapat Tawaran Pekerjaan Lain</option>
+                            <option value="Habis Masa Kontrak (PKWT)">Habis Masa Kontrak (PKWT)</option>
+                            <option value="Alasan Kesehatan / Keluarga">Alasan Kesehatan / Keluarga</option>
+                            <option value="Pemberhentian / PHK">Pemberhentian / PHK</option>
+                            <option value="Pindah Domisili / Kota">Pindah Domisili / Kota</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+
+                    <!-- Catatan Tambahan / Serah Terima -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            Catatan Tambahan & Serah Terima Aset (Opsional)
+                        </label>
+                        <textarea 
+                            v-model="resignForm.resign_notes" 
+                            rows="3" 
+                            placeholder="Contoh: Serah terima laptop, inventaris teknisi, dan ID card selesai..." 
+                            class="w-full rounded-xl border-gray-300 text-sm focus:border-rose-500 focus:ring-rose-200 placeholder:text-gray-400"
+                        ></textarea>
+                    </div>
+
+                    <!-- Security & Automatic Options -->
+                    <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Tindakan Otomatis Sistem:</p>
+                        <label class="flex items-start gap-2.5 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                v-model="resignForm.deactivate_user" 
+                                class="rounded border-gray-300 text-rose-600 focus:ring-rose-500 mt-0.5 cursor-pointer" 
+                            />
+                            <div class="text-xs text-slate-700">
+                                <span class="font-semibold text-gray-900">Nonaktifkan Akun Login Pengguna</span>
+                                <p class="text-[11px] text-gray-500">Cabut akses login aplikasi dan status on-duty pengguna yang terhubung.</p>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-2.5 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                v-model="resignForm.clean_schedules" 
+                                class="rounded border-gray-300 text-rose-600 focus:ring-rose-500 mt-0.5 cursor-pointer" 
+                            />
+                            <div class="text-xs text-slate-700">
+                                <span class="font-semibold text-gray-900">Bersihkan Jadwal Shift Mendatang</span>
+                                <p class="text-[11px] text-gray-500">Hapus jadwal roster shift kerja mulai dari tanggal resign ke depan.</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Action buttons -->
+                    <div class="pt-3 flex items-center justify-end gap-2 border-t border-gray-100">
+                        <button 
+                            type="button" 
+                            @click="closeResignModal" 
+                            class="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-100 text-sm font-semibold transition-colors"
+                        >
+                            Batal
+                        </button>
+                        <button 
+                            type="submit" 
+                            :disabled="isSubmittingResign" 
+                            class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                        >
+                            <svg v-if="isSubmittingResign" class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                            <span>Konfirmasi Resign Karyawan</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </AppLayout>
 </template>
 
@@ -963,6 +1232,7 @@ const props = defineProps({
     areas: Array,
     positions: Array,
     avg_tenure: String,
+    counts: Object,
     filters: Object,
 });
 
@@ -971,6 +1241,12 @@ const filterArea = ref(props.filters?.area_id || '');
 const filterType = ref(props.filters?.employee_type || '');
 const filterTenure = ref(props.filters?.tenure || '');
 const sortBy = ref(props.filters?.sort || '');
+const statusFilter = ref(props.filters?.status || 'active');
+
+const setStatusFilter = (val) => {
+    statusFilter.value = val;
+    applyFilters();
+};
 
 const showModal = ref(false);
 const showDetailModal = ref(false);
@@ -978,6 +1254,70 @@ const selectedEmployee = ref(null);
 const isEditing = ref(false);
 const editingId = ref(null);
 const photoPreview = ref(null);
+
+// Resignation State & Methods
+const showResignModal = ref(false);
+const resignTarget = ref(null);
+const isSubmittingResign = ref(false);
+const resignForm = ref({
+    resign_date: new Date().toISOString().substring(0, 10),
+    resign_reason: '',
+    resign_notes: '',
+    deactivate_user: true,
+    clean_schedules: true,
+});
+
+function openResignModal(emp) {
+    if (!can(['hr_employees_resign', 'admin'])) {
+        alert('Anda tidak memiliki hak akses untuk memproses resign karyawan.');
+        return;
+    }
+    resignTarget.value = emp;
+    resignForm.value = {
+        resign_date: new Date().toISOString().substring(0, 10),
+        resign_reason: 'Mengundurkan Diri (Pribadi)',
+        resign_notes: '',
+        deactivate_user: true,
+        clean_schedules: true,
+    };
+    showResignModal.value = true;
+}
+
+function closeResignModal() {
+    showResignModal.value = false;
+    resignTarget.value = null;
+    isSubmittingResign.value = false;
+}
+
+function submitResign() {
+    if (!resignTarget.value) return;
+    if (!can(['hr_employees_resign', 'admin'])) {
+        alert('Anda tidak memiliki hak akses untuk memproses resign karyawan.');
+        return;
+    }
+    isSubmittingResign.value = true;
+    router.post(`/employees/${resignTarget.value.id}/resign`, resignForm.value, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeResignModal();
+        },
+        onFinish: () => {
+            isSubmittingResign.value = false;
+        }
+    });
+}
+
+function confirmReactivate(emp) {
+    if (!can(['hr_employees_reactivate', 'admin'])) {
+        alert('Anda tidak memiliki hak akses untuk mengaktifkan kembali karyawan.');
+        return;
+    }
+    if (confirm(`Apakah Anda yakin ingin mengaktifkan kembali karyawan "${emp.name}"? Status akan kembali Aktif dan akses login akun user terkait akan dipulihkan.`)) {
+        router.post(`/employees/${emp.id}/reactivate`, {}, {
+            preserveScroll: true,
+        });
+    }
+}
 
 // Bulk Delete & Delete All state
 const selectedIds = ref([]);
@@ -1164,7 +1504,7 @@ const form = useForm({
 });
 
 const hasActiveFilter = computed(() => {
-    return !!(search.value || filterArea.value || filterType.value || filterTenure.value || sortBy.value);
+    return !!(search.value || filterArea.value || filterType.value || filterTenure.value || sortBy.value || (statusFilter.value && statusFilter.value !== 'active'));
 });
 
 const applyFilters = () => {
@@ -1174,6 +1514,7 @@ const applyFilters = () => {
         employee_type: filterType.value || undefined,
         tenure: filterTenure.value || undefined,
         sort: sortBy.value || undefined,
+        status: statusFilter.value !== 'active' ? statusFilter.value : undefined,
     }, { preserveState: true, preserveScroll: true });
 };
 
@@ -1183,31 +1524,32 @@ const resetFilters = () => {
     filterType.value = '';
     filterTenure.value = '';
     sortBy.value = '';
+    statusFilter.value = 'active';
     router.get('/employees', {}, { preserveState: true, preserveScroll: true });
 };
 
 // ── Kalkulasi Lama Bekerja (Masa Kerja) ─────────────────────────
-const calculateTenure = (joinDateStr) => {
+const calculateTenure = (joinDateStr, endDateStr = null) => {
     if (!joinDateStr) return '-';
     try {
         const join = new Date(joinDateStr);
         if (isNaN(join.getTime())) return '-';
 
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
+        const end = endDateStr ? new Date(endDateStr) : new Date();
+        end.setHours(0, 0, 0, 0);
         join.setHours(0, 0, 0, 0);
 
-        if (join > now) {
+        if (join > end) {
             return 'Akan Mulai';
         }
 
-        let years = now.getFullYear() - join.getFullYear();
-        let months = now.getMonth() - join.getMonth();
-        let days = now.getDate() - join.getDate();
+        let years = end.getFullYear() - join.getFullYear();
+        let months = end.getMonth() - join.getMonth();
+        let days = end.getDate() - join.getDate();
 
         if (days < 0) {
             months--;
-            const prevMonthLastDay = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+            const prevMonthLastDay = new Date(end.getFullYear(), end.getMonth(), 0).getDate();
             days += prevMonthLastDay;
         }
         if (months < 0) {

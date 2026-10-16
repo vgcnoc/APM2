@@ -33,6 +33,16 @@ class EmployeeController extends Controller
             $query->where('employee_type', $request->employee_type);
         }
 
+        // Filter Status: active (default), resigned, or all
+        $statusFilter = $request->input('status', 'active');
+        if ($statusFilter === 'active') {
+            $query->where(function($q) {
+                $q->where('status', 'active')->orWhereNull('status');
+            });
+        } elseif ($statusFilter === 'resigned') {
+            $query->where('status', 'resigned');
+        }
+
         if ($request->filled('tenure')) {
             $today = \Carbon\Carbon::now()->startOfDay();
             if ($request->tenure === 'senior') {
@@ -106,12 +116,30 @@ class EmployeeController extends Controller
             }
         }
 
+        // Hitung total counts berdasarkan status (dalam scope akses user)
+        $baseQuery = \App\Models\Employee::query();
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_view_all')) {
+            if (auth()->user()->can('hr_employees_view_area')) {
+                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+            } else {
+                $baseQuery->where('email', auth()->user()->email);
+            }
+        }
+        $totalActive = (clone $baseQuery)->where(function($q) { $q->where('status', 'active')->orWhereNull('status'); })->count();
+        $totalResigned = (clone $baseQuery)->where('status', 'resigned')->count();
+        $totalAll = (clone $baseQuery)->count();
+
         return \Inertia\Inertia::render('Employees/Index', [
             'employees' => $employees,
             'areas' => $areas,
             'positions' => $positions,
             'avg_tenure' => trim($avgTenureText),
-            'filters' => $request->only(['search', 'area_id', 'employee_type', 'tenure', 'sort'])
+            'counts' => [
+                'active' => $totalActive,
+                'resigned' => $totalResigned,
+                'all' => $totalAll,
+            ],
+            'filters' => $request->only(['search', 'area_id', 'employee_type', 'tenure', 'sort', 'status'])
         ]);
     }
 
@@ -332,5 +360,79 @@ class EmployeeController extends Controller
         });
 
         return redirect()->route('employees.index')->with('success', "{$count} data karyawan berhasil dihapus.");
+    }
+
+    public function resign(\App\Models\Employee $employee, Request $request)
+    {
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_resign') && !auth()->user()->can('hr_employees_update')) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk memproses karyawan resign.');
+        }
+
+        $validated = $request->validate([
+            'resign_date' => 'required|date',
+            'resign_reason' => 'required|string|max:255',
+            'resign_notes' => 'nullable|string|max:1000',
+            'deactivate_user' => 'nullable|boolean',
+            'clean_schedules' => 'nullable|boolean',
+        ]);
+
+        \DB::transaction(function () use ($employee, $validated) {
+            $employee->update([
+                'status' => 'resigned',
+                'resign_date' => $validated['resign_date'],
+                'resign_reason' => $validated['resign_reason'],
+                'resign_notes' => $validated['resign_notes'] ?? null,
+            ]);
+
+            // Deactivate associated User login
+            $deactivateUser = $validated['deactivate_user'] ?? true;
+            if ($deactivateUser && !empty($employee->email)) {
+                $user = \App\Models\User::where('email', $employee->email)->first();
+                if ($user && $user->id !== auth()->id() && !$user->hasRole('admin')) {
+                    $user->update([
+                        'is_active' => false,
+                        'is_on_duty' => false,
+                    ]);
+                }
+            }
+
+            // Clean upcoming work schedules
+            $cleanSchedules = $validated['clean_schedules'] ?? true;
+            if ($cleanSchedules) {
+                \App\Models\WorkSchedule::where('employee_id', $employee->id)
+                    ->where('date', '>=', $validated['resign_date'])
+                    ->delete();
+            }
+        });
+
+        return redirect()->back()->with('success', "Karyawan {$employee->name} berhasil ditandai Resign. Akun login telah dinonaktifkan dan jadwal mendatang telah disesuaikan.");
+    }
+
+    public function reactivate(\App\Models\Employee $employee, Request $request)
+    {
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_reactivate') && !auth()->user()->can('hr_employees_update')) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk mengaktifkan kembali karyawan.');
+        }
+
+        \DB::transaction(function () use ($employee, $request) {
+            $employee->update([
+                'status' => 'active',
+                'resign_date' => null,
+                'resign_reason' => null,
+                'resign_notes' => null,
+            ]);
+
+            // Reactivate user if exists
+            if (!empty($employee->email)) {
+                $user = \App\Models\User::where('email', $employee->email)->first();
+                if ($user) {
+                    $user->update([
+                        'is_active' => true,
+                    ]);
+                }
+            }
+        });
+
+        return redirect()->back()->with('success', "Karyawan {$employee->name} berhasil diaktifkan kembali.");
     }
 }
