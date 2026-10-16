@@ -288,7 +288,7 @@
                                                 :key="h"
                                                 class="px-3 py-2 text-slate-700 whitespace-nowrap font-mono text-[11px]"
                                             >
-                                                {{ row[h] !== undefined && row[h] !== null && row[h] !== '' ? row[h] : '-' }}
+                                                {{ formatDisplayValue(h, row[h]) }}
                                             </td>
                                         </tr>
                                     </tbody>
@@ -1094,8 +1094,10 @@ function parseCsvText(text) {
         let hasValue = false;
 
         for (let c = 0; c < rawHeaders.length; c++) {
-            const val = (line[c] !== undefined ? line[c] : '').trim();
-            obj[rawHeaders[c]] = val;
+            const key = rawHeaders[c];
+            const rawVal = (line[c] !== undefined ? line[c] : '').trim();
+            const val = formatCellDateIfSerial(key, rawVal);
+            obj[key] = val;
             if (val !== '') hasValue = true;
         }
 
@@ -1107,14 +1109,50 @@ function parseCsvText(text) {
     return results;
 }
 
+// Smart auto-formatter for date values (including Excel serial numbers like 43770 -> 2019-11-01)
+function formatCellDateIfSerial(key, val) {
+    if (val === null || val === undefined || val === '') return '';
+
+    // If SheetJS parsed it directly into a JavaScript Date object
+    if (val instanceof Date) {
+        const y = val.getUTCFullYear();
+        const m = String(val.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(val.getUTCDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    // If it's a numeric Excel serial date (e.g. 43770, 44089, 44470, 45363)
+    const num = Number(val);
+    const isDateField = /tgl|tanggal|date|join|tempo|bayar|aktivasi|survey|registrasi/i.test(key);
+    const isNotCurrencyOrPhone = !/gaji|tarif|biaya|amount|price|port|meter|rx|power|telepon|phone|hp|wa|rek|rekening|nip|iak/i.test(key);
+
+    if (!isNaN(num) && num >= 10000 && num <= 75000 && (isDateField || (typeof val === 'number' && isNotCurrencyOrPhone))) {
+        // Convert Excel serial days to UTC date (accounting for 1900 leap year bug offset: 25569)
+        const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+        if (!isNaN(date.getTime())) {
+            const y = date.getUTCFullYear();
+            const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const d = String(date.getUTCDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+    }
+
+    return typeof val === 'string' ? val.trim() : val;
+}
+
+function formatDisplayValue(header, val) {
+    if (val === undefined || val === null || val === '') return '-';
+    return formatCellDateIfSerial(header, val);
+}
+
 // Client-side Excel Parser with Dynamic SheetJS CDN
 async function parseExcelFile(file) {
     const XLSX = await loadSheetJs();
     const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data, { type: 'array' });
+    const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd' });
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
-    const rawJson = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+    const rawJson = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false });
 
     if (!rawJson || rawJson.length === 0) {
         parsedRows.value = [];
@@ -1124,7 +1162,8 @@ async function parseExcelFile(file) {
     const normalized = rawJson.map(row => {
         const item = {};
         for (const [k, v] of Object.entries(row)) {
-            item[normalizeKey(k)] = typeof v === 'string' ? v.trim() : v;
+            const cleanKey = normalizeKey(k);
+            item[cleanKey] = formatCellDateIfSerial(cleanKey, v);
         }
         return item;
     });

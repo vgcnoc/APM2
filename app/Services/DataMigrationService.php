@@ -26,6 +26,46 @@ use Illuminate\Support\Str;
 class DataMigrationService
 {
     /**
+     * Parse flexible date (handles YYYY-MM-DD, DD/MM/YYYY, and Excel serial numbers like 43770)
+     */
+    public static function parseFlexibleDate($value, $fallback = null): ?string
+    {
+        if ($value === null || $value === '' || $value === '-') {
+            return $fallback;
+        }
+
+        // If numeric Excel serial date (e.g. 43770, 44089, 45363)
+        // Range 10000..75000 covers 1927 to 2105
+        if (is_numeric($value)) {
+            $num = (float) $value;
+            if ($num >= 10000 && $num <= 75000) {
+                // Excel 1900 date system (leap year bug offset: 25569 days to 1970-01-01)
+                $timestamp = ($num - 25569) * 86400;
+                return gmdate('Y-m-d', (int) $timestamp);
+            }
+        }
+
+        $str = trim((string) $value);
+
+        // DD/MM/YYYY or DD-MM-YYYY
+        if (preg_match('/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{4})$/', $str, $matches)) {
+            $d = (int) $matches[1];
+            $m = (int) $matches[2];
+            $y = (int) $matches[3];
+            if (checkdate($m, $d, $y)) {
+                return sprintf('%04d-%02d-%02d', $y, $m, $d);
+            }
+        }
+
+        // Standard Carbon parse
+        try {
+            return \Carbon\Carbon::parse($str)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return $fallback;
+        }
+    }
+
+    /**
      * Master schema definition per category
      */
     public static function getCategoryDefinitions(): array
@@ -832,8 +872,8 @@ class DataMigrationService
             'service_status' => $serviceStatus,
             'billing_type' => in_array(strtolower($row['jenis_billing'] ?? ''), ['prabayar', 'pascabayar']) ? strtolower($row['jenis_billing']) : 'prabayar',
             'status' => $status,
-            'registration_date' => $row['tgl_registrasi'] ?? now()->toDateString(),
-            'activation_date' => ($status === 'active') ? ($row['tgl_aktivasi'] ?? now()->toDateString()) : ($row['tgl_aktivasi'] ?? null),
+            'registration_date' => self::parseFlexibleDate($row['tgl_registrasi'] ?? null, now()->toDateString()),
+            'activation_date' => ($status === 'active') ? self::parseFlexibleDate($row['tgl_aktivasi'] ?? null, now()->toDateString()) : self::parseFlexibleDate($row['tgl_aktivasi'] ?? null),
             'sales_id' => $salesId,
             'latitude' => !empty($row['latitude']) ? (float)$row['latitude'] : null,
             'longitude' => !empty($row['longitude']) ? (float)$row['longitude'] : null,
@@ -943,7 +983,7 @@ class DataMigrationService
             'distance_meters' => !empty($row['jarak_meter']) ? (float)$row['jarak_meter'] : null,
             'feasibility' => $feasibility,
             'signal_loss' => !empty($row['redaman_sinyal']) ? (float)$row['redaman_sinyal'] : null,
-            'survey_date' => $row['tgl_survey'] ?? now()->toDateString(),
+            'survey_date' => self::parseFlexibleDate($row['tgl_survey'] ?? null, now()->toDateString()),
             'notes' => $row['catatan_survey'] ?? null,
         ];
     }
@@ -978,7 +1018,7 @@ class DataMigrationService
             'pppoe_password' => $row['password_pppoe'] ?? null,
             'vlan_id' => $row['vlan_id'] ?? null,
             'access_mode' => $row['mode_akses'] ?? 'PPPOE',
-            'activation_date' => $row['tgl_aktivasi'] ?? now()->toDateString(),
+            'activation_date' => self::parseFlexibleDate($row['tgl_aktivasi'] ?? null, now()->toDateString()),
             'is_audited' => !empty($row['lulus_audit_qc']) ? (bool)$row['lulus_audit_qc'] : true,
             'start_time' => $row['jam_pasang_mulai'] ?? null,
             'end_time' => $row['jam_pasang_selesai'] ?? null,
@@ -1021,8 +1061,8 @@ class DataMigrationService
             'period_month' => $month,
             'period_year' => $year,
             'amount' => $amount,
-            'issued_date' => $row['tgl_terbit'] ?? now()->toDateString(),
-            'due_date' => $row['tgl_jatuh_tempo'] ?? now()->addDays(7)->toDateString(),
+            'issued_date' => self::parseFlexibleDate($row['tgl_terbit'] ?? null, now()->toDateString()),
+            'due_date' => self::parseFlexibleDate($row['tgl_jatuh_tempo'] ?? null, now()->addDays(7)->toDateString()),
             'status' => $status,
             'billing_type' => in_array(strtolower($row['jenis_tagihan'] ?? ''), ['prabayar', 'pascabayar', 'prorata']) ? strtolower($row['jenis_tagihan']) : 'prabayar',
             'notes' => $row['catatan_invoice'] ?? null,
@@ -1052,7 +1092,7 @@ class DataMigrationService
         $mapped = [
             'invoice_id' => $invoiceId,
             'amount' => $amount,
-            'payment_date' => $row['tgl_bayar'] ?? now()->toDateString(),
+            'payment_date' => self::parseFlexibleDate($row['tgl_bayar'] ?? null, now()->toDateString()),
             'payment_method' => $method,
             'reference_number' => $row['nomor_referensi'] ?? null,
             'collected_by' => $collectorId,
@@ -1553,15 +1593,16 @@ class DataMigrationService
         // Join Date & Tenure preview
         $joinDate = null;
         if (!empty($joinDateStr) && $joinDateStr !== '-') {
-            try {
-                $c = \Carbon\Carbon::parse($joinDateStr);
-                $joinDate = $c->format('Y-m-d');
+            $parsedDate = self::parseFlexibleDate($joinDateStr);
+            if ($parsedDate) {
+                $joinDate = $parsedDate;
+                $c = \Carbon\Carbon::parse($joinDate);
                 $now = \Carbon\Carbon::now()->startOfDay();
                 if ($c->isAfter($now)) {
                     $warnings[] = "Tanggal bergabung ({$joinDate}) di masa depan (status: Akan Mulai).";
                 }
-            } catch (\Throwable $e) {
-                $errors[] = "Format tanggal bergabung '{$joinDateStr}' tidak valid (gunakan format YYYY-MM-DD).";
+            } else {
+                $errors[] = "Format tanggal bergabung '{$joinDateStr}' tidak valid (gunakan format YYYY-MM-DD atau format tanggal Excel).";
             }
         }
 
