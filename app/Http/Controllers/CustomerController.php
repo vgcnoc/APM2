@@ -89,12 +89,12 @@ class CustomerController extends Controller
             ))
             ->when($request->sort_by, function ($q, $sort) {
                 return match($sort) {
-                    'terlama' => $q->orderBy('created_at', 'asc'),
+                    'terlama' => $q->orderByRaw('COALESCE(registration_date, created_at) ASC, id ASC'),
                     'nama_asc' => $q->orderBy('name', 'asc'),
                     'nama_desc' => $q->orderBy('name', 'desc'),
-                    default => $q->orderByDesc('created_at'),
+                    default => $q->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC'),
                 };
-            }, fn ($q) => $q->orderByDesc('created_at'))
+            }, fn ($q) => $q->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC'))
             ->paginate($request->per_page ?? 10)
             ->withQueryString();
 
@@ -490,7 +490,7 @@ class CustomerController extends Controller
 
         $customers = (clone $query)
             ->with(['package', 'sales.employee'])
-            ->orderByDesc('created_at')
+            ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
             ->paginate(15)
             ->withQueryString();
 
@@ -639,7 +639,7 @@ class CustomerController extends Controller
                     $sq->where('feasibility', 'not_feasible');
                 });
             })
-            ->orderByDesc('created_at')
+            ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
             ->paginate(15)
             ->withQueryString();
 
@@ -792,7 +792,7 @@ class CustomerController extends Controller
                 $q->where('type', 'installation')->with('technician');
             }])
             ->search($request->search)
-            ->orderByDesc('created_at')
+            ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
             ->paginate(15)
             ->withQueryString();
 
@@ -868,7 +868,7 @@ class CustomerController extends Controller
                 });
             })
             ->search($request->search)
-            ->orderByDesc('created_at')
+            ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
             ->paginate(15)
             ->withQueryString();
 
@@ -948,7 +948,7 @@ class CustomerController extends Controller
             ->when($request->connection_status === 'online', fn ($q) => $q->whereHas('ont', fn ($oq) => $oq->whereIn('pppoe_user', $onlineUsernames)))
             ->when($request->connection_status === 'offline', fn ($q) => $q->where(fn ($sq) => $sq->doesntHave('ont')->orWhereHas('ont', fn ($oq) => $oq->whereNotIn('pppoe_user', $onlineUsernames)->orWhereNull('pppoe_user'))))
             ->search($request->search)
-            ->orderByDesc('created_at')
+            ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
             ->paginate(15)
             ->withQueryString();
 
@@ -1014,7 +1014,7 @@ class CustomerController extends Controller
             })
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
             ->search($request->search)
-            ->orderByDesc('created_at')
+            ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
             ->paginate(15)
             ->withQueryString();
 

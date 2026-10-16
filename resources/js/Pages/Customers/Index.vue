@@ -185,8 +185,8 @@
                     <div class="flex flex-col flex-1">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Urutkan</span>
                         <select v-model="filterSort" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
-                            <option value="">Terbaru</option>
-                            <option value="terlama">Terlama</option>
+                            <option value="">Terbaru (Tgl Daftar)</option>
+                            <option value="terlama">Terlama (Tgl Daftar)</option>
                             <option value="nama_asc">Nama (A-Z)</option>
                             <option value="nama_desc">Nama (Z-A)</option>
                         </select>
@@ -237,7 +237,12 @@
                                     🎁 Gratis
                                 </span>
                             </div>
-                            <p class="text-[10px] text-gray-500 font-mono">{{ row.customer_code }}</p>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="text-[10px] text-gray-500 font-mono">{{ row.customer_code }}</span>
+                                <span v-if="row.registration_date" class="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100/70 px-1.5 py-0.2 rounded font-medium" title="Tanggal Daftar">
+                                    📅 {{ row.registration_date }}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </td>
