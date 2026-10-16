@@ -643,62 +643,105 @@
                                 >
                                     <option value="">Pilih metode</option>
                                     <option value="Transfer Bank">Transfer Bank</option>
-                                    <option value="Cash">Cash</option>
-                                    <option value="E-Wallet">E-Wallet</option>
+                                    <option value="E-Wallet">E-Wallet (DANA, GoPay, OVO, ShopeePay)</option>
+                                    <option value="Cash">Cash (Tunai)</option>
                                 </select>
                             </div>
 
-                            <!-- Opsi Khusus Transfer Bank -->
-                            <div v-if="form.payment_method === 'Transfer Bank'" class="p-3.5 bg-white rounded-xl border border-blue-100 shadow-xs space-y-3.5 animate-fade-in-up">
+                            <!-- Pilihan Bank & E-Wallet (Tampil untuk Transfer Bank maupun E-Wallet) -->
+                            <div v-if="form.payment_method === 'Transfer Bank' || form.payment_method === 'E-Wallet'" class="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs space-y-3.5 animate-fade-in-up">
+                                
+                                <!-- Baris Bank Populer -->
                                 <div>
-                                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">Pilih Bank</label>
-                                    <!-- Quick Bank Buttons -->
-                                    <div class="flex flex-wrap gap-1.5 mb-2">
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                                        <span class="flex items-center gap-1.5">
+                                            <span class="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                                            <span>Pilihan Bank</span>
+                                        </span>
+                                        <span v-if="popularBanks.includes(form.bank_name) && !isCustom" class="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded">
+                                            Terpilih: {{ form.bank_name }}
+                                        </span>
+                                    </label>
+                                    <div class="flex flex-wrap gap-1.5">
                                         <button 
                                             v-for="b in popularBanks" 
                                             :key="b" 
                                             type="button"
                                             @click="selectBank(b)"
                                             class="px-2.5 py-1 text-xs rounded-lg font-medium transition-all"
-                                            :class="form.bank_name === b && !isCustomBank ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                                            :class="form.bank_name === b && !isCustom ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-300' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
                                         >
                                             {{ b }}
                                         </button>
+                                    </div>
+                                </div>
+
+                                <!-- Baris E-Wallet Populer (DANA, GoPay, OVO, ShopeePay) -->
+                                <div class="pt-2 border-t border-slate-100">
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                                        <span class="flex items-center gap-1.5">
+                                            <span class="w-2 h-2 rounded-full bg-cyan-500 inline-block"></span>
+                                            <span>Pilihan E-Wallet (DANA & GoPay)</span>
+                                        </span>
+                                        <span v-if="popularEWallets.includes(form.bank_name) && !isCustom" class="text-[10px] text-cyan-600 font-bold bg-cyan-50 px-2 py-0.5 rounded">
+                                            Terpilih: {{ form.bank_name }}
+                                        </span>
+                                    </label>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <button 
+                                            v-for="w in popularEWallets" 
+                                            :key="w" 
+                                            type="button"
+                                            @click="selectEWallet(w)"
+                                            class="px-2.5 py-1 text-xs rounded-lg font-medium transition-all flex items-center gap-1.5"
+                                            :class="form.bank_name === w && !isCustom ? (w === 'DANA' ? 'bg-blue-500 text-white shadow-xs ring-2 ring-blue-300' : (w === 'GoPay' ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-300' : 'bg-cyan-600 text-white shadow-xs ring-2 ring-cyan-300')) : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                                        >
+                                            <span v-if="w === 'DANA'" class="w-2 h-2 rounded-full bg-white inline-block"></span>
+                                            <span v-else-if="w === 'GoPay'" class="w-2 h-2 rounded-full bg-white inline-block"></span>
+                                            <span v-else-if="w === 'OVO'" class="w-2 h-2 rounded-full bg-white inline-block"></span>
+                                            <span v-else-if="w === 'ShopeePay'" class="w-2 h-2 rounded-full bg-white inline-block"></span>
+                                            <span>{{ w }}</span>
+                                        </button>
                                         <button 
                                             type="button"
-                                            @click="toggleCustomBank"
+                                            @click="toggleCustom"
                                             class="px-2.5 py-1 text-xs rounded-lg font-medium border border-dashed transition-all"
-                                            :class="isCustomBank || (!popularBanks.includes(form.bank_name) && form.bank_name) ? 'border-blue-500 text-blue-600 bg-blue-50' : 'border-slate-300 text-slate-500 hover:bg-slate-50'"
+                                            :class="isCustom || (!popularBanks.includes(form.bank_name) && !popularEWallets.includes(form.bank_name) && form.bank_name) ? 'border-indigo-500 text-indigo-600 bg-indigo-50' : 'border-slate-300 text-slate-500 hover:bg-slate-50'"
                                         >
-                                            + Bank Lainnya
+                                            + Lainnya
                                         </button>
                                     </div>
 
-                                    <!-- Input jika bank lain dipilih -->
+                                    <!-- Input jika bank / e-wallet lain dipilih -->
                                     <input 
-                                        v-if="isCustomBank || (!popularBanks.includes(form.bank_name) && form.bank_name)"
+                                        v-if="isCustom || (!popularBanks.includes(form.bank_name) && !popularEWallets.includes(form.bank_name) && form.bank_name)"
                                         v-model="form.bank_name" 
                                         type="text" 
-                                        class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 mt-1" 
-                                        placeholder="Ketik nama bank (cth: Bank Jateng, CIMB Niaga, dll)"
+                                        class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 mt-2" 
+                                        placeholder="Ketik nama bank atau e-wallet (cth: Bank Jateng, CIMB Niaga, LinkAja, dll)"
                                     >
                                 </div>
 
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <!-- Input Nomor Rekening / Nomor DANA / GoPay -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-slate-100">
                                     <div>
-                                        <label class="block text-xs font-semibold text-slate-700 mb-1">
-                                            <span>Nomor Rekening {{ form.bank_name ? `(${form.bank_name})` : '' }} *</span>
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                                            <span>{{ getAccountNumberLabel(form.bank_name) }} *</span>
+                                            <span v-if="form.bank_name" class="text-[10px] px-1.5 py-0.2 rounded font-bold uppercase"
+                                                :class="popularEWallets.includes(form.bank_name) ? 'bg-cyan-100 text-cyan-800' : 'bg-blue-100 text-blue-800'">
+                                                {{ form.bank_name }}
+                                            </span>
                                         </label>
                                         <input 
                                             v-model="form.bank_account_number" 
                                             type="text" 
                                             class="w-full px-3.5 py-2 text-xs font-mono font-bold tracking-wider rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white" 
-                                            placeholder="Contoh: 1234567890"
+                                            :placeholder="getAccountNumberPlaceholder(form.bank_name)"
                                         >
                                     </div>
                                     <div>
                                         <div class="flex items-center justify-between mb-1">
-                                            <label class="text-xs font-semibold text-slate-700">Nama Pemilik Rekening (a.n)</label>
+                                            <label class="text-xs font-semibold text-slate-700">{{ getAccountHolderLabel(form.bank_name) }}</label>
                                             <button 
                                                 v-if="form.name && form.bank_account_holder !== form.name"
                                                 type="button" 
@@ -712,77 +755,7 @@
                                             v-model="form.bank_account_holder" 
                                             type="text" 
                                             class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white" 
-                                            placeholder="Sesuai buku tabungan"
-                                        >
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Opsi Khusus E-Wallet (DANA, GoPay, OVO, dll) -->
-                            <div v-if="form.payment_method === 'E-Wallet'" class="p-3.5 bg-white rounded-xl border border-cyan-100 shadow-xs space-y-3.5 animate-fade-in-up">
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">Pilih E-Wallet</label>
-                                    <!-- Quick E-Wallet Buttons -->
-                                    <div class="flex flex-wrap gap-1.5 mb-2">
-                                        <button 
-                                            v-for="w in popularEWallets" 
-                                            :key="w" 
-                                            type="button"
-                                            @click="selectEWallet(w)"
-                                            class="px-2.5 py-1 text-xs rounded-lg font-medium transition-all"
-                                            :class="form.bank_name === w && !isCustomEWallet ? 'bg-cyan-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
-                                        >
-                                            {{ w }}
-                                        </button>
-                                        <button 
-                                            type="button"
-                                            @click="toggleCustomEWallet"
-                                            class="px-2.5 py-1 text-xs rounded-lg font-medium border border-dashed transition-all"
-                                            :class="isCustomEWallet || (!popularEWallets.includes(form.bank_name) && form.bank_name) ? 'border-cyan-500 text-cyan-600 bg-cyan-50' : 'border-slate-300 text-slate-500 hover:bg-slate-50'"
-                                        >
-                                            + E-Wallet Lainnya
-                                        </button>
-                                    </div>
-
-                                    <!-- Input jika e-wallet lain dipilih -->
-                                    <input 
-                                        v-if="isCustomEWallet || (!popularEWallets.includes(form.bank_name) && form.bank_name)"
-                                        v-model="form.bank_name" 
-                                        type="text" 
-                                        class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 mt-1" 
-                                        placeholder="Ketik nama e-wallet (cth: i.saku, AstraPay, dll)"
-                                    >
-                                </div>
-
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="block text-xs font-semibold text-slate-700 mb-1">
-                                            <span>{{ form.bank_name === 'DANA' ? 'Nomor DANA (No. HP)' : `Nomor ${form.bank_name || 'E-Wallet'} (No. HP)` }} *</span>
-                                        </label>
-                                        <input 
-                                            v-model="form.bank_account_number" 
-                                            type="text" 
-                                            class="w-full px-3.5 py-2 text-xs font-mono font-bold tracking-wider rounded-xl border border-slate-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 bg-white" 
-                                            placeholder="Contoh: 081234567890"
-                                        >
-                                    </div>
-                                    <div>
-                                        <div class="flex items-center justify-between mb-1">
-                                            <label class="text-xs font-semibold text-slate-700">Nama Pemilik Akun (a.n)</label>
-                                            <button 
-                                                v-if="form.name && form.bank_account_holder !== form.name"
-                                                type="button" 
-                                                @click="form.bank_account_holder = form.name" 
-                                                class="text-[10px] text-cyan-600 hover:underline font-semibold"
-                                            >
-                                                Pakai Nama Karyawan
-                                            </button>
-                                        </div>
-                                        <input 
-                                            v-model="form.bank_account_holder" 
-                                            type="text" 
-                                            class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 bg-white" 
-                                            placeholder="Nama terdaftar di akun"
+                                            :placeholder="popularEWallets.includes(form.bank_name) ? 'Nama terdaftar di akun ' + form.bank_name : 'Sesuai buku tabungan'"
                                         >
                                     </div>
                                 </div>
@@ -852,36 +825,54 @@ const editingId = ref(null);
 const photoPreview = ref(null);
 
 const popularBanks = ['BCA', 'Bank Mandiri', 'BRI', 'BNI', 'BSI', 'Bank Jago', 'SeaBank'];
-const popularEWallets = ['DANA', 'GoPay', 'OVO', 'ShopeePay', 'LinkAja'];
-const isCustomBank = ref(false);
-const isCustomEWallet = ref(false);
+const popularEWallets = ['DANA', 'GoPay', 'OVO', 'ShopeePay'];
+const isCustom = ref(false);
+
+const getAccountNumberLabel = (bankName) => {
+    if (!bankName) return 'Nomor Rekening / No. HP';
+    if (bankName === 'DANA') return 'Nomor DANA (No. HP)';
+    if (bankName === 'GoPay') return 'Nomor GoPay (No. HP)';
+    if (bankName === 'OVO') return 'Nomor OVO (No. HP)';
+    if (bankName === 'ShopeePay') return 'Nomor ShopeePay (No. HP)';
+    if (popularEWallets.includes(bankName)) return `Nomor ${bankName} (No. HP)`;
+    return `Nomor Rekening ${bankName}`;
+};
+
+const getAccountNumberPlaceholder = (bankName) => {
+    if (popularEWallets.includes(bankName) || bankName === 'DANA' || bankName === 'GoPay') {
+        return 'Contoh: 081234567890';
+    }
+    return 'Contoh: 1234567890';
+};
+
+const getAccountHolderLabel = (bankName) => {
+    if (popularEWallets.includes(bankName)) {
+        return `Nama Akun ${bankName || 'E-Wallet'} (a.n)`;
+    }
+    return 'Nama Pemilik Rekening (a.n)';
+};
 
 const selectBank = (bank) => {
-    isCustomBank.value = false;
+    isCustom.value = false;
+    form.payment_method = 'Transfer Bank';
     form.bank_name = bank;
     if (!form.bank_account_holder && form.name) {
         form.bank_account_holder = form.name;
     }
 };
 
-const toggleCustomBank = () => {
-    isCustomBank.value = !isCustomBank.value;
-    if (isCustomBank.value && popularBanks.includes(form.bank_name)) {
-        form.bank_name = '';
-    }
-};
-
 const selectEWallet = (wallet) => {
-    isCustomEWallet.value = false;
+    isCustom.value = false;
+    form.payment_method = 'E-Wallet';
     form.bank_name = wallet;
     if (!form.bank_account_holder && form.name) {
         form.bank_account_holder = form.name;
     }
 };
 
-const toggleCustomEWallet = () => {
-    isCustomEWallet.value = !isCustomEWallet.value;
-    if (isCustomEWallet.value && popularEWallets.includes(form.bank_name)) {
+const toggleCustom = () => {
+    isCustom.value = !isCustom.value;
+    if (isCustom.value) {
         form.bank_name = '';
     }
 };
@@ -890,7 +881,7 @@ const onPaymentMethodChange = () => {
     if (form.payment_method === 'Transfer Bank') {
         if (!form.bank_name || popularEWallets.includes(form.bank_name)) {
             form.bank_name = 'BCA';
-            isCustomBank.value = false;
+            isCustom.value = false;
         }
         if (!form.bank_account_holder && form.name) {
             form.bank_account_holder = form.name;
@@ -898,7 +889,7 @@ const onPaymentMethodChange = () => {
     } else if (form.payment_method === 'E-Wallet') {
         if (!form.bank_name || popularBanks.includes(form.bank_name)) {
             form.bank_name = 'DANA';
-            isCustomEWallet.value = false;
+            isCustom.value = false;
         }
         if (!form.bank_account_holder && form.name) {
             form.bank_account_holder = form.name;
@@ -1123,8 +1114,7 @@ function openModal(emp = null) {
         form.bank_name = emp.bank_name || '';
         form.bank_account_number = emp.bank_account_number || '';
         form.bank_account_holder = emp.bank_account_holder || emp.name || '';
-        isCustomBank.value = !!(emp.bank_name && !popularBanks.includes(emp.bank_name) && form.payment_method === 'Transfer Bank');
-        isCustomEWallet.value = !!(emp.bank_name && !popularEWallets.includes(emp.bank_name) && form.payment_method === 'E-Wallet');
+        isCustom.value = !!(emp.bank_name && !popularBanks.includes(emp.bank_name) && !popularEWallets.includes(emp.bank_name));
         form.address = emp.address || '';
         form.photo = null;
         photoPreview.value = emp.photo ? `/storage/${emp.photo}` : null;
@@ -1139,8 +1129,7 @@ function openModal(emp = null) {
         form.bank_name = '';
         form.bank_account_number = '';
         form.bank_account_holder = '';
-        isCustomBank.value = false;
-        isCustomEWallet.value = false;
+        isCustom.value = false;
         photoPreview.value = null;
     }
     showModal.value = true;
@@ -1152,8 +1141,7 @@ function closeModal() {
     form.bank_name = '';
     form.bank_account_number = '';
     form.bank_account_holder = '';
-    isCustomBank.value = false;
-    isCustomEWallet.value = false;
+    isCustom.value = false;
     photoPreview.value = null;
 }
 
