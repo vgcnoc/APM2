@@ -166,7 +166,10 @@
                                 </span>
                                 <span class="flex items-center gap-1.5 hover:text-white transition-colors cursor-default">
                                     <svg class="w-3.5 h-3.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> 
-                                    {{ odcGroup.odc.pon_port || 'PON ?' }}
+                                    PON {{ odcGroup.odc.pon_port || '?' }}
+                                </span>
+                                <span v-if="odcGroup.odc.splitter_ratio" class="flex items-center gap-1.5 bg-white/10 px-2 py-0.5 rounded text-[11px] font-bold text-white border border-white/15">
+                                    SPLITTER: {{ odcGroup.odc.splitter_ratio }}
                                 </span>
                             </div>
 

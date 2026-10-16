@@ -48,6 +48,7 @@ class OdcController extends Controller
         $validated = $request->validate([
             'olt_id' => 'required|exists:olts,id',
             'pon_port' => 'nullable|integer|min:1',
+            'splitter_ratio' => 'nullable|string|max:50',
             'area_id' => 'required|exists:areas,id',
             'name' => 'nullable|string|max:255',
             'type' => 'required|in:Normal,Split,Pedestal,Pole Mount',
@@ -71,6 +72,7 @@ class OdcController extends Controller
                 $odcData = [
                     'olt_id' => $validated['olt_id'],
                     'pon_port' => $validated['pon_port'] ?? null,
+                    'splitter_ratio' => $validated['splitter_ratio'] ?? null,
                     'area_id' => $validated['area_id'],
                     'type' => 'Split',
                     'name' => $unit['name'] ?? 'ODC Split',
@@ -119,6 +121,7 @@ class OdcController extends Controller
         $validated = $request->validate([
             'olt_id' => 'required|exists:olts,id',
             'pon_port' => 'nullable|integer|min:1',
+            'splitter_ratio' => 'nullable|string|max:50',
             'area_id' => 'required|exists:areas,id',
             'name' => 'required|string|max:255',
             'type' => 'required|in:Normal,Split,Pedestal,Pole Mount',

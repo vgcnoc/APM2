@@ -100,7 +100,7 @@ class InfrastructureWorkOrderController extends Controller
         return Inertia::render('Infrastructure/WorkOrders/Create', [
             'areas' => Area::orderBy('name')->get(['id', 'name']),
             'olts' => Olt::where('status', 'active')->get(['id', 'name', 'area_id', 'total_pon_ports']),
-            'odcs' => Odc::where('status', 'active')->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port']),
+            'odcs' => Odc::where('status', 'active')->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
             'technicians' => User::whereIn('role', ['teknisi', 'admin', 'noc'])->orderBy('name')->get(['id', 'name']),
             'materials' => Material::orderBy('name')->get(['id', 'name', 'unit', 'stock', 'price_per_unit']),
         ]);

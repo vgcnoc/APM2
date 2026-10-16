@@ -85,7 +85,14 @@
                                     Port PON belum dipilih
                                 </div>
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-600">{{ odc.capacity }} Port</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">
+                                <div class="font-bold text-gray-900">{{ odc.capacity }} Port</div>
+                                <div v-if="odc.splitter_ratio" class="mt-1">
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                        Splitter {{ odc.splitter_ratio }}
+                                    </span>
+                                </div>
+                            </td>
                             <td class="px-6 py-4 text-sm">
                                 <span class="px-2.5 py-1 rounded-full text-xs font-medium" :class="odc.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'">
                                     {{ odc.status }}
@@ -178,18 +185,25 @@
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Tipe ODC</label>
-                                    <select v-model="form.type" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-                                        <option value="Normal">Normal</option>
-                                        <option value="Split">Split</option>
-                                    </select>
-                                    <p v-if="form.errors.type" class="text-red-500 text-xs mt-1">{{ form.errors.type }}</p>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Kapasitas (Port)</label>
-                                    <input v-model="form.capacity" type="number" min="1" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
-                                    <p v-if="form.errors.capacity" class="text-red-500 text-xs mt-1">{{ form.errors.capacity }}</p>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Tipe ODC</label>
+                                        <select v-model="form.type" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                                            <option value="Normal">Normal</option>
+                                            <option value="Split">Split</option>
+                                        </select>
+                                        <p v-if="form.errors.type" class="text-red-500 text-xs mt-1">{{ form.errors.type }}</p>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Rasio Splitter</label>
+                                        <input v-model="form.splitter_ratio" type="text" placeholder="misal: 1:4, 1:8, 1:16" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                        <p v-if="form.errors.splitter_ratio" class="text-red-500 text-xs mt-1">{{ form.errors.splitter_ratio }}</p>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Kapasitas (Port)</label>
+                                        <input v-model="form.capacity" type="number" min="1" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+                                        <p v-if="form.errors.capacity" class="text-red-500 text-xs mt-1">{{ form.errors.capacity }}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -398,6 +412,7 @@ const form = useForm({
     name: '',
     olt_id: '',
     pon_port: '',
+    splitter_ratio: '1:4',
     area_id: '',
     type: 'Normal',
     capacity: 144,
@@ -495,6 +510,7 @@ function openEditModal(odc) {
     form.name = odc.name;
     form.olt_id = odc.olt_id;
     form.pon_port = odc.pon_port || '';
+    form.splitter_ratio = odc.splitter_ratio || '1:4';
     form.area_id = odc.area_id || '';
     form.type = odc.type || 'Normal';
     form.capacity = odc.capacity;

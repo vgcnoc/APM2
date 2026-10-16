@@ -49,7 +49,7 @@ class DataMigrationController extends Controller
             'sales' => User::select('id', 'name', 'email', 'role')->whereIn('role', ['admin', 'sales', 'affiliate', 'staff'])->orderBy('name')->get(),
             'technicians' => User::select('id', 'name', 'email', 'role')->whereIn('role', ['admin', 'teknisi', 'noc', 'maintenance'])->orderBy('name')->get(),
             'olts' => Olt::select('id', 'name', 'ip_address')->orderBy('name')->get(),
-            'odcs' => Odc::select('id', 'name', 'olt_id')->orderBy('name')->get(),
+            'odcs' => Odc::select('id', 'name', 'olt_id', 'pon_port', 'splitter_ratio')->orderBy('name')->get(),
             'odps' => Odp::select('id', 'name', 'odc_id', 'area_id', 'total_ports', 'used_ports')->orderBy('name')->get(),
             'employees_count' => \App\Models\Employee::count(),
         ];

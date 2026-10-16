@@ -36,7 +36,7 @@ class OdpController extends Controller
 
         return Inertia::render('Infrastructure/Odp/Index', [
             'odps' => $odps,
-            'odcs' => Odc::with('olt')->where('status', 'active')->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port']),
+            'odcs' => Odc::with('olt')->where('status', 'active')->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
             'areas' => \App\Models\Area::orderBy('name')->get(),
             'filters' => $request->only(['search', 'odc_id', 'area_id', 'status', 'available_only']),
         ]);

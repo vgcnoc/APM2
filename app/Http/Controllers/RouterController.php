@@ -75,6 +75,10 @@ class RouterController extends Controller
         ]);
         $router->update(['nas_id' => $nas->id]);
 
+        if (config('radius.vpn.enabled')) {
+            app(\App\Services\VpnAccountService::class)->ensureAccount($nas);
+        }
+
         return redirect()->route('routers.index')->with('success', 'Router & NAS berhasil ditambahkan.');
     }
 

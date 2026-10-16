@@ -83,6 +83,9 @@
                                         <span v-if="odp.odc.pon_port" class="font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-100">
                                             PON {{ odp.odc.pon_port }}
                                         </span>
+                                        <span v-if="odp.odc.splitter_ratio" class="font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-100">
+                                            Splitter {{ odp.odc.splitter_ratio }}
+                                        </span>
                                     </div>
                                     <div v-if="getOdpPonVlans(odp).length > 0" class="flex flex-wrap gap-1 mt-1">
                                         <span v-for="(v, vi) in getOdpPonVlans(odp)" :key="vi" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border" :class="getModeBadgeClass(v.access_mode)">

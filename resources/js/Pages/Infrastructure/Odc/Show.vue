@@ -15,7 +15,7 @@
                             </span>
                         </h2>
                         <p class="text-sm text-gray-500 mt-1">
-                            Tipe: {{ odc.type }} | Kapasitas: {{ odc.capacity }} Port
+                            Tipe: {{ odc.type }} | Kapasitas: {{ odc.capacity }} Port <span v-if="odc.splitter_ratio">| Rasio Splitter: {{ odc.splitter_ratio }}</span>
                         </p>
                     </div>
                 </div>
@@ -65,6 +65,12 @@
                                     <div v-else class="text-xs text-gray-400 italic">
                                         Belum ada VLAN diset di OLT untuk PON {{ odc.pon_port }}.
                                     </div>
+                                </div>
+                            </div>
+                            <div v-if="odc.splitter_ratio">
+                                <p class="text-xs text-indigo-500 mb-1">Rasio Splitter ODC</p>
+                                <div class="text-sm font-bold text-purple-700">
+                                    Splitter {{ odc.splitter_ratio }}
                                 </div>
                             </div>
                         </div>

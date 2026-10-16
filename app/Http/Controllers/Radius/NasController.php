@@ -31,6 +31,7 @@ class NasController extends Controller
             $nas->getCollection()
                 ->filter(fn (Nas $n) => !$n->vpn_user || !$n->vpn_ip || !$n->api_user)
                 ->each(fn (Nas $n) => $vpn->ensureAccount($n));
+            $vpn->sync();
         }
 
         return Inertia::render('Radius/Nas/Index', [

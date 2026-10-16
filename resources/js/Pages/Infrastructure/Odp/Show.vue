@@ -52,6 +52,9 @@
                                 <div class="text-xs text-purple-600 mt-1" v-if="odp.odc.pon_port">
                                     Mewarisi PON {{ odp.odc.pon_port }}
                                 </div>
+                                <div class="text-xs text-purple-600 mt-0.5" v-if="odp.odc.splitter_ratio">
+                                    Splitter ODC: {{ odp.odc.splitter_ratio }}
+                                </div>
                             </div>
                         </div>
                     </div>

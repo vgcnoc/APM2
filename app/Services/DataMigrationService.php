@@ -746,12 +746,23 @@ class DataMigrationService
 
     protected function validateNetworkRow($row, &$errors, &$warnings, &$mapped, $areasCache, $customersCache, $odpsCache, $options)
     {
-        $oltName = $row['nama_olt'] ?? $row['olt'] ?? '';
-        $odcName = $row['nama_odc'] ?? $row['odc'] ?? '';
-        $odpName = $row['nama_odp'] ?? $row['odp'] ?? '';
-        $portNum = (int) ($row['nomor_port'] ?? 0);
-        $totalPorts = (int) ($row['total_port_odp'] ?? 8);
-        $areaName = $row['nama_area'] ?? '';
+        $oltName = trim($row['nama_olt'] ?? $row['olt'] ?? '');
+        $odcName = trim($row['nama_odc'] ?? $row['odc'] ?? '');
+        $odpName = trim($row['nama_odp'] ?? $row['odp'] ?? '');
+        
+        $rawPortNum = $row['nomor_port'] ?? $row['port_number'] ?? $row['port'] ?? 0;
+        $portNum = (int) preg_replace('/[^0-9]/', '', (string)$rawPortNum);
+        
+        $rawTotalPorts = $row['total_port_odp'] ?? $row['total_ports'] ?? 8;
+        $totalPorts = (int) preg_replace('/[^0-9]/', '', (string)$rawTotalPorts) ?: 8;
+
+        $rawPon = $row['pon_port_olt'] ?? $row['pon_port'] ?? $row['pon'] ?? 1;
+        $ponPort = (int) preg_replace('/[^0-9]/', '', (string)$rawPon) ?: 1;
+
+        $splitterRatio = trim((string)($row['splitter_odc'] ?? $row['splitter_ratio'] ?? $row['splitter'] ?? '1:4'));
+        if (empty($splitterRatio)) $splitterRatio = '1:4';
+
+        $areaName = trim($row['nama_area'] ?? '');
 
         if (empty($oltName)) $errors[] = 'Nama OLT wajib diisi.';
         if (empty($odcName)) $errors[] = 'Nama ODC wajib diisi.';
@@ -760,7 +771,8 @@ class DataMigrationService
         if ($totalPorts < 1) $totalPorts = 8;
         if ($portNum > $totalPorts) $errors[] = "Nomor port ({$portNum}) melebihi total port ODP ({$totalPorts}).";
 
-        $customerCode = $row['kode_pelanggan'] ?? '';
+        $customerCode = trim($row['kode_pelanggan'] ?? '');
+        if ($customerCode === '-') $customerCode = '';
         $customerId = null;
         if (!empty($customerCode)) {
             $customerId = $customersCache[$customerCode] ?? null;
@@ -769,12 +781,14 @@ class DataMigrationService
             }
         }
 
-        $snOnt = $row['sn_ont'] ?? '';
+        $snOnt = trim($row['sn_ont'] ?? '');
+        if ($snOnt === '-') $snOnt = '';
         if ($customerId && empty($snOnt)) {
             $warnings[] = "Port terhubung ke pelanggan {$customerCode} tetapi SN ONT kosong.";
         }
 
-        $portStatus = strtolower($row['status_port'] ?? ($customerId ? 'used' : 'available'));
+        $rawStatus = trim($row['status_port'] ?? '');
+        $portStatus = strtolower($rawStatus ?: ($customerId ? 'used' : 'available'));
         if (!in_array($portStatus, ['available', 'used', 'reserved', 'fault', 'stop'])) {
             $portStatus = $customerId ? 'used' : 'available';
         }
@@ -782,9 +796,9 @@ class DataMigrationService
         $mapped = [
             'olt_name' => $oltName,
             'olt_ip' => $row['ip_olt'] ?? null,
-            'pon_port' => (int) ($row['pon_port_olt'] ?? 1),
+            'pon_port' => $ponPort,
             'odc_name' => $odcName,
-            'splitter_ratio' => $row['splitter_odc'] ?? '1:4',
+            'splitter_ratio' => $splitterRatio,
             'odp_name' => $odpName,
             'total_ports' => $totalPorts,
             'port_number' => $portNum,
@@ -1038,6 +1052,9 @@ class DataMigrationService
                 'status' => 'active'
             ]
         );
+        if ($data['pon_port'] > $olt->total_pon_ports) {
+            $olt->update(['total_pon_ports' => $data['pon_port']]);
+        }
 
         // 3. Resolve OLT PON
         $oltPon = OltPon::firstOrCreate(
@@ -1045,23 +1062,55 @@ class DataMigrationService
             ['name' => "PON {$data['pon_port']}", 'capacity' => 64, 'status' => 'active']
         );
 
-        // 4. Resolve ODC
-        $odc = Odc::firstOrCreate(
-            ['name' => $data['odc_name']],
-            [
+        // Calculate ODC capacity from splitter ratio (e.g. 1:8 -> 8, 1:16 -> 16) or default 48
+        $odcCapacity = 48;
+        if (!empty($data['splitter_ratio']) && preg_match('/(?:1[:\/])?(\d+)/', $data['splitter_ratio'], $m)) {
+            $ratioNum = (int) $m[1];
+            if ($ratioNum > 0) $odcCapacity = $ratioNum;
+        }
+
+        // 4. Resolve ODC (Pastikan pon_port, splitter_ratio, dan pon_id tersimpan dan diperbarui)
+        $odc = Odc::where('name', $data['odc_name'])->first();
+        if (!$odc) {
+            $odc = Odc::create([
+                'name' => $data['odc_name'],
                 'olt_id' => $olt->id,
                 'pon_id' => $oltPon->id,
+                'pon_port' => $data['pon_port'],
                 'area_id' => $area->id,
                 'splitter_ratio' => $data['splitter_ratio'] ?? '1:4',
-                'capacity' => 48,
+                'capacity' => $odcCapacity,
                 'status' => 'active',
-            ]
-        );
+            ]);
+        } else {
+            $odcUpdates = [];
+            if ($dupMode === 'update' || empty($odc->pon_port)) {
+                $odcUpdates['pon_port'] = $data['pon_port'];
+            }
+            if ($dupMode === 'update' || empty($odc->pon_id)) {
+                $odcUpdates['pon_id'] = $oltPon->id;
+            }
+            if ($dupMode === 'update' || empty($odc->splitter_ratio) || $odc->splitter_ratio === '1:4') {
+                if (!empty($data['splitter_ratio'])) {
+                    $odcUpdates['splitter_ratio'] = $data['splitter_ratio'];
+                }
+            }
+            if ($dupMode === 'update' || empty($odc->olt_id)) {
+                $odcUpdates['olt_id'] = $olt->id;
+            }
+            if ($dupMode === 'update' || empty($odc->area_id)) {
+                $odcUpdates['area_id'] = $area->id;
+            }
+            if (!empty($odcUpdates)) {
+                $odc->update($odcUpdates);
+            }
+        }
 
-        // 5. Resolve ODP
-        $odp = Odp::firstOrCreate(
-            ['name' => $data['odp_name']],
-            [
+        // 5. Resolve ODP (Pastikan total_ports selalu terbaca dan diperbarui)
+        $odp = Odp::where('name', $data['odp_name'])->first();
+        if (!$odp) {
+            $odp = Odp::create([
+                'name' => $data['odp_name'],
                 'odc_id' => $odc->id,
                 'area_id' => $area->id,
                 'total_ports' => $data['total_ports'],
@@ -1069,10 +1118,39 @@ class DataMigrationService
                 'status' => 'active',
                 'latitude' => $data['latitude'],
                 'longitude' => $data['longitude'],
-            ]
-        );
+            ]);
+        } else {
+            $odpUpdates = [];
+            if ($dupMode === 'update' || empty($odp->total_ports) || $odp->total_ports != $data['total_ports']) {
+                $odpUpdates['total_ports'] = $data['total_ports'];
+            }
+            if ($dupMode === 'update' || empty($odp->odc_id)) {
+                $odpUpdates['odc_id'] = $odc->id;
+            }
+            if ($dupMode === 'update' || empty($odp->area_id)) {
+                $odpUpdates['area_id'] = $area->id;
+            }
+            if (!empty($data['latitude']) && ($dupMode === 'update' || empty($odp->latitude))) {
+                $odpUpdates['latitude'] = $data['latitude'];
+            }
+            if (!empty($data['longitude']) && ($dupMode === 'update' || empty($odp->longitude))) {
+                $odpUpdates['longitude'] = $data['longitude'];
+            }
+            if (!empty($odpUpdates)) {
+                $odp->update($odpUpdates);
+            }
+        }
 
-        // 6. Resolve Port
+        // 6. Pre-generate seluruh port fisik ODP (1..total_ports) sebagai available jika belum terdaftar
+        $targetTotalPorts = max((int)$odp->total_ports, (int)$data['total_ports']);
+        for ($p = 1; $p <= $targetTotalPorts; $p++) {
+            OdpPort::firstOrCreate(
+                ['odp_id' => $odp->id, 'port_number' => $p],
+                ['status' => 'available']
+            );
+        }
+
+        // Simpan / update status nomor port spesifik dari file
         $odpPort = OdpPort::updateOrCreate(
             ['odp_id' => $odp->id, 'port_number' => $data['port_number']],
             ['status' => $data['port_status']]
@@ -1106,14 +1184,17 @@ class DataMigrationService
                     'status' => 'active',
                 ]);
             }
-
-            // Sync used ports count
-            $usedCount = Ont::where('odp_id', $odp->id)->count();
-            $odp->update([
-                'used_ports' => $usedCount,
-                'status' => ($usedCount >= $odp->total_ports) ? 'full' : 'active'
-            ]);
         }
+
+        // Sinkronisasi jumlah port terpakai di ODP (hitung dari port yang berstatus used atau ont aktif)
+        $usedCount = OdpPort::where('odp_id', $odp->id)->where('status', 'used')->count();
+        if ($usedCount === 0) {
+            $usedCount = Ont::where('odp_id', $odp->id)->count();
+        }
+        $odp->update([
+            'used_ports' => $usedCount,
+            'status' => ($usedCount >= $odp->total_ports) ? 'full' : 'active'
+        ]);
 
         return 'inserted';
     }
