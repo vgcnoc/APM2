@@ -66,6 +66,58 @@ class DataMigrationService
     }
 
     /**
+     * Parse & sanitize geographic coordinates (auto-correcting missing/shifted decimal points)
+     * e.g. 1067.08877 -> 106.708877, -7010714 -> -7.010714
+     */
+    public static function parseCoordinate($val, string $type = 'lat'): ?float
+    {
+        if ($val === null || $val === '' || $val === '-' || $val === '?' || $val === 'none' || $val === 'null') {
+            return null;
+        }
+
+        $str = trim(str_replace([' ', "\t", "\r", "\n"], '', (string)$val));
+        if ($str === '' || $str === '-' || $str === '0' || $str === '?') {
+            return null;
+        }
+
+        // Replace comma with dot if comma is used as decimal separator (e.g. "106,708877")
+        if (str_contains($str, ',') && !str_contains($str, '.')) {
+            $str = str_replace(',', '.', $str);
+        }
+
+        if (!is_numeric($str)) {
+            return null;
+        }
+
+        $num = (float) $str;
+        if (abs($num) < 0.000001) {
+            return null;
+        }
+
+        if ($type === 'lat') {
+            // Latitude range: [-90, 90]
+            $limit = 10;
+            while (abs($num) > 90 && --$limit > 0) {
+                $num /= 10;
+            }
+            if ($num < -90 || $num > 90) {
+                return null;
+            }
+            return round($num, 8);
+        } else {
+            // Longitude range: [-180, 180]
+            $limit = 10;
+            while (abs($num) > 180 && --$limit > 0) {
+                $num /= 10;
+            }
+            if ($num < -180 || $num > 180) {
+                return null;
+            }
+            return round($num, 8);
+        }
+    }
+
+    /**
      * Resolve area ID from cache supporting tolerant matching (e.g. 'BC-3', 'BC 3', 'BC_3' -> 'bc3')
      */
     public static function resolveAreaIdFromCache(?string $name, array $areasCache, array $areasNormalizedCache = []): ?int
@@ -1077,8 +1129,8 @@ class DataMigrationService
             'registration_date' => self::parseFlexibleDate($row['tgl_registrasi'] ?? null, now()->toDateString()),
             'activation_date' => ($status === 'active') ? self::parseFlexibleDate($row['tgl_aktivasi'] ?? null, now()->toDateString()) : self::parseFlexibleDate($row['tgl_aktivasi'] ?? null),
             'sales_id' => $salesId,
-            'latitude' => !empty($row['latitude']) ? (float)$row['latitude'] : null,
-            'longitude' => !empty($row['longitude']) ? (float)$row['longitude'] : null,
+            'latitude' => self::parseCoordinate($row['latitude'] ?? null, 'lat'),
+            'longitude' => self::parseCoordinate($row['longitude'] ?? null, 'lng'),
             'identity_photo' => $row['foto_ktp'] ?? $row['identity_photo'] ?? null,
             'notes' => $notes ?: null,
             'is_existing' => $isExisting,
@@ -1150,8 +1202,8 @@ class DataMigrationService
             'mac_address' => $row['mac_ont'] ?? null,
             'vlan_id' => $row['vlan_id'] ?? null,
             'area_name' => $areaName ?: 'Default',
-            'latitude' => !empty($row['latitude']) ? (float)$row['latitude'] : null,
-            'longitude' => !empty($row['longitude']) ? (float)$row['longitude'] : null,
+            'latitude' => self::parseCoordinate($row['latitude'] ?? null, 'lat'),
+            'longitude' => self::parseCoordinate($row['longitude'] ?? null, 'lng'),
         ];
     }
 
@@ -1345,8 +1397,8 @@ class DataMigrationService
                 'billing_type' => $data['billing_type'],
                 'status' => $data['status'],
                 'sales_id' => $data['sales_id'] ?: $existing->sales_id,
-                'latitude' => $data['latitude'] ?: $existing->latitude,
-                'longitude' => $data['longitude'] ?: $existing->longitude,
+                'latitude' => self::parseCoordinate($data['latitude'] ?? null, 'lat') ?: $existing->latitude,
+                'longitude' => self::parseCoordinate($data['longitude'] ?? null, 'lng') ?: $existing->longitude,
                 'identity_photo' => $identityPhoto ?: $existing->identity_photo,
                 'notes' => $data['notes'] ?: $existing->notes,
             ]);
@@ -1373,8 +1425,8 @@ class DataMigrationService
             'registration_date' => $data['registration_date'],
             'activation_date' => $data['activation_date'],
             'sales_id' => $data['sales_id'],
-            'latitude' => $data['latitude'],
-            'longitude' => $data['longitude'],
+            'latitude' => self::parseCoordinate($data['latitude'] ?? null, 'lat'),
+            'longitude' => self::parseCoordinate($data['longitude'] ?? null, 'lng'),
             'identity_photo' => $identityPhoto,
             'notes' => $data['notes'],
         ]);
@@ -1462,8 +1514,8 @@ class DataMigrationService
                 'total_ports' => $data['total_ports'],
                 'used_ports' => 0,
                 'status' => 'active',
-                'latitude' => $data['latitude'],
-                'longitude' => $data['longitude'],
+                'latitude' => self::parseCoordinate($data['latitude'] ?? null, 'lat'),
+                'longitude' => self::parseCoordinate($data['longitude'] ?? null, 'lng'),
             ]);
         } else {
             $odpUpdates = [];
@@ -1476,11 +1528,13 @@ class DataMigrationService
             if ($dupMode === 'update' || empty($odp->area_id)) {
                 $odpUpdates['area_id'] = $area->id;
             }
-            if (!empty($data['latitude']) && ($dupMode === 'update' || empty($odp->latitude))) {
-                $odpUpdates['latitude'] = $data['latitude'];
+            $parsedLat = self::parseCoordinate($data['latitude'] ?? null, 'lat');
+            if ($parsedLat !== null && ($dupMode === 'update' || empty($odp->latitude))) {
+                $odpUpdates['latitude'] = $parsedLat;
             }
-            if (!empty($data['longitude']) && ($dupMode === 'update' || empty($odp->longitude))) {
-                $odpUpdates['longitude'] = $data['longitude'];
+            $parsedLng = self::parseCoordinate($data['longitude'] ?? null, 'lng');
+            if ($parsedLng !== null && ($dupMode === 'update' || empty($odp->longitude))) {
+                $odpUpdates['longitude'] = $parsedLng;
             }
             if (!empty($odpUpdates)) {
                 $odp->update($odpUpdates);
