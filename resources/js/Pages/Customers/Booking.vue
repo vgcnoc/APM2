@@ -132,7 +132,7 @@
                     </span>
                     <span v-else class="text-gray-400 italic">-</span>
                 </td>
-                <td class="text-xs text-gray-500">{{ formatDate(row.registration_date) }}</td>
+                <td class="text-xs text-gray-500">{{ formatDate(row.registration_date || row.created_at) }}</td>
                 <td>
                     <div v-if="row.area" class="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded-md inline-block">
                         {{ row.area }}
@@ -216,6 +216,10 @@
                             <div class="space-y-1">
                                 <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Nomor HP / WA</p>
                                 <p class="text-sm text-gray-900">{{ selectedCustomer.phone }}</p>
+                            </div>
+                            <div class="space-y-1">
+                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Tanggal Daftar</p>
+                                <p class="text-sm text-gray-900 font-medium">📅 {{ formatDate(selectedCustomer.registration_date || selectedCustomer.created_at) }}</p>
                             </div>
                         </div>
 

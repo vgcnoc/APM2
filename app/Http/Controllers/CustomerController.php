@@ -469,7 +469,10 @@ class CustomerController extends Controller
                 }
             })
             ->when($request->date, function ($q, $date) {
-                $q->whereDate('created_at', $date);
+                $q->where(function ($sub) use ($date) {
+                    $sub->whereDate('registration_date', $date)
+                        ->orWhereDate('created_at', $date);
+                });
             })
             ->when($request->area || $request->area_id, function ($q) use ($request) {
                 $areaVal = $request->area ?? $request->area_id;
