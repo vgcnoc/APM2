@@ -13,10 +13,13 @@ class PgjMaterial extends Model
     protected $fillable = [
         'pgj_ticket_id',
         'material_id',
+        'material_transaction_item_id',
+        'trx_number',
         'quantity_prepared',
         'quantity_used',
         'quantity_returned',
         'unit',
+        'notes',
     ];
 
     protected $casts = [
@@ -33,5 +36,10 @@ class PgjMaterial extends Model
     public function material(): BelongsTo
     {
         return $this->belongsTo(Material::class);
+    }
+
+    public function materialTransactionItem(): BelongsTo
+    {
+        return $this->belongsTo(MaterialTransactionItem::class, 'material_transaction_item_id');
     }
 }

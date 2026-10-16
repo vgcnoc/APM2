@@ -13,6 +13,8 @@ class PgkMaterial extends Model
     protected $fillable = [
         'pgk_ticket_id',
         'material_id',
+        'material_transaction_item_id',
+        'trx_number',
         'quantity_prepared',
         'quantity_used',
         'quantity_returned',
@@ -28,5 +30,10 @@ class PgkMaterial extends Model
     public function material(): BelongsTo
     {
         return $this->belongsTo(Material::class, 'material_id');
+    }
+
+    public function materialTransactionItem(): BelongsTo
+    {
+        return $this->belongsTo(MaterialTransactionItem::class, 'material_transaction_item_id');
     }
 }

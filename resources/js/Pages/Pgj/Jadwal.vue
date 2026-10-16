@@ -135,9 +135,12 @@
                                     <div class="mt-2 text-xs">
                                         <div class="text-[10px] text-gray-400 font-bold uppercase">Material FO Disiapkan:</div>
                                         <div v-if="ticket.materials && ticket.materials.length > 0" class="space-y-1 mt-1">
-                                            <div v-for="m in ticket.materials" :key="m.id" class="text-[11px] bg-gray-50 px-2 py-0.5 rounded border border-gray-100 flex justify-between">
-                                                <span class="font-medium text-gray-700">{{ m.material?.name }}</span>
-                                                <span class="font-bold text-gray-900">{{ parseFloat(m.quantity_prepared) }} {{ m.unit || m.material?.unit }}</span>
+                                            <div v-for="m in ticket.materials" :key="m.id" class="text-[11px] bg-gray-50 px-2 py-0.5 rounded border border-gray-100 flex justify-between items-center gap-1">
+                                                <div class="flex items-center gap-1.5 truncate">
+                                                    <span class="font-medium text-gray-700 truncate">{{ m.material?.name }}</span>
+                                                    <span v-if="m.trx_number" class="text-[9px] font-mono font-bold text-amber-700 bg-amber-100 px-1 py-0.5 rounded border border-amber-200">PO: {{ m.trx_number }}</span>
+                                                </div>
+                                                <span class="font-bold text-gray-900 shrink-0">{{ parseFloat(m.quantity_prepared) }} {{ m.unit || m.material?.unit }}</span>
                                             </div>
                                         </div>
                                         <div v-else class="text-gray-400 italic text-xs mt-0.5">Belum ada material disiapkan</div>
@@ -270,49 +273,74 @@
                         ></textarea>
                     </div>
 
-                    <!-- Penyiapan Material Gudang Jalur FO -->
+                    <!-- Penyiapan Material Jalur FO dari Order Toko / Surat Jalan -->
                     <div class="space-y-2">
                         <div class="flex items-center justify-between">
-                            <label class="block text-xs font-bold text-gray-700 uppercase">Material Jalur Gudang yang Dibawa (Opsional)</label>
-                            <button type="button" @click="addMaterialRow" class="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase">Material Jalur dari Order / Surat Jalan</label>
+                                <span class="text-[11px] text-gray-500">Pilih material kabel & aksesoris FO dari order/surat jalan yang tersedia</span>
+                            </div>
+                            <button type="button" @click="addMaterialRow" class="text-xs font-bold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg border border-amber-200 flex items-center gap-1 transition-colors">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                <span>+ Tambah Material FO</span>
+                                <span>+ Tambah dari Order</span>
                             </button>
                         </div>
 
-                        <div v-if="scheduleForm.materials.length > 0" class="space-y-2">
-                            <div v-for="(item, idx) in scheduleForm.materials" :key="idx" class="flex items-center gap-2 p-2 rounded-xl bg-gray-50 border border-gray-200">
-                                <select 
-                                    v-model="item.material_id" 
-                                    @change="onMaterialSelected(item)"
-                                    class="flex-1 rounded-lg border-gray-200 text-xs py-1.5 focus:border-amber-500" 
-                                    required
-                                >
-                                    <option value="">-- Pilih Material Gudang --</option>
-                                    <option v-for="m in materials" :key="m.id" :value="m.id">
-                                        {{ m.name }} (Stok: {{ m.stock }} {{ m.unit }})
-                                    </option>
-                                </select>
+                        <div v-if="scheduleForm.materials.length > 0" class="space-y-2.5">
+                            <div v-for="(item, idx) in scheduleForm.materials" :key="idx" class="p-2.5 rounded-xl bg-gray-50 border border-gray-200/80 shadow-xs space-y-1.5">
+                                <div class="flex items-center gap-2">
+                                    <div class="flex-1 min-w-0">
+                                        <select 
+                                            v-model="item.material_transaction_item_id" 
+                                            @change="onMaterialItemChange(item)"
+                                            class="w-full rounded-xl border-gray-300 text-xs py-2 bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 truncate" 
+                                            required
+                                        >
+                                            <option value="">-- Pilih Material dari Order Toko / Surat Jalan --</option>
+                                            <option v-for="ord in availableMaterialItems" :key="ord.id" :value="ord.id">
+                                                {{ ord.name }} (Order: {{ ord.trx_number }}) - Stok: {{ ord.area_stock }} {{ ord.unit }} [{{ ord.area_name }}]
+                                            </option>
+                                            <!-- Fallback jika record sebelumnya tidak memiliki order id -->
+                                            <option v-if="!item.material_transaction_item_id && item.material_id" :value="''">
+                                                📦 {{ item.name || 'Material Sebelumnya' }} (Data Produk Lama)
+                                            </option>
+                                        </select>
+                                    </div>
 
-                                <div class="w-24">
-                                    <input 
-                                        type="number" 
-                                        step="0.01" 
-                                        min="0.01" 
-                                        v-model="item.quantity" 
-                                        placeholder="Jumlah" 
-                                        class="w-full rounded-lg border-gray-200 text-xs py-1.5 text-center focus:border-amber-500" 
-                                        required
-                                    />
+                                    <div class="w-24 shrink-0 flex items-center gap-1">
+                                        <input 
+                                            type="number" 
+                                            step="0.01" 
+                                            min="0.01" 
+                                            :max="item.max_stock || undefined"
+                                            v-model.number="item.quantity" 
+                                            @input="validateMaterialQty(item)"
+                                            placeholder="Qty" 
+                                            class="w-full rounded-xl border-gray-300 text-xs py-2 text-center font-bold text-amber-700 bg-amber-50/50 focus:border-amber-500" 
+                                            required
+                                        />
+                                    </div>
+
+                                    <span class="text-xs font-semibold text-gray-500 w-12 text-center truncate shrink-0">{{ item.unit || '-' }}</span>
+
+                                    <button type="button" @click="removeMaterialRow(idx)" class="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors shrink-0" title="Hapus Material">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
                                 </div>
-
-                                <span class="text-xs text-gray-500 w-12 text-center">{{ item.unit || '-' }}</span>
-
-                                <button type="button" @click="removeMaterialRow(idx)" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                </button>
+                                <div v-if="item.trx_number || item.max_stock" class="flex items-center justify-between text-[10px] text-gray-500 px-1">
+                                    <span class="truncate">
+                                        <span class="font-medium text-gray-400">Sumber Order/SJ:</span> 
+                                        <b class="font-mono text-amber-800 ml-1">{{ item.trx_number || '-' }}</b>
+                                    </span>
+                                    <span v-if="item.max_stock" class="shrink-0 text-emerald-700 font-medium">
+                                        Maks Stok: {{ item.max_stock }} {{ item.unit }}
+                                    </span>
+                                </div>
                             </div>
-                            <p class="text-[11px] text-gray-400 italic">* Stok gudang otomatis dipotong untuk tiket ini. Sisa kabel/material dapat dikembalikan saat laporan teknisi.</p>
+                            <p class="text-[11px] text-gray-400 italic">* Stok diambil dari Order/Surat Jalan dan otomatis dipotong untuk penugasan ini. Sisa kabel/material dapat dikembalikan saat laporan teknisi selesai.</p>
+                        </div>
+                        <div v-else class="p-3 rounded-xl bg-amber-50/40 border border-dashed border-amber-200 text-center text-xs text-amber-700">
+                            Belum ada material yang ditambahkan dari Order Toko / Surat Jalan. Klik <b>+ Tambah dari Order</b> jika tim membawa material.
                         </div>
                     </div>
 
@@ -333,7 +361,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -342,6 +370,10 @@ const props = defineProps({
     areas: Array,
     technicians: Array,
     materials: Array,
+    materialTransactions: {
+        type: Array,
+        default: () => [],
+    },
     filters: Object,
 });
 
@@ -350,6 +382,69 @@ const filterArea = ref(props.filters?.area_id || '');
 
 const showScheduleModal = ref(false);
 const selectedTicket = ref(null);
+
+const customerAreaId = computed(() => {
+    return selectedTicket.value?.area_id || null;
+});
+
+const filteredMaterialTransactions = computed(() => {
+    const allTrx = props.materialTransactions || [];
+    const areaId = customerAreaId.value;
+    if (!areaId) return allTrx;
+    const matched = allTrx.filter(trx => !trx.area_id || trx.area_id == areaId);
+    return matched.length > 0 ? matched : allTrx;
+});
+
+const availableMaterialItems = computed(() => {
+    let items = [];
+    const trxs = filteredMaterialTransactions.value || [];
+    const areaId = customerAreaId.value;
+
+    trxs.forEach(trx => {
+        if (trx.items && trx.items.length > 0) {
+            trx.items.forEach(item => {
+                if (!item.material) return;
+                const name = (item.material.name || '').toLowerCase();
+                const category = (item.material.category || '').toLowerCase();
+                const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
+
+                if (!isRegistered && !name.includes('modem') && !category.includes('modem')) {
+                    let areaStock = 0;
+                    if (item.material.stocks && areaId) {
+                        const stockObj = item.material.stocks.find(s => s.area_id == areaId);
+                        if (stockObj) {
+                            areaStock = parseFloat(stockObj.stock) || 0;
+                        }
+                    }
+
+                    if (areaStock <= 0 && item.material.stock) {
+                        areaStock = parseFloat(item.material.stock) || 0;
+                    }
+
+                    const availableQty = areaStock > 0 ? areaStock : (parseFloat(item.quantity) || 0);
+
+                    if (availableQty > 0) {
+                        items.push({
+                            id: item.id,
+                            material_id: item.material_id,
+                            trx_number: trx.transaction_number,
+                            trx_date: trx.date,
+                            purpose: trx.purpose,
+                            area_name: trx.area_model?.name || trx.area || 'Semua Area',
+                            name: item.material.name,
+                            category: item.material.category,
+                            area_stock: availableQty,
+                            unit: item.unit || item.material.unit || 'pcs',
+                            material: item.material,
+                        });
+                    }
+                }
+            });
+        }
+    });
+
+    return items;
+});
 
 const scheduleForm = useForm({
     scheduled_date: '',
@@ -376,11 +471,22 @@ const openScheduleModal = (ticket) => {
     scheduleForm.technician_ids = ticket.technicians ? ticket.technicians.map(t => t.id) : [];
 
     if (ticket.materials && ticket.materials.length > 0) {
-        scheduleForm.materials = ticket.materials.map(m => ({
-            material_id: m.material_id,
-            quantity: parseFloat(m.quantity_prepared),
-            unit: m.unit || m.material?.unit || '',
-        }));
+        scheduleForm.materials = ticket.materials.map(m => {
+            const matchedOrder = availableMaterialItems.value.find(
+                i => i.id === m.material_transaction_item_id || (i.material_id === m.material_id && (!m.trx_number || i.trx_number === m.trx_number))
+            );
+            return {
+                material_transaction_item_id: m.material_transaction_item_id || (matchedOrder ? matchedOrder.id : ''),
+                material_id: m.material_id,
+                trx_number: m.trx_number || (matchedOrder ? matchedOrder.trx_number : ''),
+                name: m.material?.name || 'Material FO',
+                quantity: parseFloat(m.quantity_prepared || m.quantity || 1),
+                quantity_prepared: parseFloat(m.quantity_prepared || m.quantity || 1),
+                unit: m.unit || m.material?.unit || '',
+                max_stock: matchedOrder ? matchedOrder.area_stock : (parseFloat(m.material?.stock) || 9999),
+                notes: m.notes || '',
+            };
+        });
     } else {
         scheduleForm.materials = [];
     }
@@ -390,9 +496,15 @@ const openScheduleModal = (ticket) => {
 
 const addMaterialRow = () => {
     scheduleForm.materials.push({
+        material_transaction_item_id: '',
         material_id: '',
+        trx_number: '',
+        name: '',
         quantity: 1,
+        quantity_prepared: 1,
         unit: '',
+        max_stock: null,
+        notes: '',
     });
 };
 
@@ -400,19 +512,49 @@ const removeMaterialRow = (index) => {
     scheduleForm.materials.splice(index, 1);
 };
 
-const onMaterialSelected = (item) => {
-    const mat = props.materials.find(m => m.id == item.material_id);
-    if (mat) {
-        item.unit = mat.unit;
+const onMaterialItemChange = (item) => {
+    const selectedOrder = availableMaterialItems.value.find(i => i.id === item.material_transaction_item_id);
+    if (selectedOrder) {
+        item.material_id = selectedOrder.material_id;
+        item.trx_number = selectedOrder.trx_number;
+        item.name = selectedOrder.name;
+        item.unit = selectedOrder.unit;
+        item.max_stock = selectedOrder.area_stock;
+        
+        if (item.quantity && item.quantity > selectedOrder.area_stock) {
+            item.quantity = selectedOrder.area_stock;
+        } else if (!item.quantity || item.quantity <= 0) {
+            item.quantity = 1;
+        }
+    }
+};
+
+const validateMaterialQty = (item) => {
+    if (item.max_stock !== undefined && item.max_stock !== null) {
+        if (item.quantity > item.max_stock) {
+            item.quantity = item.max_stock;
+            alert(`Stok tidak mencukupi! Maksimal stok untuk material dari order ini adalah ${item.max_stock} ${item.unit}`);
+        }
     }
 };
 
 const submitSchedule = () => {
     if (!selectedTicket.value) return;
+
+    scheduleForm.materials.forEach(m => {
+        m.quantity_prepared = m.quantity;
+    });
+
     scheduleForm.post(`/pgj/${selectedTicket.value.id}/schedule`, {
+        preserveScroll: true,
         onSuccess: () => {
             showScheduleModal.value = false;
             selectedTicket.value = null;
+        },
+        onError: (errors) => {
+            console.error('Validation errors:', errors);
+            const msg = Object.values(errors).flat().join('\n');
+            alert('Gagal menyimpan jadwal jalur:\n' + msg);
         }
     });
 };
