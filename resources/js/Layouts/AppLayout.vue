@@ -342,7 +342,7 @@ const menuItems = [
             { href: '/vouchers/online', label: 'Monitoring Sesi Voucher', active: (url) => (url || '').startsWith('/vouchers/online') || (url || '').startsWith('/vouchers/offline'), permission: ['menu_vouchers_monitoring', 'menu_vouchers'] },
             { href: '/vouchers/expired', label: 'Voucher Expired', active: (url) => (url || '').startsWith('/vouchers/expired'), permission: 'menu_vouchers' },
             { href: '/vouchers/profiles', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers_profiles' },
-            { href: '/vouchers/free', label: 'Voucher Gratis', active: (url) => (url || '').startsWith('/vouchers/free'), permission: 'menu_vouchers' },
+            { href: '/vouchers/free', label: 'Voucher Gratis', active: (url) => (url || '').startsWith('/vouchers/free'), permission: ['menu_vouchers_free', 'menu_vouchers'] },
         ]
     },
     { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },

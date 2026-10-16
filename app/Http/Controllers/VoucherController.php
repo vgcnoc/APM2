@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Voucher;
 use App\Models\VoucherProfile;
+use App\Models\Customer;
+use App\Models\Reseller;
+use App\Models\Radius\RadAcct;
 use App\Services\RadiusService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,28 +16,120 @@ class VoucherController extends Controller
 {
     public function free(Request $request)
     {
-        $query = \App\Models\Customer::with('ont')
-            
+        // Jalankan pengecekan voucher expired terlebih dahulu
+        self::checkAndExpireVouchers();
+
+        // 1. Query Data Voucher Gratis (Hasil Generate & Khusus)
+        $voucherQuery = Voucher::with(['profile', 'customer.areaModel', 'reseller.customer'])
+            ->where(function($q) {
+                $q->where('is_free', true)
+                  ->orWhere('payment_method', 'free')
+                  ->orWhereHas('profile', function($pq) {
+                      $pq->where('is_customer_free', true)->orWhere('price', 0);
+                  });
+            });
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $voucherQuery->where(function($q) use ($search) {
+                $q->where('code', 'like', "%{$search}%")
+                  ->orWhere('username', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function($sub) use ($search) {
+                      $sub->where('name', 'like', "%{$search}%")
+                          ->orWhere('customer_id', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('reseller.customer', function($sub) use ($search) {
+                      $sub->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        if ($request->filled('status')) {
+            $voucherQuery->where('status', $request->status);
+        }
+
+        if ($request->filled('profile_id')) {
+            $voucherQuery->where('voucher_profile_id', $request->profile_id);
+        }
+
+        $vouchers = $voucherQuery->latest('id')->paginate(20, ['*'], 'vouchers_page')->withQueryString();
+
+        // 2. Query Data Pelanggan Hotspot Gratis (Dari Aktivasi ONT)
+        $customerQuery = Customer::with(['ont', 'areaModel', 'package'])
             ->whereHas('ont', function($q) {
                 $q->where('free_hotspot', true);
             });
             
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('customer_id', 'like', "%{$search}%")
-                  ->orWhereHas('ont', function($subQ) use ($search) {
-                      $subQ->where('hotspot_user', 'like', "%{$search}%");
+        if ($request->filled('search_customer')) {
+            $searchCust = $request->search_customer;
+            $customerQuery->where(function($q) use ($searchCust) {
+                $q->where('name', 'like', "%{$searchCust}%")
+                  ->orWhere('customer_id', 'like', "%{$searchCust}%")
+                  ->orWhereHas('ont', function($subQ) use ($searchCust) {
+                      $subQ->where('hotspot_user', 'like', "%{$searchCust}%");
                   });
             });
         }
         
-        $customers = $query->latest()->paginate(15)->withQueryString();
-        
+        $customers = $customerQuery->latest()->paginate(15, ['*'], 'customers_page')->withQueryString();
+
+        // 3. Online Usernames dari RADIUS
+        $onlineUsernames = (function() {
+            try {
+                return RadAcct::online()->pluck('username')->toArray();
+            } catch (\Exception $e) {
+                return [];
+            }
+        })();
+
+        // 4. Statistik Voucher Gratis
+        $statsBase = Voucher::query()
+            ->where(function($q) {
+                $q->where('is_free', true)
+                  ->orWhere('payment_method', 'free')
+                  ->orWhereHas('profile', function($pq) {
+                      $pq->where('is_customer_free', true)->orWhere('price', 0);
+                  });
+            });
+
+        $totalFree = (clone $statsBase)->count();
+        $availableFree = (clone $statsBase)->where('status', 'available')->count();
+        $usedFree = (clone $statsBase)->where('status', 'used')->count();
+        $expiredFree = (clone $statsBase)->where('status', 'expired')->count();
+        $onlineFree = count(array_intersect(
+            $onlineUsernames,
+            (clone $statsBase)->where('status', 'used')->pluck('username')->filter()->toArray()
+        ));
+
+        // 5. Profil Voucher yang tersedia
+        $freeProfiles = VoucherProfile::where(function($q) {
+            $q->where('is_customer_free', true)->orWhere('price', 0);
+        })->get();
+
+        $allProfiles = VoucherProfile::all();
+        $freeProfile = $freeProfiles->first() ?? $allProfiles->first();
+
+        $resellers = Reseller::with('customer')->get();
+        $customerList = Customer::select('id', 'name', 'customer_id')->where('status', 'active')->limit(150)->get();
+
         return Inertia::render('Vouchers/Free/Index', [
+            'vouchers' => $vouchers,
             'customers' => $customers,
-            'filters' => $request->only('search')
+            'freeProfile' => $freeProfile,
+            'freeProfiles' => $freeProfiles,
+            'allProfiles' => $allProfiles,
+            'resellers' => $resellers,
+            'customerList' => $customerList,
+            'onlineUsernames' => $onlineUsernames,
+            'stats' => [
+                'total' => $totalFree,
+                'available' => $availableFree,
+                'used' => $usedFree,
+                'expired' => $expiredFree,
+                'online' => $onlineFree,
+                'customer_count' => $customerQuery->count(),
+            ],
+            'filters' => $request->only(['search', 'status', 'profile_id', 'tab', 'search_customer'])
         ]);
     }
 
@@ -655,47 +750,137 @@ class VoucherController extends Controller
 
     public function store(Request $request)
     {
+        $mode = $request->input('mode', 'bulk');
+        $isFree = $request->boolean('is_free', false) || $request->input('cost_type') === 'free';
+
+        // ── Single Voucher ──────────────────────────────────────────
+        if ($mode === 'single') {
+            $validated = $request->validate([
+                'voucher_profile_id' => 'required|exists:voucher_profiles,id',
+                'username' => 'nullable|string|max:50',
+                'password' => 'nullable|string|max:50',
+                'login_type' => 'nullable|in:username_only,username_password',
+                'reseller_id' => 'nullable|exists:resellers,id',
+                'customer_id' => 'nullable|exists:customers,id',
+                'is_free' => 'nullable|boolean',
+                'cost_type' => 'nullable|string',
+            ]);
+
+            $profile = VoucherProfile::findOrFail($validated['voucher_profile_id']);
+            if ($profile->price <= 0 || $profile->is_customer_free) {
+                $isFree = true;
+            }
+
+            // Generate or use custom username
+            if (!empty($validated['username'])) {
+                $username = strtoupper(trim($validated['username']));
+            } else {
+                $prefix = $isFree ? 'FREE-' : 'V-';
+                $username = $prefix . strtoupper(Str::random(6));
+            }
+
+            while (Voucher::where('code', $username)->exists()) {
+                $username = ($isFree ? 'FREE-' : 'V-') . strtoupper(Str::random(6));
+            }
+
+            if (($validated['login_type'] ?? '') === 'username_only' || empty($validated['password'])) {
+                $password = $username;
+            } else {
+                $password = trim($validated['password']);
+            }
+
+            $reseller = null;
+            if (!empty($validated['reseller_id']) && !$isFree) {
+                $reseller = Reseller::find($validated['reseller_id']);
+                $costPerVoucher = max(0, (float)$profile->price - (float)($profile->fee_reseller ?? 0));
+                if ($reseller && $reseller->balance < $costPerVoucher) {
+                    return redirect()->back()->withErrors(['reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($costPerVoucher, 0, ',', '.') . ').'])->withInput();
+                }
+                if ($reseller) {
+                    $reseller->balance -= $costPerVoucher;
+                    $reseller->save();
+                    \App\Models\ResellerTransaction::create([
+                        'reseller_id' => $reseller->id,
+                        'type' => 'debit',
+                        'amount' => $costPerVoucher,
+                        'description' => "Pembelian 1 Voucher {$profile->name}",
+                        'reference_id' => 'VOUCHER-SINGLE',
+                    ]);
+                }
+            }
+
+            $voucher = Voucher::create([
+                'voucher_profile_id' => $profile->id,
+                'reseller_id' => !empty($validated['reseller_id']) ? $validated['reseller_id'] : null,
+                'customer_id' => !empty($validated['customer_id']) ? $validated['customer_id'] : null,
+                'code' => $username,
+                'username' => $username,
+                'password' => $password,
+                'status' => 'available',
+                'is_active' => true,
+                'is_free' => $isFree,
+                'payment_method' => $isFree ? 'free' : (!empty($validated['reseller_id']) ? 'balance' : 'system'),
+            ]);
+
+            try {
+                app(RadiusService::class)->syncVouchers(collect([$voucher]));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Radius sync error: " . $e->getMessage());
+            }
+
+            $msg = $isFree 
+                ? "Voucher Gratis {$username} ({$profile->name}) berhasil dibuat." 
+                : "Voucher {$username} ({$profile->name}) berhasil dibuat.";
+            return redirect()->back()->with('success', $msg);
+        }
+
+        // ── Bulk / Massal Voucher ──────────────────────────────────
         $validated = $request->validate([
             'voucher_profile_id' => 'required|exists:voucher_profiles,id',
             'amount' => 'required|integer|min:1|max:500',
             'length' => 'required|integer|min:4|max:12',
-            'prefix' => 'nullable|string|max:4',
+            'prefix' => 'nullable|string|max:10',
             'type' => 'required|in:up,vc', // up = user & password, vc = code only (user=pass=code)
             'reseller_id' => 'nullable|exists:resellers,id',
+            'customer_id' => 'nullable|exists:customers,id',
             'combination' => 'nullable|string|in:alphanumeric,numeric,alpha',
+            'is_free' => 'nullable|boolean',
+            'cost_type' => 'nullable|string',
         ]);
 
-        $profile = VoucherProfile::find($validated['voucher_profile_id']);
-        
+        $profile = VoucherProfile::findOrFail($validated['voucher_profile_id']);
+        if ($profile->price <= 0 || $profile->is_customer_free) {
+            $isFree = true;
+        }
+
         $reseller = null;
-        if (!empty($validated['reseller_id'])) {
-            $reseller = \App\Models\Reseller::find($validated['reseller_id']);
+        if (!empty($validated['reseller_id']) && !$isFree) {
+            $reseller = Reseller::find($validated['reseller_id']);
             $costPerVoucher = max(0, (float)$profile->price - (float)($profile->fee_reseller ?? 0));
             $totalPrice = $costPerVoucher * $validated['amount'];
-            
-            if ($reseller->balance < $totalPrice) {
+
+            if ($reseller && $reseller->balance < $totalPrice) {
                 return redirect()->back()->withErrors(['reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($totalPrice, 0, ',', '.') . ', Saldo: Rp ' . number_format($reseller->balance, 0, ',', '.') . ').'])->withInput();
             }
-            
-            // Potong saldo reseller
-            $reseller->balance -= $totalPrice;
-            $reseller->save();
-            
-            // Catat transaksi mutasi
-            \App\Models\ResellerTransaction::create([
-                'reseller_id' => $reseller->id,
-                'type' => 'debit',
-                'amount' => $totalPrice,
-                'description' => "Pembelian {$validated['amount']} Voucher {$profile->name} (Modal: Rp " . number_format($costPerVoucher, 0, ',', '.') . "/voucher, Margin: Rp " . number_format($profile->fee_reseller ?? 0, 0, ',', '.') . "/voucher)",
-                'reference_id' => 'VOUCHER-GEN',
-            ]);
+
+            if ($reseller) {
+                $reseller->balance -= $totalPrice;
+                $reseller->save();
+
+                \App\Models\ResellerTransaction::create([
+                    'reseller_id' => $reseller->id,
+                    'type' => 'debit',
+                    'amount' => $totalPrice,
+                    'description' => "Pembelian {$validated['amount']} Voucher {$profile->name} (Modal: Rp " . number_format($costPerVoucher, 0, ',', '.') . "/voucher)",
+                    'reference_id' => 'VOUCHER-GEN',
+                ]);
+            }
         }
-        
+
         $vouchers = [];
         $now = now();
-        
         $combination = $validated['combination'] ?? 'alphanumeric';
-        
+
         $generateString = function($len, $comb) {
             if ($comb === 'numeric') {
                 return substr(str_shuffle(str_repeat('0123456789', $len)), 0, $len);
@@ -707,16 +892,14 @@ class VoucherController extends Controller
         };
 
         for ($i = 0; $i < $validated['amount']; $i++) {
-            $prefix = $validated['prefix'] ?? '';
+            $prefix = $validated['prefix'] ?? ($isFree ? 'FREE-' : '');
             $len = $validated['length'];
-            
+
             $code = strtoupper($prefix . $generateString($len, $combination));
-            
-            // Ensure unique code
-            while(Voucher::where('code', $code)->exists()) {
+            while (Voucher::where('code', $code)->exists()) {
                 $code = strtoupper($prefix . $generateString($len, $combination));
             }
-            
+
             if ($validated['type'] === 'vc') {
                 $username = $code;
                 $password = $code;
@@ -727,25 +910,73 @@ class VoucherController extends Controller
 
             $vouchers[] = [
                 'voucher_profile_id' => $profile->id,
-                'reseller_id' => $reseller ? $reseller->id : null,
+                'reseller_id' => !empty($validated['reseller_id']) ? $validated['reseller_id'] : null,
+                'customer_id' => !empty($validated['customer_id']) ? $validated['customer_id'] : null,
                 'code' => $code,
                 'username' => $username,
                 'password' => $password,
                 'status' => 'available',
+                'is_active' => true,
+                'is_free' => $isFree,
+                'payment_method' => $isFree ? 'free' : (!empty($validated['reseller_id']) ? 'balance' : 'system'),
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
         }
 
         Voucher::insert($vouchers);
-        
-        // Sync ke RADIUS secara eksplisit karena insert() tidak memicu event
+
         if (!empty($vouchers)) {
             $createdVouchers = Voucher::whereIn('code', array_column($vouchers, 'code'))->get();
-            app(RadiusService::class)->syncVouchers($createdVouchers);
+            try {
+                app(RadiusService::class)->syncVouchers($createdVouchers);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Radius sync error: " . $e->getMessage());
+            }
         }
 
-        return redirect()->back()->with('success', $validated['amount'] . ' Voucher berhasil di-generate.');
+        $msg = $isFree 
+            ? "{$validated['amount']} Voucher Gratis ({$profile->name}) berhasil di-generate." 
+            : "{$validated['amount']} Voucher ({$profile->name}) berhasil di-generate.";
+
+        return redirect()->back()->with('success', $msg);
+    }
+
+    public function generateForCustomer(Request $request, Customer $customer)
+    {
+        $profileId = $request->voucher_profile_id;
+        $profile = $profileId ? VoucherProfile::find($profileId) : VoucherProfile::where('is_customer_free', true)->first();
+        if (!$profile) {
+            $profile = VoucherProfile::where('price', 0)->first() ?? VoucherProfile::first();
+        }
+
+        $username = $customer->ont?->hotspot_user ?: 'HOTSPOT-' . strtoupper(Str::random(6));
+        $password = $customer->ont?->hotspot_password ?: $username;
+
+        $voucher = Voucher::updateOrCreate(
+            [
+                'customer_id' => $customer->id,
+                'is_free' => true,
+            ],
+            [
+                'voucher_profile_id' => $profile->id,
+                'code' => $username,
+                'username' => $username,
+                'password' => $password,
+                'status' => $customer->status === 'active' ? 'used' : 'available',
+                'is_active' => true,
+                'payment_method' => 'free',
+                'used_at' => $customer->status === 'active' ? now() : null,
+            ]
+        );
+
+        try {
+            app(RadiusService::class)->syncVouchers(collect([$voucher]));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Radius sync error: " . $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', "Voucher Gratis untuk pelanggan {$customer->name} ({$username}) berhasil disinkronkan.");
     }
 
     public function destroy(Voucher $voucher)

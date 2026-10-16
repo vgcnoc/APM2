@@ -535,6 +535,7 @@ class PermissionRegistry
                 'menu_parent' => 'menu_vouchers',
                 'permissions' => [
                     ['name' => 'menu_vouchers', 'type' => 'menu', 'label' => 'Akses Menu Data Voucher'],
+                    ['name' => 'menu_vouchers_free', 'type' => 'menu', 'label' => 'Akses Menu Voucher Gratis'],
                     ['name' => 'menu_vouchers_monitoring', 'type' => 'menu', 'label' => 'Akses Monitoring Sesi Voucher (Online & Offline)'],
                     ['name' => 'menu_vouchers_profiles', 'type' => 'menu', 'label' => 'Akses Profil Paket Voucher'],
                     ['name' => 'menu_resellers', 'type' => 'menu', 'label' => 'Akses Data Reseller'],
