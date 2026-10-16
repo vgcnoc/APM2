@@ -918,14 +918,39 @@ class DataMigrationService
         $affiliateCodesCache = [],
         $employeesIakCache = []
     ) {
-        $name = $row['nama_lengkap'] ?? $row['nama'] ?? '';
-        $phone = $row['nomor_wa'] ?? $row['phone'] ?? $row['no_wa'] ?? '';
-        $areaName = $row['nama_area'] ?? $row['area'] ?? '';
-        $customerCode = $row['kode_pelanggan'] ?? $row['customer_code'] ?? '';
+        $name = trim((string)($row['nama_lengkap'] ?? $row['nama'] ?? ''));
+        $rawPhone = trim((string)($row['nomor_wa'] ?? $row['phone'] ?? $row['no_wa'] ?? ''));
+        $areaName = trim((string)($row['nama_area'] ?? $row['area'] ?? ''));
+        $customerCode = trim((string)($row['kode_pelanggan'] ?? $row['customer_code'] ?? ''));
 
         if (empty($name)) $errors[] = 'Nama Lengkap wajib diisi.';
-        if (empty($phone)) $errors[] = 'Nomor WA / Telepon wajib diisi.';
+        if (empty($rawPhone)) $errors[] = 'Nomor WA / Telepon wajib diisi.';
         if (empty($areaName)) $errors[] = 'Nama Area / Wilayah wajib diisi.';
+
+        // Parse phone: support multiple numbers (e.g. "089510544258, 088290073037" or "08123456789 / 08571234567")
+        $phoneCandidates = [];
+        $splitParts = preg_split('/[\/,;|\s+dan\s+]+/i', $rawPhone);
+        foreach ($splitParts as $part) {
+            $cleaned = preg_replace('/[^0-9+]/', '', trim($part));
+            if (strlen(preg_replace('/[^0-9]/', '', $cleaned)) >= 6) {
+                $phoneCandidates[] = $cleaned;
+            }
+        }
+
+        $phone = '';
+        $extraPhones = [];
+        if (!empty($phoneCandidates)) {
+            $phone = $phoneCandidates[0];
+            if (count($phoneCandidates) > 1) {
+                $extraPhones = array_slice($phoneCandidates, 1);
+            }
+        } else {
+            $phone = preg_replace('/[^0-9+]/', '', $rawPhone);
+        }
+
+        if (strlen($phone) > 30) {
+            $phone = substr($phone, 0, 30);
+        }
 
         // Check duplicate
         $isExisting = false;
@@ -1029,6 +1054,12 @@ class DataMigrationService
         $baseAmount = (float) ($row['tarif_bulanan'] ?? $row['base_amount'] ?? 0);
         if ($serviceStatus === 'gratis') $baseAmount = 0;
 
+        $notes = trim((string)($row['catatan'] ?? $row['notes'] ?? ''));
+        if (!empty($extraPhones)) {
+            $altPhoneText = "No. HP Cadangan: " . implode(', ', $extraPhones);
+            $notes = ($notes !== '') ? ($notes . " | " . $altPhoneText) : $altPhoneText;
+        }
+
         $mapped = [
             'customer_code' => $customerCode ?: null,
             'name' => $name,
@@ -1049,7 +1080,7 @@ class DataMigrationService
             'latitude' => !empty($row['latitude']) ? (float)$row['latitude'] : null,
             'longitude' => !empty($row['longitude']) ? (float)$row['longitude'] : null,
             'identity_photo' => $row['foto_ktp'] ?? $row['identity_photo'] ?? null,
-            'notes' => $row['catatan'] ?? null,
+            'notes' => $notes ?: null,
             'is_existing' => $isExisting,
         ];
     }
@@ -1302,7 +1333,7 @@ class DataMigrationService
             // Update
             $existing->update([
                 'name' => $data['name'],
-                'phone' => $data['phone'],
+                'phone' => substr($data['phone'], 0, 50),
                 'email' => $data['email'] ?? $existing->email,
                 'area' => $data['area'],
                 'area_id' => $areaId ?: $existing->area_id,
@@ -1328,7 +1359,7 @@ class DataMigrationService
         Customer::create([
             'customer_code' => $customerCode,
             'name' => $data['name'],
-            'phone' => $data['phone'],
+            'phone' => substr($data['phone'], 0, 50),
             'email' => $data['email'],
             'area' => $data['area'],
             'area_id' => $areaId,
