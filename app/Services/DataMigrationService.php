@@ -273,7 +273,7 @@ class DataMigrationService
                     'splitter_odc' => ['label' => 'Splitter Ratio ODC (misal 1:4)', 'required' => false, 'db' => 'splitter_ratio'],
                     'nama_odp' => ['label' => 'Nama ODP', 'required' => true, 'db' => 'odp_name'],
                     'total_port_odp' => ['label' => 'Total Port ODP (8 / 16)', 'required' => true, 'db' => 'total_ports'],
-                    'nomor_port' => ['label' => 'Nomor Port Fisik (1..N)', 'required' => true, 'db' => 'port_number'],
+                    'nomor_port' => ['label' => 'Nomor Port Fisik (1..N, Opsional - bisa diisi saat instalasi)', 'required' => false, 'db' => 'port_number'],
                     'status_port' => ['label' => 'Status Port (available/used/reserved/fault/stop)', 'required' => false, 'db' => 'port_status'],
                     'kode_pelanggan' => ['label' => 'Kode Pelanggan (Jika Terhubung)', 'required' => false, 'db' => 'customer_code'],
                     'sn_ont' => ['label' => 'Serial Number ONT', 'required' => false, 'db' => 'serial_number'],
@@ -421,7 +421,7 @@ class DataMigrationService
                     'merk_ont' => ['label' => 'Merk Modem (ZTE/Huawei/dll)', 'required' => false, 'db' => 'brand'],
                     'tipe_model' => ['label' => 'Tipe Model Modem', 'required' => false, 'db' => 'model'],
                     'nama_odp' => ['label' => 'Nama ODP Terpasang', 'required' => true, 'db' => 'odp_name'],
-                    'nomor_port_odp' => ['label' => 'Nomor Port ODP Terpasang', 'required' => true, 'db' => 'port_number'],
+                    'nomor_port_odp' => ['label' => 'Nomor Port ODP Terpasang (Opsional, diisi saat instalasi)', 'required' => false, 'db' => 'port_number'],
                     'redaman_rx' => ['label' => 'Redaman Optik Rx (dBm, misal: -21.50)', 'required' => true, 'db' => 'rx_power'],
                     'username_pppoe' => ['label' => 'Username PPPoE', 'required' => false, 'db' => 'pppoe_user'],
                     'password_pppoe' => ['label' => 'Password PPPoE', 'required' => false, 'db' => 'pppoe_password'],
@@ -1153,8 +1153,8 @@ class DataMigrationService
         $odcName = trim($row['nama_odc'] ?? $row['odc'] ?? '');
         $odpName = trim($row['nama_odp'] ?? $row['odp'] ?? '');
         
-        $rawPortNum = $row['nomor_port'] ?? $row['port_number'] ?? $row['port'] ?? 0;
-        $portNum = (int) preg_replace('/[^0-9]/', '', (string)$rawPortNum);
+        $rawPortNum = $row['nomor_port'] ?? $row['port_number'] ?? $row['port'] ?? '';
+        $portNum = ($rawPortNum !== '' && $rawPortNum !== null && $rawPortNum !== '-') ? (int) preg_replace('/[^0-9]/', '', (string)$rawPortNum) : 0;
         
         $rawTotalPorts = $row['total_port_odp'] ?? $row['total_ports'] ?? 8;
         $totalPorts = (int) preg_replace('/[^0-9]/', '', (string)$rawTotalPorts) ?: 8;
@@ -1170,9 +1170,11 @@ class DataMigrationService
         if (empty($oltName)) $errors[] = 'Nama OLT wajib diisi.';
         if (empty($odcName)) $errors[] = 'Nama ODC wajib diisi.';
         if (empty($odpName)) $errors[] = 'Nama ODP wajib diisi.';
-        if ($portNum < 1) $errors[] = 'Nomor port harus >= 1.';
         if ($totalPorts < 1) $totalPorts = 8;
-        if ($portNum > $totalPorts) $errors[] = "Nomor port ({$portNum}) melebihi total port ODP ({$totalPorts}).";
+        // Nomor port bersifat opsional (bisa diisi nanti saat proses instalasi)
+        if ($portNum > 0 && $portNum > $totalPorts) {
+            $errors[] = "Nomor port ({$portNum}) melebihi total port ODP ({$totalPorts}).";
+        }
 
         $customerCode = trim($row['kode_pelanggan'] ?? '');
         if ($customerCode === '-') $customerCode = '';
@@ -1204,7 +1206,7 @@ class DataMigrationService
             'splitter_ratio' => $splitterRatio,
             'odp_name' => $odpName,
             'total_ports' => $totalPorts,
-            'port_number' => $portNum,
+            'port_number' => $portNum > 0 ? $portNum : null,
             'port_status' => $portStatus,
             'customer_code' => $customerCode,
             'customer_id' => $customerId,
@@ -1560,21 +1562,35 @@ class DataMigrationService
             );
         }
 
-        // Simpan / update status nomor port spesifik dari file
-        $odpPort = OdpPort::updateOrCreate(
-            ['odp_id' => $odp->id, 'port_number' => $data['port_number']],
-            ['status' => $data['port_status']]
-        );
+        // Simpan / update status nomor port spesifik dari file jika port_number diisi
+        $odpPort = null;
+        if (!empty($data['port_number']) && (int)$data['port_number'] > 0) {
+            $odpPort = OdpPort::updateOrCreate(
+                ['odp_id' => $odp->id, 'port_number' => (int)$data['port_number']],
+                ['status' => $data['port_status']]
+            );
+        }
 
         // 7. Connect Customer & ONT if provided
         if (!empty($data['customer_id']) && !empty($data['serial_number'])) {
+            $portToUse = !empty($data['port_number']) && (int)$data['port_number'] > 0 ? (int)$data['port_number'] : null;
+            if (!$portToUse) {
+                $firstAvail = OdpPort::where('odp_id', $odp->id)->where('status', 'available')->orderBy('port_number')->first();
+                $portToUse = $firstAvail ? $firstAvail->port_number : 1;
+            }
+            if (!$odpPort) {
+                $odpPort = OdpPort::updateOrCreate(
+                    ['odp_id' => $odp->id, 'port_number' => $portToUse],
+                    ['status' => 'used']
+                );
+            }
             $ont = Ont::where('serial_number', $data['serial_number'])->first();
             if ($ont) {
                 $ont->update([
                     'customer_id' => $data['customer_id'],
                     'odp_id' => $odp->id,
-                    'odp_port_id' => $odpPort->id,
-                    'port_number' => $data['port_number'],
+                    'odp_port_id' => $odpPort?->id,
+                    'port_number' => $portToUse,
                     'mac_address' => $data['mac_address'] ?: $ont->mac_address,
                     'vlan_id' => $data['vlan_id'] ?: $ont->vlan_id,
                     'status' => 'active',
@@ -1585,8 +1601,8 @@ class DataMigrationService
                     'serial_number' => $data['serial_number'],
                     'mac_address' => $data['mac_address'],
                     'odp_id' => $odp->id,
-                    'odp_port_id' => $odpPort->id,
-                    'port_number' => $data['port_number'],
+                    'odp_port_id' => $odpPort?->id,
+                    'port_number' => $portToUse,
                     'area_id' => $area->id,
                     'vlan_id' => $data['vlan_id'],
                     'brand' => 'ZTE',
