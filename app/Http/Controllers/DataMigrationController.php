@@ -46,7 +46,7 @@ class DataMigrationController extends Controller
         $references = [
             'areas' => Area::select('id', 'name')->orderBy('name')->get(),
             'sales' => User::select('id', 'name', 'email', 'role', 'phone')
-                ->where('status', 'active')
+                ->where('is_active', true)
                 ->orderBy('name')
                 ->get()
                 ->map(function ($u) {
