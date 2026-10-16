@@ -126,13 +126,19 @@ class CbpRequestController extends Controller
         $validated = $request->validate([
             'technicians' => 'required|array',
             'technicians.*' => 'exists:users,id',
+            'notes' => 'nullable|string',
         ]);
 
         $oldStatus = $cbp->status;
-        $cbp->update(['status' => 'assigned']);
+        $cbpData = ['status' => 'assigned'];
+        if ($request->has('notes')) {
+            $cbpData['notes'] = $validated['notes'];
+        }
+        $cbp->update($cbpData);
         $cbp->technicians()->sync($validated['technicians']);
 
-        \App\Models\AuditLog::createLog('Penugasan Teknisi CBP', $cbp, $oldStatus, 'assigned', 'Menugaskan teknisi untuk tugas CBP.');
+        $noteLog = !empty($validated['notes']) ? ' Catatan: ' . $validated['notes'] : '';
+        \App\Models\AuditLog::createLog('Penugasan Teknisi CBP', $cbp, $oldStatus, 'assigned', 'Menugaskan teknisi untuk tugas CBP.' . $noteLog);
 
         return redirect()->back()->with('success', 'Tugas Pencabutan berhasil ditugaskan ke Teknisi.');
     }
