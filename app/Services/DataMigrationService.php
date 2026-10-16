@@ -745,6 +745,10 @@ class DataMigrationService
                 'valid' => $totalValid,
                 'warnings' => $totalWarnings,
                 'errors' => $totalErrors,
+                'total_rows' => count($rows),
+                'valid_count' => $totalValid,
+                'warning_count' => $totalWarnings,
+                'error_count' => $totalErrors,
             ],
             'rows' => $results,
         ];
@@ -844,6 +848,10 @@ class DataMigrationService
                     'updated' => $updatedCount,
                     'skipped' => $skippedCount,
                 ],
+                'created_count' => $insertedCount,
+                'updated_count' => $updatedCount,
+                'skipped_count' => $skippedCount,
+                'failed_count' => 0,
             ];
         } catch (\Throwable $e) {
             DB::rollBack();

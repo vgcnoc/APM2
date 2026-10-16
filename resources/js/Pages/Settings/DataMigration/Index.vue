@@ -1223,15 +1223,27 @@ async function runDryRun() {
         const res = await axios.post('/settings/data-migration/dry-run', payload);
 
         if (res.data && res.data.success) {
-            dryRunSummary.value = res.data.summary;
-            dryRunRows.value = res.data.rows;
+            const summary = res.data.summary || {};
+            const errorCount = Number(summary.error_count ?? summary.errors ?? 0);
+            const validCount = Number(summary.valid_count ?? summary.valid ?? 0);
+            const warningCount = Number(summary.warning_count ?? summary.warnings ?? 0);
+            const totalRows = Number(summary.total_rows ?? summary.total ?? (res.data.rows?.length || 0));
+
+            dryRunSummary.value = {
+                ...summary,
+                error_count: errorCount,
+                valid_count: validCount,
+                warning_count: warningCount,
+                total_rows: totalRows,
+            };
+            dryRunRows.value = res.data.rows || [];
             activeStatusFilter.value = 'all';
 
-            if (res.data.summary.error_count === 0) {
+            if (errorCount === 0) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Dry-Run Berhasil!',
-                    text: `Seluruh ${res.data.summary.valid_count} baris data lolos validasi dan siap diimpor ke database.`,
+                    text: `Seluruh ${validCount} baris data lolos validasi dan siap diimpor ke database.`,
                     timer: 2500,
                     showConfirmButton: false,
                 });
@@ -1239,7 +1251,7 @@ async function runDryRun() {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Ditemukan Kesalahan Validasi',
-                    text: `Terdapat ${res.data.summary.error_count} baris yang bermasalah. Anda dapat meneliti rincian di tabel bawah atau mengunduh laporan error.`,
+                    text: `Terdapat ${errorCount} baris yang bermasalah. Anda dapat meneliti rincian di tabel bawah atau mengunduh laporan error.`,
                 });
             }
         } else {
