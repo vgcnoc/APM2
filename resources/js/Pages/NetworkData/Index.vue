@@ -217,14 +217,31 @@
 
                                     <!-- Address & Coord Pills -->
                                     <div class="flex flex-wrap gap-2 mb-3">
-                                        <div class="bg-gray-50 border border-gray-200 text-gray-600 text-[10px] px-2 py-1 rounded-md flex items-center gap-1" :title="odp.address">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                            <span class="truncate max-w-[150px]">{{ odp.address || '-' }}</span>
+                                        <!-- Alamat (jika ada) -->
+                                        <div v-if="odp.address && odp.address !== '-'" class="bg-gray-50 border border-gray-200 text-gray-600 text-[10px] px-2 py-1 rounded-md flex items-center gap-1" :title="odp.address">
+                                            <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                            <span class="truncate max-w-[150px]">{{ odp.address }}</span>
                                         </div>
-                                        <div class="bg-gray-50 border border-gray-200 text-gray-600 text-[10px] px-2 py-1 rounded-md flex items-center gap-1">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                            {{ odp.latitude || '-' }}, {{ odp.longitude || '-' }}
+
+                                        <!-- Latitude Terpisah -->
+                                        <div class="bg-gray-50 border border-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded-md flex items-center gap-1 font-mono">
+                                            <svg class="w-3 h-3 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                            <span class="font-bold text-slate-500 uppercase">Lat:</span>
+                                            <span :class="odp.latitude ? 'text-gray-900 font-semibold' : 'text-gray-400 italic'">{{ odp.latitude || '-' }}</span>
                                         </div>
+
+                                        <!-- Longitude Terpisah -->
+                                        <div class="bg-gray-50 border border-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded-md flex items-center gap-1 font-mono">
+                                            <svg class="w-3 h-3 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                            <span class="font-bold text-slate-500 uppercase">Long:</span>
+                                            <span :class="odp.longitude ? 'text-gray-900 font-semibold' : 'text-gray-400 italic'">{{ odp.longitude || '-' }}</span>
+                                        </div>
+
+                                        <!-- Tombol Maps -->
+                                        <a v-if="odp.latitude && odp.longitude" :href="`https://www.google.com/maps?q=${odp.latitude},${odp.longitude}`" target="_blank" class="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-bold px-1.5 py-1 rounded-md flex items-center gap-1 transition-colors" title="Buka Titik Koordinat di Google Maps">
+                                            <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                            Maps
+                                        </a>
                                         <div class="bg-gray-50 border border-gray-200 text-gray-800 font-bold text-[10px] px-2 py-1 rounded-md flex items-center gap-1">
                                             <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                             {{ odp.total_ports }} Port

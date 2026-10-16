@@ -318,13 +318,19 @@ const formatDate = (dateStr) => {
                                     <span class="text-slate-500">Deskripsi Lokasi:</span>
                                     <span class="font-bold text-slate-900">{{ workOrder.location || '-' }}</span>
                                 </div>
-                                <div class="flex justify-between py-1 border-b border-slate-200/60">
+                                <div class="flex justify-between items-center py-1.5 border-b border-slate-200/60">
                                     <span class="text-slate-500">Titik Koordinat Rencana:</span>
-                                    <span class="font-mono text-slate-700">{{ workOrder.planned_latitude || '-' }}, {{ workOrder.planned_longitude || '-' }}</span>
+                                    <div class="flex items-center gap-1.5 font-mono text-[11px]">
+                                        <span class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">Lat: {{ workOrder.planned_latitude || '-' }}</span>
+                                        <span class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">Long: {{ workOrder.planned_longitude || '-' }}</span>
+                                    </div>
                                 </div>
-                                <div class="flex justify-between py-1 border-b border-slate-200/60">
+                                <div class="flex justify-between items-center py-1.5 border-b border-slate-200/60">
                                     <span class="text-slate-500">Titik Koordinat Aktual:</span>
-                                    <span class="font-mono text-indigo-700 font-bold">{{ workOrder.actual_latitude || '-' }}, {{ workOrder.actual_longitude || '-' }}</span>
+                                    <div class="flex items-center gap-1.5 font-mono text-[11px]">
+                                        <span class="bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded border border-indigo-200">Lat: {{ workOrder.actual_latitude || '-' }}</span>
+                                        <span class="bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded border border-indigo-200">Long: {{ workOrder.actual_longitude || '-' }}</span>
+                                    </div>
                                 </div>
                                 <div class="flex justify-between py-1 border-b border-slate-200/60">
                                     <span class="text-slate-500">Rute Tarikan:</span>

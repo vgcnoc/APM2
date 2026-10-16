@@ -496,8 +496,12 @@
                         <div class="space-y-1">
                             <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Alamat Lengkap</p>
                             <p class="text-sm text-gray-600 leading-relaxed">{{ selectedCustomer.address }}</p>
-                            <div v-if="selectedCustomer.latitude && selectedCustomer.longitude" class="mt-2">
-                                <a :href="`https://www.google.com/maps?q=${selectedCustomer.latitude},${selectedCustomer.longitude}`" target="_blank" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-900 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5">
+                            <div v-if="selectedCustomer.latitude || selectedCustomer.longitude" class="mt-2 flex flex-col gap-1.5">
+                                <div class="flex flex-wrap items-center gap-1.5 font-mono text-xs">
+                                    <span class="bg-gray-100 text-gray-800 px-2 py-0.5 rounded border border-gray-200">Lat: {{ selectedCustomer.latitude || '-' }}</span>
+                                    <span class="bg-gray-100 text-gray-800 px-2 py-0.5 rounded border border-gray-200">Long: {{ selectedCustomer.longitude || '-' }}</span>
+                                </div>
+                                <a v-if="selectedCustomer.latitude && selectedCustomer.longitude" :href="`https://www.google.com/maps?q=${selectedCustomer.latitude},${selectedCustomer.longitude}`" target="_blank" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-900 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5 self-start">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                                     Buka Lokasi di Maps
                                 </a>
