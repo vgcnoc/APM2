@@ -75,6 +75,33 @@
 
                     <!-- Actions -->
                     <div class="flex items-center gap-2 shrink-0">
+                        <!-- Action: Hapus Terpilih (muncul jika ada yang dicentang) -->
+                        <button 
+                            v-if="selectedIds.length > 0 && can(['hr_employees_delete_all', 'hr_employees_delete'])"
+                            @click="confirmDeleteSelected"
+                            type="button"
+                            class="inline-flex items-center justify-center gap-1.5 py-2.5 px-3.5 rounded-xl border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-sm transition-all shadow-xs animate-fade-in"
+                        >
+                            <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                            <span>Hapus Terpilih ({{ selectedIds.length }})</span>
+                        </button>
+
+                        <!-- Action: Hapus Semua -->
+                        <button 
+                            v-if="can(['hr_employees_delete_all', 'hr_employees_delete'])"
+                            @click="openDeleteAllModal"
+                            type="button"
+                            class="inline-flex items-center justify-center gap-1.5 py-2.5 px-3.5 rounded-xl border border-red-200 bg-red-50/70 text-red-700 hover:bg-red-100/90 font-semibold text-sm transition-all shadow-xs"
+                            title="Hapus Semua Data Karyawan"
+                        >
+                            <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                            <span>Hapus Semua</span>
+                        </button>
+
                         <!-- Action: Migrasi Excel/CSV -->
                         <Link 
                             v-if="can('menu_data_migration')"
@@ -193,6 +220,16 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50/50 border-b border-gray-100">
+                                <th class="py-4 px-4 w-12 text-center">
+                                    <input 
+                                        type="checkbox" 
+                                        :checked="isAllSelected" 
+                                        :indeterminate.prop="isPartiallySelected"
+                                        @change="toggleSelectAll" 
+                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                        title="Pilih Semua di Halaman Ini"
+                                    />
+                                </th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Karyawan</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Posisi</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Kontak</th>
@@ -208,7 +245,16 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
-                            <tr v-for="emp in employees.data" :key="emp.id" class="hover:bg-gray-50/50 transition-colors group">
+                            <tr v-for="emp in employees.data" :key="emp.id" :class="{'bg-rose-50/40': selectedIds.includes(emp.id)}" class="hover:bg-gray-50/50 transition-colors group">
+                                <!-- Checkbox Selection -->
+                                <td class="py-4 px-4 text-center">
+                                    <input 
+                                        type="checkbox" 
+                                        :value="emp.id" 
+                                        v-model="selectedIds" 
+                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                    />
+                                </td>
                                 <!-- 1. Karyawan Info -->
                                 <td class="py-4 px-6">
                                     <div class="flex items-center gap-3">
@@ -321,7 +367,7 @@
                                 </td>
                             </tr>
                             <tr v-if="employees.data.length === 0">
-                                <td colspan="7" class="py-12 text-center">
+                                <td colspan="8" class="py-12 text-center">
                                     <div class="flex flex-col items-center justify-center text-gray-400">
                                         <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -792,6 +838,115 @@
                 </div>
             </div>
         </div>
+        <!-- Floating Bulk Action Bar -->
+        <div 
+            v-if="selectedIds.length > 0"
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 text-white backdrop-blur-md px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4 animate-fade-in-up"
+        >
+            <div class="flex items-center gap-2 text-sm font-medium">
+                <span class="w-6 h-6 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center">
+                    {{ selectedIds.length }}
+                </span>
+                <span>karyawan dipilih</span>
+            </div>
+            <div class="h-4 w-px bg-slate-700"></div>
+            <button 
+                @click="clearSelection" 
+                type="button"
+                class="text-xs text-slate-300 hover:text-white transition-colors"
+            >
+                Batalkan
+            </button>
+            <button 
+                v-if="can(['hr_employees_delete_all', 'hr_employees_delete'])"
+                @click="confirmDeleteSelected" 
+                type="button"
+                class="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+            >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+                <span>Hapus Terpilih ({{ selectedIds.length }})</span>
+            </button>
+        </div>
+
+        <!-- Modal Konfirmasi Hapus Semua / Hapus Terpilih -->
+        <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-red-950/60 backdrop-blur-sm" @click="closeDeleteModal"></div>
+            <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up border border-red-100">
+                <div class="p-6 text-center">
+                    <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-red-50">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">
+                        {{ deleteModalMode === 'selected' ? `Hapus ${selectedIds.length} Karyawan Terpilih?` : `Hapus SEMUA Data Karyawan?` }}
+                    </h3>
+                    
+                    <p class="text-sm text-gray-500 mb-4 leading-relaxed">
+                        <template v-if="deleteModalMode === 'selected'">
+                            Sebanyak <strong class="text-gray-900">{{ selectedIds.length }} data karyawan</strong> yang dipilih akan dihapus secara permanen dari sistem.
+                        </template>
+                        <template v-else>
+                            Seluruh data karyawan yang ada di sistem (<strong class="text-rose-600">{{ employees.total || employees.data.length }} karyawan</strong>) akan dihapus secara permanen.
+                        </template>
+                        Tindakan ini tidak dapat dibatalkan.
+                    </p>
+
+                    <!-- Opsi hapus akun login user -->
+                    <div class="mb-5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-left">
+                        <label class="flex items-start gap-2.5 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                v-model="deleteLinkedUsers" 
+                                class="rounded border-gray-300 text-rose-600 focus:ring-rose-500 w-4 h-4 mt-0.5 cursor-pointer" 
+                            />
+                            <div class="text-xs">
+                                <span class="font-semibold text-gray-800">Hapus juga Akun Login User terkait</span>
+                                <p class="text-gray-500 mt-0.5">Akun user dengan email karyawan ini juga akan dihapus (akun Super Admin tetap aman).</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Konfirmasi teks jika mode ALL -->
+                    <div v-if="deleteModalMode === 'all'" class="mb-5 text-left">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">
+                            Ketik <span class="font-mono text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">HAPUS SEMUA</span> untuk konfirmasi:
+                        </label>
+                        <input 
+                            v-model="deleteConfirmText" 
+                            type="text" 
+                            placeholder="HAPUS SEMUA"
+                            class="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-300 focus:border-rose-500 focus:ring focus:ring-rose-200 text-center uppercase font-mono font-bold"
+                        />
+                    </div>
+
+                    <div class="flex items-center justify-center gap-3">
+                        <button 
+                            @click="closeDeleteModal" 
+                            type="button"
+                            class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm rounded-xl transition-colors w-full"
+                        >
+                            Batal
+                        </button>
+                        <button 
+                            @click="executeBulkDelete" 
+                            :disabled="isDeleting || (deleteModalMode === 'all' && deleteConfirmText !== 'HAPUS SEMUA')"
+                            type="button"
+                            class="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl transition-colors w-full flex justify-center items-center shadow-md shadow-rose-200"
+                        >
+                            <svg v-if="isDeleting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>{{ isDeleting ? 'Menghapus...' : (deleteModalMode === 'selected' ? 'Ya, Hapus Terpilih' : 'Ya, Hapus Semua') }}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </AppLayout>
 </template>
 
@@ -823,6 +978,100 @@ const selectedEmployee = ref(null);
 const isEditing = ref(false);
 const editingId = ref(null);
 const photoPreview = ref(null);
+
+// Bulk Delete & Delete All state
+const selectedIds = ref([]);
+const showDeleteModal = ref(false);
+const deleteModalMode = ref('selected'); // 'selected' or 'all'
+const deleteLinkedUsers = ref(false);
+const deleteConfirmText = ref('');
+const isDeleting = ref(false);
+
+const isAllSelected = computed(() => {
+    const list = props.employees?.data || [];
+    return list.length > 0 && list.every(e => selectedIds.value.includes(e.id));
+});
+
+const isPartiallySelected = computed(() => {
+    const list = props.employees?.data || [];
+    return selectedIds.value.length > 0 && !isAllSelected.value;
+});
+
+function toggleSelectAll() {
+    const list = props.employees?.data || [];
+    if (isAllSelected.value) {
+        const pageIds = list.map(e => e.id);
+        selectedIds.value = selectedIds.value.filter(id => !pageIds.includes(id));
+    } else {
+        const newIds = new Set([...selectedIds.value, ...list.map(e => e.id)]);
+        selectedIds.value = Array.from(newIds);
+    }
+}
+
+function clearSelection() {
+    selectedIds.value = [];
+}
+
+function confirmDeleteSelected() {
+    if (!can(['hr_employees_delete_all', 'hr_employees_delete'])) {
+        alert('Anda tidak memiliki hak akses untuk menghapus data karyawan.');
+        return;
+    }
+    if (selectedIds.value.length === 0) return;
+    deleteModalMode.value = 'selected';
+    deleteLinkedUsers.value = false;
+    deleteConfirmText.value = '';
+    showDeleteModal.value = true;
+}
+
+function openDeleteAllModal() {
+    if (!can(['hr_employees_delete_all', 'hr_employees_delete'])) {
+        alert('Anda tidak memiliki hak akses untuk menghapus data karyawan.');
+        return;
+    }
+    if (selectedIds.value.length > 0) {
+        deleteModalMode.value = 'selected';
+    } else {
+        deleteModalMode.value = 'all';
+    }
+    deleteLinkedUsers.value = false;
+    deleteConfirmText.value = '';
+    showDeleteModal.value = true;
+}
+
+function closeDeleteModal() {
+    showDeleteModal.value = false;
+    deleteConfirmText.value = '';
+    isDeleting.value = false;
+}
+
+function executeBulkDelete() {
+    if (deleteModalMode.value === 'all' && deleteConfirmText.value !== 'HAPUS SEMUA') {
+        return;
+    }
+
+    isDeleting.value = true;
+    router.post('/employees/bulk-destroy', {
+        all: deleteModalMode.value === 'all',
+        ids: deleteModalMode.value === 'selected' ? selectedIds.value : [],
+        delete_users: deleteLinkedUsers.value,
+        search: search.value,
+        area_id: filterArea.value,
+        employee_type: filterType.value,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeDeleteModal();
+            selectedIds.value = [];
+        },
+        onError: () => {
+            isDeleting.value = false;
+        },
+        onFinish: () => {
+            isDeleting.value = false;
+        }
+    });
+}
 
 const popularBanks = ['BCA', 'Bank Mandiri', 'BRI', 'BNI', 'BSI', 'Bank Jago', 'SeaBank'];
 const popularEWallets = ['DANA', 'GoPay', 'OVO', 'ShopeePay'];
@@ -1170,12 +1419,17 @@ function submit() {
 }
 
 function deleteEmployee(id) {
-    if (!can('hr_employees_delete')) {
+    if (!can(['hr_employees_delete_all', 'hr_employees_delete'])) {
         alert('Anda tidak memiliki hak akses untuk menghapus data karyawan.');
         return;
     }
-    if (confirm('Apakah Anda yakin ingin menghapus data karyawan ini?')) {
-        router.post(`/employees/${id}/delete`);
+    if (window.confirm('Apakah Anda yakin ingin menghapus data karyawan ini?')) {
+        router.post(`/employees/${id}/delete`, {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                selectedIds.value = selectedIds.value.filter(i => i !== id);
+            }
+        });
     }
 }
 </script>

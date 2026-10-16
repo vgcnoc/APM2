@@ -246,7 +246,7 @@ class EmployeeController extends Controller
 
     public function destroy(\App\Models\Employee $employee)
     {
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_delete')) {
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_delete') && !auth()->user()->can('hr_employees_delete_all')) {
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus data karyawan.');
         }
 
@@ -257,5 +257,80 @@ class EmployeeController extends Controller
         $employee->delete();
         
         return redirect()->route('employees.index')->with('success', 'Data karyawan berhasil dihapus.');
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_delete') && !auth()->user()->can('hr_employees_delete_all')) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus data karyawan.');
+        }
+
+        $query = \App\Models\Employee::query();
+
+        // Scope check per role
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_view_all')) {
+            if (auth()->user()->can('hr_employees_view_area')) {
+                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+            } else {
+                $query->where('email', auth()->user()->email);
+            }
+        }
+
+        $isAll = $request->boolean('all', false);
+        $ids = $request->input('ids', []);
+
+        if (!empty($ids) && is_array($ids)) {
+            $query->whereIn('id', $ids);
+        } elseif (!$isAll) {
+            return redirect()->back()->with('error', 'Tidak ada data karyawan yang dipilih untuk dihapus.');
+        }
+
+        // Apply filters if deleting all filtered
+        if ($isAll) {
+            if ($request->filled('search')) {
+                $search = strtolower($request->search);
+                $query->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('iak_number', 'like', "%{$search}%")
+                      ->orWhere('position', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%");
+                });
+            }
+            if ($request->filled('area_id')) {
+                $query->where('area_id', $request->area_id);
+            }
+            if ($request->filled('employee_type')) {
+                $query->where('employee_type', $request->employee_type);
+            }
+        }
+
+        $employees = $query->get();
+        $count = $employees->count();
+
+        if ($count === 0) {
+            return redirect()->back()->with('error', 'Tidak ada data karyawan yang cocok untuk dihapus.');
+        }
+
+        $deleteUsers = $request->boolean('delete_users', false);
+
+        \DB::transaction(function () use ($employees, $deleteUsers) {
+            foreach ($employees as $employee) {
+                if ($employee->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($employee->photo)) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($employee->photo);
+                }
+
+                if ($deleteUsers && !empty($employee->email)) {
+                    $user = \App\Models\User::where('email', $employee->email)->first();
+                    if ($user && $user->id !== auth()->id() && !$user->hasRole('admin')) {
+                        $user->delete();
+                    }
+                }
+
+                $employee->delete();
+            }
+        });
+
+        return redirect()->route('employees.index')->with('success', "{$count} data karyawan berhasil dihapus.");
     }
 }

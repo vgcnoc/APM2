@@ -253,6 +253,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('find-onu', [OntController::class, 'findOnu'])->name('find-onu.index');
 
     Route::resource('materials', MaterialController::class);
+    Route::post('employees/bulk-destroy', [\App\Http\Controllers\EmployeeController::class, 'bulkDestroy'])->name('employees.bulk-destroy');
     Route::resource('employees', \App\Http\Controllers\EmployeeController::class);
     Route::post('employees/{employee}/update', [\App\Http\Controllers\EmployeeController::class, 'update'])->name('employees.update.post');
     Route::post('employees/{employee}/delete', [\App\Http\Controllers\EmployeeController::class, 'destroy'])->name('employees.destroy.post');
