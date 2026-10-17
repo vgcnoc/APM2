@@ -1898,12 +1898,12 @@ class CustomerController extends Controller
             'end_time' => 'required|date_format:H:i',
         ];
 
-        // Photos are required for new installation, nullable for edits
-        $rules['photo_odp'] = ($isEdit && $ont->photo_odp) ? 'nullable|image|max:5120' : 'required|image|max:5120';
-        $rules['photo_installation'] = ($isEdit && $ont->photo_installation) ? 'nullable|image|max:5120' : 'required|image|max:5120';
-        $rules['photo_ont'] = ($isEdit && $ont->photo_ont) ? 'nullable|image|max:5120' : 'required|image|max:5120';
-        $rules['photo_customer'] = ($isEdit && $ont->photo_customer) ? 'nullable|image|max:5120' : 'required|image|max:5120';
-        $rules['photo_redaman'] = ($isEdit && $ont->photo_redaman) ? 'nullable|image|max:5120' : 'required|image|max:5120';
+        // Photos are optional (can be uploaded now or edited manually later)
+        $rules['photo_odp'] = 'nullable|image|max:5120';
+        $rules['photo_installation'] = 'nullable|image|max:5120';
+        $rules['photo_ont'] = 'nullable|image|max:5120';
+        $rules['photo_customer'] = 'nullable|image|max:5120';
+        $rules['photo_redaman'] = 'nullable|image|max:5120';
 
         $validated = $request->validate($rules);
 
@@ -3065,14 +3065,13 @@ class CustomerController extends Controller
             'port_available' => 'nullable|boolean',
             'feasibility' => 'required|in:feasible,not_feasible',
             'notes' => 'nullable|string',
-            'photos' => 'required|array|min:1',
-            'photos.*.label' => 'required|string',
-            'photos.*.file' => 'required|image|max:5120',
+            'photos' => 'nullable|array',
+            'photos.*.label' => 'nullable|string',
+            'photos.*.file' => 'nullable|image|max:5120',
         ], [
             'odp_id.required_if' => 'ODP harus dipilih jika status Feasible.',
             'port_number.required_if' => 'Port ODP harus dipilih jika status Feasible.',
             'distance_meters.required_if' => 'Jarak kabel harus diisi jika status Feasible.',
-            'photos.*.file.required' => 'Semua foto dokumentasi wajib diunggah.',
         ]);
 
         if (!empty($validated['odp_id'])) {

@@ -593,9 +593,9 @@
                                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Dokumentasi (Foto Laporan)</p>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div class="space-y-1">
-                                        <label class="block text-xs font-medium text-gray-500">1. Foto ODP / Port (Wajib)</label>
+                                        <label class="block text-xs font-medium text-gray-500">1. Foto ODP / Port (Opsional)</label>
                                         <div class="flex items-start gap-3">
-                                            <input type="file" @change="e => handleFileUpload('photo_odp', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !isEditingInstallation && !ontForm.photo_odp" />
+                                            <input type="file" @change="e => handleFileUpload('photo_odp', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
                                             <div v-if="previewUrls.photo_odp" class="flex flex-col gap-1 shrink-0">
                                                 <img :src="previewUrls.photo_odp" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_odp, '1. Foto ODP / Port')" />
                                                 <a :href="previewUrls.photo_odp" download="Foto_ODP.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
@@ -603,9 +603,9 @@
                                         </div>
                                     </div>
                                     <div class="space-y-1">
-                                        <label class="block text-xs font-medium text-gray-500">2. Foto Instalasi di Rumah (Wajib)</label>
+                                        <label class="block text-xs font-medium text-gray-500">2. Foto Instalasi di Rumah (Opsional)</label>
                                         <div class="flex items-start gap-3">
-                                            <input type="file" @change="e => handleFileUpload('photo_installation', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !isEditingInstallation && !ontForm.photo_installation" />
+                                            <input type="file" @change="e => handleFileUpload('photo_installation', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
                                             <div v-if="previewUrls.photo_installation" class="flex flex-col gap-1 shrink-0">
                                                 <img :src="previewUrls.photo_installation" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_installation, '2. Foto Instalasi di Rumah')" />
                                                 <a :href="previewUrls.photo_installation" download="Foto_Instalasi.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
@@ -613,9 +613,9 @@
                                         </div>
                                     </div>
                                     <div class="space-y-1">
-                                        <label class="block text-xs font-medium text-gray-500">3. Foto Posisi ONT (Wajib)</label>
+                                        <label class="block text-xs font-medium text-gray-500">3. Foto Posisi ONT (Opsional)</label>
                                         <div class="flex items-start gap-3">
-                                            <input type="file" @change="e => handleFileUpload('photo_ont', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !isEditingInstallation && !ontForm.photo_ont" />
+                                            <input type="file" @change="e => handleFileUpload('photo_ont', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
                                             <div v-if="previewUrls.photo_ont" class="flex flex-col gap-1 shrink-0">
                                                 <img :src="previewUrls.photo_ont" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_ont, '3. Foto Posisi ONT')" />
                                                 <a :href="previewUrls.photo_ont" download="Foto_ONT.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
@@ -623,9 +623,9 @@
                                         </div>
                                     </div>
                                     <div class="space-y-1">
-                                        <label class="block text-xs font-medium text-gray-500">4. Foto Selfie Pelanggan (Wajib)</label>
+                                        <label class="block text-xs font-medium text-gray-500">4. Foto Selfie Pelanggan (Opsional)</label>
                                         <div class="flex items-start gap-3">
-                                            <input type="file" @change="e => handleFileUpload('photo_customer', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !isEditingInstallation && !ontForm.photo_customer" />
+                                            <input type="file" @change="e => handleFileUpload('photo_customer', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
                                             <div v-if="previewUrls.photo_customer" class="flex flex-col gap-1 shrink-0">
                                                 <img :src="previewUrls.photo_customer" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_customer, '4. Foto Selfie Pelanggan')" />
                                                 <a :href="previewUrls.photo_customer" download="Foto_Selfie.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
@@ -633,9 +633,9 @@
                                         </div>
                                     </div>
                                     <div class="space-y-1">
-                                        <label class="block text-xs font-medium text-gray-500">5. Foto Redaman (Wajib)</label>
+                                        <label class="block text-xs font-medium text-gray-500">5. Foto Redaman (Opsional)</label>
                                         <div class="flex items-start gap-3">
-                                            <input type="file" @change="e => handleFileUpload('photo_redaman', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" :required="isInstallingHardware && !isEditingInstallation && !ontForm.photo_redaman" />
+                                            <input type="file" @change="e => handleFileUpload('photo_redaman', e)" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
                                             <div v-if="previewUrls.photo_redaman" class="flex flex-col gap-1 shrink-0">
                                                 <img :src="previewUrls.photo_redaman" class="h-10 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" @click="openImage(previewUrls.photo_redaman, '5. Foto Redaman')" />
                                                 <a :href="previewUrls.photo_redaman" download="Foto_Redaman.jpg" class="text-[10px] text-blue-600 hover:underline text-center">Download</a>
@@ -2011,7 +2011,7 @@ const isMaterialValid = computed(() => hardwareItems.value.length === 0 || hardw
 const isOdpValid = computed(() => !!ontForm.odp_id && selectedOdp.value && selectedOdp.value.area_id === props.customer.area_id);
 const isPortValid = computed(() => !!ontForm.port_number && !isPortUsed(selectedOdp.value, ontForm.port_number));
 const isRedamanValid = computed(() => !!ontForm.rx_power && !isNaN(parseFloat(ontForm.rx_power)));
-const isFotoValid = computed(() => isEditingInstallation.value || (!!ontForm.photo_odp && !!ontForm.photo_installation && !!ontForm.photo_ont && !!ontForm.photo_customer && !!ontForm.photo_redaman));
+const isFotoValid = computed(() => true); // Foto tidak diwajibkan (bisa diedit belakangan)
 
 const validationErrors = computed(() => {
     const errors = [];
@@ -2020,13 +2020,6 @@ const validationErrors = computed(() => {
     if (!isOdpValid.value) errors.push('ODP belum dipilih atau Area ODP tidak sesuai pelanggan.');
     if (!isPortValid.value) errors.push('Port ODP belum dipilih atau sudah digunakan.');
     if (!isRedamanValid.value) errors.push('Redaman belum diisi dengan angka valid.');
-    if (!isFotoValid.value) {
-        if (!ontForm.photo_odp) errors.push('Foto ODP / Port wajib diunggah.');
-        if (!ontForm.photo_installation) errors.push('Foto Instalasi di Rumah wajib diunggah.');
-        if (!ontForm.photo_ont) errors.push('Foto Posisi ONT wajib diunggah.');
-        if (!ontForm.photo_customer) errors.push('Foto Selfie Pelanggan wajib diunggah.');
-        if (!ontForm.photo_redaman) errors.push('Foto Redaman wajib diunggah.');
-    }
     return errors;
 });
 

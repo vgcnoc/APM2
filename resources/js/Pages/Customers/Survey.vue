@@ -395,8 +395,8 @@
                             <div class="space-y-3">
                                 <div v-for="(photo, index) in reportForm.photos" :key="index" class="flex items-start gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm transition-all hover:border-blue-200 hover:bg-blue-50/30">
                                     <div class="flex-1 space-y-3">
-                                        <input v-model="photo.label" type="text" class="w-full bg-transparent border-b border-gray-300 px-1 py-1.5 text-sm font-medium text-gray-900 focus:border-blue-500 focus:outline-none placeholder-gray-400 transition-colors" placeholder="Label Foto" />
-                                        <input type="file" @change="handlePhotoChange(index, $event)" accept="image/*" class="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-xs file:font-medium file:bg-white file:text-gray-700 hover:file:bg-gray-50 cursor-pointer transition-colors" :required="reportForm.feasibility === 'feasible' && !isEditingSurvey" />
+                                        <input v-model="photo.label" type="text" class="w-full bg-transparent border-b border-gray-300 px-1 py-1.5 text-sm font-medium text-gray-900 focus:border-blue-500 focus:outline-none placeholder-gray-400 transition-colors" placeholder="Label Foto (Opsional)" />
+                                        <input type="file" @change="handlePhotoChange(index, $event)" accept="image/*" class="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-xs file:font-medium file:bg-white file:text-gray-700 hover:file:bg-gray-50 cursor-pointer transition-colors" />
                                     </div>
                                     <div v-if="photo.previewUrl" class="w-16 h-16 rounded-lg overflow-hidden shrink-0 group relative border border-gray-200 shadow-sm">
                                         <img :src="photo.previewUrl" class="w-full h-full object-cover" />
@@ -1107,7 +1107,10 @@ function submitReport() {
         ? `/customers/${activeCustomer.value.id}/update-survey` 
         : `/customers/${activeCustomer.value.id}/store-survey`;
         
-    reportForm.post(routeName, {
+    reportForm.transform((data) => ({
+        ...data,
+        photos: (data.photos || []).filter(p => p.file || p.path)
+    })).post(routeName, {
         preserveScroll: true,
         forceFormData: true,
         onSuccess: () => {
