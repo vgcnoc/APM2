@@ -2108,7 +2108,7 @@ class DataMigrationService
                     'technician_id' => $techOrSalesId,
                     'scheduled_date' => $actDate,
                     'type' => 'installation',
-                    'status' => ($targetCust->status === 'active') ? 'completed' : 'scheduled',
+                    'status' => ($targetCust->status === 'active') ? 'done' : 'scheduled',
                     'notes' => 'Jadwal pasang historis migrasi sistem',
                 ]);
             }
