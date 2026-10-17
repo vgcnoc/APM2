@@ -224,6 +224,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('customers', CustomerController::class);
 
     // ── Data OLT ──────────────────────────────────────────────
+    Route::post('olts/bulk-destroy', [OltController::class, 'bulkDestroy'])->name('olts.bulk-destroy');
     Route::resource('olts', OltController::class);
     Route::post('olts/{olt}/update', [OltController::class, 'update'])->name('olts.update.post');
     Route::post('olts/{olt}/delete', [OltController::class, 'destroy'])->name('olts.destroy.post');
