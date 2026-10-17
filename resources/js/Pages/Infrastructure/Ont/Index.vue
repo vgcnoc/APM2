@@ -20,12 +20,417 @@
                 </div>
             </div>
 
-            <!-- Table -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <!-- 1. Statistik Cards Inventaris ONT -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
+                <!-- Card 1: Total Perangkat -->
+                <div 
+                    @click="setQuickFilter('all')" 
+                    class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="[!filterState.status && !filterState.installation_status ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/20' : 'border-gray-200/80 hover:border-blue-300']"
+                >
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-blue-600 transition-colors">Total ONT</span>
+                        <div class="w-8 h-8 rounded-xl bg-blue-100/70 text-blue-600 flex items-center justify-center">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12H3l9-9 9 9h-2M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-gray-900">{{ Number(stats?.total || 0).toLocaleString('id-ID') }}</div>
+                    <p class="text-[11px] text-gray-500 mt-1">Semua perangkat</p>
+                </div>
+
+                <!-- Card 2: Siap Pasang -->
+                <div 
+                    @click="setQuickFilter('sudah_set')" 
+                    class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="[filterState.status === 'Sudah Set' ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20' : 'border-gray-200/80 hover:border-emerald-300']"
+                >
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-emerald-600 transition-colors">Siap Pasang</span>
+                        <div class="w-8 h-8 rounded-xl bg-emerald-100/70 text-emerald-600 flex items-center justify-center">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-emerald-600">{{ Number(stats?.sudah_set || 0).toLocaleString('id-ID') }}</div>
+                    <p class="text-[11px] text-gray-500 mt-1">Status: Sudah Set</p>
+                </div>
+
+                <!-- Card 3: Belum Diset -->
+                <div 
+                    @click="setQuickFilter('belum_set')" 
+                    class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="[filterState.status === 'Belum Set/Baru Input' ? 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/20' : 'border-gray-200/80 hover:border-amber-300']"
+                >
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-amber-600 transition-colors">Belum Diset</span>
+                        <div class="w-8 h-8 rounded-xl bg-amber-100/70 text-amber-600 flex items-center justify-center">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-amber-600">{{ Number(stats?.belum_set || 0).toLocaleString('id-ID') }}</div>
+                    <p class="text-[11px] text-gray-500 mt-1">Baru / Butuh Setting</p>
+                </div>
+
+                <!-- Card 4: Terpasang Pelanggan -->
+                <div 
+                    @click="setQuickFilter('installed')" 
+                    class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="[filterState.installation_status === 'installed' ? 'border-purple-500 ring-2 ring-purple-500/20 bg-purple-50/20' : 'border-gray-200/80 hover:border-purple-300']"
+                >
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-purple-600 transition-colors">Terpasang</span>
+                        <div class="w-8 h-8 rounded-xl bg-purple-100/70 text-purple-600 flex items-center justify-center">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-purple-600">{{ Number(stats?.terpasang || 0).toLocaleString('id-ID') }}</div>
+                    <p class="text-[11px] text-gray-500 mt-1">Aktif di Pelanggan</p>
+                </div>
+
+                <!-- Card 5: Gangguan LOS -->
+                <div 
+                    @click="setQuickFilter('los')" 
+                    class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="[filterState.status === 'los' ? 'border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/20' : 'border-gray-200/80 hover:border-rose-300']"
+                >
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-rose-600 transition-colors">Gangguan (LOS)</span>
+                        <div class="w-8 h-8 rounded-xl bg-rose-100/70 text-rose-600 flex items-center justify-center">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-rose-600">{{ Number(stats?.los || 0).toLocaleString('id-ID') }}</div>
+                    <p class="text-[11px] text-gray-500 mt-1">Kabel Putus / Redaman</p>
+                </div>
+            </div>
+
+            <!-- 2. Smart Quick Status Tabs -->
+            <div class="flex items-center gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl mb-4 overflow-x-auto border border-slate-200/60 scrollbar-none">
+                <button 
+                    type="button" 
+                    @click="setQuickFilter('all')" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5"
+                    :class="[!filterState.status && !filterState.installation_status ? 'bg-white text-gray-900 shadow-xs ring-1 ring-black/5 font-extrabold' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50']"
+                >
+                    <span>Semua</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px]" :class="[!filterState.status && !filterState.installation_status ? 'bg-gray-100 text-gray-800' : 'bg-gray-200/70 text-gray-600']">{{ stats?.total || 0 }}</span>
+                </button>
+                <button 
+                    type="button" 
+                    @click="setQuickFilter('sudah_set')" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5"
+                    :class="[filterState.status === 'Sudah Set' ? 'bg-white text-emerald-700 shadow-xs ring-1 ring-emerald-500/20 font-extrabold' : 'text-gray-600 hover:text-emerald-700 hover:bg-white/50']"
+                >
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>Siap Pasang</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 font-bold">{{ stats?.sudah_set || 0 }}</span>
+                </button>
+                <button 
+                    type="button" 
+                    @click="setQuickFilter('belum_set')" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5"
+                    :class="[filterState.status === 'Belum Set/Baru Input' ? 'bg-white text-amber-700 shadow-xs ring-1 ring-amber-500/20 font-extrabold' : 'text-gray-600 hover:text-amber-700 hover:bg-white/50']"
+                >
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <span>Belum Diset</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-50 text-amber-700 font-bold">{{ stats?.belum_set || 0 }}</span>
+                </button>
+                <button 
+                    type="button" 
+                    @click="setQuickFilter('installed')" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5"
+                    :class="[filterState.installation_status === 'installed' ? 'bg-white text-purple-700 shadow-xs ring-1 ring-purple-500/20 font-extrabold' : 'text-gray-600 hover:text-purple-700 hover:bg-white/50']"
+                >
+                    <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                    <span>Terpasang Pelanggan</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-purple-50 text-purple-700 font-bold">{{ stats?.terpasang || 0 }}</span>
+                </button>
+                <button 
+                    type="button" 
+                    @click="setQuickFilter('uninstalled')" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5"
+                    :class="[filterState.installation_status === 'uninstalled' ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-indigo-500/20 font-extrabold' : 'text-gray-600 hover:text-indigo-700 hover:bg-white/50']"
+                >
+                    <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                    <span>Standby (Gudang)</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-indigo-50 text-indigo-700 font-bold">{{ stats?.belum_terpasang || 0 }}</span>
+                </button>
+                <button 
+                    type="button" 
+                    @click="setQuickFilter('los')" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5"
+                    :class="[filterState.status === 'los' ? 'bg-white text-rose-700 shadow-xs ring-1 ring-rose-500/20 font-extrabold' : 'text-gray-600 hover:text-rose-700 hover:bg-white/50']"
+                >
+                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <span>Gangguan (LOS)</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-50 text-rose-700 font-bold">{{ stats?.los || 0 }}</span>
+                </button>
+            </div>
+
+            <!-- 3. Smart Comprehensive Filters Container -->
+            <div class="bg-white rounded-2xl shadow-xs border border-gray-200/80 p-4 mb-6 space-y-3.5">
+                <!-- Baris Utama Filter -->
+                <div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5">
+                    <!-- Live Search Input -->
+                    <div class="relative flex-1">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </div>
+                        <input 
+                            type="text" 
+                            v-model="filterState.search" 
+                            @input="onSearchInput"
+                            @keyup.enter="applyFilters"
+                            placeholder="Cari Serial Number, ID ONT, Pelanggan, MAC, PPPoE User..." 
+                            class="w-full pl-10 pr-9 py-2.5 bg-gray-50 hover:bg-gray-100/50 focus:bg-white border border-gray-200 rounded-xl text-sm transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 placeholder-gray-400"
+                        />
+                        <button 
+                            v-if="filterState.search" 
+                            @click="clearSearch" 
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                            title="Hapus pencarian"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Filter Cabang / Area -->
+                    <div class="w-full sm:w-auto min-w-[170px]">
+                        <select 
+                            v-model="filterState.area_id" 
+                            @change="applyFilters"
+                            class="w-full py-2.5 px-3 bg-gray-50 hover:bg-gray-100/50 focus:bg-white border border-gray-200 rounded-xl text-sm transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        >
+                            <option value="">Semua Cabang</option>
+                            <option v-for="area in areas" :key="area.id" :value="area.id">
+                                {{ area.name }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Status ONT -->
+                    <div class="w-full sm:w-auto min-w-[160px]">
+                        <select 
+                            v-model="filterState.status" 
+                            @change="applyFilters"
+                            class="w-full py-2.5 px-3 bg-gray-50 hover:bg-gray-100/50 focus:bg-white border border-gray-200 rounded-xl text-sm transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        >
+                            <option value="">Semua Status</option>
+                            <option value="Sudah Set">Siap Pasang (Sudah Set)</option>
+                            <option value="Belum Set/Baru Input">Belum Diset (Baru Input)</option>
+                            <option value="active">Active (Terpasang)</option>
+                            <option value="los">LOS (Gangguan)</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Status Instalasi -->
+                    <div class="w-full sm:w-auto min-w-[170px]">
+                        <select 
+                            v-model="filterState.installation_status" 
+                            @change="applyFilters"
+                            class="w-full py-2.5 px-3 bg-gray-50 hover:bg-gray-100/50 focus:bg-white border border-gray-200 rounded-xl text-sm transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        >
+                            <option value="">Semua Pasang</option>
+                            <option value="installed">Terpasang Pelanggan</option>
+                            <option value="uninstalled">Standby (Belum Terpasang)</option>
+                        </select>
+                    </div>
+
+                    <!-- Tombol Filter Lanjutan Toggle & Reset -->
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button 
+                            type="button" 
+                            @click="showAdvancedFilters = !showAdvancedFilters" 
+                            class="px-3.5 py-2.5 rounded-xl border text-sm font-semibold transition-all flex items-center gap-2"
+                            :class="[showAdvancedFilters || advancedFiltersActiveCount > 0 ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-700']"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                            <span>Filter Lanjutan</span>
+                            <span v-if="advancedFiltersActiveCount > 0" class="w-5 h-5 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center">
+                                {{ advancedFiltersActiveCount }}
+                            </span>
+                        </button>
+
+                        <button 
+                            v-if="activeFiltersCount > 0" 
+                            type="button" 
+                            @click="resetAllFilters" 
+                            class="px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-red-50 hover:text-red-600 border border-gray-200 hover:border-red-200 text-gray-600 text-sm font-semibold transition-all flex items-center gap-1.5"
+                            title="Reset semua filter"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>Reset</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Baris Filter Lanjutan (Collapsible) -->
+                <div v-show="showAdvancedFilters" class="pt-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                    <!-- Brand / Merk -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Merk / Brand</label>
+                        <select 
+                            v-model="filterState.brand" 
+                            @change="applyFilters"
+                            class="w-full py-2 px-3 bg-gray-50 hover:bg-gray-100/50 focus:bg-white border border-gray-200 rounded-xl text-xs transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        >
+                            <option value="">Semua Brand</option>
+                            <option v-for="b in brands" :key="b" :value="b">{{ b }}</option>
+                        </select>
+                    </div>
+
+                    <!-- Mode Akses -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Mode Akses</label>
+                        <select 
+                            v-model="filterState.access_mode" 
+                            @change="applyFilters"
+                            class="w-full py-2 px-3 bg-gray-50 hover:bg-gray-100/50 focus:bg-white border border-gray-200 rounded-xl text-xs transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        >
+                            <option value="">Semua Akses</option>
+                            <option value="PPPOE">PPPOE</option>
+                            <option value="STATIC">STATIC</option>
+                            <option value="DHCP">DHCP</option>
+                            <option value="BRIDGE">BRIDGE</option>
+                        </select>
+                    </div>
+
+                    <!-- Mode VLAN -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Mode VLAN</label>
+                        <select 
+                            v-model="filterState.vlan_mode" 
+                            @change="applyFilters"
+                            class="w-full py-2 px-3 bg-gray-50 hover:bg-gray-100/50 focus:bg-white border border-gray-200 rounded-xl text-xs transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        >
+                            <option value="">Semua VLAN</option>
+                            <option value="VLAN">VLAN</option>
+                            <option value="Non-VLAN">Non-VLAN</option>
+                        </select>
+                    </div>
+
+                    <!-- Rentang Tanggal Input -->
+                    <div class="sm:col-span-2 lg:col-span-1">
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Tgl Input / Aktivasi</label>
+                        <div class="flex items-center gap-1">
+                            <input 
+                                type="date" 
+                                v-model="filterState.date_from" 
+                                @change="applyFilters"
+                                class="w-full py-1.5 px-2 bg-gray-50 border border-gray-200 rounded-lg text-xs"
+                                title="Tanggal Dari"
+                            />
+                            <span class="text-gray-400 text-xs">-</span>
+                            <input 
+                                type="date" 
+                                v-model="filterState.date_to" 
+                                @change="applyFilters"
+                                class="w-full py-1.5 px-2 bg-gray-50 border border-gray-200 rounded-lg text-xs"
+                                title="Tanggal Sampai"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Tampilkan Per Halaman -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Baris Per Halaman</label>
+                        <select 
+                            v-model="filterState.per_page" 
+                            @change="applyFilters"
+                            class="w-full py-2 px-3 bg-gray-50 hover:bg-gray-100/50 focus:bg-white border border-gray-200 rounded-xl text-xs transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        >
+                            <option :value="15">15 Per Halaman</option>
+                            <option :value="25">25 Per Halaman</option>
+                            <option :value="50">50 Per Halaman</option>
+                            <option :value="100">100 Per Halaman</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Active Filter Chips / Badges -->
+                <div v-if="activeFiltersCount > 0" class="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-semibold text-gray-400">Filter Aktif:</span>
+                    
+                    <span v-if="filterState.search" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-medium">
+                        <span>Cari: "{{ filterState.search }}"</span>
+                        <button @click="removeFilter('search')" class="hover:text-indigo-900 ml-0.5">✕</button>
+                    </span>
+
+                    <span v-if="filterState.area_id" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-medium">
+                        <span>Cabang: {{ getAreaName(filterState.area_id) }}</span>
+                        <button @click="removeFilter('area_id')" class="hover:text-indigo-900 ml-0.5">✕</button>
+                    </span>
+
+                    <span v-if="filterState.status" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-medium">
+                        <span>Status: {{ filterState.status }}</span>
+                        <button @click="removeFilter('status')" class="hover:text-indigo-900 ml-0.5">✕</button>
+                    </span>
+
+                    <span v-if="filterState.installation_status" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-medium">
+                        <span>Pasang: {{ filterState.installation_status === 'installed' ? 'Terpasang' : 'Standby' }}</span>
+                        <button @click="removeFilter('installation_status')" class="hover:text-indigo-900 ml-0.5">✕</button>
+                    </span>
+
+                    <span v-if="filterState.brand" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-medium">
+                        <span>Brand: {{ filterState.brand }}</span>
+                        <button @click="removeFilter('brand')" class="hover:text-indigo-900 ml-0.5">✕</button>
+                    </span>
+
+                    <span v-if="filterState.access_mode" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-medium">
+                        <span>Akses: {{ filterState.access_mode }}</span>
+                        <button @click="removeFilter('access_mode')" class="hover:text-indigo-900 ml-0.5">✕</button>
+                    </span>
+
+                    <span v-if="filterState.vlan_mode" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-medium">
+                        <span>VLAN: {{ filterState.vlan_mode }}</span>
+                        <button @click="removeFilter('vlan_mode')" class="hover:text-indigo-900 ml-0.5">✕</button>
+                    </span>
+
+                    <span v-if="filterState.date_from || filterState.date_to" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-medium">
+                        <span>Tgl: {{ filterState.date_from || '...' }} s/d {{ filterState.date_to || '...' }}</span>
+                        <button @click="removeFilter('date_from'); removeFilter('date_to')" class="hover:text-indigo-900 ml-0.5">✕</button>
+                    </span>
+
+                    <button @click="resetAllFilters" class="text-xs text-rose-600 hover:text-rose-800 font-bold ml-1">
+                        Hapus Semua
+                    </button>
+
+                    <span class="text-xs text-gray-400 ml-auto font-medium">
+                        Total: <strong class="text-gray-700">{{ onts.total || 0 }}</strong> perangkat cocok
+                    </span>
+                </div>
+            </div>
+
+            <!-- Banner Terpilih (Bulk Selection) -->
+            <div v-if="selectedOnts.length > 0" class="mb-4 bg-indigo-600 text-white rounded-2xl p-4 shadow-lg shadow-indigo-600/20 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm">
+                        {{ selectedOnts.length }}
+                    </span>
+                    <span class="text-sm font-semibold">Perangkat ONT terpilih untuk dicetak atau dikelola</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button 
+                        @click="openPrintModal" 
+                        class="px-4 py-2 bg-white text-indigo-700 hover:bg-indigo-50 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        <span>Print Card ({{ selectedOnts.length }})</span>
+                    </button>
+                    <button 
+                        @click="selectedOnts = []" 
+                        class="px-3.5 py-2 bg-indigo-700/60 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition-all"
+                    >
+                        Batal
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table Inventaris ONT -->
+            <div class="bg-white rounded-2xl shadow-xs border border-gray-200/80 overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse whitespace-nowrap">
                         <thead>
-                            <tr class="bg-gray-50 border-b border-gray-100">
+                            <tr class="bg-gray-50/80 border-b border-gray-100">
                                 <th class="px-6 py-4 text-left w-10">
                                     <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
                                 </th>
@@ -39,60 +444,125 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
-                            <tr v-for="ont in onts.data" :key="ont.id" class="hover:bg-gray-50/50 transition-colors" :class="{'bg-indigo-50/30': selectedOnts.includes(ont.id)}">
+                            <tr v-for="ont in onts.data" :key="ont.id" class="hover:bg-indigo-50/20 transition-colors" :class="{'bg-indigo-50/40': selectedOnts.includes(ont.id)}">
                                 <td class="px-6 py-4">
                                     <input type="checkbox" :value="ont.id" v-model="selectedOnts" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="text-sm font-bold text-indigo-700 font-mono">{{ ont.ont_id || '-' }}</div>
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+                                        {{ ont.ont_id || '-' }}
+                                    </span>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="text-sm font-bold text-gray-900 font-mono">{{ ont.serial_number }}</div>
-                                    <div class="text-xs text-gray-500 mt-0.5">{{ ont.brand || 'Unknown' }} {{ ont.model || '' }}</div>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-sm font-bold text-gray-900 font-mono">{{ ont.serial_number }}</span>
+                                        <button 
+                                            type="button" 
+                                            @click="copySn(ont.serial_number)" 
+                                            class="text-gray-400 hover:text-indigo-600 transition-colors p-1 rounded-md hover:bg-gray-100"
+                                            :title="copiedSn === ont.serial_number ? 'Tersalin!' : 'Salin Serial Number'"
+                                        >
+                                            <svg v-if="copiedSn === ont.serial_number" class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                        </button>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
+                                        <span class="font-medium text-gray-700">{{ ont.brand || 'Unknown' }}</span>
+                                        <span v-if="ont.model" class="text-gray-400">• {{ ont.model }}</span>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-600">
-                                    {{ ont.area ? ont.area.name : '-' }}
+                                    <span v-if="ont.area" class="inline-flex items-center px-2 py-0.5 rounded-md text-xs bg-slate-100 text-slate-700 font-medium">
+                                        {{ ont.area.name }}
+                                    </span>
+                                    <span v-else class="text-gray-400">-</span>
                                 </td>
                                 <td class="px-6 py-4">
                                     <div v-if="ont.customer">
                                         <div class="text-sm font-medium text-gray-900 flex items-center gap-1.5 flex-wrap">
-                                            <span>{{ ont.customer.name }}</span>
+                                            <Link :href="`/customers/${ont.customer.id}`" class="text-indigo-600 hover:text-indigo-900 hover:underline font-semibold">
+                                                {{ ont.customer.name }}
+                                            </Link>
                                             <span v-if="ont.customer.service_status === 'gratis'" class="px-1.5 py-0.2 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs" title="Pelanggan Bebas Tagihan (Gratis)">
                                                 🎁 Gratis
                                             </span>
                                         </div>
-                                        <div class="text-xs text-gray-500 mt-0.5">{{ ont.customer.customer_code }}</div>
+                                        <div class="text-xs text-gray-500 mt-0.5 font-mono">{{ ont.customer.customer_code }}</div>
                                     </div>
-                                    <div v-else class="text-sm text-gray-400 italic">Belum terpasang</div>
+                                    <div v-else class="inline-flex items-center gap-1 text-xs text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 font-medium">
+                                        <span>📦</span> Belum terpasang (Standby)
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="text-sm text-gray-900">{{ ont.access_mode || '-' }}</div>
-                                    <div class="text-xs text-gray-500 mt-0.5">{{ ont.vlan_mode || '-' }}</div>
+                                    <div class="text-xs font-semibold text-gray-800">{{ ont.access_mode || '-' }}</div>
+                                    <div class="text-[11px] text-gray-500 mt-0.5 font-mono">{{ ont.vlan_mode || '-' }} <span v-if="ont.vlan_id">({{ ont.vlan_id }})</span></div>
                                 </td>
                                 <td class="px-6 py-4 text-sm">
-                                    <span class="px-2.5 py-1 rounded-full text-xs font-medium" :class="{
-                                        'bg-green-100 text-green-700': ont.status === 'active',
-                                        'bg-blue-100 text-blue-700': ont.status === 'Sudah Set',
-                                        'bg-red-100 text-red-700': ont.status === 'los',
-                                        'bg-yellow-100 text-yellow-700': ont.status === 'Belum Set/Baru Input',
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold" :class="{
+                                        'bg-emerald-100 text-emerald-800': ont.status === 'Sudah Set',
+                                        'bg-blue-100 text-blue-800': ont.status === 'active',
+                                        'bg-rose-100 text-rose-800': ont.status === 'los',
+                                        'bg-amber-100 text-amber-800': ont.status === 'Belum Set/Baru Input',
                                         'bg-gray-100 text-gray-700': !['active', 'Sudah Set', 'los', 'Belum Set/Baru Input'].includes(ont.status),
                                     }">
-                                        {{ ont.status || '-' }}
+                                        <span class="w-1.5 h-1.5 rounded-full" :class="{
+                                            'bg-emerald-500 animate-pulse': ont.status === 'Sudah Set',
+                                            'bg-blue-500': ont.status === 'active',
+                                            'bg-rose-500 animate-ping': ont.status === 'los',
+                                            'bg-amber-500': ont.status === 'Belum Set/Baru Input',
+                                            'bg-gray-400': !['active', 'Sudah Set', 'los', 'Belum Set/Baru Input'].includes(ont.status),
+                                        }"></span>
+                                        <span>{{ ont.status || '-' }}</span>
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-right">
-                                    <Link :href="`/onts/${ont.id}`" class="text-blue-600 hover:text-blue-900 font-medium mr-3">Detail</Link>
-                                    <button @click="openEditModal(ont)" class="text-indigo-600 hover:text-indigo-900 font-medium mr-3">Edit</button>
-                                    <button @click="deleteOnt(ont.id)" class="text-red-600 hover:text-red-900 font-medium">Hapus</button>
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        <Link :href="`/onts/${ont.id}`" class="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors">
+                                            Detail
+                                        </Link>
+                                        <button @click="openEditModal(ont)" class="px-2.5 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors">
+                                            Edit
+                                        </button>
+                                        <button @click="deleteOnt(ont.id)" class="px-2.5 py-1 text-xs font-medium text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors">
+                                            Hapus
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             <tr v-if="onts.data.length === 0">
-                                <td colspan="7" class="px-6 py-8 text-center text-gray-500 text-sm">
-                                    Belum ada data inventaris ONT.
+                                <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                                    <div class="w-12 h-12 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-3">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    </div>
+                                    <p class="text-sm font-semibold text-gray-700">Tidak ada perangkat ONT yang ditemukan</p>
+                                    <p class="text-xs text-gray-400 mt-1">Coba sesuaikan kata kunci pencarian atau ubah filter status di atas</p>
+                                    <button v-if="activeFiltersCount > 0" @click="resetAllFilters" class="mt-3 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-semibold transition-colors">
+                                        Reset Semua Filter
+                                    </button>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Pagination -->
+                <div v-if="onts.links?.length > 3" class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <span class="text-xs text-gray-500 font-medium">
+                        Menampilkan <strong class="text-gray-700">{{ onts.from || 0 }} - {{ onts.to || 0 }}</strong> dari <strong class="text-gray-700">{{ onts.total || 0 }}</strong> ONT
+                    </span>
+                    <div class="flex items-center gap-1 flex-wrap justify-center">
+                        <Link 
+                            v-for="(link, i) in onts.links" 
+                            :key="i" 
+                            :href="link.url || '#'" 
+                            class="px-3 py-1.5 text-xs rounded-xl font-medium transition-all"
+                            :class="[
+                                link.active ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-gray-600 hover:bg-gray-200/80',
+                                !link.url ? 'opacity-40 cursor-not-allowed hover:bg-transparent' : ''
+                            ]"
+                            v-html="link.label"
+                        />
+                    </div>
                 </div>
             </div>
         </div>
@@ -466,6 +936,8 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 const props = defineProps({
     onts: Object,
     areas: Array,
+    brands: Array,
+    stats: Object,
     filters: Object
 });
 
@@ -473,6 +945,140 @@ const isModalOpen = ref(false);
 const isEditing = ref(false);
 const isPrintModalOpen = ref(false);
 const selectedOnts = ref([]);
+
+// Smart Filter State
+const filterState = ref({
+    search: props.filters?.search || '',
+    status: props.filters?.status || '',
+    installation_status: props.filters?.installation_status || '',
+    area_id: props.filters?.area_id || '',
+    brand: props.filters?.brand || '',
+    access_mode: props.filters?.access_mode || '',
+    vlan_mode: props.filters?.vlan_mode || '',
+    date_from: props.filters?.date_from || '',
+    date_to: props.filters?.date_to || '',
+    per_page: props.filters?.per_page ? Number(props.filters.per_page) : 15,
+});
+
+const showAdvancedFilters = ref(
+    !!(props.filters?.brand || props.filters?.access_mode || props.filters?.vlan_mode || props.filters?.date_from || props.filters?.date_to || (props.filters?.per_page && props.filters?.per_page != 15))
+);
+
+let searchTimeout = null;
+
+function applyFilters() {
+    const query = {};
+    if (filterState.value.search) query.search = filterState.value.search;
+    if (filterState.value.status) query.status = filterState.value.status;
+    if (filterState.value.installation_status) query.installation_status = filterState.value.installation_status;
+    if (filterState.value.area_id) query.area_id = filterState.value.area_id;
+    if (filterState.value.brand) query.brand = filterState.value.brand;
+    if (filterState.value.access_mode) query.access_mode = filterState.value.access_mode;
+    if (filterState.value.vlan_mode) query.vlan_mode = filterState.value.vlan_mode;
+    if (filterState.value.date_from) query.date_from = filterState.value.date_from;
+    if (filterState.value.date_to) query.date_to = filterState.value.date_to;
+    if (filterState.value.per_page && filterState.value.per_page != 15) query.per_page = filterState.value.per_page;
+
+    router.get('/onts', query, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+}
+
+function onSearchInput() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        applyFilters();
+    }, 350);
+}
+
+function clearSearch() {
+    filterState.value.search = '';
+    applyFilters();
+}
+
+function setQuickFilter(type) {
+    if (type === 'all') {
+        filterState.value.status = '';
+        filterState.value.installation_status = '';
+    } else if (type === 'sudah_set') {
+        filterState.value.status = filterState.value.status === 'Sudah Set' ? '' : 'Sudah Set';
+        filterState.value.installation_status = '';
+    } else if (type === 'belum_set') {
+        filterState.value.status = filterState.value.status === 'Belum Set/Baru Input' ? '' : 'Belum Set/Baru Input';
+        filterState.value.installation_status = '';
+    } else if (type === 'installed') {
+        filterState.value.installation_status = filterState.value.installation_status === 'installed' ? '' : 'installed';
+        filterState.value.status = '';
+    } else if (type === 'uninstalled') {
+        filterState.value.installation_status = filterState.value.installation_status === 'uninstalled' ? '' : 'uninstalled';
+        filterState.value.status = '';
+    } else if (type === 'los') {
+        filterState.value.status = filterState.value.status === 'los' ? '' : 'los';
+        filterState.value.installation_status = '';
+    }
+    applyFilters();
+}
+
+function resetAllFilters() {
+    filterState.value = {
+        search: '',
+        status: '',
+        installation_status: '',
+        area_id: '',
+        brand: '',
+        access_mode: '',
+        vlan_mode: '',
+        date_from: '',
+        date_to: '',
+        per_page: 15,
+    };
+    applyFilters();
+}
+
+function removeFilter(key) {
+    filterState.value[key] = '';
+    applyFilters();
+}
+
+const activeFiltersCount = computed(() => {
+    let count = 0;
+    if (filterState.value.search) count++;
+    if (filterState.value.area_id) count++;
+    if (filterState.value.status) count++;
+    if (filterState.value.installation_status) count++;
+    if (filterState.value.brand) count++;
+    if (filterState.value.access_mode) count++;
+    if (filterState.value.vlan_mode) count++;
+    if (filterState.value.date_from || filterState.value.date_to) count++;
+    return count;
+});
+
+const advancedFiltersActiveCount = computed(() => {
+    let count = 0;
+    if (filterState.value.brand) count++;
+    if (filterState.value.access_mode) count++;
+    if (filterState.value.vlan_mode) count++;
+    if (filterState.value.date_from || filterState.value.date_to) count++;
+    if (filterState.value.per_page && filterState.value.per_page != 15) count++;
+    return count;
+});
+
+function getAreaName(areaId) {
+    const a = props.areas?.find(ar => ar.id == areaId);
+    return a ? a.name : areaId;
+}
+
+const copiedSn = ref(null);
+function copySn(sn) {
+    if (!sn) return;
+    navigator.clipboard.writeText(sn);
+    copiedSn.value = sn;
+    setTimeout(() => {
+        if (copiedSn.value === sn) copiedSn.value = null;
+    }, 2000);
+}
 
 const isAllSelected = computed(() => {
     return props.onts.data.length > 0 && selectedOnts.value.length === props.onts.data.length;

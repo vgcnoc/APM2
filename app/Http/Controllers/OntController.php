@@ -14,28 +14,71 @@ class OntController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = Ont::withFullTopology();
+        $baseQuery = Ont::query();
         
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_ont_view_all')) {
             if (auth()->user()->can('network_ont_view_area')) {
-                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
             } else {
-                $query->where('id', -1); // empty result if they don't have view permissions
+                $baseQuery->where('id', -1); // empty result if they don't have view permissions
             }
         }
 
+        // Hitung statistik untuk cards
+        $stats = [
+            'total' => (clone $baseQuery)->count(),
+            'sudah_set' => (clone $baseQuery)->where('status', 'Sudah Set')->count(),
+            'belum_set' => (clone $baseQuery)->where('status', 'Belum Set/Baru Input')->count(),
+            'terpasang' => (clone $baseQuery)->whereNotNull('customer_id')->count(),
+            'belum_terpasang' => (clone $baseQuery)->whereNull('customer_id')->count(),
+            'los' => (clone $baseQuery)->where('status', 'los')->count(),
+        ];
+
+        // Ambil daftar brand perangkat yang tersedia
+        $brands = (clone $baseQuery)
+            ->whereNotNull('brand')
+            ->where('brand', '!=', '')
+            ->distinct()
+            ->orderBy('brand')
+            ->pluck('brand');
+
+        $query = (clone $baseQuery)->withFullTopology();
+
         $onts = $query
-            ->when($request->search, fn ($q, $s) =>
-                $q->where('serial_number', 'like', "%{$s}%")
-                  ->orWhere('ont_id', 'like', "%{$s}%")
-                  ->orWhere('mac_address', 'like', "%{$s}%")
-                  ->orWhereHas('customer', fn ($cq) =>
-                      $cq->where('name', 'like', "%{$s}%")
-                         ->orWhere('customer_code', 'like', "%{$s}%")))
+            ->when($request->search, function ($q, $s) {
+                $q->where(function ($sq) use ($s) {
+                    $sq->where('serial_number', 'like', "%{$s}%")
+                       ->orWhere('ont_id', 'like', "%{$s}%")
+                       ->orWhere('mac_address', 'like', "%{$s}%")
+                       ->orWhere('brand', 'like', "%{$s}%")
+                       ->orWhere('model', 'like', "%{$s}%")
+                       ->orWhere('pppoe_user', 'like', "%{$s}%")
+                       ->orWhere('login_user', 'like', "%{$s}%")
+                       ->orWhere('ip_login', 'like', "%{$s}%")
+                       ->orWhereHas('customer', function ($cq) use ($s) {
+                           $cq->where('name', 'like', "%{$s}%")
+                              ->orWhere('customer_code', 'like', "%{$s}%")
+                              ->orWhere('phone', 'like', "%{$s}%");
+                       });
+                });
+            })
             ->when($request->status, fn ($q, $s) => $q->where('status', $s))
+            ->when($request->installation_status, function ($q, $s) {
+                if ($s === 'installed') {
+                    $q->whereNotNull('customer_id');
+                } elseif ($s === 'uninstalled') {
+                    $q->whereNull('customer_id');
+                }
+            })
+            ->when($request->area_id, fn ($q, $id) => $q->where('area_id', $id))
+            ->when($request->brand, fn ($q, $b) => $q->where('brand', $b))
+            ->when($request->access_mode, fn ($q, $m) => $q->where('access_mode', $m))
+            ->when($request->vlan_mode, fn ($q, $vm) => $q->where('vlan_mode', $vm))
+            ->when($request->date_from, fn ($q, $d) => $q->whereDate('created_at', '>=', $d))
+            ->when($request->date_to, fn ($q, $d) => $q->whereDate('created_at', '<=', $d))
             ->when($request->odp_id, fn ($q, $id) => $q->where('odp_id', $id))
             ->orderByDesc('created_at')
-            ->paginate(15)
+            ->paginate($request->input('per_page', 15))
             ->withQueryString();
 
         $areas = Area::all();
@@ -43,7 +86,21 @@ class OntController extends Controller
         return Inertia::render('Infrastructure/Ont/Index', [
             'onts' => $onts,
             'areas' => $areas,
-            'filters' => $request->only(['search', 'status', 'odp_id']),
+            'brands' => $brands,
+            'stats' => $stats,
+            'filters' => $request->only([
+                'search',
+                'status',
+                'installation_status',
+                'area_id',
+                'brand',
+                'access_mode',
+                'vlan_mode',
+                'date_from',
+                'date_to',
+                'odp_id',
+                'per_page',
+            ]),
         ]);
     }
 
