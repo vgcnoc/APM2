@@ -117,7 +117,13 @@
                 <td class="text-gray-500">{{ row.phone }}</td>
                 <td class="max-w-[250px] truncate text-gray-500 text-xs">{{ row.address }}</td>
                 <td>
-                    <span v-if="row.package" class="inline-flex px-2 py-1 bg-purple-50 text-purple-600 rounded-md text-xs font-medium border border-purple-100">
+                    <span v-if="row.service_status === 'free_home'" class="inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-200">
+                        <span>🏠</span> Free Home
+                    </span>
+                    <span v-else-if="row.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-xs font-bold border border-emerald-200">
+                        <span>🎁</span> Gratis
+                    </span>
+                    <span v-else-if="row.package" class="inline-flex px-2 py-1 bg-purple-50 text-purple-600 rounded-md text-xs font-medium border border-purple-100">
                         {{ row.package.name }}
                     </span>
                     <span v-else class="text-xs text-gray-400 italic">-</span>
@@ -250,9 +256,15 @@
                                     <p v-else class="text-sm text-gray-500">-</p>
                                 </div>
                                 <div class="space-y-1">
-                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Paket Langganan</p>
+                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Paket / Layanan</p>
                                     <p class="text-sm text-gray-900 font-medium">
-                                        <span class="inline-flex px-2 py-1 bg-purple-500/20 text-purple-400 rounded-md border border-purple-500/30">
+                                        <span v-if="selectedCustomer.service_status === 'free_home'" class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/20 text-amber-700 rounded-md border border-amber-500/30 font-bold">
+                                            <span>🏠</span> Free Home (Voucher Rumahan)
+                                        </span>
+                                        <span v-else-if="selectedCustomer.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500/20 text-emerald-700 rounded-md border border-emerald-500/30 font-bold">
+                                            <span>🎁</span> Gratis (Non-Invoice)
+                                        </span>
+                                        <span v-else class="inline-flex px-2 py-1 bg-purple-500/20 text-purple-600 rounded-md border border-purple-500/30">
                                             {{ selectedCustomer.package?.name || 'Belum dipilih' }}
                                         </span>
                                     </p>

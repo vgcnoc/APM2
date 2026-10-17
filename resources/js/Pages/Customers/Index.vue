@@ -209,6 +209,9 @@
                     <Link v-can="'menu_customers_gratis'" href="/customers/gratis" class="px-3 py-2 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-1.5 shadow-sm">
                         <span>🎁</span> Pelanggan Gratis
                     </Link>
+                    <Link v-can="'menu_customers_free_home'" href="/customers/free-home" class="px-3 py-2 rounded-lg text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors flex items-center gap-1.5 shadow-sm">
+                        <span>🏠</span> Pelanggan Free Home
+                    </Link>
                     <Link v-can="'customers_all_create'" href="/customers/create" class="btn-primary">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -263,7 +266,13 @@
                     <span v-else class="px-2 py-1 bg-gray-50 text-gray-500 border border-gray-100 rounded text-[10px] font-bold whitespace-nowrap uppercase">{{ row.area || '-' }}</span>
                 </td>
                 <td>
-                    <div v-if="row.package" class="flex items-center gap-1.5 text-blue-500 text-xs font-bold whitespace-nowrap">
+                    <span v-if="row.service_status === 'free_home'" class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold whitespace-nowrap">
+                        <span>🏠</span> Free Home
+                    </span>
+                    <span v-else-if="row.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold whitespace-nowrap">
+                        <span>🎁</span> Gratis
+                    </span>
+                    <div v-else-if="row.package" class="flex items-center gap-1.5 text-blue-500 text-xs font-bold whitespace-nowrap">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
                         {{ row.package.name }}
                     </div>

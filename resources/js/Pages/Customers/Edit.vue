@@ -167,26 +167,32 @@
                                 </div>
                                 
                                 <template v-else>
-                                    <div>
+                                    <!-- Pilih Paket Langganan (Ditiadakan jika Free Home) -->
+                                    <div v-if="form.service_status !== 'free_home'">
                                         <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Pilih Paket Langganan <span class="text-red-500">*</span></label>
-                                        <select v-model="form.package_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all" required>
+                                        <select v-model="form.package_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all" :required="form.service_status !== 'free_home'">
                                             <option value="">-- Pilih Paket Langganan --</option>
                                             <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
                                                 {{ pkg.name }} - Rp {{ Number(pkg.price).toLocaleString('id-ID') }}
                                             </option>
                                         </select>
                                     </div>
-                                    <div>
+                                    <div :class="form.service_status === 'free_home' ? 'md:col-span-2' : ''">
                                         <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Status Layanan <span class="text-red-500">*</span></label>
                                         <select 
                                             v-model="form.service_status" 
                                             :disabled="isAffiliateAccount"
                                             class="w-full px-4 py-2.5 border rounded-lg text-sm font-semibold transition-all disabled:bg-gray-100 disabled:text-gray-600 disabled:cursor-not-allowed" 
-                                            :class="form.service_status === 'gratis' ? 'bg-emerald-50 border-emerald-300 text-emerald-800 focus:ring-emerald-500' : 'bg-gray-50 border-gray-200 text-gray-800 focus:ring-yellow-500'" 
+                                            :class="{
+                                                'bg-emerald-50 border-emerald-300 text-emerald-800 focus:ring-emerald-500': form.service_status === 'gratis',
+                                                'bg-amber-50 border-amber-300 text-amber-900 focus:ring-amber-500': form.service_status === 'free_home',
+                                                'bg-gray-50 border-gray-200 text-gray-800 focus:ring-yellow-500': form.service_status === 'berbayar'
+                                            }" 
                                             required
                                         >
                                             <option value="berbayar">💳 Berbayar (Dikenakan Tagihan Bulanan)</option>
                                             <option v-if="!isAffiliateAccount" value="gratis">🎁 Gratis (Bebas Tagihan / Non-Invoice)</option>
+                                            <option v-if="!isAffiliateAccount" value="free_home">🏠 Free Home (Voucher Rumahan ONT - Bebas Tagihan)</option>
                                         </select>
                                     </div>
                                     
@@ -205,18 +211,35 @@
                                             </p>
                                         </div>
                                     </div>
+
+                                    <!-- Smart Banner Pelanggan Free Home -->
+                                    <div v-if="form.service_status === 'free_home' && !isAffiliateAccount" class="md:col-span-2 p-3.5 bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 border border-amber-200 rounded-xl flex items-start gap-3 shadow-sm animate-fade-in">
+                                        <div class="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm text-sm">
+                                            🏠
+                                        </div>
+                                        <div class="text-xs">
+                                            <p class="font-bold text-amber-900 flex items-center gap-1.5">
+                                                Mode Layanan Free Home Aktif (Voucher Rumahan ONT)
+                                                <span class="text-[9px] px-2 py-0.5 rounded-full bg-amber-200/85 text-amber-950 font-extrabold uppercase tracking-wide">Tanpa Paket & Bebas Tagihan</span>
+                                            </p>
+                                            <p class="text-amber-800 mt-0.5 leading-relaxed">
+                                                Pelanggan menggunakan perangkat ONT di rumah khusus untuk voucher hotspot agar koneksi stabil. <strong>Paket langganan ditiadakan, tarif bulanan Rp 0, dan bebas biaya invoice</strong>. Jika ingin beralih ke langganan bulanan berbayar, cukup ubah status ke <strong>Berbayar</strong> lalu pilih paket langganan.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </template>
 
                                 <div>
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center justify-between">
                                         <span>Tarif Bulanan (Rp) <span class="text-red-500">*</span></span>
-                                        <span v-if="form.service_status === 'gratis' && !isAffiliateAccount" class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Otomatis Rp 0</span>
+                                        <span v-if="form.service_status === 'gratis' && !isAffiliateAccount" class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Otomatis Rp 0 (Gratis)</span>
+                                        <span v-else-if="form.service_status === 'free_home' && !isAffiliateAccount" class="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded">Otomatis Rp 0 (Free Home)</span>
                                     </label>
                                     <div class="relative">
                                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                             <span class="text-gray-500 text-sm font-semibold">Rp</span>
                                         </div>
-                                        <input v-model="form.base_amount" type="number" :disabled="form.service_status === 'gratis' && !isAffiliateAccount" class="w-full pl-11 pr-4 py-2.5 border rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:border-transparent transition-all font-mono font-medium disabled:bg-emerald-50/70 disabled:text-emerald-800 disabled:font-bold disabled:border-emerald-300 disabled:cursor-not-allowed" :class="form.service_status === 'gratis' ? 'focus:ring-emerald-500' : 'bg-gray-50 border-gray-200 focus:ring-yellow-500'" required />
+                                        <input v-model="form.base_amount" type="number" :disabled="(form.service_status === 'gratis' || form.service_status === 'free_home') && !isAffiliateAccount" class="w-full pl-11 pr-4 py-2.5 border rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:border-transparent transition-all font-mono font-medium disabled:bg-gray-100 disabled:text-gray-600 disabled:font-bold disabled:border-gray-200 disabled:cursor-not-allowed" :class="form.service_status === 'gratis' ? 'focus:ring-emerald-500' : (form.service_status === 'free_home' ? 'focus:ring-amber-500' : 'bg-gray-50 border-gray-200 focus:ring-yellow-500')" required />
                                     </div>
                                 </div>
                                 
@@ -561,6 +584,9 @@ watch(registration_type, (type) => {
 watch(() => form.service_status, (newStatus) => {
     if (newStatus === 'gratis') {
         form.base_amount = 0;
+    } else if (newStatus === 'free_home') {
+        form.package_id = '';
+        form.base_amount = 0;
     } else {
         const pkg = props.packages.find(p => p.id === form.package_id);
         if (pkg) {
@@ -573,7 +599,7 @@ watch(() => form.service_status, (newStatus) => {
 
 watch(() => form.package_id, (newId) => {
     if (registration_type.value === 'reseller') return;
-    if (form.service_status === 'gratis') {
+    if (form.service_status === 'gratis' || form.service_status === 'free_home') {
         form.base_amount = 0;
         return;
     }

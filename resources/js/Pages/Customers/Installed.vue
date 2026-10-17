@@ -115,7 +115,13 @@
                     </div>
                 </td>
                 <td>
-                    <span class="text-xs text-cyan-400 font-medium">{{ row.package?.name || '-' }}</span>
+                    <span v-if="row.service_status === 'free_home'" class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold whitespace-nowrap">
+                        <span>🏠</span> Free Home
+                    </span>
+                    <span v-else-if="row.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold whitespace-nowrap">
+                        <span>🎁</span> Gratis
+                    </span>
+                    <span v-else class="text-xs text-cyan-400 font-medium">{{ row.package?.name || '-' }}</span>
                 </td>
                 <td>
                     <StatusBadge :status="getCustomerProgressStatus(row)" />
@@ -239,9 +245,15 @@
                                             </p>
                                         </div>
                                         <div class="space-y-1">
-                                            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Paket Langganan</p>
+                                            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Paket / Layanan</p>
                                             <p class="text-sm text-gray-900 font-medium">
-                                                <span class="inline-flex px-2 py-1 bg-purple-500/20 text-purple-500 rounded-md border border-purple-500/30">
+                                                <span v-if="detailCustomer.service_status === 'free_home'" class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/20 text-amber-700 rounded-md border border-amber-500/30 font-bold">
+                                                    <span>🏠</span> Free Home
+                                                </span>
+                                                <span v-else-if="detailCustomer.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500/20 text-emerald-700 rounded-md border border-emerald-500/30 font-bold">
+                                                    <span>🎁</span> Gratis
+                                                </span>
+                                                <span v-else class="inline-flex px-2 py-1 bg-purple-500/20 text-purple-500 rounded-md border border-purple-500/30">
                                                     {{ detailCustomer.package?.name || 'Belum dipilih' }}
                                                 </span>
                                             </p>

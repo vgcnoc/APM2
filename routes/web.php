@@ -115,6 +115,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/activation', [CustomerController::class, 'activation'])->name('activation');
         Route::get('/active', [CustomerController::class, 'active'])->name('active');
         Route::get('/gratis', [CustomerController::class, 'gratis'])->name('gratis');
+        Route::get('/free-home', [CustomerController::class, 'freeHome'])->name('free-home');
         Route::post('/{customer}/toggle-service-status', [CustomerController::class, 'toggleServiceStatus'])->name('toggle-service-status');
         Route::get('/isolir', [CustomerController::class, 'isolir'])->name('isolir');
         Route::get('/online', [CustomerController::class, 'online'])->name('online');

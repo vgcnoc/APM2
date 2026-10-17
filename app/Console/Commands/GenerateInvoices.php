@@ -68,8 +68,8 @@ class GenerateInvoices extends Command
                 }
             }
 
-            // Pelanggan gratis tidak boleh diterbitkan invoice tagihan
-            if ($customer->service_status === 'gratis') {
+            // Pelanggan gratis dan free home tidak boleh diterbitkan invoice tagihan
+            if (in_array($customer->service_status, ['gratis', 'free_home'])) {
                 continue;
             }
 

@@ -334,7 +334,7 @@ class Customer extends Model
                 }
             }
 
-            if ($customer->sales_id && $customer->service_status !== 'gratis') {
+            if ($customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
                 try {
                     \App\Services\AffiliateService::recordBookingCommission($customer);
                 } catch (\Throwable $e) {
@@ -344,7 +344,7 @@ class Customer extends Model
         });
 
         static::updated(function (Customer $customer) {
-            if ($customer->wasChanged('sales_id') && $customer->sales_id && $customer->service_status !== 'gratis') {
+            if ($customer->wasChanged('sales_id') && $customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
                 try {
                     \App\Services\AffiliateService::recordBookingCommission($customer);
                 } catch (\Throwable $e) {

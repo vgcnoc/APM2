@@ -411,12 +411,88 @@ class CustomerController extends Controller
     }
 
     /**
-     * Beralih Status Layanan (Gratis <-> Berbayar)
+     * Menu Khusus Data Pelanggan Free Home (Voucher Rumahan ONT)
+     */
+    public function freeHome(Request $request): Response
+    {
+        $baseQuery = Customer::query()
+            ->where('service_status', 'free_home')
+            ->where('status', '!=', 'terminated')
+            ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
+                if (auth()->user()->can('customers_all_view_area')) {
+                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                } else {
+                    $q->where('sales_id', auth()->id());
+                }
+            });
+
+        // Online sessions dari RADIUS (jika ada mac/ip voucher aktif atau pppoe)
+        $onlineUsernames = (function() {
+            try {
+                return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
+            } catch (\Exception $e) {
+                return [];
+            }
+        })();
+
+        // Statistik Ringkasan Cerdas Free Home
+        $totalFreeHome = (clone $baseQuery)->count();
+        $activeFreeHome = (clone $baseQuery)->where('status', 'active')->count();
+        $installedOnt = (clone $baseQuery)->has('ont')->count();
+        $withOdp = (clone $baseQuery)->whereHas('ont', fn($q) => $q->whereNotNull('odp_id'))->count();
+        $onlineFreeHome = (clone $baseQuery)->whereHas('ont', fn($q) => $q->whereIn('pppoe_user', $onlineUsernames))->count();
+
+        // Data Pelanggan Free Home dengan filter & pagination
+        $customers = (clone $baseQuery)
+            ->with(['ont.odp.odc.olt', 'areaModel', 'user', 'sales'])
+            ->when($request->filled('search'), function($q) use ($request) {
+                $search = trim($request->search);
+                $q->where(function($sq) use ($search) {
+                    $sq->where('name', 'like', "%{$search}%")
+                       ->orWhere('customer_code', 'like', "%{$search}%")
+                       ->orWhere('phone', 'like', "%{$search}%")
+                       ->orWhere('address', 'like', "%{$search}%")
+                       ->orWhereHas('ont', fn($oq) => $oq->where('sn', 'like', "%{$search}%")->orWhere('model', 'like', "%{$search}%"));
+                });
+            })
+            ->when($request->filled('area_id'), function ($q) use ($request) {
+                $areaId = $request->area_id;
+                $q->where(function ($sub) use ($areaId) {
+                    $sub->where('area_id', $areaId);
+                    $areaName = \App\Models\Area::where('id', $areaId)->value('name');
+                    if ($areaName) $sub->orWhere('area', $areaName);
+                });
+            })
+            ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
+            ->latest('id')
+            ->paginate($request->per_page ?? 12)
+            ->withQueryString();
+
+        return Inertia::render('Customers/FreeHome', [
+            'customers' => $customers,
+            'packages' => InternetPackage::active()->get(['id', 'name', 'speed_mbps', 'price']),
+            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'filters' => $request->only(['search', 'area_id', 'status']),
+            'onlineUsernames' => $onlineUsernames,
+            'stats' => [
+                'total' => $totalFreeHome,
+                'active' => $activeFreeHome,
+                'installed_ont' => $installedOnt,
+                'with_odp' => $withOdp,
+                'online' => $onlineFreeHome,
+            ],
+        ]);
+    }
+
+    /**
+     * Beralih Status Layanan (Berbayar <-> Gratis <-> Free Home)
      */
     public function toggleServiceStatus(Request $request, Customer $customer): RedirectResponse
     {
         $validated = $request->validate([
-            'service_status' => 'required|in:berbayar,gratis',
+            'service_status' => 'required|in:berbayar,gratis,free_home',
+            'package_id' => 'nullable|exists:internet_packages,id',
+            'base_amount' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
         ]);
 
@@ -434,13 +510,35 @@ class CustomerController extends Controller
                 \App\Models\Invoice::where('customer_id', $customer->id)
                     ->whereIn('status', ['unpaid', 'partial'])
                     ->delete();
+            } elseif ($newStatus === 'free_home') {
+                $updateData['base_amount'] = 0;
+                $updateData['package_id'] = null;
+                // Bersihkan tagihan berjalan yang belum lunas jika diubah ke free home
+                \App\Models\Invoice::where('customer_id', $customer->id)
+                    ->whereIn('status', ['unpaid', 'partial'])
+                    ->delete();
             } else {
-                // Jika kembali berbayar, gunakan tarif paket
-                $updateData['base_amount'] = $customer->package?->price ?? 0;
+                // Berbayar: jika ada paket dipilih
+                if (!empty($validated['package_id'])) {
+                    $pkg = InternetPackage::find($validated['package_id']);
+                    $updateData['package_id'] = $pkg?->id;
+                    $updateData['base_amount'] = !empty($validated['base_amount']) && $validated['base_amount'] > 0 
+                        ? $validated['base_amount'] 
+                        : ($pkg?->price ?? 0);
+                } else {
+                    $updateData['base_amount'] = !empty($validated['base_amount']) && $validated['base_amount'] > 0 
+                        ? $validated['base_amount'] 
+                        : ($customer->package?->price ?? 0);
+                }
             }
 
             if (!empty($validated['notes'])) {
-                $updateData['notes'] = ($customer->notes ? $customer->notes . "\n" : '') . "[" . now()->format('d/m/Y H:i') . "] Status layanan diubah ke " . ucfirst($newStatus) . ": " . $validated['notes'];
+                $statusLabel = match($newStatus) {
+                    'free_home' => 'Free Home (Voucher Rumahan ONT)',
+                    'gratis' => 'Gratis (Non-Invoice)',
+                    default => 'Berbayar'
+                };
+                $updateData['notes'] = ($customer->notes ? $customer->notes . "\n" : '') . "[" . now()->format('d/m/Y H:i') . "] Status layanan diubah ke {$statusLabel}: " . $validated['notes'];
             }
 
             $customer->update($updateData);
@@ -448,9 +546,11 @@ class CustomerController extends Controller
             \App\Models\AuditLog::createLog('Update Service Status', $customer, ['service_status' => $oldStatus], ['service_status' => $newStatus], 'Mengubah status layanan ke ' . ucfirst($newStatus));
         });
 
-        $msg = $newStatus === 'gratis' 
-            ? "Pelanggan {$customer->name} berhasil diubah menjadi Pelanggan Gratis (Bebas Tagihan)."
-            : "Pelanggan {$customer->name} berhasil diubah menjadi Pelanggan Berbayar.";
+        $msg = match($newStatus) {
+            'free_home' => "Pelanggan {$customer->name} berhasil diubah menjadi Layanan Free Home (Voucher Rumahan ONT).",
+            'gratis' => "Pelanggan {$customer->name} berhasil diubah menjadi Pelanggan Gratis (Bebas Tagihan).",
+            default => "Pelanggan {$customer->name} berhasil diubah menjadi Pelanggan Berbayar."
+        };
 
         return back()->with('success', $msg);
     }
@@ -1363,7 +1463,7 @@ class CustomerController extends Controller
             'referral_code' => 'nullable|string|max:50',
             'billing_type' => 'nullable|in:prabayar,pascabayar',
             'is_reseller' => 'boolean',
-            'service_status' => 'nullable|in:berbayar,gratis',
+            'service_status' => 'nullable|in:berbayar,gratis,free_home',
         ]);
 
         if (empty($validated['sales_id'])) {
@@ -1385,13 +1485,17 @@ class CustomerController extends Controller
             || \App\Models\AffiliateProfile::where('user_id', auth()->id())->exists()
             || (!auth()->user()->hasRole('admin') && auth()->user()->role !== 'admin' && auth()->user()->role !== 'super-admin');
 
-        // Khusus booking dari akun affiliate, dilarang keras status gratis (wajib berbayar)
+        // Khusus booking dari akun affiliate, dilarang keras status gratis / free home (wajib berbayar)
         if ($isAffiliate) {
             $validated['service_status'] = 'berbayar';
         }
 
-        if (($validated['service_status'] ?? 'berbayar') === 'gratis') {
+        $serviceStatus = $validated['service_status'] ?? 'berbayar';
+        if ($serviceStatus === 'gratis') {
             $validated['base_amount'] = 0;
+        } elseif ($serviceStatus === 'free_home') {
+            $validated['base_amount'] = 0;
+            $validated['package_id'] = null;
         }
 
         $validated['status'] = 'booking'; // Ensure it goes to booking
@@ -1594,7 +1698,7 @@ class CustomerController extends Controller
             'referral_code' => 'nullable|string|max:50',
             'billing_type' => 'nullable|in:prabayar,pascabayar',
             'is_reseller' => 'boolean',
-            'service_status' => 'nullable|in:berbayar,gratis',
+            'service_status' => 'nullable|in:berbayar,gratis,free_home',
             'enable_tax' => 'nullable|boolean',
             'tax_ppn' => 'nullable|numeric|min:0|max:100',
             'tax_bhp' => 'nullable|numeric|min:0|max:100',
@@ -1635,11 +1739,23 @@ class CustomerController extends Controller
             $validated['service_status'] = 'berbayar';
         }
 
-        if (($validated['service_status'] ?? $customer->service_status) === 'gratis') {
+        $targetServiceStatus = $validated['service_status'] ?? $customer->service_status;
+        if (in_array($targetServiceStatus, ['gratis', 'free_home'])) {
             $validated['base_amount'] = 0;
+            if ($targetServiceStatus === 'free_home') {
+                $validated['package_id'] = null;
+            }
             \App\Models\Invoice::where('customer_id', $customer->id)
                 ->whereIn('status', ['unpaid', 'partial'])
                 ->delete();
+        } else {
+            // Berbayar: jika sebelumnya free_home dan sekarang berpindah ke berbayar dengan paket
+            if ($customer->service_status === 'free_home' && !empty($validated['package_id'])) {
+                $pkg = InternetPackage::find($validated['package_id']);
+                if (empty($validated['base_amount']) || $validated['base_amount'] == 0) {
+                    $validated['base_amount'] = $pkg?->price ?? 0;
+                }
+            }
         }
 
         DB::transaction(function () use ($customer, $validated) {
@@ -2273,7 +2389,7 @@ class CustomerController extends Controller
             'activation_date' => 'required|date',
             'billing_type' => 'nullable|in:prabayar,pascabayar',
             'is_prorata' => 'nullable|boolean',
-            'service_status' => 'nullable|in:berbayar,gratis',
+            'service_status' => 'nullable|in:berbayar,gratis,free_home',
             'pppoe_user' => 'nullable|string',
             'pppoe_password' => 'nullable|string',
             'vlan_mode' => 'nullable|string',
@@ -2405,8 +2521,8 @@ class CustomerController extends Controller
                     $dueDateTime->setTime((int)$timeParts[0], (int)$timeParts[1], 0);
                 }
 
-                // JANGAN BUAT INVOICE APAPUN JIKA PELANGGAN GRATIS
-                if ($serviceStatus !== 'gratis') {
+                // JANGAN BUAT INVOICE APAPUN JIKA PELANGGAN GRATIS ATAU FREE HOME
+                if (!in_array($serviceStatus, ['gratis', 'free_home'])) {
                     if ($taxPpn > 0) {
                         $amount = $amount + ($amount * ($taxPpn / 100));
                     }
@@ -2426,7 +2542,7 @@ class CustomerController extends Controller
                 }
 
                 // Fee Market/Booking for Sales (Otomatis deteksi Karyawan -> Insentif Payroll atau Mitra Luar -> Saldo Afiliasi)
-                if ($customer->sales_id && $customer->service_status !== 'gratis') {
+                if ($customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
                     try {
                         \App\Services\AffiliateService::recordBookingCommission($customer);
                     } catch (\Throwable $e) {
@@ -2454,10 +2570,13 @@ class CustomerController extends Controller
                 }
             });
 
-            try {
-                app(\App\Services\RadiusService::class)->syncCustomer($customer);
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('[RADIUS] Activation sync error: ' . $e->getMessage());
+            // Sinkronisasi RADIUS PPPoE (dilewati jika mode free_home voucher ONT)
+            if ($customer->service_status !== 'free_home') {
+                try {
+                    app(\App\Services\RadiusService::class)->syncCustomer($customer);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[RADIUS] Activation sync error: ' . $e->getMessage());
+                }
             }
 
             // Hitung dan catat Bonus Target Market jika ada program aktif

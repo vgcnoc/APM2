@@ -160,15 +160,15 @@
                                     Status Layanan Pelanggan <span class="text-red-500">*</span>
                                 </span>
                             </label>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                                 <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', activationForm.service_status === 'berbayar' ? 'border-purple-600 bg-purple-50/50 ring-1 ring-purple-600' : 'border-gray-200 bg-white hover:border-gray-300']">
                                     <div class="flex items-center gap-2">
-                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center', activationForm.service_status === 'berbayar' ? 'border-purple-600 bg-purple-600' : 'border-gray-300']">
+                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', activationForm.service_status === 'berbayar' ? 'border-purple-600 bg-purple-600' : 'border-gray-300']">
                                             <div v-if="activationForm.service_status === 'berbayar'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
                                         </div>
                                         <div>
                                             <span class="text-xs font-bold text-gray-900 block">Berbayar</span>
-                                            <span class="text-[10px] text-gray-500">Dikenakan tarif paket</span>
+                                            <span class="text-[10px] text-gray-500">Tarif bulanan</span>
                                         </div>
                                     </div>
                                     <input type="radio" value="berbayar" v-model="activationForm.service_status" class="sr-only">
@@ -176,21 +176,34 @@
                                 
                                 <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', activationForm.service_status === 'gratis' ? 'border-purple-600 bg-purple-50/50 ring-1 ring-purple-600' : 'border-gray-200 bg-white hover:border-gray-300']">
                                     <div class="flex items-center gap-2">
-                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center', activationForm.service_status === 'gratis' ? 'border-purple-600 bg-purple-600' : 'border-gray-300']">
+                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', activationForm.service_status === 'gratis' ? 'border-purple-600 bg-purple-600' : 'border-gray-300']">
                                             <div v-if="activationForm.service_status === 'gratis'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
                                         </div>
                                         <div>
                                             <span class="text-xs font-bold text-gray-900 block">Gratis (Rp 0)</span>
-                                            <span class="text-[10px] text-gray-500">Bebas biaya langganan</span>
+                                            <span class="text-[10px] text-gray-500">Non-invoice</span>
                                         </div>
                                     </div>
                                     <input type="radio" value="gratis" v-model="activationForm.service_status" class="sr-only">
                                 </label>
+
+                                <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', activationForm.service_status === 'free_home' ? 'border-amber-600 bg-amber-50/60 ring-1 ring-amber-600' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <div class="flex items-center gap-2">
+                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', activationForm.service_status === 'free_home' ? 'border-amber-600 bg-amber-600' : 'border-gray-300']">
+                                            <div v-if="activationForm.service_status === 'free_home'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs font-bold text-gray-900 block">Free Home</span>
+                                            <span class="text-[10px] text-amber-700 font-semibold">Voucher ONT</span>
+                                        </div>
+                                    </div>
+                                    <input type="radio" value="free_home" v-model="activationForm.service_status" class="sr-only">
+                                </label>
                             </div>
                         </div>
 
-                        <!-- Siklus Penagihan Invoice -->
-                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                        <!-- Siklus Penagihan Invoice (Ditiadakan jika Free Home) -->
+                        <div v-if="activationForm.service_status !== 'free_home'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
                             <div class="flex items-center justify-between">
                                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
                                     <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
@@ -244,13 +257,27 @@
                             </div>
                         </div>
 
+                        <!-- Banner Khusus Free Home Tanpa Tagihan & Siklus Invoice -->
+                        <div v-if="activationForm.service_status === 'free_home'" class="p-4 bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 border border-amber-200 rounded-xl space-y-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">🏠</span>
+                                <div>
+                                    <h4 class="text-xs font-bold text-amber-950 uppercase tracking-wider">Aktivasi Mode Free Home (Voucher Rumahan ONT)</h4>
+                                    <p class="text-[11px] text-amber-800">Pelanggan tidak dikenakan tagihan aktivasi dan tidak membentuk invoice.</p>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-amber-900 leading-relaxed">
+                                Pelanggan menggunakan ONT di rumah khusus untuk koneksi voucher hotspot. Sistem tidak akan membuat invoice tagihan atau piutang bulanan.
+                            </p>
+                        </div>
+
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Aktivasi</label>
                             <input v-model="activationForm.activation_date" type="date" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" required />
                         </div>
 
-                        <!-- Simulasi Tagihan Invoice Pertama -->
-                        <div v-if="invoiceSimulation" class="bg-gradient-to-br from-slate-50 via-purple-50/40 to-slate-50 p-4 rounded-xl border border-purple-200/90 shadow-sm space-y-3">
+                        <!-- Simulasi Tagihan Invoice Pertama (Hanya Berbayar & Gratis) -->
+                        <div v-if="invoiceSimulation && activationForm.service_status !== 'free_home'" class="bg-gradient-to-br from-slate-50 via-purple-50/40 to-slate-50 p-4 rounded-xl border border-purple-200/90 shadow-sm space-y-3">
                             <div class="flex items-center justify-between border-b border-purple-100 pb-2.5">
                                 <div class="flex items-center gap-2">
                                     <div class="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center text-sm shadow-sm font-bold">
@@ -328,16 +355,29 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Username</label>
-                                <input v-model="activationForm.pppoe_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="user@isp" />
+                        <!-- Banner Bypass PPPoE & Hotspot Radius untuk Free Home -->
+                        <div v-if="activationForm.service_status === 'free_home'" class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                            <div class="flex items-center gap-2 text-slate-800">
+                                <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span class="text-xs font-bold text-slate-900 uppercase tracking-wider">PPPoE & Hotspot Radius Dilewati</span>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Password</label>
-                                <input v-model="activationForm.pppoe_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="***" />
-                            </div>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Karena pelanggan <strong>Free Home</strong> menggunakan voucher hotspot untuk akses internet melalui Wi-Fi ONT rumahan, <strong>akun PPPoE / secret Radius mikrotik tidak dibuat dan tidak disinkronisasi</strong>. ONT siap memancarkan sinyal Wi-Fi login voucher secara stabil.
+                            </p>
                         </div>
+
+                        <template v-else>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Username</label>
+                                    <input v-model="activationForm.pppoe_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="user@isp" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Password</label>
+                                    <input v-model="activationForm.pppoe_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="***" />
+                                </div>
+                            </div>
+                        </template>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -385,8 +425,8 @@
                             </div>
                         </div>
                         
-                        <!-- Hotspot Gratis -->
-                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                        <!-- Hotspot Gratis (Ditiadakan jika Free Home) -->
+                        <div v-if="activationForm.service_status !== 'free_home'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input type="checkbox" v-model="activationForm.free_hotspot" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 w-4 h-4">
                                 <span class="text-sm font-semibold text-gray-700">Berikan Gratis 1 User Hotspot</span>
@@ -407,8 +447,9 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- Pengaturan Pajak Pelanggan -->
-                        <div class="bg-white border rounded-xl p-4 shadow-sm space-y-3 transition-all"
+
+                        <!-- Pengaturan Pajak Pelanggan (Ditiadakan jika Free Home) -->
+                        <div v-if="activationForm.service_status !== 'free_home'" class="bg-white border rounded-xl p-4 shadow-sm space-y-3 transition-all"
                             :class="activationForm.enable_tax ? 'border-purple-200 ring-1 ring-purple-100 bg-purple-50/20' : 'border-gray-200 bg-gray-50/50'">
                             
                             <div class="flex items-center justify-between">
@@ -782,7 +823,7 @@ function openActivationModal(customer) {
     if (bType !== 'pascabayar') bType = 'prabayar';
     activationForm.billing_type = bType;
     activationForm.is_prorata = page.props.billingSettings?.prorata_first_month !== false;
-    activationForm.service_status = customer.service_status === 'gratis' ? 'gratis' : 'berbayar';
+    activationForm.service_status = customer.service_status === 'free_home' ? 'free_home' : (customer.service_status === 'gratis' ? 'gratis' : 'berbayar');
     activationForm.pppoe_user = customer.ont?.pppoe_user || '';
     activationForm.pppoe_password = customer.ont?.pppoe_password || '';
     activationForm.vlan_mode = customer.ont?.vlan_mode || '';

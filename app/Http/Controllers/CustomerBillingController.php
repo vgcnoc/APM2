@@ -28,7 +28,7 @@ class CustomerBillingController extends Controller
         // Helper untuk membangun query dengan filter area, desa, tanggal, dan search
         $buildFilteredQuery = function ($tabType) use ($request, $userAccessibleAreaIds) {
             $q = Invoice::where('is_reseller_balance', false)
-                ->whereHas('customer', fn($c) => $c->where('service_status', '!=', 'gratis'));
+                ->whereHas('customer', fn($c) => $c->whereNotIn('service_status', ['gratis', 'free_home']));
 
             if (!empty($userAccessibleAreaIds)) {
                 $q->whereHas('customer', fn($c) => $c->whereIn('area_id', $userAccessibleAreaIds));

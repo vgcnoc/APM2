@@ -198,11 +198,12 @@ const menuItems = [
         type: 'dropdown',
         icon: 'users',
         label: 'Data Pelanggan',
-        active: (url) => ['/customers', '/customers/gratis', '/customers/active', '/customers/isolir', '/customers/online', '/customers/offline', '/customers/terminated'].some(path => (url || '') === path || (url || '').startsWith(path + '?')),
-        permission: ['menu_customers_all', 'menu_customers_active', 'menu_customers_online', 'menu_customers_gratis', 'menu_customers_isolir', 'menu_customers_terminated'],
+        active: (url) => ['/customers', '/customers/gratis', '/customers/free-home', '/customers/active', '/customers/isolir', '/customers/online', '/customers/offline', '/customers/terminated'].some(path => (url || '') === path || (url || '').startsWith(path + '?')),
+        permission: ['menu_customers_all', 'menu_customers_active', 'menu_customers_online', 'menu_customers_gratis', 'menu_customers_free_home', 'menu_customers_isolir', 'menu_customers_terminated'],
         children: [
             { href: '/customers', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
             { href: '/customers/gratis', label: 'Pelanggan Gratis', active: (url) => (url || '').startsWith('/customers/gratis'), permission: ['menu_customers_gratis', 'menu_customers_all'] },
+            { href: '/customers/free-home', label: 'Pelanggan Free Home', active: (url) => (url || '').startsWith('/customers/free-home'), permission: ['menu_customers_free_home', 'menu_customers_all'] },
             { href: '/customers/active', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: ['menu_customers_active', 'menu_customers_all'] },
             { href: '/customers/isolir', label: 'Pelanggan Isolir', active: (url) => (url || '').startsWith('/customers/isolir'), permission: ['menu_customers_isolir', 'menu_customers_active', 'menu_customers_all'] },
             { href: '/customers/online', label: 'Status Online', active: (url) => (url || '').startsWith('/customers/online'), permission: ['menu_customers_online', 'menu_customers_all'] },
@@ -217,6 +218,14 @@ const menuItems = [
         label: 'Pelanggan Gratis', 
         active: (url) => (url || '').startsWith('/customers/gratis'), 
         permission: ['menu_customers_gratis', 'menu_customers_all'] 
+    },
+    { 
+        type: 'link', 
+        href: '/customers/free-home', 
+        icon: 'home', 
+        label: 'Pelanggan Free Home', 
+        active: (url) => (url || '').startsWith('/customers/free-home'), 
+        permission: ['menu_customers_free_home', 'menu_customers_all'] 
     },
     {
         type: 'link',
@@ -670,6 +679,7 @@ const iconPaths = {
     gift: 'M12 8v13m0-13V4.5a2.5 2.5 0 115 0v3.5m-5 0V4.5a2.5 2.5 0 10-5 0v3.5m-5 0h20a1 1 0 011 1v3a1 1 0 01-1 1H2a1 1 0 01-1-1V9a1 1 0 011-1zm1 5v7a2 2 0 002 2h14a2 2 0 002-2v-7',
     sparkles: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.286L13 21l-2.286-6.857L5 12l5.714-2.286L13 3z',
     'presentation-chart-line': 'M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z',
-    'desktop-computer': 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
+    'desktop-computer': 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
+    home: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'
 };
 </script>

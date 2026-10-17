@@ -26,8 +26,8 @@
                             <InfoRow icon="📞" label="Telepon" :value="customer.phone" />
                             <InfoRow icon="📧" label="Email" :value="customer.email || '-'" />
                             <InfoRow icon="📍" label="Alamat" :value="customer.address" />
-                            <InfoRow icon="📦" label="Paket" :value="customer.package?.name || 'Belum pilih'" />
-                            <InfoRow icon="💳" label="Layanan" :value="customer.service_status === 'gratis' ? 'Gratis' : 'Berbayar'" />
+                            <InfoRow icon="📦" label="Paket" :value="customer.service_status === 'free_home' ? 'Free Home (Voucher Rumahan)' : (customer.package?.name || 'Belum pilih')" />
+                            <InfoRow icon="💳" label="Layanan" :value="customer.service_status === 'free_home' ? 'Free Home (Rp 0)' : (customer.service_status === 'gratis' ? 'Gratis (Rp 0)' : 'Berbayar')" />
                             <div class="pt-3 mt-3 border-t border-slate-200 space-y-3">
                                 <InfoRow icon="📅" label="Registrasi" :value="formatDate(customer.registration_date)" />
                                 <InfoRow icon="✅" label="Aktivasi" :value="formatDate(customer.activation_date) || '-'" />
@@ -825,37 +825,61 @@
                                     Status Layanan Pelanggan <span class="text-red-500">*</span>
                                 </span>
                             </label>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                                 <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', activationForm.service_status === 'berbayar' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500' : 'border-gray-200 bg-white hover:border-gray-300']">
                                     <div class="flex items-center gap-2">
-                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center', activationForm.service_status === 'berbayar' ? 'border-amber-500 bg-amber-500' : 'border-gray-300']">
+                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', activationForm.service_status === 'berbayar' ? 'border-amber-500 bg-amber-500' : 'border-gray-300']">
                                             <div v-if="activationForm.service_status === 'berbayar'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
                                         </div>
                                         <div>
                                             <span class="text-xs font-bold text-gray-900 block">Berbayar</span>
-                                            <span class="text-[10px] text-gray-500">Dikenakan tarif paket</span>
+                                            <span class="text-[10px] text-gray-500">Tarif paket rutin</span>
                                         </div>
                                     </div>
                                     <input type="radio" value="berbayar" v-model="activationForm.service_status" class="sr-only">
                                 </label>
                                 
-                                <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', activationForm.service_status === 'gratis' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', activationForm.service_status === 'gratis' ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500' : 'border-gray-200 bg-white hover:border-gray-300']">
                                     <div class="flex items-center gap-2">
-                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center', activationForm.service_status === 'gratis' ? 'border-amber-500 bg-amber-500' : 'border-gray-300']">
+                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', activationForm.service_status === 'gratis' ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300']">
                                             <div v-if="activationForm.service_status === 'gratis'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
                                         </div>
                                         <div>
-                                            <span class="text-xs font-bold text-gray-900 block">Gratis (Rp 0)</span>
-                                            <span class="text-[10px] text-gray-500">Bebas biaya langganan</span>
+                                            <span class="text-xs font-bold text-gray-900 block">🎁 Gratis</span>
+                                            <span class="text-[10px] text-gray-500">CSR / Fasilitas</span>
                                         </div>
                                     </div>
                                     <input type="radio" value="gratis" v-model="activationForm.service_status" class="sr-only">
                                 </label>
+
+                                <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', activationForm.service_status === 'free_home' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <div class="flex items-center gap-2">
+                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', activationForm.service_status === 'free_home' ? 'border-amber-500 bg-amber-500' : 'border-gray-300']">
+                                            <div v-if="activationForm.service_status === 'free_home'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs font-bold text-gray-900 block">🏠 Free Home</span>
+                                            <span class="text-[10px] text-gray-500">Voucher Rumahan</span>
+                                        </div>
+                                    </div>
+                                    <input type="radio" value="free_home" v-model="activationForm.service_status" class="sr-only">
+                                </label>
+                            </div>
+
+                            <!-- Banner Free Home Alert -->
+                            <div v-if="activationForm.service_status === 'free_home'" class="p-3 bg-amber-50/80 border border-amber-200 rounded-xl flex items-start gap-2.5 animate-fade-in text-xs text-amber-900">
+                                <span class="text-base shrink-0">🏠</span>
+                                <div class="leading-relaxed">
+                                    <p class="font-bold">Mode Pelanggan Free Home (Voucher Rumahan ONT)</p>
+                                    <p class="text-[11px] text-amber-700 mt-0.5">
+                                        Aktivasi ini <strong>tidak akan menerbitkan invoice billing apapun</strong> dan <strong>melewati sinkronisasi RADIUS PPPoE</strong>. Layanan menggunakan voucher ONT rumahan secara stabil.
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Siklus Penagihan Invoice -->
-                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                        <div v-if="activationForm.service_status !== 'free_home'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
                             <div class="flex items-center justify-between">
                                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
                                     <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
@@ -2283,7 +2307,7 @@ const activationForm = useForm({
     activation_date: new Date().toISOString().split('T')[0],
     billing_type: (props.customer?.billing_type === 'pascabayar' || (usePage().props.billingSettings?.billing_type === 'pascabayar' && !props.customer?.billing_type)) ? 'pascabayar' : 'prabayar',
     is_prorata: usePage().props.billingSettings?.prorata_first_month !== false,
-    service_status: props.customer?.service_status === 'gratis' ? 'gratis' : 'berbayar',
+    service_status: props.customer?.service_status || 'berbayar',
     enable_tax: initialTaxEnabled,
     pppoe_user: props.customer?.ont?.pppoe_user || '',
     pppoe_password: props.customer?.ont?.pppoe_password || '',
@@ -2314,6 +2338,7 @@ const invoiceSimulation = computed(() => {
     if (!cust) return null;
 
     const basePrice = Number(cust.base_amount || cust.package?.price || 0);
+    if (activationForm.service_status === 'free_home') return null;
     const isGratis = activationForm.service_status === 'gratis';
     const bType = activationForm.billing_type || 'prabayar';
     const isProrataChecked = bType === 'pascabayar' && Boolean(activationForm.is_prorata);

@@ -483,9 +483,15 @@
                                 </p>
                             </div>
                             <div class="space-y-1">
-                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Paket Langganan</p>
+                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Paket / Layanan</p>
                                 <p class="text-sm text-gray-900 font-medium">
-                                    <span class="inline-flex px-2 py-1 bg-purple-500/20 text-purple-500 rounded-md border border-purple-500/30">
+                                    <span v-if="selectedCustomer.service_status === 'free_home'" class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/20 text-amber-700 rounded-md border border-amber-500/30 font-bold">
+                                        <span>🏠</span> Free Home
+                                    </span>
+                                    <span v-else-if="selectedCustomer.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500/20 text-emerald-700 rounded-md border border-emerald-500/30 font-bold">
+                                        <span>🎁</span> Gratis
+                                    </span>
+                                    <span v-else class="inline-flex px-2 py-1 bg-purple-500/20 text-purple-500 rounded-md border border-purple-500/30">
                                         {{ selectedCustomer.package?.name || 'Belum dipilih' }}
                                     </span>
                                 </p>

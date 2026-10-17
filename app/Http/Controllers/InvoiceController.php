@@ -36,7 +36,7 @@ class InvoiceController extends Controller
         }, 'customer.areaModel', 'customer.package', 'customer.ont.odp', 'payments' => function($q) {
             $q->with('collector')->latest('payment_date');
         }])->where('is_reseller_balance', false)
-           ->whereHas('customer', fn($q) => $q->where('service_status', '!=', 'gratis'));
+           ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
 
         $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
         $userAreaIds = auth()->check() ? auth()->user()->getAccessibleAreaIds() : [];
@@ -110,7 +110,7 @@ class InvoiceController extends Controller
 
         // Get counts for tabs
         $baseQuery = Invoice::where('is_reseller_balance', false)
-            ->whereHas('customer', fn($q) => $q->where('service_status', '!=', 'gratis'));
+            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
         $scopedAreaFilter($baseQuery);
         
         $stats = [
