@@ -234,6 +234,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('network-radar', [\App\Http\Controllers\NetworkRadarController::class, 'index'])->name('network-radar.index');
     Route::post('network-radar/nearby', [\App\Http\Controllers\NetworkRadarController::class, 'nearby'])->name('network-radar.nearby');
 
+    Route::post('odcs/bulk-destroy', [OdcController::class, 'bulkDestroy'])->name('odcs.bulk-destroy');
     Route::resource('odcs', OdcController::class);
     Route::post('odcs/{odc}/update', [OdcController::class, 'update'])->name('odcs.update.post');
     Route::post('odcs/{odc}/delete', [OdcController::class, 'destroy'])->name('odcs.destroy.post');
