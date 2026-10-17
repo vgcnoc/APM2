@@ -1800,13 +1800,52 @@ class DataMigrationService
             $firstCand = trim(explode('/', $targetOdpName)[0]);
             $odp = Odp::where('name', $firstCand)->first();
             if (!$odp) {
+                // 1. Resolve suitable ODC
+                $odc = null;
+                if ($areaId) {
+                    $odc = Odc::where('area_id', $areaId)->first();
+                }
+                if (!$odc) {
+                    // Try to match ODC by name hint (e.g. BTK / BK)
+                    $odc = Odc::where('name', 'like', '%BTK%')->orWhere('name', 'like', '%BK%')->first();
+                }
+                if (!$odc) {
+                    $odc = Odc::first();
+                }
+                if (!$odc) {
+                    $olt = Olt::first() ?? Olt::create([
+                        'name' => 'OLT-DEFAULT',
+                        'ip_address' => '192.168.1.1',
+                        'area_id' => $areaId,
+                        'total_pon_ports' => 16,
+                        'status' => 'active',
+                    ]);
+                    $odc = Odc::create([
+                        'name' => 'ODC-DEFAULT',
+                        'olt_id' => $olt->id,
+                        'area_id' => $areaId,
+                        'capacity' => 48,
+                        'splitter_ratio' => '1:4',
+                        'status' => 'active',
+                    ]);
+                }
+
                 $odp = Odp::create([
                     'name' => $firstCand,
-                    'area_id' => $areaId,
+                    'odc_id' => $odc ? $odc->id : null,
+                    'area_id' => $areaId ?: ($odc ? $odc->area_id : null),
                     'total_ports' => 8,
                     'used_ports' => 0,
                     'status' => 'active',
                 ]);
+
+                // Generate physical ports (1..8)
+                for ($p = 1; $p <= (int)$odp->total_ports; $p++) {
+                    OdpPort::firstOrCreate(
+                        ['odp_id' => $odp->id, 'port_number' => $p],
+                        ['status' => 'available']
+                    );
+                }
             }
             $odpId = $odp->id;
         }
