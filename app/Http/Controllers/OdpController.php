@@ -162,12 +162,95 @@ class OdpController extends Controller
                     'port_number' => null
                 ]);
             }
+            // Reset parent_odp_id jika ada ODP split anak
+            Odp::where('parent_odp_id', $odp->id)->update(['parent_odp_id' => null]);
             // Hapus port ODP jika ada
             $odp->ports()->delete();
+            // Hapus foto jika ada
+            if ($odp->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($odp->photo)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($odp->photo);
+            }
             $odp->delete();
         });
 
         return redirect()->route('odps.index')
             ->with('success', 'Data ODP berhasil dihapus.');
+    }
+
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        $isAll = $request->boolean('all', false);
+        $ids = $request->input('ids', []);
+
+        $query = Odp::query();
+
+        // Scope check per role if not admin
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_odp_view_all')) {
+            if (auth()->user()->can('network_odp_view_area')) {
+                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+            } else {
+                return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus data ODP.');
+            }
+        }
+
+        if (!empty($ids) && is_array($ids)) {
+            $query->whereIn('id', $ids);
+        } elseif (!$isAll) {
+            return redirect()->back()->with('error', 'Tidak ada data ODP yang dipilih untuk dihapus.');
+        }
+
+        // Jika hapus semua dengan filter
+        if ($isAll) {
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where('name', 'like', "%{$search}%");
+            }
+            if ($request->filled('area_id')) {
+                $query->where('area_id', $request->area_id);
+            }
+            if ($request->filled('odc_id')) {
+                $query->where('odc_id', $request->odc_id);
+            }
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+        }
+
+        $odps = $query->with('onts')->get();
+        $count = $odps->count();
+
+        if ($count === 0) {
+            return redirect()->back()->with('error', 'Tidak ada data ODP yang ditemukan untuk dihapus.');
+        }
+
+        DB::transaction(function () use ($odps) {
+            foreach ($odps as $odp) {
+                // Kembalikan ONT yang terhubung menjadi unassigned
+                foreach ($odp->onts as $ont) {
+                    $ont->update([
+                        'odp_id' => null, 
+                        'odp_port_id' => null,
+                        'status' => 'Belum Set/Baru Input',
+                        'port_number' => null
+                    ]);
+                }
+
+                // Reset parent_odp_id pada ODP anak (jika split)
+                Odp::where('parent_odp_id', $odp->id)->update(['parent_odp_id' => null]);
+
+                // Hapus port ODP jika ada
+                $odp->ports()->delete();
+
+                // Hapus foto jika ada
+                if ($odp->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($odp->photo)) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($odp->photo);
+                }
+
+                $odp->delete();
+            }
+        });
+
+        return redirect()->route('odps.index')
+            ->with('success', "Berhasil menghapus {$count} data ODP.");
     }
 }

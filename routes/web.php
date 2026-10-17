@@ -237,6 +237,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('odcs/{odc}/update', [OdcController::class, 'update'])->name('odcs.update.post');
     Route::post('odcs/{odc}/delete', [OdcController::class, 'destroy'])->name('odcs.destroy.post');
 
+    Route::post('odps/bulk-destroy', [OdpController::class, 'bulkDestroy'])->name('odps.bulk-destroy');
     Route::resource('odps', OdpController::class);
     Route::post('odps/{odp}/update', [OdpController::class, 'update'])->name('odps.update.post');
     Route::post('odps/{odp}/delete', [OdpController::class, 'destroy'])->name('odps.destroy.post');
