@@ -320,6 +320,121 @@ class DataMigrationService
     }
 
     /**
+     * Cari atau otomatis buat ODP baru jika belum ada di master data saat proses migrasi
+     */
+    public static function getOrCreateOdp(
+        string $rawOdpName,
+        ?int $areaId = null,
+        ?float $latitude = null,
+        ?float $longitude = null,
+        int $requiredPort = 1,
+        array &$runtimeOdpsCache = []
+    ): ?Odp {
+        $rawOdpName = trim($rawOdpName);
+        if ($rawOdpName === '' || $rawOdpName === '-') {
+            return null;
+        }
+
+        // Ambil kandidat pertama jika dipisah slash, koma, dsb
+        $candidates = preg_split('/\s*(\/|,|\||&|\batau\b|\bor\b)\s*/i', $rawOdpName);
+        $firstCand = trim($candidates[0] ?? $rawOdpName);
+        if (empty($firstCand) || $firstCand === '-') {
+            $firstCand = $rawOdpName;
+        }
+
+        $odpLower = strtolower($firstCand);
+        if (isset($runtimeOdpsCache[$odpLower])) {
+            $odp = Odp::find($runtimeOdpsCache[$odpLower]);
+            if ($odp) {
+                if ($requiredPort > (int)$odp->total_ports) {
+                    $newTotal = max($requiredPort, (int)$odp->total_ports);
+                    $odp->update(['total_ports' => $newTotal]);
+                    for ($p = 1; $p <= $newTotal; $p++) {
+                        OdpPort::firstOrCreate(['odp_id' => $odp->id, 'port_number' => $p], ['status' => 'available']);
+                    }
+                }
+                return $odp;
+            }
+        }
+
+        // Cek di DB eksisting
+        $odp = Odp::where('name', $firstCand)->first();
+        if (!$odp) {
+            $odp = Odp::whereRaw('LOWER(name) = ?', [$odpLower])->first();
+        }
+
+        if (!$odp) {
+            // Selesaikan ODC & OLT induk
+            $odc = null;
+            if ($areaId) {
+                $odc = Odc::where('area_id', $areaId)->first();
+            }
+            if (!$odc) {
+                $odc = Odc::where('name', 'like', '%BTK%')->orWhere('name', 'like', '%BK%')->first();
+            }
+            if (!$odc) {
+                $odc = Odc::first();
+            }
+            if (!$odc) {
+                $olt = Olt::first() ?? Olt::create([
+                    'name' => 'OLT-DEFAULT',
+                    'ip_address' => '192.168.1.1',
+                    'area_id' => $areaId,
+                    'total_pon_ports' => 16,
+                    'status' => 'active',
+                ]);
+                $odc = Odc::create([
+                    'name' => 'ODC-DEFAULT',
+                    'olt_id' => $olt->id,
+                    'area_id' => $areaId,
+                    'capacity' => 48,
+                    'splitter_ratio' => '1:4',
+                    'status' => 'active',
+                ]);
+            }
+
+            $totalPorts = 8;
+            if ($requiredPort > 16) {
+                $totalPorts = 24;
+            } elseif ($requiredPort > 8) {
+                $totalPorts = 16;
+            }
+
+            $odp = Odp::create([
+                'name' => $firstCand,
+                'odc_id' => $odc ? $odc->id : null,
+                'area_id' => $areaId ?: ($odc ? $odc->area_id : null),
+                'total_ports' => $totalPorts,
+                'used_ports' => 0,
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+                'status' => 'active',
+            ]);
+
+            // Buat port fisik 1..total_ports
+            for ($p = 1; $p <= (int)$odp->total_ports; $p++) {
+                OdpPort::firstOrCreate(
+                    ['odp_id' => $odp->id, 'port_number' => $p],
+                    ['status' => 'available']
+                );
+            }
+        } else {
+            if ($requiredPort > (int)$odp->total_ports) {
+                $odp->update(['total_ports' => $requiredPort]);
+            }
+            for ($p = 1; $p <= max((int)$odp->total_ports, $requiredPort); $p++) {
+                OdpPort::firstOrCreate(
+                    ['odp_id' => $odp->id, 'port_number' => $p],
+                    ['status' => 'available']
+                );
+            }
+        }
+
+        $runtimeOdpsCache[$odpLower] = $odp->id;
+        return $odp;
+    }
+
+    /**
      * Resolve Sales User ID with fuzzy matching, name typo tolerance, soundex/similar_text,
      * employee table fallback, and multi-field identification (email, phone, NIK, referral code).
      *
@@ -1673,11 +1788,7 @@ class DataMigrationService
                 $odpId = $odpObj->id;
                 $odpName = $odpObj->name;
             } else {
-                if (!empty($options['auto_create_odps'])) {
-                    $warnings[] = "ODP '{$rawOdpName}' belum terdaftar di master ODP; sistem akan otomatis membuatnya.";
-                } else {
-                    $warnings[] = "ODP '{$rawOdpName}' belum terdaftar di master data ODP. Kaitkan ODP akan dilewati.";
-                }
+                $warnings[] = "ODP '{$rawOdpName}' belum terdaftar di master data ODP; sistem akan otomatis membuat ODP baru, menghubungkan ke Area/ODC, dan menyiapkan port fisiknya saat migrasi.";
             }
         }
 
@@ -1812,13 +1923,20 @@ class DataMigrationService
 
         $areaName = trim($row['nama_area'] ?? '');
 
-        if (empty($oltName)) $errors[] = 'Nama OLT wajib diisi.';
-        if (empty($odcName)) $errors[] = 'Nama ODC wajib diisi.';
+        if (empty($oltName)) {
+            $oltName = 'OLT-DEFAULT';
+            $warnings[] = 'Nama OLT tidak diisi; sistem menggunakan OLT default.';
+        }
+        if (empty($odcName)) {
+            $odcName = 'ODC-DEFAULT';
+            $warnings[] = 'Nama ODC tidak diisi; sistem menggunakan ODC default.';
+        }
         if (empty($odpName)) $errors[] = 'Nama ODP wajib diisi.';
         if ($totalPorts < 1) $totalPorts = 8;
         // Nomor port bersifat opsional (bisa diisi nanti saat proses instalasi)
         if ($portNum > 0 && $portNum > $totalPorts) {
-            $errors[] = "Nomor port ({$portNum}) melebihi total port ODP ({$totalPorts}).";
+            $totalPorts = $portNum;
+            $warnings[] = "Nomor port ({$portNum}) melebihi total port ODP ({$rawTotalPorts}); total kapasitas port dinaikkan menjadi {$totalPorts}.";
         }
 
         $customerCode = trim($row['kode_pelanggan'] ?? '');
@@ -1886,12 +2004,15 @@ class DataMigrationService
             $feasibility = 'feasible';
         }
 
-        $odpName = $row['nama_odp'] ?? '';
+        $odpName = trim((string)($row['nama_odp'] ?? ''));
         $odpId = null;
         if (!empty($odpName)) {
             [$odpObj] = self::resolveOdpFlexible($odpName, $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache);
             if ($odpObj) {
                 $odpId = $odpObj->id;
+                $odpName = $odpObj->name;
+            } else {
+                $warnings[] = "ODP '{$odpName}' belum terdaftar di master ODP; sistem akan otomatis membuat ODP baru saat migrasi.";
             }
         }
         if ($feasibility === 'feasible' && empty($odpName)) {
@@ -1902,6 +2023,7 @@ class DataMigrationService
             'customer_id' => $customerId,
             'surveyor_id' => $surveyorId,
             'odp_id' => $odpId,
+            'odp_name' => $odpName ?: null,
             'port_number' => !empty($row['nomor_port']) ? (int)$row['nomor_port'] : null,
             'distance_meters' => !empty($row['jarak_meter']) ? (float)$row['jarak_meter'] : null,
             'feasibility' => $feasibility,
@@ -1921,17 +2043,18 @@ class DataMigrationService
         $sn = $row['sn_ont'] ?? '';
         if (empty($sn)) $errors[] = 'Serial Number ONT wajib diisi.';
 
-        $odpName = $row['nama_odp'] ?? '';
+        $odpName = trim((string)($row['nama_odp'] ?? ''));
         $odpId = null;
         if (!empty($odpName)) {
             [$odpObj] = self::resolveOdpFlexible($odpName, $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache);
             if ($odpObj) {
                 $odpId = $odpObj->id;
+                $odpName = $odpObj->name;
             } else {
-                $errors[] = "ODP '{$odpName}' tidak ditemukan.";
+                $warnings[] = "ODP '{$odpName}' belum terdaftar di master ODP; sistem akan otomatis membuat ODP baru saat migrasi.";
             }
         } else {
-            $errors[] = "Nama ODP wajib diisi.";
+            $warnings[] = "Nama ODP tidak diisi; penautan port ODP akan dilewati jika belum ada data.";
         }
 
         $portNum = (int) ($row['nomor_port_odp'] ?? 1);
@@ -1944,6 +2067,7 @@ class DataMigrationService
             'brand' => $row['merk_ont'] ?? 'ZTE',
             'model' => $row['tipe_model'] ?? 'F609',
             'odp_id' => $odpId,
+            'odp_name' => $odpName ?: null,
             'port_number' => $portNum,
             'rx_power' => $rxPower,
             'pppoe_user' => $row['username_pppoe'] ?? null,
@@ -2093,65 +2217,20 @@ class DataMigrationService
             }
         }
 
-        // Auto-create ODP if missing and auto_create_odps is enabled
+        // Auto-create ODP if missing or not yet in master data
         $odpId = $data['odp_id'] ?? null;
-        if (!$odpId && !empty($options['auto_create_odps']) && !empty($data['odp_name'])) {
-            $targetOdpName = trim((string)$data['odp_name']);
-            $firstCand = trim(explode('/', $targetOdpName)[0]);
-            $odpLower = strtolower($firstCand);
-            if (isset($runtimeOdpsCache[$odpLower])) {
-                $odpId = $runtimeOdpsCache[$odpLower];
-            } else {
-                $odp = Odp::where('name', $firstCand)->first();
-                if (!$odp) {
-                    // 1. Resolve suitable ODC
-                    $odc = null;
-                    if ($areaId) {
-                        $odc = Odc::where('area_id', $areaId)->first();
-                    }
-                    if (!$odc) {
-                        $odc = Odc::where('name', 'like', '%BTK%')->orWhere('name', 'like', '%BK%')->first();
-                    }
-                    if (!$odc) {
-                        $odc = Odc::first();
-                    }
-                    if (!$odc) {
-                        $olt = Olt::first() ?? Olt::create([
-                            'name' => 'OLT-DEFAULT',
-                            'ip_address' => '192.168.1.1',
-                            'area_id' => $areaId,
-                            'total_pon_ports' => 16,
-                            'status' => 'active',
-                        ]);
-                        $odc = Odc::create([
-                            'name' => 'ODC-DEFAULT',
-                            'olt_id' => $olt->id,
-                            'area_id' => $areaId,
-                            'capacity' => 48,
-                            'splitter_ratio' => '1:4',
-                            'status' => 'active',
-                        ]);
-                    }
-
-                    $odp = Odp::create([
-                        'name' => $firstCand,
-                        'odc_id' => $odc ? $odc->id : null,
-                        'area_id' => $areaId ?: ($odc ? $odc->area_id : null),
-                        'total_ports' => 8,
-                        'used_ports' => 0,
-                        'status' => 'active',
-                    ]);
-
-                    // Generate physical ports (1..8)
-                    for ($p = 1; $p <= (int)$odp->total_ports; $p++) {
-                        OdpPort::firstOrCreate(
-                            ['odp_id' => $odp->id, 'port_number' => $p],
-                            ['status' => 'available']
-                        );
-                    }
-                }
-                $odpId = $odp->id;
-                $runtimeOdpsCache[$odpLower] = $odpId;
+        if (!empty($data['odp_name'])) {
+            $reqPort = !empty($data['port_number']) ? (int)$data['port_number'] : 1;
+            $odpObj = self::getOrCreateOdp(
+                $data['odp_name'],
+                $areaId,
+                self::parseCoordinate($data['latitude'] ?? null, 'lat'),
+                self::parseCoordinate($data['longitude'] ?? null, 'lng'),
+                $reqPort,
+                $runtimeOdpsCache
+            );
+            if ($odpObj) {
+                $odpId = $odpObj->id;
             }
         }
 
@@ -2187,36 +2266,35 @@ class DataMigrationService
                 'identity_photo' => $identityPhoto ?: $existing->identity_photo,
                 'notes' => $data['notes'] ?: $existing->notes,
             ]);
-            return 'updated';
+            $targetCust = $existing;
+        } else {
+            $identityPhoto = $this->resolvePhotoPath($data['identity_photo'] ?? null, 'customers');
+
+            // Insert new
+            $customer = Customer::create([
+                'customer_code' => $customerCode,
+                'name' => $data['name'],
+                'phone' => substr($data['phone'], 0, 50),
+                'email' => $data['email'],
+                'area' => $data['area'],
+                'area_id' => $areaId,
+                'address' => $data['address'],
+                'package_id' => $data['package_id'],
+                'base_amount' => $data['base_amount'],
+                'installation_fee' => $data['installation_fee'],
+                'service_status' => $data['service_status'],
+                'billing_type' => $data['billing_type'],
+                'status' => $data['status'],
+                'registration_date' => $data['registration_date'],
+                'activation_date' => $data['activation_date'],
+                'sales_id' => $salesId,
+                'latitude' => self::parseCoordinate($data['latitude'] ?? null, 'lat'),
+                'longitude' => self::parseCoordinate($data['longitude'] ?? null, 'lng'),
+                'identity_photo' => $identityPhoto,
+                'notes' => $data['notes'],
+            ]);
+            $targetCust = $customer;
         }
-
-        $identityPhoto = $this->resolvePhotoPath($data['identity_photo'] ?? null, 'customers');
-
-        // Insert new
-        $customer = Customer::create([
-            'customer_code' => $customerCode,
-            'name' => $data['name'],
-            'phone' => substr($data['phone'], 0, 50),
-            'email' => $data['email'],
-            'area' => $data['area'],
-            'area_id' => $areaId,
-            'address' => $data['address'],
-            'package_id' => $data['package_id'],
-            'base_amount' => $data['base_amount'],
-            'installation_fee' => $data['installation_fee'],
-            'service_status' => $data['service_status'],
-            'billing_type' => $data['billing_type'],
-            'status' => $data['status'],
-            'registration_date' => $data['registration_date'],
-            'activation_date' => $data['activation_date'],
-            'sales_id' => $salesId,
-            'latitude' => self::parseCoordinate($data['latitude'] ?? null, 'lat'),
-            'longitude' => self::parseCoordinate($data['longitude'] ?? null, 'lng'),
-            'identity_photo' => $identityPhoto,
-            'notes' => $data['notes'],
-        ]);
-
-        $targetCust = $existing ?: $customer;
 
         // Auto-connect ONT & ODP if provided in Customer row
         if (!empty($odpId) && $targetCust) {
@@ -2544,6 +2622,22 @@ class DataMigrationService
 
     protected function importSurveyItem(array $data, string $dupMode): string
     {
+        // Otomatis buat / temukan ODP jika belum ada
+        if (empty($data['odp_id']) && !empty($data['odp_name'])) {
+            $cust = Customer::find($data['customer_id']);
+            $odpObj = self::getOrCreateOdp(
+                $data['odp_name'],
+                $cust?->area_id,
+                $cust?->latitude ? (float)$cust->latitude : null,
+                $cust?->longitude ? (float)$cust->longitude : null,
+                (int)($data['port_number'] ?? 1)
+            );
+            if ($odpObj) {
+                $data['odp_id'] = $odpObj->id;
+            }
+        }
+        unset($data['odp_name']);
+
         // Avoid duplicate survey on same customer and same date
         $existing = Survey::where('customer_id', $data['customer_id'])
             ->whereDate('survey_date', $data['survey_date'])
@@ -2563,6 +2657,22 @@ class DataMigrationService
 
     protected function importInstallationItem(array $data, string $dupMode): string
     {
+        // Otomatis buat / temukan ODP jika belum ada
+        if (empty($data['odp_id']) && !empty($data['odp_name'])) {
+            $cust = Customer::find($data['customer_id']);
+            $odpObj = self::getOrCreateOdp(
+                $data['odp_name'],
+                $cust?->area_id,
+                $cust?->latitude ? (float)$cust->latitude : null,
+                $cust?->longitude ? (float)$cust->longitude : null,
+                (int)($data['port_number'] ?? 1)
+            );
+            if ($odpObj) {
+                $data['odp_id'] = $odpObj->id;
+            }
+        }
+        unset($data['odp_name']);
+
         $sn = $data['serial_number'];
         $ont = Ont::where('serial_number', $sn)->first();
 
