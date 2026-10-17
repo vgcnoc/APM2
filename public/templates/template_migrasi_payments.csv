@@ -1,0 +1,3 @@
+﻿sep=,
+nomor_invoice,nominal_bayar,tgl_bayar,metode_bayar,nomor_referensi,email_penerima,catatan
+INV-202601-0012,175000,15/01/2026,transfer,TRF-BCA-887192,finance@example.com,"Lunas via Transfer BCA"

@@ -1,0 +1,3 @@
+﻿sep=,
+kode_pelanggan,sn_ont,mac_address,merk_ont,tipe_model,nama_odp,nomor_port_odp,redaman_rx,username_pppoe,password_pppoe,vlan_id,mode_akses,tgl_aktivasi,lulus_audit_qc,jam_pasang_mulai,jam_pasang_selesai,foto_redaman,foto_odp,foto_modem,foto_pelanggan,foto_instalasi
+CUS-001001,ZTEG98765432,CC:2D:21:4A:88:01,ZTE,F609,ODP-TMR-01-A,1,-21.4,ahmad_subardjo,subardjo123,100,PPPOE,12/01/2026,1,09:00,11:30,,,,,

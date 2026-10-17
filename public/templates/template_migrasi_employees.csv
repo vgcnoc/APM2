@@ -1,0 +1,5 @@
+﻿sep=,
+nama_lengkap,nomor_iak,posisi_jabatan,email,nomor_telepon,nama_area,tgl_bergabung,tipe_karyawan,gaji_pokok,metode_gaji,nama_bank,nomor_rekening,nama_pemilik_rekening,alamat,buat_akun_login,password_login
+"Budi Santoso",EMP-2024-001,Teknisi,budi.santoso@example.com,085737412700,"BC 1",15/03/2023,Tetap,3500000,"Transfer Bank",BCA,1234567890,"Budi Santoso","Jl. Merdeka No. 45, Bandung",ya,
+"Siti Rahmawati",EMP-2025-002,CS,siti.rahmawati@example.com,085603000044,"BC 2",01/06/2025,Kontrak,3000000,"Transfer Bank",DANA,085603000044,"Siti Rahmawati","Jl. Kenanga No. 12, Bandung",ya,
+"Ahmad Fauzi",EMP-2025-003,Sales,ahmad.fauzi@example.com,088213360441,"BC 3",10/01/2025,Tetap,3200000,"Transfer Bank",GoPay,088213360441,"Ahmad Fauzi","Jl. Asia Afrika No. 88, Bandung",ya,

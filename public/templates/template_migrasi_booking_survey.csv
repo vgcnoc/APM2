@@ -1,0 +1,3 @@
+﻿sep=,
+kode_pelanggan,email_petugas_survey,nama_odp,nomor_port,jarak_meter,hasil_kelayakan,redaman_sinyal,tgl_survey,catatan_survey
+CUS-001001,teknisi1@example.com,ODP-TMR-01-A,1,85,feasible,-19.5,11/01/2026,"Jalur kabel aman lewat tiang PLN"

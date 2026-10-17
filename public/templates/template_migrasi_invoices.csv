@@ -1,0 +1,3 @@
+﻿sep=,
+nomor_invoice,kode_pelanggan,bulan_periode,tahun_periode,total_tagihan,tgl_terbit,tgl_jatuh_tempo,status_invoice,jenis_tagihan,catatan_invoice
+INV-202601-0012,CUS-001001,1,2026,175000,12/01/2026,20/01/2026,paid,prabayar,"Tagihan Periode Januari 2026"

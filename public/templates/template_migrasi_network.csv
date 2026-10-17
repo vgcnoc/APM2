@@ -1,0 +1,7 @@
+﻿sep=,
+nama_olt,ip_olt,pon_port_olt,nama_odc,splitter_odc,nama_odp,total_port_odp,nomor_port,status_port,kode_pelanggan,sn_ont,mac_ont,vlan_id,nama_area,latitude,longitude,foto_odp
+"HIOSO HA7308C",10.10.10.1,1,ODC-SNJY,1:8,ODP-CLD26,8,1,used,CUS-001001,HWTC12345678,CC:2D:21:4A:88:01,100,"Area Timur",-6.892000,107.568000,
+"HIOSO HA7308C",10.10.10.1,1,ODC-SNJY,1:8,ODP-CLD26,8,2,used,CUS-001002,HWTC87654321,CC:2D:21:4A:88:02,100,"Area Timur",-6.892000,107.568000,
+"HIOSO HA7308C",10.10.10.1,1,ODC-SNJY,1:8,ODP-CLD27,16,1,available,,,,,"Area Timur",-6.893100,107.569200,
+"HIOSO HA7308C",10.10.10.1,1,ODC-BTG,1:4,ODP-BTG01,8,1,used,CUS-001010,ZTEG99998888,A4:12:42:11:22:33,101,"Area Barat",-6.885000,107.551000,
+"HIOSO HA7308C",10.10.10.1,2,ODC-BLK,1:16,ODP-BLK01,8,1,available,,,,,"Area Selatan",-6.910000,107.580000,
