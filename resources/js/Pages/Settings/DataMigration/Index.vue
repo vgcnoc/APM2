@@ -384,6 +384,30 @@
                                                 class="text-indigo-600 focus:ring-indigo-500 rounded border-slate-300"
                                             />
                                         </label>
+                                        <label class="flex items-center justify-between text-slate-700 cursor-pointer pt-1.5">
+                                            <span class="text-indigo-700 font-medium">⚡ Pencocokan Cerdas ODP (Slash/Ganda) & Toleransi Typo Nama Sales</span>
+                                            <input
+                                                type="checkbox"
+                                                v-model="migrationOptions.smart_matching"
+                                                class="text-indigo-600 focus:ring-indigo-500 rounded border-slate-300"
+                                            />
+                                        </label>
+                                        <label class="flex items-center justify-between text-slate-700 cursor-pointer pt-1.5">
+                                            <span class="text-indigo-700 font-medium">📡 Buat ODP Otomatis jika belum terdaftar di Master ODP</span>
+                                            <input
+                                                type="checkbox"
+                                                v-model="migrationOptions.auto_create_odps"
+                                                class="text-indigo-600 focus:ring-indigo-500 rounded border-slate-300"
+                                            />
+                                        </label>
+                                        <label class="flex items-center justify-between text-slate-700 cursor-pointer pt-1.5">
+                                            <span class="text-indigo-700 font-medium">👤 Buat Akun Sales / Karyawan Otomatis jika belum ada di sistem</span>
+                                            <input
+                                                type="checkbox"
+                                                v-model="migrationOptions.auto_create_sales"
+                                                class="text-indigo-600 focus:ring-indigo-500 rounded border-slate-300"
+                                            />
+                                        </label>
                                     </div>
                                 </div>
                             </div>
@@ -866,6 +890,9 @@ const migrationOptions = ref({
     bypass_whatsapp: true,
     bypass_radius: true,
     auto_create_areas: true,
+    auto_create_odps: true,
+    auto_create_sales: true,
+    smart_matching: true,
 });
 
 // Dry Run State

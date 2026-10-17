@@ -176,6 +176,231 @@ class DataMigrationService
     }
 
     /**
+     * Resolve ODP model flexibly:
+     * - Handles multiple candidates split by / , | & atau or (e.g. "ODP V-BTK20 A / V-BTK 20 B")
+     * - Normalizes spaces, dashes, punctuation (e.g. "ODP V-BTK20 A" matches "ODP V-BTK 20A")
+     * - Handles prefix variations ("ODP " vs without "ODP ")
+     * - Strips parenthetical notes (e.g. "ODP V-BTK 27 (Reseller Rohendi)")
+     *
+     * @return array [ ?Odp $odp, string $method, ?string $matchedCandidate, int $totalCandidates ]
+     */
+    public static function resolveOdpFlexible(?string $input, $odpsCache, array $odpsNormalizedCache = [], array $odpsStrippedNormCache = []): array
+    {
+        if (empty($input)) {
+            return [null, 'none', null, 0];
+        }
+
+        $trimmedInput = trim((string) $input);
+        if ($trimmedInput === '' || $trimmedInput === '-') {
+            return [null, 'none', null, 0];
+        }
+
+        // Split candidates by / , | & atau or
+        $candidates = preg_split('/\s*(\/|,|\||&|\batau\b|\bor\b)\s*/i', $trimmedInput);
+        $totalCandidates = count($candidates);
+
+        foreach ($candidates as $cand) {
+            $cand = trim($cand);
+            if ($cand === '' || $cand === '-') continue;
+
+            $candLower = strtolower($cand);
+
+            // 1. Direct lowercase match
+            if (isset($odpsCache[$candLower])) {
+                return [$odpsCache[$candLower], 'exact', $cand, $totalCandidates];
+            }
+
+            // 2. Normalized alphanumeric match (removes spaces, hyphens, underscores)
+            $candNorm = preg_replace('/[^a-z0-9]/', '', $candLower);
+            if ($candNorm !== '') {
+                if (isset($odpsNormalizedCache[$candNorm])) {
+                    return [$odpsNormalizedCache[$candNorm], 'norm', $cand, $totalCandidates];
+                }
+                if (isset($odpsStrippedNormCache[$candNorm])) {
+                    return [$odpsStrippedNormCache[$candNorm], 'stripped_norm', $cand, $totalCandidates];
+                }
+
+                // 3. Try adding or removing 'odp' prefix
+                if (str_starts_with($candNorm, 'odp')) {
+                    $withoutOdp = substr($candNorm, 3);
+                    if ($withoutOdp !== '') {
+                        if (isset($odpsNormalizedCache[$withoutOdp])) {
+                            return [$odpsNormalizedCache[$withoutOdp], 'without_odp', $cand, $totalCandidates];
+                        }
+                        if (isset($odpsStrippedNormCache[$withoutOdp])) {
+                            return [$odpsStrippedNormCache[$withoutOdp], 'stripped_without_odp', $cand, $totalCandidates];
+                        }
+                    }
+                } else {
+                    $withOdp = 'odp' . $candNorm;
+                    if (isset($odpsNormalizedCache[$withOdp])) {
+                        return [$odpsNormalizedCache[$withOdp], 'with_odp', $cand, $totalCandidates];
+                    }
+                    if (isset($odpsStrippedNormCache[$withOdp])) {
+                        return [$odpsStrippedNormCache[$withOdp], 'stripped_with_odp', $cand, $totalCandidates];
+                    }
+                }
+
+                // 4. Prefix or substring matching if normalized is at least 4 chars
+                if (strlen($candNorm) >= 4) {
+                    foreach ($odpsNormalizedCache as $normKey => $odpObj) {
+                        if (str_starts_with($normKey, $candNorm) || str_starts_with($candNorm, $normKey)) {
+                            return [$odpObj, 'prefix_norm', $cand, $totalCandidates];
+                        }
+                    }
+                    foreach ($odpsStrippedNormCache as $normKey => $odpObj) {
+                        if (str_starts_with($normKey, $candNorm) || str_starts_with($candNorm, $normKey)) {
+                            return [$odpObj, 'prefix_stripped_norm', $cand, $totalCandidates];
+                        }
+                    }
+                }
+            }
+        }
+
+        return [null, 'none', null, $totalCandidates];
+    }
+
+    /**
+     * Resolve Sales User ID with fuzzy matching, name typo tolerance, soundex/similar_text,
+     * employee table fallback, and multi-field identification (email, phone, NIK, referral code).
+     *
+     * @return array [ ?int $userId, string $matchMethod, ?string $matchedUserName ]
+     */
+    public static function resolveSalesUser(
+        ?string $salesRef,
+        array $usersCache,              // [strtolower(email) => id]
+        array $userNamesCache,          // [strtolower(name) => id]
+        array $userPhonesCache,         // [digits => id]
+        array $affiliateCodesCache,     // [code => id]
+        array $employeesIakCache,       // [iak => empId]
+        $allUsersList = [],             // collection/array of User models/arrays
+        $allEmployeesList = []          // collection/array of Employee models/arrays
+    ): array
+    {
+        if (empty($salesRef)) {
+            return [null, 'none', null];
+        }
+
+        $trimmed = trim((string) $salesRef);
+        if ($trimmed === '' || $trimmed === '-') {
+            return [null, 'none', null];
+        }
+
+        $lowerRef = strtolower($trimmed);
+
+        // 1. Direct Email Match
+        if (isset($usersCache[$lowerRef])) {
+            return [$usersCache[$lowerRef], 'email_exact', $trimmed];
+        }
+
+        // 2. Direct Name Match
+        if (isset($userNamesCache[$lowerRef])) {
+            return [$userNamesCache[$lowerRef], 'name_exact', $trimmed];
+        }
+
+        // 3. Referral / Affiliate Code Match
+        if (!empty($affiliateCodesCache) && isset($affiliateCodesCache[$lowerRef])) {
+            return [$affiliateCodesCache[$lowerRef], 'affiliate_code', $trimmed];
+        }
+
+        // 4. Stripped Titles/Parentheses (e.g. "Deden Kurnia (Teknisi)" -> "Deden Kurnia")
+        $strippedName = strtolower(trim(preg_replace('/\s*[\(\[\-].*?[\)\]\-]?$/', '', $trimmed)));
+        if (!empty($strippedName) && isset($userNamesCache[$strippedName])) {
+            return [$userNamesCache[$strippedName], 'stripped_name', $strippedName];
+        }
+
+        // 5. Phone digits match
+        $cleanDigits = preg_replace('/[^0-9]/', '', $trimmed);
+        if (strlen($cleanDigits) >= 8 && !empty($userPhonesCache) && isset($userPhonesCache[$cleanDigits])) {
+            return [$userPhonesCache[$cleanDigits], 'phone', $cleanDigits];
+        }
+
+        // 6. Employee NIK / IAK match
+        if (!empty($employeesIakCache) && isset($employeesIakCache[$lowerRef])) {
+            $empId = $employeesIakCache[$lowerRef];
+            $emp = \App\Models\Employee::find($empId);
+            if ($emp && $emp->email && isset($usersCache[strtolower(trim($emp->email))])) {
+                return [$usersCache[strtolower(trim($emp->email))], 'employee_iak', $emp->name];
+            }
+        }
+
+        // 7. Alphanumeric Normalized Name Match (e.g. "Hikmah Aprilianti" -> "hikmahaprilianti")
+        $normInput = preg_replace('/[^a-z0-9]/', '', $lowerRef);
+        if ($normInput !== '') {
+            foreach ($userNamesCache as $nameKey => $uid) {
+                if (preg_replace('/[^a-z0-9]/', '', $nameKey) === $normInput) {
+                    return [$uid, 'name_normalized', $nameKey];
+                }
+            }
+        }
+
+        // 8. High Similarity / Levenshtein / Word Matching (handles "HIKMAH APRILIAYANTI" -> "Hikmah Aprilianti")
+        $bestUid = null;
+        $highestScore = 0;
+        $matchedName = null;
+
+        $inputWords = array_values(array_filter(explode(' ', preg_replace('/[^a-z0-9\s]/', '', $lowerRef))));
+
+        foreach ($allUsersList as $u) {
+            $uName = is_array($u) ? ($u['name'] ?? '') : ($u->name ?? '');
+            $uId = is_array($u) ? ($u['id'] ?? null) : ($u->id ?? null);
+            if (!$uId || !$uName) continue;
+
+            $uNameLower = strtolower(trim($uName));
+
+            // similar_text percentage
+            similar_text($lowerRef, $uNameLower, $percent);
+            if ($percent >= 80 && $percent > $highestScore) {
+                $highestScore = $percent;
+                $bestUid = $uId;
+                $matchedName = $uName;
+            }
+
+            // Word-level matching
+            $uWords = array_values(array_filter(explode(' ', preg_replace('/[^a-z0-9\s]/', '', $uNameLower))));
+            if (!empty($inputWords) && !empty($uWords)) {
+                // If first word matches exactly (e.g. "Hikmah" == "Hikmah")
+                if ($inputWords[0] === $uWords[0]) {
+                    if (count($inputWords) > 1 && count($uWords) > 1) {
+                        $lev = levenshtein($inputWords[1], $uWords[1]);
+                        if ($lev <= 3 && 90 > $highestScore) {
+                            $highestScore = 90;
+                            $bestUid = $uId;
+                            $matchedName = $uName;
+                        }
+                    } elseif (75 > $highestScore) {
+                        $highestScore = 75;
+                        $bestUid = $uId;
+                        $matchedName = $uName;
+                    }
+                }
+            }
+        }
+
+        if ($bestUid && $highestScore >= 75) {
+            return [$bestUid, "fuzzy_similarity_{$highestScore}", $matchedName];
+        }
+
+        // 9. Employee table check if not found in User list
+        foreach ($allEmployeesList as $emp) {
+            $empName = is_array($emp) ? ($emp['name'] ?? '') : ($emp->name ?? '');
+            $empEmail = is_array($emp) ? ($emp['email'] ?? '') : ($emp->email ?? '');
+            if (!$empName) continue;
+
+            $empNameLower = strtolower(trim($empName));
+            similar_text($lowerRef, $empNameLower, $percent);
+            if ($percent >= 80) {
+                $matchedEmail = strtolower(trim($empEmail));
+                if ($matchedEmail && isset($usersCache[$matchedEmail])) {
+                    return [$usersCache[$matchedEmail], "employee_fuzzy_{$percent}", $empName];
+                }
+            }
+        }
+
+        return [null, 'none', null];
+    }
+
+    /**
      * Master schema definition per category
      */
     public static function getCategoryDefinitions(): array
@@ -811,7 +1036,24 @@ class DataMigrationService
         $usersCache = User::pluck('id', 'email')->mapWithKeys(fn($id, $email) => [strtolower($email) => $id])->toArray();
         $userNamesCache = User::pluck('id', 'name')->mapWithKeys(fn($id, $name) => [strtolower($name) => $id])->toArray();
         $customersCache = Customer::pluck('id', 'customer_code')->toArray();
-        $odpsCache = Odp::with('area')->get()->keyBy(fn($o) => strtolower($o->name));
+        $odpsCollection = Odp::with('area')->get();
+        $odpsCache = $odpsCollection->keyBy(fn($o) => strtolower(trim($o->name)));
+        $odpsNormalizedCache = [];
+        $odpsStrippedNormCache = [];
+        foreach ($odpsCollection as $odp) {
+            $rawLower = strtolower(trim($odp->name));
+            $norm = preg_replace('/[^a-z0-9]/', '', $rawLower);
+            if ($norm !== '') {
+                $odpsNormalizedCache[$norm] = $odp;
+            }
+            $stripped = trim(preg_replace('/\s*\([^)]*\)/', '', $rawLower));
+            $strippedNorm = preg_replace('/[^a-z0-9]/', '', $stripped);
+            if ($strippedNorm !== '') {
+                $odpsStrippedNormCache[$strippedNorm] = $odp;
+            }
+        }
+        $allUsersList = User::all();
+        $allEmployeesList = Employee::all();
         $invoicesCache = Invoice::pluck('id', 'invoice_number')->toArray();
         $employeesCache = Employee::pluck('id', 'email')->mapWithKeys(fn($id, $email) => [strtolower($email) => $id])->toArray();
         $employeesIakCache = Employee::whereNotNull('iak_number')->pluck('id', 'iak_number')->mapWithKeys(fn($id, $iak) => [strtolower($iak) => $id])->toArray();
@@ -857,16 +1099,21 @@ class DataMigrationService
 
             switch ($category) {
                 case 'customers':
-                    $this->validateCustomerRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache, $options, $areasNormalizedCache, $userPhonesCache, $affiliateCodesCache, $employeesIakCache, $odpsCache);
+                    $this->validateCustomerRow(
+                        $row, $rowErrors, $rowWarnings, $mapped,
+                        $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache,
+                        $options, $areasNormalizedCache, $userPhonesCache, $affiliateCodesCache, $employeesIakCache,
+                        $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache, $allUsersList, $allEmployeesList
+                    );
                     break;
                 case 'network':
                     $this->validateNetworkRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $customersCache, $odpsCache, $options);
                     break;
                 case 'booking_survey':
-                    $this->validateSurveyRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $usersCache, $odpsCache);
+                    $this->validateSurveyRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $usersCache, $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache, $allUsersList, $allEmployeesList);
                     break;
                 case 'installation_activation':
-                    $this->validateInstallationRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $odpsCache);
+                    $this->validateInstallationRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache);
                     break;
                 case 'invoices':
                     $this->validateInvoiceRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $invoicesCache);
@@ -946,7 +1193,7 @@ class DataMigrationService
 
                 switch ($category) {
                     case 'customers':
-                        $res = $this->importCustomerItem($data, $duplicateMode, $autoCreateArea);
+                        $res = $this->importCustomerItem($data, $duplicateMode, $autoCreateArea, $options);
                         break;
                     case 'network':
                         $res = $this->importNetworkItem($data, $duplicateMode, $autoCreateArea);
@@ -1072,7 +1319,11 @@ class DataMigrationService
         $userPhonesCache = [],
         $affiliateCodesCache = [],
         $employeesIakCache = [],
-        $odpsCache = []
+        $odpsCache = [],
+        $odpsNormalizedCache = [],
+        $odpsStrippedNormCache = [],
+        $allUsersList = [],
+        $allEmployeesList = []
     ) {
         $name = trim((string)($row['nama_lengkap'] ?? $row['nama'] ?? ''));
         $rawPhone = trim((string)($row['nomor_wa'] ?? $row['phone'] ?? $row['no_wa'] ?? ''));
@@ -1135,51 +1386,29 @@ class DataMigrationService
             }
         }
 
-        // Sales / Referrer check (Bisa semua karyawan: sales, teknisi, maintenance, cs, noc, hrd, finance, dll)
+        // Sales / Referrer check dengan Auto-Match Cerdas & Toleransi Typo/Spelling
         $salesRef = trim((string)($row['username_sales'] ?? $row['sales'] ?? $row['sales_karyawan'] ?? $row['karyawan'] ?? $row['referral'] ?? $row['petugas_booking'] ?? $row['nama_sales'] ?? ''));
         $salesId = null;
         if (!empty($salesRef)) {
-            $lowerRef = strtolower($salesRef);
-            
-            // 1. Cek langsung via Email User
-            if (isset($usersCache[$lowerRef])) {
-                $salesId = $usersCache[$lowerRef];
-            }
-            // 2. Cek via Nama Lengkap User
-            elseif (isset($userNamesCache[$lowerRef])) {
-                $salesId = $userNamesCache[$lowerRef];
-            }
-            // 3. Cek via Kode Referral Afiliasi
-            elseif (!empty($affiliateCodesCache) && isset($affiliateCodesCache[$lowerRef])) {
-                $salesId = $affiliateCodesCache[$lowerRef];
-            }
-            // 4. Cek toleransi nama dengan jabatan/label (misal: "Deden Kurnia (Teknisi)" atau "Ahmad Fauzi - Sales")
-            else {
-                $strippedName = strtolower(trim(preg_replace('/\s*[\(\[\-].*?[\)\]\-]?$/', '', $salesRef)));
-                if (!empty($strippedName) && isset($userNamesCache[$strippedName])) {
-                    $salesId = $userNamesCache[$strippedName];
-                }
-            }
+            [$resolvedSalesId, $salesMethod, $matchedSalesName] = self::resolveSalesUser(
+                $salesRef,
+                $usersCache,
+                $userNamesCache,
+                $userPhonesCache,
+                $affiliateCodesCache,
+                $employeesIakCache,
+                $allUsersList,
+                $allEmployeesList
+            );
 
-            // 5. Cek via Nomor WA / Telepon Karyawan
-            if (!$salesId && !empty($userPhonesCache)) {
-                $cleanDigits = preg_replace('/[^0-9]/', '', $salesRef);
-                if (strlen($cleanDigits) >= 8 && isset($userPhonesCache[$cleanDigits])) {
-                    $salesId = $userPhonesCache[$cleanDigits];
+            if ($resolvedSalesId) {
+                $salesId = $resolvedSalesId;
+            } else {
+                if (!empty($options['auto_create_sales'])) {
+                    $warnings[] = "Petugas sales '{$salesRef}' belum terdaftar di sistem; akun sales baru akan otomatis dibuatkan.";
+                } else {
+                    $warnings[] = "Petugas sales / karyawan '{$salesRef}' tidak ditemukan di sistem. Kolom sales dikosongkan.";
                 }
-            }
-
-            // 6. Cek via Nomor IAK / NIK Karyawan
-            if (!$salesId && !empty($employeesIakCache) && isset($employeesIakCache[$lowerRef])) {
-                $empId = $employeesIakCache[$lowerRef];
-                $emp = \App\Models\Employee::find($empId);
-                if ($emp && $emp->email && isset($usersCache[strtolower(trim($emp->email))])) {
-                    $salesId = $usersCache[strtolower(trim($emp->email))];
-                }
-            }
-
-            if (!$salesId) {
-                $warnings[] = "Petugas sales / karyawan '{$salesRef}' tidak ditemukan di sistem. Kolom sales dikosongkan.";
             }
         }
 
@@ -1217,18 +1446,30 @@ class DataMigrationService
             $packageId = null;
         }
 
-        // Optional ONT & ODP linkage if provided in customer sheet
-        $odpName = trim((string)($row['nama_odp'] ?? $row['odp'] ?? ''));
+        // Optional ONT & ODP linkage dengan Pemecahan Slash & Normalisasi Cerdas
+        $rawOdpName = trim((string)($row['nama_odp'] ?? $row['odp'] ?? ''));
         $snOnt = trim((string)($row['sn_ont'] ?? $row['serial_number'] ?? ''));
         $portNumber = !empty($row['nomor_port_odp']) ? (int)$row['nomor_port_odp'] : (!empty($row['nomor_port']) ? (int)$row['nomor_port'] : null);
         $odpId = null;
+        $odpName = $rawOdpName;
 
-        if (!empty($odpName)) {
-            $odpObj = $odpsCache[strtolower($odpName)] ?? null;
+        if (!empty($rawOdpName)) {
+            [$odpObj, $odpMethod, $matchedCand, $totalCands] = self::resolveOdpFlexible(
+                $rawOdpName,
+                $odpsCache,
+                $odpsNormalizedCache,
+                $odpsStrippedNormCache
+            );
+
             if ($odpObj) {
                 $odpId = $odpObj->id;
+                $odpName = $odpObj->name;
             } else {
-                $warnings[] = "ODP '{$odpName}' belum terdaftar di master data ODP. Kaitkan ODP akan dilewati.";
+                if (!empty($options['auto_create_odps'])) {
+                    $warnings[] = "ODP '{$rawOdpName}' belum terdaftar di master ODP; sistem akan otomatis membuatnya.";
+                } else {
+                    $warnings[] = "ODP '{$rawOdpName}' belum terdaftar di master data ODP. Kaitkan ODP akan dilewati.";
+                }
             }
         }
 
@@ -1347,16 +1588,22 @@ class DataMigrationService
         ];
     }
 
-    protected function validateSurveyRow($row, &$errors, &$warnings, &$mapped, $customersCache, $usersCache, $odpsCache)
+    protected function validateSurveyRow($row, &$errors, &$warnings, &$mapped, $customersCache, $usersCache, $odpsCache, $odpsNormalizedCache = [], $odpsStrippedNormCache = [], $allUsersList = [], $allEmployeesList = [])
     {
         $customerCode = $row['kode_pelanggan'] ?? '';
         if (empty($customerCode)) $errors[] = 'Kode Pelanggan wajib diisi.';
         $customerId = $customersCache[$customerCode] ?? null;
         if (!$customerId) $errors[] = "Pelanggan '{$customerCode}' tidak ditemukan di sistem.";
 
-        $surveyorEmail = $row['email_petugas_survey'] ?? '';
-        $surveyorId = $usersCache[strtolower($surveyorEmail)] ?? null;
-        if (!$surveyorId) $errors[] = "Petugas survey '{$surveyorEmail}' tidak ditemukan.";
+        $surveyorRef = $row['email_petugas_survey'] ?? $row['petugas_survey'] ?? '';
+        $surveyorId = null;
+        if (!empty($surveyorRef)) {
+            [$resolvedSurveyorId] = self::resolveSalesUser($surveyorRef, $usersCache, [], [], [], [], $allUsersList, $allEmployeesList);
+            $surveyorId = $resolvedSurveyorId;
+        }
+        if (!$surveyorId && !empty($surveyorRef)) {
+            $errors[] = "Petugas survey '{$surveyorRef}' tidak ditemukan.";
+        }
 
         $feasibility = strtolower($row['hasil_kelayakan'] ?? 'feasible');
         if (!in_array($feasibility, ['feasible', 'not_feasible', 'conditional'])) {
@@ -1364,7 +1611,13 @@ class DataMigrationService
         }
 
         $odpName = $row['nama_odp'] ?? '';
-        $odp = $odpsCache[strtolower($odpName)] ?? null;
+        $odpId = null;
+        if (!empty($odpName)) {
+            [$odpObj] = self::resolveOdpFlexible($odpName, $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache);
+            if ($odpObj) {
+                $odpId = $odpObj->id;
+            }
+        }
         if ($feasibility === 'feasible' && empty($odpName)) {
             $warnings[] = "Hasil feasible tetapi nama ODP kosong.";
         }
@@ -1372,7 +1625,7 @@ class DataMigrationService
         $mapped = [
             'customer_id' => $customerId,
             'surveyor_id' => $surveyorId,
-            'odp_id' => $odp ? $odp->id : null,
+            'odp_id' => $odpId,
             'port_number' => !empty($row['nomor_port']) ? (int)$row['nomor_port'] : null,
             'distance_meters' => !empty($row['jarak_meter']) ? (float)$row['jarak_meter'] : null,
             'feasibility' => $feasibility,
@@ -1382,7 +1635,7 @@ class DataMigrationService
         ];
     }
 
-    protected function validateInstallationRow($row, &$errors, &$warnings, &$mapped, $customersCache, $odpsCache)
+    protected function validateInstallationRow($row, &$errors, &$warnings, &$mapped, $customersCache, $odpsCache, $odpsNormalizedCache = [], $odpsStrippedNormCache = [])
     {
         $customerCode = $row['kode_pelanggan'] ?? '';
         if (empty($customerCode)) $errors[] = 'Kode Pelanggan wajib diisi.';
@@ -1393,8 +1646,17 @@ class DataMigrationService
         if (empty($sn)) $errors[] = 'Serial Number ONT wajib diisi.';
 
         $odpName = $row['nama_odp'] ?? '';
-        $odp = $odpsCache[strtolower($odpName)] ?? null;
-        if (!$odp) $errors[] = "ODP '{$odpName}' tidak ditemukan.";
+        $odpId = null;
+        if (!empty($odpName)) {
+            [$odpObj] = self::resolveOdpFlexible($odpName, $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache);
+            if ($odpObj) {
+                $odpId = $odpObj->id;
+            } else {
+                $errors[] = "ODP '{$odpName}' tidak ditemukan.";
+            }
+        } else {
+            $errors[] = "Nama ODP wajib diisi.";
+        }
 
         $portNum = (int) ($row['nomor_port_odp'] ?? 1);
         $rxPower = (float) ($row['redaman_rx'] ?? -20.0);
@@ -1405,7 +1667,7 @@ class DataMigrationService
             'mac_address' => $row['mac_address'] ?? null,
             'brand' => $row['merk_ont'] ?? 'ZTE',
             'model' => $row['tipe_model'] ?? 'F609',
-            'odp_id' => $odp ? $odp->id : null,
+            'odp_id' => $odpId,
             'port_number' => $portNum,
             'rx_power' => $rxPower,
             'pppoe_user' => $row['username_pppoe'] ?? null,
@@ -1496,7 +1758,7 @@ class DataMigrationService
 
     // ── Item Importers ──────────────────────────────────────────────
 
-    protected function importCustomerItem(array $data, string $dupMode, bool $autoCreateArea): string
+    protected function importCustomerItem(array $data, string $dupMode, bool $autoCreateArea, array $options = []): string
     {
         // 1. Resolve area flexibly
         $areaId = $data['area_id'] ?? null;
@@ -1508,6 +1770,45 @@ class DataMigrationService
                 $area = Area::firstOrCreate(['name' => trim($data['area'])]);
                 $areaId = $area->id;
             }
+        }
+
+        // Auto-create sales user if missing and auto_create_sales is enabled
+        $salesId = $data['sales_id'] ?? null;
+        if (!$salesId && !empty($options['auto_create_sales']) && !empty($data['sales_name'])) {
+            $rawSales = trim((string)$data['sales_name']);
+            $salesEmail = Str::slug($rawSales, '.') . '@isp.local';
+            $salesUser = User::where('email', $salesEmail)->first();
+            if (!$salesUser) {
+                $salesUser = User::create([
+                    'name' => ucwords(strtolower($rawSales)),
+                    'email' => $salesEmail,
+                    'password' => bcrypt('password123'),
+                    'role' => 'sales',
+                    'job_position' => 'Sales',
+                ]);
+                try {
+                    $salesUser->assignRole('sales');
+                } catch (\Throwable $e) {}
+            }
+            $salesId = $salesUser->id;
+        }
+
+        // Auto-create ODP if missing and auto_create_odps is enabled
+        $odpId = $data['odp_id'] ?? null;
+        if (!$odpId && !empty($options['auto_create_odps']) && !empty($data['odp_name'])) {
+            $targetOdpName = trim((string)$data['odp_name']);
+            $firstCand = trim(explode('/', $targetOdpName)[0]);
+            $odp = Odp::where('name', $firstCand)->first();
+            if (!$odp) {
+                $odp = Odp::create([
+                    'name' => $firstCand,
+                    'area_id' => $areaId,
+                    'total_ports' => 8,
+                    'used_ports' => 0,
+                    'status' => 'active',
+                ]);
+            }
+            $odpId = $odp->id;
         }
 
         $customerCode = $data['customer_code'];
@@ -1536,7 +1837,7 @@ class DataMigrationService
                 'service_status' => $data['service_status'],
                 'billing_type' => $data['billing_type'],
                 'status' => $data['status'],
-                'sales_id' => $data['sales_id'] ?: $existing->sales_id,
+                'sales_id' => $salesId ?: $existing->sales_id,
                 'latitude' => self::parseCoordinate($data['latitude'] ?? null, 'lat') ?: $existing->latitude,
                 'longitude' => self::parseCoordinate($data['longitude'] ?? null, 'lng') ?: $existing->longitude,
                 'identity_photo' => $identityPhoto ?: $existing->identity_photo,
@@ -1564,7 +1865,7 @@ class DataMigrationService
             'status' => $data['status'],
             'registration_date' => $data['registration_date'],
             'activation_date' => $data['activation_date'],
-            'sales_id' => $data['sales_id'],
+            'sales_id' => $salesId,
             'latitude' => self::parseCoordinate($data['latitude'] ?? null, 'lat'),
             'longitude' => self::parseCoordinate($data['longitude'] ?? null, 'lng'),
             'identity_photo' => $identityPhoto,
@@ -1574,53 +1875,59 @@ class DataMigrationService
         $targetCust = $existing ?: $customer;
 
         // Auto-connect ONT & ODP if provided in Customer row
-        if (!empty($data['sn_ont']) && !empty($data['odp_id']) && $targetCust) {
-            $odp = Odp::find($data['odp_id']);
+        if (!empty($odpId) && $targetCust) {
+            $odp = Odp::find($odpId);
             if ($odp) {
-                $portToUse = !empty($data['port_number']) && (int)$data['port_number'] > 0 ? (int)$data['port_number'] : null;
-                if (!$portToUse) {
-                    $firstAvail = OdpPort::where('odp_id', $odp->id)->where('status', 'available')->orderBy('port_number')->first();
-                    $portToUse = $firstAvail ? $firstAvail->port_number : 1;
+                if (empty($targetCust->area_id) && !empty($odp->area_id)) {
+                    $targetCust->update(['area_id' => $odp->area_id]);
                 }
 
-                $odpPort = OdpPort::updateOrCreate(
-                    ['odp_id' => $odp->id, 'port_number' => $portToUse],
-                    ['status' => 'used']
-                );
+                if (!empty($data['sn_ont'])) {
+                    $portToUse = !empty($data['port_number']) && (int)$data['port_number'] > 0 ? (int)$data['port_number'] : null;
+                    if (!$portToUse) {
+                        $firstAvail = OdpPort::where('odp_id', $odp->id)->where('status', 'available')->orderBy('port_number')->first();
+                        $portToUse = $firstAvail ? $firstAvail->port_number : 1;
+                    }
 
-                $ont = Ont::where('serial_number', $data['sn_ont'])->first();
-                $ontPayload = [
-                    'customer_id' => $targetCust->id,
-                    'serial_number' => $data['sn_ont'],
-                    'mac_address' => $data['mac_ont'] ?? null,
-                    'brand' => $data['merk_ont'] ?? 'ZTE',
-                    'model' => $data['tipe_model'] ?? 'F609',
-                    'odp_id' => $odp->id,
-                    'odp_port_id' => $odpPort?->id,
-                    'port_number' => $portToUse,
-                    'area_id' => $areaId ?: $odp->area_id,
-                    'rx_power' => $data['redaman_rx'] ?? -20.0,
-                    'pppoe_user' => $data['username_pppoe'] ?? null,
-                    'pppoe_password' => $data['password_pppoe'] ?? null,
-                    'vlan_id' => $data['vlan_id'] ?? null,
-                    'access_mode' => $data['mode_akses'] ?? ($data['service_status'] === 'free_home' ? 'VOUCHER' : 'PPPOE'),
-                    'status' => 'active',
-                ];
+                    $odpPort = OdpPort::updateOrCreate(
+                        ['odp_id' => $odp->id, 'port_number' => $portToUse],
+                        ['status' => 'used']
+                    );
 
-                if ($ont) {
-                    $ont->update($ontPayload);
-                } else {
-                    Ont::create($ontPayload);
+                    $ont = Ont::where('serial_number', $data['sn_ont'])->first();
+                    $ontPayload = [
+                        'customer_id' => $targetCust->id,
+                        'serial_number' => $data['sn_ont'],
+                        'mac_address' => $data['mac_ont'] ?? null,
+                        'brand' => $data['merk_ont'] ?? 'ZTE',
+                        'model' => $data['tipe_model'] ?? 'F609',
+                        'odp_id' => $odp->id,
+                        'odp_port_id' => $odpPort?->id,
+                        'port_number' => $portToUse,
+                        'area_id' => $areaId ?: $odp->area_id,
+                        'rx_power' => $data['redaman_rx'] ?? -20.0,
+                        'pppoe_user' => $data['username_pppoe'] ?? null,
+                        'pppoe_password' => $data['password_pppoe'] ?? null,
+                        'vlan_id' => $data['vlan_id'] ?? null,
+                        'access_mode' => $data['mode_akses'] ?? ($data['service_status'] === 'free_home' ? 'VOUCHER' : 'PPPOE'),
+                        'status' => 'active',
+                    ];
+
+                    if ($ont) {
+                        $ont->update($ontPayload);
+                    } else {
+                        Ont::create($ontPayload);
+                    }
+
+                    $usedCount = OdpPort::where('odp_id', $odp->id)->where('status', 'used')->count();
+                    if ($usedCount === 0) {
+                        $usedCount = Ont::where('odp_id', $odp->id)->count();
+                    }
+                    $odp->update([
+                        'used_ports' => $usedCount,
+                        'status' => ($usedCount >= $odp->total_ports) ? 'full' : 'active'
+                    ]);
                 }
-
-                $usedCount = OdpPort::where('odp_id', $odp->id)->where('status', 'used')->count();
-                if ($usedCount === 0) {
-                    $usedCount = Ont::where('odp_id', $odp->id)->count();
-                }
-                $odp->update([
-                    'used_ports' => $usedCount,
-                    'status' => ($usedCount >= $odp->total_ports) ? 'full' : 'active'
-                ]);
             }
         }
 
