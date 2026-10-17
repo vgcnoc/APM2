@@ -2076,6 +2076,49 @@ class DataMigrationService
             }
         }
 
+        // Auto-generate complete lifecycle audit trail (Survey & Installation Schedule) for active/installing customers
+        if ($targetCust && in_array($targetCust->status, ['active', 'installing'])) {
+            $regDate = $targetCust->registration_date ? $targetCust->registration_date->format('Y-m-d') : ($targetCust->created_at ? $targetCust->created_at->format('Y-m-d') : date('Y-m-d'));
+            $actDate = $targetCust->activation_date ? $targetCust->activation_date->format('Y-m-d') : $regDate;
+            $techOrSalesId = $salesId ?: (auth()->id() ?: 1);
+
+            // 1. Ensure Survey record exists so Survey history is complete
+            if (!empty($odpId)) {
+                $surveyExists = Survey::where('customer_id', $targetCust->id)->exists();
+                if (!$surveyExists) {
+                    Survey::create([
+                        'customer_id' => $targetCust->id,
+                        'odp_id' => $odpId,
+                        'port_number' => $portToUse ?? 1,
+                        'surveyor_id' => $techOrSalesId,
+                        'feasibility' => 'feasible',
+                        'distance_meters' => 50,
+                        'signal_loss' => $ontRx ?? -20.0,
+                        'survey_date' => $regDate,
+                        'notes' => 'Survey historis migrasi sistem',
+                    ]);
+                }
+            }
+
+            // 2. Ensure TechnicianSchedule record exists so Installation Schedule history is complete
+            $scheduleExists = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'installation')->exists();
+            if (!$scheduleExists) {
+                TechnicianSchedule::create([
+                    'customer_id' => $targetCust->id,
+                    'technician_id' => $techOrSalesId,
+                    'scheduled_date' => $actDate,
+                    'type' => 'installation',
+                    'status' => ($targetCust->status === 'active') ? 'completed' : 'scheduled',
+                    'notes' => 'Jadwal pasang historis migrasi sistem',
+                ]);
+            }
+
+            // 3. Mark customer as audited if active
+            if ($targetCust->status === 'active' && !$targetCust->is_audited) {
+                $targetCust->update(['is_audited' => true]);
+            }
+        }
+
         return $existing ? 'updated' : 'inserted';
     }
 
