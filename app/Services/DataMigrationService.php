@@ -1181,6 +1181,11 @@ class DataMigrationService
         $skippedCount = 0;
         $logs = [];
 
+        $affectedOdpIds = [];
+        $runtimeAreasCache = [];
+        $runtimeSalesCache = [];
+        $runtimeOdpsCache = [];
+
         DB::beginTransaction();
         try {
             foreach ($dryRun['rows'] as $r) {
@@ -1193,7 +1198,7 @@ class DataMigrationService
 
                 switch ($category) {
                     case 'customers':
-                        $res = $this->importCustomerItem($data, $duplicateMode, $autoCreateArea, $options);
+                        $res = $this->importCustomerItem($data, $duplicateMode, $autoCreateArea, $options, $affectedOdpIds, $runtimeAreasCache, $runtimeSalesCache, $runtimeOdpsCache);
                         break;
                     case 'network':
                         $res = $this->importNetworkItem($data, $duplicateMode, $autoCreateArea);
@@ -1220,6 +1225,23 @@ class DataMigrationService
                 if ($res === 'inserted') $insertedCount++;
                 elseif ($res === 'updated') $updatedCount++;
                 else $skippedCount++;
+            }
+
+            // Sync port counts and status for all touched ODPs in one fast pass
+            if (!empty($affectedOdpIds)) {
+                foreach (array_keys($affectedOdpIds) as $touchedOdpId) {
+                    $odp = Odp::find($touchedOdpId);
+                    if ($odp) {
+                        $usedCount = OdpPort::where('odp_id', $touchedOdpId)->where('status', 'used')->count();
+                        if ($usedCount === 0) {
+                            $usedCount = Ont::where('odp_id', $touchedOdpId)->count();
+                        }
+                        $odp->update([
+                            'used_ports' => $usedCount,
+                            'status' => ($usedCount >= $odp->total_ports) ? 'full' : 'active'
+                        ]);
+                    }
+                }
             }
 
             // Record to Audit Log
@@ -1758,17 +1780,35 @@ class DataMigrationService
 
     // ── Item Importers ──────────────────────────────────────────────
 
-    protected function importCustomerItem(array $data, string $dupMode, bool $autoCreateArea, array $options = []): string
+    protected function importCustomerItem(
+        array $data,
+        string $dupMode,
+        bool $autoCreateArea,
+        array $options = [],
+        array &$affectedOdpIds = [],
+        array &$runtimeAreasCache = [],
+        array &$runtimeSalesCache = [],
+        array &$runtimeOdpsCache = []
+    ): string
     {
         // 1. Resolve area flexibly
         $areaId = $data['area_id'] ?? null;
         if (!$areaId && !empty($data['area'])) {
-            $matchedArea = self::findAreaByFlexibleName($data['area']);
-            if ($matchedArea) {
-                $areaId = $matchedArea->id;
-            } elseif ($autoCreateArea) {
-                $area = Area::firstOrCreate(['name' => trim($data['area'])]);
-                $areaId = $area->id;
+            $rawArea = trim($data['area']);
+            $areaLower = strtolower($rawArea);
+            if (isset($runtimeAreasCache[$areaLower])) {
+                $areaId = $runtimeAreasCache[$areaLower];
+            } else {
+                $matchedArea = self::findAreaByFlexibleName($rawArea);
+                if ($matchedArea) {
+                    $areaId = $matchedArea->id;
+                } elseif ($autoCreateArea) {
+                    $area = Area::firstOrCreate(['name' => $rawArea]);
+                    $areaId = $area->id;
+                }
+                if ($areaId) {
+                    $runtimeAreasCache[$areaLower] = $areaId;
+                }
             }
         }
 
@@ -1776,21 +1816,27 @@ class DataMigrationService
         $salesId = $data['sales_id'] ?? null;
         if (!$salesId && !empty($options['auto_create_sales']) && !empty($data['sales_name'])) {
             $rawSales = trim((string)$data['sales_name']);
-            $salesEmail = Str::slug($rawSales, '.') . '@isp.local';
-            $salesUser = User::where('email', $salesEmail)->first();
-            if (!$salesUser) {
-                $salesUser = User::create([
-                    'name' => ucwords(strtolower($rawSales)),
-                    'email' => $salesEmail,
-                    'password' => bcrypt('password123'),
-                    'role' => 'sales',
-                    'job_position' => 'Sales',
-                ]);
-                try {
-                    $salesUser->assignRole('sales');
-                } catch (\Throwable $e) {}
+            $salesLower = strtolower($rawSales);
+            if (isset($runtimeSalesCache[$salesLower])) {
+                $salesId = $runtimeSalesCache[$salesLower];
+            } else {
+                $salesEmail = Str::slug($rawSales, '.') . '@isp.local';
+                $salesUser = User::where('email', $salesEmail)->first();
+                if (!$salesUser) {
+                    $salesUser = User::create([
+                        'name' => ucwords(strtolower($rawSales)),
+                        'email' => $salesEmail,
+                        'password' => bcrypt('password123'),
+                        'role' => 'sales',
+                        'job_position' => 'Sales',
+                    ]);
+                    try {
+                        $salesUser->assignRole('sales');
+                    } catch (\Throwable $e) {}
+                }
+                $salesId = $salesUser->id;
+                $runtimeSalesCache[$salesLower] = $salesId;
             }
-            $salesId = $salesUser->id;
         }
 
         // Auto-create ODP if missing and auto_create_odps is enabled
@@ -1798,56 +1844,61 @@ class DataMigrationService
         if (!$odpId && !empty($options['auto_create_odps']) && !empty($data['odp_name'])) {
             $targetOdpName = trim((string)$data['odp_name']);
             $firstCand = trim(explode('/', $targetOdpName)[0]);
-            $odp = Odp::where('name', $firstCand)->first();
-            if (!$odp) {
-                // 1. Resolve suitable ODC
-                $odc = null;
-                if ($areaId) {
-                    $odc = Odc::where('area_id', $areaId)->first();
-                }
-                if (!$odc) {
-                    // Try to match ODC by name hint (e.g. BTK / BK)
-                    $odc = Odc::where('name', 'like', '%BTK%')->orWhere('name', 'like', '%BK%')->first();
-                }
-                if (!$odc) {
-                    $odc = Odc::first();
-                }
-                if (!$odc) {
-                    $olt = Olt::first() ?? Olt::create([
-                        'name' => 'OLT-DEFAULT',
-                        'ip_address' => '192.168.1.1',
-                        'area_id' => $areaId,
-                        'total_pon_ports' => 16,
+            $odpLower = strtolower($firstCand);
+            if (isset($runtimeOdpsCache[$odpLower])) {
+                $odpId = $runtimeOdpsCache[$odpLower];
+            } else {
+                $odp = Odp::where('name', $firstCand)->first();
+                if (!$odp) {
+                    // 1. Resolve suitable ODC
+                    $odc = null;
+                    if ($areaId) {
+                        $odc = Odc::where('area_id', $areaId)->first();
+                    }
+                    if (!$odc) {
+                        $odc = Odc::where('name', 'like', '%BTK%')->orWhere('name', 'like', '%BK%')->first();
+                    }
+                    if (!$odc) {
+                        $odc = Odc::first();
+                    }
+                    if (!$odc) {
+                        $olt = Olt::first() ?? Olt::create([
+                            'name' => 'OLT-DEFAULT',
+                            'ip_address' => '192.168.1.1',
+                            'area_id' => $areaId,
+                            'total_pon_ports' => 16,
+                            'status' => 'active',
+                        ]);
+                        $odc = Odc::create([
+                            'name' => 'ODC-DEFAULT',
+                            'olt_id' => $olt->id,
+                            'area_id' => $areaId,
+                            'capacity' => 48,
+                            'splitter_ratio' => '1:4',
+                            'status' => 'active',
+                        ]);
+                    }
+
+                    $odp = Odp::create([
+                        'name' => $firstCand,
+                        'odc_id' => $odc ? $odc->id : null,
+                        'area_id' => $areaId ?: ($odc ? $odc->area_id : null),
+                        'total_ports' => 8,
+                        'used_ports' => 0,
                         'status' => 'active',
                     ]);
-                    $odc = Odc::create([
-                        'name' => 'ODC-DEFAULT',
-                        'olt_id' => $olt->id,
-                        'area_id' => $areaId,
-                        'capacity' => 48,
-                        'splitter_ratio' => '1:4',
-                        'status' => 'active',
-                    ]);
-                }
 
-                $odp = Odp::create([
-                    'name' => $firstCand,
-                    'odc_id' => $odc ? $odc->id : null,
-                    'area_id' => $areaId ?: ($odc ? $odc->area_id : null),
-                    'total_ports' => 8,
-                    'used_ports' => 0,
-                    'status' => 'active',
-                ]);
-
-                // Generate physical ports (1..8)
-                for ($p = 1; $p <= (int)$odp->total_ports; $p++) {
-                    OdpPort::firstOrCreate(
-                        ['odp_id' => $odp->id, 'port_number' => $p],
-                        ['status' => 'available']
-                    );
+                    // Generate physical ports (1..8)
+                    for ($p = 1; $p <= (int)$odp->total_ports; $p++) {
+                        OdpPort::firstOrCreate(
+                            ['odp_id' => $odp->id, 'port_number' => $p],
+                            ['status' => 'available']
+                        );
+                    }
                 }
+                $odpId = $odp->id;
+                $runtimeOdpsCache[$odpLower] = $odpId;
             }
-            $odpId = $odp->id;
         }
 
         $customerCode = $data['customer_code'];
@@ -1917,6 +1968,7 @@ class DataMigrationService
         if (!empty($odpId) && $targetCust) {
             $odp = Odp::find($odpId);
             if ($odp) {
+                $affectedOdpIds[$odp->id] = true;
                 if (empty($targetCust->area_id) && !empty($odp->area_id)) {
                     $targetCust->update(['area_id' => $odp->area_id]);
                 }
@@ -1957,15 +2009,6 @@ class DataMigrationService
                     } else {
                         Ont::create($ontPayload);
                     }
-
-                    $usedCount = OdpPort::where('odp_id', $odp->id)->where('status', 'used')->count();
-                    if ($usedCount === 0) {
-                        $usedCount = Ont::where('odp_id', $odp->id)->count();
-                    }
-                    $odp->update([
-                        'used_ports' => $usedCount,
-                        'status' => ($usedCount >= $odp->total_ports) ? 'full' : 'active'
-                    ]);
                 }
             }
         }

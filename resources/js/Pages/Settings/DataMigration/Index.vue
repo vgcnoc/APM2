@@ -1351,20 +1351,20 @@ async function downloadErrorReport() {
     }
 }
 
-// Final Execution Call
+// Final Execution Call with Chunked Batching & Real-time Progress Bar
 async function executeImport() {
     if (parsedRows.value.length === 0) return;
 
-    const validCount = dryRunSummary.value ? dryRunSummary.value.valid_count : parsedRows.value.length;
+    const totalRows = parsedRows.value.length;
 
-    const result = await Swal.fire({
+    const confirmResult = await Swal.fire({
         title: 'Konfirmasi Eksekusi Migrasi',
         html: `
             <div class="text-left text-xs space-y-2 text-slate-700">
                 <p>Anda akan melakukan migrasi data secara permanen ke database:</p>
                 <div class="bg-slate-100 p-3 rounded-lg space-y-1">
                     <div><strong>Modul:</strong> ${currentCategory.value.title}</div>
-                    <div><strong>Total Baris:</strong> ${parsedRows.value.length} baris</div>
+                    <div><strong>Total Baris:</strong> ${totalRows} baris</div>
                     <div><strong>Mode Duplikat:</strong> ${migrationOptions.value.duplicate_mode.toUpperCase()}</div>
                     <div><strong>Bypass Protections:</strong> Aktif (Komisi, Stok, WA, RADIUS aman)</div>
                 </div>
@@ -1379,30 +1379,126 @@ async function executeImport() {
         cancelButtonText: 'Batal',
     });
 
-    if (!result.isConfirmed) return;
+    if (!confirmResult.isConfirmed) return;
 
     isExecuting.value = true;
+
+    // Show Progress Modal
+    Swal.fire({
+        title: 'Memproses Migrasi Data...',
+        html: `
+            <div class="text-left text-xs space-y-3 py-2 text-slate-700">
+                <div class="flex justify-between items-center text-xs font-semibold text-slate-700">
+                    <span id="batch-progress-status">Menyiapkan batch pengiriman...</span>
+                    <span id="batch-progress-percent" class="text-indigo-600 font-bold">0%</span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden shadow-inner">
+                    <div id="batch-progress-bar" class="bg-gradient-to-r from-indigo-500 to-emerald-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs grid grid-cols-2 gap-2 text-slate-600">
+                    <div>Progress: <strong id="batch-progress-count" class="text-slate-900">0</strong> / ${totalRows} baris</div>
+                    <div>Baris Baru: <strong id="batch-progress-created" class="text-emerald-600 font-bold">0</strong></div>
+                    <div>Diperbarui: <strong id="batch-progress-updated" class="text-blue-600 font-bold">0</strong></div>
+                    <div>Dilewati/Skip: <strong id="batch-progress-skipped" class="text-amber-600 font-bold">0</strong></div>
+                </div>
+                <p class="text-[11px] text-slate-400 italic text-center">Mohon jangan menutup jendela browser selama proses berjalan...</p>
+            </div>
+        `,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    const batchSize = 75;
+    const totalBatches = Math.ceil(totalRows / batchSize);
+
+    let totalCreated = 0;
+    let totalUpdated = 0;
+    let totalSkipped = 0;
+    let totalFailed = 0;
+    let batchErrors = [];
+
     try {
-        const payload = {
-            category: selectedCategoryKey.value,
-            rows: parsedRows.value,
-            options: migrationOptions.value,
-        };
+        for (let b = 0; b < totalBatches; b++) {
+            const start = b * batchSize;
+            const end = Math.min(start + batchSize, totalRows);
+            const chunk = parsedRows.value.slice(start, end);
 
-        const res = await axios.post('/settings/data-migration/execute', payload);
+            // Update UI Elements
+            const currentPercent = Math.round((start / totalRows) * 100);
+            const statusElem = document.getElementById('batch-progress-status');
+            const percentElem = document.getElementById('batch-progress-percent');
+            const barElem = document.getElementById('batch-progress-bar');
+            const countElem = document.getElementById('batch-progress-count');
+            const createdElem = document.getElementById('batch-progress-created');
+            const updatedElem = document.getElementById('batch-progress-updated');
+            const skippedElem = document.getElementById('batch-progress-skipped');
 
-        if (res.data && res.data.success) {
+            if (statusElem) statusElem.textContent = `Memproses batch ${b + 1} dari ${totalBatches} (${start + 1}-${end})...`;
+            if (percentElem) percentElem.textContent = `${currentPercent}%`;
+            if (barElem) barElem.style.width = `${currentPercent}%`;
+            if (countElem) countElem.textContent = `${start}`;
+            if (createdElem) createdElem.textContent = `${totalCreated}`;
+            if (updatedElem) updatedElem.textContent = `${totalUpdated}`;
+            if (skippedElem) skippedElem.textContent = `${totalSkipped}`;
+
+            const payload = {
+                category: selectedCategoryKey.value,
+                rows: chunk,
+                options: migrationOptions.value,
+            };
+
+            try {
+                const res = await axios.post('/settings/data-migration/execute', payload);
+                if (res.data && res.data.success) {
+                    totalCreated += res.data.created_count || 0;
+                    totalUpdated += res.data.updated_count || 0;
+                    totalSkipped += res.data.skipped_count || 0;
+                    totalFailed += res.data.failed_count || 0;
+                } else {
+                    totalFailed += chunk.length;
+                    batchErrors.push(`Batch ${b + 1} (${start + 1}-${end}): ${res.data?.message || 'Gagal memproses batch'}`);
+                }
+            } catch (chunkErr) {
+                totalFailed += chunk.length;
+                const errDetail = chunkErr.response?.data?.message || chunkErr.message || 'Galat jaringan / server';
+                batchErrors.push(`Batch ${b + 1} (${start + 1}-${end}): ${errDetail}`);
+                console.error(`Error in batch ${b + 1}:`, chunkErr);
+            }
+        }
+
+        // Final UI update to 100%
+        const percentElem = document.getElementById('batch-progress-percent');
+        const barElem = document.getElementById('batch-progress-bar');
+        const countElem = document.getElementById('batch-progress-count');
+        const createdElem = document.getElementById('batch-progress-created');
+        const updatedElem = document.getElementById('batch-progress-updated');
+        const skippedElem = document.getElementById('batch-progress-skipped');
+        if (percentElem) percentElem.textContent = '100%';
+        if (barElem) barElem.style.width = '100%';
+        if (countElem) countElem.textContent = `${totalRows}`;
+        if (createdElem) createdElem.textContent = `${totalCreated}`;
+        if (updatedElem) updatedElem.textContent = `${totalUpdated}`;
+        if (skippedElem) skippedElem.textContent = `${totalSkipped}`;
+
+        // Give a slight delay so user sees 100% completion
+        await new Promise(r => setTimeout(r, 600));
+
+        if (batchErrors.length === 0) {
             Swal.fire({
                 icon: 'success',
-                title: 'Migrasi Berhasil!',
+                title: 'Migrasi Selesai!',
                 html: `
                     <div class="text-left text-xs space-y-2 text-slate-700">
-                        <p class="text-emerald-700 font-bold text-sm">Proses migrasi telah selesai dilaksanakan:</p>
+                        <p class="text-emerald-700 font-bold text-sm">Semua data (${totalRows} baris) telah berhasil diproses:</p>
                         <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-lg space-y-1">
-                            <div>✓ Berhasil Dibuat: <strong>${res.data.created_count || 0}</strong> baris</div>
-                            <div>✓ Berhasil Diperbarui: <strong>${res.data.updated_count || 0}</strong> baris</div>
-                            <div>- Dilewati (Skip): <strong>${res.data.skipped_count || 0}</strong> baris</div>
-                            <div>✕ Gagal: <strong>${res.data.failed_count || 0}</strong> baris</div>
+                            <div>✓ Berhasil Dibuat: <strong>${totalCreated}</strong> baris</div>
+                            <div>✓ Berhasil Diperbarui: <strong>${totalUpdated}</strong> baris</div>
+                            <div>- Dilewati (Skip): <strong>${totalSkipped}</strong> baris</div>
+                            <div>✕ Gagal: <strong>${totalFailed}</strong> baris</div>
                         </div>
                     </div>
                 `,
@@ -1411,7 +1507,27 @@ async function executeImport() {
                 router.reload();
             });
         } else {
-            throw new Error(res.data.message || 'Eksekusi impor gagal.');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Migrasi Selesai dengan Catatan',
+                html: `
+                    <div class="text-left text-xs space-y-2 text-slate-700">
+                        <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg space-y-1">
+                            <div>✓ Berhasil Dibuat: <strong>${totalCreated}</strong> baris</div>
+                            <div>✓ Berhasil Diperbarui: <strong>${totalUpdated}</strong> baris</div>
+                            <div>- Dilewati (Skip): <strong>${totalSkipped}</strong> baris</div>
+                            <div>✕ Gagal: <strong>${totalFailed}</strong> baris</div>
+                        </div>
+                        <div class="text-rose-600 font-semibold mt-2">Daftar Kesalahan Batch:</div>
+                        <div class="max-h-32 overflow-y-auto text-[11px] bg-rose-50 border border-rose-200 p-2 rounded text-rose-700">
+                            ${batchErrors.map(e => `<div>• ${e}</div>`).join('')}
+                        </div>
+                    </div>
+                `,
+                confirmButtonText: 'Tutup & Muat Ulang',
+            }).then(() => {
+                router.reload();
+            });
         }
     } catch (err) {
         console.error('Execution error:', err);

@@ -99,6 +99,10 @@ class DataMigrationController extends Controller
             return response()->json(['error' => 'Akses ditolak.'], 403);
         }
 
+        @set_time_limit(600);
+        @ini_set('max_execution_time', '600');
+        @ini_set('memory_limit', '512M');
+
         $request->validate([
             'category' => 'required|string',
             'rows' => 'nullable|array',
@@ -141,6 +145,10 @@ class DataMigrationController extends Controller
         if (!auth()->user()->can('data_migration_execute') && !auth()->user()->hasRole('admin')) {
             return response()->json(['error' => 'Akses ditolak untuk eksekusi impor.'], 403);
         }
+
+        @set_time_limit(600);
+        @ini_set('max_execution_time', '600');
+        @ini_set('memory_limit', '512M');
 
         $request->validate([
             'category' => 'required|string',
