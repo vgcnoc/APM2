@@ -48,7 +48,7 @@ class OltController extends Controller
             'area_id' => 'required|exists:areas,id',
             'name' => 'required|string|max:255',
             'hostname' => 'nullable|string|max:255',
-            'ip_address' => 'nullable|ip',
+            'ip_address' => 'nullable|string|max:255',
             'brand' => 'nullable|string|max:100',
             'model' => 'nullable|string|max:100',
             'total_pon_ports' => 'required|integer|min:1',
@@ -60,6 +60,10 @@ class OltController extends Controller
             'description' => 'nullable|string',
             'pon_vlans' => 'nullable|array',
         ]);
+
+        if (isset($validated['ip_address'])) {
+            $validated['ip_address'] = trim((string)$validated['ip_address']) ?: null;
+        }
 
         $olt = Olt::create($validated);
         
@@ -93,7 +97,7 @@ class OltController extends Controller
             'area_id' => 'required|exists:areas,id',
             'name' => 'required|string|max:255',
             'hostname' => 'nullable|string|max:255',
-            'ip_address' => 'nullable|ip',
+            'ip_address' => 'nullable|string|max:255',
             'brand' => 'nullable|string|max:100',
             'model' => 'nullable|string|max:100',
             'total_pon_ports' => 'required|integer|min:1',
@@ -105,6 +109,10 @@ class OltController extends Controller
             'description' => 'nullable|string',
             'pon_vlans' => 'nullable|array',
         ]);
+
+        if (isset($validated['ip_address'])) {
+            $validated['ip_address'] = trim((string)$validated['ip_address']) ?: null;
+        }
 
         $oldPonCount = $olt->total_pon_ports;
         $olt->update($validated);

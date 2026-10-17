@@ -41,6 +41,10 @@
                                 <p class="text-sm font-medium text-gray-900">{{ olt.hostname || '-' }}</p>
                             </div>
                             <div>
+                                <p class="text-xs text-gray-500 mb-1">IP Address / Domain</p>
+                                <p class="text-sm font-mono font-medium text-gray-900">{{ olt.ip_address || '-' }}</p>
+                            </div>
+                            <div>
                                 <p class="text-xs text-gray-500 mb-1">Lokasi</p>
                                 <p class="text-sm font-medium text-gray-900">{{ olt.location || '-' }}</p>
                             </div>

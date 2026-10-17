@@ -19,7 +19,7 @@
                         <tr class="bg-gray-50 border-b border-gray-100">
                             <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Nama OLT</th>
                             <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Area / Wilayah</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">IP Address</th>
+                            <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">IP Address / Domain</th>
                             <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Brand / Model</th>
                             <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Port PON</th>
                             <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
@@ -107,8 +107,9 @@
                                     <input v-model="form.hostname" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="contoh: olt1.isp.net" />
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">IP Address (Opsional)</label>
-                                    <input v-model="form.ip_address" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="192.168.1.1" />
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">IP Address / Domain (Opsional)</label>
+                                    <input v-model="form.ip_address" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="192.168.1.1 atau vpn.viruzs.my.id:45" />
+                                    <p class="text-[11px] text-gray-400 mt-1">Dapat diisi IP Address atau Domain / Hostname (dengan atau tanpa port).</p>
                                     <p v-if="form.errors.ip_address" class="text-red-500 text-xs mt-1">{{ form.errors.ip_address }}</p>
                                 </div>
                                 <div>
