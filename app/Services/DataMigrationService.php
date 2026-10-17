@@ -187,6 +187,80 @@ class DataMigrationService
     }
 
     /**
+     * Normalisasi status pelanggan toleran istilah legacy/Indonesian ISP
+     * Menghasilkan [ string $normalizedStatus, bool $isValid, ?string $label ]
+     */
+    public static function normalizeCustomerStatus(?string $raw): array
+    {
+        if ($raw === null || trim($raw) === '') {
+            return ['active', true, null];
+        }
+
+        $clean = strtolower(trim($raw));
+        $clean = str_replace(['-', ' ', '/'], '_', $clean);
+
+        // 1. Terminated / Stop Permanen / Putus / Cabut
+        if (in_array($clean, [
+            'stop_permanen', 'stop', 'berhenti', 'terminated', 'putus', 'cabut', 
+            'cbp', 'non_aktif_permanen', 'nonaktif_permanen', 'off_permanen', 
+            'berhenti_berlangganan', 'tutup', 'selesai', 'diberhentikan'
+        ])) {
+            return ['terminated', true, 'Stop Permanen (Terminated)'];
+        }
+
+        // 2. Suspended / Terisolir / Nonaktif Sementara
+        if (in_array($clean, [
+            'suspended', 'suspend', 'isolir', 'terisolir', 'nonaktif', 'non_aktif', 
+            'mati', 'cuti', 'tunggak', 'menunggak', 'off', 'off_sementara', 
+            'blokir', 'terblokir', 'isolir_sementara'
+        ])) {
+            return ['suspended', true, 'Terisolir (Suspended)'];
+        }
+
+        // 3. Active / Aktif
+        if (in_array($clean, [
+            'active', 'aktif', 'normal', 'lancar', 'connect', 'connected', 
+            'on', 'hidup', 'berjalan', 'ok', 'yes'
+        ])) {
+            return ['active', true, null];
+        }
+
+        // 4. Installing / Pemasangan
+        if (in_array($clean, [
+            'installing', 'installed', 'pasang', 'pemasangan', 'instalasi', 
+            'sedang_pasang', 'progres', 'progres_pasang', 'jadwal_pasang', 'antrian_pasang'
+        ])) {
+            return ['installing', true, 'Pemasangan (Installing)'];
+        }
+
+        // 5. Survey
+        if (in_array($clean, [
+            'survey', 'survei', 'cek_lokasi', 'jadwal_survey', 'proses_survey', 
+            'antrian_survey', 'feasibility'
+        ])) {
+            return ['survey', true, 'Survey'];
+        }
+
+        // 6. Booking
+        if (in_array($clean, [
+            'booking', 'daftar', 'registrasi', 'baru', 'order', 
+            'calon_pelanggan', 'draft', 'pending'
+        ])) {
+            return ['booking', true, 'Booking'];
+        }
+
+        // 7. Canceled / Batal
+        if (in_array($clean, [
+            'canceled', 'cancelled', 'cancel', 'batal', 'dibatalkan', 
+            'reject', 'rejected', 'gagal', 'tidak_jadi'
+        ])) {
+            return ['canceled', true, 'Dibatalkan (Canceled)'];
+        }
+
+        return ['active', false, null];
+    }
+
+    /**
      * Resolve area ID from cache supporting tolerant matching (e.g. 'BC-3', 'BC 3', 'BC_3' -> 'bc3')
      */
     public static function resolveAreaIdFromCache(?string $name, array $areasCache, array $areasNormalizedCache = []): ?int
@@ -1396,6 +1470,7 @@ class DataMigrationService
             $rowNum = $index + 1;
             $rowErrors = [];
             $rowWarnings = [];
+            $rowInfos = [];
             $mapped = [];
 
             switch ($category) {
@@ -1404,26 +1479,27 @@ class DataMigrationService
                         $row, $rowErrors, $rowWarnings, $mapped,
                         $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache,
                         $options, $areasNormalizedCache, $userPhonesCache, $affiliateCodesCache, $employeesIakCache,
-                        $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache, $allUsersList, $allEmployeesList
+                        $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache, $allUsersList, $allEmployeesList,
+                        $rowInfos
                     );
                     break;
                 case 'network':
-                    $this->validateNetworkRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $customersCache, $odpsCache, $options);
+                    $this->validateNetworkRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $customersCache, $odpsCache, $options, $rowInfos);
                     break;
                 case 'booking_survey':
-                    $this->validateSurveyRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $usersCache, $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache, $allUsersList, $allEmployeesList);
+                    $this->validateSurveyRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $usersCache, $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache, $allUsersList, $allEmployeesList, $rowInfos);
                     break;
                 case 'installation_activation':
-                    $this->validateInstallationRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache);
+                    $this->validateInstallationRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache, $rowInfos);
                     break;
                 case 'invoices':
-                    $this->validateInvoiceRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $invoicesCache);
+                    $this->validateInvoiceRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $invoicesCache, $rowInfos);
                     break;
                 case 'payments':
-                    $this->validatePaymentRow($row, $rowErrors, $rowWarnings, $mapped, $invoicesCache, $usersCache);
+                    $this->validatePaymentRow($row, $rowErrors, $rowWarnings, $mapped, $invoicesCache, $usersCache, $rowInfos);
                     break;
                 case 'employees':
-                    $this->validateEmployeeRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $employeesCache, $employeesIakCache, $options, $areasNormalizedCache);
+                    $this->validateEmployeeRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $employeesCache, $employeesIakCache, $options, $areasNormalizedCache, $rowInfos);
                     break;
             }
 
@@ -1439,6 +1515,7 @@ class DataMigrationService
                 'mapped' => $mapped,
                 'errors' => $rowErrors,
                 'warnings' => $rowWarnings,
+                'infos' => $rowInfos,
             ];
         }
 
@@ -1646,7 +1723,8 @@ class DataMigrationService
         $odpsNormalizedCache = [],
         $odpsStrippedNormCache = [],
         $allUsersList = [],
-        $allEmployeesList = []
+        $allEmployeesList = [],
+        &$infos = []
     ) {
         $name = trim((string)($row['nama_lengkap'] ?? $row['nama'] ?? ''));
         $rawPhone = trim((string)($row['nomor_wa'] ?? $row['phone'] ?? $row['no_wa'] ?? ''));
@@ -1727,8 +1805,9 @@ class DataMigrationService
             if ($resolvedSalesId) {
                 $salesId = $resolvedSalesId;
             } else {
-                if (!empty($options['auto_create_sales'])) {
-                    $warnings[] = "Petugas sales '{$salesRef}' belum terdaftar di sistem; akun sales baru akan otomatis dibuatkan.";
+                $autoCreateSales = !isset($options['auto_create_sales']) || !empty($options['auto_create_sales']);
+                if ($autoCreateSales) {
+                    $infos[] = "Petugas sales '{$salesRef}' belum terdaftar di sistem; akun sales baru akan otomatis dibuatkan.";
                 } else {
                     $warnings[] = "Petugas sales / karyawan '{$salesRef}' tidak ditemukan di sistem. Kolom sales dikosongkan.";
                 }
@@ -1749,11 +1828,13 @@ class DataMigrationService
         ]);
         $address = implode(', ', $addressParts) ?: '-';
 
-        $status = strtolower($row['status_pelanggan'] ?? $row['status'] ?? 'active');
-        $validStatuses = ['booking', 'survey', 'installing', 'active', 'suspended', 'terminated', 'canceled'];
-        if (!in_array($status, $validStatuses)) {
-            $warnings[] = "Status '{$status}' tidak valid, diubah default ke 'active'.";
+        $rawStatus = trim((string)($row['status_pelanggan'] ?? $row['status'] ?? 'active'));
+        [$status, $isValidStatus, $statusLabel] = self::normalizeCustomerStatus($rawStatus);
+        if (!$isValidStatus) {
+            $warnings[] = "Status '{$rawStatus}' tidak dikenal di sistem, dialihkan ke default 'active'.";
             $status = 'active';
+        } elseif ($statusLabel) {
+            $infos[] = "Status: {$statusLabel}";
         }
 
         $serviceStatus = strtolower(trim((string)($row['status_layanan'] ?? 'berbayar')));
@@ -1788,7 +1869,12 @@ class DataMigrationService
                 $odpId = $odpObj->id;
                 $odpName = $odpObj->name;
             } else {
-                $warnings[] = "ODP '{$rawOdpName}' belum terdaftar di master data ODP; sistem akan otomatis membuat ODP baru, menghubungkan ke Area/ODC, dan menyiapkan port fisiknya saat migrasi.";
+                $autoCreateOdps = !isset($options['auto_create_odps']) || !empty($options['auto_create_odps']);
+                if ($autoCreateOdps) {
+                    $infos[] = "ODP '{$rawOdpName}' belum terdaftar di master data ODP; sistem akan otomatis membuat ODP baru, menghubungkan ke Area/ODC, dan menyiapkan port fisiknya saat migrasi.";
+                } else {
+                    $warnings[] = "ODP '{$rawOdpName}' belum terdaftar di master data ODP. Aktifkan opsi buat ODP otomatis untuk melanjutkan.";
+                }
             }
         }
 
@@ -1982,7 +2068,7 @@ class DataMigrationService
         ];
     }
 
-    protected function validateSurveyRow($row, &$errors, &$warnings, &$mapped, $customersCache, $usersCache, $odpsCache, $odpsNormalizedCache = [], $odpsStrippedNormCache = [], $allUsersList = [], $allEmployeesList = [])
+    protected function validateSurveyRow($row, &$errors, &$warnings, &$mapped, $customersCache, $usersCache, $odpsCache, $odpsNormalizedCache = [], $odpsStrippedNormCache = [], $allUsersList = [], $allEmployeesList = [], &$infos = [])
     {
         $customerCode = $row['kode_pelanggan'] ?? '';
         if (empty($customerCode)) $errors[] = 'Kode Pelanggan wajib diisi.';
@@ -2012,7 +2098,7 @@ class DataMigrationService
                 $odpId = $odpObj->id;
                 $odpName = $odpObj->name;
             } else {
-                $warnings[] = "ODP '{$odpName}' belum terdaftar di master ODP; sistem akan otomatis membuat ODP baru saat migrasi.";
+                $infos[] = "ODP '{$odpName}' belum terdaftar di master ODP; sistem akan otomatis membuat ODP baru saat migrasi.";
             }
         }
         if ($feasibility === 'feasible' && empty($odpName)) {
@@ -2033,7 +2119,7 @@ class DataMigrationService
         ];
     }
 
-    protected function validateInstallationRow($row, &$errors, &$warnings, &$mapped, $customersCache, $odpsCache, $odpsNormalizedCache = [], $odpsStrippedNormCache = [])
+    protected function validateInstallationRow($row, &$errors, &$warnings, &$mapped, $customersCache, $odpsCache, $odpsNormalizedCache = [], $odpsStrippedNormCache = [], &$infos = [])
     {
         $customerCode = $row['kode_pelanggan'] ?? '';
         if (empty($customerCode)) $errors[] = 'Kode Pelanggan wajib diisi.';
@@ -2051,7 +2137,7 @@ class DataMigrationService
                 $odpId = $odpObj->id;
                 $odpName = $odpObj->name;
             } else {
-                $warnings[] = "ODP '{$odpName}' belum terdaftar di master ODP; sistem akan otomatis membuat ODP baru saat migrasi.";
+                $infos[] = "ODP '{$odpName}' belum terdaftar di master ODP; sistem akan otomatis membuat ODP baru saat migrasi.";
             }
         } else {
             $warnings[] = "Nama ODP tidak diisi; penautan port ODP akan dilewati jika belum ada data.";
@@ -2345,7 +2431,7 @@ class DataMigrationService
                         'free_hotspot' => (bool)($data['free_hotspot'] ?? false),
                         'hotspot_user' => !empty($data['user_hotspot']) ? substr(trim((string)$data['user_hotspot']), 0, 100) : null,
                         'hotspot_password' => !empty($data['pass_hotspot']) ? substr(trim((string)$data['pass_hotspot']), 0, 100) : null,
-                        'status' => 'active',
+                        'status' => in_array($targetCust->status, ['terminated', 'canceled']) ? 'inactive' : 'active',
                     ];
 
                     if ($ont) {
@@ -2371,10 +2457,10 @@ class DataMigrationService
             $installTechId = !empty($data['teknisi_pasang_id']) ? $data['teknisi_pasang_id'] : $techOrSalesId;
             $installSchedDate = !empty($data['tgl_jadwal_pasang']) ? $data['tgl_jadwal_pasang'] : $actDate;
             $installSchedTime = !empty($data['jam_jadwal_pasang']) ? $data['jam_jadwal_pasang'] : '10:00';
-            $installSchedStatus = !empty($data['status_jadwal_pasang']) ? $data['status_jadwal_pasang'] : (($targetCust->status === 'active') ? 'done' : 'scheduled');
+            $installSchedStatus = !empty($data['status_jadwal_pasang']) ? $data['status_jadwal_pasang'] : (in_array($targetCust->status, ['active', 'terminated']) ? 'done' : 'scheduled');
 
             // 1. Jadwal Survey (TechnicianSchedule type 'survey')
-            if (!empty($data['tgl_jadwal_survey']) || in_array($targetCust->status, ['survey', 'installing', 'active'])) {
+            if (!empty($data['tgl_jadwal_survey']) || in_array($targetCust->status, ['survey', 'installing', 'active', 'terminated'])) {
                 $surveySched = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'survey')->first();
                 $surveySchedPayload = [
                     'customer_id' => $targetCust->id,
@@ -2393,7 +2479,7 @@ class DataMigrationService
             }
 
             // 2. Laporan Hasil Survey (Survey)
-            if (!empty($odpId) || !empty($data['tgl_survey']) || in_array($targetCust->status, ['installing', 'active'])) {
+            if (!empty($odpId) || !empty($data['tgl_survey']) || in_array($targetCust->status, ['installing', 'active', 'terminated'])) {
                 $survey = Survey::where('customer_id', $targetCust->id)->first();
                 $surveyPayload = [
                     'customer_id' => $targetCust->id,
@@ -2414,7 +2500,7 @@ class DataMigrationService
             }
 
             // 3. Jadwal Pasang (TechnicianSchedule type 'installation')
-            if (!empty($data['tgl_jadwal_pasang']) || in_array($targetCust->status, ['installing', 'active'])) {
+            if (!empty($data['tgl_jadwal_pasang']) || in_array($targetCust->status, ['installing', 'active', 'terminated'])) {
                 $installSched = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'installation')->first();
                 $installSchedPayload = [
                     'customer_id' => $targetCust->id,
@@ -2432,9 +2518,16 @@ class DataMigrationService
                 }
             }
 
-            // 4. Mark customer as audited if active
-            if ($targetCust->status === 'active' && !$targetCust->is_audited) {
+            // 4. Mark customer as audited if active or terminated
+            if (in_array($targetCust->status, ['active', 'terminated']) && !$targetCust->is_audited) {
                 $targetCust->update(['is_audited' => true]);
+            }
+            if ($targetCust->status === 'terminated' && empty($targetCust->cancel_stage)) {
+                $targetCust->update([
+                    'cancel_stage' => 'terminated',
+                    'cancel_reason' => 'Stop Permanen (Migrasi Sistem)',
+                    'cancel_date' => $targetCust->activation_date ? $targetCust->activation_date->format('Y-m-d') : date('Y-m-d'),
+                ]);
             }
         }
 

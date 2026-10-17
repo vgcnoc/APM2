@@ -597,7 +597,16 @@
                                                             {{ w }}
                                                         </span>
                                                     </div>
-                                                    <span v-if="item.status === 'valid' && (!item.warnings || item.warnings.length === 0)" class="text-slate-400 text-[11px]">
+                                                    <div v-if="item.infos && item.infos.length > 0" class="space-y-1 mt-0.5">
+                                                        <span
+                                                            v-for="(inf, iIdx) in item.infos"
+                                                            :key="iIdx"
+                                                            class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200 mr-1"
+                                                        >
+                                                            {{ inf }}
+                                                        </span>
+                                                    </div>
+                                                    <span v-if="item.status === 'valid' && (!item.warnings || item.warnings.length === 0) && (!item.infos || item.infos.length === 0)" class="text-slate-400 text-[11px]">
                                                         Siap diimpor
                                                     </span>
                                                 </td>
