@@ -183,6 +183,7 @@ class InvoiceController extends Controller
                     'last_payment_channel' => $lastPayment ? $lastPayment->payment_channel : null,
                     'last_payment_collector' => $lastPayment?->collector?->name ?? null,
                     'last_payment_notes' => $lastPayment ? $lastPayment->notes : null,
+                    'last_payment_proof' => $lastPayment && $lastPayment->proof_image ? asset('storage/' . $lastPayment->proof_image) : null,
                     'due_date' => $invoice->due_date ? $invoice->due_date->format('Y-m-d') : null,
                     'issued_date' => $invoice->issued_date ? $invoice->issued_date->format('Y-m-d') : null,
                     'period_month' => $invoice->period_month,
@@ -218,7 +219,13 @@ class InvoiceController extends Controller
             'amount' => 'required|numeric|min:1',
             'method' => 'required|string',
             'notes' => 'nullable|string',
+            'proof_image' => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
         ]);
+
+        $proofPath = null;
+        if ($request->hasFile('proof_image')) {
+            $proofPath = $request->file('proof_image')->store('payment_proofs', 'public');
+        }
 
         $paymentAmount = (int) round($request->amount);
         $customerId = $invoice->customer_id;
@@ -250,6 +257,7 @@ class InvoiceController extends Controller
                 'amount' => $payForThis,
                 'payment_method' => $request->method,
                 'notes' => $request->notes,
+                'proof_image' => $proofPath,
                 'collected_by' => auth()->id(),
             ]);
 
@@ -272,6 +280,7 @@ class InvoiceController extends Controller
                 'amount' => $remainingPayment,
                 'payment_method' => $request->method,
                 'notes' => ($request->notes ? $request->notes . ' | ' : '') . 'Kelebihan Pembayaran (Overpaid)',
+                'proof_image' => $proofPath,
                 'collected_by' => auth()->id(),
             ]);
             $totalPaid = (int) round($invoice->payments()->sum('amount'));

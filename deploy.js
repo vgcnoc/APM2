@@ -3,15 +3,15 @@ const { Client } = require('ssh2');
 const conn = new Client();
 conn.on('ready', () => {
   console.log('Client :: ready');
-  conn.exec('cd /var/www/APM2 && git reset --hard HEAD && git pull origin main && npm run build && php artisan optimize:clear', (err, stream) => {
+  conn.exec('cd /var/www/APM2 && git reset --hard HEAD && git pull origin main && npm install --legacy-peer-deps && php artisan migrate --force && php artisan storage:link && npm run build && php artisan optimize:clear', (err, stream) => {
     if (err) throw err;
     stream.on('close', (code, signal) => {
       console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
       conn.end();
     }).on('data', (data) => {
-      console.log('STDOUT: ' + data);
+      process.stdout.write(data);
     }).stderr.on('data', (data) => {
-      console.log('STDERR: ' + data);
+      process.stderr.write(data);
     });
   });
 }).connect({

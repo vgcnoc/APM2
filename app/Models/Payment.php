@@ -12,9 +12,16 @@ class Payment extends Model
 
     protected $fillable = [
         'invoice_id', 'customer_id', 'amount', 'payment_method', 'payment_channel',
-        'payment_date', 'reference_number', 'notes',
+        'payment_date', 'reference_number', 'notes', 'proof_image',
         'status', 'collected_by'
     ];
+
+    protected $appends = ['proof_url'];
+
+    public function getProofUrlAttribute(): ?string
+    {
+        return $this->proof_image ? asset('storage/' . $this->proof_image) : null;
+    }
 
     protected function casts(): array
     {

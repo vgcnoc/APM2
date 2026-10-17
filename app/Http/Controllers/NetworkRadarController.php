@@ -13,30 +13,98 @@ class NetworkRadarController extends Controller
 {
     public function index()
     {
-        $odcs = Odc::select('id', 'name', 'latitude', 'longitude', 'location as address', 'capacity', 'status')
+        $odcs = Odc::select('id', 'name', 'latitude', 'longitude', 'location as address', 'capacity', 'status', 'area_id')
+            ->with(['area:id,name'])
             ->withCount('odps')
             ->get();
 
-        $odps = Odp::select('id', 'name', 'latitude', 'longitude', 'address', 'odc_id', 'total_ports', 'used_ports', 'status')
-            ->with(['odc:id,name'])
+        $odps = Odp::select('id', 'name', 'latitude', 'longitude', 'address', 'odc_id', 'area_id', 'total_ports', 'used_ports', 'status')
+            ->with(['odc:id,name', 'area:id,name'])
             ->get();
 
-        $customers = Customer::select('id', 'name', 'customer_code', 'latitude', 'longitude', 'address', 'is_reseller', 'status')
+        $customers = Customer::select('id', 'name', 'customer_code', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
-            ->with(['ont.odp:id,name'])
+            ->with(['ont.odp:id,name,odc_id', 'areaModel:id,name'])
             ->get()
             ->map(function ($customer) {
                 $arr = $customer->toArray();
                 $arr['odp'] = $customer->ont ? $customer->ont->odp : null;
+                $arr['odp_id'] = $customer->ont && $customer->ont->odp ? $customer->ont->odp->id : null;
+                $arr['odc_id'] = $customer->ont && $customer->ont->odp ? $customer->ont->odp->odc_id : null;
+                $arr['area_name'] = $customer->areaModel ? $customer->areaModel->name : ($customer->area ?: null);
                 unset($arr['ont']);
                 return $arr;
             });
+
+        $areas = \App\Models\Area::select('id', 'name')->orderBy('name')->get();
+
+        // Aktivitas Karyawan (Absensi GPS & Tugas Luar Hari Ini / Terkini)
+        $employeeActivities = collect();
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('attendances')) {
+                $attendances = \App\Models\Attendance::with(['employee:id,name,position,branch'])
+                    ->whereDate('date', now()->toDateString())
+                    ->where(function ($q) {
+                        $q->whereNotNull('lat_in')->whereNotNull('lng_in')
+                          ->orWhereNotNull('lat_out')->whereNotNull('lng_out');
+                    })
+                    ->latest()
+                    ->get()
+                    ->map(function ($att) {
+                        return [
+                            'id' => 'att-' . $att->id,
+                            'name' => $att->employee?->name ?? 'Karyawan',
+                            'position' => $att->employee?->position ?? '-',
+                            'branch' => $att->employee?->branch ?? '-',
+                            'time' => $att->clock_in ?? $att->clock_out,
+                            'latitude' => (float) ($att->lat_in ?? $att->lat_out),
+                            'longitude' => (float) ($att->lng_in ?? $att->lng_out),
+                            'status' => $att->status,
+                            'photo' => $att->photo_in ?? $att->photo_out,
+                            'type' => 'attendance',
+                            'notes' => $att->notes ?? 'Absensi Reguler'
+                        ];
+                    });
+                $employeeActivities = $employeeActivities->concat($attendances);
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('field_duties')) {
+                $fieldDuties = \App\Models\FieldDuty::with(['employee:id,name,position,branch'])
+                    ->whereDate('date', now()->toDateString())
+                    ->where(function ($q) {
+                        $q->whereNotNull('lat_in')->whereNotNull('lng_in')
+                          ->orWhereNotNull('lat_out')->whereNotNull('lng_out');
+                    })
+                    ->latest()
+                    ->get()
+                    ->map(function ($duty) {
+                        return [
+                            'id' => 'duty-' . $duty->id,
+                            'name' => $duty->employee?->name ?? 'Karyawan',
+                            'position' => $duty->employee?->position ?? '-',
+                            'branch' => $duty->employee?->branch ?? '-',
+                            'time' => $duty->check_in_time ?? $duty->check_out_time ?? $duty->scheduled_start_time,
+                            'latitude' => (float) ($duty->lat_in ?? $duty->lat_out),
+                            'longitude' => (float) ($duty->lng_in ?? $duty->lng_out),
+                            'status' => $duty->status,
+                            'photo' => $duty->check_in_photo ?? $duty->check_out_photo,
+                            'type' => 'field_duty',
+                            'notes' => $duty->purpose ?? $duty->destination_location ?? 'Tugas Lapangan'
+                        ];
+                    });
+                $employeeActivities = $employeeActivities->concat($fieldDuties);
+            }
+        } catch (\Throwable $e) {
+            // fallback gracefully
+        }
 
         return Inertia::render('NetworkRadar/Index', [
             'odcs' => $odcs,
             'odps' => $odps,
             'customers' => $customers,
+            'areas' => $areas,
+            'employeeActivities' => $employeeActivities->values(),
             'initLat' => request()->query('lat'),
             'initLng' => request()->query('lng'),
         ]);
@@ -50,13 +118,14 @@ class NetworkRadarController extends Controller
         $request->validate([
             'lat' => 'required|numeric',
             'lng' => 'required|numeric',
-            'radius' => 'nullable|numeric|min:0.1|max:50', // km
+            'radius' => 'nullable|numeric|min:0.1|max:50000', // meter or km
             'type' => 'nullable|in:odp,odc,customer,all',
         ]);
 
         $lat = $request->lat;
         $lng = $request->lng;
-        $radius = $request->radius ?? 5; // default 5km
+        $rawRadius = $request->radius ?? 5;
+        $radius = $rawRadius > 50 ? ($rawRadius / 1000) : $rawRadius; // convert meter to km if > 50
         $type = $request->type ?? 'all';
 
         $results = [];

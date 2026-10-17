@@ -245,10 +245,21 @@
                     </span>
                 </td>
                 <td>
-                    <span :class="['px-2.5 py-1 text-[10px] font-bold rounded-md whitespace-nowrap flex items-center gap-1 w-max', statusClass(row.status)]">
-                        <span class="w-1.5 h-1.5 rounded-full" :class="statusDotClass(row.status)"></span>
-                        {{ formatStatus(row.status) }}
-                    </span>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span :class="['px-2.5 py-1 text-[10px] font-bold rounded-md whitespace-nowrap flex items-center gap-1 w-max', statusClass(row.status)]">
+                            <span class="w-1.5 h-1.5 rounded-full" :class="statusDotClass(row.status)"></span>
+                            {{ formatStatus(row.status) }}
+                        </span>
+                        <a 
+                            v-if="row.last_payment_proof" 
+                            :href="row.last_payment_proof" 
+                            target="_blank" 
+                            class="inline-flex items-center justify-center p-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded border border-indigo-200 transition-colors shadow-2xs" 
+                            title="Lihat Bukti Transfer"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        </a>
+                    </div>
                 </td>
                 <td>
                     <button 
@@ -361,6 +372,12 @@
                         <div v-if="activeDropdownRow.last_payment_collector" class="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
                             <svg class="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                             <span>Diproses: <strong class="text-slate-800 font-bold">{{ activeDropdownRow.last_payment_collector }}</strong></span>
+                        </div>
+                        <div v-if="activeDropdownRow.last_payment_proof" class="mt-1.5 pt-1.5 border-t border-gray-200/60">
+                            <a :href="activeDropdownRow.last_payment_proof" target="_blank" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50/80 hover:bg-indigo-100 px-2 py-1 rounded-lg transition-colors w-full justify-center">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                <span>Lihat Bukti Transfer</span>
+                            </a>
                         </div>
                     </div>
 
@@ -604,6 +621,59 @@
                             </div>
                             <div v-else-if="paymentForm.method === 'transfer'" class="bg-amber-50 text-amber-700 p-3 rounded-xl border border-amber-200 text-xs text-center">
                                 Belum ada data rekening yang diatur. Silakan atur di Pengaturan Billing.
+                            </div>
+
+                            <!-- Upload Bukti Transfer (Khusus Transfer Bank) -->
+                            <div v-if="paymentForm.method === 'transfer'" class="space-y-1.5">
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                                    Upload Bukti Transfer (Bukti TF)
+                                </label>
+                                
+                                <div class="relative">
+                                    <input 
+                                        type="file" 
+                                        ref="proofFileInput" 
+                                        @change="handleProofUpload" 
+                                        accept="image/*,.pdf" 
+                                        class="hidden" 
+                                        id="invoice-proof-input"
+                                    />
+
+                                    <!-- Preview jika ada file yang dipilih -->
+                                    <div v-if="proofPreview || paymentForm.proof_image" class="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl flex items-center justify-between gap-3">
+                                        <div class="flex items-center gap-3 min-w-0">
+                                            <img v-if="proofPreview" :src="proofPreview" alt="Bukti Transfer" class="w-12 h-12 object-cover rounded-lg border border-indigo-200 shadow-2xs shrink-0" />
+                                            <div v-else class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center shrink-0">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p class="text-xs font-bold text-gray-900 truncate">{{ proofFileName || 'Bukti Transfer Terpilih' }}</p>
+                                                <p class="text-[10px] text-gray-500 font-medium">{{ proofFileSize || 'Siap diupload' }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 shrink-0">
+                                            <button type="button" @click="$refs.proofFileInput?.click()" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-white border border-indigo-200 hover:bg-indigo-50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer">
+                                                Ganti
+                                            </button>
+                                            <button type="button" @click="removeProofFile" class="text-[11px] font-bold text-rose-600 hover:text-rose-800 bg-white border border-rose-200 hover:bg-rose-50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer">
+                                                Hapus
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Area Upload Kosong -->
+                                    <label 
+                                        v-else 
+                                        for="invoice-proof-input" 
+                                        class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-200 hover:border-indigo-400 rounded-xl bg-gray-50/70 hover:bg-indigo-50/30 cursor-pointer transition-all group"
+                                    >
+                                        <div class="w-10 h-10 rounded-full bg-white shadow-2xs border border-gray-100 flex items-center justify-center text-gray-400 group-hover:text-indigo-600 group-hover:scale-105 transition-all mb-1.5">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        </div>
+                                        <span class="text-xs font-bold text-gray-700 group-hover:text-indigo-600 transition-colors">Klik untuk upload bukti transfer (foto/PDF)</span>
+                                        <span class="text-[10px] text-gray-400 mt-0.5">Format: JPG, PNG, WEBP, atau PDF (Maks. 5MB)</span>
+                                    </label>
+                                </div>
                             </div>
 
                             <!-- Notes -->
@@ -1350,13 +1420,47 @@ onUnmounted(() => {
 // Payment Modal Logic
 const showPaymentModal = ref(false);
 const selectedInvoice = ref(null);
+const proofFileInput = ref(null);
+const proofPreview = ref(null);
+const proofFileName = ref('');
+const proofFileSize = ref('');
 
 const paymentForm = useForm({
     method: 'cash',
     amount: 0,
     notes: '',
     selected_bank: null,
+    proof_image: null,
 });
+
+function handleProofUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    paymentForm.proof_image = file;
+    proofFileName.value = file.name;
+    proofFileSize.value = `${(file.size / 1024).toFixed(1)} KB`;
+
+    if (file.type && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            proofPreview.value = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    } else {
+        proofPreview.value = null;
+    }
+}
+
+function removeProofFile() {
+    paymentForm.proof_image = null;
+    proofPreview.value = null;
+    proofFileName.value = '';
+    proofFileSize.value = '';
+    if (proofFileInput.value) {
+        proofFileInput.value.value = '';
+    }
+}
 
 function openPaymentModal(invoice) {
     selectedInvoice.value = invoice;
@@ -1364,6 +1468,7 @@ function openPaymentModal(invoice) {
     paymentForm.method = 'cash';
     paymentForm.notes = '';
     paymentForm.selected_bank = null;
+    removeProofFile();
     showPaymentModal.value = true;
 }
 
@@ -1372,6 +1477,7 @@ function closePaymentModal() {
     setTimeout(() => {
         selectedInvoice.value = null;
         paymentForm.reset();
+        removeProofFile();
     }, 200);
 }
 
@@ -1388,6 +1494,7 @@ function submitPayment() {
         };
     }).post(`/invoices/${selectedInvoice.value.id}/pay`, {
         preserveScroll: true,
+        forceFormData: true,
         onSuccess: () => {
             closePaymentModal();
         },
