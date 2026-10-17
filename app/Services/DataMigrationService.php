@@ -128,6 +128,65 @@ class DataMigrationService
     }
 
     /**
+     * Sanitize & standardize MAC address into XX:XX:XX:XX:XX:XX format.
+     * Supports legacy strings with suffixes like E42D7DBB7A4F-5B(13) -> E4:2D:7D:BB:7A:4F
+     */
+    public static function sanitizeMacAddress(?string $val): ?string
+    {
+        if (empty($val) || $val === '-' || $val === '?' || $val === 'null' || $val === 'none') {
+            return null;
+        }
+        $val = trim((string)$val);
+
+        // 1. Check if contains standard colon/hyphen separated MAC: XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX
+        if (preg_match('/([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})/', $val, $matches)) {
+            return strtoupper(str_replace('-', ':', $matches[0]));
+        }
+
+        // 2. Check if contains Cisco dot notation: XXXX.XXXX.XXXX
+        if (preg_match('/([0-9A-Fa-f]{4})\.([0-9A-Fa-f]{4})\.([0-9A-Fa-f]{4})/', $val, $matches)) {
+            $hex = $matches[1] . $matches[2] . $matches[3];
+            return strtoupper(implode(':', str_split($hex, 2)));
+        }
+
+        // 3. Check if starts with 12 consecutive hex characters (e.g. E42D7DBB7A4F or E42D7DBB7A4F-5B(13))
+        if (preg_match('/^([0-9A-Fa-f]{12})/i', $val, $matches)) {
+            return strtoupper(implode(':', str_split($matches[1], 2)));
+        }
+
+        // 4. Any 12 hex characters in the string
+        $allHex = preg_replace('/[^0-9A-Fa-f]/', '', $val);
+        if (strlen($allHex) >= 12) {
+            return strtoupper(implode(':', str_split(substr($allHex, 0, 12), 2)));
+        }
+
+        // 5. Fallback: sanitize and limit to max 45 chars
+        $clean = substr(preg_replace('/[^A-Za-z0-9:\-\._]/', '', $val), 0, 45);
+        return !empty($clean) ? $clean : null;
+    }
+
+    /**
+     * Sanitize & parse optical Rx power (dBm)
+     */
+    public static function parseRxPower($val, float $default = -20.0): float
+    {
+        if ($val === null || $val === '' || $val === '-' || $val === '?') {
+            return $default;
+        }
+        $str = trim(str_replace(['dBm', 'dbm', ' '], '', (string)$val));
+        $str = str_replace(',', '.', $str);
+        if (!is_numeric($str)) {
+            return $default;
+        }
+        $num = (float)$str;
+        // Rx power is typically negative (-15 to -32 dBm). If entered as positive (e.g. 19.5), convert to -19.5
+        if ($num > 0 && $num <= 40) {
+            $num = -$num;
+        }
+        return round($num, 2);
+    }
+
+    /**
      * Resolve area ID from cache supporting tolerant matching (e.g. 'BC-3', 'BC 3', 'BC_3' -> 'bc3')
      */
     public static function resolveAreaIdFromCache(?string $name, array $areasCache, array $areasNormalizedCache = []): ?int
@@ -1527,10 +1586,10 @@ class DataMigrationService
             'odp_name' => $odpName ?: null,
             'port_number' => $portNumber,
             'sn_ont' => $snOnt ?: null,
-            'mac_ont' => $row['mac_ont'] ?? $row['mac_address'] ?? null,
+            'mac_ont' => self::sanitizeMacAddress($row['mac_ont'] ?? $row['mac_address'] ?? null),
             'merk_ont' => $row['merk_ont'] ?? $row['brand'] ?? 'ZTE',
             'tipe_model' => $row['tipe_model'] ?? $row['model'] ?? 'F609',
-            'redaman_rx' => !empty($row['redaman_rx']) ? (float)$row['redaman_rx'] : -20.0,
+            'redaman_rx' => self::parseRxPower($row['redaman_rx'] ?? null, -20.0),
             'username_pppoe' => $row['username_pppoe'] ?? $row['pppoe_user'] ?? null,
             'password_pppoe' => $row['password_pppoe'] ?? $row['pppoe_password'] ?? null,
             'vlan_id' => $row['vlan_id'] ?? null,
@@ -1602,7 +1661,7 @@ class DataMigrationService
             'customer_code' => $customerCode,
             'customer_id' => $customerId,
             'serial_number' => $snOnt ?: null,
-            'mac_address' => $row['mac_ont'] ?? null,
+            'mac_address' => self::sanitizeMacAddress($row['mac_ont'] ?? null),
             'vlan_id' => $row['vlan_id'] ?? null,
             'area_name' => $areaName ?: 'Default',
             'latitude' => self::parseCoordinate($row['latitude'] ?? null, 'lat'),
@@ -1985,21 +2044,25 @@ class DataMigrationService
                         ['status' => 'used']
                     );
 
-                    $ont = Ont::where('serial_number', $data['sn_ont'])->first();
+                    $ontSn = trim((string)$data['sn_ont']);
+                    $ontMac = self::sanitizeMacAddress($data['mac_ont'] ?? null);
+                    $ontRx = self::parseRxPower($data['redaman_rx'] ?? null, -20.0);
+
+                    $ont = Ont::where('serial_number', $ontSn)->first();
                     $ontPayload = [
                         'customer_id' => $targetCust->id,
-                        'serial_number' => $data['sn_ont'],
-                        'mac_address' => $data['mac_ont'] ?? null,
-                        'brand' => $data['merk_ont'] ?? 'ZTE',
-                        'model' => $data['tipe_model'] ?? 'F609',
+                        'serial_number' => $ontSn,
+                        'mac_address' => $ontMac,
+                        'brand' => substr(trim($data['merk_ont'] ?? 'ZTE'), 0, 100),
+                        'model' => substr(trim($data['tipe_model'] ?? 'F609'), 0, 100),
                         'odp_id' => $odp->id,
                         'odp_port_id' => $odpPort?->id,
                         'port_number' => $portToUse,
                         'area_id' => $areaId ?: $odp->area_id,
-                        'rx_power' => $data['redaman_rx'] ?? -20.0,
-                        'pppoe_user' => $data['username_pppoe'] ?? null,
-                        'pppoe_password' => $data['password_pppoe'] ?? null,
-                        'vlan_id' => $data['vlan_id'] ?? null,
+                        'rx_power' => $ontRx,
+                        'pppoe_user' => !empty($data['username_pppoe']) ? substr(trim((string)$data['username_pppoe']), 0, 100) : null,
+                        'pppoe_password' => !empty($data['password_pppoe']) ? substr(trim((string)$data['password_pppoe']), 0, 100) : null,
+                        'vlan_id' => !empty($data['vlan_id']) ? substr(trim((string)$data['vlan_id']), 0, 50) : null,
                         'access_mode' => $data['mode_akses'] ?? ($data['service_status'] === 'free_home' ? 'VOUCHER' : 'PPPOE'),
                         'status' => 'active',
                     ];
@@ -2161,7 +2224,7 @@ class DataMigrationService
                     'odp_id' => $odp->id,
                     'odp_port_id' => $odpPort?->id,
                     'port_number' => $portToUse,
-                    'mac_address' => $data['mac_address'] ?: $ont->mac_address,
+                    'mac_address' => self::sanitizeMacAddress($data['mac_address'] ?? null) ?: $ont->mac_address,
                     'vlan_id' => $data['vlan_id'] ?: $ont->vlan_id,
                     'status' => 'active',
                 ]);
@@ -2169,7 +2232,7 @@ class DataMigrationService
                 Ont::create([
                     'customer_id' => $data['customer_id'],
                     'serial_number' => $data['serial_number'],
-                    'mac_address' => $data['mac_address'],
+                    'mac_address' => self::sanitizeMacAddress($data['mac_address'] ?? null),
                     'odp_id' => $odp->id,
                     'odp_port_id' => $odpPort?->id,
                     'port_number' => $portToUse,
