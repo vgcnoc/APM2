@@ -715,7 +715,7 @@ const generateVoucher = () => {
 };
 </script>
 
-<style>
+<style scoped>
 @media print {
     * {
         -webkit-print-color-adjust: exact !important;

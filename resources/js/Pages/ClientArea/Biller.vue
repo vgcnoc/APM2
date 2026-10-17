@@ -869,7 +869,13 @@ const openReceiptFromPayment = (pay) => {
 
 // Cetak Struk
 const printReceipt = () => {
-    window.print();
+    document.body.classList.add('is-printing-biller-receipt');
+    setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+            document.body.classList.remove('is-printing-biller-receipt');
+        }, 1000);
+    }, 100);
 };
 
 // Kirim Struk via WhatsApp
@@ -939,13 +945,14 @@ const submitTopUp = () => {
 
 <style>
 @media print {
-    body * {
+    body.is-printing-biller-receipt * {
         visibility: hidden !important;
     }
-    #receipt-paper, #receipt-paper * {
+    body.is-printing-biller-receipt #receipt-paper,
+    body.is-printing-biller-receipt #receipt-paper * {
         visibility: visible !important;
     }
-    #receipt-paper {
+    body.is-printing-biller-receipt #receipt-paper {
         position: absolute !important;
         left: 0 !important;
         top: 0 !important;
@@ -957,7 +964,7 @@ const submitTopUp = () => {
         color: black !important;
         font-size: 11px !important;
     }
-    .no-print {
+    body.is-printing-biller-receipt .no-print {
         display: none !important;
     }
 }
