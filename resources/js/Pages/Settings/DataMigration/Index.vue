@@ -70,6 +70,9 @@
                                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                             ]"
                         >
+                            <span v-if="key === 'customers'" class="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-400 text-amber-950 shadow-sm animate-pulse z-10">
+                                MASTER 6-IN-1
+                            </span>
                             <!-- Tab Icon -->
                             <div class="w-8 h-8 rounded-lg flex items-center justify-center mb-2"
                                 :class="selectedCategoryKey === key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'">
@@ -113,9 +116,12 @@
                     <!-- CATEGORY BANNER & TEMPLATE DOWNLOAD -->
                     <div class="p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-indigo-50/30 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 flex-wrap">
                                 <span class="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-indigo-100 text-indigo-700 uppercase">
                                     Modul {{ currentCategory.title }}
+                                </span>
+                                <span v-if="selectedCategoryKey === 'customers'" class="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                                    ⭐ MASTER TERLENGKAP (Booking s/d Aktivasi Sekaligus)
                                 </span>
                                 <span class="text-xs text-slate-400">Tabel: <code class="text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded">{{ currentCategory.target_table }}</code></span>
                             </div>

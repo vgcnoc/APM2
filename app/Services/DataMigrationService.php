@@ -466,47 +466,79 @@ class DataMigrationService
     {
         return [
             'customers' => [
-                'title' => 'Data Pelanggan',
-                'description' => 'Migrasi biodata pelanggan, status paket, alamat, dan profil billing.',
+                'title' => 'Data Pelanggan (Master 6 Tahap)',
+                'description' => 'Template utama dan terlengkap untuk seluruh siklus pelanggan: Booking, Jadwal Survey, Hasil Survey, Jadwal Pasang, Laporan Instalasi & ONT, hingga Aktivasi Layanan.',
                 'target_table' => 'customers',
                 'id_column' => 'customer_code',
                 'headers' => [
-                    'kode_pelanggan' => ['label' => 'Kode Pelanggan (CUS-XXXXXX)', 'required' => false, 'db' => 'customer_code'],
+                    // ── 1. BOOKING & BIODATA ───────────────────────────────
+                    'kode_pelanggan' => ['label' => 'Kode Pelanggan (CUS-XXXXXX / Kosongkan untuk auto-generate)', 'required' => false, 'db' => 'customer_code'],
                     'nama_lengkap' => ['label' => 'Nama Lengkap Pelanggan', 'required' => true, 'db' => 'name'],
                     'nomor_wa' => ['label' => 'Nomor WhatsApp / HP', 'required' => true, 'db' => 'phone'],
                     'email' => ['label' => 'Alamat Email', 'required' => false, 'db' => 'email'],
-                    'nama_area' => ['label' => 'Nama Area / Wilayah', 'required' => true, 'db' => 'area'],
+                    'nama_area' => ['label' => 'Nama Area / Wilayah (Otomatis cocokkan/buat baru)', 'required' => true, 'db' => 'area'],
                     'alamat_jalan' => ['label' => 'Detail Alamat / Jalan', 'required' => true, 'db' => 'address_detail'],
-                    'rt_rw' => ['label' => 'RT / RW', 'required' => false, 'db' => 'rt_rw'],
+                    'rt_rw' => ['label' => 'RT / RW (misal: 02/05)', 'required' => false, 'db' => 'rt_rw'],
                     'kelurahan_desa' => ['label' => 'Desa / Kelurahan', 'required' => false, 'db' => 'village'],
                     'kecamatan' => ['label' => 'Kecamatan', 'required' => false, 'db' => 'district'],
-                    'nama_paket' => ['label' => 'Nama Paket Internet', 'required' => false, 'db' => 'package_name'],
-                    'tarif_bulanan' => ['label' => 'Tarif Bulanan (Rp)', 'required' => true, 'db' => 'base_amount'],
-                    'biaya_pasang' => ['label' => 'Biaya Pasang Baru (Rp)', 'required' => false, 'db' => 'installation_fee'],
-                    'status_layanan' => ['label' => 'Status Layanan (berbayar / gratis / free_home)', 'required' => false, 'db' => 'service_status'],
-                    'jenis_billing' => ['label' => 'Jenis Billing (prabayar/pascabayar)', 'required' => false, 'db' => 'billing_type'],
-                    'status_pelanggan' => ['label' => 'Status Pelanggan (active/booking/survey/installing/suspended/terminated)', 'required' => true, 'db' => 'status'],
-                    'tgl_registrasi' => ['label' => 'Tanggal Registrasi (Tanggal/Bulan/Tahun: DD/MM/YYYY)', 'required' => false, 'db' => 'registration_date'],
-                    'tgl_aktivasi' => ['label' => 'Tanggal Aktivasi (Tanggal/Bulan/Tahun: DD/MM/YYYY)', 'required' => false, 'db' => 'activation_date'],
-                    'username_sales' => ['label' => 'Sales / Karyawan Referral (Nama / Email / No HP / Kode Referral)', 'required' => false, 'db' => 'sales_ref'],
-                    'latitude' => ['label' => 'Latitude Koordinat', 'required' => false, 'db' => 'latitude'],
-                    'longitude' => ['label' => 'Longitude Koordinat', 'required' => false, 'db' => 'longitude'],
-                    'foto_ktp' => ['label' => 'Nama Berkas / URL Foto KTP (Opsional)', 'required' => false, 'db' => 'identity_photo'],
-                    'nama_odp' => ['label' => 'Nama ODP Terpasang (Opsional, jika sudah pasang/aktif)', 'required' => false, 'db' => 'odp_name'],
-                    'nomor_port_odp' => ['label' => 'Nomor Port ODP (Opsional, 1..N)', 'required' => false, 'db' => 'port_number'],
-                    'sn_ont' => ['label' => 'Serial Number Modem ONT (Opsional, jika ada)', 'required' => false, 'db' => 'serial_number'],
-                    'mac_ont' => ['label' => 'MAC Address Modem ONT (Opsional)', 'required' => false, 'db' => 'mac_address'],
-                    'merk_ont' => ['label' => 'Merk Modem (ZTE/Huawei/Fiberhome, dll)', 'required' => false, 'db' => 'brand'],
-                    'tipe_model' => ['label' => 'Tipe Model Modem (F609/HG8546M, dll)', 'required' => false, 'db' => 'model'],
+                    'latitude' => ['label' => 'Latitude Koordinat Lokasi', 'required' => false, 'db' => 'latitude'],
+                    'longitude' => ['label' => 'Longitude Koordinat Lokasi', 'required' => false, 'db' => 'longitude'],
+                    'username_sales' => ['label' => 'Sales / Karyawan Pendaftar (Nama / Email / No HP / ID)', 'required' => false, 'db' => 'sales_ref'],
+                    'catatan' => ['label' => 'Catatan Tambahan / Booking', 'required' => false, 'db' => 'notes'],
+
+                    // ── 2. JADWAL SURVEY ───────────────────────────────────
+                    'tgl_jadwal_survey' => ['label' => 'Tanggal Jadwal Survey (DD/MM/YYYY)', 'required' => false, 'db' => 'survey_scheduled_date'],
+                    'jam_jadwal_survey' => ['label' => 'Jam Jadwal Survey (HH:MM, misal 09:00)', 'required' => false, 'db' => 'survey_scheduled_time'],
+                    'teknisi_survey' => ['label' => 'Teknisi / Surveyor (Nama / Email / No HP)', 'required' => false, 'db' => 'surveyor_id'],
+                    'status_jadwal_survey' => ['label' => 'Status Jadwal Survey (scheduled / working / done / cancelled)', 'required' => false, 'db' => 'survey_schedule_status'],
+
+                    // ── 3. HASIL LAPORAN SURVEY ────────────────────────────
+                    'tgl_survey' => ['label' => 'Tanggal Realisasi Survey (DD/MM/YYYY)', 'required' => false, 'db' => 'survey_date'],
+                    'nama_odp' => ['label' => 'Nama ODP Terpilih / Terpasang', 'required' => false, 'db' => 'odp_name'],
+                    'nomor_port_odp' => ['label' => 'Nomor Port ODP (1..N)', 'required' => false, 'db' => 'port_number'],
+                    'jarak_tarikan_meter' => ['label' => 'Jarak Tarikan Kabel (Meter, misal: 50)', 'required' => false, 'db' => 'distance_meters'],
+                    'kelayakan_survey' => ['label' => 'Kelayakan Survey (layak / feasible / tidak_layak / not_feasible)', 'required' => false, 'db' => 'feasibility'],
+                    'catatan_survey' => ['label' => 'Catatan Hasil Laporan Survey', 'required' => false, 'db' => 'survey_notes'],
+
+                    // ── 4. JADWAL PASANG ───────────────────────────────────
+                    'tgl_jadwal_pasang' => ['label' => 'Tanggal Jadwal Pasang (DD/MM/YYYY)', 'required' => false, 'db' => 'installation_scheduled_date'],
+                    'jam_jadwal_pasang' => ['label' => 'Jam Jadwal Pasang (HH:MM, misal 10:00)', 'required' => false, 'db' => 'installation_scheduled_time'],
+                    'teknisi_pasang' => ['label' => 'Teknisi Instalasi Pasang (Nama / Email / No HP)', 'required' => false, 'db' => 'technician_id'],
+                    'status_jadwal_pasang' => ['label' => 'Status Jadwal Pasang (scheduled / working / done / cancelled)', 'required' => false, 'db' => 'installation_schedule_status'],
+                    'catatan_jadwal_pasang' => ['label' => 'Catatan Penugasan Pemasangan', 'required' => false, 'db' => 'installation_schedule_notes'],
+
+                    // ── 5. LAPORAN INSTALASI & PERANGKAT ONT ───────────────
+                    'sn_ont' => ['label' => 'Serial Number Modem ONT (ZTEG..., HWTC..., dll)', 'required' => false, 'db' => 'serial_number'],
+                    'mac_ont' => ['label' => 'MAC Address Modem ONT (XX:XX:XX:XX:XX:XX)', 'required' => false, 'db' => 'mac_address'],
+                    'merk_ont' => ['label' => 'Merk Modem (ZTE / Huawei / Fiberhome)', 'required' => false, 'db' => 'brand'],
+                    'tipe_model' => ['label' => 'Tipe Model Modem (F609 / HG8546M, dll)', 'required' => false, 'db' => 'model'],
                     'redaman_rx' => ['label' => 'Redaman Optik Rx (dBm, misal: -20.50)', 'required' => false, 'db' => 'rx_power'],
-                    'username_pppoe' => ['label' => 'Username PPPoE (Kosongkan jika Free Home)', 'required' => false, 'db' => 'pppoe_user'],
-                    'password_pppoe' => ['label' => 'Password PPPoE (Kosongkan jika Free Home)', 'required' => false, 'db' => 'pppoe_password'],
+                    'jam_mulai_pasang' => ['label' => 'Jam Pasang Mulai (HH:MM)', 'required' => false, 'db' => 'start_time'],
+                    'jam_selesai_pasang' => ['label' => 'Jam Pasang Selesai (HH:MM)', 'required' => false, 'db' => 'end_time'],
+                    'ip_login_ont' => ['label' => 'IP Address Login ONT (misal: 192.168.1.1)', 'required' => false, 'db' => 'ip_login'],
+                    'user_login_ont' => ['label' => 'Username Login ONT (default: admin)', 'required' => false, 'db' => 'login_user'],
+                    'pass_login_ont' => ['label' => 'Password Login ONT (default: admin)', 'required' => false, 'db' => 'login_password'],
+                    'free_hotspot' => ['label' => 'Hotspot Gratis ONT (ya / tidak)', 'required' => false, 'db' => 'free_hotspot'],
+                    'user_hotspot' => ['label' => 'Username Hotspot ONT (Opsional)', 'required' => false, 'db' => 'hotspot_user'],
+                    'pass_hotspot' => ['label' => 'Password Hotspot ONT (Opsional)', 'required' => false, 'db' => 'hotspot_password'],
+
+                    // ── 6. AKTIVASI & BILLING LAYANAN ──────────────────────
+                    'nama_paket' => ['label' => 'Nama Paket Internet (Master Paket)', 'required' => false, 'db' => 'package_name'],
+                    'tarif_bulanan' => ['label' => 'Tarif Bulanan (Rp)', 'required' => true, 'db' => 'base_amount'],
+                    'biaya_pasang' => ['label' => 'Biaya Pasang Baru / PSB (Rp)', 'required' => false, 'db' => 'installation_fee'],
+                    'status_layanan' => ['label' => 'Status Layanan (berbayar / gratis / free_home)', 'required' => false, 'db' => 'service_status'],
+                    'jenis_billing' => ['label' => 'Jenis Billing (prabayar / pascabayar)', 'required' => false, 'db' => 'billing_type'],
+                    'status_pelanggan' => ['label' => 'Status Pelanggan (active / booking / survey / installing / suspended / terminated)', 'required' => true, 'db' => 'status'],
+                    'tgl_registrasi' => ['label' => 'Tanggal Registrasi (DD/MM/YYYY)', 'required' => false, 'db' => 'registration_date'],
+                    'tgl_aktivasi' => ['label' => 'Tanggal Aktivasi Layanan (DD/MM/YYYY)', 'required' => false, 'db' => 'activation_date'],
+                    'username_pppoe' => ['label' => 'Username Akun PPPoE', 'required' => false, 'db' => 'pppoe_user'],
+                    'password_pppoe' => ['label' => 'Password Akun PPPoE', 'required' => false, 'db' => 'pppoe_password'],
                     'vlan_id' => ['label' => 'VLAN ID PPPoE (Opsional)', 'required' => false, 'db' => 'vlan_id'],
-                    'mode_akses' => ['label' => 'Mode Akses (PPPOE/STATIC/DHCP/VOUCHER/BRIDGE)', 'required' => false, 'db' => 'access_mode'],
-                    'catatan' => ['label' => 'Catatan Tambahan', 'required' => false, 'db' => 'notes'],
+                    'mode_akses' => ['label' => 'Mode Akses (PPPOE / STATIC / DHCP / VOUCHER / BRIDGE)', 'required' => false, 'db' => 'access_mode'],
                 ],
                 'sample' => [
                     [
+                        // Sample 1: Pelanggan Aktif Berbayar (Siklus Lengkap 6 Tahap)
                         'kode_pelanggan' => 'CUS-001001',
                         'nama_lengkap' => 'Ahmad Subardjo',
                         'nomor_wa' => '081234567890',
@@ -516,31 +548,53 @@ class DataMigrationService
                         'rt_rw' => '02/05',
                         'kelurahan_desa' => 'Sukasari',
                         'kecamatan' => 'Cimahi',
+                        'latitude' => '-6.891234',
+                        'longitude' => '107.567890',
+                        'username_sales' => 'Deden Kurnia',
+                        'catatan' => 'Pelanggan Aktif Berbayar (Home 20 Mbps)',
+                        'tgl_jadwal_survey' => '08/01/2026',
+                        'jam_jadwal_survey' => '09:00',
+                        'teknisi_survey' => 'Dasep Juliandi',
+                        'status_jadwal_survey' => 'done',
+                        'tgl_survey' => '08/01/2026',
+                        'nama_odp' => 'ODP-TMR-01-A',
+                        'nomor_port_odp' => 1,
+                        'jarak_tarikan_meter' => 45,
+                        'kelayakan_survey' => 'layak',
+                        'catatan_survey' => 'Jalur tiang PLN aman dan redaman bagus',
+                        'tgl_jadwal_pasang' => '10/01/2026',
+                        'jam_jadwal_pasang' => '10:00',
+                        'teknisi_pasang' => 'Dasep Juliandi',
+                        'status_jadwal_pasang' => 'done',
+                        'catatan_jadwal_pasang' => 'Pemasangan rapi dan ONT normal',
+                        'sn_ont' => 'ZTEG98765432',
+                        'mac_ont' => 'CC:2D:21:4A:88:01',
+                        'merk_ont' => 'ZTE',
+                        'tipe_model' => 'F609',
+                        'redaman_rx' => -20.50,
+                        'jam_mulai_pasang' => '10:00',
+                        'jam_selesai_pasang' => '11:30',
+                        'ip_login_ont' => '192.168.1.1',
+                        'user_login_ont' => 'admin',
+                        'pass_login_ont' => 'admin',
+                        'free_hotspot' => 'tidak',
+                        'user_hotspot' => '',
+                        'pass_hotspot' => '',
                         'nama_paket' => 'Home 20 Mbps',
                         'tarif_bulanan' => 175000,
                         'biaya_pasang' => 0,
                         'status_layanan' => 'berbayar',
                         'jenis_billing' => 'prabayar',
                         'status_pelanggan' => 'active',
-                        'tgl_registrasi' => '10/01/2026',
-                        'tgl_aktivasi' => '12/01/2026',
-                        'username_sales' => 'sales1@example.com',
-                        'latitude' => '-6.891234',
-                        'longitude' => '107.567890',
-                        'nama_odp' => 'ODP-TMR-01-A',
-                        'nomor_port_odp' => 1,
-                        'sn_ont' => 'ZTEG98765432',
-                        'mac_ont' => 'CC:2D:21:4A:88:01',
-                        'merk_ont' => 'ZTE',
-                        'tipe_model' => 'F609',
-                        'redaman_rx' => -21.40,
+                        'tgl_registrasi' => '08/01/2026',
+                        'tgl_aktivasi' => '10/01/2026',
                         'username_pppoe' => 'ahmad_subardjo',
                         'password_pppoe' => 'subardjo123',
                         'vlan_id' => '100',
                         'mode_akses' => 'PPPOE',
-                        'catatan' => 'Pelanggan Aktif Berbayar (Home 20 Mbps)',
                     ],
                     [
+                        // Sample 2: Pelanggan Aktif Free Home (Voucher Rumahan ONT)
                         'kode_pelanggan' => 'CUS-001002',
                         'nama_lengkap' => 'Siti Nurhaliza',
                         'nomor_wa' => '085811223344',
@@ -550,66 +604,54 @@ class DataMigrationService
                         'rt_rw' => '01/02',
                         'kelurahan_desa' => 'Sukasari',
                         'kecamatan' => 'Cimahi',
+                        'latitude' => '-6.892300',
+                        'longitude' => '107.568100',
+                        'username_sales' => 'Deden Kurnia',
+                        'catatan' => 'Pelanggan Aktif Free Home (Voucher Rumahan ONT)',
+                        'tgl_jadwal_survey' => '14/01/2026',
+                        'jam_jadwal_survey' => '13:00',
+                        'teknisi_survey' => 'Dasep Juliandi',
+                        'status_jadwal_survey' => 'done',
+                        'tgl_survey' => '14/01/2026',
+                        'nama_odp' => 'ODP-TMR-01-A',
+                        'nomor_port_odp' => 2,
+                        'jarak_tarikan_meter' => 60,
+                        'kelayakan_survey' => 'layak',
+                        'catatan_survey' => 'Dekat dengan ODP',
+                        'tgl_jadwal_pasang' => '15/01/2026',
+                        'jam_jadwal_pasang' => '09:00',
+                        'teknisi_pasang' => 'Dasep Juliandi',
+                        'status_jadwal_pasang' => 'done',
+                        'catatan_jadwal_pasang' => 'Hotspot voucher aktif',
+                        'sn_ont' => 'HWTC11223344',
+                        'mac_ont' => 'CC:2D:21:4A:88:02',
+                        'merk_ont' => 'Huawei',
+                        'tipe_model' => 'HG8546M',
+                        'redaman_rx' => -20.10,
+                        'jam_mulai_pasang' => '09:00',
+                        'jam_selesai_pasang' => '10:15',
+                        'ip_login_ont' => '192.168.1.1',
+                        'user_login_ont' => 'admin',
+                        'pass_login_ont' => 'admin',
+                        'free_hotspot' => 'ya',
+                        'user_hotspot' => 'hotspot_siti',
+                        'pass_hotspot' => 'siti123',
                         'nama_paket' => '',
                         'tarif_bulanan' => 0,
                         'biaya_pasang' => 0,
                         'status_layanan' => 'free_home',
                         'jenis_billing' => 'prabayar',
                         'status_pelanggan' => 'active',
-                        'tgl_registrasi' => '15/01/2026',
-                        'tgl_aktivasi' => '16/01/2026',
-                        'username_sales' => 'sales1@example.com',
-                        'latitude' => '-6.892300',
-                        'longitude' => '107.568100',
-                        'nama_odp' => 'ODP-TMR-01-A',
-                        'nomor_port_odp' => 2,
-                        'sn_ont' => 'HWTC11223344',
-                        'mac_ont' => 'CC:2D:21:4A:88:02',
-                        'merk_ont' => 'Huawei',
-                        'tipe_model' => 'HG8546M',
-                        'redaman_rx' => -20.10,
+                        'tgl_registrasi' => '14/01/2026',
+                        'tgl_aktivasi' => '15/01/2026',
                         'username_pppoe' => '',
                         'password_pppoe' => '',
                         'vlan_id' => '',
                         'mode_akses' => 'VOUCHER',
-                        'catatan' => 'Pelanggan Aktif Free Home (Voucher Rumahan ONT)',
                     ],
                     [
+                        // Sample 3: Pelanggan Tahap Penugasan Pasang (Installing - Menunggu Pasang)
                         'kode_pelanggan' => 'CUS-001003',
-                        'nama_lengkap' => 'Pos RT 05 Cimahi',
-                        'nomor_wa' => '087799887766',
-                        'email' => '',
-                        'nama_area' => 'Area Timur',
-                        'alamat_jalan' => 'Jl. Kenanga Pos RT',
-                        'rt_rw' => '05/02',
-                        'kelurahan_desa' => 'Sukasari',
-                        'kecamatan' => 'Cimahi',
-                        'nama_paket' => 'Home 20 Mbps',
-                        'tarif_bulanan' => 0,
-                        'biaya_pasang' => 0,
-                        'status_layanan' => 'gratis',
-                        'jenis_billing' => 'prabayar',
-                        'status_pelanggan' => 'active',
-                        'tgl_registrasi' => '20/01/2026',
-                        'tgl_aktivasi' => '21/01/2026',
-                        'username_sales' => 'sales1@example.com',
-                        'latitude' => '-6.893000',
-                        'longitude' => '107.569000',
-                        'nama_odp' => 'ODP-TMR-01-A',
-                        'nomor_port_odp' => 3,
-                        'sn_ont' => 'FHTT55667788',
-                        'mac_ont' => 'CC:2D:21:4A:88:03',
-                        'merk_ont' => 'Fiberhome',
-                        'tipe_model' => 'HG6243C',
-                        'redaman_rx' => -19.80,
-                        'username_pppoe' => 'pos_rt05',
-                        'password_pppoe' => 'rt05pass',
-                        'vlan_id' => '100',
-                        'mode_akses' => 'PPPOE',
-                        'catatan' => 'Pelanggan Gratis Fasilitas Kompensasi Jalur RT 05',
-                    ],
-                    [
-                        'kode_pelanggan' => 'CUS-001004',
                         'nama_lengkap' => 'Bambang Irawan',
                         'nomor_wa' => '085712345678',
                         'email' => '',
@@ -618,21 +660,106 @@ class DataMigrationService
                         'rt_rw' => '01/03',
                         'kelurahan_desa' => 'Bojongsoang',
                         'kecamatan' => 'Bojongsoang',
+                        'latitude' => '-6.912345',
+                        'longitude' => '107.612345',
+                        'username_sales' => 'Deden Kurnia',
+                        'catatan' => 'Survey Selesai, Menunggu Jadwal Pasang',
+                        'tgl_jadwal_survey' => '18/01/2026',
+                        'jam_jadwal_survey' => '10:00',
+                        'teknisi_survey' => 'Dasep Juliandi',
+                        'status_jadwal_survey' => 'done',
+                        'tgl_survey' => '18/01/2026',
+                        'nama_odp' => 'ODP-TMR-01-A',
+                        'nomor_port_odp' => 3,
+                        'jarak_tarikan_meter' => 75,
+                        'kelayakan_survey' => 'layak',
+                        'catatan_survey' => 'Jalur aman, tarikan kabel 75 meter',
+                        'tgl_jadwal_pasang' => '22/01/2026',
+                        'jam_jadwal_pasang' => '10:00',
+                        'teknisi_pasang' => 'Dasep Juliandi',
+                        'status_jadwal_pasang' => 'scheduled',
+                        'catatan_jadwal_pasang' => 'Siapkan kabel dropcore 100m',
+                        'sn_ont' => '',
+                        'mac_ont' => '',
+                        'merk_ont' => 'ZTE',
+                        'tipe_model' => 'F609',
+                        'redaman_rx' => '',
+                        'jam_mulai_pasang' => '',
+                        'jam_selesai_pasang' => '',
+                        'ip_login_ont' => '',
+                        'user_login_ont' => '',
+                        'pass_login_ont' => '',
+                        'free_hotspot' => 'tidak',
+                        'user_hotspot' => '',
+                        'pass_hotspot' => '',
                         'nama_paket' => 'Home 30 Mbps',
                         'tarif_bulanan' => 220000,
                         'biaya_pasang' => 50000,
                         'status_layanan' => 'berbayar',
                         'jenis_billing' => 'prabayar',
-                        'status_pelanggan' => 'booking',
-                        'tgl_registrasi' => '01/02/2026',
+                        'status_pelanggan' => 'installing',
+                        'tgl_registrasi' => '18/01/2026',
                         'tgl_aktivasi' => '',
-                        'username_sales' => 'Deden Kurnia (Teknisi)',
-                        'latitude' => '-6.912345',
-                        'longitude' => '107.612345',
+                        'username_pppoe' => 'bambang_irawan',
+                        'password_pppoe' => 'irawan30',
+                        'vlan_id' => '100',
+                        'mode_akses' => 'PPPOE',
+                    ],
+                    [
+                        // Sample 4: Calon Pelanggan Baru Tahap Booking / Jadwal Survey
+                        'kode_pelanggan' => 'CUS-001004',
+                        'nama_lengkap' => 'Rina Wijayanti',
+                        'nomor_wa' => '081399887766',
+                        'email' => '',
+                        'nama_area' => 'Area Barat',
+                        'alamat_jalan' => 'Jl. Kenanga No. 17',
+                        'rt_rw' => '03/01',
+                        'kelurahan_desa' => 'Bojongsoang',
+                        'kecamatan' => 'Bojongsoang',
+                        'latitude' => '-6.914500',
+                        'longitude' => '107.615200',
+                        'username_sales' => 'Deden Kurnia',
+                        'catatan' => 'Calon Pelanggan Baru Tahap Booking & Jadwal Survey',
+                        'tgl_jadwal_survey' => '25/01/2026',
+                        'jam_jadwal_survey' => '14:00',
+                        'teknisi_survey' => 'Dasep Juliandi',
+                        'status_jadwal_survey' => 'scheduled',
+                        'tgl_survey' => '',
                         'nama_odp' => '',
                         'nomor_port_odp' => '',
+                        'jarak_tarikan_meter' => '',
+                        'kelayakan_survey' => '',
+                        'catatan_survey' => '',
+                        'tgl_jadwal_pasang' => '',
+                        'jam_jadwal_pasang' => '',
+                        'teknisi_pasang' => '',
+                        'status_jadwal_pasang' => '',
+                        'catatan_jadwal_pasang' => '',
                         'sn_ont' => '',
-                        'catatan' => 'Calon Pelanggan Baru Tahap Booking',
+                        'mac_ont' => '',
+                        'merk_ont' => '',
+                        'tipe_model' => '',
+                        'redaman_rx' => '',
+                        'jam_mulai_pasang' => '',
+                        'jam_selesai_pasang' => '',
+                        'ip_login_ont' => '',
+                        'user_login_ont' => '',
+                        'pass_login_ont' => '',
+                        'free_hotspot' => 'tidak',
+                        'user_hotspot' => '',
+                        'pass_hotspot' => '',
+                        'nama_paket' => 'Home 20 Mbps',
+                        'tarif_bulanan' => 175000,
+                        'biaya_pasang' => 0,
+                        'status_layanan' => 'berbayar',
+                        'jenis_billing' => 'prabayar',
+                        'status_pelanggan' => 'booking',
+                        'tgl_registrasi' => '24/01/2026',
+                        'tgl_aktivasi' => '',
+                        'username_pppoe' => '',
+                        'password_pppoe' => '',
+                        'vlan_id' => '',
+                        'mode_akses' => 'PPPOE',
                     ],
                 ]
             ],
@@ -1554,11 +1681,57 @@ class DataMigrationService
             }
         }
 
-        $notes = trim((string)($row['catatan'] ?? $row['notes'] ?? ''));
+        $notes = trim((string)($row['catatan'] ?? $row['catatan_booking'] ?? $row['notes'] ?? ''));
         if (!empty($extraPhones)) {
             $altPhoneText = "No. HP Cadangan: " . implode(', ', $extraPhones);
             $notes = ($notes !== '') ? ($notes . " | " . $altPhoneText) : $altPhoneText;
         }
+
+        // ── 2. JADWAL SURVEY FIELDS ─────────────────────────────────
+        $surveyScheduleDate = self::parseFlexibleDate($row['tgl_jadwal_survey'] ?? $row['jadwal_survey'] ?? $row['tgl_survey_jadwal'] ?? null);
+        $surveyScheduleTime = trim((string)($row['jam_jadwal_survey'] ?? $row['jam_survey'] ?? '09:00'));
+        $rawSurveyTech = trim((string)($row['teknisi_survey'] ?? $row['surveyor'] ?? $row['petugas_survey'] ?? ''));
+        $surveyTechId = null;
+        if (!empty($rawSurveyTech)) {
+            [$resolvedTechId] = self::resolveSalesUser($rawSurveyTech, $usersCache, $userNamesCache, $userPhonesCache, $affiliateCodesCache, $employeesIakCache, $allUsersList, $allEmployeesList);
+            $surveyTechId = $resolvedTechId;
+        }
+        $surveyScheduleStatus = strtolower(trim((string)($row['status_jadwal_survey'] ?? '')));
+        if (!in_array($surveyScheduleStatus, ['scheduled', 'on_the_way', 'working', 'done', 'cancelled'])) {
+            $surveyScheduleStatus = null;
+        }
+
+        // ── 3. LAPORAN SURVEY FIELDS ────────────────────────────────
+        $surveyDate = self::parseFlexibleDate($row['tgl_survey'] ?? $row['tanggal_survey'] ?? null);
+        $distanceMeters = !empty($row['jarak_tarikan_meter']) ? (float)$row['jarak_tarikan_meter'] : (!empty($row['jarak_meter']) ? (float)$row['jarak_meter'] : (!empty($row['jarak']) ? (float)$row['jarak'] : 50.0));
+        $rawFeasibility = strtolower(trim((string)($row['kelayakan_survey'] ?? $row['kelayakan'] ?? $row['feasibility'] ?? 'feasible')));
+        $feasibility = in_array($rawFeasibility, ['tidak_layak', 'not_feasible', 'unfeasible']) ? 'not_feasible' : 'feasible';
+        $surveyNotes = trim((string)($row['catatan_survey'] ?? $row['survey_notes'] ?? ''));
+
+        // ── 4. JADWAL PASANG FIELDS ─────────────────────────────────
+        $installScheduleDate = self::parseFlexibleDate($row['tgl_jadwal_pasang'] ?? $row['jadwal_pasang'] ?? $row['tgl_pasang_jadwal'] ?? null);
+        $installScheduleTime = trim((string)($row['jam_jadwal_pasang'] ?? $row['jam_pasang'] ?? '10:00'));
+        $rawInstallTech = trim((string)($row['teknisi_pasang'] ?? $row['teknisi_instalasi'] ?? $row['teknisi'] ?? ''));
+        $installTechId = null;
+        if (!empty($rawInstallTech)) {
+            [$resolvedInstallTechId] = self::resolveSalesUser($rawInstallTech, $usersCache, $userNamesCache, $userPhonesCache, $affiliateCodesCache, $employeesIakCache, $allUsersList, $allEmployeesList);
+            $installTechId = $resolvedInstallTechId;
+        }
+        $installScheduleStatus = strtolower(trim((string)($row['status_jadwal_pasang'] ?? '')));
+        if (!in_array($installScheduleStatus, ['scheduled', 'on_the_way', 'working', 'done', 'cancelled'])) {
+            $installScheduleStatus = null;
+        }
+        $installScheduleNotes = trim((string)($row['catatan_jadwal_pasang'] ?? $row['catatan_pasang'] ?? ''));
+
+        // ── 5. ONT DEVICE EXTRA FIELDS ──────────────────────────────
+        $startTime = trim((string)($row['jam_mulai_pasang'] ?? $row['jam_pasang_mulai'] ?? $row['start_time'] ?? '09:00'));
+        $endTime = trim((string)($row['jam_selesai_pasang'] ?? $row['jam_pasang_selesai'] ?? $row['end_time'] ?? '11:00'));
+        $ipLogin = trim((string)($row['ip_login_ont'] ?? $row['ip_ont'] ?? $row['ip_login'] ?? '192.168.1.1'));
+        $userLogin = trim((string)($row['user_login_ont'] ?? $row['user_ont'] ?? $row['login_user'] ?? 'admin'));
+        $passLogin = trim((string)($row['pass_login_ont'] ?? $row['pass_ont'] ?? $row['login_password'] ?? 'admin'));
+        $freeHotspot = in_array(strtolower(trim((string)($row['free_hotspot'] ?? $row['hotspot_gratis'] ?? ''))), ['1', 'true', 'ya', 'yes']);
+        $userHotspot = trim((string)($row['user_hotspot'] ?? $row['hotspot_user'] ?? ''));
+        $passHotspot = trim((string)($row['pass_hotspot'] ?? $row['hotspot_password'] ?? ''));
 
         $mapped = [
             'customer_code' => $customerCode ?: null,
@@ -1577,6 +1750,7 @@ class DataMigrationService
             'registration_date' => self::parseFlexibleDate($row['tgl_registrasi'] ?? null, now()->toDateString()),
             'activation_date' => ($status === 'active') ? self::parseFlexibleDate($row['tgl_aktivasi'] ?? null, now()->toDateString()) : self::parseFlexibleDate($row['tgl_aktivasi'] ?? null),
             'sales_id' => $salesId,
+            'sales_name' => $salesRef ?: null,
             'latitude' => self::parseCoordinate($row['latitude'] ?? null, 'lat'),
             'longitude' => self::parseCoordinate($row['longitude'] ?? null, 'lng'),
             'identity_photo' => $row['foto_ktp'] ?? $row['identity_photo'] ?? null,
@@ -1594,6 +1768,27 @@ class DataMigrationService
             'password_pppoe' => $row['password_pppoe'] ?? $row['pppoe_password'] ?? null,
             'vlan_id' => $row['vlan_id'] ?? null,
             'mode_akses' => $row['mode_akses'] ?? ($serviceStatus === 'free_home' ? 'VOUCHER' : 'PPPOE'),
+            'tgl_jadwal_survey' => $surveyScheduleDate,
+            'jam_jadwal_survey' => $surveyScheduleTime,
+            'teknisi_survey_id' => $surveyTechId,
+            'status_jadwal_survey' => $surveyScheduleStatus,
+            'tgl_survey' => $surveyDate,
+            'jarak_tarikan_meter' => $distanceMeters,
+            'kelayakan_survey' => $feasibility,
+            'catatan_survey' => $surveyNotes,
+            'tgl_jadwal_pasang' => $installScheduleDate,
+            'jam_jadwal_pasang' => $installScheduleTime,
+            'teknisi_pasang_id' => $installTechId,
+            'status_jadwal_pasang' => $installScheduleStatus,
+            'catatan_jadwal_pasang' => $installScheduleNotes,
+            'jam_mulai_pasang' => $startTime,
+            'jam_selesai_pasang' => $endTime,
+            'ip_login_ont' => $ipLogin,
+            'user_login_ont' => $userLogin,
+            'pass_login_ont' => $passLogin,
+            'free_hotspot' => $freeHotspot,
+            'user_hotspot' => $userHotspot,
+            'pass_hotspot' => $passHotspot,
         ];
     }
 
@@ -2064,6 +2259,14 @@ class DataMigrationService
                         'pppoe_password' => !empty($data['password_pppoe']) ? substr(trim((string)$data['password_pppoe']), 0, 100) : null,
                         'vlan_id' => !empty($data['vlan_id']) ? substr(trim((string)$data['vlan_id']), 0, 50) : null,
                         'access_mode' => $data['mode_akses'] ?? ($data['service_status'] === 'free_home' ? 'VOUCHER' : 'PPPOE'),
+                        'ip_login' => !empty($data['ip_login_ont']) ? $data['ip_login_ont'] : '192.168.1.1',
+                        'login_user' => !empty($data['user_login_ont']) ? $data['user_login_ont'] : 'admin',
+                        'login_password' => !empty($data['pass_login_ont']) ? $data['pass_login_ont'] : 'admin',
+                        'start_time' => !empty($data['jam_mulai_pasang']) ? $data['jam_mulai_pasang'] : '09:00',
+                        'end_time' => !empty($data['jam_selesai_pasang']) ? $data['jam_selesai_pasang'] : '11:00',
+                        'free_hotspot' => (bool)($data['free_hotspot'] ?? false),
+                        'hotspot_user' => !empty($data['user_hotspot']) ? substr(trim((string)$data['user_hotspot']), 0, 100) : null,
+                        'hotspot_password' => !empty($data['pass_hotspot']) ? substr(trim((string)$data['pass_hotspot']), 0, 100) : null,
                         'status' => 'active',
                     ];
 
@@ -2076,57 +2279,82 @@ class DataMigrationService
             }
         }
 
-        // Auto-generate complete lifecycle audit trail (Survey & Installation Schedule) for active/installing customers
-        if ($targetCust && in_array($targetCust->status, ['active', 'installing'])) {
+        // Auto-generate / sync complete lifecycle audit trail (Survey Schedule, Survey Report, Installation Schedule)
+        if ($targetCust) {
             $regDate = $targetCust->registration_date ? $targetCust->registration_date->format('Y-m-d') : ($targetCust->created_at ? $targetCust->created_at->format('Y-m-d') : date('Y-m-d'));
             $actDate = $targetCust->activation_date ? $targetCust->activation_date->format('Y-m-d') : $regDate;
             $techOrSalesId = $salesId ?: (auth()->id() ?: 1);
 
-            // 1. Ensure Survey record exists so Survey history is complete
-            if (!empty($odpId)) {
-                $surveyExists = Survey::where('customer_id', $targetCust->id)->exists();
-                if (!$surveyExists) {
-                    Survey::create([
-                        'customer_id' => $targetCust->id,
-                        'odp_id' => $odpId,
-                        'port_number' => $portToUse ?? 1,
-                        'surveyor_id' => $techOrSalesId,
-                        'feasibility' => 'feasible',
-                        'distance_meters' => 50,
-                        'signal_loss' => $ontRx ?? -20.0,
-                        'survey_date' => $regDate,
-                        'notes' => 'Survey historis migrasi sistem',
-                    ]);
+            $surveyTechId = !empty($data['teknisi_survey_id']) ? $data['teknisi_survey_id'] : $techOrSalesId;
+            $surveySchedDate = !empty($data['tgl_jadwal_survey']) ? $data['tgl_jadwal_survey'] : $regDate;
+            $surveySchedTime = !empty($data['jam_jadwal_survey']) ? $data['jam_jadwal_survey'] : '09:00';
+            $surveySchedStatus = !empty($data['status_jadwal_survey']) ? $data['status_jadwal_survey'] : (in_array($targetCust->status, ['survey', 'installing', 'active']) ? 'done' : 'scheduled');
+
+            $installTechId = !empty($data['teknisi_pasang_id']) ? $data['teknisi_pasang_id'] : $techOrSalesId;
+            $installSchedDate = !empty($data['tgl_jadwal_pasang']) ? $data['tgl_jadwal_pasang'] : $actDate;
+            $installSchedTime = !empty($data['jam_jadwal_pasang']) ? $data['jam_jadwal_pasang'] : '10:00';
+            $installSchedStatus = !empty($data['status_jadwal_pasang']) ? $data['status_jadwal_pasang'] : (($targetCust->status === 'active') ? 'done' : 'scheduled');
+
+            // 1. Jadwal Survey (TechnicianSchedule type 'survey')
+            if (!empty($data['tgl_jadwal_survey']) || in_array($targetCust->status, ['survey', 'installing', 'active'])) {
+                $surveySched = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'survey')->first();
+                $surveySchedPayload = [
+                    'customer_id' => $targetCust->id,
+                    'technician_id' => $surveyTechId,
+                    'scheduled_date' => $surveySchedDate,
+                    'scheduled_time' => $surveySchedTime,
+                    'type' => 'survey',
+                    'status' => $surveySchedStatus,
+                    'notes' => !empty($data['catatan_jadwal_survey']) ? $data['catatan_jadwal_survey'] : 'Jadwal survey lapangan migrasi sistem',
+                ];
+                if ($surveySched) {
+                    $surveySched->update($surveySchedPayload);
+                } else {
+                    TechnicianSchedule::create($surveySchedPayload);
                 }
             }
 
-            // 2. Ensure TechnicianSchedule record exists for Survey Schedule
-            $surveyScheduleExists = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'survey')->exists();
-            if (!$surveyScheduleExists) {
-                TechnicianSchedule::create([
+            // 2. Laporan Hasil Survey (Survey)
+            if (!empty($odpId) || !empty($data['tgl_survey']) || in_array($targetCust->status, ['installing', 'active'])) {
+                $survey = Survey::where('customer_id', $targetCust->id)->first();
+                $surveyPayload = [
                     'customer_id' => $targetCust->id,
-                    'technician_id' => $techOrSalesId,
-                    'scheduled_date' => $regDate,
-                    'type' => 'survey',
-                    'status' => 'done',
-                    'notes' => 'Jadwal survey historis migrasi sistem',
-                ]);
+                    'odp_id' => $odpId,
+                    'port_number' => $portToUse ?? 1,
+                    'surveyor_id' => $surveyTechId,
+                    'feasibility' => !empty($data['kelayakan_survey']) ? $data['kelayakan_survey'] : 'feasible',
+                    'distance_meters' => !empty($data['jarak_tarikan_meter']) ? $data['jarak_tarikan_meter'] : 50,
+                    'signal_loss' => $ontRx ?? -20.0,
+                    'survey_date' => !empty($data['tgl_survey']) ? $data['tgl_survey'] : $regDate,
+                    'notes' => !empty($data['catatan_survey']) ? $data['catatan_survey'] : 'Survey historis migrasi sistem',
+                ];
+                if ($survey) {
+                    $survey->update($surveyPayload);
+                } else {
+                    Survey::create($surveyPayload);
+                }
             }
 
-            // 3. Ensure TechnicianSchedule record exists for Installation Schedule
-            $scheduleExists = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'installation')->exists();
-            if (!$scheduleExists) {
-                TechnicianSchedule::create([
+            // 3. Jadwal Pasang (TechnicianSchedule type 'installation')
+            if (!empty($data['tgl_jadwal_pasang']) || in_array($targetCust->status, ['installing', 'active'])) {
+                $installSched = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'installation')->first();
+                $installSchedPayload = [
                     'customer_id' => $targetCust->id,
-                    'technician_id' => $techOrSalesId,
-                    'scheduled_date' => $actDate,
+                    'technician_id' => $installTechId,
+                    'scheduled_date' => $installSchedDate,
+                    'scheduled_time' => $installSchedTime,
                     'type' => 'installation',
-                    'status' => ($targetCust->status === 'active') ? 'done' : 'scheduled',
-                    'notes' => 'Jadwal pasang historis migrasi sistem',
-                ]);
+                    'status' => $installSchedStatus,
+                    'notes' => !empty($data['catatan_jadwal_pasang']) ? $data['catatan_jadwal_pasang'] : 'Jadwal pasang historis migrasi sistem',
+                ];
+                if ($installSched) {
+                    $installSched->update($installSchedPayload);
+                } else {
+                    TechnicianSchedule::create($installSchedPayload);
+                }
             }
 
-            // 3. Mark customer as audited if active
+            // 4. Mark customer as audited if active
             if ($targetCust->status === 'active' && !$targetCust->is_audited) {
                 $targetCust->update(['is_audited' => true]);
             }
