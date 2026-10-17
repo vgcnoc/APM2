@@ -1662,87 +1662,130 @@
         <!-- 1. MODAL EDIT BOOKING & LOKASI             -->
         <!-- ========================================== -->
         <div v-if="showEditBookingModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-                <div class="p-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex justify-between items-center">
-                    <div>
-                        <h3 class="text-lg font-bold flex items-center gap-2">
-                            <span>📍</span> Edit Data Booking & Lokasi
-                        </h3>
-                        <p class="text-xs text-blue-100 mt-1">Perbarui koordinat, catatan booking, sales, dan alamat pelanggan</p>
+            <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+                <div class="p-5 bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white flex justify-between items-center shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shrink-0">
+                            📝
+                        </div>
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold">Edit Pendaftaran Pelanggan (Booking)</h3>
+                            <p class="text-xs text-blue-100">Formulir pendaftaran pelanggan baru & lokasi pemasangan</p>
+                        </div>
                     </div>
-                    <button @click="showEditBookingModal = false" class="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <button type="button" @click="showEditBookingModal = false" class="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
                 
-                <div class="p-6 overflow-y-auto flex-1 space-y-4">
-                    <form @submit.prevent="submitEditBooking" class="space-y-4">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Tanggal Booking / Registrasi</label>
-                                <input v-model="bookingForm.registration_date" type="date" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Sales / Referal</label>
-                                <select v-model="bookingForm.sales_id" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">-- Tanpa Sales / Admin --</option>
-                                    <option v-for="s in salesUsers" :key="s.id" :value="s.id">{{ s.name }}</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Latitude</label>
-                                <input v-model="bookingForm.latitude" type="text" placeholder="-6.9983655" class="w-full text-sm font-mono border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Longitude</label>
-                                <input v-model="bookingForm.longitude" type="text" placeholder="106.7154572" class="w-full text-sm font-mono border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Paket Layanan</label>
-                                <select v-model="bookingForm.package_id" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">-- Pilih Paket --</option>
-                                    <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">{{ pkg.name }} ({{ formatRupiah(pkg.price) }})</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Area / Wilayah</label>
-                                <select v-model="bookingForm.area_id" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">-- Pilih Area --</option>
-                                    <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
-                                </select>
+                <form @submit.prevent="submitEditBooking" class="flex flex-col flex-1 overflow-hidden">
+                    <div class="p-5 sm:p-6 overflow-y-auto space-y-5">
+                        <!-- Section 1: Informasi Personal -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                <span class="p-1 rounded bg-blue-100 text-blue-700">👤</span> Informasi Personal
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="sm:col-span-2">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Nama Lengkap Pelanggan <span class="text-red-500">*</span></label>
+                                    <input v-model="bookingForm.name" type="text" required placeholder="Contoh: Budi Santoso" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">No. WhatsApp / HP <span class="text-red-500">*</span></label>
+                                    <input v-model="bookingForm.phone" type="text" required placeholder="08123456789" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Email Pelanggan (Opsional)</label>
+                                    <input v-model="bookingForm.email" type="email" placeholder="budi@example.com" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Tanggal Booking / Registrasi</label>
+                                    <input v-model="bookingForm.registration_date" type="date" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Sales / Referal</label>
+                                    <select v-model="bookingForm.sales_id" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">-- Tanpa Sales / Mandiri --</option>
+                                        <option v-for="s in salesUsers" :key="s.id" :value="s.id">{{ s.name }} ({{ s.job_position || s.role || 'Sales' }})</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Nomor WhatsApp / HP</label>
-                            <input v-model="bookingForm.phone" type="text" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                        <!-- Section 2: Lokasi Pemasangan & Koordinat -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                <span class="p-1 rounded bg-emerald-100 text-emerald-700">📍</span> Lokasi Pemasangan & Titik Koordinat
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="sm:col-span-2">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Area / Wilayah <span class="text-red-500">*</span></label>
+                                    <select v-model="bookingForm.area_id" required class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">-- Pilih Area Wilayah --</option>
+                                        <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                                    </select>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Alamat Lengkap Pemasangan <span class="text-red-500">*</span></label>
+                                    <textarea v-model="bookingForm.address" rows="2" required placeholder="Jl. Mawar No. 12, RT 01 / RW 02..." class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">Titik Koordinat Lokasi (GPS)</label>
+                                        <div class="flex gap-2">
+                                            <button type="button" @click="getBookingLocation" class="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-md transition-colors border border-blue-200">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                Auto GPS
+                                            </button>
+                                            <a v-if="bookingForm.latitude && bookingForm.longitude" :href="`/network-radar?lat=${bookingForm.latitude}&lng=${bookingForm.longitude}`" target="_blank" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md transition-colors border border-indigo-200">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                                                Radar ODP
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div class="relative">
+                                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-[10px] font-bold text-gray-400">LAT</span>
+                                            <input v-model="bookingForm.latitude" type="text" placeholder="-6.200000" class="w-full pl-10 text-sm font-mono border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                        </div>
+                                        <div class="relative">
+                                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-[10px] font-bold text-gray-400">LNG</span>
+                                            <input v-model="bookingForm.longitude" type="text" placeholder="106.816666" class="w-full pl-10 text-sm font-mono border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Alamat Pemasangan</label>
-                            <textarea v-model="bookingForm.address" rows="2" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        <!-- Section 3: Detail Layanan & Catatan -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                <span class="p-1 rounded bg-purple-100 text-purple-700">📦</span> Layanan & Catatan
+                            </h4>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Paket Langganan Internet</label>
+                                    <select v-model="bookingForm.package_id" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">-- Pilih Paket Internet --</option>
+                                        <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">{{ pkg.name }} ({{ formatRupiah(pkg.price) }})</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Catatan Tambahan / Ancar-ancar Rumah</label>
+                                    <textarea v-model="bookingForm.notes" rows="2" placeholder="Dekat masjid, pagar hitam, patokan lokasi..." class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                </div>
+                            </div>
                         </div>
+                    </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Catatan / Keterangan Booking</label>
-                            <textarea v-model="bookingForm.notes" rows="2" placeholder="Catatan lokasi rumah, ancar-ancar, patokan..." class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
-                        </div>
-                    </form>
-                </div>
-                
-                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                    <button type="button" @click="showEditBookingModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
-                    <button type="button" @click="submitEditBooking" :disabled="bookingForm.processing" class="px-5 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-md transition-all disabled:opacity-50 flex items-center gap-2">
-                        <svg v-if="bookingForm.processing" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        Simpan Perubahan Booking
-                    </button>
-                </div>
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 shrink-0">
+                        <button type="button" @click="showEditBookingModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
+                        <button type="submit" :disabled="bookingForm.processing" class="px-5 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-md transition-all disabled:opacity-50 flex items-center gap-2">
+                            <svg v-if="bookingForm.processing" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            Simpan Perubahan Booking
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -1750,42 +1793,68 @@
         <!-- 2. MODAL EDIT JADWAL SURVEY                -->
         <!-- ========================================== -->
         <div v-if="showEditSurveyScheduleModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div class="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-                <div class="p-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex justify-between items-center">
-                    <div>
-                        <h3 class="text-lg font-bold flex items-center gap-2">
-                            <span>📅</span> Atur / Edit Jadwal Survey
-                        </h3>
-                        <p class="text-xs text-indigo-100 mt-1">Tugaskan teknisi dan atur waktu jadwal survey lapangan</p>
+            <div class="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+                <div class="p-5 bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white flex justify-between items-center shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shrink-0">
+                            📅
+                        </div>
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold">Jadwalkan Survey Lapangan</h3>
+                            <p class="text-xs text-indigo-100">Penugasan teknisi surveyor & jadwal kunjungan ODP</p>
+                        </div>
                     </div>
-                    <button @click="showEditSurveyScheduleModal = false" class="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <button type="button" @click="showEditSurveyScheduleModal = false" class="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
                 
-                <div class="p-6 overflow-y-auto flex-1 space-y-4">
-                    <form @submit.prevent="submitEditSurveySchedule" class="space-y-4">
+                <form @submit.prevent="submitEditSurveySchedule" class="flex flex-col flex-1 overflow-hidden">
+                    <div class="bg-indigo-50/70 px-5 py-3 border-b border-indigo-100 flex flex-col gap-1 text-xs shrink-0">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 font-medium">Pelanggan:</span>
+                            <span class="font-bold text-slate-800">{{ customer.name }} ({{ customer.customer_code }})</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 font-medium">Area / Alamat:</span>
+                            <span class="font-semibold text-slate-700 truncate max-w-[280px]">{{ customer.area || '-' }} - {{ customer.address }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 font-medium">Paket Dipilih:</span>
+                            <span class="font-semibold text-indigo-700">{{ customer.package?.name || '-' }}</span>
+                        </div>
+                    </div>
+
+                    <div class="p-5 sm:p-6 overflow-y-auto space-y-4">
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Teknisi / Surveyor <span class="text-red-500">*</span></label>
-                            <select v-model="surveyScheduleForm.technician_id" required class="w-full text-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">-- Pilih Teknisi / Petugas --</option>
-                                <option v-for="t in technicians" :key="t.id" :value="t.id">{{ t.name }} ({{ t.phone || t.role }})</option>
-                            </select>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Pilih Teknisi / Surveyor <span class="text-red-500">*</span></label>
+                            <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-slate-50">
+                                <label v-for="t in technicians" :key="t.id" :class="['flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all', surveyScheduleForm.technician_id === t.id ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-500 text-indigo-950 font-bold' : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700']">
+                                    <div class="flex items-center gap-3">
+                                        <input type="radio" :value="t.id" v-model="surveyScheduleForm.technician_id" required class="text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
+                                        <div>
+                                            <span class="text-sm block">{{ t.name }}</span>
+                                            <span class="text-[10px] text-gray-400 font-normal">{{ t.phone || t.role || 'Teknisi' }}</span>
+                                        </div>
+                                    </div>
+                                    <span v-if="surveyScheduleForm.technician_id === t.id" class="text-xs text-indigo-600 font-bold">Terpilih</span>
+                                </label>
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Tanggal Jadwal <span class="text-red-500">*</span></label>
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Tanggal Survey <span class="text-red-500">*</span></label>
                                 <input v-model="surveyScheduleForm.scheduled_date" type="date" required class="w-full text-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" />
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Waktu Target</label>
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Waktu (Jam Target)</label>
                                 <input v-model="surveyScheduleForm.scheduled_time" type="time" class="w-full text-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" />
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Status Jadwal</label>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Status Penugasan</label>
                             <select v-model="surveyScheduleForm.status" class="w-full text-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="scheduled">Dijadwalkan (scheduled)</option>
                                 <option value="on_the_way">Menuju Lokasi (on_the_way)</option>
@@ -1796,19 +1865,19 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Catatan Jadwal</label>
-                            <textarea v-model="surveyScheduleForm.notes" rows="2" placeholder="Catatan tugas teknisi..." class="w-full text-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Catatan / Instruksi Survey</label>
+                            <textarea v-model="surveyScheduleForm.notes" rows="2" placeholder="Contoh: Koordinasi via WhatsApp sebelum ke lokasi..." class="w-full text-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"></textarea>
                         </div>
-                    </form>
-                </div>
-                
-                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                    <button type="button" @click="showEditSurveyScheduleModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
-                    <button type="button" @click="submitEditSurveySchedule" :disabled="surveyScheduleForm.processing" class="px-5 py-2 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-md transition-all disabled:opacity-50 flex items-center gap-2">
-                        <svg v-if="surveyScheduleForm.processing" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        Simpan Jadwal Survey
-                    </button>
-                </div>
+                    </div>
+
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 shrink-0">
+                        <button type="button" @click="showEditSurveyScheduleModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
+                        <button type="submit" :disabled="surveyScheduleForm.processing" class="px-5 py-2 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-md transition-all disabled:opacity-50 flex items-center gap-2">
+                            <svg v-if="surveyScheduleForm.processing" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            Simpan Jadwal Survey
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -1816,27 +1885,31 @@
         <!-- 3. MODAL EDIT LAPORAN SURVEY               -->
         <!-- ========================================== -->
         <div v-if="showEditSurveyReportModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-                <div class="p-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex justify-between items-center">
-                    <div>
-                        <h3 class="text-lg font-bold flex items-center gap-2">
-                            <span>📋</span> Edit Laporan Hasil Survey
-                        </h3>
-                        <p class="text-xs text-emerald-100 mt-1">Perbarui hasil survey lapangan, ODP rekomendasi, jarak, dan kelayakan</p>
+            <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+                <div class="p-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 text-white flex justify-between items-center shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shrink-0">
+                            📋
+                        </div>
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold">Laporan Hasil Survey ODP</h3>
+                            <p class="text-xs text-emerald-100">Pemeriksaan teknisi lapangan, rekomendasi ODP, jarak, & kelayakan</p>
+                        </div>
                     </div>
-                    <button @click="showEditSurveyReportModal = false" class="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <button type="button" @click="showEditSurveyReportModal = false" class="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
                 
-                <div class="p-6 overflow-y-auto flex-1 space-y-4">
-                    <form @submit.prevent="submitEditSurveyReport" class="space-y-4">
+                <form @submit.prevent="submitEditSurveyReport" class="flex flex-col flex-1 overflow-hidden">
+                    <div class="p-5 sm:p-6 overflow-y-auto space-y-5">
+                        <!-- Petugas & Tanggal -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Surveyor <span class="text-red-500">*</span></label>
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Petugas Surveyor <span class="text-red-500">*</span></label>
                                 <select v-model="surveyReportForm.surveyor_id" required class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
                                     <option value="">-- Pilih Surveyor --</option>
-                                    <option v-for="t in technicians" :key="t.id" :value="t.id">{{ t.name }}</option>
+                                    <option v-for="t in technicians" :key="t.id" :value="t.id">{{ t.name }} ({{ t.phone || t.role }})</option>
                                 </select>
                             </div>
                             <div>
@@ -1845,65 +1918,130 @@
                             </div>
                         </div>
 
+                        <!-- Status Kelayakan (Radio Cards) -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">Hasil Kelayakan Pemasangan <span class="text-red-500">*</span></label>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <label :class="['flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all', surveyReportForm.feasibility === 'feasible' ? 'border-emerald-500 bg-emerald-50/70 ring-1 ring-emerald-500' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <input type="radio" value="feasible" v-model="surveyReportForm.feasibility" class="sr-only" />
+                                    <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', surveyReportForm.feasibility === 'feasible' ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300']">
+                                        <div v-if="surveyReportForm.feasibility === 'feasible'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs font-bold text-emerald-950 block">🟢 Layak (Feasible)</span>
+                                        <span class="text-[10px] text-emerald-700">Siap dipasang</span>
+                                    </div>
+                                </label>
+                                <label :class="['flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all', surveyReportForm.feasibility === 'not_feasible' ? 'border-rose-500 bg-rose-50/70 ring-1 ring-rose-500' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <input type="radio" value="not_feasible" v-model="surveyReportForm.feasibility" class="sr-only" />
+                                    <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', surveyReportForm.feasibility === 'not_feasible' ? 'border-rose-500 bg-rose-500' : 'border-gray-300']">
+                                        <div v-if="surveyReportForm.feasibility === 'not_feasible'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs font-bold text-rose-950 block">🔴 Tidak Layak</span>
+                                        <span class="text-[10px] text-rose-700">Unfeasible / batal</span>
+                                    </div>
+                                </label>
+                                <label :class="['flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all', surveyReportForm.feasibility === 'conditional' ? 'border-amber-500 bg-amber-50/70 ring-1 ring-amber-500' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <input type="radio" value="conditional" v-model="surveyReportForm.feasibility" class="sr-only" />
+                                    <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', surveyReportForm.feasibility === 'conditional' ? 'border-amber-500 bg-amber-500' : 'border-gray-300']">
+                                        <div v-if="surveyReportForm.feasibility === 'conditional'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs font-bold text-amber-950 block">🟡 Bersyarat</span>
+                                        <span class="text-[10px] text-amber-700">Perlu tiang/ODP baru</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Rekomendasi ODP & Port -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider">Rekomendasi ODP & Port</label>
+                                <button type="button" @click="findNearestSurveyOdp" :disabled="isFindingSurveyOdp" class="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 bg-white border border-blue-200 px-2.5 py-1 rounded-md transition-colors disabled:opacity-50 shadow-sm">
+                                    <svg v-if="isFindingSurveyOdp" class="animate-spin w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <svg v-else class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    {{ isFindingSurveyOdp ? 'Mencari...' : 'Radar ODP Terdekat' }}
+                                </button>
+                            </div>
+                            <p v-if="surveyOdpMsg" class="text-xs font-semibold text-emerald-600 bg-emerald-50 p-2 rounded-lg border border-emerald-200">{{ surveyOdpMsg }}</p>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Pilih ODP</label>
+                                    <select v-model="surveyReportForm.odp_id" class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                                        <option value="">-- Pilih ODP --</option>
+                                        <option v-for="odp in filteredAvailableOdps" :key="odp.id" :value="odp.id">
+                                            {{ odp.name }} (Port: {{ odp.used_ports }}/{{ odp.total_ports }})
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Nomor Port ODP</label>
+                                    <input v-model="surveyReportForm.port_number" type="number" min="1" max="64" class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" placeholder="1" />
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 pt-1">
+                                <input type="checkbox" id="survey_port_avail" v-model="surveyReportForm.port_available" class="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500" />
+                                <label for="survey_port_avail" class="text-xs font-medium text-gray-700 cursor-pointer">Port ODP Tersedia & Siap Digunakan</label>
+                            </div>
+                        </div>
+
+                        <!-- Jarak & Redaman Optik -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Status Kelayakan</label>
-                                <select v-model="surveyReportForm.feasibility" class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
-                                    <option value="feasible">Layak (Feasible)</option>
-                                    <option value="not_feasible">Tidak Layak (Not Feasible)</option>
-                                    <option value="conditional">Bersyarat (Conditional)</option>
-                                </select>
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Estimasi Jarak Kabel (Meter)</label>
+                                <input v-model="surveyReportForm.distance_meters" type="number" step="1" class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" placeholder="Contoh: 120" />
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Ketersediaan Port</label>
-                                <div class="pt-2">
-                                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" v-model="surveyReportForm.port_available" class="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500" />
-                                        <span class="text-sm font-semibold text-gray-800">Port ODP Tersedia</span>
-                                    </label>
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Redaman Optik (dBm)</label>
+                                <input v-model="surveyReportForm.signal_loss" type="text" class="w-full text-sm font-mono border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" placeholder="Misal: -18.5" />
+                            </div>
+                        </div>
+
+                        <!-- Dokumentasi Foto Survey -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider">Dokumentasi Foto Survey</label>
+                                <button type="button" @click="addSurveyReportPhoto" class="text-xs text-emerald-700 bg-white border border-emerald-300 hover:bg-emerald-50 px-2.5 py-1 rounded-md font-semibold transition-colors flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    Tambah Slot Foto
+                                </button>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <div v-for="(photo, idx) in surveyReportPhotos" :key="idx" class="flex items-start gap-3 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                    <div class="flex-1 space-y-2">
+                                        <input v-model="photo.label" type="text" placeholder="Label Foto (cth: Calon ODP, Tiang, Rumah)" class="w-full text-xs font-medium border-gray-200 rounded px-2.5 py-1.5 focus:ring-emerald-500" />
+                                        <input type="file" @change="handleSurveyReportPhotoChange(idx, $event)" accept="image/*" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer" />
+                                    </div>
+                                    <div v-if="photo.previewUrl" class="w-16 h-16 rounded-lg overflow-hidden shrink-0 border border-gray-200 shadow-sm relative group">
+                                        <img :src="photo.previewUrl" class="w-full h-full object-cover" />
+                                        <a :href="photo.previewUrl" target="_blank" class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] transition-opacity">Lihat</a>
+                                    </div>
+                                    <button v-if="surveyReportPhotos.length > 1" type="button" @click="removeSurveyReportPhoto(idx)" class="p-1 text-gray-400 hover:text-red-500 transition-colors" title="Hapus foto">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Rekomendasi ODP</label>
-                                <select v-model="surveyReportForm.odp_id" class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
-                                    <option value="">-- Pilih ODP --</option>
-                                    <option v-for="odp in availableOdps" :key="odp.id" :value="odp.id">{{ odp.name }} (Port terpakai: {{ odp.used_ports }}/{{ odp.total_ports }})</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Nomor Port ODP</label>
-                                <input v-model="surveyReportForm.port_number" type="number" min="1" max="64" class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" placeholder="Contoh: 4" />
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Jarak Tarikan (Meter)</label>
-                                <input v-model="surveyReportForm.distance_meters" type="number" step="0.1" class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" placeholder="Misal: 50" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Redaman Optik (dBm)</label>
-                                <input v-model="surveyReportForm.signal_loss" type="text" class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" placeholder="Misal: -18.5" />
-                            </div>
-                        </div>
-
+                        <!-- Catatan Tambahan -->
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Catatan Hasil Survey</label>
-                            <textarea v-model="surveyReportForm.notes" rows="2" placeholder="Kondisi jalur tarikan, tiang tumpu..." class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"></textarea>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Catatan Tambahan Hasil Survey</label>
+                            <textarea v-model="surveyReportForm.notes" rows="2" placeholder="Kondisi jalur tarikan kabel, hambatan pohon/tiang..." class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"></textarea>
                         </div>
-                    </form>
-                </div>
-                
-                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                    <button type="button" @click="showEditSurveyReportModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
-                    <button type="button" @click="submitEditSurveyReport" :disabled="surveyReportForm.processing" class="px-5 py-2 text-sm font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 shadow-md transition-all disabled:opacity-50 flex items-center gap-2">
-                        <svg v-if="surveyReportForm.processing" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        Simpan Laporan Survey
-                    </button>
-                </div>
+                    </div>
+
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 shrink-0">
+                        <button type="button" @click="showEditSurveyReportModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
+                        <button type="submit" :disabled="surveyReportForm.processing" class="px-5 py-2 text-sm font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 shadow-md transition-all disabled:opacity-50 flex items-center gap-2">
+                            <svg v-if="surveyReportForm.processing" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            Simpan Laporan Survey
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -1911,27 +2049,53 @@
         <!-- 4. MODAL EDIT JADWAL PASANG                -->
         <!-- ========================================== -->
         <div v-if="showEditInstallScheduleModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div class="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-                <div class="p-6 bg-gradient-to-r from-amber-600 to-orange-600 text-white flex justify-between items-center">
-                    <div>
-                        <h3 class="text-lg font-bold flex items-center gap-2">
-                            <span>🚀</span> Atur / Edit Jadwal Pasang
-                        </h3>
-                        <p class="text-xs text-amber-100 mt-1">Tugaskan teknisi instalasi dan tentukan tanggal pemasangan</p>
+            <div class="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+                <div class="p-5 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white flex justify-between items-center shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shrink-0">
+                            🚀
+                        </div>
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold">Jadwal Penugasan Pasang Teknisi</h3>
+                            <p class="text-xs text-amber-100">Penugasan tim instalasi dan penentuan waktu pemasangan</p>
+                        </div>
                     </div>
-                    <button @click="showEditInstallScheduleModal = false" class="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <button type="button" @click="showEditInstallScheduleModal = false" class="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
                 
-                <div class="p-6 overflow-y-auto flex-1 space-y-4">
-                    <form @submit.prevent="submitEditInstallSchedule" class="space-y-4">
+                <form @submit.prevent="submitEditInstallSchedule" class="flex flex-col flex-1 overflow-hidden">
+                    <div class="bg-amber-50/70 px-5 py-3 border-b border-amber-100 flex flex-col gap-1 text-xs shrink-0">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 font-medium">Pelanggan:</span>
+                            <span class="font-bold text-slate-800">{{ customer.name }} ({{ customer.customer_code }})</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 font-medium">Hasil Survey:</span>
+                            <span class="font-semibold text-slate-700">{{ customer.surveys?.[0]?.odp?.name || 'ODP Belum Ada' }} • {{ customer.surveys?.[0]?.distance_meters ? customer.surveys[0].distance_meters + ' m' : '-' }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 font-medium">Paket:</span>
+                            <span class="font-semibold text-amber-800">{{ customer.package?.name || '-' }}</span>
+                        </div>
+                    </div>
+
+                    <div class="p-5 sm:p-6 overflow-y-auto space-y-4">
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Teknisi Instalasi <span class="text-red-500">*</span></label>
-                            <select v-model="installScheduleForm.technician_id" required class="w-full text-sm border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500">
-                                <option value="">-- Pilih Teknisi Instalasi --</option>
-                                <option v-for="t in technicians" :key="t.id" :value="t.id">{{ t.name }} ({{ t.phone || t.role }})</option>
-                            </select>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Pilih Teknisi Instalasi <span class="text-red-500">*</span></label>
+                            <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-slate-50">
+                                <label v-for="t in technicians" :key="t.id" :class="['flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all', installScheduleForm.technician_id === t.id ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-500 text-amber-950 font-bold' : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700']">
+                                    <div class="flex items-center gap-3">
+                                        <input type="radio" :value="t.id" v-model="installScheduleForm.technician_id" required class="text-amber-600 focus:ring-amber-500 w-4 h-4" />
+                                        <div>
+                                            <span class="text-sm block">{{ t.name }}</span>
+                                            <span class="text-[10px] text-gray-400 font-normal">{{ t.phone || t.role || 'Teknisi' }}</span>
+                                        </div>
+                                    </div>
+                                    <span v-if="installScheduleForm.technician_id === t.id" class="text-xs text-amber-600 font-bold">Terpilih</span>
+                                </label>
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1946,7 +2110,7 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Status Jadwal</label>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Status Penugasan</label>
                             <select v-model="installScheduleForm.status" class="w-full text-sm border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500">
                                 <option value="scheduled">Dijadwalkan (scheduled)</option>
                                 <option value="on_the_way">Menuju Lokasi (on_the_way)</option>
@@ -1958,18 +2122,18 @@
 
                         <div>
                             <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Catatan Khusus Instalasi</label>
-                            <textarea v-model="installScheduleForm.notes" rows="2" placeholder="Catatan material, permintaan khusus..." class="w-full text-sm border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500"></textarea>
+                            <textarea v-model="installScheduleForm.notes" rows="2" placeholder="Catatan material, permintaan rute kabel, dll..." class="w-full text-sm border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500"></textarea>
                         </div>
-                    </form>
-                </div>
-                
-                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                    <button type="button" @click="showEditInstallScheduleModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
-                    <button type="button" @click="submitEditInstallSchedule" :disabled="installScheduleForm.processing" class="px-5 py-2 text-sm font-bold text-white bg-amber-600 rounded-lg hover:bg-amber-700 shadow-md transition-all disabled:opacity-50 flex items-center gap-2">
-                        <svg v-if="installScheduleForm.processing" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        Simpan Jadwal Pasang
-                    </button>
-                </div>
+                    </div>
+
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 shrink-0">
+                        <button type="button" @click="showEditInstallScheduleModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
+                        <button type="submit" :disabled="installScheduleForm.processing" class="px-5 py-2 text-sm font-bold text-white bg-amber-600 rounded-lg hover:bg-amber-700 shadow-md transition-all disabled:opacity-50 flex items-center gap-2">
+                            <svg v-if="installScheduleForm.processing" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            Simpan Jadwal Pasang
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -1977,77 +2141,176 @@
         <!-- 5. MODAL EDIT LAPORAN INSTALASI & ONT      -->
         <!-- ========================================== -->
         <div v-if="showEditInstallationReportModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-                <div class="p-6 bg-gradient-to-r from-cyan-600 to-blue-600 text-white flex justify-between items-center">
-                    <div>
-                        <h3 class="text-lg font-bold flex items-center gap-2">
-                            <span>🔧</span> Edit Laporan Instalasi & ONT
-                        </h3>
-                        <p class="text-xs text-cyan-100 mt-1">Perbarui ODP terpasang, port, ONT Serial Number, MAC, redaman, dan jam kerja</p>
+            <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+                <div class="p-5 bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-700 text-white flex justify-between items-center shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shrink-0">
+                            🔧
+                        </div>
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold">Laporan Selesai Instalasi & Konfigurasi ONT</h3>
+                            <p class="text-xs text-cyan-100">Pencatatan ODP terpasang, port, fisik modem ONT, jam kerja, & dokumentasi foto</p>
+                        </div>
                     </div>
-                    <button @click="showEditInstallationReportModal = false" class="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <button type="button" @click="showEditInstallationReportModal = false" class="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
                 
-                <div class="p-6 overflow-y-auto flex-1 space-y-4">
-                    <form @submit.prevent="submitEditInstallationReport" class="space-y-4">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">ODP Terpasang <span class="text-red-500">*</span></label>
-                                <select v-model="installReportForm.odp_id" required class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">-- Pilih ODP --</option>
-                                    <option v-for="odp in availableOdps" :key="odp.id" :value="odp.id">{{ odp.name }} (Port: {{ odp.used_ports }}/{{ odp.total_ports }})</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Nomor Port ODP <span class="text-red-500">*</span></label>
-                                <input v-model="installReportForm.port_number" type="number" min="1" max="64" required class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="1" />
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Serial Number (SN) ONT <span class="text-red-500">*</span></label>
-                                <input v-model="installReportForm.serial_number" type="text" required placeholder="Contoh: ZTEGC1234567" class="w-full text-sm font-mono border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">MAC Address ONT</label>
-                                <input v-model="installReportForm.mac_address" type="text" placeholder="E4:2D:7D:BB:7A:4F" class="w-full text-sm font-mono border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Merk / Model ONT</label>
-                                <input v-model="installReportForm.model" type="text" placeholder="ZTE F609 / Huawei / GM220" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Redaman Optik ONT (dBm)</label>
-                                <input v-model="installReportForm.rx_power" type="text" placeholder="Misal: -19.50" class="w-full text-sm font-mono border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                <form @submit.prevent="submitEditInstallationReport" class="flex flex-col flex-1 overflow-hidden">
+                    <div class="p-5 sm:p-6 overflow-y-auto space-y-5">
+                        <!-- Step 1: Waktu Pelaksanaan -->
+                        <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-100 space-y-3">
+                            <h4 class="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-2">
+                                <span class="p-1 rounded bg-blue-200 text-blue-800">⏱️</span> 1. Jam Pelaksanaan Pekerjaan
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs font-semibold text-gray-700">Jam Mulai</label>
+                                        <button type="button" @click="setInstallReportNow('start_time')" class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                                            MULAI SEKARANG
+                                        </button>
+                                    </div>
+                                    <input v-model="installReportForm.start_time" type="time" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs font-semibold text-gray-700">Jam Selesai</label>
+                                        <button type="button" @click="setInstallReportNow('end_time')" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
+                                            SELESAI SEKARANG
+                                        </button>
+                                    </div>
+                                    <input v-model="installReportForm.end_time" type="time" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Jam Mulai Pasang</label>
-                                <input v-model="installReportForm.start_time" type="time" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Jam Selesai Pasang</label>
-                                <input v-model="installReportForm.end_time" type="time" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                        <!-- Step 2: ODP & Port Terpasang -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                <span class="p-1 rounded bg-indigo-100 text-indigo-700">🔌</span> 2. Titik Sambung ODP & Port
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">ODP Terpasang <span class="text-red-500">*</span></label>
+                                    <select v-model="installReportForm.odp_id" required class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">-- Pilih ODP --</option>
+                                        <option v-for="odp in availableOdps" :key="odp.id" :value="odp.id">
+                                            {{ odp.name }} (Port: {{ odp.used_ports }}/{{ odp.total_ports }})
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Nomor Port ODP <span class="text-red-500">*</span></label>
+                                    <input v-model="installReportForm.port_number" type="number" min="1" max="64" required placeholder="Contoh: 1" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
                             </div>
                         </div>
-                    </form>
-                </div>
-                
-                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                    <button type="button" @click="showEditInstallationReportModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
-                    <button type="button" @click="submitEditInstallationReport" :disabled="installReportForm.processing" class="px-5 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-md transition-all disabled:opacity-50 flex items-center gap-2">
-                        <svg v-if="installReportForm.processing" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        Simpan Laporan Instalasi
-                    </button>
-                </div>
+
+                        <!-- Step 3: Spesifikasi Fisik ONT -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                <span class="p-1 rounded bg-amber-100 text-amber-700">📟</span> 3. Spesifikasi Fisik Modem ONT
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Serial Number (SN) ONT <span class="text-red-500">*</span></label>
+                                    <input v-model="installReportForm.serial_number" type="text" required placeholder="ZTEGC1234567" class="w-full text-sm font-mono border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 uppercase" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">MAC Address ONT</label>
+                                    <input v-model="installReportForm.mac_address" type="text" placeholder="E4:2D:7D:BB:7A:4F" class="w-full text-sm font-mono border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Merk / Model ONT</label>
+                                    <input v-model="installReportForm.model" type="text" placeholder="ZTE F609 / Huawei / GM220" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Redaman Optik ONT (dBm)</label>
+                                    <input v-model="installReportForm.rx_power" type="text" placeholder="-19.50" class="w-full text-sm font-mono border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: 5 Slot Dokumentasi Foto Lapangan -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                <span class="p-1 rounded bg-teal-100 text-teal-700">📸</span> 4. Dokumentasi Foto Lapangan Lengkap
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <!-- 1. Foto ODP -->
+                                <div class="bg-white p-3 rounded-lg border border-gray-200 space-y-2">
+                                    <label class="block text-xs font-bold text-gray-700">1. Foto ODP / Port</label>
+                                    <div class="flex items-center gap-3">
+                                        <div v-if="installPhotoPreviews.photo_odp" class="w-14 h-14 rounded-lg overflow-hidden shrink-0 border border-gray-200">
+                                            <img :src="installPhotoPreviews.photo_odp" class="w-full h-full object-cover" />
+                                        </div>
+                                        <div class="flex-1">
+                                            <input type="file" @change="handleInstallReportPhoto('photo_odp', $event)" accept="image/*" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 2. Foto Instalasi -->
+                                <div class="bg-white p-3 rounded-lg border border-gray-200 space-y-2">
+                                    <label class="block text-xs font-bold text-gray-700">2. Foto Instalasi Rumah</label>
+                                    <div class="flex items-center gap-3">
+                                        <div v-if="installPhotoPreviews.photo_installation" class="w-14 h-14 rounded-lg overflow-hidden shrink-0 border border-gray-200">
+                                            <img :src="installPhotoPreviews.photo_installation" class="w-full h-full object-cover" />
+                                        </div>
+                                        <div class="flex-1">
+                                            <input type="file" @change="handleInstallReportPhoto('photo_installation', $event)" accept="image/*" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 3. Foto ONT -->
+                                <div class="bg-white p-3 rounded-lg border border-gray-200 space-y-2">
+                                    <label class="block text-xs font-bold text-gray-700">3. Foto Posisi ONT</label>
+                                    <div class="flex items-center gap-3">
+                                        <div v-if="installPhotoPreviews.photo_ont" class="w-14 h-14 rounded-lg overflow-hidden shrink-0 border border-gray-200">
+                                            <img :src="installPhotoPreviews.photo_ont" class="w-full h-full object-cover" />
+                                        </div>
+                                        <div class="flex-1">
+                                            <input type="file" @change="handleInstallReportPhoto('photo_ont', $event)" accept="image/*" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 4. Foto Selfie -->
+                                <div class="bg-white p-3 rounded-lg border border-gray-200 space-y-2">
+                                    <label class="block text-xs font-bold text-gray-700">4. Foto Selfie Pelanggan</label>
+                                    <div class="flex items-center gap-3">
+                                        <div v-if="installPhotoPreviews.photo_customer" class="w-14 h-14 rounded-lg overflow-hidden shrink-0 border border-gray-200">
+                                            <img :src="installPhotoPreviews.photo_customer" class="w-full h-full object-cover" />
+                                        </div>
+                                        <div class="flex-1">
+                                            <input type="file" @change="handleInstallReportPhoto('photo_customer', $event)" accept="image/*" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 5. Foto Redaman -->
+                                <div class="sm:col-span-2 bg-white p-3 rounded-lg border border-gray-200 space-y-2">
+                                    <label class="block text-xs font-bold text-gray-700">5. Foto Redaman (OPM)</label>
+                                    <div class="flex items-center gap-3">
+                                        <div v-if="installPhotoPreviews.photo_redaman" class="w-14 h-14 rounded-lg overflow-hidden shrink-0 border border-gray-200">
+                                            <img :src="installPhotoPreviews.photo_redaman" class="w-full h-full object-cover" />
+                                        </div>
+                                        <div class="flex-1">
+                                            <input type="file" @change="handleInstallReportPhoto('photo_redaman', $event)" accept="image/*" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 shrink-0">
+                        <button type="button" @click="showEditInstallationReportModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
+                        <button type="submit" :disabled="installReportForm.processing" class="px-5 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-md transition-all disabled:opacity-50 flex items-center gap-2">
+                            <svg v-if="installReportForm.processing" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            Simpan Laporan Instalasi
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -2055,103 +2318,176 @@
         <!-- 6. MODAL EDIT AKTIVASI & LAYANAN           -->
         <!-- ========================================== -->
         <div v-if="showEditActivationModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-                <div class="p-6 bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex justify-between items-center">
-                    <div>
-                        <h3 class="text-lg font-bold flex items-center gap-2">
-                            <span>⚙️</span> Edit Aktivasi & Konfigurasi Layanan
-                        </h3>
-                        <p class="text-xs text-purple-100 mt-1">Perbarui tanggal aktivasi, jenis tagihan, paket internet, PPPoE, dan ONT login</p>
+            <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+                <div class="p-5 bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-700 text-white flex justify-between items-center shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shrink-0">
+                            ⚡
+                        </div>
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold">Aktivasi & Konfigurasi Layanan Pelanggan</h3>
+                            <p class="text-xs text-purple-100">Perbarui tanggal aktivasi, paket internet, tagihan, PPPoE, & ONT login</p>
+                        </div>
                     </div>
-                    <button @click="showEditActivationModal = false" class="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <button type="button" @click="showEditActivationModal = false" class="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
                 
-                <div class="p-6 overflow-y-auto flex-1 space-y-4">
-                    <form @submit.prevent="submitEditActivation" class="space-y-4">
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Tanggal Aktivasi <span class="text-red-500">*</span></label>
-                                <input v-model="editActivationForm.activation_date" type="date" required class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                <form @submit.prevent="submitEditActivation" class="flex flex-col flex-1 overflow-hidden">
+                    <div class="p-5 sm:p-6 overflow-y-auto space-y-5">
+                        <!-- 1. Status Layanan Pelanggan (3 Radio Cards) -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">Status Layanan Pelanggan <span class="text-red-500">*</span></label>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', editActivationForm.service_status === 'berbayar' ? 'border-purple-600 bg-purple-50/70 ring-1 ring-purple-600' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <div class="flex items-center gap-2">
+                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', editActivationForm.service_status === 'berbayar' ? 'border-purple-600 bg-purple-600' : 'border-gray-300']">
+                                            <div v-if="editActivationForm.service_status === 'berbayar'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs font-bold text-gray-900 block">Berbayar</span>
+                                            <span class="text-[10px] text-gray-500">Tarif paket rutin</span>
+                                        </div>
+                                    </div>
+                                    <input type="radio" value="berbayar" v-model="editActivationForm.service_status" class="sr-only">
+                                </label>
+                                
+                                <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', editActivationForm.service_status === 'gratis' ? 'border-emerald-500 bg-emerald-50/70 ring-1 ring-emerald-500' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <div class="flex items-center gap-2">
+                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', editActivationForm.service_status === 'gratis' ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300']">
+                                            <div v-if="editActivationForm.service_status === 'gratis'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs font-bold text-gray-900 block">🎁 Gratis</span>
+                                            <span class="text-[10px] text-gray-500">CSR / Fasilitas</span>
+                                        </div>
+                                    </div>
+                                    <input type="radio" value="gratis" v-model="editActivationForm.service_status" class="sr-only">
+                                </label>
+
+                                <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', editActivationForm.service_status === 'free_home' ? 'border-amber-500 bg-amber-50/70 ring-1 ring-amber-500' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <div class="flex items-center gap-2">
+                                        <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', editActivationForm.service_status === 'free_home' ? 'border-amber-500 bg-amber-500' : 'border-gray-300']">
+                                            <div v-if="editActivationForm.service_status === 'free_home'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs font-bold text-gray-900 block">🏠 Free Home</span>
+                                            <span class="text-[10px] text-gray-500">Voucher Rumahan</span>
+                                        </div>
+                                    </div>
+                                    <input type="radio" value="free_home" v-model="editActivationForm.service_status" class="sr-only">
+                                </label>
                             </div>
+                        </div>
+
+                        <!-- Banner Free Home Alert -->
+                        <div v-if="editActivationForm.service_status === 'free_home'" class="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-900">
+                            <span class="text-base shrink-0">🏠</span>
+                            <div class="leading-relaxed">
+                                <p class="font-bold">Mode Free Home (Voucher Rumahan ONT)</p>
+                                <p class="text-[11px] text-amber-700 mt-0.5">
+                                    Pelanggan ini tidak akan dikenakan invoice billing rutin dan tidak disinkronkan ke RADIUS PPPoE.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- 2. Siklus Penagihan & Tanggal -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Tanggal Aktivasi <span class="text-red-500">*</span></label>
+                                    <input v-model="editActivationForm.activation_date" type="date" required class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                </div>
+                                <div v-if="editActivationForm.service_status !== 'free_home'">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Jenis Tagihan <span class="text-red-500">*</span></label>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <label :class="['flex items-center justify-center py-2 px-3 rounded-lg border text-xs font-bold cursor-pointer transition-all', editActivationForm.billing_type === 'prabayar' ? 'bg-purple-50 border-purple-300 text-purple-900 ring-1 ring-purple-500' : 'bg-white border-gray-200 text-gray-600']">
+                                            <input type="radio" value="prabayar" v-model="editActivationForm.billing_type" class="sr-only" />
+                                            Prabayar
+                                        </label>
+                                        <label :class="['flex items-center justify-center py-2 px-3 rounded-lg border text-xs font-bold cursor-pointer transition-all', editActivationForm.billing_type === 'pascabayar' ? 'bg-purple-50 border-purple-300 text-purple-900 ring-1 ring-purple-500' : 'bg-white border-gray-200 text-gray-600']">
+                                            <input type="radio" value="pascabayar" v-model="editActivationForm.billing_type" class="sr-only" />
+                                            Pasca Bayar
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Status Layanan</label>
-                                <select v-model="editActivationForm.service_status" class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
-                                    <option value="berbayar">Berbayar</option>
-                                    <option value="gratis">Gratis (Rp 0)</option>
-                                    <option value="free_home">Free Home (Voucher)</option>
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Paket Berlangganan</label>
+                                <select v-model="editActivationForm.package_id" class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                                    <option value="">-- Pilih Paket Internet --</option>
+                                    <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">{{ pkg.name }} ({{ formatRupiah(pkg.price) }})</option>
                                 </select>
                             </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Jenis Tagihan</label>
-                                <select v-model="editActivationForm.billing_type" class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
-                                    <option value="prabayar">Prabayar</option>
-                                    <option value="pascabayar">Pasca Bayar</option>
-                                </select>
+                        </div>
+
+                        <!-- 3. Kredensial PPPoE & Akses Jaringan -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                <span class="p-1 rounded bg-indigo-100 text-indigo-700">🌐</span> Kredensial Akses & VLAN
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">PPPoE / Member Username</label>
+                                    <input v-model="editActivationForm.pppoe_user" type="text" placeholder="user@isp" class="w-full text-sm font-medium border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">PPPoE / Member Password</label>
+                                    <input v-model="editActivationForm.pppoe_password" type="text" placeholder="***" class="w-full text-sm font-medium border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Mode Akses</label>
+                                    <select v-model="editActivationForm.access_mode" class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                                        <option value="PPPOE">PPPoE</option>
+                                        <option value="STATIC">Static IP</option>
+                                        <option value="DHCP">DHCP / Dynamic</option>
+                                        <option value="HOTSPOT">Hotspot</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">VLAN Mode</label>
+                                    <select v-model="editActivationForm.vlan_mode" class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                                        <option value="">-- Pilih Mode --</option>
+                                        <option value="Route">Route</option>
+                                        <option value="Bridge">Bridge</option>
+                                        <option value="VLAN">VLAN (Tagged)</option>
+                                        <option value="Untagged">Untagged</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">VLAN ID</label>
+                                    <input v-model="editActivationForm.vlan_id" type="text" placeholder="100" class="w-full text-sm font-mono border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                </div>
                             </div>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Paket Layanan</label>
-                            <select v-model="editActivationForm.package_id" class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
-                                <option value="">-- Pilih Paket --</option>
-                                <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">{{ pkg.name }} ({{ formatRupiah(pkg.price) }})</option>
-                            </select>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">PPPoE / Member Username</label>
-                                <input v-model="editActivationForm.pppoe_user" type="text" placeholder="user@isp" class="w-full text-sm font-medium border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">PPPoE / Member Password</label>
-                                <input v-model="editActivationForm.pppoe_password" type="text" placeholder="***" class="w-full text-sm font-medium border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Mode Akses</label>
-                                <select v-model="editActivationForm.access_mode" class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
-                                    <option value="PPPOE">PPPoE</option>
-                                    <option value="STATIC">Static IP</option>
-                                    <option value="DHCP">DHCP / Dynamic</option>
-                                    <option value="HOTSPOT">Hotspot</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">VLAN Mode</label>
-                                <select v-model="editActivationForm.vlan_mode" class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
-                                    <option value="">-- Pilih --</option>
-                                    <option value="Route">Route</option>
-                                    <option value="Bridge">Bridge</option>
-                                    <option value="VLAN">VLAN (Tagged)</option>
-                                    <option value="Untagged">Untagged</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">VLAN ID</label>
-                                <input v-model="editActivationForm.vlan_id" type="text" placeholder="100" class="w-full text-sm font-mono border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                        <!-- 4. Akses Web GUI ONT -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                <span class="p-1 rounded bg-blue-100 text-blue-700">💻</span> Akses Web GUI Admin ONT
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">IP Login ONT</label>
+                                    <input v-model="editActivationForm.ip_login" type="text" placeholder="192.168.1.1" class="w-full text-sm font-mono border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">User Login ONT</label>
+                                    <input v-model="editActivationForm.login_user" type="text" placeholder="admin" class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Pass Login ONT</label>
+                                    <input v-model="editActivationForm.login_password" type="text" placeholder="admin" class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                </div>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">IP Login ONT</label>
-                                <input v-model="editActivationForm.ip_login" type="text" placeholder="192.168.1.1" class="w-full text-sm font-mono border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">User Login ONT</label>
-                                <input v-model="editActivationForm.login_user" type="text" placeholder="admin" class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Pass Login ONT</label>
-                                <input v-model="editActivationForm.login_password" type="text" placeholder="admin" class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
-                            </div>
-                        </div>
-
+                        <!-- 5. Fasilitas Free Hotspot ONT -->
                         <div class="p-4 bg-amber-50 rounded-xl border border-amber-200 space-y-3">
                             <label class="inline-flex items-center gap-2 cursor-pointer">
                                 <input type="checkbox" v-model="editActivationForm.free_hotspot" class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
@@ -2172,16 +2508,16 @@
                                 </div>
                             </div>
                         </div>
-                    </form>
-                </div>
-                
-                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                    <button type="button" @click="showEditActivationModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
-                    <button type="button" @click="submitEditActivation" :disabled="editActivationForm.processing" class="px-5 py-2 text-sm font-bold text-white bg-purple-600 rounded-lg hover:bg-purple-700 shadow-md transition-all disabled:opacity-50 flex items-center gap-2">
-                        <svg v-if="editActivationForm.processing" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        Simpan Konfigurasi Aktivasi
-                    </button>
-                </div>
+                    </div>
+
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 shrink-0">
+                        <button type="button" @click="showEditActivationModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
+                        <button type="submit" :disabled="editActivationForm.processing" class="px-5 py-2 text-sm font-bold text-white bg-purple-600 rounded-lg hover:bg-purple-700 shadow-md transition-all disabled:opacity-50 flex items-center gap-2">
+                            <svg v-if="editActivationForm.processing" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            Simpan Konfigurasi Aktivasi
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 </template>
@@ -3196,12 +3532,15 @@ function submitTerminate() {
 }
 
 // ============================================================
-// 6 TAHAP LIFECYCLE INLINE EDIT HANDLERS
+// 6 TAHAP LIFECYCLE INLINE EDIT HANDLERS (PERSIS FORM PELAKSANAAN)
 // ============================================================
 
 // ── 1. MODAL EDIT BOOKING & LOKASI ──────────────────────────
 const showEditBookingModal = ref(false);
 const bookingForm = useForm({
+    name: '',
+    phone: '',
+    email: '',
     latitude: '',
     longitude: '',
     notes: '',
@@ -3210,10 +3549,12 @@ const bookingForm = useForm({
     package_id: '',
     area_id: '',
     address: '',
-    phone: '',
 });
 
 function openEditBookingModal() {
+    bookingForm.name = props.customer.name || '';
+    bookingForm.phone = props.customer.phone || '';
+    bookingForm.email = props.customer.email || '';
     bookingForm.latitude = props.customer.latitude || '';
     bookingForm.longitude = props.customer.longitude || '';
     bookingForm.notes = props.customer.notes || '';
@@ -3222,8 +3563,24 @@ function openEditBookingModal() {
     bookingForm.package_id = props.customer.package_id || '';
     bookingForm.area_id = props.customer.area_id || '';
     bookingForm.address = props.customer.address || '';
-    bookingForm.phone = props.customer.phone || '';
     showEditBookingModal.value = true;
+}
+
+function getBookingLocation() {
+    if (!navigator.geolocation) {
+        alert('Geolocation tidak didukung oleh browser Anda.');
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            bookingForm.latitude = pos.coords.latitude.toFixed(7);
+            bookingForm.longitude = pos.coords.longitude.toFixed(7);
+        },
+        (err) => {
+            alert('Gagal mengambil titik GPS: ' + err.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
 }
 
 function submitEditBooking() {
@@ -3241,7 +3598,7 @@ const surveyScheduleForm = useForm({
     technician_id: '',
     scheduled_date: '',
     scheduled_time: '09:00',
-    status: 'done',
+    status: 'scheduled',
     notes: '',
 });
 
@@ -3250,8 +3607,8 @@ function openEditSurveyScheduleModal() {
     surveyScheduleForm.technician_id = sched?.technician_id || (props.customer.surveys?.[0]?.surveyor_id || (props.technicians?.[0]?.id || ''));
     surveyScheduleForm.scheduled_date = sched?.scheduled_date ? sched.scheduled_date.split('T')[0] : (props.customer.registration_date ? props.customer.registration_date.split('T')[0] : new Date().toISOString().split('T')[0]);
     surveyScheduleForm.scheduled_time = sched?.scheduled_time ? sched.scheduled_time.substring(0, 5) : '09:00';
-    surveyScheduleForm.status = sched?.status || 'done';
-    surveyScheduleForm.notes = sched?.notes || 'Jadwal survey';
+    surveyScheduleForm.status = sched?.status || 'scheduled';
+    surveyScheduleForm.notes = sched?.notes || 'Jadwal survey lapangan';
     showEditSurveyScheduleModal.value = true;
 }
 
@@ -3266,6 +3623,10 @@ function submitEditSurveySchedule() {
 
 // ── 3. MODAL EDIT LAPORAN SURVEY ────────────────────────────
 const showEditSurveyReportModal = ref(false);
+const isFindingSurveyOdp = ref(false);
+const surveyOdpMsg = ref('');
+const surveyReportPhotos = ref([]);
+
 const surveyReportForm = useForm({
     surveyor_id: '',
     survey_date: '',
@@ -3283,17 +3644,109 @@ function openEditSurveyReportModal() {
     const s = props.customer.surveys?.[0];
     surveyReportForm.surveyor_id = s?.surveyor_id || (props.customer.technician_schedules?.find(ts => ts.type === 'survey')?.technician_id || (props.technicians?.[0]?.id || ''));
     surveyReportForm.survey_date = s?.survey_date ? s.survey_date.split('T')[0] : (props.customer.registration_date ? props.customer.registration_date.split('T')[0] : new Date().toISOString().split('T')[0]);
-    surveyReportForm.odp_id = s?.odp_id || (props.customer.ont?.odp_id || (props.availableOdps?.[0]?.id || ''));
+    surveyReportForm.odp_id = s?.odp_id || (props.customer.ont?.odp_id || (filteredAvailableOdps.value?.[0]?.id || ''));
     surveyReportForm.port_number = s?.port_number || 1;
     surveyReportForm.distance_meters = s?.distance_meters || 50;
     surveyReportForm.signal_loss = s?.signal_loss || '';
     surveyReportForm.port_available = s ? Boolean(s.port_available) : true;
     surveyReportForm.feasibility = s?.feasibility || 'feasible';
     surveyReportForm.notes = s?.notes || 'Hasil survey lapangan';
+    surveyOdpMsg.value = '';
+
+    if (s?.photos && s.photos.length > 0) {
+        surveyReportPhotos.value = s.photos.map(p => ({
+            label: p.label || 'Dokumentasi Survey',
+            file: null,
+            previewUrl: p.path ? '/storage/' + p.path : null
+        }));
+    } else {
+        surveyReportPhotos.value = [
+            { label: 'Foto Selfie Pelanggan & Petugas', file: null, previewUrl: null },
+            { label: 'Foto Calon ODP', file: null, previewUrl: null },
+            { label: 'Foto Tiang / Jalur Kabel', file: null, previewUrl: null }
+        ];
+    }
     showEditSurveyReportModal.value = true;
 }
 
+function addSurveyReportPhoto() {
+    surveyReportPhotos.value.push({ label: 'Foto Tambahan', file: null, previewUrl: null });
+}
+
+function removeSurveyReportPhoto(index) {
+    surveyReportPhotos.value.splice(index, 1);
+}
+
+function handleSurveyReportPhotoChange(index, event) {
+    const file = event.target.files[0];
+    surveyReportPhotos.value[index].file = file;
+    if (file) {
+        surveyReportPhotos.value[index].previewUrl = URL.createObjectURL(file);
+    }
+}
+
+function findNearestSurveyOdp() {
+    isFindingSurveyOdp.value = true;
+    surveyOdpMsg.value = '';
+
+    const lat = props.customer.latitude;
+    const lng = props.customer.longitude;
+
+    if (!lat || !lng) {
+        if (!navigator.geolocation) {
+            alert('Titik koordinat pelanggan belum ada dan Geolocation tidak didukung.');
+            isFindingSurveyOdp.value = false;
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => calculateNearestOdp(pos.coords.latitude, pos.coords.longitude),
+            () => {
+                alert('Gagal mengambil titik GPS.');
+                isFindingSurveyOdp.value = false;
+            }
+        );
+        return;
+    }
+
+    calculateNearestOdp(parseFloat(lat), parseFloat(lng));
+}
+
+function calculateNearestOdp(userLat, userLon) {
+    if (!filteredAvailableOdps.value || filteredAvailableOdps.value.length === 0) {
+        surveyOdpMsg.value = '⚠️ Tidak ada ODP terdaftar pada area ini.';
+        isFindingSurveyOdp.value = false;
+        return;
+    }
+
+    let nearest = null;
+    let minDistance = 9999999;
+
+    filteredAvailableOdps.value.forEach(odp => {
+        if (odp.latitude && odp.longitude) {
+            const d = calculateDistance(userLat, userLon, parseFloat(odp.latitude), parseFloat(odp.longitude));
+            if (d < minDistance) {
+                minDistance = d;
+                nearest = odp;
+            }
+        }
+    });
+
+    if (nearest) {
+        surveyReportForm.odp_id = nearest.id;
+        surveyReportForm.distance_meters = Math.round(minDistance);
+        surveyOdpMsg.value = `📍 ODP Terdekat: ${nearest.name} (±${Math.round(minDistance)} meter)`;
+    } else {
+        surveyOdpMsg.value = '⚠️ Koordinat ODP belum diset pada area ini.';
+    }
+    isFindingSurveyOdp.value = false;
+}
+
 function submitEditSurveyReport() {
+    surveyReportForm.photos = surveyReportPhotos.value.map(p => ({
+        label: p.label,
+        file: p.file
+    }));
+
     surveyReportForm.post(`/customers/${props.customer.id}/update-survey-report`, {
         preserveScroll: true,
         onSuccess: () => {
@@ -3308,7 +3761,7 @@ const installScheduleForm = useForm({
     technician_id: '',
     scheduled_date: '',
     scheduled_time: '10:00',
-    status: 'done',
+    status: 'scheduled',
     notes: '',
 });
 
@@ -3317,7 +3770,7 @@ function openEditInstallScheduleModal() {
     installScheduleForm.technician_id = sched?.technician_id || (props.technicians?.[0]?.id || '');
     installScheduleForm.scheduled_date = sched?.scheduled_date ? sched.scheduled_date.split('T')[0] : (props.customer.activation_date ? props.customer.activation_date.split('T')[0] : new Date().toISOString().split('T')[0]);
     installScheduleForm.scheduled_time = sched?.scheduled_time ? sched.scheduled_time.substring(0, 5) : '10:00';
-    installScheduleForm.status = sched?.status || 'done';
+    installScheduleForm.status = sched?.status || 'scheduled';
     installScheduleForm.notes = sched?.notes || 'Jadwal instalasi teknisi';
     showEditInstallScheduleModal.value = true;
 }
@@ -3333,6 +3786,14 @@ function submitEditInstallSchedule() {
 
 // ── 5. MODAL EDIT LAPORAN INSTALASI & ONT ───────────────────
 const showEditInstallationReportModal = ref(false);
+const installPhotoPreviews = ref({
+    photo_odp: null,
+    photo_installation: null,
+    photo_ont: null,
+    photo_customer: null,
+    photo_redaman: null
+});
+
 const installReportForm = useForm({
     odp_id: '',
     port_number: 1,
@@ -3351,15 +3812,37 @@ const installReportForm = useForm({
 
 function openEditInstallationReportModal() {
     const ont = props.customer.ont;
-    installReportForm.odp_id = ont?.odp_id || (props.customer.surveys?.[0]?.odp_id || (props.availableOdps?.[0]?.id || ''));
+    installReportForm.odp_id = ont?.odp_id || (props.customer.surveys?.[0]?.odp_id || (filteredAvailableOdps.value?.[0]?.id || ''));
     installReportForm.port_number = ont?.port_number || (props.customer.surveys?.[0]?.port_number || 1);
     installReportForm.serial_number = ont?.serial_number || '';
     installReportForm.mac_address = ont?.mac_address || '';
     installReportForm.model = ont?.model || 'Standard ONT';
     installReportForm.rx_power = ont?.rx_power || '';
-    installReportForm.start_time = ont?.start_time || '09:00';
-    installReportForm.end_time = ont?.end_time || '11:00';
+    installReportForm.start_time = ont?.start_time ? ont.start_time.substring(0, 5) : '09:00';
+    installReportForm.end_time = ont?.end_time ? ont.end_time.substring(0, 5) : '11:00';
+
+    installPhotoPreviews.value.photo_odp = ont?.photo_odp ? '/storage/' + ont.photo_odp : null;
+    installPhotoPreviews.value.photo_installation = ont?.photo_installation ? '/storage/' + ont.photo_installation : null;
+    installPhotoPreviews.value.photo_ont = ont?.photo_ont ? '/storage/' + ont.photo_ont : null;
+    installPhotoPreviews.value.photo_customer = ont?.photo_customer ? '/storage/' + ont.photo_customer : null;
+    installPhotoPreviews.value.photo_redaman = ont?.photo_redaman ? '/storage/' + ont.photo_redaman : null;
+
     showEditInstallationReportModal.value = true;
+}
+
+function handleInstallReportPhoto(field, event) {
+    const file = event.target.files[0];
+    if (file) {
+        installReportForm[field] = file;
+        installPhotoPreviews.value[field] = URL.createObjectURL(file);
+    }
+}
+
+function setInstallReportNow(field) {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    installReportForm[field] = `${h}:${m}`;
 }
 
 function submitEditInstallationReport() {

@@ -2646,6 +2646,8 @@ class CustomerController extends Controller
     public function updateBookingInline(Request $request, Customer $customer): RedirectResponse
     {
         $validated = $request->validate([
+            'name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
             'latitude' => 'nullable|string|max:50',
             'longitude' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
@@ -2665,6 +2667,15 @@ class CustomerController extends Controller
         }
 
         $customer->update($validated);
+
+        if ($customer->user) {
+            $userUpdate = [];
+            if (!empty($validated['name'])) $userUpdate['name'] = $validated['name'];
+            if (!empty($validated['email'])) $userUpdate['email'] = $validated['email'];
+            if (!empty($userUpdate)) {
+                $customer->user->update($userUpdate);
+            }
+        }
 
         \App\Models\AuditLog::createLog('Edit Booking & Lokasi', $customer, $customer->status, $customer->status, 'Memperbarui data booking, lokasi, & sales');
 
