@@ -350,6 +350,7 @@ class PermissionRegistry
                     ['name' => 'network_card_redaman', 'type' => 'card', 'label' => 'Card Monitoring Redaman dBm'],
                     ['name' => 'network_olt_card_stats', 'type' => 'card', 'label' => 'Card Statistik Unit OLT'],
                     ['name' => 'network_odc_card_stats', 'type' => 'card', 'label' => 'Card Statistik Unit ODC'],
+                    ['name' => 'network_odp_card_stats', 'type' => 'card', 'label' => 'Card Statistik Unit ODP'],
                     ['name' => 'network_ont_card_stats', 'type' => 'card', 'label' => 'Card Statistik Inventaris ONT'],
                     
                     // Filter
@@ -357,6 +358,7 @@ class PermissionRegistry
                     ['name' => 'network_filter_status', 'type' => 'filter', 'label' => 'Filter Port Tersedia vs Penuh'],
                     ['name' => 'network_olt_filter', 'type' => 'filter', 'label' => 'Filter Lengkap & Cerdas OLT'],
                     ['name' => 'network_odc_filter', 'type' => 'filter', 'label' => 'Filter Lengkap & Cerdas ODC'],
+                    ['name' => 'network_odp_filter', 'type' => 'filter', 'label' => 'Filter Lengkap & Cerdas ODP'],
                     ['name' => 'network_ont_filter', 'type' => 'filter', 'label' => 'Filter Lengkap & Cerdas ONT'],
                     
                     // Action Buttons
@@ -756,7 +758,7 @@ class PermissionRegistry
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_all',
                 'menu_network_olt', 'network_olt_card_stats', 'network_olt_filter', 'network_olt_create', 'network_olt_edit', 'network_olt_delete', 'network_olt_delete_all', 'network_olt_view_all',
                 'menu_network_odc', 'network_odc_card_stats', 'network_odc_filter', 'network_odc_create', 'network_odc_edit', 'network_odc_delete', 'network_odc_delete_all', 'network_odc_view_all',
-                'menu_network_odp', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_delete_all', 'network_odp_view_all',
+                'menu_network_odp', 'network_odp_card_stats', 'network_odp_filter', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_delete_all', 'network_odp_view_all',
                 'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_create', 'network_ont_edit', 'network_ont_delete', 'network_ont_delete_all', 'network_ont_print_card', 'network_ont_view_all',
                 'menu_network_find_onu',
                 'menu_infrastructure_work_orders', 'infrastructure_work_orders_create', 'infrastructure_work_orders_edit',
@@ -789,7 +791,7 @@ class PermissionRegistry
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_view_area',
                 'menu_network_olt', 'network_olt_card_stats', 'network_olt_filter', 'network_olt_view_area',
                 'menu_network_odc', 'network_odc_card_stats', 'network_odc_filter', 'network_odc_view_area',
-                'menu_network_odp', 'network_odp_view_area',
+                'menu_network_odp', 'network_odp_card_stats', 'network_odp_filter', 'network_odp_view_area',
                 'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_print_card', 'network_ont_view_area',
                 'menu_network_find_onu',
                 'menu_infrastructure_work_orders', 'infrastructure_work_orders_report', 'infrastructure_work_orders_view_area',
@@ -814,7 +816,7 @@ class PermissionRegistry
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_area',
                 'menu_network_olt', 'network_olt_card_stats', 'network_olt_filter', 'network_olt_create', 'network_olt_edit', 'network_olt_delete', 'network_olt_delete_all', 'network_olt_view_area',
                 'menu_network_odc', 'network_odc_card_stats', 'network_odc_filter', 'network_odc_create', 'network_odc_edit', 'network_odc_delete', 'network_odc_delete_all', 'network_odc_view_area',
-                'menu_network_odp', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_delete_all', 'network_odp_view_area',
+                'menu_network_odp', 'network_odp_card_stats', 'network_odp_filter', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_delete_all', 'network_odp_view_area',
                 'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_create', 'network_ont_edit', 'network_ont_delete', 'network_ont_delete_all', 'network_ont_print_card', 'network_ont_view_area',
                 'menu_network_find_onu',
                 'menu_infrastructure_work_orders', 'infrastructure_work_orders_report', 'infrastructure_work_orders_view_area',
@@ -838,7 +840,7 @@ class PermissionRegistry
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_all',
                 'menu_network_olt', 'network_olt_card_stats', 'network_olt_filter', 'network_olt_create', 'network_olt_edit', 'network_olt_delete', 'network_olt_delete_all', 'network_olt_view_all',
                 'menu_network_odc', 'network_odc_card_stats', 'network_odc_filter', 'network_odc_create', 'network_odc_edit', 'network_odc_delete', 'network_odc_delete_all', 'network_odc_view_all',
-                'menu_network_odp', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_delete_all', 'network_odp_view_all',
+                'menu_network_odp', 'network_odp_card_stats', 'network_odp_filter', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_delete_all', 'network_odp_view_all',
                 'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_create', 'network_ont_edit', 'network_ont_delete', 'network_ont_delete_all', 'network_ont_print_card', 'network_ont_view_all',
                 'menu_network_find_onu',
                 'menu_infrastructure_work_orders', 'infrastructure_work_orders_create', 'infrastructure_work_orders_edit',

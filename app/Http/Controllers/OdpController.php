@@ -14,32 +14,132 @@ class OdpController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = Odp::with(['odc.olt', 'area'])->withCount('onts');
+        $baseQuery = Odp::query();
 
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_odp_view_all')) {
             if (auth()->user()->can('network_odp_view_area')) {
-                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
             } else {
-                $query->where('id', -1);
+                $baseQuery->where('id', -1);
             }
         }
 
+        // Stats calculation
+        $totalOdps = (clone $baseQuery)->count();
+        $activeOdps = (clone $baseQuery)->where('status', 'active')->count();
+        $totalPorts = (int) (clone $baseQuery)->sum('total_ports');
+        $usedPorts = (int) (clone $baseQuery)->sum('used_ports');
+        $availablePorts = max(0, $totalPorts - $usedPorts);
+        $odpsWithAvailable = (clone $baseQuery)->hasAvailablePort()->count();
+        $fullOdps = (clone $baseQuery)->where(function ($q) {
+            $q->where('status', 'full')
+              ->orWhereRaw('used_ports >= total_ports');
+        })->count();
+        $inactiveOdps = (clone $baseQuery)->whereIn('status', ['inactive', 'maintenance'])->count();
+
+        $stats = [
+            'total' => $totalOdps,
+            'active' => $activeOdps,
+            'total_ports' => $totalPorts,
+            'used_ports' => $usedPorts,
+            'available_ports' => $availablePorts,
+            'has_available' => $odpsWithAvailable,
+            'full' => $fullOdps,
+            'inactive' => $inactiveOdps,
+        ];
+
+        // Options for smart filter dropdowns
+        $types = (clone $baseQuery)->whereNotNull('type')->distinct()->orderBy('type')->pluck('type')->filter()->values();
+
+        $query = (clone $baseQuery)->with(['odc.olt', 'area'])->withCount('onts');
+
+        // Search Filter (Debounced)
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($sub) use ($s) {
+                $sub->where('name', 'like', "%{$s}%")
+                    ->orWhere('address', 'like', "%{$s}%")
+                    ->orWhere('description', 'like', "%{$s}%")
+                    ->orWhereHas('odc', fn ($oq) => $oq->where('name', 'like', "%{$s}%"))
+                    ->orWhereHas('area', fn ($aq) => $aq->where('name', 'like', "%{$s}%"));
+            });
+        }
+
+        // Area Filter
+        if ($request->filled('area_id')) {
+            $query->where('area_id', $request->area_id);
+        }
+
+        // ODC Filter
+        if ($request->filled('odc_id')) {
+            $query->where('odc_id', $request->odc_id);
+        }
+
+        // Status Filter
+        if ($request->filled('status')) {
+            if ($request->status === 'inactive_maintenance') {
+                $query->whereIn('status', ['inactive', 'maintenance']);
+            } elseif ($request->status === 'has_available') {
+                $query->hasAvailablePort();
+            } elseif ($request->status === 'full') {
+                $query->where(function ($sub) {
+                    $sub->where('status', 'full')
+                        ->orWhereRaw('used_ports >= total_ports');
+                });
+            } else {
+                $query->where('status', $request->status);
+            }
+        }
+
+        // Port Capacity Filter
+        if ($request->filled('total_ports')) {
+            $query->where('total_ports', (int) $request->total_ports);
+        }
+
+        // Type Filter (Normal, Split 2, Closure, Pedestal)
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        // Port Availability Filter
+        if ($request->filled('port_availability')) {
+            if ($request->port_availability === 'available') {
+                $query->hasAvailablePort();
+            } elseif ($request->port_availability === 'full') {
+                $query->whereRaw('used_ports >= total_ports');
+            }
+        }
+
+        if ($request->boolean('available_only')) {
+            $query->hasAvailablePort();
+        }
+
+        // Date Range Filter
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $perPage = in_array((int) $request->input('per_page'), [10, 15, 25, 50, 100, 250]) ? (int) $request->input('per_page') : 15;
+
         $odps = $query
-            ->when($request->search, fn ($q, $s) =>
-                $q->where('name', 'like', "%{$s}%"))
-            ->when($request->odc_id, fn ($q, $id) => $q->where('odc_id', $id))
-            ->when($request->area_id, fn ($q, $id) => $q->where('area_id', $id))
-            ->when($request->status, fn ($q, $s) => $q->where('status', $s))
-            ->when($request->available_only, fn ($q) => $q->hasAvailablePort())
-            ->orderByDesc('created_at')
-            ->paginate(15)
+            ->orderByDesc('id')
+            ->paginate($perPage)
             ->withQueryString();
 
         return Inertia::render('Infrastructure/Odp/Index', [
             'odps' => $odps,
             'odcs' => Odc::with('olt')->where('status', 'active')->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
-            'areas' => \App\Models\Area::orderBy('name')->get(),
-            'filters' => $request->only(['search', 'odc_id', 'area_id', 'status', 'available_only']),
+            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'types' => $types,
+            'portOptions' => [4, 8, 16, 32],
+            'stats' => $stats,
+            'filters' => $request->only([
+                'search', 'odc_id', 'area_id', 'status', 'total_ports', 'type',
+                'port_availability', 'available_only', 'date_from', 'date_to', 'per_page'
+            ]),
         ]);
     }
 
@@ -202,8 +302,14 @@ class OdpController extends Controller
         // Jika hapus semua dengan filter
         if ($isAll) {
             if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where('name', 'like', "%{$search}%");
+                $s = trim($request->search);
+                $query->where(function ($sub) use ($s) {
+                    $sub->where('name', 'like', "%{$s}%")
+                        ->orWhere('address', 'like', "%{$s}%")
+                        ->orWhere('description', 'like', "%{$s}%")
+                        ->orWhereHas('odc', fn ($oq) => $oq->where('name', 'like', "%{$s}%"))
+                        ->orWhereHas('area', fn ($aq) => $aq->where('name', 'like', "%{$s}%"));
+                });
             }
             if ($request->filled('area_id')) {
                 $query->where('area_id', $request->area_id);
@@ -212,7 +318,40 @@ class OdpController extends Controller
                 $query->where('odc_id', $request->odc_id);
             }
             if ($request->filled('status')) {
-                $query->where('status', $request->status);
+                if ($request->status === 'inactive_maintenance') {
+                    $query->whereIn('status', ['inactive', 'maintenance']);
+                } elseif ($request->status === 'has_available') {
+                    $query->hasAvailablePort();
+                } elseif ($request->status === 'full') {
+                    $query->where(function ($sub) {
+                        $sub->where('status', 'full')
+                            ->orWhereRaw('used_ports >= total_ports');
+                    });
+                } else {
+                    $query->where('status', $request->status);
+                }
+            }
+            if ($request->filled('total_ports')) {
+                $query->where('total_ports', (int) $request->total_ports);
+            }
+            if ($request->filled('type')) {
+                $query->where('type', $request->type);
+            }
+            if ($request->filled('port_availability')) {
+                if ($request->port_availability === 'available') {
+                    $query->hasAvailablePort();
+                } elseif ($request->port_availability === 'full') {
+                    $query->whereRaw('used_ports >= total_ports');
+                }
+            }
+            if ($request->boolean('available_only')) {
+                $query->hasAvailablePort();
+            }
+            if ($request->filled('date_from')) {
+                $query->whereDate('created_at', '>=', $request->date_from);
+            }
+            if ($request->filled('date_to')) {
+                $query->whereDate('created_at', '<=', $request->date_to);
             }
         }
 
