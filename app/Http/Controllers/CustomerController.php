@@ -1500,6 +1500,10 @@ class CustomerController extends Controller
 
         $validated['status'] = 'booking'; // Ensure it goes to booking
 
+        if (empty($validated['billing_type'])) {
+            $validated['billing_type'] = \App\Models\Setting::get('billing_type', 'prabayar');
+        }
+
         DB::transaction(function () use ($validated, &$customer) {
             $customer = Customer::create($validated);
 
@@ -2478,7 +2482,9 @@ class CustomerController extends Controller
                 $isolateDays = (int) \App\Models\Setting::get('isolate_days', '3');
                 $isolateTime = \App\Models\Setting::get('isolate_time', '00:00');
 
-                $isProrataFirstMonth = $request->boolean('is_prorata');
+                $isProrataFirstMonth = $request->has('is_prorata') 
+                    ? $request->boolean('is_prorata') 
+                    : (\App\Models\Setting::get('prorata_first_month', '1') === '1');
                 $invoiceBillingType = $billingType;
 
                 if ($billingType === 'pascabayar') {

@@ -346,14 +346,18 @@ class SettingController extends Controller
             }
         }
 
-        // 2. Bersihkan payment_banks dari baris kosong agar tidak memicu error validasi
+        // 2. Bersihkan payment_banks dari baris kosong agar tidak memicu error validasi saat simpan section lain
         if ($request->has('payment_banks') && is_array($request->payment_banks)) {
-            $filteredBanks = array_values(array_filter($request->payment_banks, function ($b) {
+            $isSavingBanks = ($request->input('_section') === 'Rekening Bank');
+            $filteredBanks = array_values(array_filter($request->payment_banks, function ($b) use ($isSavingBanks) {
                 if (!is_array($b)) return false;
                 $name = trim($b['bank_name'] ?? '');
                 $accName = trim($b['account_name'] ?? '');
                 $accNum = trim($b['account_number'] ?? '');
-                return ($name !== '' || $accName !== '' || $accNum !== '');
+                if ($isSavingBanks) {
+                    return ($name !== '' || $accName !== '' || $accNum !== '');
+                }
+                return ($name !== '' && $accName !== '' && $accNum !== '');
             }));
             $request->merge(['payment_banks' => $filteredBanks]);
         }

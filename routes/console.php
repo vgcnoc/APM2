@@ -8,8 +8,8 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote')->hourly();
 
-// Jalankan pengecekan isolir setiap hari pada jam 00:01
-Schedule::command('billing:suspend-overdue')->dailyAt('00:01');
+// Jalankan pengecekan isolir setiap jam agar jam isolir yang ditentukan dieksekusi tepat waktu
+Schedule::command('billing:suspend-overdue')->hourly();
 
 // Generate invoice otomatis setiap hari pada jam 00:05 (akan dijalankan berdasarkan invoice_issue_date di pengaturan)
 Schedule::command('app:generate-invoices')->dailyAt('00:05');

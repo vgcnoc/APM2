@@ -553,75 +553,221 @@
 
             <!-- Simulation Panel -->
             <div class="lg:w-1/3">
-                <div class="bg-gradient-to-br from-indigo-900 to-indigo-800 rounded-2xl shadow-lg border border-indigo-700 text-white p-6 sticky top-6">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
-                            <svg class="w-5 h-5 text-indigo-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                <div class="bg-gradient-to-br from-indigo-950 via-indigo-900 to-slate-900 rounded-2xl shadow-xl border border-indigo-700/60 text-white p-6 sticky top-6 space-y-5">
+                    
+                    <!-- Header -->
+                    <div class="flex items-start justify-between gap-3 pb-4 border-b border-indigo-700/40">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-md shadow-indigo-500/20">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-base text-white flex items-center gap-2">
+                                    Simulasi AI
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase shadow-sm" :class="form.billing_type === 'pascabayar' ? (form.prorata_first_month ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' : 'bg-amber-500/20 text-amber-300 border border-amber-400/30') : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30'">
+                                        {{ form.billing_type === 'pascabayar' ? (form.prorata_first_month ? 'Pascabayar (Prorata)' : 'Pascabayar (Normal)') : 'Prabayar (Prepaid)' }}
+                                    </span>
+                                </h3>
+                                <p class="text-[11px] text-indigo-200 mt-0.5">Kalkulasi cerdas live sesuai pengaturan</p>
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- Sandbox Interactive Controls -->
+                    <div class="bg-indigo-900/40 rounded-xl p-3.5 border border-indigo-700/50 space-y-3">
+                        <div class="flex items-center justify-between text-xs font-semibold text-indigo-200">
+                            <span class="flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                                Uji Coba Parameter
+                            </span>
+                            <span class="text-[10px] text-indigo-400 font-normal">Klik untuk simulasi</span>
+                        </div>
+
+                        <!-- Harga Paket -->
                         <div>
-                            <h3 class="font-bold text-lg">Simulasi AI</h3>
-                            <p class="text-xs text-indigo-200">Berdasarkan pengaturan saat ini</p>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="text-[10px] uppercase tracking-wider text-indigo-300 font-bold">Harga Paket / Bln</label>
+                                <span class="text-xs font-bold text-white">{{ formatCurrency(simPrice) }}</span>
+                            </div>
+                            <div class="grid grid-cols-4 gap-1.5 mb-1.5">
+                                <button v-for="price in quickPrices" :key="price" type="button" @click="simPrice = price" class="py-1 px-1 text-[11px] rounded-lg font-medium transition-all text-center cursor-pointer" :class="simPrice === price ? 'bg-indigo-500 text-white shadow-sm ring-1 ring-white/50 font-bold' : 'bg-white/10 text-indigo-200 hover:bg-white/20'">
+                                    {{ price / 1000 }}rb
+                                </button>
+                            </div>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center text-xs text-indigo-400 font-semibold">Rp</span>
+                                <input type="number" v-model.number="simPrice" step="10000" min="0" class="w-full pl-8 pr-2 py-1 text-xs bg-white/10 border border-indigo-700/60 rounded-lg text-white placeholder-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" placeholder="Custom harga...">
+                            </div>
+                        </div>
+
+                        <!-- Tanggal Aktivasi -->
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="text-[10px] uppercase tracking-wider text-indigo-300 font-bold">Simulasi Tanggal Aktivasi</label>
+                                <span class="text-[11px] font-semibold text-emerald-300">{{ simActivationDateFormatted }}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 mb-1.5">
+                                <input type="date" v-model="simActivationDate" class="w-full px-2 py-1 text-xs bg-white/10 border border-indigo-700/60 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-indigo-400 cursor-pointer">
+                            </div>
+                            <div class="flex flex-wrap gap-1">
+                                <button type="button" @click="setQuickDate('today')" class="px-2 py-0.5 rounded text-[10px] bg-white/10 hover:bg-white/20 text-indigo-200 cursor-pointer">Hari Ini</button>
+                                <button type="button" @click="setQuickDate('day1')" class="px-2 py-0.5 rounded text-[10px] bg-white/10 hover:bg-white/20 text-indigo-200 cursor-pointer">Tgl 1</button>
+                                <button type="button" @click="setQuickDate('day10')" class="px-2 py-0.5 rounded text-[10px] bg-white/10 hover:bg-white/20 text-indigo-200 cursor-pointer">Tgl 10</button>
+                                <button type="button" @click="setQuickDate('day15')" class="px-2 py-0.5 rounded text-[10px] bg-white/10 hover:bg-white/20 text-indigo-200 cursor-pointer">Tgl 15</button>
+                                <button type="button" @click="setQuickDate('day20')" class="px-2 py-0.5 rounded text-[10px] bg-white/10 hover:bg-white/20 text-indigo-200 cursor-pointer">Tgl 20</button>
+                                <button type="button" @click="setQuickDate('day25')" class="px-2 py-0.5 rounded text-[10px] bg-white/10 hover:bg-white/20 text-indigo-200 cursor-pointer">Tgl 25</button>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="space-y-4">
-                        <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-xl p-4">
-                            <div class="flex items-center gap-3 mb-1">
+                    <!-- Siklus Terbit & Isolir -->
+                    <div class="grid grid-cols-1 gap-2.5">
+                        <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-xl p-3.5">
+                            <div class="flex items-center gap-2 mb-1">
                                 <div class="w-2 h-2 rounded-full bg-blue-400"></div>
-                                <span class="text-xs font-medium text-indigo-100 uppercase tracking-wider">Terbit Tagihan</span>
+                                <span class="text-[11px] font-bold text-indigo-200 uppercase tracking-wider">Terbit Tagihan Rutin</span>
                             </div>
-                            <p class="text-sm font-semibold pl-5">Tgl {{ form.invoice_issue_date }} {{ nextMonthName }}</p>
-                            <p class="text-[10px] text-indigo-300 pl-5 mt-0.5">Sistem men-generate invoice pelanggan</p>
+                            <p class="text-sm font-semibold pl-4 text-white">Tgl {{ form.invoice_issue_date }} {{ nextMonthName }}</p>
+                            <p class="text-[10px] text-indigo-300 pl-4 mt-0.5">Sistem otomatis generate invoice pelanggan tiap bulannya</p>
                         </div>
 
-                        <div class="bg-white/10 backdrop-blur-md border border-red-500/30 rounded-xl p-4 relative overflow-hidden">
-                            <div class="absolute right-0 top-0 w-16 h-16 bg-red-500/10 rounded-bl-full"></div>
-                            <div class="flex items-center gap-3 mb-1">
+                        <div class="bg-white/10 backdrop-blur-md border border-red-500/30 rounded-xl p-3.5 relative overflow-hidden">
+                            <div class="absolute right-0 top-0 w-16 h-16 bg-red-500/10 rounded-bl-full pointer-events-none"></div>
+                            <div class="flex items-center gap-2 mb-1">
                                 <div class="w-2 h-2 rounded-full bg-red-400 animate-pulse"></div>
-                                <span class="text-xs font-medium text-red-200 uppercase tracking-wider">Isolir Layanan</span>
+                                <span class="text-[11px] font-bold text-red-200 uppercase tracking-wider">Jatuh Tempo & Jam Isolir</span>
                             </div>
-                            <p class="text-sm font-bold text-white pl-5">Tgl {{ isolateDateFormatted }}</p>
-                            <p class="text-[10px] text-red-200 pl-5 mt-0.5">Internet pelanggan otomatis terputus</p>
+                            <p class="text-sm font-bold text-white pl-4">Tgl {{ isolateDateFormatted }}</p>
+                            <p class="text-[10px] text-red-200 pl-4 mt-0.5">Masa tenggang {{ form.isolate_days }} hari, lewat pukul {{ form.isolate_time || '00:00' }} otomatis di-isolir</p>
                         </div>
                     </div>
 
-                    <div v-if="form.billing_type === 'pascabayar' && form.prorata_first_month" class="bg-indigo-800/50 border border-indigo-500/50 rounded-xl p-4 mt-2">
-                        <div class="flex items-center gap-2 mb-3">
-                            <svg class="w-4 h-4 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                            <h4 class="text-xs font-bold text-indigo-200 uppercase tracking-wide">Simulasi Prorata Tagihan Pertama</h4>
+                    <!-- Hasil Perhitungan Tagihan Pertama (Simulasi) -->
+                    <!-- Skenario 1: Pascabayar + Prorata Aktif -->
+                    <div v-if="form.billing_type === 'pascabayar' && form.prorata_first_month" class="bg-gradient-to-b from-indigo-900/60 to-indigo-950/80 border border-indigo-500/40 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-indigo-700/50">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                <h4 class="text-xs font-bold text-emerald-300 uppercase tracking-wide">Rincian Prorata Tagihan Pertama</h4>
+                            </div>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">1x di Bulan Pertama</span>
                         </div>
                         
                         <div class="space-y-2 text-xs text-indigo-100">
-                            <div class="flex justify-between items-end border-b border-indigo-700/50 pb-1">
-                                <span>Simulasi Harga Paket</span>
-                                <span class="font-medium text-white">{{ formatCurrency(300000) }} / bln</span>
+                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">Harga Paket Standar:</span>
+                                <span class="font-semibold text-white">{{ formatCurrency(simPrice) }} / bln</span>
                             </div>
-                            <div class="flex justify-between items-end border-b border-indigo-700/50 pb-1">
-                                <span>Asumsi Aktivasi Hari Ini</span>
-                                <span class="font-medium text-white">{{ todayFormatted }}</span>
+                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">Tanggal Aktivasi:</span>
+                                <span class="font-semibold text-white">{{ simActivationDateFormatted }}</span>
                             </div>
-                            <div class="flex justify-between items-end border-b border-indigo-700/50 pb-1">
-                                <span>Siklus Penagihan ({{ totalDaysInCycle }} Hari)</span>
-                                <span class="font-medium text-white">s/d {{ prevIssueDateFormatted }}</span>
+                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">Siklus Penagihan ({{ simCycleDays }} Hari):</span>
+                                <span class="font-semibold text-white">s/d {{ prevIssueDateFormatted }}</span>
                             </div>
-                            <div class="flex justify-between items-end pt-1">
-                                <span class="text-indigo-300">Tagihan Pertama (<span class="font-bold text-white">{{ daysUsed }}</span> hari pemakaian)</span>
-                                <span class="font-bold text-lg text-emerald-400">{{ formatCurrency(prorataAmount) }}</span>
+                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">Hari Pemakaian Aktif:</span>
+                                <span class="font-bold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">{{ simDaysUsed }} Hari Aktif</span>
+                            </div>
+                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">Subtotal Prorata:</span>
+                                <span class="font-bold text-white">{{ formatCurrency(simSubtotal) }}</span>
+                            </div>
+                            <div v-if="simTaxRate > 0" class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">PPN ({{ simTaxRate }}%):</span>
+                                <span class="font-medium text-amber-300">+ {{ formatCurrency(simTax) }}</span>
+                            </div>
+                            <div class="flex justify-between items-baseline pt-1">
+                                <span class="text-xs font-bold text-white">Total Tagihan Pertama:</span>
+                                <span class="font-extrabold text-xl text-emerald-400">{{ formatCurrency(simGrandTotal) }}</span>
                             </div>
                         </div>
-                        <p class="text-[9px] text-indigo-400 mt-3 leading-tight italic">
-                            Rumus: 
-                            <span v-if="form.prorata_formula === 'fixed_30'">(Harga Paket ÷ 30) × Jumlah Hari Pemakaian</span>
-                            <span v-else-if="form.prorata_formula === 'mid_month'">Jika aktivasi lewat pertengahan bulan, diskon 50%. Jika tidak, bayar penuh.</span>
-                            <span v-else>(Harga Paket ÷ Total Hari Siklus Berjalan) × Jumlah Hari Pemakaian</span>
+
+                        <div class="bg-indigo-950/70 p-2.5 rounded-lg border border-indigo-800/50 text-[10px] space-y-1">
+                            <p class="text-indigo-300">
+                                <strong class="text-white">Rumusan Aktif:</strong>
+                                <span v-if="form.prorata_formula === 'fixed_30'"> Konstan 30 Hari &mdash; ({{ formatCurrency(simPrice) }} ÷ 30) × {{ simDaysUsed }} hr</span>
+                                <span v-else-if="form.prorata_formula === 'mid_month'"> Paruh Bulan &mdash; {{ simActivationDay > 15 ? 'Aktivasi > tgl 15 = Diskon 50%' : 'Aktivasi <= tgl 15 = 100% Penuh' }}</span>
+                                <span v-else> Sangat Akurat (Bulan Berjalan) &mdash; ({{ formatCurrency(simPrice) }} ÷ {{ simCycleDays }} hr) × {{ simDaysUsed }} hr</span>
+                            </p>
+                            <p class="text-[9px] text-indigo-400 italic">
+                                * Bulan ke-2 dan seterusnya tagihan otomatis normal {{ formatCurrency(simGrandTotalNormal) }}.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Skenario 2: Pascabayar + Prorata Non-Aktif -->
+                    <div v-else-if="form.billing_type === 'pascabayar' && !form.prorata_first_month" class="bg-gradient-to-b from-amber-900/40 to-indigo-950/80 border border-amber-500/40 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-amber-700/40">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <h4 class="text-xs font-bold text-amber-300 uppercase tracking-wide">Prorata Tagihan Pertama Non-Aktif</h4>
+                            </div>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">1 Bulan Penuh</span>
+                        </div>
+                        
+                        <div class="space-y-2 text-xs text-indigo-100">
+                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">Biaya Paket Standar:</span>
+                                <span class="font-semibold text-white">{{ formatCurrency(simPrice) }}</span>
+                            </div>
+                            <div v-if="simTaxRate > 0" class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">PPN ({{ simTaxRate }}%):</span>
+                                <span class="font-medium text-amber-300">+ {{ formatCurrency(simTaxNormal) }}</span>
+                            </div>
+                            <div class="flex justify-between items-baseline pt-1">
+                                <span class="text-xs font-bold text-white">Total Tagihan Pertama:</span>
+                                <span class="font-extrabold text-xl text-amber-400">{{ formatCurrency(simGrandTotalNormal) }}</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-950/40 p-2.5 rounded-lg border border-amber-800/40 text-[10px] text-amber-200">
+                            Pelanggan baru langsung dikenakan tagihan normal 1 bulan penuh pascabayar tanpa kalkulasi pemotongan hari.
+                        </div>
+                    </div>
+
+                    <!-- Skenario 3: Prabayar (Prepaid) -->
+                    <div v-else class="bg-gradient-to-b from-cyan-900/40 to-indigo-950/80 border border-cyan-500/40 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-cyan-700/40">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                <h4 class="text-xs font-bold text-cyan-300 uppercase tracking-wide">Siklus Prabayar (Prepaid)</h4>
+                            </div>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold">Bayar di Muka</span>
+                        </div>
+                        
+                        <div class="space-y-2 text-xs text-indigo-100">
+                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">Biaya Paket (1 Bulan):</span>
+                                <span class="font-semibold text-white">{{ formatCurrency(simPrice) }}</span>
+                            </div>
+                            <div v-if="simTaxRate > 0" class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">PPN ({{ simTaxRate }}%):</span>
+                                <span class="font-medium text-cyan-300">+ {{ formatCurrency(simTaxNormal) }}</span>
+                            </div>
+                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">Masa Aktif Layanan:</span>
+                                <span class="font-medium text-white">{{ simActivationDateFormatted }} s/d {{ prabayarEndDateFormatted }}</span>
+                            </div>
+                            <div class="flex justify-between items-baseline pt-1">
+                                <span class="text-xs font-bold text-white">Total Bayar saat Aktivasi:</span>
+                                <span class="font-extrabold text-xl text-cyan-400">{{ formatCurrency(simGrandTotalNormal) }}</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-cyan-950/40 p-2.5 rounded-lg border border-cyan-800/40 text-[10px] text-cyan-200">
+                            Pelanggan membayar penuh di muka sebelum internet diaktifkan. Tagihan perpanjangan bulan berikutnya terbit otomatis sebelum masa aktif habis.
+                        </div>
+                    </div>
+
+                    <!-- Catatan Sistem -->
+                    <div class="pt-3 border-t border-indigo-700/40">
+                        <p class="text-[10px] text-indigo-300 leading-relaxed">
+                            <span class="font-semibold text-white">Sinkronisasi Penuh:</span> Logika simulasi ini 100% identik dengan alur aktivasi pelanggan baru di menu Pelanggan & generator invoice otomatis sistem.
                         </p>
                     </div>
 
-                    <div class="mt-6 pt-5 border-t border-indigo-700/50">
-                        <p class="text-[10px] text-indigo-300 leading-relaxed">
-                            <span class="font-semibold text-white">Catatan:</span> Simulasi ini menggunakan patokan kalender bulan berjalan. Perhitungan sistem sesungguhnya akan selalu sangat akurat menyesuaikan tanggal aktivasi sebenarnya.
-                        </p>
-                    </div>
                 </div>
             </div>
         </div>
@@ -830,55 +976,123 @@ const isolateDateFormatted = computed(() => {
     return `${isolateDateObj.value.getDate()} ${monthNames[isolateDateObj.value.getMonth()]} ${isolateDateObj.value.getFullYear()} ${form.isolate_time || '00:00'}`;
 });
 
-// Prorata Variables
-const todayFormatted = computed(() => {
-    return `${today.getDate()} ${monthNames[today.getMonth()]} ${today.getFullYear()}`;
+// Interactive Simulator Controls
+const quickPrices = [100000, 150000, 200000, 300000];
+const simPrice = ref(150000);
+
+function formatDateToInput(d) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+const simActivationDate = ref(formatDateToInput(new Date()));
+
+function setQuickDate(type) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    if (type === 'today') {
+        simActivationDate.value = formatDateToInput(now);
+    } else if (type === 'day1') {
+        simActivationDate.value = formatDateToInput(new Date(year, month, 1));
+    } else if (type === 'day10') {
+        simActivationDate.value = formatDateToInput(new Date(year, month, 10));
+    } else if (type === 'day15') {
+        simActivationDate.value = formatDateToInput(new Date(year, month, 15));
+    } else if (type === 'day20') {
+        simActivationDate.value = formatDateToInput(new Date(year, month, 20));
+    } else if (type === 'day25') {
+        simActivationDate.value = formatDateToInput(new Date(year, month, 25));
+    }
+}
+
+const simActivationDateObj = computed(() => {
+    if (!simActivationDate.value) return new Date();
+    const parts = simActivationDate.value.split('-').map(Number);
+    if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+    return new Date();
 });
 
-const prevIssueDateObj = computed(() => {
-    const d = new Date(issueDateObj.value);
-    d.setMonth(d.getMonth() - 1);
-    return d;
+const simActivationDay = computed(() => {
+    return simActivationDateObj.value.getDate();
 });
 
-const prevIssueDateFormatted = computed(() => {
-    const d = new Date(issueDateObj.value);
-    d.setDate(d.getDate() - 1);
+const simActivationDateFormatted = computed(() => {
+    const d = simActivationDateObj.value;
     return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
 });
 
-const totalDaysInCycle = computed(() => {
-    const diffTime = Math.abs(issueDateObj.value - prevIssueDateObj.value);
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+// Total days in activation month cycle
+const simCycleDays = computed(() => {
+    const d = simActivationDateObj.value;
+    return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
 });
 
-const daysUsed = computed(() => {
-    let start = today;
-    let end = issueDateObj.value;
-    if (today.getDate() >= (parseInt(form.invoice_issue_date) || 1)) {
-        end = new Date(today.getFullYear(), today.getMonth() + 1, parseInt(form.invoice_issue_date) || 1);
-    } else {
-        end = new Date(today.getFullYear(), today.getMonth(), parseInt(form.invoice_issue_date) || 1);
-    }
-    const diffTime = Math.abs(end - start);
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+const prevIssueDateFormatted = computed(() => {
+    const d = simActivationDateObj.value;
+    const endOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    return `${endOfMonth.getDate()} ${monthNames[endOfMonth.getMonth()]} ${endOfMonth.getFullYear()}`;
 });
 
-const prorataAmount = computed(() => {
-    let amount = 300000;
+// Active days used from activation date till end of month
+const simDaysUsed = computed(() => {
+    const d = simActivationDateObj.value;
+    const endOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    return Math.max(1, endOfMonth - d.getDate() + 1);
+});
+
+// Prorata calculation matching CustomerController.php
+const simSubtotal = computed(() => {
+    const base = Number(simPrice.value) || 0;
+    if (base <= 0) return 0;
+    const days = simDaysUsed.value;
+    const totalDays = simCycleDays.value;
+
+    if (days >= totalDays) return base;
+
     if (form.prorata_formula === 'fixed_30') {
-        return Math.round((amount / 30) * daysUsed.value);
+        return Math.round((base / 30) * days);
     } else if (form.prorata_formula === 'mid_month') {
-        const midPointDays = Math.floor(totalDaysInCycle.value / 2);
-        const daysPassed = totalDaysInCycle.value - daysUsed.value;
-        if (daysPassed > midPointDays) {
-            return amount / 2;
-        } else {
-            return amount;
+        if (simActivationDay.value > 15) {
+            return Math.round(base / 2);
         }
+        return base;
+    } else {
+        // default: exact_days
+        return Math.round((base / totalDays) * days);
     }
-    const dailyRate = amount / totalDaysInCycle.value;
-    return Math.round(dailyRate * daysUsed.value);
+});
+
+// Tax rates & calculations
+const simTaxRate = computed(() => {
+    return Number(form.tax_ppn) || 0;
+});
+
+const simTax = computed(() => {
+    return Math.round(simSubtotal.value * (simTaxRate.value / 100));
+});
+
+const simGrandTotal = computed(() => {
+    return simSubtotal.value + simTax.value;
+});
+
+const simTaxNormal = computed(() => {
+    return Math.round((Number(simPrice.value) || 0) * (simTaxRate.value / 100));
+});
+
+const simGrandTotalNormal = computed(() => {
+    return (Number(simPrice.value) || 0) + simTaxNormal.value;
+});
+
+// Prepaid 1-month service period
+const prabayarEndDateFormatted = computed(() => {
+    const d = new Date(simActivationDateObj.value);
+    d.setMonth(d.getMonth() + 1);
+    return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
 });
 
 function formatCurrency(value) {

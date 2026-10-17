@@ -37,10 +37,10 @@ class SuspendOverdueCustomers extends Command
         $overdueCustomers = Customer::where('status', 'active')
             ->whereHas('invoices', function ($query) use ($now) {
                 $query->whereIn('status', ['unpaid', 'partial'])
-                      ->where('due_date', '<', $now->format('Y-m-d'))
+                      ->where('due_date', '<=', $now)
                       ->where(function($q) use ($now) {
                           $q->whereNull('promise_date')
-                            ->orWhere('promise_date', '<', $now->format('Y-m-d'));
+                            ->orWhere('promise_date', '<', $now);
                       });
             })
             ->get();
