@@ -562,7 +562,7 @@
                                     <div class="text-xs text-gray-500">{{ customer.area_model?.name || customer.area || 'Area -' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-mono font-medium text-gray-700">{{ customer.customer_id }}</div>
+                                    <div class="text-sm font-mono font-medium text-gray-700">{{ customer.customer_code || customer.customer_id }}</div>
                                     <div class="text-xs text-indigo-600 font-medium">{{ customer.package?.name || 'Paket Internet' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">

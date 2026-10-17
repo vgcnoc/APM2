@@ -41,7 +41,7 @@ class VoucherController extends Controller
                   ->orWhere('username', 'like', "%{$search}%")
                   ->orWhereHas('customer', function($sub) use ($search) {
                       $sub->where('name', 'like', "%{$search}%")
-                          ->orWhere('customer_id', 'like', "%{$search}%");
+                          ->orWhere('customer_code', 'like', "%{$search}%");
                   })
                   ->orWhereHas('reseller.customer', function($sub) use ($search) {
                       $sub->where('name', 'like', "%{$search}%");
@@ -69,7 +69,7 @@ class VoucherController extends Controller
             $searchCust = $request->search_customer;
             $customerQuery->where(function($q) use ($searchCust) {
                 $q->where('name', 'like', "%{$searchCust}%")
-                  ->orWhere('customer_id', 'like', "%{$searchCust}%")
+                  ->orWhere('customer_code', 'like', "%{$searchCust}%")
                   ->orWhereHas('ont', function($subQ) use ($searchCust) {
                       $subQ->where('hotspot_user', 'like', "%{$searchCust}%");
                   });
@@ -115,7 +115,7 @@ class VoucherController extends Controller
         $freeProfile = $freeProfiles->first() ?? $allProfiles->first();
 
         $resellers = Reseller::with('customer')->get();
-        $customerList = Customer::select('id', 'name', 'customer_id')->where('status', 'active')->limit(150)->get();
+        $customerList = Customer::select('id', 'name', 'customer_code')->where('status', 'active')->limit(150)->get();
 
         return Inertia::render('Vouchers/Free/Index', [
             'vouchers' => $vouchers,

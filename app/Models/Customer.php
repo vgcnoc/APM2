@@ -61,6 +61,18 @@ class Customer extends Model
         ];
     }
 
+    protected $appends = [
+        'customer_id',
+    ];
+
+    /**
+     * Alias customer_id attribute returning customer_code for frontend compatibility
+     */
+    public function getCustomerIdAttribute(): ?string
+    {
+        return $this->customer_code;
+    }
+
     // ── Relationships ──────────────────────────────────────────
 
     public function user(): BelongsTo
