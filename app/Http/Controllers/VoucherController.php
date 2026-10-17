@@ -242,18 +242,18 @@ class VoucherController extends Controller
         $query = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel']);
 
         if ($request->filled('profile_id')) {
-            $query->where('voucher_profile_id', $request->profile_id);
+            $query->where('vouchers.voucher_profile_id', $request->profile_id);
         }
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('vouchers.status', $request->status);
         }
         
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                $q->where('code', 'like', "%{$search}%")
-                  ->orWhere('username', 'like', "%{$search}%")
+                $q->where('vouchers.code', 'like', "%{$search}%")
+                  ->orWhere('vouchers.username', 'like', "%{$search}%")
                   ->orWhereHas('reseller.customer', function($sub) use ($search) {
                       $sub->where('name', 'like', "%{$search}%");
                   });
@@ -263,9 +263,9 @@ class VoucherController extends Controller
         // Filter Pemilik / Reseller
         if ($request->filled('reseller_id')) {
             if ($request->reseller_id === 'system') {
-                $query->whereNull('reseller_id');
+                $query->whereNull('vouchers.reseller_id');
             } else {
-                $query->where('reseller_id', $request->reseller_id);
+                $query->where('vouchers.reseller_id', $request->reseller_id);
             }
         }
 
@@ -292,9 +292,9 @@ class VoucherController extends Controller
         
         $this->applyResellerFilter($query);
 
-        $vouchers = $query->latest('id')->paginate(20)->withQueryString();
+        $vouchers = $query->latest('vouchers.id')->paginate(20)->withQueryString();
         $user = auth()->user();
-        $isAdminLike = $user && ($user->isAdmin() || in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin']));
+        $isAdminLike = $user && ($user->isAdmin() || in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin', 'demo']));
 
         if ($isAdminLike) {
             $profiles = VoucherProfile::all();
@@ -323,9 +323,9 @@ class VoucherController extends Controller
 
         if ($request->filled('reseller_id')) {
             if ($request->reseller_id === 'system') {
-                $statsBase->whereNull('reseller_id');
+                $statsBase->whereNull('vouchers.reseller_id');
             } else {
-                $statsBase->where('reseller_id', $request->reseller_id);
+                $statsBase->where('vouchers.reseller_id', $request->reseller_id);
             }
         }
 
@@ -350,10 +350,10 @@ class VoucherController extends Controller
         }
 
         $totalCount = (clone $statsBase)->count();
-        $availableCount = (clone $statsBase)->where('status', 'available')->count();
-        $usedCount = (clone $statsBase)->where('status', 'used')->count();
-        $expiredCount = (clone $statsBase)->where('status', 'expired')->count();
-        $onlineCount = (clone $statsBase)->whereIn('username', $onlineUsernames)->count();
+        $availableCount = (clone $statsBase)->where('vouchers.status', 'available')->count();
+        $usedCount = (clone $statsBase)->where('vouchers.status', 'used')->count();
+        $expiredCount = (clone $statsBase)->where('vouchers.status', 'expired')->count();
+        $onlineCount = (clone $statsBase)->whereIn('vouchers.username', $onlineUsernames)->count();
 
         // Nominal omset dari voucher terpakai / terjual (berbayar)
         $totalNominalUsed = (float) (clone $statsBase)->where('vouchers.status', 'used')
@@ -743,12 +743,30 @@ class VoucherController extends Controller
     private function applyResellerFilter($query)
     {
         $user = auth()->user();
-        if ($user && !$user->isAdmin()) {
-            $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+        if (!$user) {
+            return;
+        }
+
+        // Admin dan role manajerial / demo tidak difilter
+        $isAdminLike = $user->isAdmin()
+            || in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin', 'demo', 'management', 'keuangan'])
+            || (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->hasRole('superadmin')));
+
+        if ($isAdminLike) {
+            return;
+        }
+
+        // Cek apakah user adalah akun reseller
+        $isReseller = (strtolower($user->role ?? '') === 'reseller')
+            || (method_exists($user, 'hasRole') && $user->hasRole('reseller'));
+
+        $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+
+        if ($isReseller || $reseller) {
             if ($reseller) {
-                $query->where('reseller_id', $reseller->id);
+                $query->where('vouchers.reseller_id', $reseller->id);
             } else {
-                $query->where('id', -1);
+                $query->where('vouchers.id', -1);
             }
         }
     }
@@ -1045,11 +1063,11 @@ class VoucherController extends Controller
 
         $query = Voucher::with('profile');
         if (!empty($ids)) {
-            $query->whereIn('id', $ids);
+            $query->whereIn('vouchers.id', $ids);
         }
 
         $this->applyResellerFilter($query);
-        $vouchers = $query->latest()->get();
+        $vouchers = $query->latest('vouchers.id')->get();
 
         return view('vouchers.print', compact('vouchers'));
     }

@@ -63,13 +63,13 @@ class ResellerClientController extends Controller
         }
 
         // Hitung Total Pemasukan hanya dari voucher yang SUDAH TERJUAL / DIGUNAKAN / EXPIRED
-        $income = Voucher::where('reseller_id', $reseller->id)
-            ->where('status', '!=', 'available')
+        $income = Voucher::where('vouchers.reseller_id', $reseller->id)
+            ->where('vouchers.status', '!=', 'available')
             ->join('voucher_profiles', 'vouchers.voucher_profile_id', '=', 'voucher_profiles.id')
             ->sum('voucher_profiles.price');
 
-        $totalMargin = Voucher::where('reseller_id', $reseller->id)
-            ->where('status', '!=', 'available')
+        $totalMargin = Voucher::where('vouchers.reseller_id', $reseller->id)
+            ->where('vouchers.status', '!=', 'available')
             ->join('voucher_profiles', 'vouchers.voucher_profile_id', '=', 'voucher_profiles.id')
             ->sum('voucher_profiles.fee_reseller');
 
