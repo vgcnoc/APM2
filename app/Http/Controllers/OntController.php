@@ -7,6 +7,7 @@ use App\Models\Ont;
 use App\Models\Area;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -257,6 +258,10 @@ class OntController extends Controller
 
     public function destroy(Ont $ont): RedirectResponse
     {
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_ont_delete') && !auth()->user()->can('network_ont_delete_all')) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus data ONT.');
+        }
+
         $odp = $ont->odp;
         $portNumber = $ont->port_number;
         $transactionItemId = $ont->material_transaction_item_id;
@@ -287,9 +292,147 @@ class OntController extends Controller
             }
         }
 
-
         return redirect()->route('onts.index')
             ->with('success', 'Data ONT berhasil dihapus.');
+    }
+
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        $isAll = $request->boolean('all', false);
+        $ids = $request->input('ids', []);
+
+        // Permission check
+        if (auth()->check()) {
+            if ($isAll && !auth()->user()->can('network_ont_delete_all') && !auth()->user()->hasRole('admin')) {
+                return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus semua data ONT.');
+            }
+            if (!$isAll && !auth()->user()->can('network_ont_delete') && !auth()->user()->can('network_ont_delete_all') && !auth()->user()->hasRole('admin')) {
+                return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus data ONT.');
+            }
+        }
+
+        $query = Ont::query();
+
+        // Scope check per role if not admin
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_ont_view_all')) {
+            if (auth()->user()->can('network_ont_view_area')) {
+                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+            } else {
+                return redirect()->back()->with('error', 'Anda tidak memiliki hak akses wilayah untuk menghapus data ONT.');
+            }
+        }
+
+        if (!empty($ids) && is_array($ids)) {
+            $query->whereIn('id', $ids);
+        } elseif (!$isAll) {
+            return redirect()->back()->with('error', 'Tidak ada data ONT yang dipilih untuk dihapus.');
+        }
+
+        // Jika hapus semua dengan filter aktif
+        if ($isAll) {
+            if ($request->filled('search')) {
+                $s = $request->search;
+                $query->where(function ($sq) use ($s) {
+                    $sq->where('serial_number', 'like', "%{$s}%")
+                       ->orWhere('ont_id', 'like', "%{$s}%")
+                       ->orWhere('mac_address', 'like', "%{$s}%")
+                       ->orWhere('brand', 'like', "%{$s}%")
+                       ->orWhere('model', 'like', "%{$s}%")
+                       ->orWhere('pppoe_user', 'like', "%{$s}%")
+                       ->orWhere('login_user', 'like', "%{$s}%")
+                       ->orWhere('ip_login', 'like', "%{$s}%")
+                       ->orWhereHas('customer', function ($cq) use ($s) {
+                           $cq->where('name', 'like', "%{$s}%")
+                              ->orWhere('customer_code', 'like', "%{$s}%")
+                              ->orWhere('phone', 'like', "%{$s}%");
+                       });
+                });
+            }
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+            if ($request->filled('installation_status')) {
+                if ($request->installation_status === 'installed') {
+                    $query->whereNotNull('customer_id');
+                } elseif ($request->installation_status === 'uninstalled') {
+                    $query->whereNull('customer_id');
+                }
+            }
+            if ($request->filled('area_id')) {
+                $query->where('area_id', $request->area_id);
+            }
+            if ($request->filled('brand')) {
+                $query->where('brand', $request->brand);
+            }
+            if ($request->filled('access_mode')) {
+                $query->where('access_mode', $request->access_mode);
+            }
+            if ($request->filled('vlan_mode')) {
+                $query->where('vlan_mode', $request->vlan_mode);
+            }
+            if ($request->filled('date_from')) {
+                $query->whereDate('created_at', '>=', $request->date_from);
+            }
+            if ($request->filled('date_to')) {
+                $query->whereDate('created_at', '<=', $request->date_to);
+            }
+            if ($request->filled('odp_id')) {
+                $query->where('odp_id', $request->odp_id);
+            }
+        }
+
+        $onts = $query->get();
+        $count = $onts->count();
+
+        if ($count === 0) {
+            return redirect()->back()->with('error', 'Tidak ada data ONT yang ditemukan untuk dihapus.');
+        }
+
+        DB::transaction(function () use ($onts) {
+            $transactionItemIds = [];
+            $odpsToRecalculate = [];
+
+            foreach ($onts as $ont) {
+                // Release ODP Port
+                if ($ont->odp_id && $ont->port_number) {
+                    \App\Models\OdpPort::where('odp_id', $ont->odp_id)
+                        ->where('port_number', $ont->port_number)
+                        ->update(['status' => 'available']);
+                    
+                    $odpsToRecalculate[$ont->odp_id] = true;
+                }
+
+                if ($ont->material_transaction_item_id) {
+                    $transactionItemIds[$ont->material_transaction_item_id] = true;
+                }
+
+                $ont->delete();
+            }
+
+            // Recalculate used_ports and status for affected ODPs
+            foreach (array_keys($odpsToRecalculate) as $odpId) {
+                $odp = Odp::find($odpId);
+                if ($odp) {
+                    $usedCount = Ont::where('odp_id', $odpId)->count();
+                    $odp->used_ports = $usedCount;
+                    if ($usedCount < $odp->total_ports && $odp->status === 'full') {
+                        $odp->status = 'active';
+                    }
+                    $odp->save();
+                }
+            }
+
+            // Reset is_registered_to_ont if no more onts reference it
+            foreach (array_keys($transactionItemIds) as $tItemId) {
+                $remaining = Ont::where('material_transaction_item_id', $tItemId)->count();
+                if ($remaining === 0) {
+                    \App\Models\MaterialTransactionItem::where('id', $tItemId)->update(['is_registered_to_ont' => false]);
+                }
+            }
+        });
+
+        return redirect()->route('onts.index')
+            ->with('success', "Berhasil menghapus {$count} data ONT.");
     }
 
     public function findOnu(Request $request): Response

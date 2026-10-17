@@ -260,6 +260,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{workOrder}/reject', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'reject'])->name('reject');
     });
 
+    Route::post('onts/bulk-destroy', [OntController::class, 'bulkDestroy'])->name('onts.bulk-destroy');
     Route::resource('onts', OntController::class);
     Route::post('onts/{ont}/update', [OntController::class, 'update'])->name('onts.update.post');
     Route::post('onts/{ont}/delete', [OntController::class, 'destroy'])->name('onts.destroy.post');

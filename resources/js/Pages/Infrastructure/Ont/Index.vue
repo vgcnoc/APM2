@@ -1,27 +1,61 @@
 <template>
     <AppLayout title="Data ONT">
         <div class="p-6">
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-900">Manajemen ONT / Modem</h2>
                     <p class="text-gray-500 text-sm mt-1">Kelola data inventaris perangkat ONT. (Data otomatis ditambahkan dari Surat Jalan Gudang)</p>
                 </div>
-                <div class="flex items-center gap-3">
-                    <!-- Tombol Print Card -->
-                    <button v-if="selectedOnts.length > 0" @click="openPrintModal" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                        Print Card ({{ selectedOnts.length }})
+                <div class="flex items-center gap-2 flex-wrap">
+                    <!-- Tombol Hapus Terpilih -->
+                    <button 
+                        v-if="selectedOnts.length > 0"
+                        v-can="'network_ont_delete'"
+                        @click="openDeleteModal('selected')"
+                        type="button"
+                        class="px-3.5 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-semibold text-sm rounded-lg border border-red-200 shadow-sm flex items-center gap-2 transition-all"
+                    >
+                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        <span>Hapus Terpilih ({{ selectedOnts.length }})</span>
                     </button>
+
+                    <!-- Tombol Hapus Semua -->
+                    <button 
+                        v-can="'network_ont_delete_all'"
+                        @click="openDeleteModal('all')"
+                        type="button"
+                        class="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm rounded-lg shadow-sm flex items-center gap-2 transition-all"
+                        title="Hapus Seluruh Data ONT"
+                    >
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        <span>Hapus Semua</span>
+                    </button>
+
+                    <!-- Tombol Print Card -->
+                    <button 
+                        v-if="selectedOnts.length > 0" 
+                        v-can="'network_ont_print_card'"
+                        @click="openPrintModal" 
+                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        <span>Print Card ({{ selectedOnts.length }})</span>
+                    </button>
+
                     <!-- Tombol Tambah ONT -->
-                    <button @click="openCreateModal" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+                    <button 
+                        v-can="'network_ont_create'"
+                        @click="openCreateModal" 
+                        class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+                    >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                        Tambah ONT
+                        <span>Tambah ONT</span>
                     </button>
                 </div>
             </div>
 
             <!-- 1. Statistik Cards Inventaris ONT -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
+            <div v-can="'network_ont_card_stats'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
                 <!-- Card 1: Total Perangkat -->
                 <div 
                     @click="setQuickFilter('all')" 
@@ -104,7 +138,7 @@
             </div>
 
             <!-- 2. Smart Quick Status Tabs -->
-            <div class="flex items-center gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl mb-4 overflow-x-auto border border-slate-200/60 scrollbar-none">
+            <div v-can="'network_ont_filter'" class="flex items-center gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl mb-4 overflow-x-auto border border-slate-200/60 scrollbar-none">
                 <button 
                     type="button" 
                     @click="setQuickFilter('all')" 
@@ -167,7 +201,7 @@
             </div>
 
             <!-- 3. Smart Comprehensive Filters Container -->
-            <div class="bg-white rounded-2xl shadow-xs border border-gray-200/80 p-4 mb-6 space-y-3.5">
+            <div v-can="'network_ont_filter'" class="bg-white rounded-2xl shadow-xs border border-gray-200/80 p-4 mb-6 space-y-3.5">
                 <!-- Baris Utama Filter -->
                 <div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5">
                     <!-- Live Search Input -->
@@ -406,10 +440,20 @@
                     <span class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm">
                         {{ selectedOnts.length }}
                     </span>
-                    <span class="text-sm font-semibold">Perangkat ONT terpilih untuk dicetak atau dikelola</span>
+                    <span class="text-sm font-semibold">Perangkat ONT terpilih</span>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                     <button 
+                        v-can="'network_ont_delete'"
+                        @click="openDeleteModal('selected')" 
+                        type="button"
+                        class="px-3.5 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2"
+                    >
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        <span>Hapus Terpilih ({{ selectedOnts.length }})</span>
+                    </button>
+                    <button 
+                        v-can="'network_ont_print_card'"
                         @click="openPrintModal" 
                         class="px-4 py-2 bg-white text-indigo-700 hover:bg-indigo-50 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2"
                     >
@@ -520,10 +564,10 @@
                                         <Link :href="`/onts/${ont.id}`" class="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors">
                                             Detail
                                         </Link>
-                                        <button @click="openEditModal(ont)" class="px-2.5 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors">
+                                        <button v-can="'network_ont_edit'" @click="openEditModal(ont)" class="px-2.5 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors">
                                             Edit
                                         </button>
-                                        <button @click="deleteOnt(ont.id)" class="px-2.5 py-1 text-xs font-medium text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors">
+                                        <button v-can="'network_ont_delete'" @click="deleteOnt(ont.id)" class="px-2.5 py-1 text-xs font-medium text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors">
                                             Hapus
                                         </button>
                                     </div>
@@ -813,6 +857,71 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Modal Konfirmasi Hapus Semua / Terpilih -->
+        <Teleport to="body">
+            <div v-if="showDeleteConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fade-in">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-red-100">
+                    <div class="p-6 text-center space-y-4">
+                        <div class="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto border-4 border-red-50 shadow-inner">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">
+                                {{ deleteConfirmMode === 'selected' ? `Hapus ${selectedOnts.length} Data ONT Terpilih?` : 'Hapus Seluruh Data ONT?' }}
+                            </h3>
+                            <p class="text-xs text-gray-500 mt-1 leading-relaxed">
+                                {{ deleteConfirmMode === 'selected'
+                                    ? `Tindakan ini akan menghapus ${selectedOnts.length} data inventaris ONT yang Anda pilih secara permanen.`
+                                    : `Tindakan ini akan menghapus SEMUA data ONT (${onts.total || onts.data.length} ONT) yang ada pada sistem secara permanen!` 
+                                }}
+                            </p>
+                        </div>
+
+                        <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-left text-xs text-amber-800 space-y-1">
+                            <div class="font-bold flex items-center gap-1.5 text-amber-900">
+                                <span>🛡️</span> Integritas Port ODP & Logistik:
+                            </div>
+                            <p class="text-[11px] leading-relaxed">
+                                Port ODP yang terhubung dengan perangkat ONT yang dihapus akan otomatis dikembalikan menjadi <span class="font-bold">"available"</span> dan kapasitas port ODP akan dihitung ulang secara aman.
+                            </p>
+                        </div>
+
+                        <!-- Konfirmasi Text HAPUS untuk Hapus Semua -->
+                        <div v-if="deleteConfirmMode === 'all'" class="text-left space-y-1.5 pt-1">
+                            <label class="block text-xs font-semibold text-gray-700">
+                                Ketik <span class="font-bold text-red-600 font-mono">HAPUS</span> untuk konfirmasi:
+                            </label>
+                            <input 
+                                v-model="deleteConfirmInput" 
+                                type="text" 
+                                placeholder="Ketik HAPUS" 
+                                class="w-full px-3 py-2 border border-red-300 rounded-lg text-sm text-center uppercase tracking-widest font-mono font-bold focus:ring-2 focus:ring-red-500 focus:outline-none"
+                            />
+                        </div>
+
+                        <div class="flex items-center gap-3 pt-2">
+                            <button 
+                                type="button" 
+                                @click="closeDeleteModal" 
+                                class="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm rounded-xl transition-colors"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="executeBulkDelete" 
+                                :disabled="isDeleting || (deleteConfirmMode === 'all' && deleteConfirmInput.toUpperCase() !== 'HAPUS')"
+                                class="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl transition-colors shadow-md shadow-red-200 flex items-center justify-center gap-2"
+                            >
+                                <svg v-if="isDeleting" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>{{ isDeleting ? 'Menghapus...' : (deleteConfirmMode === 'selected' ? 'Hapus Terpilih' : 'Ya, Hapus Semua') }}</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1256,5 +1365,54 @@ function deleteOnt(id) {
     if (confirm('Apakah Anda yakin ingin menghapus data inventaris ONT ini?')) {
         router.post(`/onts/${id}/delete`);
     }
+}
+
+// ── Bulk Delete / Hapus Semua ONT ────────────────────────────
+const showDeleteConfirmModal = ref(false);
+const deleteConfirmMode = ref('all');
+const deleteConfirmInput = ref('');
+const isDeleting = ref(false);
+
+function openDeleteModal(mode = 'all') {
+    deleteConfirmMode.value = mode;
+    deleteConfirmInput.value = '';
+    showDeleteConfirmModal.value = true;
+}
+
+function closeDeleteModal() {
+    showDeleteConfirmModal.value = false;
+    deleteConfirmInput.value = '';
+    isDeleting.value = false;
+}
+
+function executeBulkDelete() {
+    if (deleteConfirmMode.value === 'all' && deleteConfirmInput.value.toUpperCase() !== 'HAPUS') {
+        alert('Ketik HAPUS untuk konfirmasi hapus semua data ONT.');
+        return;
+    }
+
+    isDeleting.value = true;
+    router.post('/onts/bulk-destroy', {
+        all: deleteConfirmMode.value === 'all',
+        ids: deleteConfirmMode.value === 'selected' ? selectedOnts.value : [],
+        search: filterState.search,
+        status: filterState.status,
+        installation_status: filterState.installation_status,
+        area_id: filterState.area_id,
+        brand: filterState.brand,
+        access_mode: filterState.access_mode,
+        vlan_mode: filterState.vlan_mode,
+        date_from: filterState.date_from,
+        date_to: filterState.date_to,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeDeleteModal();
+            selectedOnts.value = [];
+        },
+        onFinish: () => {
+            isDeleting.value = false;
+        }
+    });
 }
 </script>

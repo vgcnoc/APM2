@@ -348,10 +348,12 @@ class PermissionRegistry
                     // Card
                     ['name' => 'network_card_capacity', 'type' => 'card', 'label' => 'Card Kapasitas Port OLT / ODC / ODP'],
                     ['name' => 'network_card_redaman', 'type' => 'card', 'label' => 'Card Monitoring Redaman dBm'],
+                    ['name' => 'network_ont_card_stats', 'type' => 'card', 'label' => 'Card Statistik Inventaris ONT'],
                     
                     // Filter
                     ['name' => 'network_filter_area', 'type' => 'filter', 'label' => 'Filter Berdasarkan Wilayah OSP'],
                     ['name' => 'network_filter_status', 'type' => 'filter', 'label' => 'Filter Port Tersedia vs Penuh'],
+                    ['name' => 'network_ont_filter', 'type' => 'filter', 'label' => 'Filter Lengkap & Cerdas ONT'],
                     
                     // Action Buttons
                     ['name' => 'network_olt_create', 'type' => 'button', 'label' => 'Tombol Tambah OLT Baru'],
@@ -363,9 +365,12 @@ class PermissionRegistry
                     ['name' => 'network_odp_create', 'type' => 'button', 'label' => 'Tombol Tambah ODP Baru'],
                     ['name' => 'network_odp_edit', 'type' => 'button', 'label' => 'Tombol Edit Data ODP'],
                     ['name' => 'network_odp_delete', 'type' => 'button', 'label' => 'Tombol Hapus ODP'],
+                    ['name' => 'network_odp_delete_all', 'type' => 'button', 'label' => 'Tombol Hapus Semua ODP (Hapus Massal)'],
                     ['name' => 'network_ont_create', 'type' => 'button', 'label' => 'Tombol Tambah Data ONT'],
                     ['name' => 'network_ont_edit', 'type' => 'button', 'label' => 'Tombol Edit Data ONT'],
                     ['name' => 'network_ont_delete', 'type' => 'button', 'label' => 'Tombol Hapus ONT'],
+                    ['name' => 'network_ont_delete_all', 'type' => 'button', 'label' => 'Tombol Hapus Semua ONT (Hapus Massal)'],
+                    ['name' => 'network_ont_print_card', 'type' => 'button', 'label' => 'Tombol Cetak Card Label ONT'],
                     ['name' => 'network_btn_sync_onu', 'type' => 'button', 'label' => 'Tombol Sync / Scan ONU Otomatis'],
                     
                     // Scopes
@@ -745,8 +750,8 @@ class PermissionRegistry
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_all',
                 'menu_network_olt', 'network_olt_create', 'network_olt_edit', 'network_olt_delete', 'network_olt_view_all',
                 'menu_network_odc', 'network_odc_create', 'network_odc_edit', 'network_odc_delete', 'network_odc_view_all',
-                'menu_network_odp', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_view_all',
-                'menu_network_ont', 'network_ont_create', 'network_ont_edit', 'network_ont_delete', 'network_ont_view_all',
+                'menu_network_odp', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_delete_all', 'network_odp_view_all',
+                'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_create', 'network_ont_edit', 'network_ont_delete', 'network_ont_delete_all', 'network_ont_print_card', 'network_ont_view_all',
                 'menu_network_find_onu',
                 'menu_infrastructure_work_orders', 'infrastructure_work_orders_create', 'infrastructure_work_orders_edit',
                 'infrastructure_work_orders_dispatch', 'infrastructure_work_orders_report', 'infrastructure_work_orders_approve',
@@ -778,7 +783,7 @@ class PermissionRegistry
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_view_area',
                 'menu_network_odc', 'network_odc_view_area',
                 'menu_network_odp', 'network_odp_view_area',
-                'menu_network_ont', 'network_ont_view_area',
+                'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_print_card', 'network_ont_view_area',
                 'menu_network_find_onu',
                 'menu_infrastructure_work_orders', 'infrastructure_work_orders_report', 'infrastructure_work_orders_view_area',
                 'menu_materials', 'materials_card_stats', 'materials_filter_category', 'materials_view_area',
@@ -801,8 +806,8 @@ class PermissionRegistry
                 'menu_network_topology', 'menu_network_data', 'menu_ftth', 'ftth_manage',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_area',
                 'menu_network_odc', 'network_odc_create', 'network_odc_edit', 'network_odc_delete', 'network_odc_view_area',
-                'menu_network_odp', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_view_area',
-                'menu_network_ont', 'network_ont_create', 'network_ont_edit', 'network_ont_delete', 'network_ont_view_area',
+                'menu_network_odp', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_delete_all', 'network_odp_view_area',
+                'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_create', 'network_ont_edit', 'network_ont_delete', 'network_ont_delete_all', 'network_ont_print_card', 'network_ont_view_area',
                 'menu_network_olt', 'network_olt_edit', 'network_olt_view_area',
                 'menu_network_find_onu',
                 'menu_infrastructure_work_orders', 'infrastructure_work_orders_report', 'infrastructure_work_orders_view_area',
@@ -825,8 +830,8 @@ class PermissionRegistry
                 'menu_network_topology', 'menu_network_data', 'menu_ftth', 'ftth_manage',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_all',
                 'menu_network_odc', 'network_odc_create', 'network_odc_edit', 'network_odc_view_all',
-                'menu_network_odp', 'network_odp_create', 'network_odp_edit', 'network_odp_view_all',
-                'menu_network_ont', 'network_ont_create', 'network_ont_edit', 'network_ont_view_all',
+                'menu_network_odp', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_delete_all', 'network_odp_view_all',
+                'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_create', 'network_ont_edit', 'network_ont_delete', 'network_ont_delete_all', 'network_ont_print_card', 'network_ont_view_all',
                 'menu_network_find_onu',
                 'menu_infrastructure_work_orders', 'infrastructure_work_orders_create', 'infrastructure_work_orders_edit',
                 'infrastructure_work_orders_dispatch', 'infrastructure_work_orders_report', 'infrastructure_work_orders_approve', 'infrastructure_work_orders_view_all',
