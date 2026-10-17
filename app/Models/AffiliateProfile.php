@@ -27,9 +27,9 @@ class AffiliateProfile extends Model
     ];
 
     protected $casts = [
-        'balance' => 'decimal:2',
-        'total_earned' => 'decimal:2',
-        'total_withdrawn' => 'decimal:2',
+        'balance' => 'integer',
+        'total_earned' => 'integer',
+        'total_withdrawn' => 'integer',
     ];
 
     public function user(): BelongsTo

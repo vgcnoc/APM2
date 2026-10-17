@@ -20,17 +20,17 @@ class InternetPackage extends Model
     {
         return [
             'speed_mbps' => 'integer',
-            'price' => 'decimal:2',
+            'price' => 'integer',
             'is_active' => 'boolean',
             'is_promo' => 'boolean',
-            'promo_price' => 'decimal:2',
+            'promo_price' => 'integer',
             'is_mikrotik_group_custom' => 'boolean',
             'is_mikrotik_address_list_custom' => 'boolean',
             'shared_device' => 'integer',
             'active_period' => 'integer',
-            'fee_admin' => 'decimal:2',
-            'fee_reseller' => 'decimal:2',
-            'fee_partner' => 'decimal:2',
+            'fee_admin' => 'integer',
+            'fee_reseller' => 'integer',
+            'fee_partner' => 'integer',
         ];
     }
 

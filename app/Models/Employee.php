@@ -12,7 +12,7 @@ class Employee extends Model
     protected $casts = [
         'join_date' => 'date',
         'resign_date' => 'date',
-        'base_salary' => 'decimal:2',
+        'base_salary' => 'integer',
     ];
 
     protected $appends = [

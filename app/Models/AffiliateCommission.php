@@ -24,7 +24,7 @@ class AffiliateCommission extends Model
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
+        'amount' => 'integer',
         'tier_level' => 'integer',
         'paid_at' => 'datetime',
     ];

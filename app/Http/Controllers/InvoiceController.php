@@ -220,7 +220,7 @@ class InvoiceController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $paymentAmount = $request->amount;
+        $paymentAmount = (int) round($request->amount);
         $customerId = $invoice->customer_id;
         
         // Cari semua tagihan unpaid/partial milik pelanggan ini, urutkan dari yang tertua
@@ -239,10 +239,10 @@ class InvoiceController extends Controller
         foreach ($unpaidInvoices as $inv) {
             if ($remainingPayment <= 0) break;
 
-            $invRemaining = $inv->amount - $inv->payments()->sum('amount');
+            $invRemaining = (int) round($inv->amount - $inv->payments()->sum('amount'));
             if ($invRemaining <= 0) continue;
 
-            $payForThis = min($invRemaining, $remainingPayment);
+            $payForThis = (int) min($invRemaining, $remainingPayment);
 
             $inv->payments()->create([
                 'customer_id' => $customerId,
@@ -253,11 +253,11 @@ class InvoiceController extends Controller
                 'collected_by' => auth()->id(),
             ]);
 
-            $totalPaid = $inv->payments()->sum('amount');
-            if ($totalPaid >= $inv->amount) {
+            $totalPaid = (int) round($inv->payments()->sum('amount'));
+            if ($totalPaid >= (int) round($inv->amount)) {
                 $inv->update(['status' => 'paid', 'total_paid' => $totalPaid, 'remaining' => 0]);
             } else {
-                $inv->update(['status' => 'partial', 'total_paid' => $totalPaid, 'remaining' => $inv->amount - $totalPaid]);
+                $inv->update(['status' => 'partial', 'total_paid' => $totalPaid, 'remaining' => (int) round($inv->amount - $totalPaid)]);
             }
 
             $remainingPayment -= $payForThis;
@@ -274,7 +274,7 @@ class InvoiceController extends Controller
                 'notes' => ($request->notes ? $request->notes . ' | ' : '') . 'Kelebihan Pembayaran (Overpaid)',
                 'collected_by' => auth()->id(),
             ]);
-            $totalPaid = $invoice->payments()->sum('amount');
+            $totalPaid = (int) round($invoice->payments()->sum('amount'));
             $invoice->update(['status' => 'paid', 'total_paid' => $totalPaid, 'remaining' => 0]);
         }
 
@@ -598,18 +598,18 @@ class InvoiceController extends Controller
             $futureDays = max(1, $totalCycleDays - $pastDays);
 
             // Perhitungan Biaya Prorata
-            $pastAmount = $pastDays > 0 ? round(($oldPrice / $totalCycleDays) * $pastDays) : 0;
-            $futureAmount = round(($newPrice / $totalCycleDays) * $futureDays);
+            $pastAmount = $pastDays > 0 ? (int) round(($oldPrice / $totalCycleDays) * $pastDays) : 0;
+            $futureAmount = (int) round(($newPrice / $totalCycleDays) * $futureDays);
 
             // Terapkan PPN jika ada
             $taxPpn = (float) ($customer->tax_ppn ?? \App\Models\Setting::get('tax_ppn', '0'));
             if ($taxPpn > 0) {
-                $pastAmount = round($pastAmount + ($pastAmount * ($taxPpn / 100)));
-                $futureAmount = round($futureAmount + ($futureAmount * ($taxPpn / 100)));
+                $pastAmount = (int) round($pastAmount + ($pastAmount * ($taxPpn / 100)));
+                $futureAmount = (int) round($futureAmount + ($futureAmount * ($taxPpn / 100)));
             }
 
             // Total tagihan prorata untuk satu periode siklus penagihan
-            $totalProrataAmount = $pastAmount + $futureAmount;
+            $totalProrataAmount = (int) ($pastAmount + $futureAmount);
             $oldPackageName = $oldPackage?->name ?? 'Paket Lama';
             $pastEndDateStr = $pastDays > 0 ? $effectiveDate->copy()->subDay()->translatedFormat('d M') : $startDate->translatedFormat('d M');
             $futureEndDateStr = $cycleEndDate->copy()->subDay()->translatedFormat('d M Y');
@@ -624,7 +624,7 @@ class InvoiceController extends Controller
                     $invoice->notes .= ' (' . $request->notes . ')';
                 }
                 
-                $totalPaid = (float) $invoice->payments()->sum('amount');
+                $totalPaid = (int) round($invoice->payments()->sum('amount'));
                 $invoice->total_paid = $totalPaid;
                 $invoice->remaining = max(0, $totalProrataAmount - $totalPaid);
                 $invoice->save();
@@ -648,8 +648,8 @@ class InvoiceController extends Controller
                 }
             } else {
                 // Jika invoice berjalan sudah lunas, hitung selisih dari nilai yang telah dibayar
-                $paidAmount = (float) $invoice->amount;
-                $diff = $totalProrataAmount - $paidAmount;
+                $paidAmount = (int) round($invoice->amount);
+                $diff = (int) round($totalProrataAmount - $paidAmount);
 
                 if ($diff > 0) {
                     $newInv = Invoice::create([
@@ -689,8 +689,10 @@ class InvoiceController extends Controller
                 }
             }
         } elseif ($request->billing_action === 'replace_invoice') {
+            $taxPpn = (float) ($customer->tax_ppn ?? \App\Models\Setting::get('tax_ppn', '0'));
+            $effectiveNewPrice = (int) round($taxPpn > 0 ? $newPrice + ($newPrice * ($taxPpn / 100)) : $newPrice);
             if (in_array($invoice->status, ['unpaid', 'partial'])) {
-                $invoice->amount = $newPrice;
+                $invoice->amount = $effectiveNewPrice;
                 $invoice->billing_type = $actionType;
                 $noteAppend = "{$actionLabel} ke {$newPackage->name} (Nominal tagihan diubah ke tarif penuh paket baru)";
                 $invoice->notes = $invoice->notes ? $invoice->notes . ' | ' . $noteAppend : $noteAppend;
@@ -704,14 +706,14 @@ class InvoiceController extends Controller
                     $invoice->payments()->create([
                         'customer_id' => $customer->id,
                         'payment_date' => now(),
-                        'amount' => $newPrice,
+                        'amount' => $effectiveNewPrice,
                         'payment_method' => $payMethod,
                         'notes' => 'Pembayaran lunas seketika saat ' . $actionLabel . ' paket',
                         'collected_by' => auth()->id(),
                     ]);
                     $invoice->update([
                         'status' => 'paid',
-                        'total_paid' => $newPrice,
+                        'total_paid' => $effectiveNewPrice,
                         'remaining' => 0,
                     ]);
                 }

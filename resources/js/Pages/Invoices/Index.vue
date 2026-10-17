@@ -1243,8 +1243,8 @@ function filterTab(tab) {
 }
 
 function formatCurrency(value) {
-    if (!value) return 'Rp 0';
-    return 'Rp ' + Number(value).toLocaleString('id-ID');
+    if (!value && value !== 0) return 'Rp 0';
+    return 'Rp ' + Math.round(Number(value) || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 function formatStatus(status) {

@@ -27,9 +27,9 @@ class AffiliateWithdrawal extends Model
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
-        'fee' => 'decimal:2',
-        'net_amount' => 'decimal:2',
+        'amount' => 'integer',
+        'fee' => 'integer',
+        'net_amount' => 'integer',
         'processed_at' => 'datetime',
     ];
 

@@ -73,7 +73,7 @@ const previewMessage = computed(() => {
     else if (row.status === 'laporan_pasang' || row.status === 'menunggu_aktivasi') title = 'Permintaan Aktivasi Pelanggan:';
     
     // Format Rp
-    const rpFormat = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format;
+    const rpFormat = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(Number(val) || 0));
     
     return `${title}
 

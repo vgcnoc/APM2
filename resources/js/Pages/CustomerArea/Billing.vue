@@ -10,8 +10,9 @@ const formatRupiah = (amount) => {
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
-        minimumFractionDigits: 0
-    }).format(amount);
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(Math.round(Number(amount) || 0));
 };
 </script>
 

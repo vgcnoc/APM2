@@ -13,6 +13,6 @@ class MasterFee extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        'nominal' => 'decimal:2',
+        'nominal' => 'integer',
     ];
 }

@@ -13,12 +13,12 @@ class TargetMarketLog extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'base_reward' => 'decimal:2',
-        'tier_reward' => 'decimal:2',
-        'area_reward' => 'decimal:2',
-        'package_reward' => 'decimal:2',
-        'target_achieved_reward' => 'decimal:2',
-        'total_reward' => 'decimal:2',
+        'base_reward' => 'integer',
+        'tier_reward' => 'integer',
+        'area_reward' => 'integer',
+        'package_reward' => 'integer',
+        'target_achieved_reward' => 'integer',
+        'total_reward' => 'integer',
         'concept_breakdown' => 'array',
         'period_month' => 'integer',
         'period_year' => 'integer',

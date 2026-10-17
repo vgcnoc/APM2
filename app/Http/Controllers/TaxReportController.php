@@ -136,24 +136,24 @@ class TaxReportController extends Controller
         $isProrata = $invoice ? ($invoice->is_prorata || $invoice->billing_type === 'prorata') : false;
 
         if ($customer->service_status === 'gratis') {
-            $basePrice = 0.0;
+            $basePrice = 0;
         } elseif ($invoice && $invoice->amount > 0) {
             // Jika ada invoice terbit (termasuk tagihan prorata aktivasi), DPP dihitung dari nominal riil invoice
             if ($ppn_percent > 0) {
-                $basePrice = round((float) $invoice->amount / (1 + ($ppn_percent / 100)));
+                $basePrice = (int) round((float) $invoice->amount / (1 + ($ppn_percent / 100)));
             } else {
-                $basePrice = round((float) $invoice->amount);
+                $basePrice = (int) round((float) $invoice->amount);
             }
         } else {
-            $basePrice = (float) ($customer->base_amount > 0 ? $customer->base_amount : ($customer->package ? $customer->package->price : 0));
+            $basePrice = (int) round((float) ($customer->base_amount > 0 ? $customer->base_amount : ($customer->package ? $customer->package->price : 0)));
         }
 
-        $ppn_amount = round($basePrice * ($ppn_percent / 100));
-        $bhp_amount = round($basePrice * ($bhp_percent / 100));
-        $uso_amount = round($basePrice * ($uso_percent / 100));
+        $ppn_amount = (int) round($basePrice * ($ppn_percent / 100));
+        $bhp_amount = (int) round($basePrice * ($bhp_percent / 100));
+        $uso_amount = (int) round($basePrice * ($uso_percent / 100));
 
-        $total_tax = $ppn_amount + $bhp_amount + $uso_amount;
-        $total_price = $basePrice + $ppn_amount; // Tagihan aktual pelanggan (DPP + PPN)
+        $total_tax = (int) ($ppn_amount + $bhp_amount + $uso_amount);
+        $total_price = (int) ($basePrice + $ppn_amount); // Tagihan aktual pelanggan (DPP + PPN)
 
         return [
             'id' => $customer->id,

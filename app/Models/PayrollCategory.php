@@ -13,6 +13,6 @@ class PayrollCategory extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        'default_amount' => 'decimal:2',
+        'default_amount' => 'integer',
     ];
 }

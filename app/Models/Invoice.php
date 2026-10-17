@@ -21,7 +21,7 @@ class Invoice extends Model
     protected function casts(): array
     {
         return [
-            'amount' => 'decimal:2',
+            'amount' => 'integer',
             'due_date' => 'date',
             'issued_date' => 'date',
             'promise_date' => 'date',
@@ -46,14 +46,14 @@ class Invoice extends Model
         return ($months[$this->period_month] ?? '') . ' ' . $this->period_year;
     }
 
-    public function getTotalPaidAttribute(): float
+    public function getTotalPaidAttribute(): int
     {
-        return (float) $this->payments()->sum('amount');
+        return (int) round($this->payments()->sum('amount'));
     }
 
-    public function getRemainingAttribute(): float
+    public function getRemainingAttribute(): int
     {
-        return max(0, $this->amount - $this->total_paid);
+        return (int) max(0, round($this->amount - $this->total_paid));
     }
 
     protected static function booted(): void
