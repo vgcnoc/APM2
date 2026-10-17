@@ -201,6 +201,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{customer}/material-request', [CustomerController::class, 'requestMaterial'])
             ->name('material-request');
             
+        // Lifecycle inline edit routes (Booking, Jadwal Survey, Survey, Jadwal Pasang, Instalasi, Aktivasi)
+        Route::post('/{customer}/update-booking-inline', [CustomerController::class, 'updateBookingInline'])->name('update-booking-inline');
+        Route::post('/{customer}/update-survey-schedule', [CustomerController::class, 'updateSurveySchedule'])->name('update-survey-schedule');
+        Route::post('/{customer}/update-survey-report', [CustomerController::class, 'updateSurveyReport'])->name('update-survey-report');
+        Route::post('/{customer}/update-installation-schedule', [CustomerController::class, 'updateInstallationSchedule'])->name('update-installation-schedule');
+        Route::post('/{customer}/update-installation-report', [CustomerController::class, 'updateInstallationReport'])->name('update-installation-report');
+        Route::post('/{customer}/update-activation', [CustomerController::class, 'updateActivation'])->name('update-activation');
+            
         // Update Pelanggan POST
         Route::post('/{customer}/update', [CustomerController::class, 'update'])
             ->name('update.post');

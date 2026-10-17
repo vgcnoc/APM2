@@ -1546,8 +1546,12 @@ class CustomerController extends Controller
         return Inertia::render('Customers/Show', [
             'customer' => $customer,
             'source' => request()->query('source'),
-            'availableOdps' => Odp::active()->with(['odc.olt', 'onts.customer'])->get(),
+            'availableOdps' => Odp::active()->with(['odc.olt', 'onts.customer', 'ports'])->get(),
             'availableOnts' => Ont::where('status', 'Sudah Set')->whereNull('customer_id')->get(),
+            'technicians' => User::where('is_active', true)->orderBy('name')->get(['id', 'name', 'phone', 'role']),
+            'packages' => InternetPackage::active()->get(),
+            'areas' => \App\Models\Area::orderBy('name')->get(),
+            'salesUsers' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'materials' => \App\Models\Material::orderBy('name')->get(),
             'materialRequests' => $materialRequests,
         ]);
@@ -2634,6 +2638,334 @@ class CustomerController extends Controller
         }
         
         return back()->with('error', 'Data ONT tidak ditemukan.');
+    }
+
+    /**
+     * 1. Update Data Booking & Lokasi Inline
+     */
+    public function updateBookingInline(Request $request, Customer $customer): RedirectResponse
+    {
+        $validated = $request->validate([
+            'latitude' => 'nullable|string|max:50',
+            'longitude' => 'nullable|string|max:50',
+            'notes' => 'nullable|string',
+            'registration_date' => 'nullable|date',
+            'sales_id' => 'nullable|exists:users,id',
+            'package_id' => 'nullable|exists:internet_packages,id',
+            'area_id' => 'nullable|exists:areas,id',
+            'address' => 'nullable|string',
+            'phone' => 'nullable|string',
+        ]);
+
+        if (!empty($validated['area_id'])) {
+            $area = \App\Models\Area::find($validated['area_id']);
+            if ($area) {
+                $validated['area'] = $area->name;
+            }
+        }
+
+        $customer->update($validated);
+
+        \App\Models\AuditLog::createLog('Edit Booking & Lokasi', $customer, $customer->status, $customer->status, 'Memperbarui data booking, lokasi, & sales');
+
+        return back()->with('success', 'Data booking & lokasi berhasil diperbarui.');
+    }
+
+    /**
+     * 2. Update Jadwal Survey Inline
+     */
+    public function updateSurveySchedule(Request $request, Customer $customer): RedirectResponse
+    {
+        $validated = $request->validate([
+            'technician_id' => 'required|exists:users,id',
+            'scheduled_date' => 'required|date',
+            'scheduled_time' => 'nullable|string',
+            'status' => 'required|in:scheduled,on_the_way,working,done,cancelled',
+            'notes' => 'nullable|string',
+        ]);
+
+        // Normalisasi format jam HH:mm jika dari input time HTML
+        if (!empty($validated['scheduled_time']) && preg_match('/^\d{2}:\d{2}:\d{2}$/', $validated['scheduled_time'])) {
+            $validated['scheduled_time'] = substr($validated['scheduled_time'], 0, 5);
+        }
+
+        $schedule = $customer->technicianSchedules()
+            ->where('type', 'survey')
+            ->first();
+
+        if ($schedule) {
+            $schedule->update([
+                'technician_id' => $validated['technician_id'],
+                'scheduled_date' => $validated['scheduled_date'],
+                'scheduled_time' => $validated['scheduled_time'] ?: null,
+                'status' => $validated['status'],
+                'notes' => $validated['notes'] ?? $schedule->notes,
+            ]);
+        } else {
+            \App\Models\TechnicianSchedule::create([
+                'customer_id' => $customer->id,
+                'technician_id' => $validated['technician_id'],
+                'type' => 'survey',
+                'status' => $validated['status'],
+                'scheduled_date' => $validated['scheduled_date'],
+                'scheduled_time' => $validated['scheduled_time'] ?: null,
+                'notes' => $validated['notes'] ?: 'Jadwal survey',
+                'area_id' => $customer->area_id,
+            ]);
+        }
+
+        \App\Models\AuditLog::createLog('Edit Jadwal Survey', $customer, $customer->status, $customer->status, 'Memperbarui jadwal survey teknisi');
+
+        return back()->with('success', 'Jadwal survey berhasil disimpan.');
+    }
+
+    /**
+     * 3. Update Laporan Hasil Survey Inline
+     */
+    public function updateSurveyReport(Request $request, Customer $customer): RedirectResponse
+    {
+        $validated = $request->validate([
+            'surveyor_id' => 'required|exists:users,id',
+            'survey_date' => 'required|date',
+            'odp_id' => 'nullable|exists:odps,id',
+            'port_number' => 'nullable|integer',
+            'distance_meters' => 'nullable|numeric',
+            'signal_loss' => 'nullable|numeric',
+            'port_available' => 'nullable|boolean',
+            'feasibility' => 'required|in:feasible,not_feasible,conditional',
+            'notes' => 'nullable|string',
+            'photos' => 'nullable|array',
+            'photos.*.label' => 'nullable|string',
+            'photos.*.file' => 'nullable|image|max:5120',
+        ]);
+
+        $survey = $customer->surveys()->first();
+
+        $photoPaths = $survey ? ($survey->photos ?? []) : [];
+        if ($request->has('photos') && is_array($request->photos)) {
+            foreach ($request->photos as $idx => $photoItem) {
+                if (isset($photoItem['file']) && $photoItem['file'] instanceof \Illuminate\Http\UploadedFile) {
+                    $path = $photoItem['file']->store('surveys', 'public');
+                    $photoPaths[] = [
+                        'label' => $photoItem['label'] ?? ('Foto ' . ($idx + 1)),
+                        'path' => $path,
+                    ];
+                }
+            }
+        }
+
+        $payload = [
+            'surveyor_id' => $validated['surveyor_id'],
+            'survey_date' => $validated['survey_date'],
+            'odp_id' => $validated['odp_id'] ?? null,
+            'port_number' => $validated['port_number'] ?? null,
+            'distance_meters' => $validated['distance_meters'] ?? null,
+            'signal_loss' => $validated['signal_loss'] ?? null,
+            'port_available' => $request->boolean('port_available', false),
+            'feasibility' => $validated['feasibility'],
+            'notes' => $validated['notes'] ?? null,
+            'photos' => !empty($photoPaths) ? $photoPaths : null,
+        ];
+
+        if ($survey) {
+            $survey->update($payload);
+        } else {
+            $payload['customer_id'] = $customer->id;
+            \App\Models\Survey::create($payload);
+        }
+
+        \App\Models\AuditLog::createLog('Edit Laporan Survey', $customer, $customer->status, $customer->status, 'Memperbarui hasil laporan survey');
+
+        return back()->with('success', 'Hasil laporan survey berhasil disimpan.');
+    }
+
+    /**
+     * 4. Update Jadwal Pasang Inline
+     */
+    public function updateInstallationSchedule(Request $request, Customer $customer): RedirectResponse
+    {
+        $validated = $request->validate([
+            'technician_id' => 'required|exists:users,id',
+            'scheduled_date' => 'required|date',
+            'scheduled_time' => 'nullable|string',
+            'status' => 'required|in:scheduled,on_the_way,working,done,cancelled',
+            'notes' => 'nullable|string',
+        ]);
+
+        if (!empty($validated['scheduled_time']) && preg_match('/^\d{2}:\d{2}:\d{2}$/', $validated['scheduled_time'])) {
+            $validated['scheduled_time'] = substr($validated['scheduled_time'], 0, 5);
+        }
+
+        $schedule = $customer->technicianSchedules()
+            ->where('type', 'installation')
+            ->first();
+
+        if ($schedule) {
+            $schedule->update([
+                'technician_id' => $validated['technician_id'],
+                'scheduled_date' => $validated['scheduled_date'],
+                'scheduled_time' => $validated['scheduled_time'] ?: null,
+                'status' => $validated['status'],
+                'notes' => $validated['notes'] ?? $schedule->notes,
+            ]);
+        } else {
+            \App\Models\TechnicianSchedule::create([
+                'customer_id' => $customer->id,
+                'technician_id' => $validated['technician_id'],
+                'type' => 'installation',
+                'status' => $validated['status'],
+                'scheduled_date' => $validated['scheduled_date'],
+                'scheduled_time' => $validated['scheduled_time'] ?: null,
+                'notes' => $validated['notes'] ?: 'Jadwal pasang',
+                'area_id' => $customer->area_id,
+            ]);
+        }
+
+        \App\Models\AuditLog::createLog('Edit Jadwal Pasang', $customer, $customer->status, $customer->status, 'Memperbarui jadwal instalasi teknisi');
+
+        return back()->with('success', 'Jadwal pasang berhasil disimpan.');
+    }
+
+    /**
+     * 5. Update Laporan Instalasi & ONT Inline
+     */
+    public function updateInstallationReport(Request $request, Customer $customer): RedirectResponse
+    {
+        $validated = $request->validate([
+            'odp_id' => 'required|exists:odps,id',
+            'port_number' => 'required|integer',
+            'serial_number' => 'required|string',
+            'mac_address' => 'nullable|string',
+            'model' => 'nullable|string',
+            'rx_power' => 'nullable|string',
+            'start_time' => 'nullable|string',
+            'end_time' => 'nullable|string',
+            'photo_odp' => 'nullable|image|max:5120',
+            'photo_installation' => 'nullable|image|max:5120',
+            'photo_ont' => 'nullable|image|max:5120',
+            'photo_customer' => 'nullable|image|max:5120',
+            'photo_redaman' => 'nullable|image|max:5120',
+        ]);
+
+        $cleanMac = !empty($validated['mac_address']) 
+            ? \App\Services\DataMigrationService::sanitizeMacAddress($validated['mac_address']) 
+            : null;
+
+        $cleanRx = !empty($validated['rx_power'])
+            ? \App\Services\DataMigrationService::parseRxPower($validated['rx_power'])
+            : null;
+
+        $ont = $customer->ont;
+        if (!$ont) {
+            $ont = \App\Models\Ont::where('serial_number', $validated['serial_number'])->first();
+            if ($ont) {
+                $ont->update(['customer_id' => $customer->id]);
+            } else {
+                $ont = \App\Models\Ont::create([
+                    'customer_id' => $customer->id,
+                    'serial_number' => $validated['serial_number'],
+                    'mac_address' => $cleanMac,
+                    'odp_id' => $validated['odp_id'],
+                    'port_number' => $validated['port_number'],
+                    'model' => $validated['model'] ?? 'Standard ONT',
+                    'status' => 'active',
+                ]);
+            }
+        }
+
+        $photoUpdates = [];
+        foreach (['photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman'] as $field) {
+            if ($request->hasFile($field)) {
+                $photoUpdates[$field] = $request->file($field)->store('ont_installations', 'public');
+            }
+        }
+
+        $ont->update(array_merge([
+            'odp_id' => $validated['odp_id'],
+            'port_number' => $validated['port_number'],
+            'serial_number' => $validated['serial_number'],
+            'mac_address' => $cleanMac ?: $ont->mac_address,
+            'model' => $validated['model'] ?: $ont->model,
+            'rx_power' => $cleanRx !== null ? $cleanRx : $ont->rx_power,
+            'start_time' => $validated['start_time'] ?? $ont->start_time,
+            'end_time' => $validated['end_time'] ?? $ont->end_time,
+        ], $photoUpdates));
+
+        // Mark port as used
+        \App\Models\OdpPort::updateOrCreate(
+            ['odp_id' => $validated['odp_id'], 'port_number' => $validated['port_number']],
+            ['status' => 'used']
+        );
+
+        \App\Models\AuditLog::createLog('Edit Laporan Instalasi', $customer, $customer->status, $customer->status, 'Memperbarui laporan instalasi & ONT');
+
+        return back()->with('success', 'Laporan instalasi berhasil disimpan.');
+    }
+
+    /**
+     * 6. Update Aktivasi & Konfigurasi Layanan Inline
+     */
+    public function updateActivation(Request $request, Customer $customer): RedirectResponse
+    {
+        $validated = $request->validate([
+            'activation_date' => 'required|date',
+            'service_status' => 'required|in:berbayar,gratis,free_home',
+            'billing_type' => 'required|in:prabayar,pascabayar',
+            'package_id' => 'nullable|exists:internet_packages,id',
+            'pppoe_user' => 'nullable|string',
+            'pppoe_password' => 'nullable|string',
+            'vlan_mode' => 'nullable|string',
+            'vlan_id' => 'nullable|string',
+            'access_mode' => 'nullable|string',
+            'ip_login' => 'nullable|string',
+            'login_user' => 'nullable|string',
+            'login_password' => 'nullable|string',
+            'free_hotspot' => 'nullable|boolean',
+            'hotspot_user' => 'nullable|string',
+            'hotspot_password' => 'nullable|string',
+            'hotspot_vlan_id' => 'nullable|string',
+        ]);
+
+        $custUpdates = [
+            'activation_date' => $validated['activation_date'],
+            'service_status' => $validated['service_status'],
+            'billing_type' => $validated['billing_type'],
+        ];
+        if (!empty($validated['package_id'])) {
+            $custUpdates['package_id'] = $validated['package_id'];
+            $pkg = \App\Models\InternetPackage::find($validated['package_id']);
+            if ($pkg) {
+                $custUpdates['base_amount'] = $pkg->price;
+            }
+        }
+        $customer->update($custUpdates);
+
+        if ($customer->ont) {
+            $customer->ont->update([
+                'pppoe_user' => $validated['pppoe_user'],
+                'pppoe_password' => $validated['pppoe_password'],
+                'vlan_mode' => $validated['vlan_mode'],
+                'vlan_id' => $validated['vlan_id'],
+                'access_mode' => $validated['access_mode'] ?? 'PPPOE',
+                'ip_login' => $validated['ip_login'],
+                'login_user' => $validated['login_user'],
+                'login_password' => $validated['login_password'],
+                'free_hotspot' => $request->boolean('free_hotspot', false),
+                'hotspot_user' => $validated['hotspot_user'],
+                'hotspot_password' => $validated['hotspot_password'],
+                'hotspot_vlan_id' => $validated['hotspot_vlan_id'],
+            ]);
+
+            try {
+                app(\App\Services\RadiusService::class)->syncCustomer($customer);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[RADIUS] Activation sync error: ' . $e->getMessage());
+            }
+        }
+
+        \App\Models\AuditLog::createLog('Edit Konfigurasi Aktivasi', $customer, $customer->status, $customer->status, 'Memperbarui data aktivasi & konfigurasi layanan');
+
+        return back()->with('success', 'Data aktivasi & konfigurasi layanan berhasil disimpan.');
     }
 
     /**
