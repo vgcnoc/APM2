@@ -11,7 +11,12 @@
                     </button>
                     <div>
                         <h1 class="text-base font-bold text-gray-900 leading-tight">Pembayaran Online</h1>
-                        <p class="text-xs text-gray-500">Sistem Pembayaran Otomatis</p>
+                        <p class="text-xs text-gray-500 flex items-center gap-1.5">
+                            <span>Sistem Pembayaran Otomatis</span>
+                            <span v-if="activeProviderName" class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 uppercase border border-indigo-100">
+                                {{ activeProviderName }}
+                            </span>
+                        </p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
@@ -29,7 +34,7 @@
             <!-- Jika Sudah Lunas -->
             <div v-if="invoice.status === 'paid'" class="bg-white rounded-3xl p-8 border border-emerald-100 shadow-xl text-center space-y-4 animate-fade-in-up">
                 <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
-                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                 </div>
                 <div>
                     <h2 class="text-2xl font-black text-gray-900">Pembayaran Berhasil!</h2>
@@ -95,7 +100,10 @@
 
                     <!-- Pilihan Metode Pembayaran (Channels) -->
                     <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">
-                        <h3 class="text-sm font-bold text-gray-900">Pilih Saluran Pembayaran</h3>
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm font-bold text-gray-900">Pilih Saluran Pembayaran</h3>
+                            <span class="text-[11px] text-gray-400">{{ channels.length }} Opsi Tersedia</span>
+                        </div>
                         
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <button 
@@ -103,14 +111,16 @@
                                 :key="ch.code"
                                 @click="switchChannel(ch.code)"
                                 type="button"
-                                class="p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between gap-3 cursor-pointer"
-                                :class="selectedChannel === ch.code ? 'border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-500/20' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50/50'"
+                                class="p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between gap-3 cursor-pointer group"
+                                :class="selectedChannel === ch.code ? 'border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-500/20' : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50/70'"
                             >
                                 <div class="min-w-0">
-                                    <div class="text-xs font-bold text-gray-900 truncate">{{ ch.name }}</div>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-xs font-bold text-gray-900 truncate">{{ ch.name }}</span>
+                                    </div>
                                     <div class="text-[10px] text-gray-500 truncate mt-0.5">{{ ch.description }}</div>
                                 </div>
-                                <div class="w-5 h-5 rounded-full border flex items-center justify-center shrink-0" :class="selectedChannel === ch.code ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-300'">
+                                <div class="w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-colors" :class="selectedChannel === ch.code ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-300 group-hover:border-gray-400'">
                                     <svg v-if="selectedChannel === ch.code" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
                                 </div>
                             </button>
@@ -122,6 +132,32 @@
                 <div class="lg:col-span-5 space-y-6">
                     <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-5 text-center relative overflow-hidden">
                         
+                        <!-- Header Status Card -->
+                        <div class="flex items-center justify-between pb-3 border-b border-gray-100 text-xs">
+                            <span class="font-bold text-gray-600 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                                Instan & Otomatis
+                            </span>
+                            <span v-if="activeProviderName" class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 uppercase">
+                                {{ activeProviderName }}
+                            </span>
+                        </div>
+
+                        <!-- Opsi Tombol Link Eksternal Portal Pembayaran (Jika Gateway menyediakan portal langsung) -->
+                        <div v-if="isExternalCheckoutUrl" class="p-3 bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 rounded-2xl border border-indigo-100 text-left space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-indigo-900">Portal Pembayaran Resmi</span>
+                                <span class="text-[10px] text-indigo-600 font-semibold">Tersedia</span>
+                            </div>
+                            <p class="text-[11px] text-gray-600">
+                                Anda juga dapat membuka langsung halaman pembayaran resmi untuk metode lebih lengkap:
+                            </p>
+                            <a :href="paymentData.checkout_url" target="_blank" class="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition">
+                                <span>Buka Halaman Pembayaran</span>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                            </a>
+                        </div>
+
                         <!-- Mode QRIS -->
                         <div v-if="selectedChannel === 'QRIS'" class="space-y-4">
                             <div class="flex items-center justify-center gap-2">
@@ -134,15 +170,44 @@
                             <!-- QR Code Box -->
                             <div class="p-4 bg-white rounded-2xl border-2 border-gray-200/80 inline-block shadow-inner mx-auto">
                                 <img 
-                                    :src="'https://api.qrserver.com/v1/create-qr-code/?size=230x230&margin=10&data=' + encodeURIComponent(paymentData.qr_string || paymentData.checkout_url || invoice.invoice_number)" 
+                                    :src="'https://api.qrserver.com/v1/create-qr-code/?size=230x230&margin=10&data=' + encodeURIComponent(paymentData.qr_string || paymentData.qr_url || paymentData.checkout_url || invoice.invoice_number)" 
                                     alt="QRIS Pembayaran"
                                     class="w-52 h-52 sm:w-56 sm:h-56 mx-auto object-contain rounded-lg"
                                 />
                             </div>
 
-                            <p class="text-[11px] text-gray-500 max-w-xs mx-auto">
-                                Buka aplikasi <strong>BCA, BRImo, Livin, GoPay, OVO, Dana, ShopeePay</strong> atau bank lain lalu scan kode QR di atas.
+                            <p class="text-[11px] text-gray-500 max-w-xs mx-auto leading-relaxed">
+                                Buka aplikasi <strong>BCA, BRImo, Livin, GoPay, OVO, Dana, ShopeePay, LinkAja</strong> atau m-Banking lain lalu scan kode QR di atas.
                             </p>
+                        </div>
+
+                        <!-- Mode Gerai Retail (Alfamart / Indomaret) -->
+                        <div v-else-if="selectedChannel === 'ALFAMART' || selectedChannel === 'INDOMARET'" class="space-y-4 text-left">
+                            <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+                                <span class="text-xs font-bold text-gray-700 uppercase">Kasir {{ selectedChannel }}</span>
+                                <span class="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full font-bold">Bayar di Kasir</span>
+                            </div>
+
+                            <div class="p-4 bg-gray-50 rounded-2xl border border-gray-200 text-center space-y-1">
+                                <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Kode Pembayaran Kasir</span>
+                                <div class="text-2xl font-black text-gray-900 font-mono tracking-wider flex items-center justify-center gap-2">
+                                    <span>{{ paymentData.pay_code || ('1100' + invoice.id) }}</span>
+                                    <button @click="copyToClipboard(paymentData.pay_code || ('1100' + invoice.id))" class="text-xs text-indigo-600 hover:text-indigo-800 p-1.5 rounded-lg hover:bg-white transition cursor-pointer" title="Salin">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                    </button>
+                                </div>
+                                <span v-if="copied" class="text-[10px] text-emerald-600 font-bold block animate-fade-in">✓ Kode berhasil disalin!</span>
+                            </div>
+
+                            <div class="text-[11px] text-gray-500 space-y-1 bg-amber-50/50 p-3 rounded-xl border border-amber-100">
+                                <p class="font-semibold text-amber-900">Instruksi Pembayaran di Kasir:</p>
+                                <ol class="list-decimal pl-4 space-y-0.5 text-[10px] text-gray-600">
+                                    <li>Sampaikan ke kasir {{ selectedChannel === 'ALFAMART' ? 'Alfamart' : 'Indomaret' }} ingin membayar tagihan.</li>
+                                    <li>Beritahukan Kode Pembayaran di atas ke kasir.</li>
+                                    <li>Pastikan nama pembayar dan nominal tagihan sesuai.</li>
+                                    <li>Simpan struk pembayaran sebagai bukti.</li>
+                                </ol>
+                            </div>
                         </div>
 
                         <!-- Mode Virtual Account -->
@@ -164,6 +229,15 @@
                             </div>
                         </div>
 
+                        <!-- Petunjuk Singkat Pembayaran -->
+                        <div v-if="paymentData.instructions && paymentData.instructions.length > 0" class="text-left bg-gray-50 p-3.5 rounded-xl border border-gray-200/60 text-[11px] space-y-1 text-gray-600">
+                            <span class="font-bold text-gray-800 block text-xs mb-1">Panduan Pembayaran:</span>
+                            <div v-for="(step, idx) in paymentData.instructions" :key="idx" class="flex items-start gap-1.5">
+                                <span class="text-indigo-600 font-bold text-[10px]">{{ idx + 1 }}.</span>
+                                <span>{{ step }}</span>
+                            </div>
+                        </div>
+
                         <!-- Tombol Simulasi / Cek Status Pembayaran Otomatis -->
                         <div class="pt-2 border-t border-gray-100 space-y-2">
                             <button 
@@ -176,7 +250,7 @@
                                 <span>{{ processing ? 'Memverifikasi Pembayaran...' : 'Konfirmasi / Simulasi Pembayaran Sukses' }}</span>
                             </button>
                             <p class="text-[10px] text-gray-400">
-                                Pada mode integrasi aktif, status pembayaran akan terupdate otomatis secara real-time via Webhook.
+                                Pada mode integrasi resmi aktif, status pembayaran akan terupdate otomatis secara real-time via Webhook.
                             </p>
                         </div>
 
@@ -189,7 +263,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 
@@ -203,6 +277,27 @@ const props = defineProps({
 const selectedChannel = ref(props.invoice.payment_channel || 'QRIS');
 const copied = ref(false);
 const processing = ref(false);
+
+const activeProviderName = computed(() => {
+    const p = props.paymentData?.provider || props.config?.provider;
+    const map = {
+        tripay: 'Tripay',
+        midtrans: 'Midtrans',
+        xendit: 'Xendit',
+        duitku: 'Duitku',
+        ipaymu: 'iPaymu',
+        paydisini: 'Paydisini',
+        mayar: 'Mayar',
+        simulator: 'Sandbox Simulator',
+    };
+    return map[p] || (p && p !== 'none' ? p.toUpperCase() : null);
+});
+
+const isExternalCheckoutUrl = computed(() => {
+    const url = props.paymentData?.checkout_url;
+    if (!url) return false;
+    return url.startsWith('http') && !url.includes('/payment-gateway/pay/' + props.invoice.id);
+});
 
 const switchChannel = (code) => {
     selectedChannel.value = code;

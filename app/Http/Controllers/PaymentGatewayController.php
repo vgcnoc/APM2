@@ -97,7 +97,7 @@ class PaymentGatewayController extends Controller
     }
 
     /**
-     * Webhook Callback dari Payment Gateway (Tripay, Midtrans, dll)
+     * Webhook Callback dari Payment Gateway (Tripay, Midtrans, Xendit, Duitku, iPaymu, Paydisini, Mayar, dll)
      */
     public function callback(Request $request)
     {
@@ -113,6 +113,7 @@ class PaymentGatewayController extends Controller
             $signature = hash_hmac('sha256', $json, $config['private_key']);
 
             if ($callbackSignature !== $signature) {
+                Log::warning('[PaymentGateway Webhook] Tripay invalid signature');
                 return response()->json(['success' => false, 'message' => 'Invalid signature'], 403);
             }
 
@@ -147,12 +148,15 @@ class PaymentGatewayController extends Controller
 
             $signature = hash('sha512', $orderId . $statusCode . $grossAmount . $serverKey);
             if ($inputSignature !== $signature) {
+                Log::warning('[PaymentGateway Webhook] Midtrans invalid signature');
                 return response()->json(['success' => false, 'message' => 'Invalid signature'], 403);
             }
 
             $transactionStatus = $request->transaction_status;
             if ($transactionStatus === 'settlement' || $transactionStatus === 'capture') {
-                $invoice = Invoice::where('payment_ref', $orderId)->first();
+                $invoice = Invoice::where('payment_ref', $orderId)
+                    ->orWhere('invoice_number', explode('-', $orderId)[0])
+                    ->first();
                 if ($invoice) {
                     $this->pgService->settleInvoice($invoice, [
                         'channel' => $request->payment_type ?? 'QRIS',
@@ -165,13 +169,147 @@ class PaymentGatewayController extends Controller
             return response()->json(['success' => true]);
         }
 
-        // 3. Fallback generic callback
-        $ref = $request->reference ?? $request->order_id ?? $request->merchant_ref;
+        // 3. Validasi Xendit Callback
+        if ($provider === 'xendit') {
+            $xenditToken = $request->header('x-callback-token');
+            $expectedToken = $config['callback_token'] ?: $config['private_key'];
+
+            if (!empty($expectedToken) && $xenditToken !== $expectedToken) {
+                Log::warning('[PaymentGateway Webhook] Xendit invalid token');
+                return response()->json(['success' => false, 'message' => 'Invalid callback token'], 403);
+            }
+
+            $status = strtoupper($request->status ?? '');
+            if ($status === 'PAID') {
+                $externalId = $request->external_id;
+                $invoice = Invoice::where('payment_ref', $request->id)
+                    ->orWhere('payment_ref', $externalId)
+                    ->orWhere('invoice_number', explode('-', $externalId)[0])
+                    ->first();
+
+                if ($invoice) {
+                    $this->pgService->settleInvoice($invoice, [
+                        'channel' => $request->payment_method ?? 'XENDIT',
+                        'reference' => $request->id ?? $externalId,
+                    ]);
+                    return response()->json(['success' => true]);
+                }
+            }
+
+            return response()->json(['success' => true]);
+        }
+
+        // 4. Validasi Duitku Callback
+        if ($provider === 'duitku') {
+            $merchantOrderId = $request->merchantOrderId;
+            $amount = $request->amount;
+            $resultCode = $request->resultCode;
+            $signature = $request->signature;
+
+            $expectedSignature = md5($config['merchant_id'] . $amount . $merchantOrderId . $config['api_key']);
+            if ($signature !== $expectedSignature) {
+                Log::warning('[PaymentGateway Webhook] Duitku invalid signature');
+                return response()->json(['success' => false, 'message' => 'Invalid signature'], 403);
+            }
+
+            if ($resultCode === '00') {
+                $invoice = Invoice::where('payment_ref', $request->reference ?? '')
+                    ->orWhere('payment_ref', $merchantOrderId)
+                    ->orWhere('invoice_number', explode('-', $merchantOrderId)[0])
+                    ->first();
+
+                if ($invoice) {
+                    $this->pgService->settleInvoice($invoice, [
+                        'channel' => $request->paymentCode ?? 'DUITKU',
+                        'reference' => $request->reference ?? $merchantOrderId,
+                    ]);
+                    return response()->json(['success' => true]);
+                }
+            }
+
+            return response()->json(['success' => true]);
+        }
+
+        // 5. Validasi iPaymu Callback
+        if ($provider === 'ipaymu') {
+            $status = strtolower($request->status ?? '');
+            if ($status === 'berhasil') {
+                $trxId = $request->trx_id ?? $request->sid;
+                $invoice = Invoice::where('payment_ref', $trxId)
+                    ->orWhere('payment_ref', $request->reference)
+                    ->first();
+
+                if ($invoice) {
+                    $this->pgService->settleInvoice($invoice, [
+                        'channel' => $request->channel ?? 'IPAYMU',
+                        'reference' => $trxId,
+                    ]);
+                    return response()->json(['success' => true]);
+                }
+            }
+
+            return response()->json(['success' => true]);
+        }
+
+        // 6. Validasi Paydisini Callback
+        if ($provider === 'paydisini') {
+            $uniqueCode = $request->unique_code;
+            $status = $request->status;
+            $signature = $request->signature;
+
+            $expectedSignature = md5($config['api_key'] . $uniqueCode . 'Callback');
+            if ($signature !== $expectedSignature) {
+                Log::warning('[PaymentGateway Webhook] Paydisini invalid signature');
+                return response()->json(['success' => false, 'message' => 'Invalid signature'], 403);
+            }
+
+            if ($status === 'Success') {
+                $invoice = Invoice::where('payment_ref', $request->pay_id ?? '')
+                    ->orWhere('payment_ref', $uniqueCode)
+                    ->orWhere('invoice_number', explode('-', $uniqueCode)[0])
+                    ->first();
+
+                if ($invoice) {
+                    $this->pgService->settleInvoice($invoice, [
+                        'channel' => $request->service_name ?? 'PAYDISINI',
+                        'reference' => $request->pay_id ?? $uniqueCode,
+                    ]);
+                    return response()->json(['success' => true, 'message' => 'Payment settled']);
+                }
+            }
+
+            return response()->json(['success' => true]);
+        }
+
+        // 7. Validasi Mayar Callback
+        if ($provider === 'mayar') {
+            $event = $request->event ?? '';
+            if (in_array($event, ['payment.received', 'payment.success'])) {
+                $data = $request->data ?? [];
+                $id = $data['id'] ?? null;
+                $invoice = Invoice::where('payment_ref', $id)->first();
+
+                if ($invoice) {
+                    $this->pgService->settleInvoice($invoice, [
+                        'channel' => 'MAYAR',
+                        'reference' => $id,
+                    ]);
+                    return response()->json(['success' => true]);
+                }
+            }
+
+            return response()->json(['success' => true]);
+        }
+
+        // 8. Fallback Generic Callback
+        $ref = $request->reference ?? $request->order_id ?? $request->merchant_ref ?? $request->external_id ?? $request->unique_code;
         if ($ref) {
-            $invoice = Invoice::where('payment_ref', $ref)->first();
+            $invoice = Invoice::where('payment_ref', $ref)
+                ->orWhere('invoice_number', explode('-', $ref)[0])
+                ->first();
             if ($invoice) {
                 $this->pgService->settleInvoice($invoice, [
-                    'channel' => $request->channel ?? 'QRIS',
+                    'channel' => $request->channel ?? $request->payment_method ?? 'PAYMENT_GATEWAY',
                     'reference' => $ref,
                 ]);
             }

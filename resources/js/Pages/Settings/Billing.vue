@@ -357,41 +357,116 @@
                             <div class="space-y-5">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
-                                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Provider Gateway</label>
-                                        <select v-model="form.pg_provider" class="form-select block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                            <option value="none">Tidak Menggunakan (Manual)</option>
-                                            <option value="tripay">Tripay</option>
-                                            <option value="midtrans">Midtrans</option>
-                                            <option value="duitku">Duitku</option>
+                                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Pilihan Gateway Provider</label>
+                                        <select v-model="form.pg_provider" class="form-select block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-medium">
+                                            <option value="none">❌ Tidak Menggunakan (Hanya Rekening Bank Manual)</option>
+                                            <option value="tripay">⚡ Tripay (QRIS, VA Bank Lengkap, Alfamart & Indomaret)</option>
+                                            <option value="midtrans">💳 Midtrans (Snap PopUp, QRIS Gopay/ShopeePay, VA Lengkap)</option>
+                                            <option value="xendit">🚀 Xendit (Invoice XenPayments, VA Terlengkap, QRIS, E-Wallet)</option>
+                                            <option value="duitku">🪙 Duitku (PopUp & Redirect, Fee Kompetitif, Semua Bank)</option>
+                                            <option value="ipaymu">🎯 iPaymu (Direct Payment, Populer ISP Lokal & RT/RW Net)</option>
+                                            <option value="paydisini">💰 Paydisini (Fee Termurah & Instan, Favorit ISP MikroTik)</option>
+                                            <option value="mayar">🌟 Mayar (Invoice Modern Digital & Link Pembayaran Instan)</option>
+                                            <option value="simulator">🧪 Sandbox Simulator Cerdas (Testing Otomatis Tanpa API Key)</option>
                                         </select>
                                     </div>
                                     <div v-if="form.pg_provider !== 'none'">
-                                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Environment</label>
-                                        <select v-model="form.pg_environment" class="form-select block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                            <option value="sandbox">Sandbox (Testing)</option>
-                                            <option value="production">Production (Live)</option>
+                                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Mode Environment</label>
+                                        <select v-model="form.pg_environment" class="form-select block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-medium">
+                                            <option value="sandbox">Sandbox / Uji Coba (Development)</option>
+                                            <option value="production">Production / Live Transaksi Nyata</option>
                                         </select>
                                     </div>
                                 </div>
 
+                                <!-- Preview Badge & Channel Supported -->
                                 <Transition name="fade">
-                                    <div v-if="form.pg_provider !== 'none'" class="grid grid-cols-1 md:grid-cols-2 gap-5 bg-gray-50 p-5 rounded-xl border border-gray-200">
+                                    <div v-if="form.pg_provider !== 'none'" class="p-4 rounded-xl border space-y-3" :class="form.pg_provider === 'simulator' ? 'bg-amber-50/50 border-amber-200' : 'bg-indigo-50/40 border-indigo-100'">
+                                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-2.5 h-2.5 rounded-full" :class="form.pg_environment === 'production' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'"></span>
+                                                <span class="text-xs font-bold text-gray-900 uppercase">
+                                                    Status Gateway: {{ form.pg_provider.toUpperCase() }} ({{ form.pg_environment === 'production' ? 'LIVE PRODUCTION' : 'SANDBOX TESTING' }})
+                                                </span>
+                                            </div>
+                                            <!-- Tombol Salin Webhook -->
+                                            <div class="flex items-center gap-2">
+                                                <button type="button" @click="copyWebhookUrl" class="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-gray-50 text-indigo-700 text-xs font-semibold rounded-lg border border-indigo-200 shadow-2xs transition-colors cursor-pointer" title="Salin URL Webhook Callback">
+                                                    <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                                    Salin Webhook URL
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Webhook URL Display -->
+                                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 bg-white/90 p-2.5 rounded-lg border border-gray-200 text-xs">
+                                            <span class="font-bold text-gray-500 shrink-0">Callback URL:</span>
+                                            <code class="font-mono text-indigo-700 bg-gray-50 px-2 py-0.5 rounded text-[11px] select-all flex-1 break-all">{{ webhookUrl }}</code>
+                                            <span class="text-[10px] text-gray-400 shrink-0">(Daftarkan di dashboard {{ form.pg_provider }})</span>
+                                        </div>
+
+                                        <!-- Channel Badges -->
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Metode Didukung:</span>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-gray-700 border border-gray-200 shadow-2xs">QRIS (Semua E-Wallet)</span>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-gray-700 border border-gray-200 shadow-2xs">BCA VA</span>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-gray-700 border border-gray-200 shadow-2xs">BRI VA</span>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-gray-700 border border-gray-200 shadow-2xs">BNI VA</span>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-gray-700 border border-gray-200 shadow-2xs">Mandiri VA</span>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-gray-700 border border-gray-200 shadow-2xs">Permata / CIMB / BSI</span>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-gray-700 border border-gray-200 shadow-2xs">Alfamart & Indomaret</span>
+                                        </div>
+                                    </div>
+                                </Transition>
+
+                                <!-- Form Kredensial Gateway Sesuai Provider Yang Dipilih -->
+                                <Transition name="fade">
+                                    <div v-if="form.pg_provider !== 'none' && form.pg_provider !== 'simulator'" class="grid grid-cols-1 md:grid-cols-2 gap-5 bg-gray-50 p-5 rounded-xl border border-gray-200">
+                                        <!-- Merchant ID / Code / VA -->
+                                        <div v-if="['tripay', 'midtrans', 'duitku', 'ipaymu'].includes(form.pg_provider)">
+                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                                                {{ form.pg_provider === 'tripay' ? 'Merchant Code' : (form.pg_provider === 'midtrans' ? 'Merchant ID' : (form.pg_provider === 'duitku' ? 'Merchant Code Duitku' : 'Nomor Virtual Account / User ID iPaymu')) }}
+                                            </label>
+                                            <input type="text" v-model="form.pg_merchant_id" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono" :placeholder="form.pg_provider === 'tripay' ? 'e.g. T12345' : (form.pg_provider === 'duitku' ? 'e.g. D1234' : 'e.g. 000000XXXXXXXXXX')">
+                                            <p class="text-[10px] text-gray-400 mt-1">Ditemukan pada menu Pengaturan Akun / Merchant di dashboard.</p>
+                                        </div>
+
+                                        <!-- API Key / Server Key / Secret Key -->
                                         <div>
-                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Merchant Code / ID</label>
-                                            <input type="text" v-model="form.pg_merchant_id" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g. TXXXX">
+                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                                                {{ form.pg_provider === 'midtrans' ? 'Server Key' : (form.pg_provider === 'xendit' ? 'Secret API Key' : 'API Key') }}
+                                            </label>
+                                            <input type="text" v-model="form.pg_api_key" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono" :placeholder="form.pg_provider === 'xendit' ? 'xnd_development_... / xnd_production_...' : (form.pg_provider === 'midtrans' ? 'SB-Mid-server-... / Mid-server-...' : 'API Key gateway...')">
+                                            <p class="text-[10px] text-gray-400 mt-1">Kunci API utama untuk membuat transaksi tagihan pelanggan.</p>
                                         </div>
-                                        <div>
-                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">API Key</label>
-                                            <input type="text" v-model="form.pg_api_key" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g. dev-xxx...">
+
+                                        <!-- Private Key / Client Key -->
+                                        <div v-if="['tripay', 'midtrans'].includes(form.pg_provider)">
+                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                                                {{ form.pg_provider === 'midtrans' ? 'Client Key' : 'Private Key' }}
+                                            </label>
+                                            <input type="password" v-model="form.pg_private_key" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono" placeholder="Kunci rahasia private/client key...">
+                                            <p class="text-[10px] text-gray-400 mt-1">Digunakan untuk validasi signature transaksi & callback.</p>
                                         </div>
-                                        <div>
-                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Private Key</label>
-                                            <input type="password" v-model="form.pg_private_key" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g. xxxx-xxxx-xxxx">
+
+                                        <!-- Callback Token / Webhook Verification -->
+                                        <div v-if="['tripay', 'xendit', 'paydisini'].includes(form.pg_provider)">
+                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                                                {{ form.pg_provider === 'xendit' ? 'Webhook Verification Token (x-callback-token)' : 'Callback Secret / Token' }}
+                                            </label>
+                                            <input type="password" v-model="form.pg_callback_token" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono" placeholder="Token verifikasi webhook...">
+                                            <p class="text-[10px] text-gray-400 mt-1">Digunakan untuk memastikan webhook benar-benar dikirim dari gateway.</p>
                                         </div>
-                                        <div v-if="form.pg_provider === 'tripay'">
-                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Callback Token</label>
-                                            <input type="password" v-model="form.pg_callback_token" class="form-input block w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Token dari webhook (optional)">
+                                    </div>
+
+                                    <div v-else-if="form.pg_provider === 'simulator'" class="p-4 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800 space-y-1">
+                                        <div class="font-bold flex items-center gap-1.5 text-amber-900">
+                                            <svg class="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                                            Mode Simulator Sandbox Aktif
                                         </div>
+                                        <p>
+                                            Sistem akan mensimulasikan QRIS dan Virtual Account secara otomatis tanpa membutuhkan akun/API Key eksternal. Anda dan pelanggan dapat menguji alur pembayaran dan menekan tombol simulasi sukses untuk verifikasi otomatis.
+                                        </p>
                                     </div>
                                 </Transition>
                             </div>
@@ -822,6 +897,26 @@ const form = useForm({
 
 const savingSection = ref(null);
 const savedSection = ref(null);
+
+const webhookUrl = computed(() => {
+    return typeof window !== 'undefined' ? `${window.location.origin}/api/payment-gateway/callback` : '/api/payment-gateway/callback';
+});
+
+function copyWebhookUrl() {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        navigator.clipboard.writeText(webhookUrl.value);
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Webhook URL Berhasil Disalin!',
+            text: 'Tempelkan URL ini pada menu Webhook / Notification URL di dashboard gateway Anda.',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+    }
+}
 
 function addBank() {
     form.payment_banks.push({

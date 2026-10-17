@@ -48,7 +48,7 @@ class PaymentGatewayService
                 'name' => 'BCA Virtual Account',
                 'group' => 'Virtual Account',
                 'icon' => 'bank',
-                'description' => 'Transfer via ATM, BCA Mobile, KlikBCA',
+                'description' => 'Transfer via myBCA, BCA Mobile, KlikBCA, ATM BCA',
             ],
             [
                 'code' => 'BRIVA',
@@ -62,7 +62,7 @@ class PaymentGatewayService
                 'name' => 'BNI Virtual Account',
                 'group' => 'Virtual Account',
                 'icon' => 'bank',
-                'description' => 'Transfer via BNI Mobile, ATM BNI, SMS Banking',
+                'description' => 'Transfer via BNI Mobile Banking, ATM BNI, SMS Banking',
             ],
             [
                 'code' => 'MANDIRIVA',
@@ -70,6 +70,41 @@ class PaymentGatewayService
                 'group' => 'Virtual Account',
                 'icon' => 'bank',
                 'description' => 'Transfer via Livin by Mandiri, ATM Mandiri',
+            ],
+            [
+                'code' => 'PERMATAVA',
+                'name' => 'Permata Virtual Account',
+                'group' => 'Virtual Account',
+                'icon' => 'bank',
+                'description' => 'Transfer via PermataMobile X, ATM Permata, Prima/Bersama',
+            ],
+            [
+                'code' => 'CIMBVA',
+                'name' => 'CIMB Niaga Virtual Account',
+                'group' => 'Virtual Account',
+                'icon' => 'bank',
+                'description' => 'Transfer via OCTO Mobile, OCTO Clicks, ATM CIMB',
+            ],
+            [
+                'code' => 'BSIVA',
+                'name' => 'BSI Virtual Account',
+                'group' => 'Virtual Account',
+                'icon' => 'bank',
+                'description' => 'Transfer via BSI Mobile, ATM BSI, Bank Syariah Indonesia',
+            ],
+            [
+                'code' => 'ALFAMART',
+                'name' => 'Gerai Alfamart / Alfamidi',
+                'group' => 'Convenience Store',
+                'icon' => 'store',
+                'description' => 'Bayar tunai di kasir Alfamart, Alfamidi, atau Dan+Dan terdekat',
+            ],
+            [
+                'code' => 'INDOMARET',
+                'name' => 'Gerai Indomaret / Ceriamart',
+                'group' => 'Convenience Store',
+                'icon' => 'store',
+                'description' => 'Bayar tunai di kasir Indomaret atau Ceriamart terdekat',
             ],
         ];
     }
@@ -80,22 +115,54 @@ class PaymentGatewayService
     public function createPaymentTransaction(Invoice $invoice, string $channel = 'QRIS'): array
     {
         $config = $this->getConfig();
-        $customer = $invoice->customer;
-        $amount = (float) $invoice->remaining > 0 ? (float) $invoice->remaining : (float) $invoice->amount;
-
         $referenceId = 'PG-' . date('YmdHis') . '-' . $invoice->id;
 
-        // 1. Jika provider Tripay
-        if ($config['provider'] === 'tripay' && !empty($config['api_key']) && !empty($config['private_key'])) {
-            return $this->createTripayTransaction($invoice, $channel, $referenceId, $config);
+        // Pilih provider yang aktif
+        switch ($config['provider']) {
+            case 'tripay':
+                if (!empty($config['api_key']) && !empty($config['private_key'])) {
+                    return $this->createTripayTransaction($invoice, $channel, $referenceId, $config);
+                }
+                break;
+
+            case 'midtrans':
+                if (!empty($config['api_key'])) {
+                    return $this->createMidtransTransaction($invoice, $channel, $referenceId, $config);
+                }
+                break;
+
+            case 'xendit':
+                if (!empty($config['api_key'])) {
+                    return $this->createXenditTransaction($invoice, $channel, $referenceId, $config);
+                }
+                break;
+
+            case 'duitku':
+                if (!empty($config['api_key']) && !empty($config['merchant_id'])) {
+                    return $this->createDuitkuTransaction($invoice, $channel, $referenceId, $config);
+                }
+                break;
+
+            case 'ipaymu':
+                if (!empty($config['api_key']) && !empty($config['merchant_id'])) {
+                    return $this->createIpaymuTransaction($invoice, $channel, $referenceId, $config);
+                }
+                break;
+
+            case 'paydisini':
+                if (!empty($config['api_key'])) {
+                    return $this->createPaydisiniTransaction($invoice, $channel, $referenceId, $config);
+                }
+                break;
+
+            case 'mayar':
+                if (!empty($config['api_key'])) {
+                    return $this->createMayarTransaction($invoice, $channel, $referenceId, $config);
+                }
+                break;
         }
 
-        // 2. Jika provider Midtrans
-        if ($config['provider'] === 'midtrans' && !empty($config['api_key'])) {
-            return $this->createMidtransTransaction($invoice, $channel, $referenceId, $config);
-        }
-
-        // 3. Fallback / Built-in Automatic Gateway Simulation (Sandbox Cerdas)
+        // Fallback / Built-in Automatic Gateway Simulation (Sandbox Cerdas)
         return $this->createSimulatedTransaction($invoice, $channel, $referenceId);
     }
 
@@ -130,7 +197,7 @@ class PaymentGatewayService
                 ]
             ],
             'callback_url'   => url('/api/payment-gateway/callback'),
-            'return_url'     => url('/payment-gateway/status/' . $invoice->id),
+            'return_url'     => url('/payment-gateway/pay/' . $invoice->id),
             'expired_time'   => time() + (24 * 3600),
             'signature'      => $signature
         ];
@@ -170,7 +237,6 @@ class PaymentGatewayService
             Log::error('[PaymentGateway] Tripay Exception: ' . $e->getMessage());
         }
 
-        // Jika tripay gagal, fallback ke simulasi cerdas
         return $this->createSimulatedTransaction($invoice, $channel, $referenceId);
     }
 
@@ -184,7 +250,7 @@ class PaymentGatewayService
             ? 'https://app.midtrans.com/snap/v1/transactions'
             : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
 
-        $serverKey = $config['api_key']; // Server key
+        $serverKey = $config['api_key'];
         $amount = (int) round($invoice->remaining > 0 ? $invoice->remaining : $invoice->amount);
         $customer = $invoice->customer;
 
@@ -235,6 +301,350 @@ class PaymentGatewayService
     }
 
     /**
+     * Buat transaksi via Xendit Invoices API
+     */
+    protected function createXenditTransaction(Invoice $invoice, string $channel, string $referenceId, array $config): array
+    {
+        $endpoint = 'https://api.xendit.co/v2/invoices';
+        $amount = (int) round($invoice->remaining > 0 ? $invoice->remaining : $invoice->amount);
+        $customer = $invoice->customer;
+        $externalId = $invoice->invoice_number . '-' . time();
+
+        $payload = [
+            'external_id' => $externalId,
+            'amount' => $amount,
+            'payer_email' => ($customer && $customer->email) ? $customer->email : 'billing@apm.net',
+            'description' => $invoice->notes ?: ('Pembayaran ' . $invoice->invoice_number),
+            'invoice_duration' => 86400,
+            'customer' => [
+                'given_names' => $customer ? $customer->name : 'Pelanggan APM',
+                'mobile_number' => ($customer && $customer->phone) ? $customer->phone : '081234567890',
+            ],
+            'success_redirect_url' => url('/payment-gateway/pay/' . $invoice->id),
+            'failure_redirect_url' => url('/payment-gateway/pay/' . $invoice->id),
+        ];
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Basic ' . base64_encode($config['api_key'] . ':'),
+                'Content-Type' => 'application/json'
+            ])->timeout(15)->post($endpoint, $payload);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $invoice->update([
+                    'payment_ref' => $data['id'] ?? $externalId,
+                    'payment_url' => $data['invoice_url'] ?? null,
+                    'payment_channel' => $channel,
+                    'payment_gateway_payload' => json_encode($data)
+                ]);
+
+                return [
+                    'success' => true,
+                    'provider' => 'xendit',
+                    'reference' => $data['id'] ?? $externalId,
+                    'merchant_ref' => $externalId,
+                    'checkout_url' => $data['invoice_url'] ?? null,
+                    'amount' => $amount,
+                    'instructions' => [
+                        'Klik tombol Buka Portal Pembayaran Xendit.',
+                        'Pilih metode pembayaran (QRIS, VA Bank, E-Wallet, atau Gerai Retail).',
+                        'Selesaikan pembayaran sesuai instruksi di halaman Xendit.'
+                    ],
+                ];
+            }
+            Log::warning('[PaymentGateway] Xendit create failed: ' . $response->body());
+        } catch (\Exception $e) {
+            Log::error('[PaymentGateway] Xendit Exception: ' . $e->getMessage());
+        }
+
+        return $this->createSimulatedTransaction($invoice, $channel, $referenceId);
+    }
+
+    /**
+     * Buat transaksi via Duitku API
+     */
+    protected function createDuitkuTransaction(Invoice $invoice, string $channel, string $referenceId, array $config): array
+    {
+        $isProduction = $config['environment'] === 'production';
+        $endpoint = $isProduction 
+            ? 'https://passport.duitku.com/webapi/api/merchant/v2/inquiry'
+            : 'https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry';
+
+        $amount = (int) round($invoice->remaining > 0 ? $invoice->remaining : $invoice->amount);
+        $customer = $invoice->customer;
+        $merchantOrderId = $invoice->invoice_number . '-' . time();
+        $signature = md5($config['merchant_id'] . $merchantOrderId . $amount . $config['api_key']);
+
+        $channelMap = [
+            'QRIS' => 'SP',
+            'BCAVA' => 'BC',
+            'BRIVA' => 'BR',
+            'BNIVA' => 'I1',
+            'MANDIRIVA' => 'M2',
+            'PERMATAVA' => 'BT',
+            'CIMBVA' => 'B1',
+            'ALFAMART' => 'FT',
+            'INDOMARET' => 'IR',
+        ];
+        $duitkuMethod = $channelMap[$channel] ?? 'SP';
+
+        $payload = [
+            'merchantCode' => $config['merchant_id'],
+            'paymentAmount' => $amount,
+            'paymentMethod' => $duitkuMethod,
+            'merchantOrderId' => $merchantOrderId,
+            'productDetails' => $invoice->notes ?: ('Pembayaran ' . $invoice->invoice_number),
+            'email' => ($customer && $customer->email) ? $customer->email : 'billing@apm.net',
+            'phoneNumber' => ($customer && $customer->phone) ? $customer->phone : '081234567890',
+            'callbackUrl' => url('/api/payment-gateway/callback'),
+            'returnUrl' => url('/payment-gateway/pay/' . $invoice->id),
+            'signature' => $signature,
+            'expiryPeriod' => 1440,
+        ];
+
+        try {
+            $response = Http::timeout(15)->post($endpoint, $payload);
+            if ($response->successful()) {
+                $data = $response->json();
+                if (($data['statusCode'] ?? '') === '00') {
+                    $invoice->update([
+                        'payment_ref' => $data['reference'] ?? $merchantOrderId,
+                        'payment_url' => $data['paymentUrl'] ?? null,
+                        'payment_channel' => $channel,
+                        'payment_gateway_payload' => json_encode($data)
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'provider' => 'duitku',
+                        'reference' => $data['reference'] ?? $merchantOrderId,
+                        'merchant_ref' => $merchantOrderId,
+                        'pay_code' => $data['vaNumber'] ?? null,
+                        'qr_string' => $data['qrString'] ?? null,
+                        'checkout_url' => $data['paymentUrl'] ?? null,
+                        'amount' => $amount,
+                        'instructions' => [],
+                    ];
+                }
+            }
+            Log::warning('[PaymentGateway] Duitku create failed: ' . $response->body());
+        } catch (\Exception $e) {
+            Log::error('[PaymentGateway] Duitku Exception: ' . $e->getMessage());
+        }
+
+        return $this->createSimulatedTransaction($invoice, $channel, $referenceId);
+    }
+
+    /**
+     * Buat transaksi via iPaymu Direct API
+     */
+    protected function createIpaymuTransaction(Invoice $invoice, string $channel, string $referenceId, array $config): array
+    {
+        $isProduction = $config['environment'] === 'production';
+        $endpoint = $isProduction 
+            ? 'https://my.ipaymu.com/api/v2/payment/direct'
+            : 'https://sandbox.ipaymu.com/api/v2/payment/direct';
+
+        $amount = (int) round($invoice->remaining > 0 ? $invoice->remaining : $invoice->amount);
+        $customer = $invoice->customer;
+
+        $method = 'qris';
+        $ipayChannel = 'mpm';
+        if (str_ends_with($channel, 'VA')) {
+            $method = 'va';
+            $ipayChannel = strtolower(str_replace('VA', '', $channel));
+        } elseif ($channel === 'ALFAMART') {
+            $method = 'cstore';
+            $ipayChannel = 'alfamart';
+        } elseif ($channel === 'INDOMARET') {
+            $method = 'cstore';
+            $ipayChannel = 'indomaret';
+        }
+
+        $payload = [
+            'name' => $customer ? $customer->name : 'Pelanggan APM',
+            'phone' => ($customer && $customer->phone) ? $customer->phone : '081234567890',
+            'email' => ($customer && $customer->email) ? $customer->email : 'billing@apm.net',
+            'amount' => $amount,
+            'notifyUrl' => url('/api/payment-gateway/callback'),
+            'uredirect' => url('/payment-gateway/pay/' . $invoice->id),
+            'comments' => $invoice->notes ?: ('Pembayaran ' . $invoice->invoice_number),
+            'paymentMethod' => $method,
+            'paymentChannel' => $ipayChannel,
+        ];
+
+        try {
+            $body = json_encode($payload);
+            $stringToSign = "POST:" . $config['merchant_id'] . ":" . strtolower(hash('sha256', $body)) . ":" . $config['api_key'];
+            $signature = hash_hmac('sha256', $stringToSign, $config['api_key']);
+
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+                'signature' => $signature,
+                'va' => $config['merchant_id'],
+                'timestamp' => date('YmdHis'),
+            ])->timeout(15)->post($endpoint, $payload);
+
+            if ($response->successful()) {
+                $res = $response->json();
+                $data = $res['Data'] ?? [];
+                if (($res['Status'] ?? 0) === 200 && !empty($data)) {
+                    $invoice->update([
+                        'payment_ref' => (string) ($data['TransactionId'] ?? $data['SessionID'] ?? $referenceId),
+                        'payment_url' => $data['Url'] ?? null,
+                        'payment_channel' => $channel,
+                        'payment_gateway_payload' => json_encode($data)
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'provider' => 'ipaymu',
+                        'reference' => (string) ($data['TransactionId'] ?? $data['SessionID'] ?? $referenceId),
+                        'pay_code' => $data['PaymentNo'] ?? null,
+                        'qr_string' => $data['QrString'] ?? null,
+                        'checkout_url' => $data['Url'] ?? null,
+                        'amount' => $amount,
+                        'instructions' => [],
+                    ];
+                }
+            }
+            Log::warning('[PaymentGateway] iPaymu create failed: ' . $response->body());
+        } catch (\Exception $e) {
+            Log::error('[PaymentGateway] iPaymu Exception: ' . $e->getMessage());
+        }
+
+        return $this->createSimulatedTransaction($invoice, $channel, $referenceId);
+    }
+
+    /**
+     * Buat transaksi via Paydisini API
+     */
+    protected function createPaydisiniTransaction(Invoice $invoice, string $channel, string $referenceId, array $config): array
+    {
+        $endpoint = 'https://api.paydisini.co.id/v1/';
+        $amount = (int) round($invoice->remaining > 0 ? $invoice->remaining : $invoice->amount);
+        $customer = $invoice->customer;
+        $uniqueCode = $invoice->invoice_number . '-' . time();
+
+        $serviceMap = [
+            'QRIS' => '11',
+            'BCAVA' => '1',
+            'BRIVA' => '2',
+            'BNIVA' => '3',
+            'MANDIRIVA' => '4',
+            'ALFAMART' => '7',
+            'INDOMARET' => '8',
+        ];
+        $service = $serviceMap[$channel] ?? '11';
+        $validTime = 1800; // 30 menit
+        $signature = md5($config['api_key'] . $uniqueCode . $service . $amount . $validTime . 'NewTransaction');
+
+        $payload = [
+            'key' => $config['api_key'],
+            'request' => 'new',
+            'unique_code' => $uniqueCode,
+            'service' => $service,
+            'amount' => $amount,
+            'note' => $invoice->notes ?: ('Pembayaran ' . $invoice->invoice_number),
+            'valid_time' => $validTime,
+            'ewallet_phone' => ($customer && $customer->phone) ? $customer->phone : '081234567890',
+            'signature' => $signature,
+            'return_url' => url('/payment-gateway/pay/' . $invoice->id),
+        ];
+
+        try {
+            $response = Http::asForm()->timeout(15)->post($endpoint, $payload);
+            if ($response->successful()) {
+                $res = $response->json();
+                if (($res['success'] ?? false) === true) {
+                    $data = $res['data'] ?? [];
+                    $invoice->update([
+                        'payment_ref' => (string) ($data['pay_id'] ?? $uniqueCode),
+                        'payment_url' => $data['checkout_url'] ?? null,
+                        'payment_channel' => $channel,
+                        'payment_gateway_payload' => json_encode($data)
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'provider' => 'paydisini',
+                        'reference' => (string) ($data['pay_id'] ?? $uniqueCode),
+                        'merchant_ref' => $uniqueCode,
+                        'pay_code' => $data['virtual_account'] ?? null,
+                        'qr_string' => $data['qr_content'] ?? null,
+                        'checkout_url' => $data['checkout_url'] ?? null,
+                        'amount' => $amount,
+                        'instructions' => [],
+                    ];
+                }
+            }
+            Log::warning('[PaymentGateway] Paydisini create failed: ' . $response->body());
+        } catch (\Exception $e) {
+            Log::error('[PaymentGateway] Paydisini Exception: ' . $e->getMessage());
+        }
+
+        return $this->createSimulatedTransaction($invoice, $channel, $referenceId);
+    }
+
+    /**
+     * Buat transaksi via Mayar API
+     */
+    protected function createMayarTransaction(Invoice $invoice, string $channel, string $referenceId, array $config): array
+    {
+        $endpoint = 'https://api.mayar.id/hl/v1/payment/create';
+        $amount = (int) round($invoice->remaining > 0 ? $invoice->remaining : $invoice->amount);
+        $customer = $invoice->customer;
+
+        $payload = [
+            'name' => $customer ? $customer->name : 'Pelanggan APM',
+            'email' => ($customer && $customer->email) ? $customer->email : 'billing@apm.net',
+            'mobile' => ($customer && $customer->phone) ? $customer->phone : '081234567890',
+            'amount' => $amount,
+            'description' => $invoice->notes ?: ('Pembayaran ' . $invoice->invoice_number),
+            'redirectUrl' => url('/payment-gateway/pay/' . $invoice->id),
+        ];
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $config['api_key'],
+                'Content-Type' => 'application/json'
+            ])->timeout(15)->post($endpoint, $payload);
+
+            if ($response->successful()) {
+                $res = $response->json();
+                $data = $res['data'] ?? [];
+                if (!empty($data['link'])) {
+                    $invoice->update([
+                        'payment_ref' => (string) ($data['id'] ?? $referenceId),
+                        'payment_url' => $data['link'] ?? null,
+                        'payment_channel' => $channel,
+                        'payment_gateway_payload' => json_encode($data)
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'provider' => 'mayar',
+                        'reference' => (string) ($data['id'] ?? $referenceId),
+                        'checkout_url' => $data['link'] ?? null,
+                        'amount' => $amount,
+                        'instructions' => [
+                            'Klik tombol Buka Portal Pembayaran Mayar.',
+                            'Pilih metode pembayaran yang tersedia di Mayar.',
+                            'Selesaikan pembayaran sebelum batas waktu berakhir.'
+                        ],
+                    ];
+                }
+            }
+            Log::warning('[PaymentGateway] Mayar create failed: ' . $response->body());
+        } catch (\Exception $e) {
+            Log::error('[PaymentGateway] Mayar Exception: ' . $e->getMessage());
+        }
+
+        return $this->createSimulatedTransaction($invoice, $channel, $referenceId);
+    }
+
+    /**
      * Buat Transaksi Simulator Sandbox (Untuk testing tanpa API key atau mode instan)
      */
     protected function createSimulatedTransaction(Invoice $invoice, string $channel, string $referenceId): array
@@ -245,6 +655,11 @@ class PaymentGatewayService
             'BRIVA' => '1280',
             'BNIVA' => '8808',
             'MANDIRIVA' => '8950',
+            'PERMATAVA' => '8528',
+            'CIMBVA' => '2020',
+            'BSIVA' => '9000',
+            'ALFAMART' => '1100',
+            'INDOMARET' => '2200',
             default => '9901'
         };
         $payCode = $codePrefix . str_pad($invoice->id, 8, '0', STR_PAD_LEFT);
@@ -262,8 +677,8 @@ class PaymentGatewayService
             'expired_time' => time() + (24 * 3600),
             'instructions' => [
                 'Buka aplikasi M-Banking atau E-Wallet Anda.',
-                'Pilih menu ' . ($channel === 'QRIS' ? 'Scan QRIS' : 'Transfer Virtual Account') . '.',
-                $channel === 'QRIS' ? 'Arahkan kamera ke kode QR di atas.' : 'Masukkan nomor Virtual Account: ' . $payCode,
+                'Pilih menu ' . ($channel === 'QRIS' ? 'Scan QRIS' : (in_array($channel, ['ALFAMART', 'INDOMARET']) ? 'Pembayaran Merchant di Kasir' : 'Transfer Virtual Account')) . '.',
+                $channel === 'QRIS' ? 'Arahkan kamera ke kode QR di atas.' : 'Masukkan kode pembayaran: ' . $payCode,
                 'Periksa nominal pembayaran (Rp ' . number_format($amount, 0, ',', '.') . ').',
                 'Konfirmasi pembayaran dan masukkan PIN Anda.',
                 'Sistem akan otomatis memverifikasi pembayaran dalam hitungan detik.'
@@ -282,7 +697,7 @@ class PaymentGatewayService
 
     /**
      * Selesaikan Invoice secara otomatis (Settlement/Lunas)
-     * Dapat dipanggil dari Webhook resmi Tripay/Midtrans atau Simulator Checkout
+     * Dapat dipanggil dari Webhook resmi Tripay/Midtrans/Xendit/Duitku/iPaymu/Paydisini/Mayar atau Simulator
      */
     public function settleInvoice(Invoice $invoice, array $payload = []): bool
     {
