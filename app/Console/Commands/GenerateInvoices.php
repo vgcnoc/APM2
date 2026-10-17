@@ -82,6 +82,7 @@ class GenerateInvoices extends Command
                 if ($taxPpn > 0) {
                     $amount = $amount + ($amount * ($taxPpn / 100));
                 }
+                $amount = (int) round($amount);
 
                 $isolateDays = (int) Setting::get('isolate_days', '3');
                 $isolateTime = Setting::get('isolate_time', '00:00');

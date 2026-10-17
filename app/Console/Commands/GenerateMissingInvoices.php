@@ -57,6 +57,7 @@ class GenerateMissingInvoices extends Command
                 if ($taxPpn > 0) {
                     $amount = $amount + ($amount * ($taxPpn / 100));
                 }
+                $amount = (int) round($amount);
                 
                 $isolateDays = (int) \App\Models\Setting::get('isolate_days', '3');
                 $isolateTime = \App\Models\Setting::get('isolate_time', '00:00');

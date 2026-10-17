@@ -2513,7 +2513,7 @@ class CustomerController extends Controller
                                 // default: exact_days
                                 $amount = ($amount / $totalDaysInCycle) * $daysUsed;
                             }
-                            $amount = round($amount);
+                            $amount = (int) round($amount);
                         }
 
                         $isProrata = true;
@@ -2543,6 +2543,7 @@ class CustomerController extends Controller
                     if ($taxPpn > 0) {
                         $amount = $amount + ($amount * ($taxPpn / 100));
                     }
+                    $amount = (int) round($amount);
 
                     \App\Models\Invoice::create([
                         'customer_id' => $customer->id,

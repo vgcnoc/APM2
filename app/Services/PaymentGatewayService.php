@@ -649,7 +649,7 @@ class PaymentGatewayService
      */
     protected function createSimulatedTransaction(Invoice $invoice, string $channel, string $referenceId): array
     {
-        $amount = (float) $invoice->remaining > 0 ? (float) $invoice->remaining : (float) $invoice->amount;
+        $amount = (int) round($invoice->remaining > 0 ? $invoice->remaining : $invoice->amount);
         $codePrefix = match ($channel) {
             'BCAVA' => '7000',
             'BRIVA' => '1280',
@@ -707,7 +707,7 @@ class PaymentGatewayService
 
         $channel = $payload['channel'] ?? $invoice->payment_channel ?? 'QRIS';
         $refId = $payload['reference'] ?? $invoice->payment_ref ?? ('PG-' . time());
-        $amount = (float) $invoice->remaining > 0 ? (float) $invoice->remaining : (float) $invoice->amount;
+        $amount = (int) round($invoice->remaining > 0 ? $invoice->remaining : $invoice->amount);
 
         DB::beginTransaction();
         try {

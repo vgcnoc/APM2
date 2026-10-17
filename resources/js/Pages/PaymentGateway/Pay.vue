@@ -43,7 +43,7 @@
                 <div class="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-100 max-w-sm mx-auto text-xs text-emerald-800 space-y-1 text-left">
                     <div class="flex justify-between">
                         <span>Nominal:</span>
-                        <strong class="font-bold">Rp {{ Number(invoice.amount).toLocaleString('id-ID') }}</strong>
+                        <strong class="font-bold">{{ formatRupiah(invoice.amount) }}</strong>
                     </div>
                     <div class="flex justify-between">
                         <span>Metode:</span>
@@ -72,7 +72,7 @@
                             <div>
                                 <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Total Tagihan</span>
                                 <div class="text-3xl font-black text-indigo-700 tracking-tight mt-0.5">
-                                    Rp {{ Number(invoice.remaining > 0 ? invoice.remaining : invoice.amount).toLocaleString('id-ID') }}
+                                    {{ formatRupiah(invoice.remaining > 0 ? invoice.remaining : invoice.amount) }}
                                 </div>
                             </div>
                             <div class="text-right">
@@ -277,6 +277,13 @@ const props = defineProps({
 const selectedChannel = ref(props.invoice.payment_channel || 'QRIS');
 const copied = ref(false);
 const processing = ref(false);
+
+const formatRupiah = (val) => {
+    return 'Rp ' + Math.round(Number(val) || 0).toLocaleString('id-ID', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    });
+};
 
 const activeProviderName = computed(() => {
     const p = props.paymentData?.provider || props.config?.provider;

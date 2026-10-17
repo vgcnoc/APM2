@@ -1142,10 +1142,10 @@ const simDaysUsed = computed(() => {
 
 // Prorata calculation matching CustomerController.php
 const simSubtotal = computed(() => {
-    const base = Number(simPrice.value) || 0;
+    const base = Math.round(Number(simPrice.value) || 0);
     if (base <= 0) return 0;
-    const days = simDaysUsed.value;
-    const totalDays = simCycleDays.value;
+    const days = Math.round(simDaysUsed.value);
+    const totalDays = Math.round(simCycleDays.value);
 
     if (days >= totalDays) return base;
 
@@ -1172,15 +1172,15 @@ const simTax = computed(() => {
 });
 
 const simGrandTotal = computed(() => {
-    return simSubtotal.value + simTax.value;
+    return Math.round(simSubtotal.value + simTax.value);
 });
 
 const simTaxNormal = computed(() => {
-    return Math.round((Number(simPrice.value) || 0) * (simTaxRate.value / 100));
+    return Math.round((Math.round(Number(simPrice.value) || 0)) * (simTaxRate.value / 100));
 });
 
 const simGrandTotalNormal = computed(() => {
-    return (Number(simPrice.value) || 0) + simTaxNormal.value;
+    return Math.round((Math.round(Number(simPrice.value) || 0)) + simTaxNormal.value);
 });
 
 // Prepaid 1-month service period
@@ -1191,12 +1191,13 @@ const prabayarEndDateFormatted = computed(() => {
 });
 
 function formatCurrency(value) {
+    const rounded = Math.round(Number(value) || 0);
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
-    }).format(value);
+    }).format(rounded);
 }
 </script>
 
