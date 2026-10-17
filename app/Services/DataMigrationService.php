@@ -2100,7 +2100,20 @@ class DataMigrationService
                 }
             }
 
-            // 2. Ensure TechnicianSchedule record exists so Installation Schedule history is complete
+            // 2. Ensure TechnicianSchedule record exists for Survey Schedule
+            $surveyScheduleExists = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'survey')->exists();
+            if (!$surveyScheduleExists) {
+                TechnicianSchedule::create([
+                    'customer_id' => $targetCust->id,
+                    'technician_id' => $techOrSalesId,
+                    'scheduled_date' => $regDate,
+                    'type' => 'survey',
+                    'status' => 'done',
+                    'notes' => 'Jadwal survey historis migrasi sistem',
+                ]);
+            }
+
+            // 3. Ensure TechnicianSchedule record exists for Installation Schedule
             $scheduleExists = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'installation')->exists();
             if (!$scheduleExists) {
                 TechnicianSchedule::create([
