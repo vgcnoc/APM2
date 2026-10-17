@@ -588,7 +588,7 @@ const handleCheckBill = async () => {
         <!-- ── FOOTER BAR ── -->
         <footer class="relative z-20 w-full px-4 sm:px-8 py-3 border-t border-slate-800/80 bg-slate-950/60 backdrop-blur-xl text-center text-xs text-slate-500">
             <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-                <span>Enterprise ISP Cloud Infrastructure</span>
+                <span>VIRUZS - Smart Billing,Smarter Business.</span>
                 <div class="flex items-center gap-4 text-[11px]">
                     <span class="hover:text-slate-300 transition-colors cursor-pointer">Dokumentasi</span>
                     <span class="hover:text-slate-300 transition-colors cursor-pointer">Bantuan Teknis</span>
