@@ -2046,18 +2046,18 @@
         </div>
 
         <!-- ========================================== -->
-        <!-- 4. MODAL EDIT JADWAL PASANG                -->
+        <!-- 4. MODAL EDIT JADWAL PASANG & MATERIAL     -->
         <!-- ========================================== -->
         <div v-if="showEditInstallScheduleModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div class="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+            <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
                 <div class="p-5 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white flex justify-between items-center shrink-0">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shrink-0">
                             🚀
                         </div>
                         <div>
-                            <h3 class="text-base sm:text-lg font-bold">Jadwal Penugasan Pasang Teknisi</h3>
-                            <p class="text-xs text-amber-100">Penugasan tim instalasi dan penentuan waktu pemasangan</p>
+                            <h3 class="text-base sm:text-lg font-bold">Jadwal Penugasan Pasang Teknisi & Material</h3>
+                            <p class="text-xs text-amber-100">Penugasan tim instalasi, alokasi ONT, dan material instalasi</p>
                         </div>
                     </div>
                     <button type="button" @click="showEditInstallScheduleModal = false" class="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors">
@@ -2082,9 +2082,10 @@
                     </div>
 
                     <div class="p-5 sm:p-6 overflow-y-auto space-y-4">
+                        <!-- 1. Pilih Teknisi -->
                         <div>
                             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Pilih Teknisi Instalasi <span class="text-red-500">*</span></label>
-                            <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-slate-50">
+                            <div class="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-slate-50">
                                 <label v-for="t in technicians" :key="t.id" :class="['flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all', installScheduleForm.technician_id === t.id ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-500 text-amber-950 font-bold' : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700']">
                                     <div class="flex items-center gap-3">
                                         <input type="radio" :value="t.id" v-model="installScheduleForm.technician_id" required class="text-amber-600 focus:ring-amber-500 w-4 h-4" />
@@ -2098,6 +2099,7 @@
                             </div>
                         </div>
 
+                        <!-- 2. Tanggal & Jam Target -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Tanggal Pasang <span class="text-red-500">*</span></label>
@@ -2109,6 +2111,7 @@
                             </div>
                         </div>
 
+                        <!-- 3. Status Penjadwalan -->
                         <div>
                             <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Status Penugasan</label>
                             <select v-model="installScheduleForm.status" class="w-full text-sm border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500">
@@ -2120,9 +2123,81 @@
                             </select>
                         </div>
 
+                        <!-- 4. Data ONT (Surat Jalan / Stok) -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>📟</span> Data ONT / Modem (Surat Jalan / Stok)
+                                </label>
+                                <span class="text-[11px] text-slate-500 font-medium">{{ filteredOnts.length }} unit siap pasang</span>
+                            </div>
+                            <select v-model="installScheduleForm.ont_id" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-amber-500 shadow-sm">
+                                <option value="">-- Pilih ONT dari Surat Jalan / Stok --</option>
+                                <option v-for="ontOption in filteredOnts" :key="ontOption.id" :value="ontOption.id">
+                                    {{ ontOption.brand }} {{ ontOption.model || '' }} - SN: {{ ontOption.serial_number }}
+                                </option>
+                            </select>
+                            <div v-if="installScheduleForm.ont_id && getSelectedOntDetails(installScheduleForm.ont_id)" class="bg-amber-100/70 p-2.5 rounded-lg border border-amber-200 text-xs text-slate-700 grid grid-cols-2 gap-2">
+                                <div><span class="text-slate-500">Merek/Model:</span> <span class="font-bold">{{ getSelectedOntDetails(installScheduleForm.ont_id).brand }} {{ getSelectedOntDetails(installScheduleForm.ont_id).model || '' }}</span></div>
+                                <div><span class="text-slate-500">SN:</span> <span class="font-mono font-bold text-amber-900">{{ getSelectedOntDetails(installScheduleForm.ont_id).serial_number }}</span></div>
+                            </div>
+                        </div>
+
+                        <!-- 5. Kebutuhan Material (Surat Jalan & Stok) -->
+                        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span>📦</span> Material (Surat Jalan)
+                                    </label>
+                                    <p class="text-[11px] text-gray-500">Alokasikan bahan dropcore, roset, fast connector, dll untuk teknisi</p>
+                                </div>
+                                <button type="button" @click="addScheduleMaterialItem" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors border border-blue-200 text-xs font-bold flex items-center gap-1 shadow-sm">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    Tambah Material
+                                </button>
+                            </div>
+
+                            <div class="space-y-2.5">
+                                <div v-for="(mItem, index) in installScheduleForm.material_items" :key="'mat-'+index" class="flex gap-2 items-center bg-slate-50 p-2 rounded-lg border border-slate-200">
+                                    <select v-model="installScheduleForm.material_items[index].id" @change="updateScheduleMaterialDetails(index)" class="flex-1 bg-white border border-gray-300 rounded-lg px-2.5 py-2 text-xs text-slate-700 focus:ring-2 focus:ring-amber-500 min-w-0">
+                                        <option value="">-- Pilih Material dari Surat Jalan --</option>
+                                        <option v-for="item in availableMaterialItems" :key="item.id" :value="item.id">
+                                            {{ item.name }} (SJ: {{ item.trx_number }}) - Stok: {{ item.area_stock }} {{ item.unit }}
+                                        </option>
+                                    </select>
+                                    <div class="flex items-center gap-1 shrink-0" v-if="installScheduleForm.material_items[index].id">
+                                        <input v-model="installScheduleForm.material_items[index].qty" @input="validateScheduleMaterialQty(index)" type="number" step="0.01" min="0" class="w-16 px-2 py-1.5 text-xs border border-gray-300 rounded-lg text-center font-bold text-amber-800 bg-white" placeholder="Qty">
+                                        <span class="text-[11px] font-semibold text-gray-600 w-12 truncate">{{ installScheduleForm.material_items[index].unit }}</span>
+                                    </div>
+                                    <button type="button" @click="removeScheduleMaterialItem(index)" class="text-red-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition-colors shrink-0" title="Hapus">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
+                                </div>
+                                <div v-if="installScheduleForm.material_items.length === 0" class="text-xs text-gray-400 italic text-center py-2 border border-dashed border-gray-200 rounded-lg">
+                                    Belum ada material yang ditambahkan (klik "Tambah Material" di atas)
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 6. Catatan Khusus -->
                         <div>
                             <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Catatan Khusus Instalasi</label>
-                            <textarea v-model="installScheduleForm.notes" rows="2" placeholder="Catatan material, permintaan rute kabel, dll..." class="w-full text-sm border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500"></textarea>
+                            <textarea v-model="installScheduleForm.notes" rows="2" placeholder="Catatan instruksi rute kabel, tiang, dll..." class="w-full text-sm border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500"></textarea>
+                        </div>
+
+                        <!-- 7. Kirim Notifikasi WhatsApp ke Teknisi -->
+                        <div class="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3 flex items-center justify-between">
+                            <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                                <input type="checkbox" v-model="installScheduleForm.send_wa" class="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
+                                <div>
+                                    <span class="text-xs font-bold text-emerald-950 block">Kirim Notifikasi WhatsApp ke Teknisi</span>
+                                    <span class="text-[11px] text-emerald-700">Kirim rincian jadwal, alamat pelanggan, ODP & bahan ke WA teknisi</span>
+                                </div>
+                            </label>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                WA Otomatis
+                            </span>
                         </div>
                     </div>
 
@@ -2563,6 +2638,7 @@ const props = defineProps({
     source: String,
     materials: Array,
     materialRequests: Array,
+    materialTransactions: Array,
     technicians: Array,
     packages: Array,
     areas: Array,
@@ -3755,7 +3831,7 @@ function submitEditSurveyReport() {
     });
 }
 
-// ── 4. MODAL EDIT JADWAL PASANG ─────────────────────────────
+// ── 4. MODAL EDIT JADWAL PASANG & MATERIAL ──────────────────
 const showEditInstallScheduleModal = ref(false);
 const installScheduleForm = useForm({
     technician_id: '',
@@ -3763,7 +3839,149 @@ const installScheduleForm = useForm({
     scheduled_time: '10:00',
     status: 'scheduled',
     notes: '',
+    ont_id: '',
+    material_items: [],
+    send_wa: true,
 });
+
+const customerAreaId = computed(() => {
+    if (props.customer?.area_id) return props.customer.area_id;
+    if (props.customer?.area && props.areas) {
+        const found = props.areas.find(a => a.name?.toLowerCase().trim() === props.customer.area.toLowerCase().trim());
+        if (found) return found.id;
+    }
+    return null;
+});
+
+const filteredOnts = computed(() => {
+    let onts = (props.availableOnts || []);
+    const areaId = customerAreaId.value;
+    if (!areaId) return onts;
+    const matched = onts.filter(ont => ont.area_id == areaId);
+    return matched.length > 0 ? matched : onts;
+});
+
+function getSelectedOntDetails(val) {
+    if (!val) return null;
+    return (props.availableOnts || []).find(ont => ont.id === val || String(ont.id) === String(val)) || props.customer?.ont;
+}
+
+const availableMaterialItems = computed(() => {
+    let items = [];
+    const trxs = props.materialTransactions || [];
+    const areaId = customerAreaId.value;
+
+    if (trxs && trxs.length > 0) {
+        trxs.forEach(trx => {
+            if (trx.items) {
+                trx.items.forEach(item => {
+                    const name = item.material?.name?.toLowerCase() || '';
+                    const category = item.material?.category?.toLowerCase() || '';
+                    const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
+                    
+                    if (!name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem') && !isRegistered) {
+                        let areaStock = 0;
+                        if (item.material?.stocks && areaId) {
+                            const stockObj = item.material.stocks.find(s => s.area_id == areaId);
+                            if (stockObj) areaStock = parseFloat(stockObj.stock) || 0;
+                        }
+                        if (areaStock <= 0 && item.material && parseFloat(item.material.stock) > 0) {
+                            areaStock = parseFloat(item.material.stock) || 0;
+                        }
+                        const availableQty = areaStock > 0 ? areaStock : (parseFloat(item.quantity) || 0);
+                        if (availableQty > 0) {
+                            items.push({
+                                id: item.id,
+                                material_id: item.material_id,
+                                name: item.material?.name || 'Unknown',
+                                trx_number: trx.transaction_number,
+                                area_stock: availableQty,
+                                unit: item.material ? item.material.unit : (item.unit || 'pcs'),
+                                material: item.material,
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    if (props.materials && props.materials.length > 0) {
+        props.materials.forEach(mat => {
+            const name = mat.name.toLowerCase();
+            const category = (mat.category || '').toLowerCase();
+            if (!name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem')) {
+                if (!items.some(i => i.name.toLowerCase() === name)) {
+                    let stock = parseFloat(mat.stock) || 100;
+                    items.push({
+                        id: 'mat-' + mat.id,
+                        material_id: mat.id,
+                        name: mat.name,
+                        trx_number: 'STOK-UTAMA',
+                        area_stock: stock,
+                        unit: mat.unit || 'pcs',
+                        material: mat,
+                    });
+                }
+            }
+        });
+    }
+
+    return items;
+});
+
+function addScheduleMaterialItem() {
+    installScheduleForm.material_items.push({
+        id: '',
+        name: '',
+        qty: 1,
+        unit: 'pcs',
+        trx_number: '',
+        area_stock: 0
+    });
+}
+
+function removeScheduleMaterialItem(index) {
+    installScheduleForm.material_items.splice(index, 1);
+}
+
+function updateScheduleMaterialDetails(index) {
+    const selectedId = installScheduleForm.material_items[index].id;
+    if (!selectedId) return;
+
+    const item = availableMaterialItems.value.find(i => String(i.id) === String(selectedId));
+    if (item) {
+        let qty = 1;
+        let unit = item.unit || 'pcs';
+
+        if (item.material?.category === 'Isolasi') {
+            unit = 'cm';
+            qty = 50;
+        } else if (item.material?.category === 'Paku Klem') {
+            unit = 'pcs';
+            qty = 10;
+        } else if (item.material?.category?.includes('Kabel') || item.name.toLowerCase().includes('kabel') || item.name.toLowerCase().includes('drop')) {
+            unit = 'meter';
+            qty = props.customer.surveys?.[0]?.distance_meters || 50;
+        }
+
+        installScheduleForm.material_items[index].name = item.name;
+        installScheduleForm.material_items[index].qty = qty;
+        installScheduleForm.material_items[index].unit = unit;
+        installScheduleForm.material_items[index].trx_number = item.trx_number;
+        installScheduleForm.material_items[index].area_stock = item.area_stock;
+    }
+}
+
+function validateScheduleMaterialQty(index) {
+    const item = installScheduleForm.material_items[index];
+    if (item.id && item.area_stock !== undefined && item.area_stock > 0) {
+        if (item.qty > item.area_stock) {
+            item.qty = item.area_stock;
+            alert(`Stok tidak mencukupi! Maksimal stok untuk material ini adalah ${item.area_stock} ${item.unit}`);
+        }
+    }
+}
 
 function openEditInstallScheduleModal() {
     const sched = props.customer.technician_schedules?.find(s => s.type === 'installation');
@@ -3771,7 +3989,83 @@ function openEditInstallScheduleModal() {
     installScheduleForm.scheduled_date = sched?.scheduled_date ? sched.scheduled_date.split('T')[0] : (props.customer.activation_date ? props.customer.activation_date.split('T')[0] : new Date().toISOString().split('T')[0]);
     installScheduleForm.scheduled_time = sched?.scheduled_time ? sched.scheduled_time.substring(0, 5) : '10:00';
     installScheduleForm.status = sched?.status || 'scheduled';
-    installScheduleForm.notes = sched?.notes || 'Jadwal instalasi teknisi';
+    installScheduleForm.ont_id = props.customer.ont?.id || (filteredOnts.value?.[0]?.id || '');
+    installScheduleForm.send_wa = true;
+
+    // Parse existing notes or load materials
+    const existingNotes = sched?.notes || '';
+    const cleanNotes = [];
+    const matItems = [];
+
+    if (existingNotes) {
+        const lines = existingNotes.split('\n');
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('Material: ')) {
+                const matMatch = trimmed.match(/^Material:\s*(.+?)\s*\(([\d\.]+)\s*(.+?)\)$/i);
+                if (matMatch) {
+                    matItems.push({
+                        id: 'custom-' + Math.random(),
+                        name: matMatch[1].trim(),
+                        qty: parseFloat(matMatch[2]) || 1,
+                        unit: matMatch[3].trim(),
+                        trx_number: '',
+                        area_stock: 999
+                    });
+                } else {
+                    const rawMat = trimmed.replace('Material: ', '');
+                    matItems.push({
+                        id: 'custom-' + Math.random(),
+                        name: rawMat,
+                        qty: 1,
+                        unit: 'pcs',
+                        trx_number: '',
+                        area_stock: 999
+                    });
+                }
+            } else if (!trimmed.startsWith('Material diambil dari Surat Jalan') && !trimmed.startsWith('ONT: ')) {
+                if (trimmed.startsWith('Catatan Khusus: ')) {
+                    cleanNotes.push(trimmed.replace('Catatan Khusus: ', ''));
+                } else if (trimmed) {
+                    cleanNotes.push(trimmed);
+                }
+            }
+        });
+    }
+
+    if (matItems.length > 0) {
+        installScheduleForm.material_items = matItems;
+    } else {
+        // Rekomendasi material standar awal instalasi jika belum ada
+        installScheduleForm.material_items = [
+            {
+                id: '',
+                name: 'Kabel Dropcore 1 Core',
+                qty: props.customer.surveys?.[0]?.distance_meters || 50,
+                unit: 'meter',
+                trx_number: '',
+                area_stock: 500
+            },
+            {
+                id: '',
+                name: 'Fast Connector SC UPC',
+                qty: 2,
+                unit: 'pcs',
+                trx_number: '',
+                area_stock: 100
+            },
+            {
+                id: '',
+                name: 'Roset Optik 1 Port',
+                qty: 1,
+                unit: 'pcs',
+                trx_number: '',
+                area_stock: 50
+            }
+        ];
+    }
+
+    installScheduleForm.notes = cleanNotes.join('\n');
     showEditInstallScheduleModal.value = true;
 }
 

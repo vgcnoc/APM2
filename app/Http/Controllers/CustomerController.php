@@ -1543,6 +1543,12 @@ class CustomerController extends Controller
             ->latest()
             ->get();
 
+        $materialTransactions = \App\Models\MaterialTransaction::where('type', 'in')
+            ->with('items.material.stocks')
+            ->latest()
+            ->limit(100)
+            ->get();
+
         return Inertia::render('Customers/Show', [
             'customer' => $customer,
             'source' => request()->query('source'),
@@ -1554,6 +1560,7 @@ class CustomerController extends Controller
             'salesUsers' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'materials' => \App\Models\Material::orderBy('name')->get(),
             'materialRequests' => $materialRequests,
+            'materialTransactions' => $materialTransactions,
         ]);
     }
 
@@ -2801,11 +2808,58 @@ class CustomerController extends Controller
             'scheduled_time' => 'nullable|string',
             'status' => 'required|in:scheduled,on_the_way,working,done,cancelled',
             'notes' => 'nullable|string',
+            'ont_id' => 'nullable',
+            'material_items' => 'nullable|array',
+            'material_items.*.name' => 'nullable|string',
+            'material_items.*.qty' => 'nullable|numeric',
+            'material_items.*.unit' => 'nullable|string',
+            'material_items.*.trx_number' => 'nullable|string',
+            'send_wa' => 'nullable|boolean',
         ]);
 
         if (!empty($validated['scheduled_time']) && preg_match('/^\d{2}:\d{2}:\d{2}$/', $validated['scheduled_time'])) {
             $validated['scheduled_time'] = substr($validated['scheduled_time'], 0, 5);
         }
+
+        $customNotes = [];
+
+        // 1. Link / Update ONT jika dipilih
+        if (!empty($validated['ont_id'])) {
+            $ont = Ont::find($validated['ont_id']);
+            if ($ont) {
+                $ont->update([
+                    'customer_id' => $customer->id,
+                ]);
+                $name = $ont->brand . ($ont->model ? ' ' . $ont->model : '') . ' (SN: ' . $ont->serial_number . ')';
+                $customNotes[] = "ONT: " . $name;
+            }
+        }
+
+        // 2. Format Material Items
+        if (!empty($validated['material_items'])) {
+            $matLines = [];
+            $trxNumbers = [];
+            foreach ($validated['material_items'] as $m) {
+                if (!empty($m['name']) && !empty($m['qty'])) {
+                    $matLines[] = "Material: " . $m['name'] . " (" . $m['qty'] . " " . ($m['unit'] ?? 'pcs') . ")";
+                    if (!empty($m['trx_number'])) {
+                        $trxNumbers[] = $m['trx_number'];
+                    }
+                }
+            }
+            if (!empty($trxNumbers)) {
+                $customNotes[] = "Material diambil dari Surat Jalan / Order: " . implode(', ', array_unique($trxNumbers));
+            }
+            if (!empty($matLines)) {
+                $customNotes = array_merge($customNotes, $matLines);
+            }
+        }
+
+        if (!empty($validated['notes'])) {
+            $customNotes[] = "Catatan Khusus: " . $validated['notes'];
+        }
+
+        $finalNotes = !empty($customNotes) ? implode("\n", $customNotes) : ($validated['notes'] ?: 'Jadwal pasang');
 
         $schedule = $customer->technicianSchedules()
             ->where('type', 'installation')
@@ -2817,7 +2871,7 @@ class CustomerController extends Controller
                 'scheduled_date' => $validated['scheduled_date'],
                 'scheduled_time' => $validated['scheduled_time'] ?: null,
                 'status' => $validated['status'],
-                'notes' => $validated['notes'] ?? $schedule->notes,
+                'notes' => $finalNotes,
             ]);
         } else {
             \App\Models\TechnicianSchedule::create([
@@ -2827,14 +2881,34 @@ class CustomerController extends Controller
                 'status' => $validated['status'],
                 'scheduled_date' => $validated['scheduled_date'],
                 'scheduled_time' => $validated['scheduled_time'] ?: null,
-                'notes' => $validated['notes'] ?: 'Jadwal pasang',
+                'notes' => $finalNotes,
                 'area_id' => $customer->area_id,
             ]);
         }
 
-        \App\Models\AuditLog::createLog('Edit Jadwal Pasang', $customer, $customer->status, $customer->status, 'Memperbarui jadwal instalasi teknisi');
+        // Kirim notifikasi WA ke teknisi jika diminta
+        if ($request->boolean('send_wa', false)) {
+            try {
+                $waService = app(\App\Services\WhatsAppGatewayService::class);
+                $tech = User::find($validated['technician_id']);
+                if ($tech && !empty($tech->phone)) {
+                    $msg = $this->formatInstallationWaMessage(
+                        $customer,
+                        $tech,
+                        $validated['scheduled_date'],
+                        $validated['scheduled_time'] ?? '10:00',
+                        $finalNotes
+                    );
+                    $waService->sendMessage($tech->phone, $msg);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('[updateInstallationSchedule] WA Error: ' . $e->getMessage());
+            }
+        }
 
-        return back()->with('success', 'Jadwal pasang berhasil disimpan.');
+        \App\Models\AuditLog::createLog('Edit Jadwal Pasang', $customer, $customer->status, $customer->status, 'Memperbarui jadwal instalasi, perangkat ONT & alokasi material');
+
+        return back()->with('success', 'Jadwal pasang & alokasi material berhasil disimpan.');
     }
 
     /**
