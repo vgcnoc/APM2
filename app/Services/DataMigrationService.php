@@ -199,7 +199,7 @@ class DataMigrationService
                     'nama_paket' => ['label' => 'Nama Paket Internet', 'required' => false, 'db' => 'package_name'],
                     'tarif_bulanan' => ['label' => 'Tarif Bulanan (Rp)', 'required' => true, 'db' => 'base_amount'],
                     'biaya_pasang' => ['label' => 'Biaya Pasang Baru (Rp)', 'required' => false, 'db' => 'installation_fee'],
-                    'status_layanan' => ['label' => 'Status Layanan (berbayar/gratis)', 'required' => false, 'db' => 'service_status'],
+                    'status_layanan' => ['label' => 'Status Layanan (berbayar / gratis / free_home)', 'required' => false, 'db' => 'service_status'],
                     'jenis_billing' => ['label' => 'Jenis Billing (prabayar/pascabayar)', 'required' => false, 'db' => 'billing_type'],
                     'status_pelanggan' => ['label' => 'Status Pelanggan (active/booking/survey/installing/suspended/terminated)', 'required' => true, 'db' => 'status'],
                     'tgl_registrasi' => ['label' => 'Tanggal Registrasi (Tanggal/Bulan/Tahun: DD/MM/YYYY)', 'required' => false, 'db' => 'registration_date'],
@@ -208,6 +208,17 @@ class DataMigrationService
                     'latitude' => ['label' => 'Latitude Koordinat', 'required' => false, 'db' => 'latitude'],
                     'longitude' => ['label' => 'Longitude Koordinat', 'required' => false, 'db' => 'longitude'],
                     'foto_ktp' => ['label' => 'Nama Berkas / URL Foto KTP (Opsional)', 'required' => false, 'db' => 'identity_photo'],
+                    'nama_odp' => ['label' => 'Nama ODP Terpasang (Opsional, jika sudah pasang/aktif)', 'required' => false, 'db' => 'odp_name'],
+                    'nomor_port_odp' => ['label' => 'Nomor Port ODP (Opsional, 1..N)', 'required' => false, 'db' => 'port_number'],
+                    'sn_ont' => ['label' => 'Serial Number Modem ONT (Opsional, jika ada)', 'required' => false, 'db' => 'serial_number'],
+                    'mac_ont' => ['label' => 'MAC Address Modem ONT (Opsional)', 'required' => false, 'db' => 'mac_address'],
+                    'merk_ont' => ['label' => 'Merk Modem (ZTE/Huawei/Fiberhome, dll)', 'required' => false, 'db' => 'brand'],
+                    'tipe_model' => ['label' => 'Tipe Model Modem (F609/HG8546M, dll)', 'required' => false, 'db' => 'model'],
+                    'redaman_rx' => ['label' => 'Redaman Optik Rx (dBm, misal: -20.50)', 'required' => false, 'db' => 'rx_power'],
+                    'username_pppoe' => ['label' => 'Username PPPoE (Kosongkan jika Free Home)', 'required' => false, 'db' => 'pppoe_user'],
+                    'password_pppoe' => ['label' => 'Password PPPoE (Kosongkan jika Free Home)', 'required' => false, 'db' => 'pppoe_password'],
+                    'vlan_id' => ['label' => 'VLAN ID PPPoE (Opsional)', 'required' => false, 'db' => 'vlan_id'],
+                    'mode_akses' => ['label' => 'Mode Akses (PPPOE/STATIC/DHCP/VOUCHER/BRIDGE)', 'required' => false, 'db' => 'access_mode'],
                     'catatan' => ['label' => 'Catatan Tambahan', 'required' => false, 'db' => 'notes'],
                 ],
                 'sample' => [
@@ -232,10 +243,89 @@ class DataMigrationService
                         'username_sales' => 'sales1@example.com',
                         'latitude' => '-6.891234',
                         'longitude' => '107.567890',
-                        'catatan' => 'Migrasi dari billing lama (Sales)',
+                        'nama_odp' => 'ODP-TMR-01-A',
+                        'nomor_port_odp' => 1,
+                        'sn_ont' => 'ZTEG98765432',
+                        'mac_ont' => 'CC:2D:21:4A:88:01',
+                        'merk_ont' => 'ZTE',
+                        'tipe_model' => 'F609',
+                        'redaman_rx' => -21.40,
+                        'username_pppoe' => 'ahmad_subardjo',
+                        'password_pppoe' => 'subardjo123',
+                        'vlan_id' => '100',
+                        'mode_akses' => 'PPPOE',
+                        'catatan' => 'Pelanggan Aktif Berbayar (Home 20 Mbps)',
                     ],
                     [
                         'kode_pelanggan' => 'CUS-001002',
+                        'nama_lengkap' => 'Siti Nurhaliza',
+                        'nomor_wa' => '085811223344',
+                        'email' => '',
+                        'nama_area' => 'Area Timur',
+                        'alamat_jalan' => 'Jl. Melati No. 8',
+                        'rt_rw' => '01/02',
+                        'kelurahan_desa' => 'Sukasari',
+                        'kecamatan' => 'Cimahi',
+                        'nama_paket' => '',
+                        'tarif_bulanan' => 0,
+                        'biaya_pasang' => 0,
+                        'status_layanan' => 'free_home',
+                        'jenis_billing' => 'prabayar',
+                        'status_pelanggan' => 'active',
+                        'tgl_registrasi' => '15/01/2026',
+                        'tgl_aktivasi' => '16/01/2026',
+                        'username_sales' => 'sales1@example.com',
+                        'latitude' => '-6.892300',
+                        'longitude' => '107.568100',
+                        'nama_odp' => 'ODP-TMR-01-A',
+                        'nomor_port_odp' => 2,
+                        'sn_ont' => 'HWTC11223344',
+                        'mac_ont' => 'CC:2D:21:4A:88:02',
+                        'merk_ont' => 'Huawei',
+                        'tipe_model' => 'HG8546M',
+                        'redaman_rx' => -20.10,
+                        'username_pppoe' => '',
+                        'password_pppoe' => '',
+                        'vlan_id' => '',
+                        'mode_akses' => 'VOUCHER',
+                        'catatan' => 'Pelanggan Aktif Free Home (Voucher Rumahan ONT)',
+                    ],
+                    [
+                        'kode_pelanggan' => 'CUS-001003',
+                        'nama_lengkap' => 'Pos RT 05 Cimahi',
+                        'nomor_wa' => '087799887766',
+                        'email' => '',
+                        'nama_area' => 'Area Timur',
+                        'alamat_jalan' => 'Jl. Kenanga Pos RT',
+                        'rt_rw' => '05/02',
+                        'kelurahan_desa' => 'Sukasari',
+                        'kecamatan' => 'Cimahi',
+                        'nama_paket' => 'Home 20 Mbps',
+                        'tarif_bulanan' => 0,
+                        'biaya_pasang' => 0,
+                        'status_layanan' => 'gratis',
+                        'jenis_billing' => 'prabayar',
+                        'status_pelanggan' => 'active',
+                        'tgl_registrasi' => '20/01/2026',
+                        'tgl_aktivasi' => '21/01/2026',
+                        'username_sales' => 'sales1@example.com',
+                        'latitude' => '-6.893000',
+                        'longitude' => '107.569000',
+                        'nama_odp' => 'ODP-TMR-01-A',
+                        'nomor_port_odp' => 3,
+                        'sn_ont' => 'FHTT55667788',
+                        'mac_ont' => 'CC:2D:21:4A:88:03',
+                        'merk_ont' => 'Fiberhome',
+                        'tipe_model' => 'HG6243C',
+                        'redaman_rx' => -19.80,
+                        'username_pppoe' => 'pos_rt05',
+                        'password_pppoe' => 'rt05pass',
+                        'vlan_id' => '100',
+                        'mode_akses' => 'PPPOE',
+                        'catatan' => 'Pelanggan Gratis Fasilitas Kompensasi Jalur RT 05',
+                    ],
+                    [
+                        'kode_pelanggan' => 'CUS-001004',
                         'nama_lengkap' => 'Bambang Irawan',
                         'nomor_wa' => '085712345678',
                         'email' => '',
@@ -255,7 +345,10 @@ class DataMigrationService
                         'username_sales' => 'Deden Kurnia (Teknisi)',
                         'latitude' => '-6.912345',
                         'longitude' => '107.612345',
-                        'catatan' => 'Booking referral dari Teknisi Deden',
+                        'nama_odp' => '',
+                        'nomor_port_odp' => '',
+                        'sn_ont' => '',
+                        'catatan' => 'Calon Pelanggan Baru Tahap Booking',
                     ],
                 ]
             ],
@@ -764,7 +857,7 @@ class DataMigrationService
 
             switch ($category) {
                 case 'customers':
-                    $this->validateCustomerRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache, $options, $areasNormalizedCache, $userPhonesCache, $affiliateCodesCache, $employeesIakCache);
+                    $this->validateCustomerRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache, $options, $areasNormalizedCache, $userPhonesCache, $affiliateCodesCache, $employeesIakCache, $odpsCache);
                     break;
                 case 'network':
                     $this->validateNetworkRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $customersCache, $odpsCache, $options);
@@ -978,7 +1071,8 @@ class DataMigrationService
         $areasNormalizedCache = [],
         $userPhonesCache = [],
         $affiliateCodesCache = [],
-        $employeesIakCache = []
+        $employeesIakCache = [],
+        $odpsCache = []
     ) {
         $name = trim((string)($row['nama_lengkap'] ?? $row['nama'] ?? ''));
         $rawPhone = trim((string)($row['nomor_wa'] ?? $row['phone'] ?? $row['no_wa'] ?? ''));
@@ -1110,11 +1204,33 @@ class DataMigrationService
             $status = 'active';
         }
 
-        $serviceStatus = strtolower($row['status_layanan'] ?? 'berbayar');
-        if (!in_array($serviceStatus, ['berbayar', 'gratis'])) $serviceStatus = 'berbayar';
+        $serviceStatus = strtolower(trim((string)($row['status_layanan'] ?? 'berbayar')));
+        if (!in_array($serviceStatus, ['berbayar', 'gratis', 'free_home'])) {
+            $serviceStatus = 'berbayar';
+        }
 
         $baseAmount = (float) ($row['tarif_bulanan'] ?? $row['base_amount'] ?? 0);
-        if ($serviceStatus === 'gratis') $baseAmount = 0;
+        if ($serviceStatus === 'gratis' || $serviceStatus === 'free_home') {
+            $baseAmount = 0;
+        }
+        if ($serviceStatus === 'free_home') {
+            $packageId = null;
+        }
+
+        // Optional ONT & ODP linkage if provided in customer sheet
+        $odpName = trim((string)($row['nama_odp'] ?? $row['odp'] ?? ''));
+        $snOnt = trim((string)($row['sn_ont'] ?? $row['serial_number'] ?? ''));
+        $portNumber = !empty($row['nomor_port_odp']) ? (int)$row['nomor_port_odp'] : (!empty($row['nomor_port']) ? (int)$row['nomor_port'] : null);
+        $odpId = null;
+
+        if (!empty($odpName)) {
+            $odpObj = $odpsCache[strtolower($odpName)] ?? null;
+            if ($odpObj) {
+                $odpId = $odpObj->id;
+            } else {
+                $warnings[] = "ODP '{$odpName}' belum terdaftar di master data ODP. Kaitkan ODP akan dilewati.";
+            }
+        }
 
         $notes = trim((string)($row['catatan'] ?? $row['notes'] ?? ''));
         if (!empty($extraPhones)) {
@@ -1144,6 +1260,18 @@ class DataMigrationService
             'identity_photo' => $row['foto_ktp'] ?? $row['identity_photo'] ?? null,
             'notes' => $notes ?: null,
             'is_existing' => $isExisting,
+            'odp_id' => $odpId,
+            'odp_name' => $odpName ?: null,
+            'port_number' => $portNumber,
+            'sn_ont' => $snOnt ?: null,
+            'mac_ont' => $row['mac_ont'] ?? $row['mac_address'] ?? null,
+            'merk_ont' => $row['merk_ont'] ?? $row['brand'] ?? 'ZTE',
+            'tipe_model' => $row['tipe_model'] ?? $row['model'] ?? 'F609',
+            'redaman_rx' => !empty($row['redaman_rx']) ? (float)$row['redaman_rx'] : -20.0,
+            'username_pppoe' => $row['username_pppoe'] ?? $row['pppoe_user'] ?? null,
+            'password_pppoe' => $row['password_pppoe'] ?? $row['pppoe_password'] ?? null,
+            'vlan_id' => $row['vlan_id'] ?? null,
+            'mode_akses' => $row['mode_akses'] ?? ($serviceStatus === 'free_home' ? 'VOUCHER' : 'PPPOE'),
         ];
     }
 
@@ -1420,7 +1548,7 @@ class DataMigrationService
         $identityPhoto = $this->resolvePhotoPath($data['identity_photo'] ?? null, 'customers');
 
         // Insert new
-        Customer::create([
+        $customer = Customer::create([
             'customer_code' => $customerCode,
             'name' => $data['name'],
             'phone' => substr($data['phone'], 0, 50),
@@ -1443,7 +1571,60 @@ class DataMigrationService
             'notes' => $data['notes'],
         ]);
 
-        return 'inserted';
+        $targetCust = $existing ?: $customer;
+
+        // Auto-connect ONT & ODP if provided in Customer row
+        if (!empty($data['sn_ont']) && !empty($data['odp_id']) && $targetCust) {
+            $odp = Odp::find($data['odp_id']);
+            if ($odp) {
+                $portToUse = !empty($data['port_number']) && (int)$data['port_number'] > 0 ? (int)$data['port_number'] : null;
+                if (!$portToUse) {
+                    $firstAvail = OdpPort::where('odp_id', $odp->id)->where('status', 'available')->orderBy('port_number')->first();
+                    $portToUse = $firstAvail ? $firstAvail->port_number : 1;
+                }
+
+                $odpPort = OdpPort::updateOrCreate(
+                    ['odp_id' => $odp->id, 'port_number' => $portToUse],
+                    ['status' => 'used']
+                );
+
+                $ont = Ont::where('serial_number', $data['sn_ont'])->first();
+                $ontPayload = [
+                    'customer_id' => $targetCust->id,
+                    'serial_number' => $data['sn_ont'],
+                    'mac_address' => $data['mac_ont'] ?? null,
+                    'brand' => $data['merk_ont'] ?? 'ZTE',
+                    'model' => $data['tipe_model'] ?? 'F609',
+                    'odp_id' => $odp->id,
+                    'odp_port_id' => $odpPort?->id,
+                    'port_number' => $portToUse,
+                    'area_id' => $areaId ?: $odp->area_id,
+                    'rx_power' => $data['redaman_rx'] ?? -20.0,
+                    'pppoe_user' => $data['username_pppoe'] ?? null,
+                    'pppoe_password' => $data['password_pppoe'] ?? null,
+                    'vlan_id' => $data['vlan_id'] ?? null,
+                    'access_mode' => $data['mode_akses'] ?? ($data['service_status'] === 'free_home' ? 'VOUCHER' : 'PPPOE'),
+                    'status' => 'active',
+                ];
+
+                if ($ont) {
+                    $ont->update($ontPayload);
+                } else {
+                    Ont::create($ontPayload);
+                }
+
+                $usedCount = OdpPort::where('odp_id', $odp->id)->where('status', 'used')->count();
+                if ($usedCount === 0) {
+                    $usedCount = Ont::where('odp_id', $odp->id)->count();
+                }
+                $odp->update([
+                    'used_ports' => $usedCount,
+                    'status' => ($usedCount >= $odp->total_ports) ? 'full' : 'active'
+                ]);
+            }
+        }
+
+        return $existing ? 'updated' : 'inserted';
     }
 
     protected function importNetworkItem(array $data, string $dupMode, bool $autoCreateArea): string
