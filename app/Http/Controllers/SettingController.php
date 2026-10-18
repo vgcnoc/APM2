@@ -594,7 +594,7 @@ class SettingController extends Controller
             Setting::set('company_logo', $compPath);
         }
 
-        if ($request->ajax() || $request->wantsJson()) {
+        if (($request->ajax() || $request->wantsJson()) && !$request->header('X-Inertia')) {
             $appLogo = Setting::get('app_logo');
             $appFavicon = Setting::get('app_favicon');
             $compLogo = Setting::get('company_logo');
@@ -607,7 +607,7 @@ class SettingController extends Controller
             ]);
         }
 
-        return redirect()->back()->with('success', 'Branding berhasil diperbarui.');
+        return redirect()->back()->with('success', 'Branding dan logo profil berhasil diperbarui.');
     }
 
     public function apiTest(Request $request)

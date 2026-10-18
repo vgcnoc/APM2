@@ -57,16 +57,19 @@ const handleImageError = () => {
     imageError.value = true;
 };
 
-// Prioritaskan logo perusahaan atau logo aplikasi
+// Prioritaskan logo perusahaan atau logo aplikasi sesuai preferensi konteks
 const logoSrc = computed(() => {
     if (props.preferCompanyLogo) {
         return page.props.company_logo || page.props.app_logo || null;
     }
-    return page.props.company_logo || page.props.app_logo || null;
+    return page.props.app_logo || page.props.company_logo || null;
 });
 
 const displayName = computed(() => {
-    return page.props.company_name || page.props.app_name || 'ISP Manager';
+    if (props.preferCompanyLogo) {
+        return page.props.company_name || page.props.app_name || 'ISP Manager';
+    }
+    return page.props.app_name || page.props.company_name || 'ISP Manager';
 });
 
 // Reset image error state if logo URL changes
