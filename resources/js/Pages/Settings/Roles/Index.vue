@@ -736,7 +736,7 @@ const categoryMap = {
         'MikroTik & RADIUS Billing',
     ],
     'tiket': [
-        'Ticketing & CBP (Cabut Perangkat)',
+        'Cabut Perangkat (CBP)',
         'Penanganan Khusus (PGK, PGJ, PGS)',
         'Monitoring Kinerja Teknisi',
     ],
@@ -1259,6 +1259,7 @@ const getGroupColor = (icon) => {
         'cash': 'bg-green-100 text-green-700',
         'chart-pie': 'bg-purple-100 text-purple-700',
         'alert-circle': 'bg-red-100 text-red-700',
+        'scissors': 'bg-rose-100 text-rose-700',
         'support': 'bg-rose-100 text-rose-700',
         'globe': 'bg-teal-100 text-teal-700',
         'server': 'bg-slate-100 text-slate-700',
@@ -1308,6 +1309,7 @@ const iconPaths = {
     package: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
     map: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
     'lock-closed': 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
+    scissors: 'M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879a3 3 0 11-1.414-1.414L10.586 12 7.707 9.121a3 3 0 111.414-1.414L12 10.586m0 0L19 12',
 };
 
 // Auto-select first role on mount if none selected

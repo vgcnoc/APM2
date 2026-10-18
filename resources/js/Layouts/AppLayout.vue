@@ -326,15 +326,14 @@ const menuItems = [
     },
     {
         type: 'dropdown',
-        icon: 'alert-circle',
-        label: 'Ticketing & CBP',
-        active: (url) => ['/tickets', '/cbp'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_tickets', 'menu_cbp', 'menu_cbp_jadwal', 'menu_cbp_laporan'],
+        icon: 'scissors',
+        label: 'Cabut Perangkat (CBP)',
+        active: (url) => (url || '').startsWith('/cbp'),
+        permission: ['menu_cbp', 'menu_cbp_jadwal', 'menu_cbp_laporan'],
         children: [
-            { href: '/tickets', label: 'Semua Gangguan', active: (url) => (url || '').length > 0 && url === '/tickets', permission: 'menu_tickets' },
-            { href: '/cbp', label: 'CBP / Cabut Perangkat', active: (url) => (url || '').length > 0 && url === '/cbp', permission: 'menu_cbp' },
-            { href: '/cbp/jadwal', label: 'Jadwal CBP', active: (url) => (url || '').startsWith('/cbp/jadwal'), permission: 'menu_cbp_jadwal' },
-            { href: '/cbp/laporan', label: 'Laporan CBP', active: (url) => (url || '').startsWith('/cbp/laporan'), permission: 'menu_cbp_laporan' },
+            { href: '/cbp', label: '1. Request Cabut', active: (url) => (url || '').length > 0 && url === '/cbp', permission: 'menu_cbp' },
+            { href: '/cbp/jadwal', label: '2. Jadwal CBP', active: (url) => (url || '').startsWith('/cbp/jadwal'), permission: 'menu_cbp_jadwal' },
+            { href: '/cbp/laporan', label: '3. Laporan CBP', active: (url) => (url || '').startsWith('/cbp/laporan'), permission: 'menu_cbp_laporan' },
         ]
     },
 

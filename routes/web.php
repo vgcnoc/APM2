@@ -447,7 +447,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── Monitoring Kinerja Teknisi (Penanganan Gangguan & Pemasangan Instalasi) ──
-    Route::middleware(['permission:menu_monitoring_teknisi|menu_tickets|menu_customers_installed'])->group(function () {
+    Route::middleware(['permission:menu_monitoring_teknisi|menu_customers_installed'])->group(function () {
         Route::get('/monitoring-teknisi', [\App\Http\Controllers\TechnicianMonitoringController::class, 'index'])->name('technician-monitoring.index');
         Route::get('/monitoring-teknisi/detail/{technician}', [\App\Http\Controllers\TechnicianMonitoringController::class, 'technicianDetail'])->name('technician-monitoring.detail');
     });
