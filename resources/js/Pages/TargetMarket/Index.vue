@@ -1,6 +1,6 @@
 <template>
     <AppLayout title="Bonus Target Market" subtitle="Sistem reward pencapaian target pasar & komisi closing seluruh karyawan">
-        <div class="space-y-6">
+        <div class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 space-y-6 font-sans">
             <!-- ═══ Top Filter Bar & Action Buttons ═══ -->
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
                 <div class="flex flex-wrap items-center gap-3">
@@ -126,15 +126,43 @@
                  TAB 1: LEADERBOARD & TARGET PROGRESS
             ═════════════════════════════════════════════════════════════════ -->
             <div v-if="activeTab === 'leaderboard'" class="space-y-6">
-                <!-- Podium Top 3 (jika ada data) -->
-                <div v-if="leaderboard.length >= 2" class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                <!-- Single Top Performer Banner (jika 1 orang) -->
+                <div v-if="leaderboard.length === 1" class="bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 rounded-3xl p-6 text-white shadow-lg shadow-amber-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-4 text-center sm:text-left">
+                        <div class="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl shrink-0 shadow-inner">
+                            👑
+                        </div>
+                        <div>
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-white/25 text-white tracking-wider mb-1">
+                                Top Performer Periode Ini
+                            </div>
+                            <h3 class="text-xl font-black text-white">{{ leaderboard[0].user_name }}</h3>
+                            <p class="text-xs text-amber-100 capitalize">{{ leaderboard[0].user_role }} &bull; {{ leaderboard[0].closings_count }} Pelanggan Closing ({{ leaderboard[0].percentage }}% dari kuota target)</p>
+                        </div>
+                    </div>
+                    <div class="text-center sm:text-right bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20">
+                        <span class="text-[11px] text-amber-100 block font-semibold">Total Bonus Terkumpul:</span>
+                        <span class="text-2xl font-black text-white font-mono">Rp {{ formatCurrency(leaderboard[0].total_reward) }}</span>
+                        <div class="mt-1">
+                            <span v-if="leaderboard[0].is_achieved" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-400 text-slate-900 shadow-xs">
+                                🎯 TARGET TERCAPAI
+                            </span>
+                            <span v-else class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white">
+                                🚀 ON PROGRESS
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Podium Top 3 (jika 2 orang atau lebih) -->
+                <div v-else-if="leaderboard.length >= 2" class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                     <!-- Juara 2 -->
                     <div v-if="leaderboard[1]" class="bg-gradient-to-b from-slate-50 to-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col items-center text-center relative order-2 md:order-1">
                         <span class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-black text-sm flex items-center justify-center mb-2 shadow-xs">2</span>
                         <h4 class="font-bold text-gray-900 text-base">{{ leaderboard[1].user_name }}</h4>
                         <span class="text-xs text-gray-500 capitalize mb-3">{{ leaderboard[1].user_role }}</span>
-                        <div class="text-2xl font-black text-indigo-600">{{ leaderboard[1].closings_count }} <span class="text-xs text-gray-400">Closing</span></div>
-                        <div class="text-xs font-bold text-emerald-600 mt-1">Rp {{ formatCurrency(leaderboard[1].total_reward) }}</div>
+                        <div class="text-2xl font-black text-indigo-600 font-mono">{{ leaderboard[1].closings_count }} <span class="text-xs text-gray-400">Closing</span></div>
+                        <div class="text-xs font-bold text-emerald-600 mt-1 font-mono">Rp {{ formatCurrency(leaderboard[1].total_reward) }}</div>
                     </div>
 
                     <!-- Juara 1 (Champion) -->
@@ -145,8 +173,8 @@
                         <span class="w-10 h-10 rounded-full bg-amber-400 text-white font-black text-base flex items-center justify-center mb-2 shadow-sm mt-1">1</span>
                         <h4 class="font-bold text-gray-900 text-lg">{{ leaderboard[0].user_name }}</h4>
                         <span class="text-xs text-gray-500 capitalize mb-3">{{ leaderboard[0].user_role }}</span>
-                        <div class="text-3xl font-black text-amber-600">{{ leaderboard[0].closings_count }} <span class="text-xs text-gray-400">Closing</span></div>
-                        <div class="text-sm font-extrabold text-emerald-600 mt-1">Rp {{ formatCurrency(leaderboard[0].total_reward) }}</div>
+                        <div class="text-3xl font-black text-amber-600 font-mono">{{ leaderboard[0].closings_count }} <span class="text-xs text-gray-400">Closing</span></div>
+                        <div class="text-sm font-extrabold text-emerald-600 mt-1 font-mono">Rp {{ formatCurrency(leaderboard[0].total_reward) }}</div>
                         <span v-if="leaderboard[0].is_achieved" class="mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
                             🎯 TARGET TERCAPAI
                         </span>
@@ -157,8 +185,8 @@
                         <span class="w-8 h-8 rounded-full bg-orange-200 text-orange-800 font-black text-sm flex items-center justify-center mb-2 shadow-xs">3</span>
                         <h4 class="font-bold text-gray-900 text-base">{{ leaderboard[2].user_name }}</h4>
                         <span class="text-xs text-gray-500 capitalize mb-3">{{ leaderboard[2].user_role }}</span>
-                        <div class="text-2xl font-black text-indigo-600">{{ leaderboard[2].closings_count }} <span class="text-xs text-gray-400">Closing</span></div>
-                        <div class="text-xs font-bold text-emerald-600 mt-1">Rp {{ formatCurrency(leaderboard[2].total_reward) }}</div>
+                        <div class="text-2xl font-black text-indigo-600 font-mono">{{ leaderboard[2].closings_count }} <span class="text-xs text-gray-400">Closing</span></div>
+                        <div class="text-xs font-bold text-emerald-600 mt-1 font-mono">Rp {{ formatCurrency(leaderboard[2].total_reward) }}</div>
                     </div>
                 </div>
 
@@ -173,7 +201,7 @@
                     </div>
 
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs">
+                        <table class="w-full text-left text-xs min-w-[980px]">
                             <thead class="bg-gray-50/80 text-[11px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
                                 <tr>
                                     <th class="px-5 py-3.5">Peringkat & Karyawan</th>
@@ -186,7 +214,7 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-50 font-medium">
-                                <tr v-for="(row, idx) in leaderboard" :key="row.user_id" class="hover:bg-gray-50/50 transition-colors">
+                                <tr v-for="(row, idx) in leaderboard" :key="row.user_id" class="hover:bg-gray-50/70 transition-colors">
                                     <td class="px-5 py-4">
                                         <div class="flex items-center gap-3">
                                             <span class="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs"
@@ -202,7 +230,7 @@
                                     <td class="px-4 py-4 min-w-[160px]">
                                         <div class="flex items-center justify-between text-[11px] mb-1">
                                             <span class="font-bold text-gray-800">{{ row.closings_count }} / {{ row.target_quota }} Pelanggan</span>
-                                            <span class="font-bold" :class="row.is_achieved ? 'text-emerald-600' : 'text-indigo-600'">{{ row.percentage }}%</span>
+                                            <span class="font-bold font-mono" :class="row.is_achieved ? 'text-emerald-600' : 'text-indigo-600'">{{ row.percentage }}%</span>
                                         </div>
                                         <div class="w-full bg-gray-100 rounded-full h-2">
                                             <div class="h-2 rounded-full transition-all duration-500"
@@ -210,7 +238,7 @@
                                                 :style="{ width: row.percentage + '%' }"></div>
                                         </div>
                                     </td>
-                                    <td class="px-4 py-4">
+                                    <td class="px-4 py-4 whitespace-nowrap">
                                         <span v-if="row.is_achieved" class="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                             🎯 TERCAPAI
                                         </span>
@@ -218,20 +246,20 @@
                                             🚀 ON PROGRESS
                                         </span>
                                     </td>
-                                    <td class="px-4 py-4 text-gray-700">
+                                    <td class="px-4 py-4 whitespace-nowrap text-gray-700 font-mono">
                                         Rp {{ formatCurrency(row.base_reward + row.tier_reward) }}
                                     </td>
-                                    <td class="px-4 py-4 text-gray-700">
+                                    <td class="px-4 py-4 whitespace-nowrap text-gray-700 font-mono">
                                         Rp {{ formatCurrency(row.area_reward + row.package_reward) }}
                                     </td>
-                                    <td class="px-4 py-4">
-                                        <span v-if="row.target_achieved_reward > 0" class="font-bold text-emerald-600">
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <span v-if="row.target_achieved_reward > 0" class="font-bold text-emerald-600 font-mono">
                                             +Rp {{ formatCurrency(row.target_achieved_reward) }}
                                         </span>
-                                        <span v-else class="text-gray-400">-</span>
+                                        <span v-else class="text-gray-400 font-mono">-</span>
                                     </td>
-                                    <td class="px-5 py-4 text-right">
-                                        <span class="text-sm font-black text-gray-900 block">Rp {{ formatCurrency(row.total_reward) }}</span>
+                                    <td class="px-5 py-4 whitespace-nowrap text-right">
+                                        <span class="text-sm font-black text-gray-900 font-mono block">Rp {{ formatCurrency(row.total_reward) }}</span>
                                         <span v-if="row.is_synced" class="text-[10px] text-emerald-600 font-bold">✓ Sudah di Payroll</span>
                                         <span v-else class="text-[10px] text-amber-600 font-medium">Pending Cair</span>
                                     </td>
@@ -527,6 +555,7 @@
 import { ref } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     month: Number,
@@ -589,21 +618,78 @@ function triggerRecalculate() {
     }, {
         onFinish: () => {
             processingRecalc.value = false;
+        },
+        onSuccess: () => {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Perhitungan Selesai!',
+                text: 'Seluruh bonus closing pelanggan berhasil dihitung ulang.',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
         }
     });
 }
 
 function triggerSyncPayroll() {
-    if (!confirm(`Cairkan akumulasi bonus target market periode ${months[selectedMonth.value - 1]} ${selectedYear.value} langsung ke modul Insentif Payroll karyawan?`)) {
-        return;
-    }
-    processingSync.value = true;
-    router.post('/bonus-target-market/sync-payroll', {
-        month: selectedMonth.value,
-        year: selectedYear.value,
-    }, {
-        onFinish: () => {
-            processingSync.value = false;
+    Swal.fire({
+        title: 'Cairkan Bonus ke Payroll?',
+        html: `
+            <div class="text-left text-xs text-slate-600 space-y-2 mt-2">
+                <p>Akumulasi bonus target market periode <b>${months[selectedMonth.value - 1]} ${selectedYear.value}</b> akan ditransfer ke modul <b>Insentif Payroll</b> karyawan.</p>
+                <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                    <span class="text-[11px] text-emerald-800 font-semibold">Total Bonus yang Ditransfer:</span>
+                    <div class="text-lg font-black text-emerald-700 font-mono mt-0.5">
+                        Rp ${formatCurrency(props.kpi.total_bonus)}
+                    </div>
+                    <div class="text-[10px] text-emerald-600 mt-1">
+                        Untuk ${props.kpi.total_employees} karyawan pencatat penjualan closing
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-400 italic">Bonus yang masuk ke Payroll akan otomatis dibayarkan saat penggajian bulanan karyawan dicairkan.</p>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '⚡ Ya, Cairkan ke Payroll',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#059669',
+        cancelButtonColor: '#64748b'
+    }).then((res) => {
+        if (res.isConfirmed) {
+            processingSync.value = true;
+            router.post('/bonus-target-market/sync-payroll', {
+                month: selectedMonth.value,
+                year: selectedYear.value,
+            }, {
+                onFinish: () => {
+                    processingSync.value = false;
+                },
+                onSuccess: () => {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Berhasil Dicairkan ke Payroll!',
+                        text: 'Bonus berhasil ditransfer ke modul Insentif Payroll.',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                },
+                onError: (err) => {
+                    const msg = Object.values(err || {})[0] || 'Gagal menyinkronkan bonus ke Payroll.';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Sinkronisasi Gagal',
+                        text: msg,
+                        confirmButtonColor: '#dc2626'
+                    });
+                }
+            });
         }
     });
 }
@@ -644,12 +730,52 @@ function editProgram(prog) {
 }
 
 function toggleProgram(prog) {
-    router.post(`/bonus-target-market/programs/${prog.id}/toggle`, {}, { preserveScroll: true });
+    const nextStatus = !prog.is_active;
+    router.post(`/bonus-target-market/programs/${prog.id}/toggle`, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: nextStatus ? 'Program Diaktifkan' : 'Program Dinonaktifkan',
+                showConfirmButton: false,
+                timer: 2000,
+                timerProgressBar: true
+            });
+        }
+    });
 }
 
 function deleteProgram(prog) {
-    if (!confirm(`Hapus program target '${prog.title}'?`)) return;
-    router.delete(`/bonus-target-market/programs/${prog.id}`, { preserveScroll: true });
+    Swal.fire({
+        title: 'Hapus Program Target?',
+        text: `Program '${prog.title}' akan dihapus dan bonus periode ini akan dihitung ulang.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Hapus Program',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b'
+    }).then((res) => {
+        if (res.isConfirmed) {
+            router.delete(`/bonus-target-market/programs/${prog.id}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Program Dihapus!',
+                        text: `Program '${prog.title}' berhasil dihapus.`,
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                }
+            });
+        }
+    });
 }
 
 function closeModal() {
@@ -668,11 +794,35 @@ function removeTierRow(idx) {
 function submitProgram() {
     if (isEditing.value && editingProgramId.value) {
         form.post(`/bonus-target-market/programs/${editingProgramId.value}/update`, {
-            onSuccess: () => closeModal(),
+            onSuccess: () => {
+                closeModal();
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Program Diperbarui!',
+                    text: 'Perubahan program target berhasil disimpan.',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+            },
         });
     } else {
         form.post('/bonus-target-market/programs', {
-            onSuccess: () => closeModal(),
+            onSuccess: () => {
+                closeModal();
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Program Diterbitkan!',
+                    text: 'Program target pasar baru berhasil dibuat.',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+            },
         });
     }
 }
