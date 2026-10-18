@@ -1,10 +1,17 @@
 <template>
     <AppLayout title="Pengaturan Billing & Invoice" subtitle="Konfigurasi otomatisasi siklus tagihan, jatuh tempo, dan isolir layanan pelanggan">
-        <div class="max-w-6xl flex flex-col lg:flex-row gap-6">
-            <!-- Form Section -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden lg:w-2/3">
-                <div class="p-6 sm:p-8">
-                    <form @submit.prevent="saveAll" class="space-y-8">
+        <div class="max-w-[1600px] w-full mx-auto space-y-6 font-sans">
+            <!-- Flash message -->
+            <div v-if="$page.props.flash?.success" class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2">
+                <span>✅</span>
+                <span>{{ $page.props.flash.success }}</span>
+            </div>
+
+            <div class="flex flex-col lg:flex-row gap-6">
+                <!-- Form Section -->
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden lg:w-7/12 xl:w-2/3">
+                    <div class="p-6 sm:p-8">
+                        <form @submit.prevent="saveAll" class="space-y-8">
                         
                         <!-- 1. Tipe Billing -->
                         <div class="space-y-4">
@@ -108,7 +115,6 @@
                                         <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                                         Siklus penagihan tersimpan!
                                     </span>
-                                    <span v-else></span>
                                 </Transition>
                                 <button type="button" @click="saveSection('billing_type', 'Siklus Penagihan')" :disabled="savingSection !== null" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-indigo-100 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer">
                                     <svg v-if="savingSection === 'billing_type'" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
@@ -192,7 +198,6 @@
                                         <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                                         Timeline & penjadwalan tersimpan!
                                     </span>
-                                    <span v-else></span>
                                 </Transition>
                                 <button type="button" @click="saveSection('timeline', 'Timeline & Penjadwalan')" :disabled="savingSection !== null" class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-emerald-100 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 cursor-pointer">
                                     <svg v-if="savingSection === 'timeline'" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
@@ -261,7 +266,6 @@
                                         <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                                         Pajak & regulasi tersimpan!
                                     </span>
-                                    <span v-else></span>
                                 </Transition>
                                 <button type="button" @click="saveSection('tax', 'Pajak & Regulasi')" :disabled="savingSection !== null" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-amber-100 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 cursor-pointer">
                                     <svg v-if="savingSection === 'tax'" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
@@ -327,7 +331,6 @@
                                         <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                                         Rekening pembayaran tersimpan!
                                     </span>
-                                    <span v-else></span>
                                 </Transition>
                                 <button type="button" @click="saveSection('banks', 'Rekening Bank')" :disabled="savingSection !== null" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-blue-100 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer">
                                     <svg v-if="savingSection === 'banks'" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
@@ -478,7 +481,6 @@
                                         <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                                         Payment gateway tersimpan!
                                     </span>
-                                    <span v-else></span>
                                 </Transition>
                                 <button type="button" @click="saveSection('pg', 'Payment Gateway')" :disabled="savingSection !== null" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-indigo-100 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer">
                                     <svg v-if="savingSection === 'pg'" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
@@ -593,7 +595,6 @@
                                         <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                                         Template invoice tersimpan!
                                     </span>
-                                    <span v-else></span>
                                 </Transition>
                                 <button type="button" @click="saveSection('template', 'Template Invoice')" :disabled="savingSection !== null" class="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-violet-100 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 cursor-pointer">
                                     <svg v-if="savingSection === 'template'" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
@@ -627,8 +628,8 @@
             </div>
 
             <!-- Simulation Panel -->
-            <div class="lg:w-1/3">
-                <div class="bg-gradient-to-br from-indigo-950 via-indigo-900 to-slate-900 rounded-2xl shadow-xl border border-indigo-700/60 text-white p-6 sticky top-6 space-y-5">
+            <div class="lg:w-5/12 xl:w-1/3">
+                <div class="bg-gradient-to-br from-indigo-950 via-indigo-900 to-slate-900 rounded-3xl shadow-xl border border-indigo-700/60 text-white p-6 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto space-y-5 custom-scrollbar">
                     
                     <!-- Header -->
                     <div class="flex items-start justify-between gap-3 pb-4 border-b border-indigo-700/40">
@@ -699,11 +700,15 @@
                     <div class="grid grid-cols-1 gap-2.5">
                         <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-xl p-3.5">
                             <div class="flex items-center gap-2 mb-1">
-                                <div class="w-2 h-2 rounded-full bg-blue-400"></div>
-                                <span class="text-[11px] font-bold text-indigo-200 uppercase tracking-wider">Terbit Tagihan Rutin</span>
+                                <div class="w-2 h-2 rounded-full" :class="form.billing_type === 'prabayar' ? 'bg-cyan-400' : 'bg-blue-400'"></div>
+                                <span class="text-[11px] font-bold text-indigo-200 uppercase tracking-wider">
+                                    {{ form.billing_type === 'prabayar' ? 'Tagihan Pertama (Aktivasi)' : 'Terbit Tagihan Rutin' }}
+                                </span>
                             </div>
-                            <p class="text-sm font-semibold pl-4 text-white">Tgl {{ form.invoice_issue_date }} {{ nextMonthName }}</p>
-                            <p class="text-[10px] text-indigo-300 pl-4 mt-0.5">Sistem otomatis generate invoice pelanggan tiap bulannya</p>
+                            <p class="text-sm font-semibold pl-4 text-white">{{ nextRoutineBillingDateFormatted }}</p>
+                            <p class="text-[10px] text-indigo-300 pl-4 mt-0.5">
+                                {{ form.billing_type === 'prabayar' ? 'Pelanggan prabayar membayar invoice saat aktivasi sebelum layanan aktif' : 'Sistem otomatis generate invoice pelanggan tiap bulannya' }}
+                            </p>
                         </div>
 
                         <div class="bg-white/10 backdrop-blur-md border border-red-500/30 rounded-xl p-3.5 relative overflow-hidden">
@@ -846,12 +851,13 @@
                 </div>
             </div>
         </div>
-    </AppLayout>
+    </div>
+</AppLayout>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
 
@@ -859,8 +865,8 @@ const props = defineProps({
     billing_type: String,
     prorata_formula: String,
     prorata_first_month: Boolean,
-    invoice_issue_date: String,
-    isolate_days: String,
+    invoice_issue_date: [String, Number],
+    isolate_days: [String, Number],
     isolate_time: String,
     payment_banks: Array,
     pg_provider: String,
@@ -890,10 +896,29 @@ const form = useForm({
     pg_api_key: props.pg_api_key || '',
     pg_private_key: props.pg_private_key || '',
     pg_callback_token: props.pg_callback_token || '',
-    tax_ppn: props.tax_ppn || 0,
-    tax_bhp: props.tax_bhp || 0,
-    tax_uso: props.tax_uso || 0,
+    tax_ppn: props.tax_ppn !== undefined ? props.tax_ppn : 0,
+    tax_bhp: props.tax_bhp !== undefined ? props.tax_bhp : 0,
+    tax_uso: props.tax_uso !== undefined ? props.tax_uso : 0,
 });
+
+// Sync watchers when props change (e.g. after save redirect)
+watch(() => props.billing_type, (val) => { if (val) form.billing_type = val; });
+watch(() => props.prorata_formula, (val) => { if (val) form.prorata_formula = val; });
+watch(() => props.prorata_first_month, (val) => { form.prorata_first_month = val !== undefined ? val : true; });
+watch(() => props.invoice_issue_date, (val) => { if (val) form.invoice_issue_date = val; });
+watch(() => props.isolate_days, (val) => { if (val) form.isolate_days = val; });
+watch(() => props.isolate_time, (val) => { if (val) form.isolate_time = val; });
+watch(() => props.payment_banks, (val) => { if (val) form.payment_banks = JSON.parse(JSON.stringify(val)); });
+watch(() => props.pg_provider, (val) => { if (val) form.pg_provider = val; });
+watch(() => props.pg_environment, (val) => { if (val) form.pg_environment = val; });
+watch(() => props.pg_merchant_id, (val) => { form.pg_merchant_id = val || ''; });
+watch(() => props.pg_api_key, (val) => { form.pg_api_key = val || ''; });
+watch(() => props.pg_private_key, (val) => { form.pg_private_key = val || ''; });
+watch(() => props.pg_callback_token, (val) => { form.pg_callback_token = val || ''; });
+watch(() => props.tax_ppn, (val) => { form.tax_ppn = val !== undefined ? val : 0; });
+watch(() => props.tax_bhp, (val) => { form.tax_bhp = val !== undefined ? val : 0; });
+watch(() => props.tax_uso, (val) => { form.tax_uso = val !== undefined ? val : 0; });
+watch(() => props.invoice_template, (val) => { if (val) form.invoice_template = val; });
 
 const savingSection = ref(null);
 const savedSection = ref(null);
@@ -962,13 +987,41 @@ function saveSection(sectionKey, sectionLabel) {
 
     // Always strip blank rows so other sections never fail validation
     sanitizeBanks();
-
     savingSection.value = sectionKey;
 
-    form.transform(data => ({
-        ...data,
-        _section: sectionLabel
-    })).post('/settings/billing', {
+    let payload = { _section: sectionLabel };
+
+    if (sectionKey === 'billing_type') {
+        payload.billing_type = form.billing_type;
+        payload.prorata_formula = form.prorata_formula;
+        payload.prorata_first_month = form.prorata_first_month;
+    } else if (sectionKey === 'timeline') {
+        payload.invoice_issue_date = form.invoice_issue_date;
+        payload.isolate_days = form.isolate_days;
+        payload.isolate_time = form.isolate_time;
+    } else if (sectionKey === 'tax') {
+        payload.tax_ppn = form.tax_ppn;
+        payload.tax_bhp = form.tax_bhp;
+        payload.tax_uso = form.tax_uso;
+    } else if (sectionKey === 'banks') {
+        payload.payment_banks = form.payment_banks;
+    } else if (sectionKey === 'pg') {
+        payload.pg_provider = form.pg_provider;
+        payload.pg_environment = form.pg_environment;
+        payload.pg_merchant_id = form.pg_merchant_id;
+        payload.pg_api_key = form.pg_api_key;
+        payload.pg_private_key = form.pg_private_key;
+        payload.pg_callback_token = form.pg_callback_token;
+    } else if (sectionKey === 'template') {
+        payload.invoice_template = form.invoice_template;
+    } else {
+        payload = {
+            ...form.data(),
+            _section: sectionLabel
+        };
+    }
+
+    router.post(route('settings.billing.update'), payload, {
         preserveScroll: true,
         onSuccess: () => {
             savingSection.value = null;
@@ -992,7 +1045,7 @@ function saveSection(sectionKey, sectionLabel) {
         },
         onError: (errors) => {
             savingSection.value = null;
-            const firstError = Object.values(errors)[0] || 'Periksa kembali data yang dimasukkan.';
+            const firstError = Object.values(errors || {})[0] || 'Periksa kembali data yang dimasukkan.';
             Swal.fire({
                 icon: 'error',
                 title: 'Gagal Menyimpan',
@@ -1008,10 +1061,12 @@ function saveAll() {
     sanitizeBanks();
     savingSection.value = 'all';
 
-    form.transform(data => ({
-        ...data,
+    const payload = {
+        ...form.data(),
         _section: 'Semua Konfigurasi Billing'
-    })).post('/settings/billing', {
+    };
+
+    router.post(route('settings.billing.update'), payload, {
         preserveScroll: true,
         onSuccess: () => {
             savingSection.value = null;
@@ -1035,7 +1090,7 @@ function saveAll() {
         },
         onError: (errors) => {
             savingSection.value = null;
-            const firstError = Object.values(errors)[0] || 'Periksa kembali data yang dimasukkan.';
+            const firstError = Object.values(errors || {})[0] || 'Periksa kembali data yang dimasukkan.';
             Swal.fire({
                 icon: 'error',
                 title: 'Gagal Menyimpan',
@@ -1048,28 +1103,6 @@ function saveAll() {
 
 // Simulation Logic
 const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-const today = new Date();
-const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-
-const nextMonthName = computed(() => {
-    return monthNames[nextMonth.getMonth()] + ' ' + nextMonth.getFullYear();
-});
-
-const issueDateObj = computed(() => {
-    let day = parseInt(form.invoice_issue_date) || 1;
-    if(day > 28) day = 28;
-    return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), day);
-});
-
-const isolateDateObj = computed(() => {
-    const d = new Date(issueDateObj.value);
-    d.setDate(d.getDate() + (parseInt(form.isolate_days) || 0));
-    return d;
-});
-
-const isolateDateFormatted = computed(() => {
-    return `${isolateDateObj.value.getDate()} ${monthNames[isolateDateObj.value.getMonth()]} ${isolateDateObj.value.getFullYear()} ${form.isolate_time || '00:00'}`;
-});
 
 // Interactive Simulator Controls
 const quickPrices = [100000, 150000, 200000, 300000];
@@ -1083,25 +1116,6 @@ function formatDateToInput(d) {
 }
 
 const simActivationDate = ref(formatDateToInput(new Date()));
-
-function setQuickDate(type) {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    if (type === 'today') {
-        simActivationDate.value = formatDateToInput(now);
-    } else if (type === 'day1') {
-        simActivationDate.value = formatDateToInput(new Date(year, month, 1));
-    } else if (type === 'day10') {
-        simActivationDate.value = formatDateToInput(new Date(year, month, 10));
-    } else if (type === 'day15') {
-        simActivationDate.value = formatDateToInput(new Date(year, month, 15));
-    } else if (type === 'day20') {
-        simActivationDate.value = formatDateToInput(new Date(year, month, 20));
-    } else if (type === 'day25') {
-        simActivationDate.value = formatDateToInput(new Date(year, month, 25));
-    }
-}
 
 const simActivationDateObj = computed(() => {
     if (!simActivationDate.value) return new Date();
@@ -1121,7 +1135,63 @@ const simActivationDateFormatted = computed(() => {
     return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
 });
 
-// Total days in activation month cycle
+function setQuickDate(type) {
+    const cur = simActivationDateObj.value;
+    const year = cur.getFullYear();
+    const month = cur.getMonth();
+    if (type === 'today') {
+        simActivationDate.value = formatDateToInput(new Date());
+    } else if (type === 'day1') {
+        simActivationDate.value = formatDateToInput(new Date(year, month, 1));
+    } else if (type === 'day10') {
+        simActivationDate.value = formatDateToInput(new Date(year, month, 10));
+    } else if (type === 'day15') {
+        simActivationDate.value = formatDateToInput(new Date(year, month, 15));
+    } else if (type === 'day20') {
+        simActivationDate.value = formatDateToInput(new Date(year, month, 20));
+    } else if (type === 'day25') {
+        simActivationDate.value = formatDateToInput(new Date(year, month, 25));
+    }
+}
+
+// Next routine billing date / cut-off date matching CustomerController.php & Activation.vue
+const nextRoutineBillingDateObj = computed(() => {
+    const act = simActivationDateObj.value;
+    let issueDay = parseInt(form.invoice_issue_date) || 1;
+    if (issueDay > 28) issueDay = 28;
+
+    if (form.billing_type === 'prabayar') {
+        return new Date(act.getFullYear(), act.getMonth(), act.getDate());
+    }
+
+    if (act.getDate() >= issueDay) {
+        return new Date(act.getFullYear(), act.getMonth() + 1, issueDay);
+    } else {
+        return new Date(act.getFullYear(), act.getMonth(), issueDay);
+    }
+});
+
+const nextRoutineBillingDateFormatted = computed(() => {
+    const d = nextRoutineBillingDateObj.value;
+    if (form.billing_type === 'prabayar') {
+        return `Tgl ${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()} (Saat Aktivasi)`;
+    }
+    return `Tgl ${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+});
+
+// Isolate date based on routine billing date / activation date
+const isolateDateObj = computed(() => {
+    const base = new Date(nextRoutineBillingDateObj.value);
+    base.setDate(base.getDate() + (parseInt(form.isolate_days) || 0));
+    return base;
+});
+
+const isolateDateFormatted = computed(() => {
+    const d = isolateDateObj.value;
+    return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()} ${form.isolate_time || '00:00'}`;
+});
+
+// Total days in activation month cycle (matching endOfMonth in CustomerController.php)
 const simCycleDays = computed(() => {
     const d = simActivationDateObj.value;
     return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
@@ -1209,5 +1279,20 @@ function formatCurrency(value) {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.5);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.8);
 }
 </style>
