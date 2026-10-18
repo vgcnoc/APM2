@@ -507,14 +507,6 @@ const menuItems = [
     // 9. PENGATURAN SISTEM
     { type: 'group', label: 'PENGATURAN SISTEM' },
     {
-        type: 'link',
-        href: '/settings/data-migration',
-        icon: 'zap',
-        label: '⚡ Data Migration Center',
-        active: (url) => (url || '').startsWith('/settings/data-migration'),
-        permission: ['menu_data_migration', 'menu_settings_branding', 'menu_settings_billing', 'menu_settings_roles'],
-    },
-    {
         type: 'dropdown',
         icon: 'cog',
         label: 'Konfigurasi Sistem',
