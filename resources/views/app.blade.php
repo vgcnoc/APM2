@@ -28,7 +28,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @inertiaHead
 </head>
-<body class="font-sans antialiased" style="zoom: 75%;">
+<body class="font-sans antialiased" style="zoom: 85%;">
     @inertia
 </body>
 </html>

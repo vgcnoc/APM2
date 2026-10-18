@@ -16,7 +16,7 @@ html {
 body {
     @apply text-gray-900 antialiased bg-gray-50 min-h-screen selection:bg-blue-500/30 selection:text-blue-900;
     font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    zoom: 75%;
+    zoom: 85%;
 }
 
 @media print {
