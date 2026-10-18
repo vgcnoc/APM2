@@ -1,6 +1,6 @@
 <template>
     <AppLayout title="Gaji, Insentif & BPJS" subtitle="Manajemen Gaji, BPJS Ketenagakerjaan & Kesehatan, Bonus, dan Pencairan">
-        <div class="max-w-7xl mx-auto space-y-6 font-sans">
+        <div class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 space-y-6 font-sans">
             
             <!-- Flash Notification -->
             <div v-if="$page.props.flash?.success" class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl text-sm font-medium shadow-xs flex items-center justify-between">
@@ -164,7 +164,7 @@
 
                 <!-- Table Content -->
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse text-xs">
+                    <table class="w-full text-left border-collapse text-xs min-w-[1240px]">
                         <thead>
                             <tr class="bg-slate-50/80 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
                                 <th class="px-5 py-3.5">Karyawan &amp; Status BPJS</th>
@@ -174,11 +174,11 @@
                                 <th class="px-5 py-3.5">Potongan (BPJS &amp; Kasbon)</th>
                                 <th class="px-5 py-3.5">Gaji Bersih (Net)</th>
                                 <th class="px-5 py-3.5 text-center">Status</th>
-                                <th class="px-5 py-3.5 text-right">Aksi</th>
+                                <th class="px-4 py-3.5 text-center sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] z-20 min-w-[310px]">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-slate-50/70 transition-colors">
+                            <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-slate-50/70 transition-colors group">
                                 <!-- Karyawan & Status BPJS -->
                                 <td class="px-5 py-4">
                                     <div class="flex items-start gap-3">
@@ -218,11 +218,11 @@
                                 </td>
 
                                 <!-- Insentif & Bonus -->
-                                <td class="px-5 py-4">
+                                <td class="px-5 py-4 whitespace-nowrap">
                                     <div class="font-bold text-emerald-600 font-mono">
                                         + Rp {{ formatRupiah(user.total_auto_incentive + user.total_manual_incentive) }}
                                     </div>
-                                    <div class="text-[10px] text-slate-400 mt-0.5">
+                                    <div class="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">
                                         <span>Auto: +{{ formatRupiah(user.total_auto_incentive) }}</span>
                                         <span v-if="user.total_manual_incentive > 0" class="text-emerald-700 font-bold ml-1">
                                             &bull; Bonus: +{{ formatRupiah(user.total_manual_incentive) }}
@@ -231,11 +231,11 @@
                                 </td>
 
                                 <!-- Potongan (BPJS & Kasbon) -->
-                                <td class="px-5 py-4">
+                                <td class="px-5 py-4 whitespace-nowrap">
                                     <div class="font-bold text-rose-600 font-mono">
                                         - Rp {{ formatRupiah(user.total_deduction + (user.bpjs?.total_employee || 0)) }}
                                     </div>
-                                    <div class="text-[10px] text-slate-500 mt-0.5 flex flex-col gap-0.5">
+                                    <div class="text-[10px] text-slate-500 mt-0.5 flex flex-col gap-0.5 whitespace-nowrap">
                                         <span v-if="user.bpjs?.total_employee > 0" class="text-rose-700 font-semibold">
                                             ↳ BPJS: -Rp {{ formatRupiah(user.bpjs.total_employee) }}
                                         </span>
@@ -300,13 +300,13 @@
                                 </td>
 
                                 <!-- Aksi -->
-                                <td class="px-5 py-4 whitespace-nowrap text-right">
+                                <td class="px-4 py-4 whitespace-nowrap text-right sticky right-0 bg-white group-hover:bg-slate-50 transition-colors shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] z-10 min-w-[310px]">
                                     <div class="flex items-center justify-end gap-1.5">
                                         <!-- Tombol Lihat Slip Gaji -->
                                         <button
                                             type="button"
                                             @click="openSlipModal(user)"
-                                            class="px-2.5 py-1 text-slate-700 hover:text-indigo-700 bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-lg text-xs font-bold transition-colors"
+                                            class="px-2.5 py-1 text-slate-700 hover:text-indigo-700 bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-lg text-xs font-bold transition-colors shadow-2xs"
                                             title="Lihat Rincian Slip Gaji"
                                         >
                                             📄 Slip
@@ -316,7 +316,7 @@
                                         <button
                                             type="button"
                                             @click="openBpjsBankModal(user)"
-                                            class="px-2.5 py-1 text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-xs font-bold transition-colors"
+                                            class="px-2.5 py-1 text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-xs font-bold transition-colors shadow-2xs"
                                             title="Atur BPJS & Nomor Rekening"
                                         >
                                             🛡️ BPJS/Bank
@@ -327,7 +327,7 @@
                                             <button 
                                                 type="button"
                                                 @click="openManualModal(user, 'incentive')" 
-                                                class="px-2 py-1 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-bold transition-colors"
+                                                class="px-2 py-1 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-bold transition-colors shadow-2xs"
                                                 title="Tambah Bonus Manual"
                                             >
                                                 +Bonus
@@ -335,7 +335,7 @@
                                             <button 
                                                 type="button"
                                                 @click="openManualModal(user, 'deduction')" 
-                                                class="px-2 py-1 text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold transition-colors"
+                                                class="px-2 py-1 text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold transition-colors shadow-2xs"
                                                 title="Tambah Potongan Kasbon"
                                             >
                                                 -Kasbon
@@ -343,10 +343,10 @@
                                             <button 
                                                 type="button"
                                                 @click="disburse(user)" 
-                                                class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-2xs transition-all"
+                                                class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all active:scale-95"
                                                 title="Cairkan Gaji Staf Ini"
                                             >
-                                                Cairkan
+                                                ⚡ Cairkan
                                             </button>
                                         </template>
                                     </div>
@@ -676,6 +676,7 @@
 import { ref, computed } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     month: Number,
@@ -753,6 +754,25 @@ const submitSettings = () => {
         preserveScroll: true,
         onSuccess: () => {
             showSettingsModal.value = false;
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Pengaturan Disimpan!',
+                text: 'Tarif BPJS & jadwal cair berhasil diperbarui.',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        },
+        onError: (err) => {
+            const msg = Object.values(err || {})[0] || 'Gagal menyimpan pengaturan.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menyimpan',
+                text: msg,
+                confirmButtonColor: '#4f46e5'
+            });
         }
     });
 };
@@ -801,10 +821,30 @@ const openBpjsBankModal = (user) => {
 
 const submitBpjsBank = () => {
     if (!selectedBpjsUser.value) return;
+    const userName = selectedBpjsUser.value.name;
     bpjsBankForm.post(route('payroll.update-bpjs-bank', selectedBpjsUser.value.id), {
         preserveScroll: true,
         onSuccess: () => {
             showBpjsBankModal.value = false;
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Data Disimpan!',
+                text: `Data BPJS & Rekening ${userName} berhasil diperbarui.`,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        },
+        onError: (err) => {
+            const msg = Object.values(err || {})[0] || 'Gagal menyimpan data BPJS & Rekening.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menyimpan',
+                text: msg,
+                confirmButtonColor: '#4f46e5'
+            });
         }
     });
 };
@@ -839,48 +879,119 @@ const handleDescriptionChange = () => {
 };
 
 const submitManual = () => {
-    const r = modalType.value === 'incentive' 
+    const isInc = modalType.value === 'incentive';
+    const userName = selectedUser.value?.name || 'Karyawan';
+    const r = isInc 
         ? route('payroll.incentive.store', selectedUser.value.id)
         : route('payroll.deduction.store', selectedUser.value.id);
 
     const payload = {
         amount: manualForm.amount,
         description: manualForm.description,
-        [modalType.value === 'incentive' ? 'incentive_date' : 'deduction_date']: manualForm.date
+        [isInc ? 'incentive_date' : 'deduction_date']: manualForm.date
     };
 
     router.post(r, payload, {
         preserveScroll: true,
         onSuccess: () => {
             closeManualModal();
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: isInc ? 'Bonus Berhasil Ditambahkan!' : 'Potongan Berhasil Ditambahkan!',
+                text: `${isInc ? 'Bonus' : 'Potongan'} berhasil dicatat untuk ${userName}.`,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        },
+        onError: (err) => {
+            const msg = Object.values(err || {})[0] || 'Gagal menambahkan data.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: msg,
+                confirmButtonColor: '#4f46e5'
+            });
         }
     });
 };
 
 // ── Disburse Single ──
 const disburse = (user) => {
-    const bpjsInfo = user.bpjs?.total_employee > 0 ? ` (Sudah dipotong iuran BPJS Staf: Rp ${formatRupiah(user.bpjs.total_employee)})` : '';
+    const bpjsInfo = user.bpjs?.total_employee > 0 
+        ? `<div class="mt-2 text-xs text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-xl border border-rose-100">↳ Potongan iuran BPJS staf: <b>-Rp ${formatRupiah(user.bpjs.total_employee)}</b></div>` 
+        : '';
     
     const activeProv = props.activeProvider || (props.flipConfig?.enabled ? 'flip' : (props.xenditConfig?.enabled ? 'xendit' : 'none'));
     let transferNotice = '';
 
     if (activeProv === 'flip' && props.flipConfig?.enabled) {
-        transferNotice = `\n\n🟠 FLIP FOR BUSINESS AUTO TRANSFER AKTIF:\nSistem akan otomatis mentransfer Rp ${formatRupiah(user.net_salary)} ke ${user.bank_name || 'Bank'} (${user.bank_account_number || 'Belum diatur'}) a.n ${user.bank_account_holder || user.name} via Flip (${props.flipConfig.environment}). Biaya transfer hemat.`;
+        transferNotice = `<div class="mt-2 text-xs text-orange-800 bg-orange-50 p-2.5 rounded-xl border border-orange-200 text-left"><b>🟠 Auto Transfer Flip Aktif:</b> Otomatis ditransfer ke <b>${user.bank_name || 'Bank'}</b> (${user.bank_account_number || 'Belum diatur'}) a.n <b>${user.bank_account_holder || user.name}</b> via Flip (${props.flipConfig.environment}).</div>`;
     } else if (activeProv === 'xendit' && props.xenditConfig?.enabled) {
-        transferNotice = `\n\n⚡ XENDIT AUTO TRANSFER AKTIF:\nSistem akan otomatis mentransfer Rp ${formatRupiah(user.net_salary)} ke ${user.bank_name || 'Bank'} (${user.bank_account_number || 'Belum diatur'}) a.n ${user.bank_account_holder || user.name} via Xendit (${props.xenditConfig.environment}).`;
+        transferNotice = `<div class="mt-2 text-xs text-indigo-800 bg-indigo-50 p-2.5 rounded-xl border border-indigo-200 text-left"><b>⚡ Auto Transfer Xendit Aktif:</b> Otomatis ditransfer ke <b>${user.bank_name || 'Bank'}</b> (${user.bank_account_number || 'Belum diatur'}) a.n <b>${user.bank_account_holder || user.name}</b> via Xendit (${props.xenditConfig.environment}).</div>`;
     }
 
-    if (confirm(`Cairkan gaji dan insentif untuk ${user.name} bulan ini?\nNet Diterima: Rp ${formatRupiah(user.net_salary)}${bpjsInfo}${transferNotice}\n\nPERINGATAN: Aksi ini akan otomatis mencatat pengeluaran di Buku Kas.`)) {
-        router.post(route('payroll.disburse', user.id), {
-            month: props.month,
-            year: props.year,
-            provider: activeProv,
-            use_flip: activeProv === 'flip',
-            use_xendit: activeProv === 'xendit'
-        }, {
-            preserveScroll: true
-        });
-    }
+    Swal.fire({
+        title: 'Cairkan Gaji & Insentif?',
+        html: `
+            <div class="text-left text-xs text-slate-600 space-y-2 mt-2">
+                <p>Cairkan penggajian bulan <b>${months[props.month - 1]} ${props.year}</b> untuk staf:</p>
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div class="font-extrabold text-slate-900 text-sm">${user.name}</div>
+                    <div class="text-slate-500 capitalize text-xs">${user.role}</div>
+                    <div class="mt-2 text-sm font-black text-indigo-700 font-mono">
+                        Net Diterima: Rp ${formatRupiah(user.net_salary)}
+                    </div>
+                </div>
+                ${bpjsInfo}
+                ${transferNotice}
+                <div class="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200">
+                    ⚠️ Pengeluaran akan otomatis dicatat di Buku Kas Umum.
+                </div>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '⚡ Ya, Cairkan Sekarang',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#059669',
+        cancelButtonColor: '#64748b'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.post(route('payroll.disburse', user.id), {
+                month: props.month,
+                year: props.year,
+                provider: activeProv,
+                use_flip: activeProv === 'flip',
+                use_xendit: activeProv === 'xendit'
+            }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Gaji Berhasil Dicairkan!',
+                        text: `Pencairan gaji untuk ${user.name} berhasil diproses.`,
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                },
+                onError: (err) => {
+                    const msg = Object.values(err || {})[0] || 'Gagal memproses pencairan gaji.';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Pencairan Gagal',
+                        text: msg,
+                        confirmButtonColor: '#dc2626'
+                    });
+                }
+            });
+        }
+    });
 };
 
 // ── Disburse Batch (All) ──
@@ -889,21 +1000,67 @@ const disburseAll = () => {
     let transferNotice = '';
 
     if (activeProv === 'flip' && props.flipConfig?.enabled) {
-        transferNotice = `\n\n🟠 FLIP FOR BUSINESS AUTO TRANSFER AKTIF:\nSemua staf dengan rekening/e-wallet valid akan otomatis ditransfer langsung via Flip for Business (${props.flipConfig.environment}). Biaya transfer super hemat Rp 1.500 - 3.000/tx.`;
+        transferNotice = `<div class="mt-2 text-xs text-orange-800 bg-orange-50 p-2.5 rounded-xl border border-orange-200 text-left"><b>🟠 Auto Transfer Flip Aktif:</b> Semua staf dengan rekening valid akan ditransfer otomatis via Flip (${props.flipConfig.environment}).</div>`;
     } else if (activeProv === 'xendit' && props.xenditConfig?.enabled) {
-        transferNotice = `\n\n⚡ XENDIT AUTO TRANSFER AKTIF:\nSemua staf dengan rekening bank valid akan otomatis ditransfer langsung via Xendit (${props.xenditConfig.environment}).`;
+        transferNotice = `<div class="mt-2 text-xs text-indigo-800 bg-indigo-50 p-2.5 rounded-xl border border-indigo-200 text-left"><b>⚡ Auto Transfer Xendit Aktif:</b> Semua staf dengan rekening valid akan ditransfer otomatis via Xendit (${props.xenditConfig.environment}).</div>`;
     }
 
-    if (confirm(`Cairkan gaji dan insentif untuk SEMUA ${totalPendingCount.value} staf yang belum cair?\n\nTotal Pengeluaran Bersih: Rp ${formatRupiah(totalNetSalary.value)}${transferNotice}\n\nPERINGATAN: Aksi ini akan mencatat pengeluaran di Buku Kas untuk semua staf sekaligus.`)) {
-        router.post(route('payroll.disburse-all'), {
-            month: props.month,
-            year: props.year,
-            provider: activeProv,
-            use_flip: activeProv === 'flip',
-            use_xendit: activeProv === 'xendit'
-        }, {
-            preserveScroll: true
-        });
-    }
+    Swal.fire({
+        title: `Cairkan Gaji ${totalPendingCount.value} Staf Sekaligus?`,
+        html: `
+            <div class="text-left text-xs text-slate-600 space-y-2 mt-2">
+                <p>Anda akan mencairkan penggajian periode <b>${months[props.month - 1]} ${props.year}</b> untuk seluruh <b>${totalPendingCount.value} staf</b> yang belum cair.</p>
+                <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                    <span class="text-xs font-bold text-emerald-800">Total Pengeluaran Kas (Net):</span>
+                    <div class="text-lg font-black text-emerald-700 font-mono mt-0.5">
+                        Rp ${formatRupiah(totalNetSalary.value)}
+                    </div>
+                </div>
+                ${transferNotice}
+                <div class="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200">
+                    ⚠️ Pengeluaran akan otomatis dicatat di Buku Kas Umum untuk masing-masing staf.
+                </div>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: `⚡ Ya, Cairkan Semua (${totalPendingCount.value} Staf)`,
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#059669',
+        cancelButtonColor: '#64748b'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.post(route('payroll.disburse-all'), {
+                month: props.month,
+                year: props.year,
+                provider: activeProv,
+                use_flip: activeProv === 'flip',
+                use_xendit: activeProv === 'xendit'
+            }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Pencairan Massal Selesai!',
+                        text: `Gaji untuk ${totalPendingCount.value} staf berhasil dicairkan.`,
+                        showConfirmButton: false,
+                        timer: 3500,
+                        timerProgressBar: true
+                    });
+                },
+                onError: (err) => {
+                    const msg = Object.values(err || {})[0] || 'Gagal memproses pencairan massal.';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Pencairan Massal Gagal',
+                        text: msg,
+                        confirmButtonColor: '#dc2626'
+                    });
+                }
+            });
+        }
+    });
 };
 </script>
