@@ -68,6 +68,22 @@ class SpecialAttendanceController extends Controller
         if (!$currentTeam) {
             $currentTeam = SpecialTeam::with('employees')->first();
         }
+        if (!$currentTeam) {
+            $currentTeam = SpecialTeam::create([
+                'name' => 'GRUP TIM KHUSUS',
+                'code' => 'TK-01',
+                'start_time' => '08:30:00',
+                'end_time' => '18:00:00',
+                'tolerance_minutes' => 15,
+                'without_radius' => true,
+                'late_deduction_amount' => 10000,
+                'no_out_deduction_amount' => 10000,
+                'alpha_deduction_amount' => 35000,
+                'description' => 'Grup absensi tim khusus tanpa batasan radius kantor.',
+                'is_active' => true,
+            ]);
+            $teams = SpecialTeam::withCount('members')->where('is_active', true)->get();
+        }
 
         // 2. Karyawan Aktif (Login User / Switcher)
         $currentEmployee = null;
@@ -162,6 +178,8 @@ class SpecialAttendanceController extends Controller
             $lateMinutes = (int) $memberAtts->sum('late_minutes');
             $noClockOut = $memberAtts->whereNotNull('clock_in')->whereNull('clock_out')->count();
 
+            $score = ($presents > 0) ? max(0, ($presents * 100) - ($lateMinutes * 2)) : 0;
+
             $adminMatrix[] = [
                 'employee_id' => $emp->id,
                 'name' => $emp->name,
@@ -171,12 +189,17 @@ class SpecialAttendanceController extends Controller
                 'lates' => $lates,
                 'late_minutes' => $lateMinutes,
                 'no_clock_out' => $noClockOut,
-                'score' => ($presents * 100) - ($lateMinutes * 2),
+                'score' => $score,
             ];
         }
 
-        // 8. Leaderboard & Absen Terbaik (Tab 4)
-        $leaderboard = collect($adminMatrix)->sortByDesc('score')->values();
+        // 8. Leaderboard & Absen Terbaik (Tab 4): Syarat mutlak harus memiliki catatan hadir
+        $leaderboard = collect($adminMatrix)
+            ->filter(function ($item) {
+                return $item['presents'] > 0 && $item['score'] > 0;
+            })
+            ->sortByDesc('score')
+            ->values();
 
         $rewardsConfig = [
             'juara_1' => (int) Setting::get('attendance_reward_special_1', 200000),
@@ -193,10 +216,34 @@ class SpecialAttendanceController extends Controller
                 ->get();
 
             $tLateCount = $tAtts->where('status', 'late')->count();
-            $tLateMins = $tAtts->sum('late_minutes');
+            $tLateMins = (int) $tAtts->sum('late_minutes');
             $tNoOutCount = $tAtts->whereNotNull('clock_in')->whereNull('clock_out')->count();
 
             $estDeductions = ($tLateCount * (float) $t->late_deduction_amount) + ($tNoOutCount * (float) $t->no_out_deduction_amount);
+
+            $violationRecords = $tAtts->filter(function ($att) {
+                return $att->status === 'late' || ($att->clock_in && !$att->clock_out);
+            })->map(function ($att) use ($t) {
+                $isLate = ($att->status === 'late');
+                $isNoOut = (!empty($att->clock_in) && empty($att->clock_out));
+                $lateFine = $isLate ? (float) $t->late_deduction_amount : 0;
+                $noOutFine = $isNoOut ? (float) $t->no_out_deduction_amount : 0;
+
+                return [
+                    'id' => $att->id,
+                    'date' => $att->date,
+                    'employee_id' => $att->employee_id,
+                    'employee_name' => $att->employee ? $att->employee->name : '-',
+                    'position' => $att->employee ? $att->employee->position : 'Staff',
+                    'clock_in' => $att->clock_in,
+                    'clock_out' => $att->clock_out,
+                    'status' => $att->status,
+                    'late_minutes' => $att->late_minutes ?? 0,
+                    'late_fine' => $lateFine,
+                    'no_out_fine' => $noOutFine,
+                    'total_fine' => $lateFine + $noOutFine,
+                ];
+            })->values();
 
             $allTeamsDeductions[$t->id] = [
                 'team_id' => $t->id,
@@ -205,7 +252,7 @@ class SpecialAttendanceController extends Controller
                 'late_minutes' => $tLateMins,
                 'no_out_count' => $tNoOutCount,
                 'total_amount' => $estDeductions,
-                'attendances' => $tAtts->where('status', 'late')->values(),
+                'records' => $violationRecords,
             ];
         }
 
@@ -359,24 +406,31 @@ class SpecialAttendanceController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'nullable|string|max:50',
-            'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i',
+            'start_time' => 'required',
+            'end_time' => 'required',
             'tolerance_minutes' => 'required|integer|min:0',
             'without_radius' => 'nullable|boolean',
             'late_deduction_amount' => 'required|numeric|min:0',
+            'no_out_deduction_amount' => 'nullable|numeric|min:0',
+            'alpha_deduction_amount' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
             'member_ids' => 'nullable|array',
             'member_ids.*' => 'exists:employees,id',
         ]);
 
+        $startTime = strlen($request->start_time) === 5 ? $request->start_time . ':00' : $request->start_time;
+        $endTime = strlen($request->end_time) === 5 ? $request->end_time . ':00' : $request->end_time;
+
         $team = SpecialTeam::create([
             'name' => strtoupper($request->name),
             'code' => $request->code ?: ('TK-' . rand(10, 99)),
-            'start_time' => $request->start_time . ':00',
-            'end_time' => $request->end_time . ':00',
+            'start_time' => $startTime,
+            'end_time' => $endTime,
             'tolerance_minutes' => $request->tolerance_minutes,
             'without_radius' => $request->boolean('without_radius', true),
             'late_deduction_amount' => $request->late_deduction_amount,
+            'no_out_deduction_amount' => $request->input('no_out_deduction_amount', 10000),
+            'alpha_deduction_amount' => $request->input('alpha_deduction_amount', 35000),
             'description' => $request->description,
             'is_active' => true,
         ]);
@@ -410,6 +464,8 @@ class SpecialAttendanceController extends Controller
             'tolerance_minutes' => 'required|integer|min:0',
             'without_radius' => 'nullable|boolean',
             'late_deduction_amount' => 'required|numeric|min:0',
+            'no_out_deduction_amount' => 'nullable|numeric|min:0',
+            'alpha_deduction_amount' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
             'member_ids' => 'nullable|array',
             'member_ids.*' => 'exists:employees,id',
@@ -420,12 +476,14 @@ class SpecialAttendanceController extends Controller
 
         $team->update([
             'name' => strtoupper($request->name),
-            'code' => $request->code,
+            'code' => $request->code ?: $team->code,
             'start_time' => $startTime,
             'end_time' => $endTime,
             'tolerance_minutes' => $request->tolerance_minutes,
-            'without_radius' => $request->boolean('without_radius'),
+            'without_radius' => $request->boolean('without_radius', true),
             'late_deduction_amount' => $request->late_deduction_amount,
+            'no_out_deduction_amount' => $request->input('no_out_deduction_amount', 10000),
+            'alpha_deduction_amount' => $request->input('alpha_deduction_amount', 35000),
             'description' => $request->description,
         ]);
 
