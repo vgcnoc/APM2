@@ -7,6 +7,29 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use App\Models\Ont;
+use App\Models\Odp;
+use App\Models\OdpPort;
+use App\Models\Survey;
+use App\Models\Ticket;
+use App\Models\TechnicianSchedule;
+use App\Models\Invoice;
+use App\Models\Payment;
+use App\Models\Voucher;
+use App\Models\PgsTicket;
+use App\Models\PgkTicket;
+use App\Models\CbpRequest;
+use App\Models\Reseller;
+use App\Models\AffiliateCommission;
+use App\Models\TargetMarketLog;
+use App\Models\MaterialTransaction;
+use App\Models\User;
+use App\Models\WaLog;
+use App\Models\AuditLog;
+use App\Services\RadiusService;
 
 class Customer extends Model
 {
@@ -205,6 +228,31 @@ class Customer extends Model
         return $this->hasOne(AffiliateCommission::class, 'customer_id')->where('type', 'clawback_booking');
     }
 
+    public function pgkTickets(): HasMany
+    {
+        return $this->hasMany(PgkTicket::class);
+    }
+
+    public function vouchers(): HasMany
+    {
+        return $this->hasMany(Voucher::class);
+    }
+
+    public function affiliateCommissions(): HasMany
+    {
+        return $this->hasMany(AffiliateCommission::class, 'customer_id');
+    }
+
+    public function targetMarketLogs(): HasMany
+    {
+        return $this->hasMany(TargetMarketLog::class);
+    }
+
+    public function materialTransactions(): HasMany
+    {
+        return $this->hasMany(MaterialTransaction::class);
+    }
+
     // ── Computed ───────────────────────────────────────────────
 
     /**
@@ -364,5 +412,314 @@ class Customer extends Model
                 }
             }
         });
+
+        static::deleting(function (Customer $customer) {
+            $customer->purgeConnectedData();
+        });
+    }
+
+    /**
+     * Hapus seluruh data dan perangkat yang terhubung dengan pelanggan secara cerdas dan bersih:
+     * 1. Kembalikan semua perangkat ONT ke stok gudang (status: in_stock), bersihkan kredensial & foto instalasi
+     * 2. Bebaskan port ODP yang sedang digunakan oleh ONT & perbarui status ODP
+     * 3. Bebaskan port ODP yang sempat di-reservasi oleh riwayat survey & hapus foto survey dari storage
+     * 4. Hapus user & putuskan koneksi aktif di FreeRADIUS (PPPoE, Hotspot Gratis, Voucher)
+     * 5. Hapus voucher hotspot gratis milik pelanggan
+     * 6. Hapus riwayat pembayaran beserta foto bukti transfer dari storage
+     * 7. Hapus seluruh invoice pelanggan
+     * 8. Hapus tiket gangguan & jadwal teknisi
+     * 9. Hapus tiket penanganan sigap (PGS) beserta material, permintaan material, pivot teknisi & foto dokumentasi
+     * 10. Hapus tiket keluhan pelanggan (PGK) beserta material, permintaan material, pivot teknisi & foto dokumentasi
+     * 11. Hapus permintaan cabut perangkat (CBP) beserta pivot teknisi & foto
+     * 12. Hapus data reseller & akun pengguna reseller (jika tipe reseller)
+     * 13. Hapus komisi afiliasi & log target market
+     * 14. Hapus permintaan material yang masih terhubung & un-link transaksi material
+     * 15. Hapus akun login portal pelanggan (User dengan role customer)
+     * 16. Hapus foto identitas / KTP dari storage
+     * 17. Hapus riwayat log pesan WhatsApp yang ditujukan ke pelanggan ini
+     */
+    public function purgeConnectedData(): void
+    {
+        $radius = app(\App\Services\RadiusService::class);
+
+        // 1 & 2. Tangani semua ONT yang terhubung dengan pelanggan
+        try {
+            $onts = Ont::where('customer_id', $this->id)->get();
+            foreach ($onts as $ont) {
+                // Bebaskan port ODP
+                try {
+                    if ($ont->odp_port_id) {
+                        OdpPort::where('id', $ont->odp_port_id)->update([
+                            'status' => 'available',
+                            'description' => null,
+                        ]);
+                    } elseif ($ont->odp_id && $ont->port_number) {
+                        OdpPort::where('odp_id', $ont->odp_id)
+                            ->where('port_number', $ont->port_number)
+                            ->update([
+                                'status' => 'available',
+                                'description' => null,
+                            ]);
+                    }
+
+                    // Sinkronisasi counter used_ports pada ODP
+                    if ($ont->odp_id && ($odp = Odp::find($ont->odp_id))) {
+                        $usedPorts = OdpPort::where('odp_id', $odp->id)->where('status', 'used')->count();
+                        $odpStatus = ($usedPorts >= $odp->total_ports) ? 'full' : 'active';
+                        $odp->update([
+                            'used_ports' => $usedPorts,
+                            'status' => $odpStatus,
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('[Customer::purgeConnectedData] Error releasing ODP port: ' . $e->getMessage());
+                }
+
+                // Hapus akun RADIUS PPPoE dan Hotspot dari FreeRADIUS
+                if ($radius && $radius->enabled()) {
+                    $radius->guard(function ($rad) use ($ont) {
+                        if ($ont->pppoe_user) {
+                            $rad->removeUser($ont->pppoe_user);
+                            $rad->disconnect($ont->pppoe_user);
+                        }
+                        if ($ont->hotspot_user) {
+                            $rad->removeUser($ont->hotspot_user);
+                            $rad->disconnect($ont->hotspot_user);
+                        }
+                    });
+                }
+
+                // Hapus file foto instalasi ONT dari storage
+                $ontPhotos = ['photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman'];
+                foreach ($ontPhotos as $photoField) {
+                    try {
+                        if ($ont->{$photoField} && Storage::disk('public')->exists($ont->{$photoField})) {
+                            Storage::disk('public')->delete($ont->{$photoField});
+                        }
+                    } catch (\Throwable $e) {
+                        // ignore
+                    }
+                }
+
+                // Kembalikan ONT ke status stok gudang (in_stock)
+                $ont->update([
+                    'customer_id' => null,
+                    'status' => 'in_stock',
+                    'odp_id' => null,
+                    'odp_port_id' => null,
+                    'port_number' => null,
+                    'rx_power' => null,
+                    'tx_power' => null,
+                    'pppoe_user' => null,
+                    'pppoe_password' => null,
+                    'hotspot_user' => null,
+                    'hotspot_password' => null,
+                    'photo_odp' => null,
+                    'photo_installation' => null,
+                    'photo_ont' => null,
+                    'photo_customer' => null,
+                    'photo_redaman' => null,
+                    'description' => 'Dilepas otomatis ke stok gudang karena pelanggan ' . $this->name . ' (' . $this->customer_code . ') dihapus pada ' . now()->format('d/m/Y H:i'),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error handling ONTs: ' . $e->getMessage());
+        }
+
+        // 3. Tangani riwayat Survey & Port ODP yang di-reservasi
+        try {
+            $surveys = Survey::where('customer_id', $this->id)->get();
+            foreach ($surveys as $survey) {
+                if ($survey->odp_id && $survey->port_number) {
+                    OdpPort::where('odp_id', $survey->odp_id)
+                        ->where('port_number', $survey->port_number)
+                        ->where('status', 'reserved')
+                        ->update([
+                            'status' => 'available',
+                            'description' => null,
+                        ]);
+                }
+
+                if (is_array($survey->photos)) {
+                    foreach ($survey->photos as $photo) {
+                        try {
+                            if ($photo && Storage::disk('public')->exists($photo)) {
+                                Storage::disk('public')->delete($photo);
+                            }
+                        } catch (\Throwable $e) {
+                            // ignore
+                        }
+                    }
+                }
+                $survey->delete();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error handling surveys: ' . $e->getMessage());
+        }
+
+        // 4. Tangani Voucher Hotspot
+        try {
+            $vouchers = Voucher::where('customer_id', $this->id)->get();
+            foreach ($vouchers as $voucher) {
+                if ($radius && $radius->enabled() && $voucher->username) {
+                    $radius->guard(function ($rad) use ($voucher) {
+                        $rad->removeUser($voucher->username);
+                        $rad->disconnect($voucher->username);
+                    });
+                }
+                $voucher->delete();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error handling vouchers: ' . $e->getMessage());
+        }
+
+        // 5. Tangani Pembayaran & Bukti Transfer, lalu Invoices
+        try {
+            $payments = Payment::where('customer_id', $this->id)->get();
+            foreach ($payments as $payment) {
+                try {
+                    if ($payment->proof_image && Storage::disk('public')->exists($payment->proof_image)) {
+                        Storage::disk('public')->delete($payment->proof_image);
+                    }
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+                $payment->delete();
+            }
+            Invoice::where('customer_id', $this->id)->delete();
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error handling invoices/payments: ' . $e->getMessage());
+        }
+
+        // 6. Tangani Tiket Gangguan & Jadwal Teknisi
+        try {
+            TechnicianSchedule::where('customer_id', $this->id)->delete();
+            Ticket::where('customer_id', $this->id)->delete();
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error handling tickets: ' . $e->getMessage());
+        }
+
+        // 7. Tangani Tiket Penanganan Sigap (PGS)
+        try {
+            $pgsTickets = PgsTicket::where('customer_id', $this->id)->get();
+            foreach ($pgsTickets as $pgs) {
+                try {
+                    if ($pgs->photo_before && Storage::disk('public')->exists($pgs->photo_before)) {
+                        Storage::disk('public')->delete($pgs->photo_before);
+                    }
+                    if ($pgs->photo_after && Storage::disk('public')->exists($pgs->photo_after)) {
+                        Storage::disk('public')->delete($pgs->photo_after);
+                    }
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+                $pgs->technicians()->detach();
+                $pgs->materials()->delete();
+                $pgs->materialRequests()->delete();
+                $pgs->delete();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error handling PGS tickets: ' . $e->getMessage());
+        }
+
+        // 8. Tangani Tiket Keluhan (PGK)
+        try {
+            $pgkTickets = PgkTicket::where('customer_id', $this->id)->get();
+            foreach ($pgkTickets as $pgk) {
+                try {
+                    if ($pgk->photo_before && Storage::disk('public')->exists($pgk->photo_before)) {
+                        Storage::disk('public')->delete($pgk->photo_before);
+                    }
+                    if ($pgk->photo_after && Storage::disk('public')->exists($pgk->photo_after)) {
+                        Storage::disk('public')->delete($pgk->photo_after);
+                    }
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+                $pgk->technicians()->detach();
+                $pgk->materials()->delete();
+                $pgk->materialRequests()->delete();
+                $pgk->delete();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error handling PGK tickets: ' . $e->getMessage());
+        }
+
+        // 9. Tangani Permintaan CBP (Cabut Perangkat)
+        try {
+            $cbpRequests = CbpRequest::where('customer_id', $this->id)->get();
+            foreach ($cbpRequests as $cbp) {
+                try {
+                    if ($cbp->photo && Storage::disk('public')->exists($cbp->photo)) {
+                        Storage::disk('public')->delete($cbp->photo);
+                    }
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+                $cbp->technicians()->detach();
+                $cbp->delete();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error handling CBP requests: ' . $e->getMessage());
+        }
+
+        // 10. Tangani Data Reseller jika ada
+        try {
+            $reseller = Reseller::where('customer_id', $this->id)->first();
+            if ($reseller) {
+                $resellerUserId = $reseller->user_id;
+                $reseller->delete();
+                if ($resellerUserId && ($resUser = User::find($resellerUserId))) {
+                    if ($resUser->hasRole('reseller') || $resUser->role === 'reseller') {
+                        $resUser->delete();
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error handling reseller: ' . $e->getMessage());
+        }
+
+        // 11. Tangani Komisi Afiliasi & Target Market
+        try {
+            AffiliateCommission::where('customer_id', $this->id)->delete();
+            TargetMarketLog::where('customer_id', $this->id)->delete();
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error handling affiliate/target market: ' . $e->getMessage());
+        }
+
+        // 12. Tangani Permintaan Material & Transaksi Material
+        try {
+            DB::table('material_requests')->where('customer_id', $this->id)->delete();
+            MaterialTransaction::where('customer_id', $this->id)->update(['customer_id' => null]);
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error handling material requests/transactions: ' . $e->getMessage());
+        }
+
+        // 13. Tangani Akun Login Portal Pelanggan (User)
+        try {
+            if ($this->user_id && ($user = User::find($this->user_id))) {
+                if ($user->hasRole('customer') || $user->role === 'customer') {
+                    $user->delete();
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error deleting customer user: ' . $e->getMessage());
+        }
+
+        // 14. Hapus Foto Identitas / KTP Pelanggan dari Storage
+        try {
+            if ($this->identity_photo && Storage::disk('public')->exists($this->identity_photo)) {
+                Storage::disk('public')->delete($this->identity_photo);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error deleting identity photo: ' . $e->getMessage());
+        }
+
+        // 15. Hapus Log WhatsApp Terkait Pelanggan
+        try {
+            WaLog::where('recipient_type', 'customer')->where('recipient_id', $this->id)->delete();
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error deleting WaLog: ' . $e->getMessage());
+        }
     }
 }

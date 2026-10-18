@@ -1805,71 +1805,42 @@ class CustomerController extends Controller
     }
 
     /**
-     * Hapus data pelanggan
+     * Hapus permanen satu data pelanggan beserta seluruh relasi & data terhubung
      */
     public function destroy(Customer $customer): RedirectResponse
     {
-        // Authorization check if using spatie roles
-        if (auth()->check() && !auth()->user()->can('customers_delete') && !auth()->user()->hasRole('admin')) {
+        $user = auth()->user();
+        $canDelete = $user && (
+            $user->hasRole('admin') ||
+            $user->can('customers_delete') ||
+            $user->can('customers_booking_delete') ||
+            $user->can('customers_survey_delete') ||
+            $user->can('menu_customers_booking') ||
+            $user->can('menu_customers_survey') ||
+            $user->can('menu_customers_all')
+        );
+
+        if (!$canDelete) {
             return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus data pelanggan.');
         }
 
-        DB::transaction(function () use ($customer) {
-            // Lepaskan ONT jika ada
-            if ($customer->ont) {
-                $odp = $customer->ont->odp;
-                $portNumber = $customer->ont->port_number;
-                
-                // Update ODP Port status back to available
-                if ($odp && $portNumber) {
-                    \App\Models\OdpPort::where('odp_id', $odp->id)
-                        ->where('port_number', $portNumber)
-                        ->update(['status' => 'available']);
-                }
+        $customerName = $customer->name;
+        $customerCode = $customer->customer_code;
 
-                $customer->ont->update([
-                    'customer_id' => null, 
-                    'status' => 'inactive',
-                    'odp_id' => null,
-                    'port_number' => null,
-                    'odp_port_id' => null
-                ]);
+        DB::transaction(function () use ($customer, $customerName, $customerCode) {
+            \App\Models\AuditLog::createLog(
+                'Hapus Pelanggan',
+                $customer,
+                $customer->status,
+                'deleted',
+                "Pelanggan {$customerName} ({$customerCode}) beserta seluruh perangkat dan data terhubung berhasil dihapus secara bersih."
+            );
 
-                // Kurangi used_ports di ODP
-                if ($odp) {
-                    if ($odp->used_ports > 0) {
-                        $odp->decrement('used_ports');
-                        
-                        // Cek dan update status ODP jika sudah tidak penuh
-                        if ($odp->used_ports - 1 < $odp->total_ports && $odp->status === 'full') {
-                            $odp->update(['status' => 'active']);
-                        }
-                    }
-                }
-            }
-
-            // Hapus Material Transactions yang terkait
-            \App\Models\MaterialTransaction::where('customer_id', $customer->id)->delete();
-
-            // Lepaskan port ODP yang di-reservasi oleh survey jika ada
-            foreach ($customer->surveys as $survey) {
-                if ($survey->odp_id && $survey->port_number) {
-                    \App\Models\OdpPort::where('odp_id', $survey->odp_id)
-                        ->where('port_number', $survey->port_number)
-                        ->where('status', 'reserved')
-                        ->update(['status' => 'available']);
-                }
-            }
-
-            // Hapus data terkait
-            $customer->technicianSchedules()->delete();
-            $customer->surveys()->delete();
-
+            // Customer::deleting event otomatis memicu purgeConnectedData()
             $customer->delete();
         });
 
-        return redirect()->back()
-            ->with('success', 'Data pelanggan berhasil dihapus secara permanen.');
+        return redirect()->back()->with('success', "Pelanggan {$customerName} ({$customerCode}) dan seluruh data terhubung berhasil dihapus.");
     }
 
     /**
@@ -3849,9 +3820,23 @@ class CustomerController extends Controller
         return redirect()->back()->with('success', count($request->ids) . ' data pelanggan berhasil dikembalikan ke status Booking.');
     }
 
+    /**
+     * Hapus massal data pelanggan beserta seluruh relasi & data terhubung
+     */
     public function bulkDestroy(Request $request): RedirectResponse
     {
-        if (!auth()->user()->can('customers_delete') && !auth()->user()->hasRole('admin')) {
+        $user = auth()->user();
+        $canDelete = $user && (
+            $user->hasRole('admin') ||
+            $user->can('customers_delete') ||
+            $user->can('customers_booking_delete') ||
+            $user->can('customers_survey_delete') ||
+            $user->can('menu_customers_booking') ||
+            $user->can('menu_customers_survey') ||
+            $user->can('menu_customers_all')
+        );
+
+        if (!$canDelete) {
             return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus data pelanggan.');
         }
 
@@ -3864,54 +3849,21 @@ class CustomerController extends Controller
         DB::transaction(function () use ($request, &$count) {
             $customers = Customer::whereIn('id', $request->ids)->get();
             foreach ($customers as $customer) {
-                // Lepaskan ONT jika ada
-                if ($customer->ont) {
-                    $odp = $customer->ont->odp;
-                    $portNumber = $customer->ont->port_number;
+                \App\Models\AuditLog::createLog(
+                    'Hapus Pelanggan (Massal)',
+                    $customer,
+                    $customer->status,
+                    'deleted',
+                    "Pelanggan {$customer->name} ({$customer->customer_code}) dihapus via bulk delete."
+                );
 
-                    // Update ODP Port status back to available
-                    if ($odp && $portNumber) {
-                        \App\Models\OdpPort::where('odp_id', $odp->id)
-                            ->where('port_number', $portNumber)
-                            ->update(['status' => 'available']);
-                    }
-
-                    $customer->ont->update([
-                        'customer_id' => null, 
-                        'status' => 'inactive',
-                        'odp_id' => null,
-                        'port_number' => null,
-                        'odp_port_id' => null
-                    ]);
-
-                    if ($odp && $odp->used_ports > 0) {
-                        $odp->decrement('used_ports');
-                        if ($odp->used_ports - 1 < $odp->total_ports && $odp->status === 'full') {
-                            $odp->update(['status' => 'active']);
-                        }
-                    }
-                }
-                
-                // Lepaskan port ODP yang di-reservasi oleh survey jika ada
-                foreach ($customer->surveys as $survey) {
-                    if ($survey->odp_id && $survey->port_number) {
-                        \App\Models\OdpPort::where('odp_id', $survey->odp_id)
-                            ->where('port_number', $survey->port_number)
-                            ->where('status', 'reserved')
-                            ->update(['status' => 'available']);
-                    }
-                }
-
-                // Hapus data terkait
-                $customer->technicianSchedules()->delete();
-                $customer->surveys()->delete();
+                // Customer::deleting event otomatis memicu purgeConnectedData()
                 $customer->delete();
-                
                 $count++;
             }
         });
 
-        return redirect()->back()->with('success', "$count data pelanggan berhasil dihapus secara permanen.");
+        return redirect()->back()->with('success', "$count data pelanggan beserta seluruh data terhubung berhasil dihapus secara permanen.");
     }
 
     /**
