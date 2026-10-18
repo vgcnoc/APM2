@@ -553,6 +553,9 @@ Route::middleware(['auth'])->group(function () {
 
         // Master Fee
         Route::resource('settings/master-fees', \App\Http\Controllers\MasterFeeController::class);
+        Route::post('settings/master-fees/{master_fee}/update', [\App\Http\Controllers\MasterFeeController::class, 'update'])->name('master-fees.update.post');
+        Route::post('settings/master-fees/{master_fee}/delete', [\App\Http\Controllers\MasterFeeController::class, 'destroy'])->name('master-fees.destroy.post');
+        Route::post('settings/master-fees/{master_fee}/toggle', [\App\Http\Controllers\MasterFeeController::class, 'toggleActive'])->name('master-fees.toggle');
         Route::get('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'payroll'])->name('settings.payroll');
         Route::post('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'updatePayroll'])->name('settings.payroll.update');
         Route::post('/settings/payroll/test-xendit', [\App\Http\Controllers\SettingController::class, 'testXendit'])->name('settings.payroll.test-xendit');
