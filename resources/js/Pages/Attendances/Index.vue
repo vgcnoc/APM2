@@ -122,11 +122,12 @@
                         <div class="flex items-center gap-3.5">
                             <div
                                 :class="[
-                                    shiftToday ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-amber-50 text-amber-600 border-amber-200',
+                                    shiftToday ? 'bg-blue-50 text-blue-600 border-blue-200' : (todaySchedule?.status === 'off' ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-amber-50 text-amber-600 border-amber-200'),
                                     'w-11 h-11 rounded-2xl border flex items-center justify-center shrink-0 shadow-2xs text-lg'
                                 ]"
                             >
                                 <span v-if="shiftToday">⏱️</span>
+                                <span v-else-if="todaySchedule?.status === 'off'">🏖️</span>
                                 <span v-else>⚠️</span>
                             </div>
                             <div>
@@ -145,10 +146,14 @@
                                     <span v-if="shiftToday" class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                         Aktif
                                     </span>
+                                    <span v-else-if="todaySchedule && todaySchedule.status === 'off'" class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                        Libur
+                                    </span>
                                 </div>
                                 <p class="text-xs text-slate-500 mt-0.5">
                                     {{ todayDateStr }} • 
                                     <span v-if="shiftToday">Jadwal kerja resmi Anda hari ini</span>
+                                    <span v-else-if="todaySchedule && todaySchedule.status === 'off'">Hari libur terjadwal (OFF). Anda dapat memilih shift di sebelah kanan jika bertugas lembur/pengganti.</span>
                                     <span v-else>Sistem siap: Anda dapat memilih shift di bawah untuk langsung presensi masuk.</span>
                                 </p>
                             </div>
@@ -1053,7 +1058,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -1086,6 +1091,17 @@ const selectedRecapMonth = ref(props.monthlyRecap?.month || '');
 
 // Form Presensi State
 const selectedShiftId = ref(props.shiftToday?.id || null);
+
+// Sinkronisasi otomatis saat staf diganti atau jadwal shift berubah
+watch(() => props.shiftToday, (newShift) => {
+    selectedShiftId.value = newShift?.id || null;
+}, { immediate: true });
+
+watch(() => props.currentEmployee?.id, () => {
+    capturedPhoto.value = null;
+    stopCamera();
+});
+
 const attendanceType = ref('wfo'); // 'wfo', 'dinas_luar', 'wfh', 'lembur'
 const dutyLocation = ref('');
 const attendanceNotes = ref('');
@@ -1357,7 +1373,7 @@ const submitClockIn = () => {
     router.post(route('attendances.clock-in'), {
         employee_id: props.currentEmployee.id,
         photo: capturedPhoto.value,
-        shift_id: selectedShiftId.value || undefined,
+        shift_id: selectedShiftId.value || props.shiftToday?.id || undefined,
         attendance_type: attendanceType.value,
         duty_location: dutyLocation.value || undefined,
         latitude: userCoordinates.value?.latitude || null,

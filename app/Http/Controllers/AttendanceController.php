@@ -43,9 +43,21 @@ class AttendanceController extends Controller
             }
         }
 
-        // Fallback jika belum ada employee sama sekali untuk user ini
+        // Fallback jika belum ada employee sama sekali untuk user ini (misal Admin login)
         if (!$currentEmployee) {
-            $currentEmployee = Employee::with(['area', 'shift'])->first();
+            // Prioritaskan karyawan yang memiliki jadwal kerja hari ini, atau karyawan pertama
+            $scheduledTodayEmpId = WorkSchedule::where('date', $today)
+                ->whereNotNull('shift_id')
+                ->where('status', '!=', 'off')
+                ->value('employee_id');
+
+            if ($scheduledTodayEmpId) {
+                $currentEmployee = Employee::with(['area', 'shift'])->find($scheduledTodayEmpId);
+            }
+
+            if (!$currentEmployee) {
+                $currentEmployee = Employee::with(['area', 'shift'])->first();
+            }
         }
 
         $allEmployees = Employee::with(['area', 'shift'])
@@ -66,10 +78,15 @@ class AttendanceController extends Controller
                 ->where('date', $today)
                 ->first();
 
-            if ($todaySchedule && ($todaySchedule->status === 'off' || empty($todaySchedule->shift_id))) {
-                $shiftToday = null;
+            if ($todaySchedule) {
+                if ($todaySchedule->status === 'off' || empty($todaySchedule->shift_id)) {
+                    $shiftToday = null;
+                } else {
+                    $shiftToday = $todaySchedule->shift;
+                }
             } else {
-                $shiftToday = $todaySchedule?->shift ?: $currentEmployee->shift;
+                // Fallback otomatis ke master shift karyawan atau shift standar divisi
+                $shiftToday = $currentEmployee->shift ?: $this->resolveDefaultShiftForEmployee($currentEmployee);
             }
         }
 
@@ -112,6 +129,8 @@ class AttendanceController extends Controller
                     return Carbon::parse($item->date)->format('Y-m-d');
                 });
 
+            $empDefaultShift = $currentEmployee->shift ?: $this->resolveDefaultShiftForEmployee($currentEmployee);
+
             for ($i = 0; $i < 7; $i++) {
                 $dayObj = $startOfWeek->copy()->addDays($i);
                 $dateStr = $dayObj->format('Y-m-d');
@@ -120,6 +139,8 @@ class AttendanceController extends Controller
 
                 $shiftLabel = '-';
                 $shiftColor = 'gray';
+                $shiftTime = '';
+
                 if ($sched) {
                     if ($sched->status === 'off' || empty($sched->shift_id)) {
                         $shiftLabel = 'LIBUR';
@@ -127,10 +148,19 @@ class AttendanceController extends Controller
                     } else {
                         $shiftLabel = $sched->shift?->name ?: 'Shift';
                         $shiftColor = $sched->shift?->color ?: 'blue';
+                        $shiftTime = $sched->shift?->formatted_time ?? '';
                     }
-                } elseif ($currentEmployee->shift) {
-                    $shiftLabel = $currentEmployee->shift->name;
-                    $shiftColor = $currentEmployee->shift->color ?: 'blue';
+                } elseif ($empDefaultShift) {
+                    $pos = strtolower(trim($currentEmployee->position ?? ''));
+                    $isSundayOff = ($dayObj->dayOfWeek === 0) && (str_contains($pos, 'admin') || str_contains($pos, 'finance') || str_contains($pos, 'manager'));
+                    if ($isSundayOff) {
+                        $shiftLabel = 'LIBUR';
+                        $shiftColor = 'rose';
+                    } else {
+                        $shiftLabel = $empDefaultShift->name;
+                        $shiftColor = $empDefaultShift->color ?: 'blue';
+                        $shiftTime = $empDefaultShift->formatted_time ?? '';
+                    }
                 }
 
                 $weeklySchedules[] = [
@@ -141,7 +171,7 @@ class AttendanceController extends Controller
                     'is_sunday' => $dayObj->dayOfWeek === 0,
                     'shift_label' => $shiftLabel,
                     'shift_color' => $shiftColor,
-                    'shift_time' => $sched?->shift?->formatted_time ?? ($currentEmployee->shift?->formatted_time ?? ''),
+                    'shift_time' => $shiftTime,
                     'has_attended' => !empty($att?->clock_in),
                     'attendance_status' => $att?->status ?? null,
                 ];
@@ -283,8 +313,11 @@ class AttendanceController extends Controller
             ->where('date', $today)
             ->first();
 
-        $shiftId = $request->shift_id ?: ($schedule?->shift_id ?: $employee->shift_id);
+        $shiftId = $request->shift_id ?: ($schedule?->shift_id ?: ($employee->shift_id ?: $this->resolveDefaultShiftForEmployee($employee)?->id));
         $shift = $shiftId ? Shift::find($shiftId) : null;
+        if (!$shift) {
+            $shift = $this->resolveDefaultShiftForEmployee($employee);
+        }
 
         // Auto-sinkronisasi ke Jadwal Kerja / Roster jika belum ada jadwal hari ini
         if (!$schedule && $shift) {
@@ -295,7 +328,7 @@ class AttendanceController extends Controller
                 ],
                 [
                     'shift_id' => $shift->id,
-                    'status' => 'scheduled',
+                    'status' => 'work',
                     'notes' => 'Sinkronisasi otomatis saat presensi masuk',
                 ]
             );
@@ -427,7 +460,7 @@ class AttendanceController extends Controller
             ],
             [
                 'shift_id' => $shift->id,
-                'status' => 'scheduled',
+                'status' => 'work',
                 'notes' => 'Ditetapkan melalui menu absensi cepat',
             ]
         );
@@ -722,4 +755,43 @@ class AttendanceController extends Controller
 
         return $filePath;
     }
+
+    /**
+     * Resolusi shift default / standar berdasarkan divisi & jabatan karyawan
+     */
+    public function resolveDefaultShiftForEmployee(?Employee $employee): ?Shift
+    {
+        if (!$employee) {
+            return Shift::where('is_active', true)->orderBy('start_time')->first();
+        }
+
+        if ($employee->shift_id) {
+            $shift = Shift::find($employee->shift_id);
+            if ($shift) return $shift;
+        }
+
+        $pos = strtolower(trim($employee->position ?? ''));
+
+        // CS -> Shift 1-CS
+        if (str_contains($pos, 'cs') || str_contains($pos, 'customer service')) {
+            $shift = Shift::where('name', 'like', '%Shift 1-CS%')->orWhere('name', 'like', '%CS%')->first();
+            if ($shift) return $shift;
+        }
+
+        // Teknisi, Maintenance, Kolektor, Infrastruktur -> Shift 1-Teknisi&Kolektor
+        if (str_contains($pos, 'teknisi') || str_contains($pos, 'maintenance') || str_contains($pos, 'kolektor') || str_contains($pos, 'infra')) {
+            $shift = Shift::where('name', 'like', '%Teknisi%')->first();
+            if ($shift) return $shift;
+        }
+
+        // Admin, Finance, Kasir, Manager, NOC -> Shift 1/Admin
+        if (str_contains($pos, 'admin') || str_contains($pos, 'finance') || str_contains($pos, 'manager') || str_contains($pos, 'noc') || str_contains($pos, 'kasir')) {
+            $shift = Shift::where('name', 'like', '%Admin%')->first();
+            if ($shift) return $shift;
+        }
+
+        // Fallback ke shift aktif pertama
+        return Shift::where('is_active', true)->orderBy('start_time')->first();
+    }
 }
+

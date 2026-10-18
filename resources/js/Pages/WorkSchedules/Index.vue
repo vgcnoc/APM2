@@ -2045,6 +2045,7 @@ const applyPeriodPreset = (preset) => {
 
 const openGenerateScheduleModal = () => {
     applyPeriodPreset(genPeriodPreset.value);
+    selectedGenEmployees.value = filteredGenEmployees.value.map(e => e.id);
     openGenerateModal.value = true;
 };
 
