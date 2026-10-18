@@ -101,14 +101,29 @@ class SettingController extends Controller
         Setting::set('payroll_note', $request->payroll_note ?? '');
         Setting::set('payroll_incentive_mode', $request->payroll_incentive_mode);
 
-        if ($request->has('active_disbursement_provider')) {
-            Setting::set('active_disbursement_provider', $request->active_disbursement_provider ?? 'none');
+        $activeProvider = $request->input('active_disbursement_provider', 'none');
+        $flipEnabled = $request->boolean('flip_disbursement_enabled');
+        $xenditEnabled = $request->boolean('xendit_disbursement_enabled');
+
+        // Sinkronisasi otomatis: Jika provider dipilih sebagai aktif, pastikan modulnya aktif
+        if ($activeProvider === 'flip') {
+            $flipEnabled = true;
+        } elseif ($activeProvider === 'xendit') {
+            $xenditEnabled = true;
         }
 
-        // Flip Settings
-        if ($request->has('flip_disbursement_enabled')) {
-            Setting::set('flip_disbursement_enabled', $request->boolean('flip_disbursement_enabled') ? '1' : '0');
+        // Jika salah satu modul diaktifkan sedangkan provider masih 'none', jadikan provider tersebut aktif
+        if ($flipEnabled && $activeProvider === 'none') {
+            $activeProvider = 'flip';
+        } elseif ($xenditEnabled && $activeProvider === 'none') {
+            $activeProvider = 'xendit';
         }
+
+        Setting::set('active_disbursement_provider', $activeProvider);
+        Setting::set('flip_disbursement_enabled', $flipEnabled ? '1' : '0');
+        Setting::set('xendit_disbursement_enabled', $xenditEnabled ? '1' : '0');
+
+        // Flip Settings
         if ($request->has('flip_secret_key')) {
             Setting::set('flip_secret_key', $request->flip_secret_key ?? '');
         }
@@ -123,9 +138,6 @@ class SettingController extends Controller
         }
 
         // Xendit Settings
-        if ($request->has('xendit_disbursement_enabled')) {
-            Setting::set('xendit_disbursement_enabled', $request->boolean('xendit_disbursement_enabled') ? '1' : '0');
-        }
         if ($request->has('xendit_secret_key')) {
             Setting::set('xendit_secret_key', $request->xendit_secret_key ?? '');
         }

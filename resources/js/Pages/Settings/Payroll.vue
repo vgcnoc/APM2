@@ -1,14 +1,24 @@
 <template>
     <AppLayout title="Pengaturan Gaji & Auto Transfer">
-        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 font-sans">
+        <div class="max-w-[1600px] w-full mx-auto space-y-6 font-sans">
+            <!-- Flash message banner -->
+            <div v-if="$page.props.flash?.success" class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2">
+                <span>✅</span>
+                <span>{{ $page.props.flash.success }}</span>
+            </div>
+            <div v-if="$page.props.flash?.error" class="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{{ $page.props.flash.error }}</span>
+            </div>
+
             <!-- Header Title -->
-            <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
                         <span class="p-2 bg-indigo-50 text-indigo-600 rounded-2xl text-xl">💼</span>
                         <span>Pengaturan Sistem Gaji &amp; Auto Transfer</span>
                     </h1>
-                    <p class="text-xs sm:text-sm text-slate-500 mt-1">Kelola preferensi siklus gaji, komponen otomatis, serta integrasi API Flip for Business &amp; Xendit untuk auto transfer karyawan</p>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-1">Kelola preferensi siklus gaji, memo slip gaji, serta integrasi API Flip for Business &amp; Xendit untuk auto transfer karyawan</p>
                 </div>
             </div>
 
@@ -34,7 +44,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-5">
                         <!-- 1. Flip for Business -->
                         <div 
-                            @click="form.active_disbursement_provider = 'flip'; activeTab = 'flip'" 
+                            @click="selectProvider('flip')" 
                             class="relative p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between"
                             :class="form.active_disbursement_provider === 'flip' ? 'border-amber-500 bg-amber-50/40 shadow-sm ring-2 ring-amber-500/20' : 'border-slate-200 hover:border-slate-300 bg-white'"
                         >
@@ -44,7 +54,8 @@
                                     <input 
                                         type="radio" 
                                         value="flip" 
-                                        v-model="form.active_disbursement_provider" 
+                                        :checked="form.active_disbursement_provider === 'flip'" 
+                                        @change="selectProvider('flip')"
                                         class="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 cursor-pointer"
                                     />
                                 </div>
@@ -55,14 +66,14 @@
                             <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
                                 <span class="text-slate-400">Status Modul:</span>
                                 <span :class="form.flip_disbursement_enabled ? 'text-emerald-700 font-bold' : 'text-slate-500 font-medium'">
-                                    {{ form.flip_disbursement_enabled ? 'Aktif' : 'Nonaktif' }}
+                                    {{ form.flip_disbursement_enabled ? '● Aktif' : '○ Nonaktif' }}
                                 </span>
                             </div>
                         </div>
 
                         <!-- 2. Xendit -->
                         <div 
-                            @click="form.active_disbursement_provider = 'xendit'; activeTab = 'xendit'" 
+                            @click="selectProvider('xendit')" 
                             class="relative p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between"
                             :class="form.active_disbursement_provider === 'xendit' ? 'border-indigo-500 bg-indigo-50/40 shadow-sm ring-2 ring-indigo-500/20' : 'border-slate-200 hover:border-slate-300 bg-white'"
                         >
@@ -72,7 +83,8 @@
                                     <input 
                                         type="radio" 
                                         value="xendit" 
-                                        v-model="form.active_disbursement_provider" 
+                                        :checked="form.active_disbursement_provider === 'xendit'" 
+                                        @change="selectProvider('xendit')"
                                         class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 cursor-pointer"
                                     />
                                 </div>
@@ -83,14 +95,14 @@
                             <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
                                 <span class="text-slate-400">Status Modul:</span>
                                 <span :class="form.xendit_disbursement_enabled ? 'text-emerald-700 font-bold' : 'text-slate-500 font-medium'">
-                                    {{ form.xendit_disbursement_enabled ? 'Aktif' : 'Nonaktif' }}
+                                    {{ form.xendit_disbursement_enabled ? '● Aktif' : '○ Nonaktif' }}
                                 </span>
                             </div>
                         </div>
 
                         <!-- 3. Manual / Nonaktif -->
                         <div 
-                            @click="form.active_disbursement_provider = 'none'" 
+                            @click="selectProvider('none')" 
                             class="relative p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between"
                             :class="form.active_disbursement_provider === 'none' ? 'border-slate-700 bg-slate-50 shadow-sm ring-2 ring-slate-500/20' : 'border-slate-200 hover:border-slate-300 bg-white'"
                         >
@@ -100,7 +112,8 @@
                                     <input 
                                         type="radio" 
                                         value="none" 
-                                        v-model="form.active_disbursement_provider" 
+                                        :checked="form.active_disbursement_provider === 'none'" 
+                                        @change="selectProvider('none')"
                                         class="h-4 w-4 text-slate-700 focus:ring-slate-500 border-gray-300 cursor-pointer"
                                     />
                                 </div>
@@ -162,7 +175,12 @@
 
                             <!-- Toggle Switch Enable Flip -->
                             <label class="relative inline-flex items-center cursor-pointer self-start sm:self-auto">
-                                <input type="checkbox" v-model="form.flip_disbursement_enabled" class="sr-only peer">
+                                <input 
+                                    type="checkbox" 
+                                    :checked="form.flip_disbursement_enabled" 
+                                    @change="toggleFlip($event.target.checked)"
+                                    class="sr-only peer"
+                                >
                                 <div class="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-amber-500 shadow-inner"></div>
                                 <span class="ml-3 text-xs font-bold text-slate-200">
                                     {{ form.flip_disbursement_enabled ? 'Fitur Aktif' : 'Aktifkan' }}
@@ -320,7 +338,12 @@
 
                             <!-- Toggle Switch Enable Xendit -->
                             <label class="relative inline-flex items-center cursor-pointer self-start sm:self-auto">
-                                <input type="checkbox" v-model="form.xendit_disbursement_enabled" class="sr-only peer">
+                                <input 
+                                    type="checkbox" 
+                                    :checked="form.xendit_disbursement_enabled" 
+                                    @change="toggleXendit($event.target.checked)"
+                                    class="sr-only peer"
+                                >
                                 <div class="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500 shadow-inner"></div>
                                 <span class="ml-3 text-xs font-bold text-slate-200">
                                     {{ form.xendit_disbursement_enabled ? 'Fitur Aktif' : 'Aktifkan' }}
@@ -440,7 +463,7 @@
                     </div>
                 </div>
 
-                <!-- 3. PENGATURAN SISTEM GAJI & CUTOFF -->
+                <!-- 3. PENGATURAN SISTEM GAJI, CUTOFF & MEMO -->
                 <div class="bg-white shadow-sm rounded-3xl border border-slate-100 p-6 sm:p-7">
                     <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2 mb-4">
                         <span>📅</span>
@@ -499,6 +522,23 @@
                             <option value="Harian (langsung saat selesai pekerjaan)">Harian (langsung saat selesai pekerjaan)</option>
                         </select>
                     </div>
+
+                    <!-- Catatan / Memo Default Slip Gaji -->
+                    <div class="mt-6 pt-6 border-t border-slate-100">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center justify-between">
+                            <span>Catatan / Memo Default Slip Gaji (Opsional)</span>
+                            <span class="text-[10px] text-slate-400 font-normal">Tampil di bagian bawah slip gaji karyawan</span>
+                        </label>
+                        <textarea 
+                            v-model="form.payroll_note" 
+                            rows="2" 
+                            placeholder="Contoh: Terima kasih atas dedikasi dan kerja keras Anda."
+                            class="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-slate-800 rounded-xl px-4 py-2.5 text-xs font-medium transition-all"
+                        ></textarea>
+                        <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+                            Pesan atau catatan standar yang dicetak pada slip gaji fisik maupun slip digital setiap periode penggajian.
+                        </p>
+                    </div>
                 </div>
 
                 <!-- 4. RINGKASAN PENGATURAN -->
@@ -533,10 +573,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     payroll_cutoff_date: [String, Number],
@@ -561,24 +602,74 @@ const props = defineProps({
 const activeTab = ref(props.active_disbursement_provider === 'xendit' ? 'xendit' : 'flip');
 
 const form = useForm({
-    payroll_cutoff_date: props.payroll_cutoff_date || 1,
-    payroll_payment_date: props.payroll_payment_date || 12,
+    payroll_cutoff_date: Number(props.payroll_cutoff_date) || 1,
+    payroll_payment_date: Number(props.payroll_payment_date) || 12,
     payroll_components: props.payroll_components || ['insentif', 'potongan'],
     payroll_note: props.payroll_note || '',
     payroll_incentive_mode: props.payroll_incentive_mode || 'Bulanan (sekali sebulan)',
     active_disbursement_provider: props.active_disbursement_provider || (props.flip_disbursement_enabled ? 'flip' : (props.xendit_disbursement_enabled ? 'xendit' : 'none')),
     // Flip
-    flip_disbursement_enabled: Boolean(props.flip_disbursement_enabled),
+    flip_disbursement_enabled: props.active_disbursement_provider === 'flip' ? true : Boolean(props.flip_disbursement_enabled),
     flip_secret_key: props.flip_secret_key || '',
     flip_validation_token: props.flip_validation_token || '',
     flip_environment: props.flip_environment || 'sandbox',
     flip_auto_disburse_on_approve: Boolean(props.flip_auto_disburse_on_approve),
     // Xendit
-    xendit_disbursement_enabled: Boolean(props.xendit_disbursement_enabled),
+    xendit_disbursement_enabled: props.active_disbursement_provider === 'xendit' ? true : Boolean(props.xendit_disbursement_enabled),
     xendit_secret_key: props.xendit_secret_key || '',
     xendit_webhook_token: props.xendit_webhook_token || '',
     xendit_auto_disburse_on_approve: Boolean(props.xendit_auto_disburse_on_approve),
 });
+
+// Sinkronisasi Form jika props berubah dari backend
+watch(() => props.active_disbursement_provider, (val) => {
+    form.active_disbursement_provider = val || 'none';
+});
+watch(() => props.flip_disbursement_enabled, (val) => {
+    form.flip_disbursement_enabled = Boolean(val);
+});
+watch(() => props.xendit_disbursement_enabled, (val) => {
+    form.xendit_disbursement_enabled = Boolean(val);
+});
+watch(() => props.payroll_note, (val) => {
+    form.payroll_note = val || '';
+});
+
+// Logika sinkronisasi pemilihan Provider & Modul
+const selectProvider = (provider) => {
+    form.active_disbursement_provider = provider;
+    if (provider === 'flip') {
+        form.flip_disbursement_enabled = true;
+        activeTab.value = 'flip';
+    } else if (provider === 'xendit') {
+        form.xendit_disbursement_enabled = true;
+        activeTab.value = 'xendit';
+    }
+};
+
+const toggleFlip = (checked) => {
+    form.flip_disbursement_enabled = checked;
+    if (checked) {
+        form.active_disbursement_provider = 'flip';
+        activeTab.value = 'flip';
+    } else {
+        if (form.active_disbursement_provider === 'flip') {
+            form.active_disbursement_provider = 'none';
+        }
+    }
+};
+
+const toggleXendit = (checked) => {
+    form.xendit_disbursement_enabled = checked;
+    if (checked) {
+        form.active_disbursement_provider = 'xendit';
+        activeTab.value = 'xendit';
+    } else {
+        if (form.active_disbursement_provider === 'xendit') {
+            form.active_disbursement_provider = 'none';
+        }
+    }
+};
 
 const showFlipKey = ref(false);
 const isTestingFlip = ref(false);
@@ -609,11 +700,37 @@ const testFlip = async () => {
             environment: form.flip_environment,
         });
         flipTestResult.value = response.data;
+        if (response.data?.status === 'success') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Koneksi Flip Berhasil!',
+                text: `Saldo kas siap transfer: Rp ${formatRupiah(response.data.balance)}`,
+                showConfirmButton: false,
+                timer: 4000,
+                timerProgressBar: true
+            });
+        } else {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Tes Koneksi Flip Gagal',
+                text: response.data?.message || 'Gagal verifikasi secret key Flip.',
+                confirmButtonColor: '#d97706'
+            });
+        }
     } catch (e) {
+        const msg = e.response?.data?.message || e.message || 'Gagal menghubungi server Flip.';
         flipTestResult.value = {
             status: 'error',
-            message: e.response?.data?.message || e.message || 'Gagal menghubungi server Flip.'
+            message: msg
         };
+        Swal.fire({
+            icon: 'error',
+            title: 'Kesalahan Jaringan / Server Flip',
+            text: msg,
+            confirmButtonColor: '#d97706'
+        });
     } finally {
         isTestingFlip.value = false;
     }
@@ -623,7 +740,13 @@ const copyFlipWebhookUrl = () => {
     const origin = window.location.origin;
     const url = `${origin}/api/webhooks/flip/disbursement`;
     navigator.clipboard.writeText(url);
-    alert(`Webhook URL Flip berhasil disalin:\n${url}\n\nDaftarkan URL ini di Dashboard Flip for Business: Pengaturan -> Webhook -> URL Callback.`);
+    Swal.fire({
+        icon: 'success',
+        title: 'Webhook URL Flip Disalin',
+        html: `<p class="text-xs text-slate-600 mb-2">URL Webhook berhasil disalin ke clipboard:</p><code class="text-xs bg-slate-100 p-2 rounded-xl block text-amber-700 font-mono break-all mb-3">${url}</code><p class="text-[11px] text-slate-500">Daftarkan URL ini di <strong>Dashboard Flip for Business &rarr; Pengaturan &rarr; Webhook &rarr; URL Callback</strong>.</p>`,
+        confirmButtonColor: '#d97706',
+        confirmButtonText: 'Mengerti'
+    });
 };
 
 const testXendit = async () => {
@@ -634,11 +757,37 @@ const testXendit = async () => {
             api_key: form.xendit_secret_key
         });
         xenditTestResult.value = response.data;
+        if (response.data?.status === 'success') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Koneksi Xendit Berhasil!',
+                text: `Saldo kas siap transfer: Rp ${formatRupiah(response.data.balance)}`,
+                showConfirmButton: false,
+                timer: 4000,
+                timerProgressBar: true
+            });
+        } else {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Tes Koneksi Xendit Gagal',
+                text: response.data?.message || 'Gagal verifikasi API key Xendit.',
+                confirmButtonColor: '#4f46e5'
+            });
+        }
     } catch (e) {
+        const msg = e.response?.data?.message || e.message || 'Gagal menghubungi server Xendit.';
         xenditTestResult.value = {
             status: 'error',
-            message: e.response?.data?.message || e.message || 'Gagal menghubungi server Xendit.'
+            message: msg
         };
+        Swal.fire({
+            icon: 'error',
+            title: 'Kesalahan Jaringan / Server Xendit',
+            text: msg,
+            confirmButtonColor: '#4f46e5'
+        });
     } finally {
         isTestingXendit.value = false;
     }
@@ -648,7 +797,13 @@ const copyXenditWebhookUrl = () => {
     const origin = window.location.origin;
     const url = `${origin}/api/webhooks/xendit/disbursement`;
     navigator.clipboard.writeText(url);
-    alert(`Webhook URL Xendit berhasil disalin:\n${url}\n\nDaftarkan URL ini di Dashboard Xendit: Settings -> Callbacks -> Disbursements.`);
+    Swal.fire({
+        icon: 'success',
+        title: 'Webhook URL Xendit Disalin',
+        html: `<p class="text-xs text-slate-600 mb-2">URL Webhook berhasil disalin ke clipboard:</p><code class="text-xs bg-slate-100 p-2 rounded-xl block text-indigo-700 font-mono break-all mb-3">${url}</code><p class="text-[11px] text-slate-500">Daftarkan URL ini di <strong>Dashboard Xendit &rarr; Settings &rarr; Callbacks &rarr; Disbursements</strong>.</p>`,
+        confirmButtonColor: '#4f46e5',
+        confirmButtonText: 'Mengerti'
+    });
 };
 
 const formatRupiah = (num) => {
@@ -658,6 +813,27 @@ const formatRupiah = (num) => {
 const submit = () => {
     form.post(route('settings.payroll.update'), {
         preserveScroll: true,
+        onSuccess: () => {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Berhasil Disimpan!',
+                text: 'Pengaturan sistem gaji & auto transfer berhasil diperbarui.',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        },
+        onError: (errors) => {
+            const firstError = Object.values(errors || {})[0] || 'Periksa kembali formulir pengaturan.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menyimpan',
+                text: firstError,
+                confirmButtonColor: '#4f46e5'
+            });
+        }
     });
 };
 </script>
