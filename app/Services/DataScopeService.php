@@ -74,6 +74,24 @@ class DataScopeService
             }
         }
 
+        // Cek permission _view_own / _view_assigned
+        $viewOwnPerms = [
+            "{$module}_view_own",
+            "{$module}_view_assigned",
+            'view_own',
+            'view_assigned',
+        ];
+
+        if (str_starts_with($module, 'customers_')) {
+            $viewOwnPerms[] = 'customers_all_view_own';
+        }
+
+        foreach ($viewOwnPerms as $perm) {
+            if ($user->can($perm)) {
+                return 'own';
+            }
+        }
+
         // Default: Karyawan sendiri (own data) / view_assigned
         return 'own';
     }
@@ -114,12 +132,23 @@ class DataScopeService
             } elseif ($module === 'customers_installed') {
                 $sub->whereHas('technicianSchedules', fn($q) => $q->where('technician_id', $user->id)->where('type', 'installation'))
                     ->orWhere('sales_id', $user->id);
+            } elseif ($module === 'customers_booking') {
+                $sub->where('sales_id', $user->id)
+                    ->orWhere('created_by', $user->id);
             } else {
                 $sub->where('sales_id', $user->id)
                     ->orWhereHas('technicianSchedules', fn($q) => $q->where('technician_id', $user->id))
                     ->orWhereHas('surveys', fn($q) => $q->where('surveyor_id', $user->id));
             }
         });
+    }
+
+    /**
+     * Terapkan filter scope pada query Booking Pelanggan Baru
+     */
+    public static function applyBookingScope(Builder $query, ?User $user = null): Builder
+    {
+        return self::applyCustomerScope($query, $user, 'customers_booking');
     }
 
     /**
@@ -306,6 +335,34 @@ class DataScopeService
     }
 
     /**
+     * Terapkan filter scope pada query Work Orders Rollout Infrastruktur ODC & ODP
+     */
+    public static function applyWorkOrderScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) {
+            return $query;
+        }
+
+        $level = self::getScopeLevel($user, 'infrastructure_work_orders');
+
+        if ($level === 'all') {
+            return $query;
+        }
+
+        if ($level === 'area') {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            return $query->whereIn('area_id', $accessibleAreas);
+        }
+
+        // Level: 'own' / 'assigned' (Ditugaskan sebagai teknisi utama atau anggota tim teknisi)
+        return $query->where(function ($q) use ($user) {
+            $q->where('technician_id', $user->id)
+              ->orWhereHas('technicians', fn($t) => $t->where('users.id', $user->id));
+        });
+    }
+
+    /**
      * Terapkan filter scope pada query Transaksi Gudang / Material
      */
     public static function applyMaterialTransactionScope(Builder $query, ?User $user = null): Builder
@@ -357,6 +414,87 @@ class DataScopeService
             $q->where('user_id', $user->id);
             if ($empId) {
                 $q->orWhere('employee_id', $empId);
+            }
+        });
+    }
+
+    /**
+     * Terapkan filter scope pada query Pantauan Pelanggan (Menunggak & Janji Bayar)
+     */
+    public static function applyCustomerMonitoringScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) {
+            return $query;
+        }
+
+        $level = self::getScopeLevel($user, 'monitoring_pelanggan');
+
+        if ($level === 'all') {
+            return $query;
+        }
+
+        if ($level === 'area') {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            return $query->whereIn('area_id', $accessibleAreas);
+        }
+
+        // Level: 'own' (Hanya pelanggan binaan sales bersangkutan)
+        return $query->where('sales_id', $user->id);
+    }
+
+    /**
+     * Terapkan filter scope pada query Penagihan Lapangan & Setoran
+     */
+    public static function applyCustomerBillingScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) {
+            return $query;
+        }
+
+        $level = self::getScopeLevel($user, 'customer_billing');
+
+        if ($level === 'all') {
+            return $query;
+        }
+
+        if ($level === 'area') {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            return $query->whereIn('area_id', $accessibleAreas);
+        }
+
+        // Level: 'own' (Hanya setoran/tagihan kolektor bersangkutan)
+        return $query->where('collector_id', $user->id);
+    }
+
+    /**
+     * Terapkan filter scope pada query Karyawan & SDM (HR)
+     */
+    public static function applyEmployeeScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) {
+            return $query;
+        }
+
+        $level = self::getScopeLevel($user, 'hr_employees');
+
+        if ($level === 'all') {
+            return $query;
+        }
+
+        if ($level === 'area') {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            return $query->whereIn('area_id', $accessibleAreas);
+        }
+
+        // Level: 'own' (Hanya biodata diri sendiri)
+        $empId = $user->employee?->id;
+        return $query->where(function ($q) use ($user, $empId) {
+            $q->where('email', $user->email);
+            if ($empId) {
+                $q->orWhere('id', $empId);
             }
         });
     }

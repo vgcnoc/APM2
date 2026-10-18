@@ -48,7 +48,9 @@ class InvoiceController extends Controller
                         $cq->whereIn('area_id', $userAreaIds);
                     });
                 } else {
-                    $q->where('id', -1);
+                    $q->whereHas('customer', function($cq) {
+                        $cq->where('sales_id', auth()->id());
+                    });
                 }
             }
         };

@@ -47,14 +47,22 @@ class TechnicianMonitoringController extends Controller
             })->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance']);
         });
 
-        if ($areaId) {
-            $technicianQuery->where('area_id', $areaId);
-        }
-
-        if ($isTeknisiOnly) {
-            $technicianQuery->where('id', $user->id);
+        $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'monitoring_teknisi');
+        if (!$user->hasRole('admin') && !$user->can('monitoring_teknisi_view_all')) {
+            if ($user->can('monitoring_teknisi_view_own') || $scopeLevel === 'own') {
+                $technicianQuery->where('id', $user->id);
+            } elseif ($user->can('monitoring_teknisi_view_area') || $scopeLevel === 'area') {
+                $technicianQuery->whereIn('area_id', $user->getAccessibleAreaIds());
+                if ($technicianFilterId) {
+                    $technicianQuery->where('id', $technicianFilterId);
+                }
+            }
         } elseif ($technicianFilterId) {
             $technicianQuery->where('id', $technicianFilterId);
+        }
+
+        if ($areaId) {
+            $technicianQuery->where('area_id', $areaId);
         }
 
         $technicians = $technicianQuery->orderBy('name')->get();

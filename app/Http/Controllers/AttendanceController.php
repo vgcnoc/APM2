@@ -35,16 +35,21 @@ class AttendanceController extends Controller
             $currentEmployee = Employee::with(['area', 'shift'])->where('email', $user->email)->first();
         }
 
-        // Jika ada filter / switcher employee_id (untuk admin)
-        if ($request->filled('employee_id')) {
+        $canViewAll = $user && ($user->hasRole('admin') || $user->can('attendances_view_all'));
+        $canViewArea = $user && $user->can('attendances_view_area');
+
+        // Jika ada filter / switcher employee_id (hanya jika memiliki hak akses melihat karyawan lain)
+        if (($canViewAll || $canViewArea) && $request->filled('employee_id')) {
             $selected = Employee::with(['area', 'shift'])->find($request->employee_id);
             if ($selected) {
-                $currentEmployee = $selected;
+                if ($canViewAll || in_array($selected->area_id, $user->getAccessibleAreaIds())) {
+                    $currentEmployee = $selected;
+                }
             }
         }
 
         // Fallback jika belum ada employee sama sekali untuk user ini (misal Admin login)
-        if (!$currentEmployee) {
+        if (!$currentEmployee && ($canViewAll || $canViewArea)) {
             // Prioritaskan karyawan yang memiliki jadwal kerja hari ini, atau karyawan pertama
             $scheduledTodayEmpId = WorkSchedule::where('date', $today)
                 ->whereNotNull('shift_id')
@@ -60,9 +65,15 @@ class AttendanceController extends Controller
             }
         }
 
-        $allEmployees = Employee::with(['area', 'shift'])
-            ->orderBy('name')
-            ->get(['id', 'name', 'position', 'branch', 'area_id', 'shift_id', 'email', 'iak_number']);
+        $employeeQuery = Employee::with(['area', 'shift'])->orderBy('name');
+        if (!$canViewAll) {
+            if ($canViewArea) {
+                $employeeQuery->whereIn('area_id', $user->getAccessibleAreaIds());
+            } else {
+                $employeeQuery->where('email', $user ? $user->email : '');
+            }
+        }
+        $allEmployees = $employeeQuery->get(['id', 'name', 'position', 'branch', 'area_id', 'shift_id', 'email', 'iak_number']);
 
         // 2. Ambil Master Shifts & Areas
         $allShifts = Shift::where('is_active', true)->orderBy('start_time')->get();

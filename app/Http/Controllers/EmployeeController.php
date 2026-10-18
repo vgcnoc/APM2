@@ -13,6 +13,14 @@ class EmployeeController extends Controller
         }
 
         $query = \App\Models\Employee::query();
+
+        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_view_all')) {
+            if (auth()->user()->can('hr_employees_view_area')) {
+                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+            } else {
+                $query->where('email', auth()->user()->email);
+            }
+        }
         
         if ($request->filled('search')) {
             $search = strtolower($request->search);

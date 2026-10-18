@@ -933,6 +933,23 @@ const togglePermissionWithAutoParent = (perm, group) => {
         if (parentMenu && perm.name !== parentMenu && !selectedPermissions.value.includes(parentMenu)) {
             selectedPermissions.value.push(parentMenu);
         }
+
+        // Cerdas: Jika mengaktifkan scope (_view_all, _view_area, _view_own, _view_assigned),
+        // otomatis nonaktifkan scope lain pada modul yang sama agar tidak terjadi konflik
+        const scopeSuffixes = ['_view_all', '_view_area', '_view_own', '_view_assigned'];
+        const matchedSuffix = scopeSuffixes.find(s => perm.name.endsWith(s));
+        if (matchedSuffix) {
+            const prefix = perm.name.slice(0, -matchedSuffix.length);
+            scopeSuffixes.forEach(s => {
+                if (s !== matchedSuffix) {
+                    const conflictingName = prefix + s;
+                    const cIdx = selectedPermissions.value.indexOf(conflictingName);
+                    if (cIdx >= 0) {
+                        selectedPermissions.value.splice(cIdx, 1);
+                    }
+                }
+            });
+        }
     }
 };
 

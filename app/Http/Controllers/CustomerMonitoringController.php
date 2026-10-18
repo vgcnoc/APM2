@@ -24,28 +24,30 @@ class CustomerMonitoringController extends Controller
         $promiseFilter = $request->query('promise_filter', 'all');
         $stopReason = $request->query('stop_reason', 'all');
 
-        $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all');
+        $isRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('monitoring_pelanggan_view_all') && !auth()->user()->can('customers_all_view_all');
         $userAreaIds = auth()->check() ? auth()->user()->getAccessibleAreaIds() : [];
 
-        // Scoping closures
-        $scopeCustomerArea = function ($query) use ($isAreaRestricted, $userAreaIds) {
-            if ($isAreaRestricted) {
-                if (auth()->user()->can('customers_all_view_area')) {
+        // Scoping closures (all, area, own)
+        $scopeCustomerArea = function ($query) use ($isRestricted, $userAreaIds) {
+            if ($isRestricted) {
+                if (auth()->user()->can('monitoring_pelanggan_view_area') || auth()->user()->can('customers_all_view_area')) {
                     $query->whereIn('area_id', $userAreaIds);
                 } else {
-                    $query->where('id', -1);
+                    $query->where('sales_id', auth()->id());
                 }
             }
         };
 
-        $scopeInvoiceArea = function ($query) use ($isAreaRestricted, $userAreaIds) {
-            if ($isAreaRestricted) {
-                if (auth()->user()->can('customers_all_view_area')) {
+        $scopeInvoiceArea = function ($query) use ($isRestricted, $userAreaIds) {
+            if ($isRestricted) {
+                if (auth()->user()->can('monitoring_pelanggan_view_area') || auth()->user()->can('customers_all_view_area')) {
                     $query->whereHas('customer', function($cq) use ($userAreaIds) {
                         $cq->whereIn('area_id', $userAreaIds);
                     });
                 } else {
-                    $query->where('id', -1);
+                    $query->whereHas('customer', function($cq) {
+                        $cq->where('sales_id', auth()->id());
+                    });
                 }
             }
         };

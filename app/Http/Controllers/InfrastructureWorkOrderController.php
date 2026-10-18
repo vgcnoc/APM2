@@ -23,11 +23,11 @@ class InfrastructureWorkOrderController extends Controller
     {
         $query = InfrastructureWorkOrder::with(['area', 'olt', 'parentOdc', 'technician', 'technicians', 'creator']);
 
-        // Filter Hak Akses Area
-        if (Auth::check() && !Auth::user()->hasRole('admin') && !Auth::user()->can('network_odc_view_all')) {
-            if (Auth::user()->can('network_odc_view_area')) {
+        // Filter Hak Akses Scoping (All, Area, Assigned)
+        if (Auth::check() && !Auth::user()->hasRole('admin') && !Auth::user()->can('infrastructure_work_orders_view_all')) {
+            if (Auth::user()->can('infrastructure_work_orders_view_area')) {
                 $query->whereIn('area_id', Auth::user()->getAccessibleAreaIds());
-            } elseif (Auth::user()->role === 'teknisi') {
+            } else {
                 $query->where(function ($q) {
                     $q->where('technician_id', Auth::id())
                       ->orWhereHas('technicians', fn($t) => $t->where('users.id', Auth::id()));
