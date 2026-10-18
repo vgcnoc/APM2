@@ -70,6 +70,9 @@
                     >
                         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                         <span>Semua Riwayat</span>
+                        <span v-if="historyCount > 0" class="ml-1 px-1.5 py-0.2 bg-slate-200 text-slate-700 rounded-full text-[10px]">
+                            {{ historyCount }}
+                        </span>
                     </button>
                 </div>
 
@@ -140,6 +143,15 @@
                             @change="applyFilter"
                             class="bg-transparent border-none p-0 text-xs text-slate-700 font-semibold focus:ring-0"
                         />
+                        <button
+                            v-if="startDate || endDate"
+                            type="button"
+                            @click="clearDateFilter"
+                            class="text-slate-400 hover:text-rose-500 font-bold px-1 text-xs"
+                            title="Reset Filter Tanggal"
+                        >
+                            ✕
+                        </button>
                     </div>
 
                     <!-- Export, Import, Print -->
@@ -154,7 +166,7 @@
 
                     <button
                         type="button"
-                        @click="alert('Fitur import siap digunakan.')"
+                        @click="openImportModal"
                         class="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
                     >
                         <svg class="w-3.5 h-3.5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -412,6 +424,41 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Floating Bulk Action Bar -->
+            <transition
+                enter-active-class="transition ease-out duration-200"
+                enter-from-class="opacity-0 translate-y-2"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition ease-in duration-150"
+                leave-from-class="opacity-100 translate-y-0"
+                leave-to-class="opacity-0 translate-y-2"
+            >
+                <div
+                    v-if="selectedIds.length > 0"
+                    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-sm text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 text-xs font-bold border border-slate-700 animate-in fade-in"
+                >
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                        <span>{{ selectedIds.length }} tugas luar terpilih</span>
+                    </span>
+                    <button
+                        type="button"
+                        @click="bulkDeleteDuties"
+                        class="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition flex items-center gap-1 shadow-sm"
+                    >
+                        <span>🗑️</span>
+                        <span>Hapus Masal</span>
+                    </button>
+                    <button
+                        type="button"
+                        @click="selectedIds = []; isAllSelected = false"
+                        class="text-slate-400 hover:text-white transition"
+                    >
+                        Batal
+                    </button>
+                </div>
+            </transition>
 
             <!-- ========================================================= -->
             <!-- MODAL 1: + BUAT TUGAS                                     -->
@@ -679,13 +726,28 @@
                     <!-- Video Preview Area -->
                     <div class="relative rounded-2xl overflow-hidden bg-slate-900 aspect-4/3 flex items-center justify-center border border-slate-800">
                         <video
-                            v-show="!capturedPhoto"
+                            v-show="!capturedPhoto && !cameraError"
                             ref="videoRef"
                             autoplay
                             playsinline
                             class="w-full h-full object-cover"
                             :class="{ '-scale-x-100': cameraFacing === 'user' }"
                         ></video>
+
+                        <!-- Error State jika Kamera Terblokir / Tidak Ada -->
+                        <div v-if="cameraError && !capturedPhoto" class="p-6 text-center text-white space-y-3">
+                            <span class="text-3xl block">📷⚠️</span>
+                            <p class="text-xs text-rose-300 font-semibold">{{ cameraError }}</p>
+                            <p class="text-[11px] text-slate-300">Kamera perangkat tidak dapat dibuka langsung. Anda dapat memilih foto dari galeri/kamera HP.</p>
+                            <button
+                                type="button"
+                                @click="fileInputRef?.click()"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm inline-flex items-center gap-1.5"
+                            >
+                                <span>📁</span>
+                                <span>Pilih Foto dari Perangkat</span>
+                            </button>
+                        </div>
 
                         <img
                             v-if="capturedPhoto"
@@ -695,7 +757,7 @@
 
                         <!-- Overlay Switch Kamera -->
                         <button
-                            v-if="!capturedPhoto"
+                            v-if="!capturedPhoto && !cameraError"
                             type="button"
                             @click="switchCameraFacing"
                             class="absolute top-3 right-3 px-3 py-1.5 bg-black/50 text-white rounded-full text-xs font-semibold backdrop-blur-xs hover:bg-black/70 flex items-center gap-1.5"
@@ -705,6 +767,28 @@
                     </div>
 
                     <canvas ref="canvasRef" class="hidden"></canvas>
+
+                    <!-- Hidden Input File untuk Fallback Kamera/Upload -->
+                    <input
+                        type="file"
+                        ref="fileInputRef"
+                        accept="image/*"
+                        capture="user"
+                        class="hidden"
+                        @change="handleFileUpload"
+                    />
+
+                    <!-- Tombol Opsi Unggah Foto jika kamera aktif tapi user ingin upload -->
+                    <div v-if="!capturedPhoto && !cameraError" class="flex justify-center">
+                        <button
+                            type="button"
+                            @click="fileInputRef?.click()"
+                            class="text-[11px] text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1"
+                        >
+                            <span>📁</span>
+                            <span>Atau pilih foto dari file / kamera HP</span>
+                        </button>
+                    </div>
 
                     <!-- Catatan Pelaksanaan -->
                     <div class="space-y-1.5 text-xs">
@@ -728,12 +812,21 @@
                         </button>
 
                         <button
-                            v-if="!capturedPhoto"
+                            v-if="!capturedPhoto && !cameraError"
                             type="button"
                             @click="takeSnapshot"
                             class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2"
                         >
                             <span>📸 Ambil Foto Selfie</span>
+                        </button>
+
+                        <button
+                            v-if="!capturedPhoto && cameraError"
+                            type="button"
+                            @click="fileInputRef?.click()"
+                            class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2"
+                        >
+                            <span>📁 Pilih Foto</span>
                         </button>
 
                         <button
@@ -837,6 +930,69 @@
                     </div>
                 </div>
             </div>
+
+            <!-- ========================================================= -->
+            <!-- MODAL 5: IMPORT PENUGASAN LUAR DARI CSV                    -->
+            <!-- ========================================================= -->
+            <div
+                v-if="isImportModalOpen"
+                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs"
+            >
+                <div class="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150 text-xs">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <span>📥</span>
+                            <span>Import Penugasan Luar (CSV)</span>
+                        </h3>
+                        <button type="button" @click="isImportModalOpen = false" class="text-slate-400 font-bold hover:text-slate-600">✕</button>
+                    </div>
+
+                    <p class="text-slate-500 leading-relaxed">
+                        Unggah file CSV berisi daftar penugasan luar karyawan. Sistem akan otomatis memetakan nama/email karyawan dan jadwal tugas ke presensi harian.
+                    </p>
+
+                    <div class="p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-center space-y-2">
+                        <input
+                            type="file"
+                            ref="csvFileInputRef"
+                            accept=".csv,text/csv,text/plain"
+                            class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                            @change="handleCsvFileChange"
+                        />
+                        <p class="text-[11px] text-slate-400">Format yang didukung: .csv (Maksimal 5MB)</p>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-1">
+                        <button
+                            type="button"
+                            @click="downloadImportTemplate"
+                            class="text-blue-600 hover:text-blue-800 font-bold text-xs flex items-center gap-1.5"
+                        >
+                            <span>📥</span>
+                            <span>Download Template CSV</span>
+                        </button>
+                    </div>
+
+                    <div class="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+                        <button
+                            type="button"
+                            @click="isImportModalOpen = false"
+                            class="px-4 py-2 bg-slate-100 rounded-xl font-bold text-slate-700"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="button"
+                            @click="submitImport"
+                            :disabled="!importFile || importForm.processing"
+                            class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-sm disabled:opacity-50"
+                        >
+                            <span v-if="importForm.processing">Mengimpor...</span>
+                            <span v-else>Mulai Import</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </AppLayout>
 </template>
@@ -845,6 +1001,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     duties: Object,
@@ -894,6 +1051,12 @@ const applyFilter = () => {
         },
         { preserveState: true }
     );
+};
+
+const clearDateFilter = () => {
+    startDate.value = '';
+    endDate.value = '';
+    applyFilter();
 };
 
 // Checkbox Selection
@@ -984,7 +1147,22 @@ const submitCreateDuty = () => {
     createForm.post(route('field-duties.store'), {
         onSuccess: () => {
             isCreateModalOpen.value = false;
+            Swal.fire({
+                icon: 'success',
+                title: 'Tugas Dibuat!',
+                text: 'Penugasan luar berhasil ditambahkan.',
+                timer: 1800,
+                showConfirmButton: false,
+            });
         },
+        onError: (errs) => {
+            const firstErr = Object.values(errs)[0] || 'Gagal membuat tugas luar.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: firstErr,
+            });
+        }
     });
 };
 
@@ -1013,12 +1191,19 @@ const submitSettings = () => {
     settingsForm.post(route('field-duties.settings.update'), {
         onSuccess: () => {
             isSettingsModalOpen.value = false;
+            Swal.fire({
+                icon: 'success',
+                title: 'Tersimpan',
+                text: 'Pengaturan absen tugas luar berhasil disimpan.',
+                timer: 1800,
+                showConfirmButton: false,
+            });
         },
     });
 };
 
 // ========================================================
-// MODAL 3: KAMERA WEBCAM SELFIE & WATERMARK
+// MODAL 3: KAMERA WEBCAM SELFIE, FALLBACK UPLOAD & WATERMARK
 // ========================================================
 const isCameraModalOpen = ref(false);
 const activeDuty = ref(null);
@@ -1027,6 +1212,8 @@ const videoRef = ref(null);
 const canvasRef = ref(null);
 const capturedPhoto = ref(null);
 const cameraFacing = ref('user');
+const cameraError = ref(null);
+const fileInputRef = ref(null);
 let mediaStream = null;
 
 const attendanceForm = useForm({
@@ -1045,6 +1232,7 @@ const openCameraModal = (item, action) => {
     attendanceForm.photo = '';
     attendanceForm.notes = '';
     attendanceForm.location_name = item.destination_location;
+    cameraError.value = null;
     isCameraModalOpen.value = true;
     startCamera();
     fetchGeolocation();
@@ -1067,6 +1255,7 @@ const fetchGeolocation = () => {
 
 const startCamera = async () => {
     try {
+        cameraError.value = null;
         capturedPhoto.value = null;
         if (mediaStream) {
             mediaStream.getTracks().forEach((t) => t.stop());
@@ -1079,8 +1268,8 @@ const startCamera = async () => {
             videoRef.value.srcObject = mediaStream;
         }
     } catch (err) {
-        alert('Tidak dapat mengakses kamera: ' + err.message);
-        isCameraModalOpen.value = false;
+        console.warn('Camera warning: ' + err.message);
+        cameraError.value = err.message || 'Kamera tidak dapat diakses.';
     }
 };
 
@@ -1116,6 +1305,49 @@ const takeSnapshot = () => {
     attendanceForm.longitude = userCoords.value.lng;
 
     stopCamera();
+};
+
+const handleFileUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = canvasRef.value;
+            if (!canvas) return;
+
+            let targetW = img.width;
+            let targetH = img.height;
+            const maxDim = 800;
+            if (targetW > maxDim || targetH > maxDim) {
+                if (targetW > targetH) {
+                    targetH = Math.round((targetH * maxDim) / targetW);
+                    targetW = maxDim;
+                } else {
+                    targetW = Math.round((targetW * maxDim) / targetH);
+                    targetH = maxDim;
+                }
+            }
+
+            canvas.width = targetW;
+            canvas.height = targetH;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, targetW, targetH);
+
+            drawDutyWatermark(ctx, targetW, targetH);
+
+            capturedPhoto.value = canvas.toDataURL('image/jpeg', 0.88);
+            attendanceForm.photo = capturedPhoto.value;
+            attendanceForm.latitude = userCoords.value.lat;
+            attendanceForm.longitude = userCoords.value.lng;
+
+            stopCamera();
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
 };
 
 const drawDutyWatermark = (ctx, w, h) => {
@@ -1154,6 +1386,7 @@ const closeCameraModal = () => {
     stopCamera();
     isCameraModalOpen.value = false;
     capturedPhoto.value = null;
+    cameraError.value = null;
 };
 
 const submitAttendance = () => {
@@ -1162,7 +1395,22 @@ const submitAttendance = () => {
     attendanceForm.post(route(routeName, activeDuty.value.id), {
         onSuccess: () => {
             closeCameraModal();
+            Swal.fire({
+                icon: 'success',
+                title: cameraActionType.value === 'in' ? 'Check-In Berhasil!' : 'Check-Out Berhasil!',
+                text: 'Absensi tugas luar berhasil dicatat dan disinkronkan.',
+                timer: 2000,
+                showConfirmButton: false,
+            });
         },
+        onError: (errs) => {
+            const firstErr = Object.values(errs)[0] || 'Gagal menyimpan absensi tugas luar.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Absen',
+                text: firstErr,
+            });
+        }
     });
 };
 
@@ -1177,10 +1425,130 @@ const openDetailModal = (item) => {
     isDetailModalOpen.value = true;
 };
 
-// Delete Duty
-const deleteDuty = (item) => {
-    if (!confirm(`Hapus data tugas luar '${item.destination_location}' (${item.employee?.name})?`)) return;
-    router.delete(route('field-duties.destroy', item.id), { preserveScroll: true });
+// ========================================================
+// MODAL 5: IMPORT PENUGASAN LUAR DARI CSV
+// ========================================================
+const isImportModalOpen = ref(false);
+const importFile = ref(null);
+const csvFileInputRef = ref(null);
+const importForm = useForm({
+    file: null,
+});
+
+const openImportModal = () => {
+    importFile.value = null;
+    if (csvFileInputRef.value) csvFileInputRef.value.value = '';
+    isImportModalOpen.value = true;
+};
+
+const handleCsvFileChange = (e) => {
+    importFile.value = e.target.files?.[0] || null;
+};
+
+const downloadImportTemplate = () => {
+    const csvHeader = 'Karyawan,Tanggal,Tipe,Lokasi Tujuan,Maksud,Mode Absen,Jam Mulai,Jam Selesai,Catatan\n';
+    const sample1 = 'Super Admin,2026-10-19,reguler,Cilandak Kaum,Pengecekan ODP & Fiber,replace_both,08:30,17:00,Bawa Fusion Splicer\n';
+    const sample2 = 'Herli Robiansyah,2026-10-19,non_reguler,Cigombong,Maintenance Insidental,replace_out,14:00,18:00,Instalasi baru\n';
+    const blob = new Blob([csvHeader + sample1 + sample2], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'template_import_tugas_luar.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+};
+
+const submitImport = () => {
+    if (!importFile.value) return;
+    importForm.file = importFile.value;
+    importForm.post(route('field-duties.import'), {
+        onSuccess: () => {
+            isImportModalOpen.value = false;
+            importFile.value = null;
+            if (csvFileInputRef.value) csvFileInputRef.value.value = '';
+            Swal.fire({
+                icon: 'success',
+                title: 'Import Selesai',
+                text: 'Data penugasan luar berhasil diimpor.',
+                timer: 2000,
+                showConfirmButton: false,
+            });
+        },
+        onError: (errs) => {
+            const firstErr = Object.values(errs)[0] || 'Gagal mengimpor file CSV.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Import',
+                text: firstErr,
+            });
+        }
+    });
+};
+
+// Delete Single Duty
+const deleteDuty = async (item) => {
+    const confirmResult = await Swal.fire({
+        title: 'Hapus Tugas Luar?',
+        text: `Apakah Anda yakin ingin menghapus data tugas '${item.destination_location}' (${item.employee?.name})?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus!',
+        cancelButtonText: 'Batal',
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    router.delete(route('field-duties.destroy', item.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            Swal.fire({
+                icon: 'success',
+                title: 'Terhapus',
+                text: 'Data tugas luar berhasil dihapus.',
+                timer: 1800,
+                showConfirmButton: false,
+            });
+        }
+    });
+};
+
+// Bulk Delete Duties
+const bulkDeleteDuties = async () => {
+    if (selectedIds.value.length === 0) return;
+
+    const confirmResult = await Swal.fire({
+        title: 'Hapus Masal Tugas Luar?',
+        text: `Apakah Anda yakin ingin menghapus ${selectedIds.value.length} penugasan luar yang dipilih?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: `Ya, Hapus (${selectedIds.value.length})!`,
+        cancelButtonText: 'Batal',
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    router.post(
+        route('field-duties.bulk-delete'),
+        { ids: selectedIds.value },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                selectedIds.value = [];
+                isAllSelected.value = false;
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Terhapus',
+                    text: 'Tugas luar terpilih berhasil dihapus.',
+                    timer: 1800,
+                    showConfirmButton: false,
+                });
+            },
+        }
+    );
 };
 
 onMounted(() => {

@@ -7,7 +7,9 @@ use App\Models\Employee;
 use App\Models\FieldDuty;
 use App\Models\Incentive;
 use App\Models\Setting;
+use App\Models\Shift;
 use App\Models\User;
+use App\Models\WorkSchedule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -52,6 +54,10 @@ class FieldDutyController extends Controller
         // Filter Rentang Tanggal
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('date', [$request->start_date, $request->end_date]);
+        } elseif ($request->filled('start_date')) {
+            $query->where('date', '>=', $request->start_date);
+        } elseif ($request->filled('end_date')) {
+            $query->where('date', '<=', $request->end_date);
         }
 
         // Data Tugas & Statistik
@@ -173,6 +179,11 @@ class FieldDutyController extends Controller
             && Setting::get('duty_replace_regular_in', '1') === '1';
 
         if ($shouldReplaceIn) {
+            $schedule = WorkSchedule::where('employee_id', $fieldDuty->employee_id)
+                ->where('date', $dateStr)
+                ->first();
+            $shiftId = $schedule?->shift_id ?: ($fieldDuty->employee?->shift_id);
+
             $regularAtt = Attendance::firstOrNew([
                 'employee_id' => $fieldDuty->employee_id,
                 'date' => $dateStr,
@@ -186,6 +197,14 @@ class FieldDutyController extends Controller
                 $regularAtt->lng_in = $request->longitude;
                 $regularAtt->status = 'present'; // Langsung Tepat Waktu (Dispensasi Tugas Luar)
                 $regularAtt->late_minutes = 0;
+                $regularAtt->attendance_type = 'dinas_luar';
+                $regularAtt->duty_location = $fieldDuty->destination_location;
+                if ($schedule && empty($regularAtt->work_schedule_id)) {
+                    $regularAtt->work_schedule_id = $schedule->id;
+                }
+                if ($shiftId && empty($regularAtt->shift_id)) {
+                    $regularAtt->shift_id = $shiftId;
+                }
                 $regularAtt->notes = "Absen Masuk otomatis via Tugas Luar: {$fieldDuty->destination_location} ({$fieldDuty->purpose})";
                 $regularAtt->save();
 
@@ -234,6 +253,11 @@ class FieldDutyController extends Controller
             && Setting::get('duty_replace_regular_out', '1') === '1';
 
         if ($shouldReplaceOut) {
+            $schedule = WorkSchedule::where('employee_id', $fieldDuty->employee_id)
+                ->where('date', $dateStr)
+                ->first();
+            $shiftId = $schedule?->shift_id ?: ($fieldDuty->employee?->shift_id);
+
             $regularAtt = Attendance::firstOrNew([
                 'employee_id' => $fieldDuty->employee_id,
                 'date' => $dateStr,
@@ -243,6 +267,20 @@ class FieldDutyController extends Controller
             $regularAtt->photo_out = $photoPath;
             $regularAtt->lat_out = $request->latitude;
             $regularAtt->lng_out = $request->longitude;
+            $regularAtt->attendance_type = 'dinas_luar';
+            $regularAtt->duty_location = $fieldDuty->destination_location;
+            if ($schedule && empty($regularAtt->work_schedule_id)) {
+                $regularAtt->work_schedule_id = $schedule->id;
+            }
+            if ($shiftId && empty($regularAtt->shift_id)) {
+                $regularAtt->shift_id = $shiftId;
+            }
+            if (empty($regularAtt->clock_in) && !empty($fieldDuty->check_in_time)) {
+                $regularAtt->clock_in = $fieldDuty->check_in_time;
+                $regularAtt->photo_in = $fieldDuty->check_in_photo;
+                $regularAtt->status = 'present';
+                $regularAtt->late_minutes = 0;
+            }
             $regularAtt->notes = $regularAtt->notes 
                 ? ($regularAtt->notes . " | Absen Pulang otomatis via Tugas Luar: {$fieldDuty->destination_location}") 
                 : "Absen Pulang otomatis via Tugas Luar: {$fieldDuty->destination_location}";
@@ -316,6 +354,93 @@ class FieldDutyController extends Controller
 
         FieldDuty::whereIn('id', $request->ids)->delete();
         return back()->with('success', count($request->ids) . ' tugas luar berhasil dihapus.');
+    }
+
+    /**
+     * Import Penugasan Luar dari CSV
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt|max:5120',
+        ]);
+
+        $file = $request->file('file');
+        $handle = fopen($file->getRealPath(), 'r');
+        if (!$handle) {
+            return back()->with('error', 'Gagal membuka file CSV.');
+        }
+
+        $header = fgetcsv($handle, 1000, ',');
+        if (!$header) {
+            fclose($handle);
+            return back()->with('error', 'File CSV kosong atau tidak valid.');
+        }
+
+        // Normalisasi header
+        $headerMap = [];
+        foreach ($header as $idx => $col) {
+            $cleanCol = strtolower(trim($col, "\xEF\xBB\xBF \t\n\r\0\x0B"));
+            $headerMap[$cleanCol] = $idx;
+        }
+
+        $imported = 0;
+        $employees = Employee::all();
+
+        while (($row = fgetcsv($handle, 2000, ',')) !== false) {
+            if (empty(array_filter($row))) continue;
+
+            $empQuery = $row[$headerMap['karyawan'] ?? $headerMap['employee'] ?? $headerMap['nama'] ?? 0] ?? null;
+            if (!$empQuery) continue;
+
+            $emp = $employees->first(function ($e) use ($empQuery) {
+                return strcasecmp($e->name, trim($empQuery)) === 0 
+                    || strcasecmp($e->email, trim($empQuery)) === 0
+                    || (string)$e->id === trim($empQuery);
+            });
+
+            if (!$emp) continue;
+
+            $date = $row[$headerMap['tanggal'] ?? $headerMap['date'] ?? 1] ?? date('Y-m-d');
+            $dutyType = strtolower($row[$headerMap['tipe'] ?? $headerMap['type'] ?? 2] ?? 'reguler');
+            if (!in_array($dutyType, ['reguler', 'non_reguler'])) {
+                $dutyType = 'reguler';
+            }
+
+            $loc = $row[$headerMap['lokasi tujuan'] ?? $headerMap['lokasi'] ?? $headerMap['destination'] ?? 3] ?? 'Lokasi Tugas';
+            $purpose = $row[$headerMap['maksud'] ?? $headerMap['keterangan'] ?? $headerMap['purpose'] ?? 4] ?? 'Tugas Luar';
+            $mode = strtolower($row[$headerMap['mode absen'] ?? $headerMap['mode'] ?? 5] ?? 'replace_both');
+            if (!in_array($mode, ['replace_both', 'replace_in', 'replace_out', 'none'])) {
+                $mode = 'replace_both';
+            }
+
+            $startTime = $row[$headerMap['jam mulai'] ?? $headerMap['jadwal mulai'] ?? 6] ?? null;
+            $endTime = $row[$headerMap['jam selesai'] ?? $headerMap['jadwal selesai'] ?? 7] ?? null;
+            $notes = $row[$headerMap['catatan'] ?? $headerMap['notes'] ?? 8] ?? null;
+
+            FieldDuty::create([
+                'employee_id' => $emp->id,
+                'created_by_user_id' => auth()->id(),
+                'date' => Carbon::parse($date)->format('Y-m-d'),
+                'duty_type' => $dutyType,
+                'destination_location' => trim($loc),
+                'purpose' => trim($purpose),
+                'attendance_mode' => $mode,
+                'scheduled_start_time' => $startTime ? (strlen($startTime) === 5 ? $startTime . ':00' : $startTime) : null,
+                'scheduled_end_time' => $endTime ? (strlen($endTime) === 5 ? $endTime . ':00' : $endTime) : null,
+                'scheduled_duration_minutes' => 60,
+                'status' => 'active',
+                'approval_status' => Setting::get('duty_auto_approval', '1') === '1' ? 'auto' : 'pending',
+                'duty_allowance_amount' => Setting::get('duty_allowance_enabled', '0') === '1' ? (float) Setting::get('duty_allowance_amount', 25000) : 0,
+                'notes' => $notes ? trim($notes) : null,
+            ]);
+
+            $imported++;
+        }
+
+        fclose($handle);
+
+        return back()->with('success', "Berhasil mengimpor {$imported} data penugasan luar.");
     }
 
     /**

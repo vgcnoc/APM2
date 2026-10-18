@@ -330,6 +330,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('absen-tugas-luar/{fieldDuty}/check-in', [\App\Http\Controllers\FieldDutyController::class, 'checkIn'])->name('field-duties.check-in');
     Route::post('absen-tugas-luar/{fieldDuty}/check-out', [\App\Http\Controllers\FieldDutyController::class, 'checkOut'])->name('field-duties.check-out');
     Route::delete('absen-tugas-luar/{fieldDuty}', [\App\Http\Controllers\FieldDutyController::class, 'destroy'])->name('field-duties.destroy');
+    Route::post('absen-tugas-luar/import', [\App\Http\Controllers\FieldDutyController::class, 'import'])->name('field-duties.import');
     Route::post('materials/bulk-destroy', [MaterialController::class, 'bulkDestroy'])->name('materials.bulk-destroy');
     Route::post('materials/{material}/update', [MaterialController::class, 'update'])->name('materials.update.post');
     Route::post('materials/{material}/add-stock', [MaterialController::class, 'addStock'])->name('materials.add-stock');
