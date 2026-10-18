@@ -9,9 +9,20 @@
 }
 
 /* ── Base Styles ────────────────────────────────────────────── */
+html {
+    @apply bg-gray-50;
+}
+
 body {
     @apply text-gray-900 antialiased bg-gray-50 min-h-screen selection:bg-blue-500/30 selection:text-blue-900;
     font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    zoom: 75%;
+}
+
+@media print {
+    body {
+        zoom: 100% !important;
+    }
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -118,24 +129,26 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ── Form Inputs (Clean Light) ──────────────────────────── */
-.form-input {
-    @apply w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5
-           text-gray-900 placeholder-gray-400 shadow-sm
-           focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
-           transition-all duration-200 outline-none hover:border-gray-400;
-}
+@layer components {
+    .form-input {
+        @apply w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5
+               text-gray-900 placeholder-gray-400 shadow-sm
+               focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
+               transition-all duration-200 outline-none hover:border-gray-400;
+    }
 
-.form-select {
-    @apply form-input appearance-none cursor-pointer;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' viewBox='0 0 20 20'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 0.75rem center;
-    background-size: 1.25em 1.25em;
-    padding-right: 2.5rem;
-}
+    .form-select {
+        @apply form-input appearance-none cursor-pointer;
+        background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' viewBox='0 0 20 20'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 1.25em 1.25em;
+        padding-right: 2.5rem;
+    }
 
-.form-label {
-    @apply block text-xs font-bold text-gray-700 uppercase tracking-widest mb-2;
+    .form-label {
+        @apply block text-xs font-bold text-gray-700 uppercase tracking-widest mb-2;
+    }
 }
 
 /* ── Card Stat Animations ───────────────────────────────────── */

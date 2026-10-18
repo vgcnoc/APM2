@@ -27,9 +27,9 @@
             v-model:selected="selectedIds"
         >
             <template #filters>
-                <div class="flex flex-wrap items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2.5 w-full">
                     <!-- Filter Area -->
-                    <select v-model="filterArea" @change="applyFilters" class="form-select w-36 text-sm">
+                    <select v-model="filterArea" @change="applyFilters" class="form-select w-full sm:w-44 md:w-48 text-sm bg-white">
                         <option value="">Semua Area</option>
                         <option v-for="area in areas" :key="area.id || area" :value="area.id || area">
                             {{ area.name || area }}
@@ -37,14 +37,14 @@
                     </select>
 
                     <!-- Filter Paket -->
-                    <select v-model="filterPackage" @change="applyFilters" class="form-select w-36 text-sm">
+                    <select v-model="filterPackage" @change="applyFilters" class="form-select w-full sm:w-44 md:w-48 text-sm bg-white">
                         <option value="">Semua Paket</option>
                         <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
                             {{ pkg.name }}
                         </option>
                     </select>
 
-                    <button v-if="filterArea || filterPackage" @click="resetFilters" class="px-3 py-2 bg-gray-50 text-gray-600 hover:bg-gray-100 font-medium text-sm rounded-lg transition-colors border border-gray-200">
+                    <button v-if="filterArea || filterPackage" @click="resetFilters" class="px-3.5 py-2 bg-gray-50 text-gray-600 hover:bg-gray-100 font-medium text-sm rounded-lg transition-colors border border-gray-200 whitespace-nowrap">
                         Reset
                     </button>
                 </div>

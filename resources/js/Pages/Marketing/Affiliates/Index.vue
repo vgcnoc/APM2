@@ -1616,46 +1616,97 @@
 
             <!-- ════ MODAL: DAFTARKAN AGEN / DOWNLINE BARU ════ -->
             <div v-if="showCreateAffiliateModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="showCreateAffiliateModal = false">
-                <div class="bg-white rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-100 p-6 sm:p-7">
-                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-                        <div>
-                            <h3 class="text-base font-bold text-slate-900">Daftarkan Agen / Downline Baru</h3>
-                            <p class="text-xs text-slate-500 mt-0.5">Tambah agen penjualan baru dan hubungkan ke Upline Sponsor di jaringan multi-tier.</p>
+                <div class="bg-white rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-100 p-6 sm:p-7 max-h-[90vh] flex flex-col">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 shrink-0">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg font-bold">➕</span>
+                            <div>
+                                <h3 class="text-base font-bold text-slate-900">Daftarkan Agen / Downline Baru</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">Tambah agen penjualan dan hubungkan ke Upline Sponsor di jaringan multi-tier.</p>
+                            </div>
                         </div>
-                        <button type="button" @click="showCreateAffiliateModal = false" class="text-slate-400 hover:text-slate-600">✕</button>
+                        <button type="button" @click="showCreateAffiliateModal = false" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors">✕</button>
                     </div>
 
                     <!-- Mode Tab: Akun Baru vs User yang Ada -->
-                    <div class="flex items-center gap-2 p-1 bg-slate-100 rounded-xl mb-4 text-xs font-bold">
+                    <div class="flex items-center gap-2 p-1 bg-slate-100 rounded-xl mb-4 text-xs font-bold shrink-0">
                         <button
                             type="button"
-                            @click="createForm.mode = 'new_user'"
-                            class="flex-1 py-1.5 rounded-lg transition-all"
+                            @click="createForm.mode = 'new_user'; createForm.clearErrors()"
+                            class="flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5"
                             :class="createForm.mode === 'new_user' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                         >
-                            ➕ Akun Mitra Baru
+                            <span>➕</span>
+                            <span>Akun Mitra Baru</span>
                         </button>
                         <button
                             type="button"
-                            @click="createForm.mode = 'existing_user'"
-                            class="flex-1 py-1.5 rounded-lg transition-all"
+                            @click="createForm.mode = 'existing_user'; createForm.clearErrors()"
+                            class="flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5"
                             :class="createForm.mode === 'existing_user' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                         >
-                            👤 Dari User/Karyawan Ada ({{ (candidate_users || []).length }})
+                            <span>👤</span>
+                            <span>Pilih User / Karyawan ({{ (candidate_users || []).length }})</span>
                         </button>
                     </div>
 
-                    <form @submit.prevent="submitCreateAffiliate" class="space-y-4 text-xs">
+                    <form @submit.prevent="submitCreateAffiliate" class="space-y-4 text-xs overflow-y-auto pr-1 flex-1">
+                        <!-- Alert Error Global -->
+                        <div v-if="createForm.hasErrors" class="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700 space-y-1">
+                            <div class="flex items-center gap-1.5 font-bold">
+                                <span>⚠️</span>
+                                <span>Gagal mendaftarkan agen. Periksa kesalahan berikut:</span>
+                            </div>
+                            <ul class="list-disc list-inside space-y-0.5 pl-1 text-[11px] text-rose-600">
+                                <li v-for="(errMsg, f) in createForm.errors" :key="f">{{ errMsg }}</li>
+                            </ul>
+                        </div>
+
                         <!-- Mode Existing User -->
                         <div v-if="createForm.mode === 'existing_user'" class="space-y-3">
                             <div>
-                                <label class="block text-slate-700 font-bold mb-1">Pilih User / Karyawan *</label>
-                                <select v-model="createForm.user_id" required class="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500">
-                                    <option value="" disabled>-- Pilih Pengguna --</option>
-                                    <option v-for="u in candidate_users" :key="u.id" :value="u.id">
-                                        {{ u.name }} ({{ u.email }}) - Role: {{ u.role || 'user' }}
+                                <label class="block text-slate-700 font-bold mb-1">Pilih Pengguna / Karyawan *</label>
+                                <select
+                                    v-model="createForm.user_id"
+                                    @change="onCandidateUserChanged"
+                                    required
+                                    class="w-full px-3 py-2 border rounded-xl font-medium focus:ring-2 focus:ring-indigo-500"
+                                    :class="createForm.errors.user_id ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'"
+                                >
+                                    <option value="" disabled>-- Pilih Pengguna Aktif --</option>
+                                    <option v-for="u in (candidate_users || [])" :key="u.id" :value="u.id">
+                                        {{ u.name }} ({{ u.email }}) • {{ u.role || 'user' }}
                                     </option>
                                 </select>
+                                <p v-if="createForm.errors.user_id" class="text-rose-500 text-[11px] font-semibold mt-1">{{ createForm.errors.user_id }}</p>
+                                <p v-if="!candidate_users || candidate_users.length === 0" class="text-amber-600 text-[11px] mt-1">
+                                    Semua akun pengguna saat ini telah memiliki profil agen afiliasi. Anda dapat mendaftarkan akun baru pada tab di atas.
+                                </p>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-slate-700 font-bold mb-1">Nomor WhatsApp Agen</label>
+                                    <input
+                                        v-model="createForm.whatsapp"
+                                        type="text"
+                                        placeholder="08xxxxxxxxxx"
+                                        class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500"
+                                        :class="createForm.errors.whatsapp ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'"
+                                    />
+                                    <p v-if="createForm.errors.whatsapp" class="text-rose-500 text-[11px] font-semibold mt-1">{{ createForm.errors.whatsapp }}</p>
+                                </div>
+                                <div>
+                                    <label class="block text-slate-700 font-bold mb-1">Kode Referral Kustom (Opsional)</label>
+                                    <input
+                                        v-model="createForm.referral_code"
+                                        type="text"
+                                        placeholder="Otomatis jika kosong (misal: MITRA-123)"
+                                        class="w-full px-3 py-2 border rounded-xl uppercase font-mono focus:ring-2 focus:ring-indigo-500"
+                                        :class="createForm.errors.referral_code ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'"
+                                    />
+                                    <p v-if="createForm.errors.referral_code" class="text-rose-500 text-[11px] font-semibold mt-1">{{ createForm.errors.referral_code }}</p>
+                                </div>
                             </div>
                         </div>
 
@@ -1664,67 +1715,183 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-slate-700 font-bold mb-1">Nama Lengkap *</label>
-                                    <input v-model="createForm.name" type="text" placeholder="Nama Lengkap Agen" required class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500">
+                                    <input
+                                        v-model="createForm.name"
+                                        type="text"
+                                        placeholder="Nama Lengkap Agen"
+                                        required
+                                        class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500"
+                                        :class="createForm.errors.name ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'"
+                                    />
+                                    <p v-if="createForm.errors.name" class="text-rose-500 text-[11px] font-semibold mt-1">{{ createForm.errors.name }}</p>
                                 </div>
                                 <div>
                                     <label class="block text-slate-700 font-bold mb-1">Email Aktif *</label>
-                                    <input v-model="createForm.email" type="email" placeholder="email@contoh.com" required class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500">
+                                    <input
+                                        v-model="createForm.email"
+                                        type="email"
+                                        placeholder="email@contoh.com"
+                                        required
+                                        class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500"
+                                        :class="createForm.errors.email ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'"
+                                    />
+                                    <p v-if="createForm.errors.email" class="text-rose-500 text-[11px] font-semibold mt-1">{{ createForm.errors.email }}</p>
                                 </div>
                             </div>
+
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-slate-700 font-bold mb-1">Nomor WhatsApp *</label>
-                                    <input v-model="createForm.phone" type="text" placeholder="08xxxxxxxxxx" required class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500">
+                                    <input
+                                        v-model="createForm.phone"
+                                        type="text"
+                                        placeholder="08xxxxxxxxxx"
+                                        required
+                                        class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500"
+                                        :class="createForm.errors.phone ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'"
+                                    />
+                                    <p v-if="createForm.errors.phone" class="text-rose-500 text-[11px] font-semibold mt-1">{{ createForm.errors.phone }}</p>
                                 </div>
                                 <div>
-                                    <label class="block text-slate-700 font-bold mb-1">Password Akun *</label>
-                                    <input v-model="createForm.password" type="password" placeholder="Minimal 6 karakter" required class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-slate-700 font-bold">Password Login *</label>
+                                        <button
+                                            type="button"
+                                            @click="generateRandomPassword"
+                                            class="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-0.5"
+                                        >
+                                            🎲 Acak Password
+                                        </button>
+                                    </div>
+                                    <div class="relative">
+                                        <input
+                                            v-model="createForm.password"
+                                            :type="showPassword ? 'text' : 'password'"
+                                            placeholder="Minimal 6 karakter"
+                                            required
+                                            class="w-full px-3 py-2 pr-9 border rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-xs"
+                                            :class="createForm.errors.password ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'"
+                                        />
+                                        <button
+                                            type="button"
+                                            @click="showPassword = !showPassword"
+                                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 text-xs"
+                                        >
+                                            {{ showPassword ? '🙈' : '👁️' }}
+                                        </button>
+                                    </div>
+                                    <p v-if="createForm.errors.password" class="text-rose-500 text-[11px] font-semibold mt-1">{{ createForm.errors.password }}</p>
                                 </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-slate-700 font-bold mb-1">Wilayah / Area Penempatan</label>
+                                    <select
+                                        v-model="createForm.area_id"
+                                        class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500 border-slate-300"
+                                    >
+                                        <option value="">-- Semua Area / Bebas --</option>
+                                        <option v-for="area in (areas || [])" :key="area.id" :value="area.id">
+                                            {{ area.name }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-slate-700 font-bold mb-1">Kode Referral Kustom (Opsional)</label>
+                                    <input
+                                        v-model="createForm.referral_code"
+                                        type="text"
+                                        placeholder="Otomatis jika kosong"
+                                        class="w-full px-3 py-2 border rounded-xl uppercase font-mono focus:ring-2 focus:ring-indigo-500"
+                                        :class="createForm.errors.referral_code ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'"
+                                    />
+                                    <p v-if="createForm.errors.referral_code" class="text-rose-500 text-[11px] font-semibold mt-1">{{ createForm.errors.referral_code }}</p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-slate-700 font-bold mb-1">Alamat Domisili (Opsional)</label>
+                                <input
+                                    v-model="createForm.address"
+                                    type="text"
+                                    placeholder="Alamat lengkap tempat tinggal agen"
+                                    class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                                />
                             </div>
                         </div>
 
                         <!-- UPLINE SPONSOR (KUNCI DOWNLINE) -->
                         <div class="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-2xl space-y-1.5">
                             <label class="block font-bold text-indigo-900">
-                                🌳 Upline Sponsor (Induk Jaringan / Atasan Langsung)
+                                🌳 Upline Sponsor (Atasan / Induk Jaringan)
                             </label>
                             <p class="text-[11px] text-indigo-700 leading-relaxed">
-                                Jika dipilih Upline, maka agen ini otomatis menjadi <strong>Downline Level 1</strong> dari agen tersebut. Komisi berjenjang (Tier 1 & Tier 2) akan mengalir ke upline tersebut saat ada pelanggan aktif.
+                                Jika dipilih Upline, agen ini otomatis menjadi <strong>Downline Level 1</strong> dari agen tersebut. Komisi berjenjang (Tier 1 & Tier 2) akan mengalir ke upline saat ada pelanggan aktif.
                             </p>
-                            <select v-model="createForm.upline_id" class="w-full mt-1 px-3 py-2 bg-white border border-indigo-300 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500">
+                            <select
+                                v-model="createForm.upline_id"
+                                class="w-full mt-1 px-3 py-2 bg-white border border-indigo-300 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500"
+                                :class="createForm.errors.upline_id ? 'border-rose-400 bg-rose-50/20' : ''"
+                            >
                                 <option value="">-- Tanpa Upline (Menjadi Upline Utama / Direct Kantor) --</option>
                                 <option v-for="up in available_uplines" :key="up.user_id" :value="up.user_id">
                                     {{ up.name }} (Kode: {{ up.referral_code }})
                                 </option>
                             </select>
+                            <p v-if="createForm.errors.upline_id" class="text-rose-500 text-[11px] font-semibold mt-1">{{ createForm.errors.upline_id }}</p>
                         </div>
 
                         <!-- DATA BANK / E-WALLET -->
                         <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
-                            <span class="font-bold text-slate-800 uppercase tracking-wider text-[10px] block">Rekening Bank / E-Wallet Pencairan Komisi</span>
+                            <span class="font-bold text-slate-800 uppercase tracking-wider text-[10px] block">Rekening Bank / E-Wallet Pencairan Komisi (Opsional)</span>
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                                 <div>
                                     <label class="block text-slate-600 font-bold mb-1 text-[11px]">Nama Bank / E-Wallet</label>
-                                    <input v-model="createForm.bank_name" type="text" placeholder="BCA / BRI / DANA" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg">
+                                    <input
+                                        v-model="createForm.bank_name"
+                                        type="text"
+                                        placeholder="BCA / BRI / DANA"
+                                        class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
+                                    />
                                 </div>
                                 <div>
                                     <label class="block text-slate-600 font-bold mb-1 text-[11px]">Nomor Rekening / No. WA</label>
-                                    <input v-model="createForm.bank_account_number" type="text" placeholder="1234567890" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono">
+                                    <input
+                                        v-model="createForm.bank_account_number"
+                                        type="text"
+                                        placeholder="1234567890"
+                                        class="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono text-xs"
+                                    />
                                 </div>
                                 <div>
                                     <label class="block text-slate-600 font-bold mb-1 text-[11px]">Atas Nama Rekening</label>
-                                    <input v-model="createForm.bank_account_holder" type="text" placeholder="Nama Pemilik" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg">
+                                    <input
+                                        v-model="createForm.bank_account_holder"
+                                        type="text"
+                                        :placeholder="createForm.name || 'Nama Pemilik'"
+                                        class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
+                                    />
                                 </div>
                             </div>
                         </div>
 
                         <!-- Footer Actions -->
-                        <div class="pt-2 flex justify-end gap-2">
-                            <button type="button" @click="showCreateAffiliateModal = false" class="px-4 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-50">
+                        <div class="pt-2 flex justify-end gap-2 shrink-0 border-t border-slate-100">
+                            <button
+                                type="button"
+                                @click="showCreateAffiliateModal = false"
+                                class="px-4 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-50 transition-colors"
+                            >
                                 Batal
                             </button>
-                            <button type="submit" :disabled="createForm.processing" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors">
-                                {{ createForm.processing ? 'Menyimpan...' : 'Daftarkan Agen' }}
+                            <button
+                                type="submit"
+                                :disabled="createForm.processing"
+                                class="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50"
+                            >
+                                <span v-if="createForm.processing" class="inline-block animate-spin">⏳</span>
+                                <span>{{ createForm.processing ? 'Menyimpan...' : 'Daftarkan Agen' }}</span>
                             </button>
                         </div>
                     </form>
@@ -1798,6 +1965,7 @@ const props = defineProps({
     affiliates: Object,
     available_uplines: Array,
     candidate_users: Array,
+    areas: Array,
     commissions: Object,
     withdrawals: Object,
     kpi: Object,
@@ -2017,23 +2185,50 @@ const submitReject = () => {
 
 // ── Manual Create Affiliate State & Methods ──
 const showCreateAffiliateModal = ref(false);
+const showPassword = ref(false);
 const createForm = useForm({
     mode: 'new_user',
     user_id: '',
     name: '',
     email: '',
     phone: '',
+    whatsapp: '',
     password: '',
     upline_id: '',
+    area_id: '',
+    referral_code: '',
     bank_name: '',
     bank_account_number: '',
     bank_account_holder: '',
     address: '',
 });
 
+const generateRandomPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$';
+    let pass = 'Ag';
+    for (let i = 0; i < 7; i++) {
+        pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    createForm.password = pass;
+    showPassword.value = true;
+};
+
+const onCandidateUserChanged = () => {
+    if (!createForm.user_id) return;
+    const selected = (props.candidate_users || []).find(u => u.id === createForm.user_id);
+    if (selected) {
+        if (selected.phone) {
+            createForm.whatsapp = selected.phone;
+        }
+        createForm.bank_account_holder = selected.name;
+    }
+};
+
 const openCreateAffiliateModal = () => {
     createForm.reset();
+    createForm.clearErrors();
     createForm.mode = 'new_user';
+    showPassword.value = false;
     showCreateAffiliateModal.value = true;
 };
 

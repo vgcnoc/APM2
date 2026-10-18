@@ -229,9 +229,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('olts/{olt}/update', [OltController::class, 'update'])->name('olts.update.post');
     Route::post('olts/{olt}/delete', [OltController::class, 'destroy'])->name('olts.destroy.post');
 
+    // Smart GIS Network & Customer Map with Routing
+    Route::get('network-map', [\App\Http\Controllers\NetworkMapController::class, 'index'])->name('network-map.index');
+    Route::post('network-map/route', [\App\Http\Controllers\NetworkMapController::class, 'calculateRoute'])->name('network-map.route');
+    Route::post('network-map/nearby-odps', [\App\Http\Controllers\NetworkMapController::class, 'findNearbyOdps'])->name('network-map.nearby-odps');
+
     // Network Topology & Radar
     Route::get('network-topology', [NetworkTopologyController::class, 'index'])->name('network-topology.index');
-    Route::get('network-radar', [\App\Http\Controllers\NetworkRadarController::class, 'index'])->name('network-radar.index');
+    Route::get('network-radar', [\App\Http\Controllers\NetworkMapController::class, 'index'])->name('network-radar.index');
     Route::post('network-radar/nearby', [\App\Http\Controllers\NetworkRadarController::class, 'nearby'])->name('network-radar.nearby');
 
     Route::post('odcs/bulk-destroy', [OdcController::class, 'bulkDestroy'])->name('odcs.bulk-destroy');

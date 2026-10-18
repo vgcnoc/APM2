@@ -28,7 +28,7 @@
                     </button>
 
                     <button
-                        @click="openGenerateModal = true"
+                        @click="openGenerateScheduleModal"
                         type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all shadow-sm shadow-blue-500/20 active:scale-95"
                     >
@@ -246,16 +246,32 @@
                             <span>Lanjutkan dari Bulan Lalu</span>
                         </button>
 
-                        <!-- Reset Bulan -->
+                        <!-- Mode Penghapus Cepat (Eraser Tool) -->
                         <button
-                            @click="confirmResetMonth"
+                            @click="toggleEraserMode"
                             type="button"
-                            class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-rose-600 bg-rose-50/50 border border-rose-200 rounded-xl hover:bg-rose-100/60 transition active:scale-95"
+                            :class="[
+                                isEraserMode
+                                    ? 'bg-rose-600 text-white shadow-md shadow-rose-500/25 ring-2 ring-rose-400 animate-pulse font-bold'
+                                    : 'bg-white text-slate-700 hover:bg-rose-50 hover:text-rose-600 border border-slate-200 font-medium',
+                                'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl transition active:scale-95 shadow-2xs'
+                            ]"
+                            :title="isEraserMode ? 'Klik untuk mematikan mode penghapus' : 'Mode Penghapus Cepat: klik kotak mana saja di kalender untuk menghapusnya seketika'"
+                        >
+                            <span>🧹</span>
+                            <span>{{ isEraserMode ? 'Mode Hapus AKTIF' : 'Mode Hapus' }}</span>
+                        </button>
+
+                        <!-- Hapus Jadwal Cerdas -->
+                        <button
+                            @click="openClearScheduleModal = true"
+                            type="button"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 hover:text-rose-700 rounded-xl transition active:scale-95 shadow-2xs"
                         >
                             <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                             </svg>
-                            <span>Reset Bulan</span>
+                            <span>Hapus Jadwal</span>
                         </button>
                     </div>
                 </div>
@@ -296,6 +312,21 @@
 
             <!-- 5. TABEL MATRIKS ROSTER KALENDER (SANGAT DETAIL SESUAI SCREENSHOT) -->
             <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden relative">
+                <!-- Banner Mode Penghapus Aktif -->
+                <div v-if="isEraserMode" class="bg-gradient-to-r from-rose-600 to-red-600 text-white px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs print:hidden shadow-inner">
+                    <div class="flex items-center gap-2">
+                        <span class="text-base animate-bounce">🧹</span>
+                        <span><strong class="font-bold uppercase tracking-wider">Mode Penghapus Aktif:</strong> Klik langsung pada cell/kotak jadwal mana saja untuk menghapusnya seketika tanpa popup. Jangan lupa klik <strong class="bg-white/20 px-1.5 py-0.5 rounded font-bold">Simpan</strong> setelah selesai.</span>
+                    </div>
+                    <button
+                        @click="isEraserMode = false"
+                        type="button"
+                        class="px-2.5 py-1 bg-white text-rose-700 hover:bg-rose-50 rounded-lg font-bold text-[11px] shadow-xs transition"
+                    >
+                        ✕ Selesai Menghapus
+                    </button>
+                </div>
+
                 <!-- Banner Unsaved Changes Notice -->
                 <div v-if="unsavedChangesCount > 0" class="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-xs text-amber-800 print:hidden">
                     <div class="flex items-center gap-2">
@@ -323,7 +354,7 @@
                                     v-for="day in days"
                                     :key="day.date"
                                     :class="[
-                                        'px-1 py-2 min-w-[58px] border-r border-slate-200/70 last:border-r-0',
+                                        'px-1 py-2 min-w-[58px] border-r border-slate-200/70 last:border-r-0 group/col relative',
                                         day.is_sunday ? 'bg-rose-50/40 text-rose-600 font-bold' : '',
                                         day.is_today ? 'bg-blue-50/60 ring-1 ring-blue-400/30' : ''
                                     ]"
@@ -334,6 +365,15 @@
                                     <div :class="['text-xs font-bold mt-0.5', day.is_sunday ? 'text-rose-600' : 'text-slate-800']">
                                         {{ day.day }}
                                     </div>
+                                    <!-- Tombol Cepat Hapus Tanggal Ini -->
+                                    <button
+                                        type="button"
+                                        @click.stop="quickClearDate(day.date, day.day, day.day_name)"
+                                        title="Kosongkan jadwal semua karyawan pada tanggal ini"
+                                        class="opacity-0 group-hover/col:opacity-100 absolute top-1 right-0.5 w-3.5 h-3.5 rounded-full bg-rose-100 hover:bg-rose-600 text-rose-600 hover:text-white flex items-center justify-center text-[9px] font-bold transition shadow-2xs"
+                                    >
+                                        ✕
+                                    </button>
                                 </th>
                             </tr>
                         </thead>
@@ -346,14 +386,29 @@
                                 class="hover:bg-blue-50/20 transition-colors group"
                             >
                                 <!-- Sticky Karyawan Cell -->
-                                <td class="sticky left-0 z-10 bg-white group-hover:bg-slate-50/90 text-left px-4 py-2.5 border-r border-slate-200 shadow-[2px_0_5px_rgba(0,0,0,0.03)] transition-colors">
-                                    <div class="font-bold text-slate-800 leading-tight truncate" :title="emp.name">
-                                        {{ emp.name }}
-                                    </div>
-                                    <div class="text-[11px] text-slate-400 font-medium mt-0.5 truncate uppercase">
-                                        <span>{{ emp.position || 'Staf' }}</span>
-                                        <span v-if="emp.area?.name || emp.branch" class="text-slate-300 mx-1">•</span>
-                                        <span v-if="emp.area?.name || emp.branch" class="text-slate-500 font-semibold">{{ emp.area?.name || emp.branch }}</span>
+                                <td class="sticky left-0 z-10 bg-white group-hover:bg-slate-50/90 text-left px-3.5 py-2.5 border-r border-slate-200 shadow-[2px_0_5px_rgba(0,0,0,0.03)] transition-colors">
+                                    <div class="flex items-center justify-between gap-1">
+                                        <div class="min-w-0 flex-1">
+                                            <div class="font-bold text-slate-800 leading-tight truncate" :title="emp.name">
+                                                {{ emp.name }}
+                                            </div>
+                                            <div class="text-[11px] text-slate-400 font-medium mt-0.5 truncate uppercase">
+                                                <span>{{ emp.position || 'Staf' }}</span>
+                                                <span v-if="emp.area?.name || emp.branch" class="text-slate-300 mx-1">•</span>
+                                                <span v-if="emp.area?.name || emp.branch" class="text-slate-500 font-semibold">{{ emp.area?.name || emp.branch }}</span>
+                                            </div>
+                                        </div>
+                                        <!-- Tombol Cepat Hapus Jadwal Karyawan Ini -->
+                                        <button
+                                            type="button"
+                                            @click.stop="quickClearEmployee(emp)"
+                                            title="Kosongkan jadwal karyawan ini di bulan ini"
+                                            class="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition shrink-0"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </td>
 
@@ -361,13 +416,15 @@
                                 <td
                                     v-for="day in days"
                                     :key="day.date"
-                                    @click="openCellPicker(emp, day.date, $event)"
+                                    @click="handleCellClick(emp, day.date, $event)"
+                                    @contextmenu.prevent="openContextMenu(emp, day.date, $event)"
                                     :class="[
-                                        'px-0.5 py-1.5 border-r border-slate-100/80 last:border-r-0 cursor-pointer transition hover:bg-blue-100/40 relative',
+                                        'px-0.5 py-1.5 border-r border-slate-100/80 last:border-r-0 cursor-pointer transition relative',
+                                        isEraserMode ? 'hover:bg-rose-200/50 cursor-crosshair' : 'hover:bg-blue-100/40',
                                         day.is_sunday ? 'bg-rose-50/20' : '',
                                         hasChange(emp.id, day.date) ? 'ring-1 ring-inset ring-blue-500 bg-blue-50/50' : ''
                                     ]"
-                                    :title="getCellTooltip(emp, day.date)"
+                                    :title="isEraserMode ? '🧹 Klik untuk menghapus jadwal ini' : getCellTooltip(emp, day.date)"
                                 >
                                     <!-- Cell Pill Content -->
                                     <div class="flex items-center justify-center min-h-[30px]">
@@ -482,70 +539,163 @@
                 class="fixed inset-0 z-40 bg-black/5"
             ></div>
 
-            <!-- 7. MODAL GENERATE JADWAL OTOMATIS -->
+            <!-- 7. MODAL GENERATE JADWAL OTOMATIS (CANGGIH & CERDAS DENGAN PERIODE & FASE MULAI ABSEN) -->
             <div v-if="openGenerateModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs" @click="openGenerateModal = false"></div>
-                <div class="relative bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-                    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <div class="relative bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl flex flex-col max-h-[92vh] border border-slate-100">
+                    <!-- Modal Header -->
+                    <div class="flex items-center justify-between pb-3.5 border-b border-slate-100 shrink-0">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
                                 </svg>
                             </div>
                             <div>
-                                <h3 class="text-lg font-bold text-slate-800">Generate Jadwal Otomatis</h3>
-                                <p class="text-xs text-slate-500">Terapkan pola perputaran roster untuk bulan {{ monthName }}</p>
+                                <h3 class="text-base sm:text-lg font-bold text-slate-900">Generate Jadwal Otomatis</h3>
+                                <p class="text-xs text-slate-500">Periode cerdas, tanggal mulai absen, dan proteksi jadwal</p>
                             </div>
                         </div>
-                        <button @click="openGenerateModal = false" class="text-slate-400 hover:text-slate-600">
+                        <button
+                            type="button"
+                            @click="openGenerateModal = false"
+                            class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition"
+                        >
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
                         </button>
                     </div>
 
-                    <form @submit.prevent="submitGenerateSchedule" class="space-y-4">
-                        <!-- Pilih Karyawan -->
-                        <div>
-                            <div class="flex items-center justify-between mb-1.5">
-                                <label class="text-xs font-semibold text-slate-700">Pilih Karyawan</label>
+                    <form @submit.prevent="submitGenerateSchedule" class="space-y-4 overflow-y-auto pr-1 text-xs flex-1 py-1">
+                        <!-- BAGIAN 1: PERIODE JADWAL & TANGGAL MULAI ABSEN -->
+                        <div class="bg-blue-50/40 rounded-2xl p-3.5 border border-blue-100/80 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-1.5 font-bold text-blue-950 text-xs">
+                                    <span>📅</span>
+                                    <span>Periode Jadwal & Tanggal Mulai Absen</span>
+                                </div>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
+                                    {{ genDurationDays }} Hari Terpilih
+                                </span>
+                            </div>
+
+                            <!-- Preset Cepat -->
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                                <button
+                                    type="button"
+                                    @click="applyPeriodPreset('full_month')"
+                                    :class="[
+                                        genPeriodPreset === 'full_month' ? 'bg-blue-600 text-white shadow-xs font-bold' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80',
+                                        'px-2.5 py-1.5 rounded-xl text-[11px] transition text-center'
+                                    ]"
+                                >
+                                    🗓️ 1 Bulan Penuh
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="applyPeriodPreset('remaining_month')"
+                                    :class="[
+                                        genPeriodPreset === 'remaining_month' ? 'bg-blue-600 text-white shadow-xs font-bold' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80',
+                                        'px-2.5 py-1.5 rounded-xl text-[11px] transition text-center'
+                                    ]"
+                                >
+                                    ⏳ Sisa Bulan Ini
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="applyPeriodPreset('payroll_cutoff')"
+                                    :class="[
+                                        genPeriodPreset === 'payroll_cutoff' ? 'bg-blue-600 text-white shadow-xs font-bold' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80',
+                                        'px-2.5 py-1.5 rounded-xl text-[11px] transition text-center'
+                                    ]"
+                                >
+                                    💳 Cut-Off (21-20)
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="genPeriodPreset = 'custom'"
+                                    :class="[
+                                        genPeriodPreset === 'custom' ? 'bg-blue-600 text-white shadow-xs font-bold' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80',
+                                        'px-2.5 py-1.5 rounded-xl text-[11px] transition text-center'
+                                    ]"
+                                >
+                                    ✏️ Kustom
+                                </button>
+                            </div>
+
+                            <!-- Input Tanggal Mulai Absen & Selesai -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-1">
+                                        Tanggal Mulai Absen <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        v-model="genStartDate"
+                                        @change="genPeriodPreset = 'custom'"
+                                        type="date"
+                                        required
+                                        class="w-full text-xs text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs"
+                                    />
+                                    <p class="text-[10px] text-slate-500 mt-0.5">Mulai berlakunya giliran shift.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-1">
+                                        Tanggal Selesai <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        v-model="genEndDate"
+                                        @change="genPeriodPreset = 'custom'"
+                                        type="date"
+                                        required
+                                        class="w-full text-xs text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs"
+                                    />
+                                    <p class="text-[10px] text-slate-500 mt-0.5">Batas akhir rotasi diterapkan.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BAGIAN 2: PILIH KARYAWAN -->
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-1.5 font-bold text-slate-800 text-xs">
+                                    <span>👥</span>
+                                    <span>Pilih Karyawan Target</span>
+                                    <span class="text-slate-400 font-normal">({{ selectedGenEmployees.length }}/{{ filteredGenEmployees.length }})</span>
+                                </div>
                                 <button
                                     type="button"
                                     @click="toggleSelectAllEmployees"
-                                    class="text-[11px] font-bold text-blue-600 hover:underline"
+                                    class="text-[11px] font-bold text-blue-600 hover:text-blue-700 hover:underline"
                                 >
                                     {{ selectedGenEmployees.length === filteredGenEmployees.length ? 'Batal Semua' : 'Pilih Semua' }}
                                 </button>
                             </div>
 
-                            <!-- Filter Area/Wilayah & Jabatan di Modal Generate -->
-                            <div class="grid grid-cols-2 gap-2 mb-2">
-                                <div>
-                                    <select
-                                        v-model="modalFilterBranch"
-                                        class="w-full text-[11px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 cursor-pointer"
-                                    >
-                                        <option value="">🏢 Semua Area/Wilayah</option>
-                                        <option v-for="br in (areas || branches)" :key="br.id" :value="br.id">{{ br.name }}</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <select
-                                        v-model="modalFilterPosition"
-                                        class="w-full text-[11px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 cursor-pointer"
-                                    >
-                                        <option value="">💼 Semua Jabatan</option>
-                                        <option v-for="pos in positions" :key="pos.id" :value="pos.name">{{ pos.name }}</option>
-                                    </select>
-                                </div>
+                            <!-- Filter Area & Jabatan -->
+                            <div class="grid grid-cols-2 gap-2">
+                                <select
+                                    v-model="modalFilterBranch"
+                                    class="w-full text-[11px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 cursor-pointer focus:ring-1 focus:ring-blue-500"
+                                >
+                                    <option value="">🏢 Semua Area/Wilayah</option>
+                                    <option v-for="br in (areas || branches)" :key="br.id" :value="br.id">{{ br.name }}</option>
+                                </select>
+                                <select
+                                    v-model="modalFilterPosition"
+                                    class="w-full text-[11px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 cursor-pointer focus:ring-1 focus:ring-blue-500"
+                                >
+                                    <option value="">💼 Semua Jabatan</option>
+                                    <option v-for="pos in positions" :key="pos.id" :value="pos.name">{{ pos.name }}</option>
+                                </select>
                             </div>
 
-                            <div class="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-2 space-y-1 text-xs">
+                            <!-- List Karyawan -->
+                            <div class="max-h-36 overflow-y-auto border border-slate-200 rounded-xl p-2 space-y-1 text-xs bg-slate-50/30">
                                 <label
                                     v-for="emp in filteredGenEmployees"
                                     :key="emp.id"
-                                    class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer"
+                                    class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white hover:shadow-2xs cursor-pointer transition"
                                 >
                                     <input
                                         type="checkbox"
@@ -560,52 +710,190 @@
                                         </span>
                                     </div>
                                 </label>
-                                <div v-if="filteredGenEmployees.length === 0" class="text-center py-3 text-slate-400 text-xs italic">
-                                    Tidak ada karyawan sesuai filter area/wilayah atau jabatan.
+                                <div v-if="filteredGenEmployees.length === 0" class="text-center py-4 text-slate-400 text-xs italic">
+                                    Tidak ada karyawan yang cocok dengan filter.
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Pilih Pola -->
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-700 mb-1">Pola Roster</label>
-                            <select
-                                v-model="selectedPatternId"
-                                @change="onGenPatternSelect"
-                                class="w-full text-xs text-slate-800 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                            >
-                                <option value="6-1">Pola Standar (6 Kerja : 1 Libur Hari Minggu)</option>
-                                <option value="5-2">Pola 5 Kerja : 2 Libur (Sabtu & Minggu)</option>
-                                <option v-for="p in patterns" :key="p.id" :value="p.id">{{ p.name }}</option>
-                            </select>
+                        <!-- BAGIAN 3: POLA ROSTER & FASE AWAL MULAI ABSEN -->
+                        <div class="space-y-3 bg-slate-50/70 p-3.5 rounded-2xl border border-slate-200/80">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-800 mb-1">Pola Roster</label>
+                                <select
+                                    v-model="selectedPatternId"
+                                    @change="genStartOffset = 0"
+                                    class="w-full text-xs text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                >
+                                    <option value="6-1">Pola Standar (6 Kerja : 1 Libur Hari Minggu)</option>
+                                    <option value="5-2">Pola 5 Kerja : 2 Libur (Sabtu & Minggu)</option>
+                                    <option v-for="p in patterns" :key="p.id" :value="p.id">{{ p.name }}</option>
+                                </select>
+                            </div>
+
+                            <!-- Pilih Shift Kerja jika Pola 6-1 atau 5-2 -->
+                            <div v-if="selectedPatternId === '6-1' || selectedPatternId === '5-2'">
+                                <label class="block text-xs font-bold text-slate-800 mb-1">Pilih Shift Kerja Standar</label>
+                                <select
+                                    v-model="genDefaultShiftId"
+                                    class="w-full text-xs text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                >
+                                    <option v-for="s in shifts" :key="s.id" :value="s.id">{{ s.name }} ({{ s.start_time }}-{{ s.end_time }})</option>
+                                </select>
+                            </div>
+
+                            <!-- FASE AWAL SHIFT PADA TANGGAL MULAI ABSEN (CERDAS & CANGGIH) -->
+                            <div class="pt-1 border-t border-slate-200/70">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="text-xs font-bold text-slate-800 flex items-center gap-1">
+                                        <span>🎯</span>
+                                        <span>Fase Awal Shift (Pada Tanggal Mulai Absen)</span>
+                                    </label>
+                                    <span class="text-[10px] text-slate-500">Mulai rotasi dari shift ini</span>
+                                </div>
+
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mb-2">
+                                    <button
+                                        v-for="phase in currentPatternPhases"
+                                        :key="phase.offset"
+                                        type="button"
+                                        @click="genStartOffset = phase.offset"
+                                        :class="[
+                                            genStartOffset === phase.offset
+                                                ? 'bg-blue-600 text-white ring-2 ring-blue-400/40 shadow-xs font-bold'
+                                                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200',
+                                            'px-2.5 py-1.5 rounded-xl text-left text-[11px] transition flex flex-col'
+                                        ]"
+                                    >
+                                        <span class="text-[9px] opacity-75 font-semibold uppercase">{{ phase.label }}</span>
+                                        <span class="truncate font-medium">{{ phase.shiftName }}</span>
+                                    </button>
+                                </div>
+
+                                <!-- Flow Preview Sequence Pola -->
+                                <div class="bg-white rounded-xl p-2 border border-slate-200 flex items-center gap-1.5 overflow-x-auto text-[11px]">
+                                    <span class="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider pl-1">Alur:</span>
+                                    <div
+                                        v-for="(phase, pIdx) in currentPatternPhases"
+                                        :key="'flow_' + pIdx"
+                                        class="flex items-center gap-1 shrink-0"
+                                    >
+                                        <span
+                                            :class="[
+                                                genStartOffset === phase.offset
+                                                    ? 'bg-blue-600 text-white font-bold ring-2 ring-blue-300'
+                                                    : phase.isOff
+                                                        ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                                                        : 'bg-slate-100 text-slate-700 border border-slate-200',
+                                                'px-2 py-0.5 rounded-lg text-[10px]'
+                                            ]"
+                                        >
+                                            <span v-if="genStartOffset === phase.offset" class="mr-0.5">▶</span>
+                                            {{ phase.shiftName }}
+                                        </span>
+                                        <span v-if="pIdx < currentPatternPhases.length - 1" class="text-slate-300 text-xs">➔</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Opsi Stagger Rotasi -->
+                            <div class="flex items-start gap-2 pt-1.5">
+                                <input
+                                    id="stagger"
+                                    type="checkbox"
+                                    v-model="genStagger"
+                                    class="rounded text-blue-600 focus:ring-blue-500 mt-0.5"
+                                />
+                                <label for="stagger" class="text-xs text-slate-700 select-none cursor-pointer leading-snug">
+                                    <b class="text-slate-800">Rotasi Selang-Seling (Staggered):</b> Geser fase rotasi & hari libur antar teknisi agar tidak libur atau shift bersamaan.
+                                </label>
+                            </div>
                         </div>
 
-                        <!-- Pilih Shift Default jika pola standar -->
-                        <div v-if="selectedPatternId === '6-1' || selectedPatternId === '5-2'">
-                            <label class="block text-xs font-semibold text-slate-700 mb-1">Pilih Shift Kerja</label>
-                            <select
-                                v-model="genDefaultShiftId"
-                                class="w-full text-xs text-slate-800 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                            >
-                                <option v-for="s in shifts" :key="s.id" :value="s.id">{{ s.name }} ({{ s.start_time }}-{{ s.end_time }})</option>
-                            </select>
-                        </div>
-
-                        <!-- Opsi Stagger Rotasi -->
-                        <div class="flex items-center gap-2 pt-1">
-                            <input
-                                id="stagger"
-                                type="checkbox"
-                                v-model="genStagger"
-                                class="rounded text-blue-600 focus:ring-blue-500"
-                            />
-                            <label for="stagger" class="text-xs text-slate-600 select-none cursor-pointer">
-                                <b>Rotasi Selang-Seling:</b> Geser hari libur antar teknisi agar tidak libur bersamaan.
+                        <!-- BAGIAN 4: PROTEKSI OVERWRITE JADWAL -->
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                <span>🛡️</span>
+                                <span>Mode Proteksi Penimpaan Jadwal</span>
                             </label>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <label
+                                    :class="[
+                                        genOverwriteMode === 'all'
+                                            ? 'border-blue-600 bg-blue-50/50 text-blue-900 ring-2 ring-blue-500/20'
+                                            : 'border-slate-200 hover:bg-slate-50 text-slate-700',
+                                        'flex flex-col p-2.5 rounded-xl border cursor-pointer transition'
+                                    ]"
+                                >
+                                    <div class="flex items-center gap-1.5 font-bold text-[11px]">
+                                        <input type="radio" v-model="genOverwriteMode" value="all" class="text-blue-600 focus:ring-blue-500"/>
+                                        <span>🔄 Timpa Semua</span>
+                                    </div>
+                                    <span class="text-[10px] text-slate-500 mt-1 leading-tight">
+                                        Perbarui seluruh jadwal yang sudah ada dalam rentang tanggal.
+                                    </span>
+                                </label>
+
+                                <label
+                                    :class="[
+                                        genOverwriteMode === 'empty_only'
+                                            ? 'border-blue-600 bg-blue-50/50 text-blue-900 ring-2 ring-blue-500/20'
+                                            : 'border-slate-200 hover:bg-slate-50 text-slate-700',
+                                        'flex flex-col p-2.5 rounded-xl border cursor-pointer transition'
+                                    ]"
+                                >
+                                    <div class="flex items-center gap-1.5 font-bold text-[11px]">
+                                        <input type="radio" v-model="genOverwriteMode" value="empty_only" class="text-blue-600 focus:ring-blue-500"/>
+                                        <span>🛡️ Isi Kosong Saja</span>
+                                    </div>
+                                    <span class="text-[10px] text-slate-500 mt-1 leading-tight">
+                                        Hanya isi tanggal kosong. Jadwal yang sudah ada tidak akan diubah.
+                                    </span>
+                                </label>
+
+                                <label
+                                    :class="[
+                                        genOverwriteMode === 'preserve_off'
+                                            ? 'border-blue-600 bg-blue-50/50 text-blue-900 ring-2 ring-blue-500/20'
+                                            : 'border-slate-200 hover:bg-slate-50 text-slate-700',
+                                        'flex flex-col p-2.5 rounded-xl border cursor-pointer transition'
+                                    ]"
+                                >
+                                    <div class="flex items-center gap-1.5 font-bold text-[11px]">
+                                        <input type="radio" v-model="genOverwriteMode" value="preserve_off" class="text-blue-600 focus:ring-blue-500"/>
+                                        <span>🏖️ Jaga Hari Libur</span>
+                                    </div>
+                                    <span class="text-[10px] text-slate-500 mt-1 leading-tight">
+                                        Jadwal Libur (OFF) / cuti yang sudah ada tidak akan terhapus.
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- BAGIAN 5: ESTIMASI CERDAS CARD -->
+                        <div class="bg-gradient-to-r from-slate-900 to-blue-950 text-white rounded-2xl p-3 shadow-sm flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-sm font-bold">
+                                    ⚡
+                                </div>
+                                <div>
+                                    <div class="text-[10px] text-blue-200 font-semibold uppercase tracking-wider">Ringkasan Estimasi Jadwal</div>
+                                    <div class="text-xs font-bold flex items-center gap-2">
+                                        <span>👥 {{ selectedGenEmployees.length }} Karyawan</span>
+                                        <span>•</span>
+                                        <span>📅 {{ genDurationDays }} Hari</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right pl-2 sm:border-l sm:border-white/10">
+                                <div class="text-[10px] text-blue-200">Total Slot Dihasilkan</div>
+                                <div class="text-base font-extrabold text-blue-300">~{{ genTotalSlotCount }} Jadwal</div>
+                            </div>
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 shrink-0">
                             <button
                                 type="button"
                                 @click="openGenerateModal = false"
@@ -615,10 +903,14 @@
                             </button>
                             <button
                                 type="submit"
-                                :disabled="selectedGenEmployees.length === 0 || isGenerating"
-                                class="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-md shadow-blue-500/20 disabled:opacity-50"
+                                :disabled="selectedGenEmployees.length === 0 || genDurationDays <= 0 || isGenerating"
+                                class="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-md shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {{ isGenerating ? 'Memproses...' : 'Terapkan Pola' }}
+                                <svg v-if="isGenerating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                </svg>
+                                <span>{{ isGenerating ? 'Memproses Jadwal...' : 'Terapkan Jadwal Otomatis' }}</span>
                             </button>
                         </div>
                     </form>
@@ -877,6 +1169,283 @@
                     </form>
                 </div>
             </div>
+
+            <!-- ════ MODAL HAPUS / KOSONGKAN JADWAL CANGGIH ════ -->
+            <div
+                v-if="openClearScheduleModal"
+                class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+                @click.self="openClearScheduleModal = false"
+            >
+                <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 p-6 sm:p-7 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 shrink-0">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg font-bold shrink-0">
+                                🗑️
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-slate-900">Hapus / Kosongkan Jadwal Kerja</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">Bulan: <strong class="text-slate-800">{{ monthName }}</strong></p>
+                            </div>
+                        </div>
+                        <button type="button" @click="openClearScheduleModal = false" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition">✕</button>
+                    </div>
+
+                    <form @submit.prevent="submitClearSchedule" class="space-y-4 text-xs overflow-y-auto pr-1 flex-1">
+                        <!-- Pilihan Lingkup / Scope -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Pilih Lingkup Jadwal yang Ingin Dihapus:</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <label
+                                    :class="[
+                                        clearScope === 'all' ? 'border-rose-500 bg-rose-50/40 text-rose-900 ring-2 ring-rose-400/20' : 'border-slate-200 hover:bg-slate-50 text-slate-700',
+                                        'flex items-start gap-2.5 p-3 rounded-2xl border cursor-pointer transition'
+                                    ]"
+                                >
+                                    <input type="radio" v-model="clearScope" value="all" class="mt-0.5 text-rose-600 focus:ring-rose-500"/>
+                                    <div>
+                                        <div class="font-bold text-xs">🌐 Semua Karyawan</div>
+                                        <div class="text-[11px] text-slate-500 mt-0.5 leading-tight">Reset bersih seluruh jadwal 1 bulan penuh</div>
+                                    </div>
+                                </label>
+
+                                <label
+                                    :class="[
+                                        clearScope === 'employee' ? 'border-rose-500 bg-rose-50/40 text-rose-900 ring-2 ring-rose-400/20' : 'border-slate-200 hover:bg-slate-50 text-slate-700',
+                                        'flex items-start gap-2.5 p-3 rounded-2xl border cursor-pointer transition'
+                                    ]"
+                                >
+                                    <input type="radio" v-model="clearScope" value="employee" class="mt-0.5 text-rose-600 focus:ring-rose-500"/>
+                                    <div>
+                                        <div class="font-bold text-xs">👤 Karyawan Tertentu</div>
+                                        <div class="text-[11px] text-slate-500 mt-0.5 leading-tight">Hanya hapus karyawan yang Anda pilih</div>
+                                    </div>
+                                </label>
+
+                                <label
+                                    :class="[
+                                        clearScope === 'date_range' ? 'border-rose-500 bg-rose-50/40 text-rose-900 ring-2 ring-rose-400/20' : 'border-slate-200 hover:bg-slate-50 text-slate-700',
+                                        'flex items-start gap-2.5 p-3 rounded-2xl border cursor-pointer transition'
+                                    ]"
+                                >
+                                    <input type="radio" v-model="clearScope" value="date_range" class="mt-0.5 text-rose-600 focus:ring-rose-500"/>
+                                    <div>
+                                        <div class="font-bold text-xs">📅 Rentang Tanggal</div>
+                                        <div class="text-[11px] text-slate-500 mt-0.5 leading-tight">Hapus jadwal pada periode tanggal tertentu</div>
+                                    </div>
+                                </label>
+
+                                <label
+                                    :class="[
+                                        clearScope === 'branch' ? 'border-rose-500 bg-rose-50/40 text-rose-900 ring-2 ring-rose-400/20' : 'border-slate-200 hover:bg-slate-50 text-slate-700',
+                                        'flex items-start gap-2.5 p-3 rounded-2xl border cursor-pointer transition'
+                                    ]"
+                                >
+                                    <input type="radio" v-model="clearScope" value="branch" class="mt-0.5 text-rose-600 focus:ring-rose-500"/>
+                                    <div>
+                                        <div class="font-bold text-xs">🏢 Cabang / Area</div>
+                                        <div class="text-[11px] text-slate-500 mt-0.5 leading-tight">Hanya hapus tim di wilayah/cabang tertentu</div>
+                                    </div>
+                                </label>
+
+                                <label
+                                    :class="[
+                                        clearScope === 'shift' ? 'border-rose-500 bg-rose-50/40 text-rose-900 ring-2 ring-rose-400/20' : 'border-slate-200 hover:bg-slate-50 text-slate-700',
+                                        'flex items-start gap-2.5 p-3 rounded-2xl border cursor-pointer transition col-span-1 sm:col-span-2'
+                                    ]"
+                                >
+                                    <input type="radio" v-model="clearScope" value="shift" class="mt-0.5 text-rose-600 focus:ring-rose-500"/>
+                                    <div>
+                                        <div class="font-bold text-xs">🏷️ Jenis Shift Tertentu</div>
+                                        <div class="text-[11px] text-slate-500 mt-0.5 leading-tight">Hanya hapus jadwal yang menggunakan shift tertentu (misal: Shift 2-CS saja)</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Opsi Dinamis: Scope 'employee' -->
+                        <div v-if="clearScope === 'employee'" class="space-y-2 p-3 bg-slate-50 rounded-2xl border border-slate-200 animate-fade-in">
+                            <div class="flex items-center justify-between">
+                                <label class="font-bold text-slate-800">Pilih Karyawan:</label>
+                                <button
+                                    type="button"
+                                    @click="toggleSelectAllClearEmployees"
+                                    class="text-[11px] font-bold text-blue-600 hover:underline"
+                                >
+                                    {{ selectedClearEmployees.length === filteredClearEmployees.length ? 'Batal Semua' : 'Pilih Semua (' + filteredClearEmployees.length + ')' }}
+                                </button>
+                            </div>
+
+                            <input
+                                v-model="clearEmployeeSearch"
+                                type="text"
+                                placeholder="🔍 Filter nama karyawan..."
+                                class="w-full text-xs px-3 py-1.5 bg-white border border-slate-200 rounded-xl"
+                            />
+
+                            <div class="max-h-44 overflow-y-auto space-y-1 pr-1 bg-white border border-slate-200 rounded-xl p-2">
+                                <label
+                                    v-for="emp in filteredClearEmployees"
+                                    :key="emp.id"
+                                    class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        :value="emp.id"
+                                        v-model="selectedClearEmployees"
+                                        class="rounded text-rose-600 focus:ring-rose-500"
+                                    />
+                                    <div class="truncate">
+                                        <span class="font-semibold text-slate-800">{{ emp.name }}</span>
+                                        <span class="text-[11px] text-slate-400 ml-1.5">
+                                            ({{ emp.position || 'Staf' }}<span v-if="emp.area?.name || emp.branch"> • {{ emp.area?.name || emp.branch }}</span>)
+                                        </span>
+                                    </div>
+                                </label>
+                            </div>
+                            <p class="text-[11px] text-rose-600 font-medium">
+                                Terpilih: <strong>{{ selectedClearEmployees.length }}</strong> karyawan.
+                            </p>
+                        </div>
+
+                        <!-- Opsi Dinamis: Scope 'date_range' -->
+                        <div v-if="clearScope === 'date_range'" class="space-y-2 p-3 bg-slate-50 rounded-2xl border border-slate-200 animate-fade-in">
+                            <label class="block font-bold text-slate-800">Tentukan Rentang Tanggal yang Ingin Dikosongkan:</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span class="block text-[11px] text-slate-500 font-semibold mb-1">Dari Tanggal:</span>
+                                    <input
+                                        type="date"
+                                        v-model="clearStartDate"
+                                        required
+                                        class="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500"
+                                    />
+                                </div>
+                                <div>
+                                    <span class="block text-[11px] text-slate-500 font-semibold mb-1">Sampai Tanggal:</span>
+                                    <input
+                                        type="date"
+                                        v-model="clearEndDate"
+                                        required
+                                        class="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Opsi Dinamis: Scope 'branch' -->
+                        <div v-if="clearScope === 'branch'" class="space-y-2 p-3 bg-slate-50 rounded-2xl border border-slate-200 animate-fade-in">
+                            <label class="block font-bold text-slate-800">Pilih Cabang / Area:</label>
+                            <select
+                                v-model="clearBranch"
+                                required
+                                class="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500"
+                            >
+                                <option value="" disabled>-- Pilih Cabang / Area --</option>
+                                <option v-for="br in (areas || branches)" :key="br.id" :value="br.id">{{ br.name }}</option>
+                            </select>
+                        </div>
+
+                        <!-- Opsi Dinamis: Scope 'shift' -->
+                        <div v-if="clearScope === 'shift'" class="space-y-2 p-3 bg-slate-50 rounded-2xl border border-slate-200 animate-fade-in">
+                            <label class="block font-bold text-slate-800">Pilih Shift yang Ingin Dihapus:</label>
+                            <select
+                                v-model="clearShiftId"
+                                required
+                                class="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500"
+                            >
+                                <option value="" disabled>-- Pilih Shift --</option>
+                                <option v-for="s in shifts" :key="s.id" :value="s.id">{{ s.name }} ({{ s.start_time }}-{{ s.end_time }})</option>
+                                <option value="OFF">Hari Libur (OFF) Saja</option>
+                            </select>
+                        </div>
+
+                        <!-- Warning Confirmation Note -->
+                        <div class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 flex items-start gap-2">
+                            <span class="text-base shrink-0">⚠️</span>
+                            <div class="text-[11px] leading-relaxed">
+                                Tindakan ini akan <strong>menghapus/mengosongkan</strong> data jadwal kerja yang sesuai filter di atas dari database. Data yang sudah dihapus tidak dapat dibatalkan kembali.
+                            </div>
+                        </div>
+
+                        <!-- Footer Actions -->
+                        <div class="pt-3 flex items-center justify-end gap-2 border-t border-slate-100 shrink-0">
+                            <button
+                                type="button"
+                                @click="openClearScheduleModal = false"
+                                class="px-4 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-50 transition"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="submit"
+                                :disabled="isClearing || (clearScope === 'employee' && selectedClearEmployees.length === 0)"
+                                class="px-5 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-500/20 transition active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
+                            >
+                                <span v-if="isClearing" class="inline-block animate-spin">⏳</span>
+                                <span>{{ isClearing ? 'Menghapus...' : 'Hapus Jadwal Sekarang' }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ════ CONTEXT MENU KLIK KANAN PADA CELL JADWAL ════ -->
+            <div
+                v-if="contextMenu"
+                :style="{ top: contextMenu.top + 'px', left: contextMenu.left + 'px' }"
+                class="fixed z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 p-1.5 w-60 text-left text-xs animate-in fade-in zoom-in-95 duration-100"
+            >
+                <div class="px-2.5 py-1.5 border-b border-slate-100 mb-1">
+                    <div class="font-bold text-slate-800 truncate">{{ contextMenu.employee.name }}</div>
+                    <div class="text-[10px] text-slate-400">{{ formatLocalDate(contextMenu.date) }}</div>
+                </div>
+
+                <button
+                    type="button"
+                    @click="contextActionClear"
+                    class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-rose-600 hover:bg-rose-50 font-bold transition"
+                >
+                    <span class="text-sm">🗑️</span>
+                    <span>Kosongkan / Hapus Jadwal Ini</span>
+                </button>
+
+                <button
+                    type="button"
+                    @click="contextActionSetOff"
+                    class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-slate-700 hover:bg-slate-100 font-medium transition"
+                >
+                    <span class="text-sm">🏖️</span>
+                    <span>Set Jadi Libur (OFF)</span>
+                </button>
+
+                <div class="my-1 border-t border-slate-100"></div>
+
+                <div class="px-2.5 py-0.5 text-[10px] uppercase font-bold text-slate-400">Ganti Shift Cepat:</div>
+                <div class="max-h-28 overflow-y-auto space-y-0.5 pr-0.5">
+                    <button
+                        v-for="s in shifts"
+                        :key="s.id"
+                        type="button"
+                        @click="contextActionSetShift(s.id)"
+                        class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-slate-700 hover:bg-slate-100 text-[11px] font-medium transition"
+                    >
+                        <span class="truncate">{{ s.name }}</span>
+                        <span class="text-[10px] text-slate-400">{{ s.start_time }}</span>
+                    </button>
+                </div>
+
+                <div class="my-1 border-t border-slate-100"></div>
+
+                <button
+                    type="button"
+                    @click="contextActionClearMonth"
+                    class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50 text-[11px] font-medium transition"
+                >
+                    <span>👤</span>
+                    <span>Kosongkan Jadwal {{ contextMenu.employee.name.split(' ')[0] }} (Bulan Ini)</span>
+                </button>
+            </div>
+            <div v-if="contextMenu" @click="contextMenu = null" class="fixed inset-0 z-40"></div>
         </div>
     </AppLayout>
 </template>
@@ -928,6 +1497,143 @@ const topShifts = computed(() => {
     }
     return res;
 });
+
+// ── MODE PENGHAPUS CEPAT (ERASER TOOL) ──
+const isEraserMode = ref(false);
+const toggleEraserMode = () => {
+    isEraserMode.value = !isEraserMode.value;
+    if (isEraserMode.value) {
+        closeCellPicker();
+        contextMenu.value = null;
+    }
+};
+
+const handleCellClick = (emp, date, event) => {
+    if (isEraserMode.value) {
+        quickEraseCell(emp.id, date);
+        return;
+    }
+    openCellPicker(emp, date, event);
+};
+
+const quickEraseCell = (empId, date) => {
+    const changeKey = `${empId}_${date}`;
+    if (localMap.value[empId]) {
+        delete localMap.value[empId][date];
+    }
+    pendingChanges.value[changeKey] = {
+        employee_id: empId,
+        date: date,
+        shift_id: null,
+        status: '',
+    };
+};
+
+// ── CONTEXT MENU (KLIK KANAN PADA CELL) ──
+const contextMenu = ref(null);
+const openContextMenu = (emp, date, event) => {
+    closeCellPicker();
+    const rect = event.currentTarget.getBoundingClientRect();
+    let left = rect.left + window.scrollX;
+    let top = rect.bottom + window.scrollY + 4;
+    if (left + 240 > window.innerWidth) {
+        left = window.innerWidth - 250;
+    }
+    contextMenu.value = {
+        employee: emp,
+        date: date,
+        left: Math.max(10, left),
+        top: Math.max(10, top),
+    };
+};
+
+const contextActionClear = () => {
+    if (!contextMenu.value) return;
+    quickEraseCell(contextMenu.value.employee.id, contextMenu.value.date);
+    contextMenu.value = null;
+};
+
+const contextActionSetOff = () => {
+    if (!contextMenu.value) return;
+    const empId = contextMenu.value.employee.id;
+    const date = contextMenu.value.date;
+    const changeKey = `${empId}_${date}`;
+    if (!localMap.value[empId]) localMap.value[empId] = {};
+    localMap.value[empId][date] = {
+        employee_id: empId,
+        date: date,
+        shift_id: null,
+        status: 'off',
+    };
+    pendingChanges.value[changeKey] = {
+        employee_id: empId,
+        date: date,
+        shift_id: 'OFF',
+        status: 'off',
+    };
+    contextMenu.value = null;
+};
+
+const contextActionSetShift = (shiftId) => {
+    if (!contextMenu.value) return;
+    const empId = contextMenu.value.employee.id;
+    const date = contextMenu.value.date;
+    const changeKey = `${empId}_${date}`;
+    const found = props.shifts.find(s => s.id === shiftId);
+    if (!localMap.value[empId]) localMap.value[empId] = {};
+    localMap.value[empId][date] = {
+        employee_id: empId,
+        date: date,
+        shift_id: shiftId,
+        status: 'work',
+        shift_name: found?.name,
+        shift_color: found?.color,
+    };
+    pendingChanges.value[changeKey] = {
+        employee_id: empId,
+        date: date,
+        shift_id: shiftId,
+        status: 'work',
+    };
+    contextMenu.value = null;
+};
+
+const contextActionClearMonth = () => {
+    if (!contextMenu.value) return;
+    const emp = contextMenu.value.employee;
+    contextMenu.value = null;
+    quickClearEmployee(emp);
+};
+
+// ── AKSI CEPAT HAPUS PER KARYAWAN & PER TANGGAL ──
+const quickClearEmployee = (emp) => {
+    if (confirm(`Kosongkan seluruh jadwal ${emp.name} pada bulan ${props.monthName}?`)) {
+        router.post(route('work-schedules.reset-month'), {
+            month: currentMonthStr.value,
+            scope: 'employee',
+            employee_ids: [emp.id],
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                if (localMap.value[emp.id]) {
+                    delete localMap.value[emp.id];
+                }
+            }
+        });
+    }
+};
+
+const quickClearDate = (date, dayNum, dayName) => {
+    if (confirm(`Kosongkan jadwal semua karyawan pada hari ${dayName} tanggal ${dayNum} (${date})?`)) {
+        router.post(route('work-schedules.reset-month'), {
+            month: currentMonthStr.value,
+            scope: 'single_day',
+            date: date,
+        }, {
+            preserveScroll: true,
+        });
+    }
+};
 
 // Cell Popover State
 const activePopover = ref(null);
@@ -1188,15 +1894,60 @@ const continueFromPrevMonth = () => {
     }
 };
 
-// Reset Bulan
-const confirmResetMonth = () => {
-    if (confirm(`PERINGATAN: Seluruh jadwal kerja untuk bulan ${props.monthName} akan dikosongkan. Lanjutkan?`)) {
-        router.post(route('work-schedules.reset-month'), {
-            month: currentMonthStr.value,
-        }, {
-            preserveScroll: true,
-        });
+// ======================== MODAL HAPUS JADWAL CANGGIH ========================
+const openClearScheduleModal = ref(false);
+const isClearing = ref(false);
+const clearScope = ref('all'); // 'all', 'employee', 'date_range', 'branch', 'shift'
+const clearEmployeeSearch = ref('');
+const selectedClearEmployees = ref([]);
+const clearStartDate = ref(props.days?.[0]?.date || `${currentMonthStr.value}-01`);
+const clearEndDate = ref(props.days?.[props.days.length - 1]?.date || `${currentMonthStr.value}-28`);
+const clearBranch = ref('');
+const clearShiftId = ref('');
+
+const filteredClearEmployees = computed(() => {
+    if (!clearEmployeeSearch.value) return props.employees;
+    const q = clearEmployeeSearch.value.toLowerCase();
+    return props.employees.filter(e =>
+        e.name.toLowerCase().includes(q) ||
+        (e.position && e.position.toLowerCase().includes(q)) ||
+        (e.branch && e.branch.toLowerCase().includes(q)) ||
+        (e.area?.name && e.area.name.toLowerCase().includes(q))
+    );
+});
+
+const toggleSelectAllClearEmployees = () => {
+    const ids = filteredClearEmployees.value.map(e => e.id);
+    const allSelected = ids.length > 0 && ids.every(id => selectedClearEmployees.value.includes(id));
+    if (allSelected) {
+        selectedClearEmployees.value = selectedClearEmployees.value.filter(id => !ids.includes(id));
+    } else {
+        const union = new Set([...selectedClearEmployees.value, ...ids]);
+        selectedClearEmployees.value = Array.from(union);
     }
+};
+
+const submitClearSchedule = () => {
+    isClearing.value = true;
+    router.post(route('work-schedules.reset-month'), {
+        month: currentMonthStr.value,
+        scope: clearScope.value,
+        employee_ids: clearScope.value === 'employee' ? selectedClearEmployees.value : null,
+        start_date: clearScope.value === 'date_range' ? clearStartDate.value : null,
+        end_date: clearScope.value === 'date_range' ? clearEndDate.value : null,
+        branch: clearScope.value === 'branch' ? clearBranch.value : null,
+        shift_id: clearScope.value === 'shift' ? clearShiftId.value : null,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            openClearScheduleModal.value = false;
+            isClearing.value = false;
+            pendingChanges.value = {};
+        },
+        onError: () => {
+            isClearing.value = false;
+        }
+    });
 };
 
 // ======================== MODAL GENERATE ========================
@@ -1208,6 +1959,112 @@ const selectedGenEmployees = ref(props.employees.map(e => e.id));
 const selectedPatternId = ref('6-1');
 const genDefaultShiftId = ref(props.shifts[0]?.id || 1);
 const genStagger = ref(false);
+
+// Fitur Cerdas: Periode & Tanggal Mulai Absen
+const genPeriodPreset = ref('full_month'); // 'full_month', 'remaining_month', 'payroll_cutoff', 'custom'
+const genStartDate = ref(props.days?.[0]?.date || `${currentMonthStr.value}-01`);
+const genEndDate = ref(props.days?.[props.days?.length - 1]?.date || `${currentMonthStr.value}-28`);
+const genStartOffset = ref(0); // Titik awal rotasi / fase shift
+const genOverwriteMode = ref('all'); // 'all', 'empty_only', 'preserve_off'
+
+const applyPeriodPreset = (preset) => {
+    genPeriodPreset.value = preset;
+    const firstDay = props.days?.[0]?.date || `${currentMonthStr.value}-01`;
+    const lastDay = props.days?.[props.days?.length - 1]?.date || `${currentMonthStr.value}-28`;
+
+    if (preset === 'full_month') {
+        genStartDate.value = firstDay;
+        genEndDate.value = lastDay;
+    } else if (preset === 'remaining_month') {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        if (todayStr >= firstDay && todayStr <= lastDay) {
+            genStartDate.value = todayStr;
+        } else {
+            genStartDate.value = firstDay;
+        }
+        genEndDate.value = lastDay;
+    } else if (preset === 'payroll_cutoff') {
+        try {
+            const [yr, mo] = currentMonthStr.value.split('-').map(Number);
+            const prevMonthDate = new Date(yr, mo - 2, 21);
+            const curMonthDate = new Date(yr, mo - 1, 20);
+            const pad = (n) => String(n).padStart(2, '0');
+            genStartDate.value = `${prevMonthDate.getFullYear()}-${pad(prevMonthDate.getMonth() + 1)}-21`;
+            genEndDate.value = `${curMonthDate.getFullYear()}-${pad(curMonthDate.getMonth() + 1)}-20`;
+        } catch (e) {
+            genStartDate.value = firstDay;
+            genEndDate.value = lastDay;
+        }
+    }
+};
+
+const openGenerateScheduleModal = () => {
+    applyPeriodPreset(genPeriodPreset.value);
+    openGenerateModal.value = true;
+};
+
+const genDurationDays = computed(() => {
+    if (!genStartDate.value || !genEndDate.value) return 0;
+    const start = new Date(genStartDate.value);
+    const end = new Date(genEndDate.value);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return 0;
+    const diffTime = Math.abs(end - start);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+});
+
+const genTotalSlotCount = computed(() => {
+    return selectedGenEmployees.value.length * genDurationDays.value;
+});
+
+const currentPatternPhases = computed(() => {
+    if (selectedPatternId.value === '6-1') {
+        const defaultShift = props.shifts.find(s => s.id == genDefaultShiftId.value);
+        const shiftName = defaultShift ? defaultShift.name : 'Kerja';
+        return [
+            { offset: 0, label: 'Hari 1', shiftName: shiftName, isOff: false },
+            { offset: 1, label: 'Hari 2', shiftName: shiftName, isOff: false },
+            { offset: 2, label: 'Hari 3', shiftName: shiftName, isOff: false },
+            { offset: 3, label: 'Hari 4', shiftName: shiftName, isOff: false },
+            { offset: 4, label: 'Hari 5', shiftName: shiftName, isOff: false },
+            { offset: 5, label: 'Hari 6', shiftName: shiftName, isOff: false },
+            { offset: 6, label: 'Hari 7', shiftName: 'Libur (OFF)', isOff: true },
+        ];
+    }
+    if (selectedPatternId.value === '5-2') {
+        const defaultShift = props.shifts.find(s => s.id == genDefaultShiftId.value);
+        const shiftName = defaultShift ? defaultShift.name : 'Kerja';
+        return [
+            { offset: 0, label: 'Hari 1', shiftName: shiftName, isOff: false },
+            { offset: 1, label: 'Hari 2', shiftName: shiftName, isOff: false },
+            { offset: 2, label: 'Hari 3', shiftName: shiftName, isOff: false },
+            { offset: 3, label: 'Hari 4', shiftName: shiftName, isOff: false },
+            { offset: 4, label: 'Hari 5', shiftName: shiftName, isOff: false },
+            { offset: 5, label: 'Hari 6', shiftName: 'Libur (Sabtu)', isOff: true },
+            { offset: 6, label: 'Hari 7', shiftName: 'Libur (Minggu)', isOff: true },
+        ];
+    }
+    const found = props.patterns.find(p => p.id == selectedPatternId.value);
+    if (!found || !Array.isArray(found.pattern_data)) {
+        return [
+            { offset: 0, label: 'Langkah 1', shiftName: 'Kerja', isOff: false },
+            { offset: 1, label: 'Langkah 2', shiftName: 'Libur (OFF)', isOff: true }
+        ];
+    }
+    return found.pattern_data.map((item, idx) => {
+        const isOff = item === 'OFF' || !item;
+        let sName = 'Libur (OFF)';
+        if (!isOff) {
+            const sh = props.shifts.find(s => s.id == item);
+            sName = sh ? sh.name : `Shift #${item}`;
+        }
+        return {
+            offset: idx,
+            label: `Langkah ${idx + 1}`,
+            shiftName: sName,
+            isOff: isOff
+        };
+    });
+});
 
 const filteredGenEmployees = computed(() => {
     return props.employees.filter(emp => {
@@ -1236,11 +2093,14 @@ const toggleSelectAllEmployees = () => {
 };
 
 const submitGenerateSchedule = () => {
-    if (selectedGenEmployees.value.length === 0) return;
+    if (selectedGenEmployees.value.length === 0 || genDurationDays.value <= 0) return;
     isGenerating.value = true;
 
+    let patternType = 'cycle';
     let patternDays = [];
+
     if (selectedPatternId.value === '6-1') {
+        patternType = 'weekly_6_1';
         patternDays = [
             genDefaultShiftId.value,
             genDefaultShiftId.value,
@@ -1251,6 +2111,7 @@ const submitGenerateSchedule = () => {
             'OFF'
         ];
     } else if (selectedPatternId.value === '5-2') {
+        patternType = 'weekly_5_2';
         patternDays = [
             genDefaultShiftId.value,
             genDefaultShiftId.value,
@@ -1261,15 +2122,23 @@ const submitGenerateSchedule = () => {
             'OFF'
         ];
     } else {
+        patternType = 'cycle';
         const found = props.patterns.find(p => p.id == selectedPatternId.value);
         patternDays = found?.pattern_data || [genDefaultShiftId.value, 'OFF'];
     }
 
     router.post(route('work-schedules.generate'), {
         month: currentMonthStr.value,
+        start_date: genStartDate.value,
+        end_date: genEndDate.value,
         employee_ids: selectedGenEmployees.value,
+        pattern_type: patternType,
         pattern_days: patternDays,
+        default_shift_id: genDefaultShiftId.value,
+        start_offset: Number(genStartOffset.value) || 0,
+        offset: Number(genStartOffset.value) || 0,
         stagger: genStagger.value,
+        overwrite_mode: genOverwriteMode.value,
     }, {
         preserveScroll: true,
         onSuccess: () => {

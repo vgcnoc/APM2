@@ -316,11 +316,14 @@ class PermissionRegistry
 
             // ── 10. TOPOLOGI & RADAR JARINGAN ────────────────────────
             [
-                'group' => 'Topologi & Radar Jaringan FTTH',
+                'group' => 'Peta GIS, Topologi & Radar Jaringan',
                 'category' => 'jaringan',
                 'icon' => 'globe',
-                'menu_parent' => 'menu_network_topology',
+                'menu_parent' => 'menu_network_map',
                 'permissions' => [
+                    ['name' => 'menu_network_map', 'type' => 'menu', 'label' => 'Akses Menu Smart GIS Map (Pelanggan, ODC, ODP, Area)'],
+                    ['name' => 'network_map_routing', 'type' => 'feature', 'label' => 'Fitur Rute Jalan & Navigasi Turn-by-Turn'],
+                    ['name' => 'network_map_find_odp', 'type' => 'feature', 'label' => 'Fitur Smart Finder ODP Terdekat & Cek Port Kosong'],
                     ['name' => 'menu_network_topology', 'type' => 'menu', 'label' => 'Akses Menu Network Topology'],
                     ['name' => 'menu_network_radar', 'type' => 'menu', 'label' => 'Akses Menu Radar Tikor Jaringan'],
                     ['name' => 'menu_network_data', 'type' => 'menu', 'label' => 'Akses Menu Data Jaringan'],
@@ -655,6 +658,9 @@ class PermissionRegistry
                 'menu_parent' => 'menu_settings_branding',
                 'permissions' => [
                     ['name' => 'menu_internet_packages', 'type' => 'menu', 'label' => 'Akses Menu Paket Internet'],
+                    ['name' => 'internet_packages_card_stats', 'type' => 'widget', 'label' => 'Kartu Statistik Paket Internet'],
+                    ['name' => 'internet_packages_filter', 'type' => 'widget', 'label' => 'Filter Cerdas Paket Internet'],
+                    ['name' => 'internet_packages_view', 'type' => 'button', 'label' => 'Tombol Lihat Detail Paket Internet'],
                     ['name' => 'internet_packages_create', 'type' => 'button', 'label' => 'Tombol Tambah Paket Internet'],
                     ['name' => 'internet_packages_edit', 'type' => 'button', 'label' => 'Tombol Edit Paket Internet'],
                     ['name' => 'internet_packages_delete', 'type' => 'button', 'label' => 'Tombol Hapus Paket Internet'],
@@ -754,6 +760,7 @@ class PermissionRegistry
             'admin' => self::allNames(),
             'noc' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_btn_refresh',
+                'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_network_topology', 'menu_network_data', 'menu_ftth', 'ftth_manage',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_all',
                 'menu_network_olt', 'network_olt_card_stats', 'network_olt_filter', 'network_olt_create', 'network_olt_edit', 'network_olt_delete', 'network_olt_delete_all', 'network_olt_view_all',
@@ -784,9 +791,11 @@ class PermissionRegistry
                 'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_card_blast_summary', 'whatsapp_tab_device', 'whatsapp_btn_scan_qr', 'whatsapp_btn_restart',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_btn_export', 'monitoring_teknisi_view_all',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'voucher_free_tab_customers', 'vouchers_free_create', 'vouchers_free_print', 'vouchers_free_toggle', 'vouchers_free_sync_customer',
+                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'teknisi' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_btn_refresh',
+                'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_ftth', 'ftth_manage',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_view_area',
                 'menu_network_olt', 'network_olt_card_stats', 'network_olt_filter', 'network_olt_view_area',
@@ -809,9 +818,11 @@ class PermissionRegistry
                 'menu_pgs', 'pgs_manage',
                 'menu_attendances',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_area',
+                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'maintenance' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_btn_refresh',
+                'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_network_topology', 'menu_network_data', 'menu_ftth', 'ftth_manage',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_area',
                 'menu_network_olt', 'network_olt_card_stats', 'network_olt_filter', 'network_olt_create', 'network_olt_edit', 'network_olt_delete', 'network_olt_delete_all', 'network_olt_view_area',
@@ -833,9 +844,11 @@ class PermissionRegistry
                 'menu_pgs', 'pgs_manage',
                 'menu_attendances',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_area',
+                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'kepala teknisi' => [
                 'menu_dashboard', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_card_stats', 'dashboard_btn_refresh',
+                'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_network_topology', 'menu_network_data', 'menu_ftth', 'ftth_manage',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_all',
                 'menu_network_olt', 'network_olt_card_stats', 'network_olt_filter', 'network_olt_create', 'network_olt_edit', 'network_olt_delete', 'network_olt_delete_all', 'network_olt_view_all',
@@ -858,9 +871,11 @@ class PermissionRegistry
                 'menu_pgs', 'pgs_manage',
                 'menu_attendances',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_export', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_all',
+                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'Dispatcher' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_btn_refresh',
+                'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_view_all',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_request_survey', 'customers_booking_whatsapp', 'customers_booking_view_all',
                 'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_filter', 'customers_survey_assign', 'customers_survey_reschedule', 'customers_survey_view_all',
@@ -871,6 +886,7 @@ class PermissionRegistry
             ],
             'cs' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_revenue', 'dashboard_btn_quick_action', 'dashboard_btn_refresh',
+                'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_filter', 'network_capacity_view_all',
                 'menu_customers_all', 'customers_card_summary', 'customers_card_billing_status', 'customers_all_create', 'customers_all_edit', 'customers_all_export', 'customers_btn_whatsapp', 'customers_all_view_all',
                 'menu_customers_active', 'customers_active_edit', 'customers_active_suspend', 'customers_active_view_all',
@@ -888,7 +904,7 @@ class PermissionRegistry
                 'menu_customer_billing', 'customer_billing_collect',
                 'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_card_blast_summary',
                 'whatsapp_tab_device', 'whatsapp_tab_blast', 'whatsapp_tab_history', 'whatsapp_tab_settings',
-                'menu_internet_packages', 'menu_attendances',
+                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view', 'menu_attendances',
                 'menu_vouchers', 'menu_vouchers_monitoring', 'voucher_monitoring_card_stats', 'voucher_monitoring_tab_online', 'voucher_monitoring_tab_offline', 'voucher_monitoring_filter', 'voucher_monitoring_btn_kick', 'voucher_monitoring_btn_toggle',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'voucher_free_tab_customers', 'vouchers_free_create', 'vouchers_free_print', 'vouchers_free_sync_customer', 'vouchers_free_toggle',
                 'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
@@ -896,6 +912,7 @@ class PermissionRegistry
             ],
             'admin cs' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_revenue', 'dashboard_btn_quick_action', 'dashboard_btn_refresh',
+                'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_filter', 'network_capacity_view_all',
                 'menu_customers_all', 'customers_card_summary', 'customers_card_billing_status', 'customers_all_create', 'customers_all_edit', 'customers_all_export', 'customers_btn_whatsapp', 'customers_all_view_all',
                 'menu_customers_active', 'customers_active_edit', 'customers_active_suspend', 'customers_active_view_all',
@@ -914,7 +931,7 @@ class PermissionRegistry
                 'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_card_blast_summary',
                 'whatsapp_tab_device', 'whatsapp_tab_blast', 'whatsapp_tab_history', 'whatsapp_tab_settings',
                 'whatsapp_filter_target', 'whatsapp_btn_scan_qr', 'whatsapp_btn_test_send', 'whatsapp_btn_start_blast', 'whatsapp_btn_pause_blast',
-                'menu_internet_packages', 'menu_attendances',
+                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view', 'menu_attendances',
                 'menu_vouchers', 'menu_vouchers_monitoring', 'voucher_monitoring_card_stats', 'voucher_monitoring_tab_online', 'voucher_monitoring_tab_offline', 'voucher_monitoring_filter', 'voucher_monitoring_btn_kick', 'voucher_monitoring_btn_toggle',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'voucher_free_tab_customers', 'vouchers_free_create', 'vouchers_free_print', 'vouchers_free_sync_customer', 'vouchers_free_toggle',
                 'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
@@ -931,7 +948,7 @@ class PermissionRegistry
                 'menu_marketing_affiliates',
                 'menu_tickets', 'tickets_create',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'vouchers_free_create', 'vouchers_free_print',
-                'menu_internet_packages',
+                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
                 'menu_attendances',
             ],
             'finance' => [
@@ -946,6 +963,7 @@ class PermissionRegistry
                 'menu_customers_all', 'customers_card_summary', 'customers_all_view_all', 'customers_tab_invoices',
                 'menu_customers_gratis', 'menu_customers_free_home',
                 'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
+                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
                 'menu_attendances',
             ],
             'reseller' => [
@@ -976,6 +994,7 @@ class PermissionRegistry
                 'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_card_blast_summary',
                 'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_export', 'monitoring_teknisi_view_all',
+                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'hrd' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_btn_refresh',

@@ -2,50 +2,312 @@
     <AppLayout title="Paket Internet" subtitle="Kelola daftar paket internet dan harga">
         <!-- HEADER -->
         <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div class="w-full sm:w-96 relative">
-                <input 
-                    v-model="search" 
-                    type="text" 
-                    placeholder="Cari paket internet..." 
-                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    @keyup.enter="doSearch"
-                >
-                <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Paket Internet</h1>
+                <p class="text-xs sm:text-sm text-gray-500 mt-1">Kelola daftar paket internet, konfigurasi profil MikroTik, dan skema harga layanan</p>
             </div>
             
-            <button @click="openCreateModal" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 shadow-sm flex items-center gap-2 transition-all">
+            <button 
+                v-if="hasPermission('internet_packages_create')"
+                @click="openCreateModal" 
+                class="px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 shadow-sm hover:shadow-indigo-500/25 flex items-center gap-2 transition-all cursor-pointer"
+            >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
-                Tambah Paket
+                <span>Tambah Paket</span>
             </button>
         </div>
 
-        <!-- TABLE -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <!-- 1. SMART STATISTICS CARDS -->
+        <div v-if="hasPermission('internet_packages_card_stats')" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 mb-6">
+            <!-- Card 1: Total Paket -->
+            <div 
+                @click="setQuickFilter('all')" 
+                class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
+                :class="[filterState.status === 'all' && filterState.access_mode === 'all' && filterState.is_promo === 'all' ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/20' : 'border-gray-200/80 hover:border-blue-300']"
+            >
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-blue-600 transition-colors">Total Paket</span>
+                    <div class="w-8 h-8 rounded-xl bg-blue-100/70 text-blue-600 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    </div>
+                </div>
+                <div class="text-2xl font-black text-gray-900">{{ Number(stats?.total || 0).toLocaleString('id-ID') }}</div>
+                <p class="text-[11px] text-gray-500 mt-1">Katalog Layanan</p>
+            </div>
+
+            <!-- Card 2: Paket Aktif -->
+            <div 
+                @click="setQuickFilter('status', 'active')" 
+                class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
+                :class="[filterState.status === 'active' ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20' : 'border-gray-200/80 hover:border-emerald-300']"
+            >
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-emerald-600 transition-colors">Paket Aktif</span>
+                    <div class="w-8 h-8 rounded-xl bg-emerald-100/70 text-emerald-600 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                </div>
+                <div class="text-2xl font-black text-emerald-600">{{ Number(stats?.active || 0).toLocaleString('id-ID') }}</div>
+                <p class="text-[11px] text-gray-500 mt-1">{{ stats?.total ? Math.round((stats.active / stats.total) * 100) : 0 }}% Dapat Dijual</p>
+            </div>
+
+            <!-- Card 3: Paket Nonaktif -->
+            <div 
+                @click="setQuickFilter('status', 'inactive')" 
+                class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
+                :class="[filterState.status === 'inactive' ? 'border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/20' : 'border-gray-200/80 hover:border-rose-300']"
+            >
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-rose-600 transition-colors">Nonaktif</span>
+                    <div class="w-8 h-8 rounded-xl bg-rose-100/70 text-rose-600 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                    </div>
+                </div>
+                <div class="text-2xl font-black text-rose-600">{{ Number(stats?.inactive || 0).toLocaleString('id-ID') }}</div>
+                <p class="text-[11px] text-gray-500 mt-1">Diarsipkan</p>
+            </div>
+
+            <!-- Card 4: Paket PPPoE -->
+            <div 
+                @click="setQuickFilter('access_mode', 'pppoe')" 
+                class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
+                :class="[filterState.access_mode === 'pppoe' ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/20' : 'border-gray-200/80 hover:border-indigo-300']"
+            >
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-indigo-600 transition-colors">PPPoE Fiber</span>
+                    <div class="w-8 h-8 rounded-xl bg-indigo-100/70 text-indigo-600 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </div>
+                </div>
+                <div class="text-2xl font-black text-indigo-600">{{ Number(stats?.pppoe || 0).toLocaleString('id-ID') }}</div>
+                <p class="text-[11px] text-gray-500 mt-1">Layanan Broadband</p>
+            </div>
+
+            <!-- Card 5: Hotspot / Voucher -->
+            <div 
+                @click="setQuickFilter('access_mode', 'hotspot')" 
+                class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
+                :class="[filterState.access_mode === 'hotspot' ? 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/20' : 'border-gray-200/80 hover:border-amber-300']"
+            >
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-amber-600 transition-colors">Hotspot / Vcr</span>
+                    <div class="w-8 h-8 rounded-xl bg-amber-100/70 text-amber-600 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+                    </div>
+                </div>
+                <div class="text-2xl font-black text-amber-600">{{ Number(stats?.hotspot || 0).toLocaleString('id-ID') }}</div>
+                <p class="text-[11px] text-gray-500 mt-1">Wireless / Prabayar</p>
+            </div>
+
+            <!-- Card 6: Pelanggan Terpasang -->
+            <div 
+                class="bg-white rounded-2xl p-4 border border-gray-200/80 transition-all duration-200 shadow-xs hover:shadow-md"
+            >
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Pelanggan</span>
+                    <div class="w-8 h-8 rounded-xl bg-purple-100/70 text-purple-600 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                    </div>
+                </div>
+                <div class="text-2xl font-black text-purple-600">{{ Number(stats?.total_customers || 0).toLocaleString('id-ID') }}</div>
+                <p class="text-[11px] text-gray-500 mt-1">Total Pengguna Aktif</p>
+            </div>
+        </div>
+
+        <!-- 2. SMART QUICK STATUS TABS (BERJAJAR KE SAMPING) -->
+        <div v-if="hasPermission('internet_packages_filter')" class="flex items-center gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl mb-4 overflow-x-auto border border-slate-200/60 scrollbar-none">
+            <button 
+                type="button" 
+                @click="setQuickFilter('all')" 
+                class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                :class="[filterState.status === 'all' && filterState.access_mode === 'all' && filterState.is_promo === 'all' ? 'bg-white text-gray-900 shadow-xs ring-1 ring-black/5 font-extrabold' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50']"
+            >
+                <span>Semua Paket</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[10px]" :class="[filterState.status === 'all' ? 'bg-gray-100 text-gray-800' : 'bg-gray-200/70 text-gray-600']">{{ stats?.total || 0 }}</span>
+            </button>
+            <button 
+                type="button" 
+                @click="setQuickFilter('status', 'active')" 
+                class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                :class="[filterState.status === 'active' ? 'bg-white text-emerald-700 shadow-xs ring-1 ring-emerald-500/20 font-extrabold' : 'text-gray-600 hover:text-emerald-700 hover:bg-white/50']"
+            >
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Aktif</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 font-bold">{{ stats?.active || 0 }}</span>
+            </button>
+            <button 
+                type="button" 
+                @click="setQuickFilter('status', 'inactive')" 
+                class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                :class="[filterState.status === 'inactive' ? 'bg-white text-rose-700 shadow-xs ring-1 ring-rose-500/20 font-extrabold' : 'text-gray-600 hover:text-rose-700 hover:bg-white/50']"
+            >
+                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                <span>Nonaktif</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-50 text-rose-700 font-bold">{{ stats?.inactive || 0 }}</span>
+            </button>
+            <button 
+                type="button" 
+                @click="setQuickFilter('promo', 'promo')" 
+                class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                :class="[filterState.is_promo === 'promo' ? 'bg-white text-pink-700 shadow-xs ring-1 ring-pink-500/20 font-extrabold' : 'text-gray-600 hover:text-pink-700 hover:bg-white/50']"
+            >
+                <span class="w-2 h-2 rounded-full bg-pink-500"></span>
+                <span>Paket Promo</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-pink-50 text-pink-700 font-bold">{{ stats?.promo || 0 }}</span>
+            </button>
+            <button 
+                type="button" 
+                @click="setQuickFilter('access_mode', 'pppoe')" 
+                class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                :class="[filterState.access_mode === 'pppoe' ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-indigo-500/20 font-extrabold' : 'text-gray-600 hover:text-indigo-700 hover:bg-white/50']"
+            >
+                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                <span>PPPoE</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-indigo-50 text-indigo-700 font-bold">{{ stats?.pppoe || 0 }}</span>
+            </button>
+            <button 
+                type="button" 
+                @click="setQuickFilter('access_mode', 'hotspot')" 
+                class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                :class="[filterState.access_mode === 'hotspot' ? 'bg-white text-amber-700 shadow-xs ring-1 ring-amber-500/20 font-extrabold' : 'text-gray-600 hover:text-amber-700 hover:bg-white/50']"
+            >
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span>Hotspot</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-50 text-amber-700 font-bold">{{ stats?.hotspot || 0 }}</span>
+            </button>
+        </div>
+
+        <!-- 3. SMART HORIZONTAL FILTER BAR (BERJAJAR KE SAMPING) -->
+        <div v-if="hasPermission('internet_packages_filter')" class="mb-5 bg-white p-4 rounded-2xl shadow-xs border border-gray-200/80">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-12 gap-3 items-center">
+                <!-- Search Input -->
+                <div class="lg:col-span-4">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </div>
+                        <input 
+                            v-model="filterState.search" 
+                            @keyup.enter="applyFilters"
+                            type="text" 
+                            class="w-full pl-10 pr-9 py-2 bg-gray-50/60 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-gray-400" 
+                            placeholder="Cari nama, speed, rate limit..." 
+                        />
+                        <button 
+                            v-if="filterState.search"
+                            @click="filterState.search = ''; applyFilters()"
+                            type="button"
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tipe Akses Dropdown -->
+                <div class="lg:col-span-2">
+                    <select 
+                        v-model="filterState.access_mode" 
+                        @change="applyFilters"
+                        class="w-full px-3 py-2 bg-gray-50/60 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-gray-700 cursor-pointer"
+                    >
+                        <option value="all">Semua Tipe Akses</option>
+                        <option value="pppoe">PPPoE</option>
+                        <option value="hotspot">Hotspot</option>
+                        <option value="voucher">Voucher</option>
+                        <option value="static_ip">Static IP</option>
+                        <option value="lainnya">Lainnya</option>
+                    </select>
+                </div>
+
+                <!-- Status Dropdown -->
+                <div class="lg:col-span-2">
+                    <select 
+                        v-model="filterState.status" 
+                        @change="applyFilters"
+                        class="w-full px-3 py-2 bg-gray-50/60 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-gray-700 cursor-pointer"
+                    >
+                        <option value="all">Semua Status</option>
+                        <option value="active">Aktif Saja</option>
+                        <option value="inactive">Nonaktif Saja</option>
+                    </select>
+                </div>
+
+                <!-- Promo Dropdown -->
+                <div class="lg:col-span-2">
+                    <select 
+                        v-model="filterState.is_promo" 
+                        @change="applyFilters"
+                        class="w-full px-3 py-2 bg-gray-50/60 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-gray-700 cursor-pointer"
+                    >
+                        <option value="all">Semua Penawaran</option>
+                        <option value="promo">Hanya Promo</option>
+                        <option value="non_promo">Non-Promo</option>
+                    </select>
+                </div>
+
+                <!-- Sorting Dropdown -->
+                <div class="lg:col-span-2">
+                    <select 
+                        v-model="filterState.sort" 
+                        @change="applyFilters"
+                        class="w-full px-3 py-2 bg-gray-50/60 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-gray-700 cursor-pointer"
+                    >
+                        <option value="price_asc">Harga: Terendah</option>
+                        <option value="price_desc">Harga: Tertinggi</option>
+                        <option value="speed_desc">Kecepatan Tertinggi</option>
+                        <option value="customers_desc">Pelanggan Terbanyak</option>
+                        <option value="name_asc">Nama Paket A-Z</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Active Filter Badges & Reset Button -->
+            <div v-if="isFiltered" class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+                <span class="text-gray-500 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                    <span>Filter Aktif diterapkan</span>
+                </span>
+                <button 
+                    @click="resetFilters" 
+                    type="button" 
+                    class="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <span>Reset Semua Filter</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 4. ENHANCED TABLE -->
+        <div class="bg-white rounded-2xl shadow-xs border border-gray-200/80 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+                    <thead class="bg-gray-50/80">
                         <tr>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Paket</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Type / Limit</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Harga</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Harga & Margin</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Masa Aktif</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        <tr v-for="pkg in packages.data" :key="pkg.id" class="hover:bg-gray-50 transition-colors">
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        <tr v-for="pkg in packages.data" :key="pkg.id" class="hover:bg-slate-50/70 transition-colors">
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-3 h-3 rounded-full shadow-inner" :style="{ backgroundColor: pkg.color || '#4f46e5' }"></div>
+                                    <div class="w-3.5 h-3.5 rounded-full shadow-inner shrink-0" :style="{ backgroundColor: pkg.color || '#4f46e5' }"></div>
                                     <div>
-                                        <div class="text-sm font-bold text-gray-900">{{ pkg.name }}</div>
-                                        <div class="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                                            <span>{{ pkg.speed_mbps }} Mbps</span>
+                                        <div class="text-sm font-bold text-gray-900 leading-tight">{{ pkg.name }}</div>
+                                        <div class="text-xs text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
+                                            <span class="font-semibold text-slate-700">{{ pkg.speed_mbps }} Mbps</span>
                                             <span v-if="pkg.is_promo" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">PROMO</span>
+                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                                👥 {{ pkg.customers_count || 0 }} User
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -56,7 +318,7 @@
                                           :class="getAccessModeClass(pkg.access_mode)">
                                         {{ pkg.access_mode.toUpperCase() }}
                                     </span>
-                                    <span class="text-[11px] text-gray-500 font-mono">{{ pkg.rate_limit || 'Default Profile' }}</span>
+                                    <span class="text-[11px] text-gray-500 font-mono truncate max-w-[200px]" :title="pkg.rate_limit">{{ pkg.rate_limit || 'Default Profile' }}</span>
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -64,24 +326,60 @@
                                     Rp {{ formatPrice(pkg.is_promo ? pkg.promo_price : pkg.price) }}
                                 </div>
                                 <div v-if="pkg.is_promo" class="text-[10px] text-gray-400 line-through">Rp {{ formatPrice(pkg.price) }}</div>
+                                <div v-if="pkg.fee_reseller > 0" class="text-[10px] text-gray-500 mt-0.5">
+                                    Reseller: Rp {{ formatPrice(pkg.fee_reseller) }}
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span v-if="pkg.is_active" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span class="text-xs font-semibold text-gray-700">
+                                    {{ pkg.active_period || 1 }} {{ pkg.active_period_unit || 'Bulan' }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span v-if="pkg.is_active" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                     Aktif
                                 </span>
-                                <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-50 text-gray-700 border border-gray-200">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                                <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
                                     Nonaktif
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <button @click="openEditModal(pkg)" class="text-indigo-600 hover:text-indigo-900 mr-4 font-semibold">Edit</button>
-                                <button @click="deletePackage(pkg.id)" class="text-red-600 hover:text-red-900 font-semibold">Hapus</button>
+                                <div class="flex items-center justify-end gap-2">
+                                    <!-- Aksi 1: View / Detail -->
+                                    <button 
+                                        v-if="hasPermission('internet_packages_view')"
+                                        @click="openViewModal(pkg)" 
+                                        class="px-2.5 py-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                                        title="Lihat Rincian Paket"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                        <span>Lihat</span>
+                                    </button>
+
+                                    <!-- Aksi 2: Edit -->
+                                    <button 
+                                        v-if="hasPermission('internet_packages_edit')"
+                                        @click="openEditModal(pkg)" 
+                                        class="px-2.5 py-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                                    >
+                                        Edit
+                                    </button>
+
+                                    <!-- Aksi 3: Hapus -->
+                                    <button 
+                                        v-if="hasPermission('internet_packages_delete')"
+                                        @click="deletePackage(pkg.id)" 
+                                        class="px-2.5 py-1 text-xs font-bold text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                    >
+                                        Hapus
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         <tr v-if="packages.data.length === 0">
-                            <td colspan="5" class="px-6 py-12 text-center">
+                            <td colspan="6" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center">
                                     <svg class="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
@@ -586,6 +884,171 @@
             </div>
         </div>
         
+        <!-- 5. SMART DETAIL VIEW MODAL (AKSI VIEW) -->
+        <div v-if="showViewModal && selectedViewPackage" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 overflow-y-auto">
+            <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-fade-in my-8">
+                <!-- Modal Top Color Stripe & Header -->
+                <div class="h-2 w-full" :style="{ backgroundColor: selectedViewPackage.color || '#4f46e5' }"></div>
+                <div class="p-6 pb-4 border-b border-gray-100 flex items-start justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-base shadow-sm shrink-0" :style="{ backgroundColor: selectedViewPackage.color || '#4f46e5' }">
+                            {{ selectedViewPackage.speed_mbps }}M
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h3 class="text-xl font-bold text-gray-900 leading-tight">{{ selectedViewPackage.name }}</h3>
+                                <span v-if="selectedViewPackage.is_active" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                    Aktif
+                                </span>
+                                <span v-else class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700">
+                                    Nonaktif
+                                </span>
+                                <span v-if="selectedViewPackage.is_promo" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">
+                                    PROMO
+                                </span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-0.5">
+                                Mode Akses: <strong class="text-indigo-600 uppercase">{{ selectedViewPackage.access_mode }}</strong> • Kecepatan: <strong>{{ selectedViewPackage.speed_mbps }} Mbps</strong>
+                            </p>
+                        </div>
+                    </div>
+                    <button @click="closeViewModal" class="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <!-- Modal Content -->
+                <div class="p-6 space-y-5 max-h-[75vh] overflow-y-auto text-xs">
+                    <!-- SECTION 1: KOMERSIAL & PRICING -->
+                    <div class="bg-slate-50/80 p-4 rounded-xl border border-slate-200/70">
+                        <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>Skema Harga & Margin Finansial</span>
+                        </h4>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200/60">
+                                <div class="text-[10px] text-slate-400 font-medium">Harga Normal</div>
+                                <div class="text-sm font-black text-slate-900 mt-0.5">Rp {{ formatPrice(selectedViewPackage.price) }}</div>
+                                <div class="text-[9px] text-slate-400">/ {{ selectedViewPackage.active_period || 1 }} {{ selectedViewPackage.active_period_unit || 'Bulan' }}</div>
+                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200/60">
+                                <div class="text-[10px] text-slate-400 font-medium">Harga Promo</div>
+                                <div class="text-sm font-black mt-0.5" :class="selectedViewPackage.is_promo ? 'text-rose-600' : 'text-slate-400'">
+                                    {{ selectedViewPackage.is_promo ? `Rp ${formatPrice(selectedViewPackage.promo_price)}` : 'Tidak Ada' }}
+                                </div>
+                                <div class="text-[9px] text-slate-400">{{ selectedViewPackage.is_promo ? 'Harga Berlaku' : 'Reguler' }}</div>
+                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200/60">
+                                <div class="text-[10px] text-slate-400 font-medium">Fee Reseller</div>
+                                <div class="text-sm font-black text-amber-600 mt-0.5">
+                                    Rp {{ formatPrice(selectedViewPackage.fee_reseller || 0) }}
+                                </div>
+                                <div class="text-[9px] text-slate-400">Komisi Mitra</div>
+                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200/60">
+                                <div class="text-[10px] text-slate-400 font-medium">Margin Bersih</div>
+                                <div class="text-sm font-black text-emerald-600 mt-0.5">
+                                    Rp {{ formatPrice((selectedViewPackage.is_promo ? selectedViewPackage.promo_price : selectedViewPackage.price) - (selectedViewPackage.fee_reseller || 0)) }}
+                                </div>
+                                <div class="text-[9px] text-slate-400">Laba Bersih ISP</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 2: JARINGAN & MIKROTIK -->
+                    <div class="bg-slate-50/80 p-4 rounded-xl border border-slate-200/70">
+                        <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/></svg>
+                                <span>Spesifikasi Teknis & MikroTik</span>
+                            </span>
+                            <button @click="copyText(selectedViewPackage.rate_limit)" class="text-indigo-600 hover:text-indigo-800 font-bold text-[10px] flex items-center gap-1 cursor-pointer">
+                                📋 Salin Rate Limit
+                            </button>
+                        </h4>
+                        
+                        <div class="space-y-2.5">
+                            <div class="bg-white p-3 rounded-lg border border-slate-200/60">
+                                <div class="text-[10px] text-slate-400 font-medium">Rate Limit String (Rx/Tx [Burst] [Priority] [Limit-At])</div>
+                                <div class="font-mono text-xs font-bold text-indigo-700 mt-1 select-all break-all">
+                                    {{ selectedViewPackage.rate_limit || 'Default Profile (0/0)' }}
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <div class="bg-white p-2.5 rounded-lg border border-slate-200/60">
+                                    <div class="text-[10px] text-slate-400">Profil MikroTik</div>
+                                    <div class="font-semibold text-slate-800 mt-0.5">
+                                        {{ selectedViewPackage.is_mikrotik_group_custom && selectedViewPackage.mikrotik_group ? selectedViewPackage.mikrotik_group : selectedViewPackage.name }}
+                                    </div>
+                                </div>
+                                <div class="bg-white p-2.5 rounded-lg border border-slate-200/60">
+                                    <div class="text-[10px] text-slate-400">Address List</div>
+                                    <div class="font-semibold text-slate-800 mt-0.5">
+                                        {{ selectedViewPackage.is_mikrotik_address_list_custom && selectedViewPackage.mikrotik_address_list ? selectedViewPackage.mikrotik_address_list : 'Default' }}
+                                    </div>
+                                </div>
+                                <div class="bg-white p-2.5 rounded-lg border border-slate-200/60">
+                                    <div class="text-[10px] text-slate-400">Batas Perangkat (Shared)</div>
+                                    <div class="font-semibold text-slate-800 mt-0.5">
+                                        {{ selectedViewPackage.shared_device || 1 }} Device
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 3: PENGGUNAAN & STATISTIK -->
+                    <div class="bg-slate-50/80 p-4 rounded-xl border border-slate-200/70">
+                        <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                            <span>Statistik Pemanfaatan Paket</span>
+                        </h4>
+                        <div class="grid grid-cols-2 gap-3 text-center">
+                            <div class="bg-white p-3 rounded-lg border border-slate-200/60">
+                                <div class="text-[10px] text-slate-400 font-medium">Pelanggan yang Menggunakan</div>
+                                <div class="text-xl font-black text-purple-700 mt-0.5">
+                                    {{ Number(selectedViewPackage.customers_count || 0).toLocaleString('id-ID') }} Pelanggan
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200/60">
+                                <div class="text-[10px] text-slate-400 font-medium">Estimasi Omset / Bulan</div>
+                                <div class="text-xl font-black text-emerald-700 mt-0.5">
+                                    Rp {{ formatPrice((selectedViewPackage.is_promo ? selectedViewPackage.promo_price : selectedViewPackage.price) * (selectedViewPackage.customers_count || 0)) }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 4: DESKRIPSI -->
+                    <div v-if="selectedViewPackage.description" class="bg-slate-50/80 p-4 rounded-xl border border-slate-200/70">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Catatan & Keterangan Paket:</div>
+                        <p class="text-slate-700 leading-relaxed">{{ selectedViewPackage.description }}</p>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                    <button
+                        @click="closeViewModal"
+                        type="button"
+                        class="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                    >
+                        Tutup
+                    </button>
+                    <button
+                        v-if="hasPermission('internet_packages_edit')"
+                        @click="closeViewModal(); openEditModal(selectedViewPackage)"
+                        type="button"
+                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        <span>Edit Paket Ini</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Toast Notification -->
         <div v-if="toastMsg" class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-bold flex items-center gap-2 z-[100] transition-opacity">
             <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -597,18 +1060,101 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { router, useForm, Link } from '@inertiajs/vue3';
+import { router, useForm, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     packages: Object,
-    filters: Object,
+    stats: {
+        type: Object,
+        default: () => ({ total: 0, active: 0, inactive: 0, promo: 0, pppoe: 0, hotspot: 0, total_customers: 0 })
+    },
+    filters: {
+        type: Object,
+        default: () => ({ search: '', access_mode: 'all', status: 'all', is_promo: 'all', sort: 'price_asc' })
+    },
 });
 
-const search = ref(props.filters.search || '');
+// Role & Permissions
+const page = usePage();
+const authUser = computed(() => page.props.auth?.user || {});
+const userRole = computed(() => authUser.value?.role?.name || authUser.value?.role || '');
+const isAdmin = computed(() => ['admin', 'superadmin', 'super-admin'].includes(String(userRole.value).toLowerCase()));
+const permissions = computed(() => page.props.auth?.permissions || authUser.value?.permissions || []);
 
-const doSearch = () => {
-    router.get(route('internet-packages.index'), { search: search.value }, { preserveState: true, replace: true });
+const hasPermission = (perm) => {
+    if (isAdmin.value) return true;
+    if (Array.isArray(permissions.value)) {
+        return permissions.value.includes(perm);
+    }
+    return false;
+};
+
+// Filter State
+const filterState = ref({
+    search: props.filters.search || '',
+    access_mode: props.filters.access_mode || 'all',
+    status: props.filters.status || 'all',
+    is_promo: props.filters.is_promo || 'all',
+    sort: props.filters.sort || 'price_asc',
+});
+
+const isFiltered = computed(() => {
+    return filterState.value.search !== '' ||
+        filterState.value.access_mode !== 'all' ||
+        filterState.value.status !== 'all' ||
+        filterState.value.is_promo !== 'all' ||
+        filterState.value.sort !== 'price_asc';
+});
+
+const applyFilters = () => {
+    router.get(route('internet-packages.index'), {
+        search: filterState.value.search || undefined,
+        access_mode: filterState.value.access_mode !== 'all' ? filterState.value.access_mode : undefined,
+        status: filterState.value.status !== 'all' ? filterState.value.status : undefined,
+        is_promo: filterState.value.is_promo !== 'all' ? filterState.value.is_promo : undefined,
+        sort: filterState.value.sort !== 'price_asc' ? filterState.value.sort : undefined,
+    }, { preserveState: true, replace: true });
+};
+
+const resetFilters = () => {
+    filterState.value = {
+        search: '',
+        access_mode: 'all',
+        status: 'all',
+        is_promo: 'all',
+        sort: 'price_asc',
+    };
+    router.get(route('internet-packages.index'), {}, { preserveState: true, replace: true });
+};
+
+const setQuickFilter = (type, val) => {
+    if (type === 'all') {
+        filterState.value.status = 'all';
+        filterState.value.access_mode = 'all';
+        filterState.value.is_promo = 'all';
+    } else if (type === 'status') {
+        filterState.value.status = filterState.value.status === val ? 'all' : val;
+    } else if (type === 'access_mode') {
+        filterState.value.access_mode = filterState.value.access_mode === val ? 'all' : val;
+    } else if (type === 'promo') {
+        filterState.value.is_promo = filterState.value.is_promo === val ? 'all' : val;
+    }
+    applyFilters();
+};
+
+// View Detail Modal
+const showViewModal = ref(false);
+const selectedViewPackage = ref(null);
+
+const openViewModal = (pkg) => {
+    selectedViewPackage.value = pkg;
+    showViewModal.value = true;
+};
+
+const closeViewModal = () => {
+    showViewModal.value = false;
+    selectedViewPackage.value = null;
 };
 
 const formatPrice = (price) => {

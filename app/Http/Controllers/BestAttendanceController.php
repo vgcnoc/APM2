@@ -105,9 +105,12 @@ class BestAttendanceController extends Controller
             $empSpecials = $specialAttendances->get($emp->id, collect());
             $empDuties = $fieldDuties->get($emp->id, collect());
 
-            // Target hari kerja
+            // Target hari kerja (hanya hitung jadwal kerja aktif, kecualikan hari libur OFF)
             if ($empSchedules->count() > 0) {
-                $targetDays = $empSchedules->count();
+                $workDays = $empSchedules->where('status', '!=', 'off')->filter(function ($s) {
+                    return !empty($s->shift_id);
+                })->count();
+                $targetDays = $workDays > 0 ? $workDays : $defaultTargetDays;
             } else {
                 $targetDays = $defaultTargetDays;
             }

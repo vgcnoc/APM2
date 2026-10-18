@@ -21,12 +21,12 @@
             v-model:selected="selectedIds"
         >
             <template #filters>
-                <div class="flex items-center gap-2">
-                    <select v-model="filterArea" @change="applyFilters" class="form-select w-36 text-sm">
+                <div class="flex flex-wrap items-center gap-2.5 w-full">
+                    <select v-model="filterArea" @change="applyFilters" class="form-select w-full sm:w-44 md:w-48 text-sm bg-white">
                         <option value="">Semua Area</option>
                         <option v-for="area in areas" :key="area" :value="area">{{ area }}</option>
                     </select>
-                    <button v-if="filterArea" @click="resetFilters" class="px-3 py-2 bg-gray-50 text-gray-600 hover:bg-gray-100 font-medium text-sm rounded-lg transition-colors border border-gray-200">
+                    <button v-if="filterArea" @click="resetFilters" class="px-3.5 py-2 bg-gray-50 text-gray-600 hover:bg-gray-100 font-medium text-sm rounded-lg transition-colors border border-gray-200 whitespace-nowrap">
                         Reset
                     </button>
                 </div>

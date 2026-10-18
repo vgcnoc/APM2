@@ -273,12 +273,15 @@ class AffiliateManagementController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'phone', 'role']);
 
+        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
+
         return Inertia::render('Marketing/Affiliates/Index', [
             'tab' => $tab,
             'settings' => $settings,
             'affiliates' => $affiliates,
             'available_uplines' => $availableUplines,
             'candidate_users' => $candidateUsers,
+            'areas' => $areas,
             'commissions' => $commissions,
             'withdrawals' => $withdrawals,
             'kpi' => $kpi,
@@ -371,19 +374,37 @@ class AffiliateManagementController extends Controller
      */
     public function storeAffiliate(Request $request)
     {
+        // Sanitize nullable fields
+        if (!$request->filled('upline_id')) {
+            $request->merge(['upline_id' => null]);
+        }
+        if (!$request->filled('user_id')) {
+            $request->merge(['user_id' => null]);
+        }
+        if (!$request->filled('area_id')) {
+            $request->merge(['area_id' => null]);
+        }
+        if (!$request->filled('referral_code')) {
+            $request->merge(['referral_code' => null]);
+        }
+
         $mode = $request->input('mode', 'new_user'); // 'new_user' or 'existing_user'
 
         if ($mode === 'existing_user') {
             $validated = $request->validate([
                 'user_id' => 'required|exists:users,id',
                 'upline_id' => 'nullable|exists:users,id|different:user_id',
+                'referral_code' => 'nullable|string|max:30|unique:affiliate_profiles,referral_code',
                 'whatsapp' => 'nullable|string|max:25',
                 'bank_name' => 'nullable|string|max:50',
                 'bank_account_number' => 'nullable|string|max:50',
                 'bank_account_holder' => 'nullable|string|max:100',
             ], [
                 'user_id.required' => 'Pilih pengguna/karyawan yang ingin dijadikan agen.',
+                'user_id.exists' => 'Pengguna yang dipilih tidak valid.',
+                'upline_id.exists' => 'Upline sponsor yang dipilih tidak valid.',
                 'upline_id.different' => 'Agen tidak boleh menjadi upline bagi dirinya sendiri.',
+                'referral_code.unique' => 'Kode referral tersebut sudah dipakai. Gunakan kode lain.',
             ]);
 
             $targetUser = User::findOrFail($validated['user_id']);
@@ -391,16 +412,26 @@ class AffiliateManagementController extends Controller
                 return back()->with('error', "Pengguna {$targetUser->name} sudah terdaftar sebagai agen afiliasi.");
             }
 
-            AffiliateService::ensureAffiliateProfile(
-                $targetUser,
-                !empty($validated['upline_id']) ? (int) $validated['upline_id'] : null,
-                [
-                    'whatsapp' => $validated['whatsapp'] ?? $targetUser->phone,
-                    'bank_name' => $validated['bank_name'] ?? null,
-                    'bank_account_number' => $validated['bank_account_number'] ?? null,
-                    'bank_account_holder' => $validated['bank_account_holder'] ?? $targetUser->name,
-                ]
-            );
+            $uplineId = !empty($validated['upline_id']) ? (int) $validated['upline_id'] : null;
+            $customRef = !empty($validated['referral_code']) ? strtoupper(trim($validated['referral_code'])) : null;
+
+            AffiliateProfile::create([
+                'user_id' => $targetUser->id,
+                'referral_code' => $customRef ?: AffiliateService::generateReferralCode($targetUser->name),
+                'upline_id' => ($uplineId && $uplineId !== $targetUser->id) ? $uplineId : null,
+                'whatsapp' => $validated['whatsapp'] ?? $targetUser->phone,
+                'bank_name' => $validated['bank_name'] ?? $targetUser->bank_name,
+                'bank_account_number' => $validated['bank_account_number'] ?? $targetUser->bank_account_number,
+                'bank_account_holder' => $validated['bank_account_holder'] ?? $targetUser->bank_account_holder ?? $targetUser->name,
+                'balance' => 0,
+                'total_earned' => 0,
+                'total_withdrawn' => 0,
+                'status' => 'active',
+            ]);
+
+            if (!empty($validated['whatsapp']) && empty($targetUser->phone)) {
+                $targetUser->update(['phone' => $validated['whatsapp']]);
+            }
 
             return back()->with('success', "Pengguna {$targetUser->name} berhasil didaftarkan sebagai Agen Afiliasi!");
         }
@@ -412,6 +443,8 @@ class AffiliateManagementController extends Controller
             'phone' => 'required|string|max:25',
             'password' => 'required|string|min:6',
             'upline_id' => 'nullable|exists:users,id',
+            'area_id' => 'nullable|exists:areas,id',
+            'referral_code' => 'nullable|string|max:30|unique:affiliate_profiles,referral_code',
             'bank_name' => 'nullable|string|max:50',
             'bank_account_number' => 'nullable|string|max:50',
             'bank_account_holder' => 'nullable|string|max:100',
@@ -419,39 +452,53 @@ class AffiliateManagementController extends Controller
         ], [
             'name.required' => 'Nama lengkap agen wajib diisi.',
             'email.required' => 'Email wajib diisi.',
+            'email.email' => 'Format email tidak valid.',
             'email.unique' => 'Email ini sudah digunakan oleh akun lain.',
             'phone.required' => 'Nomor WhatsApp wajib diisi.',
-            'password.required' => 'Password wajib diisi (minimal 6 karakter).',
+            'password.required' => 'Password wajib diisi.',
+            'password.min' => 'Password minimal 6 karakter.',
+            'upline_id.exists' => 'Upline sponsor yang dipilih tidak valid.',
+            'referral_code.unique' => 'Kode referral tersebut sudah dipakai. Gunakan kode lain.',
         ]);
 
         DB::transaction(function () use ($validated) {
             $user = User::create([
-                'name' => $validated['name'],
+                'name' => trim($validated['name']),
                 'email' => strtolower(trim($validated['email'])),
-                'phone' => $validated['phone'],
-                'password' => Hash::make($validated['password']),
+                'phone' => trim($validated['phone']),
+                'password' => $validated['password'], // User model auto-hashes through 'password' => 'hashed' cast
                 'role' => 'sales',
                 'is_active' => true,
+                'area_id' => !empty($validated['area_id']) ? (int) $validated['area_id'] : null,
+                'bank_name' => $validated['bank_name'] ?? null,
+                'bank_account_number' => $validated['bank_account_number'] ?? null,
+                'bank_account_holder' => $validated['bank_account_holder'] ?? trim($validated['name']),
             ]);
 
             try {
                 $role = Role::firstOrCreate(['name' => 'sales', 'guard_name' => 'web']);
                 $user->assignRole($role);
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 // Ignore fallback
             }
 
-            AffiliateService::ensureAffiliateProfile(
-                $user,
-                !empty($validated['upline_id']) ? (int) $validated['upline_id'] : null,
-                [
-                    'whatsapp' => $validated['phone'],
-                    'address' => $validated['address'] ?? null,
-                    'bank_name' => $validated['bank_name'] ?? null,
-                    'bank_account_number' => $validated['bank_account_number'] ?? null,
-                    'bank_account_holder' => $validated['bank_account_holder'] ?? $validated['name'],
-                ]
-            );
+            $uplineId = !empty($validated['upline_id']) ? (int) $validated['upline_id'] : null;
+            $customRef = !empty($validated['referral_code']) ? strtoupper(trim($validated['referral_code'])) : null;
+
+            AffiliateProfile::create([
+                'user_id' => $user->id,
+                'referral_code' => $customRef ?: AffiliateService::generateReferralCode($user->name),
+                'upline_id' => ($uplineId && $uplineId !== $user->id) ? $uplineId : null,
+                'whatsapp' => trim($validated['phone']),
+                'address' => $validated['address'] ?? null,
+                'bank_name' => $validated['bank_name'] ?? null,
+                'bank_account_number' => $validated['bank_account_number'] ?? null,
+                'bank_account_holder' => $validated['bank_account_holder'] ?? trim($validated['name']),
+                'balance' => 0,
+                'total_earned' => 0,
+                'total_withdrawn' => 0,
+                'status' => 'active',
+            ]);
         });
 
         return back()->with('success', "Agen Afiliasi {$validated['name']} berhasil didaftarkan secara manual!");

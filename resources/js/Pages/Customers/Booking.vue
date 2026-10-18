@@ -59,25 +59,25 @@
             v-model:selected="selectedIds"
         >
             <template #filters>
-                <div v-can="'customers_booking_filter_area'" class="flex items-center gap-2">
-                    <input type="date" v-model="filterDate" class="form-input w-36 text-sm" title="Tanggal Daftar" />
-                    <select v-model="filterArea" class="form-select w-36 text-sm">
+                <div v-can="'customers_booking_filter_area'" class="flex flex-wrap items-center gap-2.5 w-full">
+                    <input type="date" v-model="filterDate" class="form-input w-full sm:w-40 text-sm bg-white" title="Tanggal Daftar" />
+                    <select v-model="filterArea" class="form-select w-full sm:w-44 md:w-48 text-sm bg-white">
                         <option value="">Semua Area</option>
                         <option v-for="area in areas" :key="typeof area === 'object' && area !== null ? area.id : area" :value="typeof area === 'object' && area !== null ? area.name : area">
                             {{ typeof area === 'object' && area !== null ? area.name : area }}
                         </option>
                     </select>
-                    <select v-model="filterStatus" class="form-select w-36 text-sm">
+                    <select v-model="filterStatus" class="form-select w-full sm:w-44 md:w-48 text-sm bg-white">
                         <option value="">Semua Status</option>
                         <option value="booking">Baru (Booking)</option>
                         <option value="survey">Disurvey</option>
                         <option value="installing">Proses Pasang</option>
                         <option value="active">Aktif</option>
                     </select>
-                    <button @click="applyFilters" class="px-3 py-2 bg-blue-50 text-blue-600 font-medium rounded-lg hover:bg-blue-100 transition-colors text-sm border border-blue-200">
+                    <button @click="applyFilters" class="px-3.5 py-2 bg-blue-50 text-blue-600 font-medium rounded-lg hover:bg-blue-100 transition-colors text-sm border border-blue-200 whitespace-nowrap">
                         Tampilkan
                     </button>
-                    <button @click="resetFilters" class="px-3 py-2 bg-gray-50 text-gray-600 font-medium rounded-lg hover:bg-gray-100 transition-colors text-sm border border-gray-200">
+                    <button @click="resetFilters" class="px-3.5 py-2 bg-gray-50 text-gray-600 font-medium rounded-lg hover:bg-gray-100 transition-colors text-sm border border-gray-200 whitespace-nowrap">
                         Reset
                     </button>
                 </div>

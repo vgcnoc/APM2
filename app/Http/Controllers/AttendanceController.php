@@ -66,7 +66,11 @@ class AttendanceController extends Controller
                 ->where('date', $today)
                 ->first();
 
-            $shiftToday = $todaySchedule?->shift ?: $currentEmployee->shift;
+            if ($todaySchedule && ($todaySchedule->status === 'off' || empty($todaySchedule->shift_id))) {
+                $shiftToday = null;
+            } else {
+                $shiftToday = $todaySchedule?->shift ?: $currentEmployee->shift;
+            }
         }
 
         // 4. Ambil Data Absensi Hari Ini untuk Karyawan Aktif
