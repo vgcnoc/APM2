@@ -25,6 +25,9 @@ class SpecialAttendanceController extends Controller
     {
         $today = Carbon::today()->format('Y-m-d');
         $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && $user->role !== 'admin' && !$user->can('attendance_tab_special')) {
+            abort(403, 'Anda tidak memiliki hak akses ke halaman Absen Tim Khusus.');
+        }
 
         // 1. Ambil atau Buat Default Tim Khusus jika belum ada
         $teams = SpecialTeam::withCount('members')->where('is_active', true)->get();
@@ -85,18 +88,24 @@ class SpecialAttendanceController extends Controller
             $teams = SpecialTeam::withCount('members')->where('is_active', true)->get();
         }
 
+        // Scope Perizinan
+        $canViewAll = $user && ($user->hasRole('admin') || $user->can('attendances_view_all'));
+        $canViewArea = $user && $user->can('attendances_view_area');
+
         // 2. Karyawan Aktif (Login User / Switcher)
         $currentEmployee = null;
         if ($user) {
             $currentEmployee = Employee::with(['area'])->where('email', $user->email)->first();
         }
-        if ($request->filled('employee_id')) {
+        if (($canViewAll || $canViewArea) && $request->filled('employee_id')) {
             $selected = Employee::with(['area'])->find($request->employee_id);
             if ($selected) {
-                $currentEmployee = $selected;
+                if ($canViewAll || in_array($selected->area_id, $user->getAccessibleAreaIds())) {
+                    $currentEmployee = $selected;
+                }
             }
         }
-        if (!$currentEmployee) {
+        if (!$currentEmployee && ($canViewAll || $canViewArea)) {
             $currentEmployee = Employee::with(['area'])->first();
         }
 
@@ -124,11 +133,19 @@ class SpecialAttendanceController extends Controller
         }
 
         // 4. Semua Absensi Hari Ini untuk Tim Aktif (Kolom Kanan)
-        $todayAttendances = SpecialAttendance::with('employee')
+        $todayAttendancesQuery = SpecialAttendance::with('employee')
             ->where('special_team_id', $currentTeam->id)
-            ->where('date', $today)
-            ->orderBy('clock_in', 'desc')
-            ->get();
+            ->where('date', $today);
+
+        if (!$canViewAll && !$canViewArea) {
+            $todayAttendancesQuery->where('employee_id', $currentEmployee?->id ?? 0);
+        } elseif ($canViewArea) {
+            $accessibleAreaIds = $user->getAccessibleAreaIds();
+            $todayAttendancesQuery->whereHas('employee', function ($q) use ($accessibleAreaIds) {
+                $q->whereIn('area_id', $accessibleAreaIds);
+            });
+        }
+        $todayAttendances = $todayAttendancesQuery->orderBy('clock_in', 'desc')->get();
 
         // 5. Anggota Tim Aktif
         $teamMembers = SpecialTeamMember::with('employee')
@@ -138,6 +155,15 @@ class SpecialAttendanceController extends Controller
         // 6. Data Riwayat (Tab 2)
         $historyQuery = SpecialAttendance::with(['employee', 'team'])
             ->where('special_team_id', $currentTeam->id);
+
+        if (!$canViewAll && !$canViewArea) {
+            $historyQuery->where('employee_id', $currentEmployee?->id ?? 0);
+        } elseif ($canViewArea) {
+            $accessibleAreaIds = $user->getAccessibleAreaIds();
+            $historyQuery->whereHas('employee', function ($q) use ($accessibleAreaIds) {
+                $q->whereIn('area_id', $accessibleAreaIds);
+            });
+        }
 
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $historyQuery->whereBetween('date', [$request->start_date, $request->end_date]);
@@ -256,8 +282,15 @@ class SpecialAttendanceController extends Controller
             ];
         }
 
-        // Semua karyawan untuk modal Kelola Anggota
-        $allEmployees = Employee::orderBy('name')->get(['id', 'name', 'position', 'branch', 'email']);
+        // Daftar karyawan disesuaikan dengan scope hak akses
+        if (!$canViewAll && !$canViewArea) {
+            $allEmployees = $currentEmployee ? collect([$currentEmployee]) : collect();
+        } elseif ($canViewArea) {
+            $accessibleAreaIds = $user->getAccessibleAreaIds();
+            $allEmployees = Employee::whereIn('area_id', $accessibleAreaIds)->orderBy('name')->get(['id', 'name', 'position', 'branch', 'email']);
+        } else {
+            $allEmployees = Employee::orderBy('name')->get(['id', 'name', 'position', 'branch', 'email']);
+        }
 
         return Inertia::render('Attendances/Special', [
             'currentTeam' => $currentTeam,
@@ -403,6 +436,11 @@ class SpecialAttendanceController extends Controller
      */
     public function storeTeam(Request $request)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->can('attendances_special_create_group'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuat grup tim khusus baru.');
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'nullable|string|max:50',
@@ -456,6 +494,11 @@ class SpecialAttendanceController extends Controller
      */
     public function updateTeam(Request $request, SpecialTeam $team)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->can('attendances_special_manage'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengelola konfigurasi dan anggota tim khusus.');
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'nullable|string|max:50',
@@ -507,6 +550,11 @@ class SpecialAttendanceController extends Controller
      */
     public function destroyTeam(SpecialTeam $team)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->can('attendances_special_manage'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus grup tim khusus.');
+        }
+
         $name = $team->name;
         $team->delete();
         return redirect()->route('special-attendances.index')->with('success', "Grup '{$name}' berhasil dihapus.");
@@ -517,6 +565,11 @@ class SpecialAttendanceController extends Controller
      */
     public function adminStoreAttendance(Request $request)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->can('attendances_special_tab_admin') && !$user->can('attendances_special_manage'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah data absensi admin tim khusus.');
+        }
+
         $request->validate([
             'special_team_id' => 'required|exists:special_teams,id',
             'employee_id' => 'required|exists:employees,id',
@@ -551,6 +604,11 @@ class SpecialAttendanceController extends Controller
      */
     public function adminDeleteAttendance(SpecialAttendance $attendance)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->can('attendances_special_tab_admin') && !$user->can('attendances_special_manage'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus data absensi admin tim khusus.');
+        }
+
         $attendance->delete();
         return back()->with('success', 'Catatan absensi berhasil dihapus.');
     }
@@ -560,6 +618,11 @@ class SpecialAttendanceController extends Controller
      */
     public function syncToPayroll(Request $request)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->can('attendances_sync_payroll'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menyinkronkan data tim khusus ke modul Payroll.');
+        }
+
         $request->validate([
             'special_team_id' => 'required|exists:special_teams,id',
             'month' => 'required|date_format:Y-m',

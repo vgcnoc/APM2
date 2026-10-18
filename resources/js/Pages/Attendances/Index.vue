@@ -48,6 +48,7 @@
             <!-- 2. MODERN TAB NAVIGATOR -->
             <div class="flex items-center gap-2 border-b border-slate-200/80 pb-3 overflow-x-auto">
                 <button
+                    v-if="can('attendance_tab_reguler')"
                     type="button"
                     @click="activeTab = 'self'"
                     :class="[
@@ -61,6 +62,7 @@
                     <span>Presensi Saya</span>
                 </button>
                 <button
+                    v-if="can('attendances_tab_monitoring')"
                     type="button"
                     @click="activeTab = 'monitoring'"
                     :class="[
@@ -77,6 +79,7 @@
                     </span>
                 </button>
                 <button
+                    v-if="can('attendances_tab_recap')"
                     type="button"
                     @click="activeTab = 'recap'"
                     :class="[
@@ -90,6 +93,7 @@
                     <span>Rekap & Sinkronisasi Gaji</span>
                 </button>
                 <button
+                    v-if="can('attendances_tab_geofence')"
                     type="button"
                     @click="activeTab = 'settings'"
                     :class="[
@@ -104,6 +108,7 @@
                 </button>
 
                 <Link
+                    v-if="can('attendances_btn_rules_link')"
                     href="/settings/attendance"
                     class="bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200/80 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ml-auto"
                 >
@@ -787,6 +792,7 @@
                             />
 
                             <button
+                                v-if="can('attendances_sync_payroll')"
                                 type="button"
                                 @click="openSyncPayrollModal = true"
                                 class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm shadow-emerald-500/20"
@@ -896,6 +902,7 @@
                             </div>
 
                             <button
+                                v-if="can('attendances_geofence_edit')"
                                 type="button"
                                 @click="openEditArea(area)"
                                 class="w-full py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition shadow-2xs"
@@ -1061,6 +1068,9 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { usePermission } from '@/Composables/usePermission';
+
+const { can, hasRole } = usePermission();
 
 const props = defineProps({
     todayDateStr: String,
@@ -1080,7 +1090,16 @@ const props = defineProps({
     filters: Object,
 });
 
-const activeTab = ref(props.filters?.tab || 'self');
+const getDefaultTab = () => {
+    if (props.filters?.tab) return props.filters.tab;
+    if (can('attendance_tab_reguler')) return 'self';
+    if (can('attendances_tab_monitoring')) return 'monitoring';
+    if (can('attendances_tab_recap')) return 'recap';
+    if (can('attendances_tab_geofence')) return 'settings';
+    return 'self';
+};
+
+const activeTab = ref(getDefaultTab());
 const mediaView = ref('camera');
 const viewPhotoModal = ref(null);
 const openSyncPayrollModal = ref(false);

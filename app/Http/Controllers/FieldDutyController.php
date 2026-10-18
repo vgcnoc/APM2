@@ -22,7 +22,25 @@ class FieldDutyController extends Controller
      */
     public function index(Request $request)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && $user->role !== 'admin' && !$user->can('attendance_tab_field')) {
+            abort(403, 'Anda tidak memiliki hak akses ke halaman Absen Tugas Luar.');
+        }
         $query = FieldDuty::with('employee');
+
+        // Scope perizinan: Lihat Semua vs Area vs Diri Sendiri
+        $canViewAll = $user && ($user->hasRole('admin') || $user->can('attendances_view_all'));
+        $canViewArea = $user && $user->can('attendances_view_area');
+
+        if (!$canViewAll && !$canViewArea) {
+            $currentEmp = $user ? Employee::where('email', $user->email)->first() : null;
+            $query->where('employee_id', $currentEmp?->id ?? 0);
+        } elseif ($canViewArea) {
+            $accessibleAreaIds = $user->getAccessibleAreaIds();
+            $query->whereHas('employee', function ($q) use ($accessibleAreaIds) {
+                $q->whereIn('area_id', $accessibleAreaIds);
+            });
+        }
 
         // Filter Tab: 'active' (Tugas Aktif) vs 'history' (Semua Riwayat)
         $tab = $request->input('tab', 'active');
@@ -66,8 +84,8 @@ class FieldDutyController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $activeCount = FieldDuty::where('status', 'active')->count();
-        $historyCount = FieldDuty::count();
+        $activeCount = (clone $query)->where('status', 'active')->count();
+        $historyCount = $query->count();
 
         // Konfigurasi Pengaturan Sistem
         $settings = [
@@ -78,8 +96,16 @@ class FieldDutyController extends Controller
             'duty_auto_approval' => Setting::get('duty_auto_approval', '1') === '1',
         ];
 
-        // Daftar Seluruh Karyawan untuk Modal Buat Tugas
-        $allEmployees = Employee::orderBy('name')->get(['id', 'name', 'position', 'branch', 'email']);
+        // Daftar Karyawan untuk Modal Buat Tugas (disesuaikan dengan scope perizinan)
+        if (!$canViewAll && !$canViewArea) {
+            $currentEmp = $user ? Employee::where('email', $user->email)->first() : null;
+            $allEmployees = $currentEmp ? collect([$currentEmp]) : collect();
+        } elseif ($canViewArea) {
+            $accessibleAreaIds = $user->getAccessibleAreaIds();
+            $allEmployees = Employee::whereIn('area_id', $accessibleAreaIds)->orderBy('name')->get(['id', 'name', 'position', 'branch', 'email']);
+        } else {
+            $allEmployees = Employee::orderBy('name')->get(['id', 'name', 'position', 'branch', 'email']);
+        }
 
         return Inertia::render('Attendances/FieldDuty', [
             'duties' => $duties,
@@ -96,6 +122,10 @@ class FieldDutyController extends Controller
      */
     public function store(Request $request)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->can('attendances_field_create'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuat penugasan luar.');
+        }
         $request->validate([
             'employee_id' => 'required|exists:employees,id',
             'date' => 'required|date',
@@ -316,6 +346,11 @@ class FieldDutyController extends Controller
      */
     public function updateSettings(Request $request)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->can('attendances_field_settings'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah pengaturan absen tugas luar.');
+        }
+
         $request->validate([
             'duty_replace_regular_in' => 'nullable|boolean',
             'duty_replace_regular_out' => 'nullable|boolean',
@@ -338,6 +373,11 @@ class FieldDutyController extends Controller
      */
     public function destroy(FieldDuty $fieldDuty)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->can('attendances_field_delete'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus data tugas luar.');
+        }
+
         $fieldDuty->delete();
         return back()->with('success', 'Data tugas luar berhasil dihapus.');
     }
@@ -347,6 +387,11 @@ class FieldDutyController extends Controller
      */
     public function bulkDestroy(Request $request)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->can('attendances_field_delete'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus data tugas luar.');
+        }
+
         $request->validate([
             'ids' => 'required|array',
             'ids.*' => 'exists:field_duties,id',
@@ -361,6 +406,11 @@ class FieldDutyController extends Controller
      */
     public function import(Request $request)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->can('attendances_field_import'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengimpor data tugas luar.');
+        }
+
         $request->validate([
             'file' => 'required|file|mimes:csv,txt|max:5120',
         ]);

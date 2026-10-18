@@ -20,6 +20,11 @@ class BestAttendanceController extends Controller
 {
     public function index(Request $request)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && $user->role !== 'admin' && !$user->can('attendance_tab_best')) {
+            abort(403, 'Anda tidak memiliki hak akses ke halaman Papan Peringkat Absensi Terbaik.');
+        }
+
         $month = (int) $request->input('month', Carbon::now()->month);
         $year = (int) $request->input('year', Carbon::now()->year);
         $department = $request->input('department', 'all'); // 'all', 'maintenance', or specific position
@@ -438,6 +443,11 @@ class BestAttendanceController extends Controller
      */
     public function syncPayroll(Request $request)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->can('attendance_best_btn_sync'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menyinkronkan reward juara ke payroll.');
+        }
+
         $month = (int) $request->input('month', Carbon::now()->month);
         $year = (int) $request->input('year', Carbon::now()->year);
         $winners = $request->input('winners', []);

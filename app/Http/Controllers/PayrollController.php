@@ -119,7 +119,10 @@ class PayrollController extends Controller
             'enrolled_tk_count' => 0,
         ];
 
-        $users = User::where('is_active', true)
+        $authUser = auth()->user();
+        $isSuperAdmin = $authUser && ($authUser->is_admin || $authUser->hasRole('admin'));
+
+        $usersQuery = User::where('is_active', true)
             ->with([
                 'incentives' => function($q) use ($month, $year) {
                     $q->whereMonth('incentive_date', $month)->whereYear('incentive_date', $year);
@@ -130,8 +133,17 @@ class PayrollController extends Controller
                 'payrolls' => function($q) use ($month, $year) {
                     $q->where('month', $month)->where('year', $year);
                 }
-            ])
-            ->get()
+            ]);
+
+        if (!$isSuperAdmin && !$authUser->can('payroll_view_all')) {
+            if ($authUser->can('payroll_view_area') && $authUser->area_id) {
+                $usersQuery->where('area_id', $authUser->area_id);
+            } else {
+                $usersQuery->where('id', $authUser->id);
+            }
+        }
+
+        $users = $usersQuery->get()
             ->map(function ($user) use (&$recapBpjs) {
                 $pendingIncentives = $user->incentives->where('status', 'pending');
                 $totalAuto = (float) $pendingIncentives->where('type', 'auto')->sum('amount');
@@ -256,6 +268,11 @@ class PayrollController extends Controller
      */
     public function updateSettings(Request $request)
     {
+        $authUser = auth()->user();
+        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_btn_settings_bpjs')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah pengaturan payroll & BPJS.');
+        }
+
         $request->validate([
             'disbursement_date' => 'nullable|integer|min:1|max:31',
             'bpjs_kesehatan_employee_pct' => 'nullable|numeric|min:0|max:100',
@@ -318,6 +335,11 @@ class PayrollController extends Controller
      */
     public function updateBpjsBank(Request $request, User $user)
     {
+        $authUser = auth()->user();
+        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_btn_settings_bpjs') && !$authUser->can('payroll_manage')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah data BPJS & Bank.');
+        }
+
         $validated = $request->validate([
             'bpjs_kesehatan' => 'nullable|boolean',
             'bpjs_kesehatan_no' => 'nullable|string|max:50',
@@ -346,6 +368,11 @@ class PayrollController extends Controller
      */
     public function storeIncentive(Request $request, User $user)
     {
+        $authUser = auth()->user();
+        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_incentives')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menambah insentif.');
+        }
+
         $date = $request->input('incentive_date', $request->input('date', now()->toDateString()));
         $request->merge(['incentive_date' => $date]);
 
@@ -372,6 +399,11 @@ class PayrollController extends Controller
      */
     public function destroyIncentive(Incentive $incentive)
     {
+        $authUser = auth()->user();
+        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_incentives')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus insentif.');
+        }
+
         if ($incentive->status === 'paid') {
             return back()->with('error', 'Tidak bisa menghapus insentif yang sudah dicairkan.');
         }
@@ -384,6 +416,11 @@ class PayrollController extends Controller
      */
     public function storeDeduction(Request $request, User $user)
     {
+        $authUser = auth()->user();
+        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_incentives')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menambah potongan.');
+        }
+
         $date = $request->input('deduction_date', $request->input('date', now()->toDateString()));
         $request->merge(['deduction_date' => $date]);
 
@@ -410,6 +447,11 @@ class PayrollController extends Controller
      */
     public function destroyDeduction(\App\Models\Deduction $deduction)
     {
+        $authUser = auth()->user();
+        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_incentives')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus potongan.');
+        }
+
         if ($deduction->status === 'applied') {
             return back()->with('error', 'Tidak bisa menghapus potongan yang sudah dicairkan.');
         }
@@ -422,6 +464,11 @@ class PayrollController extends Controller
      */
     public function disburse(Request $request, User $user)
     {
+        $authUser = auth()->user();
+        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_disburse')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mencairkan gaji.');
+        }
+
         $month = (int) $request->get('month', now()->month);
         $year = (int) $request->get('year', now()->year);
 
@@ -578,10 +625,22 @@ class PayrollController extends Controller
      */
     public function disburseAll(Request $request)
     {
+        $authUser = auth()->user();
+        $isSuperAdmin = $authUser && ($authUser->is_admin || $authUser->hasRole('admin'));
+        if (!$isSuperAdmin && !$authUser->can('payroll_disburse')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mencairkan gaji massal.');
+        }
+
         $month = (int) $request->get('month', now()->month);
         $year = (int) $request->get('year', now()->year);
 
-        $users = User::where('is_active', true)->get();
+        $usersQuery = User::where('is_active', true);
+        if (!$isSuperAdmin && !$authUser->can('payroll_view_all')) {
+            if ($authUser->can('payroll_view_area') && $authUser->area_id) {
+                $usersQuery->where('area_id', $authUser->area_id);
+            }
+        }
+        $users = $usersQuery->get();
         $disbursedCount = 0;
         $totalNetDisbursed = 0;
 

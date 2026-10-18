@@ -18,6 +18,7 @@
                 <!-- RIGHT ACTION BUTTONS: + BUAT TUGAS & PENGATURAN -->
                 <div class="flex items-center gap-2.5">
                     <button
+                        v-if="can('attendances_field_create')"
                         type="button"
                         @click="openCreateDutyModal"
                         class="px-4 py-2 bg-[#1e3a8a] hover:bg-[#172554] text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5 active:scale-95"
@@ -27,6 +28,7 @@
                     </button>
 
                     <button
+                        v-if="can('attendances_field_settings')"
                         type="button"
                         @click="openSettingsModal"
                         class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition shadow-2xs flex items-center gap-1.5 active:scale-95"
@@ -156,6 +158,7 @@
 
                     <!-- Export, Import, Print -->
                     <button
+                        v-if="can('attendances_field_export')"
                         type="button"
                         @click="exportCsv"
                         class="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
@@ -165,6 +168,7 @@
                     </button>
 
                     <button
+                        v-if="can('attendances_field_import')"
                         type="button"
                         @click="openImportModal"
                         class="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
@@ -174,6 +178,7 @@
                     </button>
 
                     <button
+                        v-if="can('attendances_field_export')"
                         type="button"
                         @click="windowPrint"
                         class="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
@@ -382,6 +387,7 @@
 
                                         <!-- Delete Icon Merah Sesuai Screenshot -->
                                         <button
+                                            v-if="can('attendances_field_delete')"
                                             type="button"
                                             @click="deleteDuty(item)"
                                             class="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
@@ -443,6 +449,7 @@
                         <span>{{ selectedIds.length }} tugas luar terpilih</span>
                     </span>
                     <button
+                        v-if="can('attendances_field_delete')"
                         type="button"
                         @click="bulkDeleteDuties"
                         class="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition flex items-center gap-1 shadow-sm"
@@ -1002,6 +1009,9 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
+import { usePermission } from '@/Composables/usePermission';
+
+const { can, hasRole } = usePermission();
 
 const props = defineProps({
     duties: Object,

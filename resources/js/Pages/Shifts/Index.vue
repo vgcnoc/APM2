@@ -80,6 +80,7 @@
                 </div>
 
                 <button 
+                    v-if="can('shifts_manage')"
                     @click="openCreateModal" 
                     class="bg-[#1e40af] hover:bg-[#1e3a8a] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-blue-900/20 hover:shadow-lg transition-all flex items-center justify-center gap-2 shrink-0 active:scale-95"
                 >
@@ -179,13 +180,15 @@
                     <!-- Tombol Aksi -->
                     <div class="mt-5 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
                         <button 
+                            v-if="can('shifts_manage')"
                             @click="openAssignModal(shift)" 
                             class="text-xs font-bold text-blue-700 hover:text-blue-900 hover:underline flex items-center gap-1"
                         >
                             <span>Tugaskan Karyawan</span> &rarr;
                         </button>
+                        <div v-else></div>
 
-                        <div class="flex items-center gap-1">
+                        <div v-if="can('shifts_manage')" class="flex items-center gap-1">
                             <button 
                                 @click="openEditModal(shift)" 
                                 title="Edit Shift" 
@@ -442,6 +445,9 @@
 import { ref, computed } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { usePermission } from '@/Composables/usePermission';
+
+const { can, hasRole } = usePermission();
 
 const props = defineProps({
     shifts: Object,

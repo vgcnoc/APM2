@@ -44,6 +44,7 @@
                 <!-- Tombol Pengaturan BPJS & Batch Disburse -->
                 <div class="flex items-center gap-2 w-full lg:w-auto justify-end flex-wrap">
                     <a
+                        v-if="can('payroll_btn_auto_transfer')"
                         :href="route('settings.payroll')"
                         class="px-3.5 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 border shadow-2xs"
                         :class="activeProvider === 'flip' && flipConfig?.enabled 
@@ -69,6 +70,7 @@
                     </a>
 
                     <button
+                        v-if="can('payroll_btn_settings_bpjs')"
                         type="button"
                         @click="showSettingsModal = true"
                         class="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-2xs"
@@ -78,7 +80,7 @@
                     </button>
 
                     <button
-                        v-if="totalPendingCount > 0"
+                        v-if="can('payroll_disburse') && totalPendingCount > 0"
                         type="button"
                         @click="disburseAll"
                         class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-1.5"
@@ -304,6 +306,7 @@
                                     <div class="flex items-center justify-end gap-1.5">
                                         <!-- Tombol Lihat Slip Gaji -->
                                         <button
+                                            v-if="can('payroll_btn_print_slip')"
                                             type="button"
                                             @click="openSlipModal(user)"
                                             class="px-2.5 py-1 text-slate-700 hover:text-indigo-700 bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-lg text-xs font-bold transition-colors shadow-2xs"
@@ -314,6 +317,7 @@
 
                                         <!-- Tombol Edit BPJS & Rekening -->
                                         <button
+                                            v-if="can('payroll_btn_settings_bpjs') || can('payroll_manage')"
                                             type="button"
                                             @click="openBpjsBankModal(user)"
                                             class="px-2.5 py-1 text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-xs font-bold transition-colors shadow-2xs"
@@ -325,6 +329,7 @@
                                         <!-- Tombol Bonus & Potongan -->
                                         <template v-if="!user.is_paid">
                                             <button 
+                                                v-if="can('payroll_incentives')"
                                                 type="button"
                                                 @click="openManualModal(user, 'incentive')" 
                                                 class="px-2 py-1 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-bold transition-colors shadow-2xs"
@@ -333,6 +338,7 @@
                                                 +Bonus
                                             </button>
                                             <button 
+                                                v-if="can('payroll_incentives')"
                                                 type="button"
                                                 @click="openManualModal(user, 'deduction')" 
                                                 class="px-2 py-1 text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold transition-colors shadow-2xs"
@@ -341,6 +347,7 @@
                                                 -Kasbon
                                             </button>
                                             <button 
+                                                v-if="can('payroll_disburse')"
                                                 type="button"
                                                 @click="disburse(user)" 
                                                 class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-all active:scale-95"
@@ -466,7 +473,12 @@
                         <button type="button" @click="showSlipModal = false" class="px-4 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-100">
                             Tutup
                         </button>
-                        <button type="button" @click="printSlip" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5">
+                        <button
+                            v-if="can('payroll_btn_print_slip')"
+                            type="button"
+                            @click="printSlip"
+                            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                        >
                             <span>🖨️</span>
                             <span>Cetak Slip</span>
                         </button>
@@ -677,6 +689,9 @@ import { ref, computed } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
+import { usePermission } from '@/Composables/usePermission';
+
+const { can, hasRole } = usePermission();
 
 const props = defineProps({
     month: Number,

@@ -45,6 +45,7 @@
                     </div>
 
                     <button
+                        v-if="can('attendances_special_manage')"
                         type="button"
                         @click="openKelolaModal"
                         class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition shadow-2xs flex items-center gap-1.5 active:scale-95"
@@ -54,6 +55,7 @@
                     </button>
 
                     <button
+                        v-if="can('attendances_special_create_group')"
                         type="button"
                         @click="openCreateGroupModal"
                         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm shadow-blue-500/25 flex items-center gap-1.5 active:scale-95"
@@ -95,6 +97,7 @@
                 </button>
 
                 <button
+                    v-if="can('attendances_special_tab_admin')"
                     type="button"
                     @click="activeTab = 'admin'"
                     :class="[
@@ -511,6 +514,7 @@
                                 class="text-xs rounded-xl border-slate-200 font-bold text-slate-700 py-1.5 px-3"
                             />
                             <button
+                                v-if="can('attendances_special_manage')"
                                 type="button"
                                 @click="openAdminManualModal"
                                 class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-2xs"
@@ -571,6 +575,7 @@
                             </p>
                         </div>
                         <button
+                            v-if="can('attendances_sync_payroll')"
                             type="button"
                             @click="triggerSyncPayroll"
                             class="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-xl transition shadow-md flex items-center gap-2 self-start active:scale-95"
@@ -1275,6 +1280,9 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
+import { usePermission } from '@/Composables/usePermission';
+
+const { can, hasRole } = usePermission();
 
 const props = defineProps({
     currentTeam: Object,

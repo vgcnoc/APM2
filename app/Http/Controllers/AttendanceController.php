@@ -26,6 +26,20 @@ class AttendanceController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && $user->role !== 'admin') {
+            if (!$user->can('attendance_tab_reguler')) {
+                if ($user->can('attendance_tab_field')) {
+                    return redirect()->route('field-duties.index');
+                }
+                if ($user->can('attendance_tab_special')) {
+                    return redirect()->route('special-attendances.index');
+                }
+                if ($user->can('attendance_tab_best')) {
+                    return redirect()->route('best-attendances.index');
+                }
+                abort(403, 'Anda tidak memiliki hak akses ke halaman absensi reguler.');
+            }
+        }
         $today = Carbon::today()->format('Y-m-d');
         $now = Carbon::now();
 
@@ -484,6 +498,11 @@ class AttendanceController extends Controller
      */
     public function syncToPayroll(Request $request)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->can('attendances_sync_payroll'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menyinkronkan data absensi ke payroll.');
+        }
+
         $request->validate([
             'month' => 'required|string', // Format: YYYY-MM
             'penalty_per_minute' => 'nullable|numeric|min:0', // misal Rp 1.000 / menit
@@ -726,6 +745,11 @@ class AttendanceController extends Controller
      */
     public function updateAreaLocation(Request $request)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->can('attendances_geofence_edit'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah titik koordinat & radius geofence.');
+        }
+
         $request->validate([
             'area_id' => 'required|exists:areas,id',
             'latitude' => 'required|numeric',
