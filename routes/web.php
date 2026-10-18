@@ -549,6 +549,9 @@ Route::middleware(['auth'])->group(function () {
         
         // Master Insentif & Potongan
         Route::resource('settings/payroll-categories', \App\Http\Controllers\PayrollCategoryController::class);
+        Route::post('settings/payroll-categories/{payroll_category}/update', [\App\Http\Controllers\PayrollCategoryController::class, 'update'])->name('payroll-categories.update.post');
+        Route::post('settings/payroll-categories/{payroll_category}/delete', [\App\Http\Controllers\PayrollCategoryController::class, 'destroy'])->name('payroll-categories.destroy.post');
+        Route::post('settings/payroll-categories/{payroll_category}/toggle', [\App\Http\Controllers\PayrollCategoryController::class, 'toggleActive'])->name('payroll-categories.toggle');
         Route::get('api/payroll-categories/active', [\App\Http\Controllers\PayrollCategoryController::class, 'getActiveCategories'])->name('payroll-categories.active');
 
         // Master Fee
