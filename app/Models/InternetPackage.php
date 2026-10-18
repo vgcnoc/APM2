@@ -44,6 +44,11 @@ class InternetPackage extends Model
         return 'Rp ' . number_format($this->price, 0, ',', '.');
     }
 
+    public function getSpeedAttribute(): ?string
+    {
+        return $this->speed_mbps ? $this->speed_mbps . ' Mbps' : null;
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

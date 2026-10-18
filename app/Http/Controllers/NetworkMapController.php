@@ -18,32 +18,53 @@ class NetworkMapController extends Controller
      */
     public function index(Request $request)
     {
+        $user = $request->user() ?: auth()->user();
+
         // 1. Data ODC
-        $odcs = Odc::select('id', 'name', 'latitude', 'longitude', 'location as address', 'capacity', 'status', 'area_id')
+        $odcQuery = Odc::select('id', 'name', 'latitude', 'longitude', 'location as address', 'capacity', 'status', 'area_id')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->with(['area:id,name'])
-            ->withCount('odps')
-            ->get()
-            ->filter(fn($item) => (float)$item->latitude != 0 && (float)$item->longitude != 0)
-            ->values();
+            ->withCount('odps');
 
         // 2. Data ODP
-        $odps = Odp::select('id', 'name', 'latitude', 'longitude', 'address', 'odc_id', 'area_id', 'total_ports', 'used_ports', 'status')
+        $odpQuery = Odp::select('id', 'name', 'latitude', 'longitude', 'address', 'odc_id', 'area_id', 'total_ports', 'used_ports', 'status')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->with(['odc:id,name', 'area:id,name'])
-            ->withCount('onts as customer_count')
-            ->get()
+            ->withCount('onts as customer_count');
+
+        // 3. Data Pelanggan
+        $customerQuery = Customer::select('id', 'name', 'customer_code', 'phone', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id', 'package_id')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->with(['package:id,name,speed_mbps', 'areaModel:id,name', 'ont.odp:id,name,odc_id']);
+
+        // 4. Data Area / Wilayah
+        $areaQuery = Area::select('id', 'name', 'description', 'address', 'latitude', 'longitude', 'radius_meters')
+            ->orderBy('name');
+
+        if ($user && !$user->hasRole('admin') && !$user->hasRole('super admin') && $user->role !== 'admin' && $user->role !== 'super admin') {
+            \App\Services\DataScopeService::applyCustomerScope($customerQuery, $user);
+
+            $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'network_map');
+            if ($scopeLevel === 'area') {
+                $accessibleAreas = $user->getAccessibleAreaIds();
+                $odcQuery->whereIn('area_id', $accessibleAreas);
+                $odpQuery->whereIn('area_id', $accessibleAreas);
+                $areaQuery->whereIn('id', $accessibleAreas);
+            }
+        }
+
+        $odcs = $odcQuery->get()
             ->filter(fn($item) => (float)$item->latitude != 0 && (float)$item->longitude != 0)
             ->values();
 
-        // 3. Data Pelanggan
-        $customers = Customer::select('id', 'name', 'customer_code', 'phone', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id', 'package_id')
-            ->whereNotNull('latitude')
-            ->whereNotNull('longitude')
-            ->with(['package:id,name,speed', 'areaModel:id,name', 'ont.odp:id,name,odc_id'])
-            ->get()
+        $odps = $odpQuery->get()
+            ->filter(fn($item) => (float)$item->latitude != 0 && (float)$item->longitude != 0)
+            ->values();
+
+        $customers = $customerQuery->get()
             ->filter(fn($item) => (float)$item->latitude != 0 && (float)$item->longitude != 0)
             ->map(function ($customer) {
                 return [
@@ -60,7 +81,7 @@ class NetworkMapController extends Controller
                     'area_id' => $customer->area_id,
                     'area_name' => $customer->areaModel?->name ?? ($customer->area ?: 'Umum'),
                     'package_name' => $customer->package?->name,
-                    'package_speed' => $customer->package?->speed,
+                    'package_speed' => $customer->package?->speed_mbps ? $customer->package->speed_mbps . ' Mbps' : null,
                     'odp_id' => $customer->ont?->odp?->id,
                     'odp_name' => $customer->ont?->odp?->name,
                     'odc_id' => $customer->ont?->odp?->odc_id,
@@ -68,10 +89,7 @@ class NetworkMapController extends Controller
             })
             ->values();
 
-        // 4. Data Area / Wilayah
-        $rawAreas = Area::select('id', 'name', 'description', 'address', 'latitude', 'longitude', 'radius_meters')
-            ->orderBy('name')
-            ->get();
+        $rawAreas = $areaQuery->get();
 
         $areas = $rawAreas->map(function ($area) use ($odps, $customers) {
             $lat = (float)($area->latitude ?: 0);
