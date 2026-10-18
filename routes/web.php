@@ -581,6 +581,8 @@ Route::middleware(['auth'])->group(function () {
 
         // Master Kategori Pengeluaran
         Route::resource('settings/expense-categories', \App\Http\Controllers\ExpenseCategoryController::class);
+        Route::post('settings/expense-categories/{expenseCategory}/update', [\App\Http\Controllers\ExpenseCategoryController::class, 'update'])->name('expense-categories.update.post');
+        Route::post('settings/expense-categories/{expenseCategory}/delete', [\App\Http\Controllers\ExpenseCategoryController::class, 'destroy'])->name('expense-categories.destroy.post');
         Route::post('settings/expense-categories/{expenseCategory}/toggle', [\App\Http\Controllers\ExpenseCategoryController::class, 'toggleStatus'])->name('expense-categories.toggle');
         Route::get('api/expense-categories/active', [\App\Http\Controllers\ExpenseCategoryController::class, 'getActiveCategories'])->name('expense-categories.active');
     });

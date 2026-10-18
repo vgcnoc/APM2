@@ -15,7 +15,7 @@ class ExpenseCategoryController extends Controller
             $this->seedDefaults();
         }
 
-        $search = $request->query('search');
+        $search = trim($request->query('search', ''));
 
         $categories = ExpenseCategory::query()
             ->withCount('expenses')
@@ -34,13 +34,13 @@ class ExpenseCategoryController extends Controller
         $stats = [
             'total_categories' => ExpenseCategory::count(),
             'active_categories' => ExpenseCategory::where('is_active', true)->count(),
-            'total_expense_amount' => \App\Models\Expense::sum('amount'),
+            'total_expense_amount' => (float) \App\Models\Expense::sum('amount'),
         ];
 
         return Inertia::render('Settings/ExpenseCategories', [
             'categories' => $categories,
             'stats' => $stats,
-            'filters' => $request->only(['search']),
+            'filters' => ['search' => $search],
         ]);
     }
 
@@ -51,60 +51,69 @@ class ExpenseCategoryController extends Controller
             'code' => 'nullable|string|max:50',
             'description' => 'nullable|string',
             'color' => 'nullable|string|max:30',
-            'is_active' => 'boolean',
+            'is_active' => 'nullable|boolean',
         ]);
 
-        ExpenseCategory::create([
+        $created = ExpenseCategory::create([
             'name' => $validated['name'],
-            'code' => $validated['code'] ?? null,
+            'code' => !empty($validated['code']) ? strtoupper(trim($validated['code'])) : null,
             'description' => $validated['description'] ?? null,
             'color' => $validated['color'] ?? 'rose',
             'is_active' => $request->boolean('is_active', true),
         ]);
 
-        return back()->with('success', 'Kategori pengeluaran berhasil ditambahkan.');
+        return back()->with('success', "Kategori pengeluaran '{$created->name}' berhasil ditambahkan.");
     }
 
-    public function update(Request $request, ExpenseCategory $expenseCategory)
+    public function update(Request $request, $id)
     {
+        $expenseCategory = ExpenseCategory::findOrFail($id);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'nullable|string|max:50',
             'description' => 'nullable|string',
             'color' => 'nullable|string|max:30',
-            'is_active' => 'boolean',
+            'is_active' => 'nullable|boolean',
         ]);
 
         $expenseCategory->update([
             'name' => $validated['name'],
-            'code' => $validated['code'] ?? null,
+            'code' => !empty($validated['code']) ? strtoupper(trim($validated['code'])) : null,
             'description' => $validated['description'] ?? null,
             'color' => $validated['color'] ?? $expenseCategory->color,
-            'is_active' => $request->boolean('is_active', $expenseCategory->is_active),
+            'is_active' => $request->has('is_active') ? $request->boolean('is_active') : $expenseCategory->is_active,
         ]);
 
-        return back()->with('success', 'Kategori pengeluaran berhasil diperbarui.');
+        return back()->with('success', "Kategori pengeluaran '{$expenseCategory->name}' berhasil diperbarui.");
     }
 
-    public function destroy(ExpenseCategory $expenseCategory)
+    public function destroy($id)
     {
-        if ($expenseCategory->expenses()->count() > 0) {
+        $expenseCategory = ExpenseCategory::findOrFail($id);
+        $name = $expenseCategory->name;
+        $expensesCount = $expenseCategory->expenses()->count();
+
+        if ($expensesCount > 0) {
             // Unlink expenses agar tidak hilang riwayat keuangannya
             $expenseCategory->expenses()->update(['expense_category_id' => null]);
         }
 
         $expenseCategory->delete();
 
-        return back()->with('success', 'Kategori pengeluaran berhasil dihapus.');
+        $info = $expensesCount > 0 ? " ({$expensesCount} transaksi terkait kini tidak berkategori)" : "";
+        return back()->with('success', "Kategori pengeluaran '{$name}' berhasil dihapus{$info}.");
     }
 
-    public function toggleStatus(ExpenseCategory $expenseCategory)
+    public function toggleStatus($id)
     {
+        $expenseCategory = ExpenseCategory::findOrFail($id);
         $expenseCategory->update([
             'is_active' => !$expenseCategory->is_active,
         ]);
 
-        return back()->with('success', 'Status kategori berhasil diubah.');
+        $statusStr = $expenseCategory->is_active ? 'diaktifkan' : 'dinonaktifkan';
+        return back()->with('success', "Kategori '{$expenseCategory->name}' berhasil {$statusStr}.");
     }
 
     public function getActiveCategories()
