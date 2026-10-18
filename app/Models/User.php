@@ -133,6 +133,29 @@ class User extends Authenticatable
         return $areas;
     }
 
+    /**
+     * Dapatkan level scope data pengguna: 'all' | 'area' | 'own'
+     */
+    public function getDataScope(string $module = 'customers_all'): string
+    {
+        return \App\Services\DataScopeService::getScopeLevel($this, $module);
+    }
+
+    public function isOwnDataOnly(string $module = 'customers_all'): bool
+    {
+        return $this->getDataScope($module) === 'own';
+    }
+
+    public function isAreaScoped(string $module = 'customers_all'): bool
+    {
+        return $this->getDataScope($module) === 'area';
+    }
+
+    public function isAllAreaScoped(string $module = 'customers_all'): bool
+    {
+        return $this->getDataScope($module) === 'all';
+    }
+
     public function technicianSchedules(): HasMany
     {
         return $this->hasMany(TechnicianSchedule::class, 'technician_id');

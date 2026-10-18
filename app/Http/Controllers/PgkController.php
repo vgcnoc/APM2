@@ -12,6 +12,7 @@ use App\Models\Material;
 use App\Models\MaterialTransaction;
 use App\Models\MaterialTransactionItem;
 use App\Models\AuditLog;
+use App\Services\DataScopeService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -44,6 +45,9 @@ class PgkController extends Controller
             'materials.material',
             'resolvedByUser'
         ]);
+
+        // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
+        DataScopeService::applyPgkScope($query);
 
         // Filter pencarian
         if ($request->filled('search')) {

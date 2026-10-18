@@ -311,6 +311,14 @@ class PermissionRegistry
                     ['name' => 'pgk_manage', 'type' => 'button', 'label' => 'Tombol Kelola & Selesaikan PGK'],
                     ['name' => 'pgj_manage', 'type' => 'button', 'label' => 'Tombol Kelola & Restorasi Jalur PGJ'],
                     ['name' => 'pgs_manage', 'type' => 'button', 'label' => 'Tombol Tindakan Cepat & Lapor PGS'],
+                    
+                    // Scope
+                    ['name' => 'pgk_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Tiket Komplain (All Area)'],
+                    ['name' => 'pgk_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Komplain Sesuai Area User'],
+                    ['name' => 'pgs_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Tiket PGS (All Area)'],
+                    ['name' => 'pgs_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Tiket PGS Sesuai Area User'],
+                    ['name' => 'pgj_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Gangguan Jalur (All Area)'],
+                    ['name' => 'pgj_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Gangguan Jalur Sesuai Area User'],
                 ],
             ],
 

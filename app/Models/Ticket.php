@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Ticket extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\HasDataScope;
 
     protected $fillable = [
         'ticket_number', 'customer_id', 'category', 'priority',

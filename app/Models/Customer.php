@@ -33,7 +33,7 @@ use App\Services\RadiusService;
 
 class Customer extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\HasDataScope;
 
     protected $fillable = [
         'customer_code',

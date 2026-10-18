@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Ticket;
 use App\Models\Customer;
 use App\Models\User;
+use App\Services\DataScopeService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -14,15 +15,7 @@ class TicketController extends Controller
     {
         $query = Ticket::with(['customer', 'assignee']);
 
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('tickets_view_all')) {
-            if (auth()->user()->can('tickets_view_area')) {
-                $query->whereHas('customer', function($q) {
-                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-                });
-            } else {
-                $query->where('assigned_to', auth()->id());
-            }
-        }
+        DataScopeService::applyTicketScope($query);
 
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;

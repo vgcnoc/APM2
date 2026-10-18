@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PgkTicket extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\HasDataScope;
 
     protected $fillable = [
         'ticket_number',
