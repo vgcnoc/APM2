@@ -17,4 +17,24 @@ class Area extends Model
     {
         return $this->hasMany(Router::class);
     }
+
+    public function customers()
+    {
+        return $this->hasMany(Customer::class, 'area_id');
+    }
+
+    public function odps()
+    {
+        return $this->hasMany(Odp::class, 'area_id');
+    }
+
+    public function odcs()
+    {
+        return $this->hasMany(Odc::class, 'area_id');
+    }
+
+    public function users()
+    {
+        return $this->hasMany(User::class, 'area_id');
+    }
 }
