@@ -202,13 +202,13 @@ const menuItems = [
         permission: ['menu_customers_all', 'menu_customers_active', 'menu_customers_online', 'menu_customers_gratis', 'menu_customers_free_home', 'menu_customers_isolir', 'menu_customers_terminated'],
         children: [
             { href: '/customers', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
-            { href: '/customers/gratis', label: 'Pelanggan Gratis', active: (url) => (url || '').startsWith('/customers/gratis'), permission: ['menu_customers_gratis', 'menu_customers_all'] },
-            { href: '/customers/free-home', label: 'Pelanggan Free Home', active: (url) => (url || '').startsWith('/customers/free-home'), permission: ['menu_customers_free_home', 'menu_customers_all'] },
-            { href: '/customers/active', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: ['menu_customers_active', 'menu_customers_all'] },
-            { href: '/customers/isolir', label: 'Pelanggan Isolir', active: (url) => (url || '').startsWith('/customers/isolir'), permission: ['menu_customers_isolir', 'menu_customers_active', 'menu_customers_all'] },
-            { href: '/customers/online', label: 'Status Online', active: (url) => (url || '').startsWith('/customers/online'), permission: ['menu_customers_online', 'menu_customers_all'] },
-            { href: '/customers/offline', label: 'Status Offline', active: (url) => (url || '').startsWith('/customers/offline'), permission: ['menu_customers_online', 'menu_customers_all'] },
-            { href: '/customers/terminated', label: 'Stop Permanen', active: (url) => (url || '').startsWith('/customers/terminated'), permission: ['menu_customers_terminated', 'menu_customers_all'] },
+            { href: '/customers/gratis', label: 'Pelanggan Gratis', active: (url) => (url || '').startsWith('/customers/gratis'), permission: 'menu_customers_gratis' },
+            { href: '/customers/free-home', label: 'Pelanggan Free Home', active: (url) => (url || '').startsWith('/customers/free-home'), permission: 'menu_customers_free_home' },
+            { href: '/customers/active', label: 'Pelanggan Aktif', active: (url) => (url || '').startsWith('/customers/active'), permission: 'menu_customers_active' },
+            { href: '/customers/isolir', label: 'Pelanggan Isolir', active: (url) => (url || '').startsWith('/customers/isolir'), permission: 'menu_customers_isolir' },
+            { href: '/customers/online', label: 'Status Online', active: (url) => (url || '').startsWith('/customers/online'), permission: 'menu_customers_online' },
+            { href: '/customers/offline', label: 'Status Offline', active: (url) => (url || '').startsWith('/customers/offline'), permission: 'menu_customers_online' },
+            { href: '/customers/terminated', label: 'Stop Permanen', active: (url) => (url || '').startsWith('/customers/terminated'), permission: 'menu_customers_all' },
         ]
     },
     { 
@@ -217,7 +217,7 @@ const menuItems = [
         icon: 'gift', 
         label: 'Pelanggan Gratis', 
         active: (url) => (url || '').startsWith('/customers/gratis'), 
-        permission: ['menu_customers_gratis', 'menu_customers_all'] 
+        permission: 'menu_customers_gratis' 
     },
     { 
         type: 'link', 
@@ -225,7 +225,7 @@ const menuItems = [
         icon: 'home', 
         label: 'Pelanggan Free Home', 
         active: (url) => (url || '').startsWith('/customers/free-home'), 
-        permission: ['menu_customers_free_home', 'menu_customers_all'] 
+        permission: 'menu_customers_free_home' 
     },
     {
         type: 'link',
@@ -233,7 +233,7 @@ const menuItems = [
         icon: 'calendar',
         label: 'Pantauan Pelanggan',
         active: (url) => (url || '').startsWith('/monitoring-pelanggan'),
-        permission: ['menu_monitoring_pelanggan', 'menu_customers_all'],
+        permission: 'menu_monitoring_pelanggan',
     },
     {
         type: 'dropdown',
@@ -286,18 +286,18 @@ const menuItems = [
         icon: 'presentation-chart-line',
         label: 'Monitor Kinerja Teknisi',
         active: (url) => (url || '').startsWith('/monitoring-teknisi'),
-        permission: ['menu_monitoring_teknisi', 'menu_tickets', 'menu_customers_installed'],
+        permission: 'menu_monitoring_teknisi',
     },
     {
         type: 'dropdown',
         icon: 'support',
         label: 'Komplain Pelanggan (PGK)',
         active: (url) => (url || '').startsWith('/pgk'),
-        permission: ['menu_pgk', 'menu_tickets'],
+        permission: 'menu_pgk',
         children: [
-            { href: '/pgk', label: '1. Komplain Masuk', active: (url) => (url || '').length > 0 && url === '/pgk', permission: ['menu_pgk', 'menu_tickets'] },
-            { href: '/pgk/jadwal', label: '2. Jadwal Teknisi', active: (url) => (url || '').startsWith('/pgk/jadwal'), permission: ['menu_pgk', 'menu_tickets'] },
-            { href: '/pgk/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgk/laporan'), permission: ['menu_pgk', 'menu_tickets'] },
+            { href: '/pgk', label: '1. Komplain Masuk', active: (url) => (url || '').length > 0 && url === '/pgk', permission: 'menu_pgk' },
+            { href: '/pgk/jadwal', label: '2. Jadwal Teknisi', active: (url) => (url || '').startsWith('/pgk/jadwal'), permission: 'menu_pgk' },
+            { href: '/pgk/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgk/laporan'), permission: 'menu_pgk' },
         ]
     },
     {
@@ -305,11 +305,11 @@ const menuItems = [
         icon: 'git-branch',
         label: 'Gangguan Jalur (PGJ)',
         active: (url) => (url || '').startsWith('/pgj'),
-        permission: ['menu_pgj', 'menu_tickets'],
+        permission: 'menu_pgj',
         children: [
-            { href: '/pgj', label: '1. Temuan Jalur', active: (url) => (url || '').length > 0 && url === '/pgj', permission: ['menu_pgj', 'menu_tickets'] },
-            { href: '/pgj/jadwal', label: '2. Jadwal & Material', active: (url) => (url || '').startsWith('/pgj/jadwal'), permission: ['menu_pgj', 'menu_tickets'] },
-            { href: '/pgj/laporan', label: '3. Laporan Restorasi', active: (url) => (url || '').startsWith('/pgj/laporan'), permission: ['menu_pgj', 'menu_tickets'] },
+            { href: '/pgj', label: '1. Temuan Jalur', active: (url) => (url || '').length > 0 && url === '/pgj', permission: 'menu_pgj' },
+            { href: '/pgj/jadwal', label: '2. Jadwal & Material', active: (url) => (url || '').startsWith('/pgj/jadwal'), permission: 'menu_pgj' },
+            { href: '/pgj/laporan', label: '3. Laporan Restorasi', active: (url) => (url || '').startsWith('/pgj/laporan'), permission: 'menu_pgj' },
         ]
     },
     {
@@ -317,11 +317,11 @@ const menuItems = [
         icon: 'zap',
         label: 'Penanganan Sigap (PGS)',
         active: (url) => (url || '').startsWith('/pgs'),
-        permission: ['menu_pgs', 'menu_tickets'],
+        permission: 'menu_pgs',
         children: [
-            { href: '/pgs', label: '1. Temuan & Tindakan', active: (url) => (url || '').length > 0 && url === '/pgs', permission: ['menu_pgs', 'menu_tickets'] },
-            { href: '/pgs/jadwal', label: '2. Jadwal & Material', active: (url) => (url || '').startsWith('/pgs/jadwal'), permission: ['menu_pgs', 'menu_tickets'] },
-            { href: '/pgs/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgs/laporan'), permission: ['menu_pgs', 'menu_tickets'] },
+            { href: '/pgs', label: '1. Temuan & Tindakan', active: (url) => (url || '').length > 0 && url === '/pgs', permission: 'menu_pgs' },
+            { href: '/pgs/jadwal', label: '2. Jadwal & Material', active: (url) => (url || '').startsWith('/pgs/jadwal'), permission: 'menu_pgs' },
+            { href: '/pgs/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgs/laporan'), permission: 'menu_pgs' },
         ]
     },
     {
@@ -348,10 +348,10 @@ const menuItems = [
         permission: 'menu_vouchers',
         children: [
             { href: '/vouchers', label: 'Data Voucher', active: (url) => (url || '') === '/vouchers' || (url || '').startsWith('/vouchers?'), permission: 'menu_vouchers' },
-            { href: '/vouchers/online', label: 'Monitoring Sesi Voucher', active: (url) => (url || '').startsWith('/vouchers/online') || (url || '').startsWith('/vouchers/offline'), permission: ['menu_vouchers_monitoring', 'menu_vouchers'] },
+            { href: '/vouchers/online', label: 'Monitoring Sesi Voucher', active: (url) => (url || '').startsWith('/vouchers/online') || (url || '').startsWith('/vouchers/offline'), permission: 'menu_vouchers_monitoring' },
             { href: '/vouchers/expired', label: 'Voucher Expired', active: (url) => (url || '').startsWith('/vouchers/expired'), permission: 'menu_vouchers' },
             { href: '/vouchers/profiles', label: 'Profil Voucher', active: (url) => (url || '').startsWith('/vouchers/profiles'), permission: 'menu_vouchers_profiles' },
-            { href: '/vouchers/free', label: 'Voucher Gratis', active: (url) => (url || '').startsWith('/vouchers/free'), permission: ['menu_vouchers_free', 'menu_vouchers'] },
+            { href: '/vouchers/free', label: 'Voucher Gratis', active: (url) => (url || '').startsWith('/vouchers/free'), permission: 'menu_vouchers_free' },
         ]
     },
     { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
@@ -456,9 +456,9 @@ const menuItems = [
         permission: ['menu_materials', 'menu_inventory', 'menu_material_transactions'],
         children: [
             { href: '/produk', label: 'Data Produk & Material', active: (url) => (url || '').startsWith('/produk'), permission: 'menu_materials' },
-            { href: '/order-toko', label: 'Order Toko (Restock)', active: (url) => (url || '').startsWith('/order-toko'), permission: ['menu_materials', 'menu_inventory'] },
-            { href: '/stok-in-out', label: 'Stock Opname Per Area', active: (url) => (url || '').startsWith('/stok-in-out'), permission: ['menu_materials', 'menu_inventory'] },
-            { href: '/warehouse-stocks', label: 'Inventory Gudang', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: ['menu_materials', 'menu_inventory'] },
+            { href: '/order-toko', label: 'Order Toko (Restock)', active: (url) => (url || '').startsWith('/order-toko'), permission: 'menu_materials' },
+            { href: '/stok-in-out', label: 'Stock Opname Per Area', active: (url) => (url || '').startsWith('/stok-in-out'), permission: 'menu_materials' },
+            { href: '/warehouse-stocks', label: 'Inventory Gudang', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: 'menu_materials' },
         ]
     },
 
@@ -473,8 +473,8 @@ const menuItems = [
         children: [
             { href: '/employees', label: 'Data Karyawan', active: (url) => (url || '').startsWith('/employees'), permission: 'menu_hr_employees' },
             { href: '/positions', label: 'Posisi / Jabatan', active: (url) => (url || '').startsWith('/positions'), permission: 'menu_hr_positions' },
-            { href: '/shifts', label: 'Shift Kerja', active: (url) => (url || '').startsWith('/shifts'), permission: ['menu_shifts', 'menu_hr_employees'] },
-            { href: '/work-schedules', label: 'Jadwal Kerja', active: (url) => (url || '').startsWith('/work-schedules'), permission: ['menu_shifts', 'menu_hr_employees'] },
+            { href: '/shifts', label: 'Shift Kerja', active: (url) => (url || '').startsWith('/shifts'), permission: 'menu_shifts' },
+            { href: '/work-schedules', label: 'Jadwal Kerja', active: (url) => (url || '').startsWith('/work-schedules'), permission: 'menu_shifts' },
         ]
     },
     {
@@ -488,7 +488,7 @@ const menuItems = [
             { href: '/absen-terbaik', label: 'Absen Terbaik', active: (url) => (url || '').startsWith('/absen-terbaik'), permission: 'menu_attendances' },
             { href: '/absen-khusus', label: 'Absen Tim Khusus', active: (url) => (url || '').startsWith('/absen-khusus'), permission: 'menu_attendances' },
             { href: '/absen-tugas-luar', label: 'Absen Tugas Luar', active: (url) => (url || '').startsWith('/absen-tugas-luar'), permission: 'menu_attendances' },
-            { href: '/settings/attendance', label: 'Pengaturan Absensi', active: (url) => (url || '').startsWith('/settings/attendance'), permission: ['menu_settings_attendance', 'menu_attendances'] },
+            { href: '/settings/attendance', label: 'Pengaturan Absensi', active: (url) => (url || '').startsWith('/settings/attendance'), permission: 'menu_settings_attendance' },
         ]
     },
     {
@@ -499,7 +499,7 @@ const menuItems = [
         permission: 'menu_payroll',
         children: [
             { href: '/payroll', label: 'Gaji & Payroll', active: (url) => (url || '').length > 0 && url === '/payroll', permission: 'menu_payroll' },
-            { href: '/bonus-target-market', label: 'Bonus Target Market', active: (url) => (url || '').startsWith('/bonus-target-market'), permission: ['menu_target_market', 'menu_payroll'] },
+            { href: '/bonus-target-market', label: 'Bonus Target Market', active: (url) => (url || '').startsWith('/bonus-target-market'), permission: 'menu_target_market' },
             { href: '/insentif-potongan', label: 'Histori Insentif', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: 'menu_payroll' },
         ]
     },
