@@ -93,17 +93,6 @@ class UserController extends Controller
             'area_id' => 'nullable|exists:areas,id',
             'is_active' => 'boolean',
             'accessible_areas' => 'nullable|array',
-            'base_salary' => 'nullable|numeric|min:0',
-            'incentive_rate' => 'nullable|numeric|min:0',
-            'booking_fee' => 'nullable|numeric|min:0',
-            'installation_fee' => 'nullable|numeric|min:0',
-            'bpjs_kesehatan' => 'nullable|boolean',
-            'bpjs_kesehatan_no' => 'nullable|string|max:50',
-            'bpjs_ketenagakerjaan' => 'nullable|boolean',
-            'bpjs_tk_no' => 'nullable|string|max:50',
-            'bank_name' => 'nullable|string|max:50',
-            'bank_account_number' => 'nullable|string|max:50',
-            'bank_account_holder' => 'nullable|string|max:100',
         ]);
 
         $validated['name'] = trim($validated['name']);
@@ -111,12 +100,6 @@ class UserController extends Controller
         $validated['password'] = Hash::make($validated['password']);
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['accessible_areas'] = $request->input('accessible_areas', []);
-        $validated['base_salary'] = $request->input('base_salary', 0);
-        $validated['incentive_rate'] = $request->input('incentive_rate', 0);
-        $validated['booking_fee'] = $request->input('booking_fee', 0);
-        $validated['installation_fee'] = $request->input('installation_fee', 0);
-        $validated['bpjs_kesehatan'] = $request->boolean('bpjs_kesehatan');
-        $validated['bpjs_ketenagakerjaan'] = $request->boolean('bpjs_ketenagakerjaan');
 
         $user = User::create($validated);
         
@@ -146,17 +129,6 @@ class UserController extends Controller
             'area_id' => 'nullable|exists:areas,id',
             'is_active' => 'boolean',
             'accessible_areas' => 'nullable|array',
-            'base_salary' => 'nullable|numeric|min:0',
-            'incentive_rate' => 'nullable|numeric|min:0',
-            'booking_fee' => 'nullable|numeric|min:0',
-            'installation_fee' => 'nullable|numeric|min:0',
-            'bpjs_kesehatan' => 'nullable|boolean',
-            'bpjs_kesehatan_no' => 'nullable|string|max:50',
-            'bpjs_ketenagakerjaan' => 'nullable|boolean',
-            'bpjs_tk_no' => 'nullable|string|max:50',
-            'bank_name' => 'nullable|string|max:50',
-            'bank_account_number' => 'nullable|string|max:50',
-            'bank_account_holder' => 'nullable|string|max:100',
         ]);
 
         $validated['name'] = trim($validated['name']);
@@ -170,12 +142,6 @@ class UserController extends Controller
 
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['accessible_areas'] = $request->input('accessible_areas', []);
-        $validated['base_salary'] = $request->input('base_salary', 0);
-        $validated['incentive_rate'] = $request->input('incentive_rate', 0);
-        $validated['booking_fee'] = $request->input('booking_fee', 0);
-        $validated['installation_fee'] = $request->input('installation_fee', 0);
-        $validated['bpjs_kesehatan'] = $request->boolean('bpjs_kesehatan');
-        $validated['bpjs_ketenagakerjaan'] = $request->boolean('bpjs_ketenagakerjaan');
 
         $user->update($validated);
         

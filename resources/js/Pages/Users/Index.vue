@@ -469,95 +469,8 @@
                             </div>
                         </div>
 
-                        <!-- Gaji & Komisi (Payroll) -->
-                        <div class="p-4 bg-slate-50/70 border border-slate-200 rounded-2xl space-y-3">
-                            <div class="font-extrabold text-xs uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                                <span>💰</span>
-                                <span>Parameter Penggajian & Komisi</span>
-                            </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <div class="flex justify-between items-center mb-1">
-                                        <label class="block text-xs font-bold text-slate-600">Gaji Pokok (Rp)</label>
-                                        <span class="text-[11px] font-mono text-blue-600 font-bold">Rp {{ formatCurrency(form.base_salary) }}</span>
-                                    </div>
-                                    <input type="number" v-model.number="form.base_salary" min="0" step="1000" class="w-full border-slate-300 rounded-xl text-xs font-mono font-bold px-3 py-2">
-                                </div>
-                                <div>
-                                    <div class="flex justify-between items-center mb-1">
-                                        <label class="block text-xs font-bold text-slate-600">Insentif Penagihan (Rp)</label>
-                                        <span class="text-[11px] font-mono text-blue-600 font-bold">Rp {{ formatCurrency(form.incentive_rate) }}</span>
-                                    </div>
-                                    <input type="number" v-model.number="form.incentive_rate" min="0" step="500" class="w-full border-slate-300 rounded-xl text-xs font-mono font-bold px-3 py-2">
-                                </div>
-                                <div>
-                                    <div class="flex justify-between items-center mb-1">
-                                        <label class="block text-xs font-bold text-slate-600">Fee Market / Booking (Rp)</label>
-                                        <span class="text-[11px] font-mono text-blue-600 font-bold">Rp {{ formatCurrency(form.booking_fee) }}</span>
-                                    </div>
-                                    <input type="number" v-model.number="form.booking_fee" min="0" step="500" class="w-full border-slate-300 rounded-xl text-xs font-mono font-bold px-3 py-2">
-                                </div>
-                                <div>
-                                    <div class="flex justify-between items-center mb-1">
-                                        <label class="block text-xs font-bold text-slate-600">Fee Pasang / Instalasi (Rp)</label>
-                                        <span class="text-[11px] font-mono text-blue-600 font-bold">Rp {{ formatCurrency(form.installation_fee) }}</span>
-                                    </div>
-                                    <input type="number" v-model.number="form.installation_fee" min="0" step="500" class="w-full border-slate-300 rounded-xl text-xs font-mono font-bold px-3 py-2">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- BPJS & Rekening Bank -->
-                        <div class="p-4 bg-slate-50/70 border border-slate-200 rounded-2xl space-y-3">
-                            <div class="font-extrabold text-xs uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                                <span>🛡️</span>
-                                <span>BPJS & Rekening Transfer Payroll</span>
-                            </div>
-                            
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <!-- BPJS Kesehatan -->
-                                <div class="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" v-model="form.bpjs_kesehatan" class="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500">
-                                        <span class="text-xs font-bold text-slate-800">BPJS Kesehatan</span>
-                                    </label>
-                                    <div v-if="form.bpjs_kesehatan">
-                                        <input v-model="form.bpjs_kesehatan_no" type="text" placeholder="No. Kartu BPJS Kesehatan" class="w-full text-xs px-3 py-1.5 border border-slate-200 rounded-lg">
-                                    </div>
-                                </div>
-
-                                <!-- BPJS Ketenagakerjaan -->
-                                <div class="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" v-model="form.bpjs_ketenagakerjaan" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
-                                        <span class="text-xs font-bold text-slate-800">BPJS Ketenagakerjaan</span>
-                                    </label>
-                                    <div v-if="form.bpjs_ketenagakerjaan">
-                                        <input v-model="form.bpjs_tk_no" type="text" placeholder="No. KPJ / Ketenagakerjaan" class="w-full text-xs px-3 py-1.5 border border-slate-200 rounded-lg">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Rekening Bank -->
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-600 mb-1">Bank / E-Wallet</label>
-                                    <input v-model="form.bank_name" type="text" placeholder="BCA / Mandiri / BRI" class="w-full text-xs px-3 py-1.5 border border-slate-200 rounded-lg">
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-600 mb-1">No. Rekening</label>
-                                    <input v-model="form.bank_account_number" type="text" placeholder="1234567890" class="w-full text-xs px-3 py-1.5 border border-slate-200 rounded-lg font-mono">
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-600 mb-1">Atas Nama</label>
-                                    <input v-model="form.bank_account_holder" type="text" placeholder="Nama Pemilik" class="w-full text-xs px-3 py-1.5 border border-slate-200 rounded-lg">
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Modal Actions -->
-                        <div class="pt-2 flex justify-end gap-2.5 border-t border-slate-100">
+                        <div class="pt-3 flex justify-end gap-2.5 border-t border-slate-100">
                             <button 
                                 type="button" 
                                 @click="closeModal" 
@@ -622,23 +535,8 @@ const form = useForm({
     role: 'teknisi',
     area_id: null,
     accessible_areas: [],
-    base_salary: 0,
-    incentive_rate: 0,
-    booking_fee: 0,
-    installation_fee: 0,
     is_active: true,
-    bpjs_kesehatan: false,
-    bpjs_kesehatan_no: '',
-    bpjs_ketenagakerjaan: false,
-    bpjs_tk_no: '',
-    bank_name: '',
-    bank_account_number: '',
-    bank_account_holder: '',
 });
-
-const formatCurrency = (value) => {
-    return new Intl.NumberFormat('id-ID').format(value || 0);
-};
 
 const getRoleBadgeClass = (role) => {
     switch ((role || '').toLowerCase()) {
@@ -698,7 +596,6 @@ const onEmployeeSelect = () => {
             form.role = (props.roles || []).includes(pos) ? pos : (pos.includes('teknisi') ? 'teknisi' : 'admin');
         }
         if (emp.area_id) form.area_id = emp.area_id;
-        if (emp.base_salary) form.base_salary = emp.base_salary;
     }
 };
 
@@ -724,19 +621,8 @@ function openEditModal(user) {
     form.role = user.role;
     form.area_id = user.area_id;
     form.accessible_areas = user.accessible_areas || [];
-    form.base_salary = Number(user.base_salary || 0);
-    form.incentive_rate = Number(user.incentive_rate || 0);
-    form.booking_fee = Number(user.booking_fee || 0);
-    form.installation_fee = Number(user.installation_fee || 0);
     form.password = '';
     form.is_active = Boolean(user.is_active);
-    form.bpjs_kesehatan = Boolean(user.bpjs_kesehatan);
-    form.bpjs_kesehatan_no = user.bpjs_kesehatan_no || '';
-    form.bpjs_ketenagakerjaan = Boolean(user.bpjs_ketenagakerjaan);
-    form.bpjs_tk_no = user.bpjs_tk_no || '';
-    form.bank_name = user.bank_name || '';
-    form.bank_account_number = user.bank_account_number || '';
-    form.bank_account_holder = user.bank_account_holder || '';
     isModalOpen.value = true;
 }
 
