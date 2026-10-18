@@ -297,80 +297,90 @@ class WorkScheduleController extends Controller
             return back()->with('error', 'Pola shift tidak boleh kosong.');
         }
 
-        DB::transaction(function () use ($request, $startDate, $endDate, $patternType, $pattern, $patternLen, $startOffset, $defaultShiftId, $isStagger, $overwriteMode) {
-            $employeeIds = $request->employee_ids;
+        try {
+            DB::transaction(function () use ($request, $startDate, $endDate, $patternType, $pattern, $patternLen, $startOffset, $defaultShiftId, $isStagger, $overwriteMode) {
+                $employeeIds = $request->employee_ids;
 
-            foreach ($employeeIds as $empIdx => $empId) {
-                $curDate = $startDate->copy();
-                $dayIndex = 0;
+                foreach ($employeeIds as $empIdx => $empId) {
+                    $curDate = $startDate->copy();
+                    $dayIndex = 0;
 
-                // Hitung fase / offset awal
-                $initialOffset = $startOffset + ($isStagger ? ($empIdx % ($patternLen ?: 7)) : 0);
-                if ($patternLen > 0) {
-                    $initialOffset = $initialOffset % $patternLen;
-                }
-
-                while ($curDate->lte($endDate)) {
-                    $dateStr = $curDate->format('Y-m-d');
-                    $dayOfWeek = $curDate->dayOfWeek; // 0 = Sun, 1 = Mon ... 6 = Sat
-
-                    // Proteksi Overwrite Mode
-                    if ($overwriteMode !== 'all') {
-                        $existing = WorkSchedule::where('employee_id', $empId)->where('date', $dateStr)->first();
-                        if ($overwriteMode === 'empty_only' && $existing) {
-                            $curDate->addDay();
-                            $dayIndex++;
-                            continue;
-                        }
-                        if ($overwriteMode === 'preserve_off' && $existing && ($existing->status === 'off' || empty($existing->shift_id))) {
-                            $curDate->addDay();
-                            $dayIndex++;
-                            continue;
-                        }
+                    // Hitung fase / offset awal
+                    $initialOffset = $startOffset + ($isStagger ? ($empIdx % ($patternLen ?: 7)) : 0);
+                    if ($patternLen > 0) {
+                        $initialOffset = $initialOffset % $patternLen;
                     }
 
-                    if ($patternType === 'weekly_6_1') {
-                        // Pola 6 Kerja : 1 Libur
-                        $offDayOfWeek = $isStagger ? (($empIdx + $startOffset) % 7) : 0;
-                        $isOff = ($dayOfWeek === $offDayOfWeek);
-                        $targetShiftId = $isOff ? null : $defaultShiftId;
-                        $targetStatus = $isOff ? 'off' : 'work';
-                    } elseif ($patternType === 'weekly_5_2') {
-                        // Pola 5 Kerja : 2 Libur
-                        if ($isStagger) {
-                            $firstOff = (($empIdx * 2) + $startOffset) % 7;
-                            $secondOff = ($firstOff + 1) % 7;
-                            $isOff = ($dayOfWeek === $firstOff || $dayOfWeek === $secondOff);
+                    while ($curDate->lte($endDate)) {
+                        $dateStr = $curDate->format('Y-m-d');
+                        $dayOfWeek = $curDate->dayOfWeek; // 0 = Sun, 1 = Mon ... 6 = Sat
+
+                        // Proteksi Overwrite Mode
+                        if ($overwriteMode !== 'all') {
+                            $existing = WorkSchedule::where('employee_id', $empId)->where('date', $dateStr)->first();
+                            if ($overwriteMode === 'empty_only' && $existing) {
+                                $curDate->addDay();
+                                $dayIndex++;
+                                continue;
+                            }
+                            if ($overwriteMode === 'preserve_off' && $existing && ($existing->status === 'off' || empty($existing->shift_id))) {
+                                $curDate->addDay();
+                                $dayIndex++;
+                                continue;
+                            }
+                        }
+
+                        if ($patternType === 'weekly_6_1') {
+                            // Pola 6 Kerja : 1 Libur
+                            $offDayOfWeek = $isStagger ? (($empIdx + $startOffset) % 7) : 0;
+                            $isOff = ($dayOfWeek === $offDayOfWeek);
+                            $targetShiftId = $isOff ? null : $defaultShiftId;
+                            $targetStatus = $isOff ? 'off' : 'work';
+                        } elseif ($patternType === 'weekly_5_2') {
+                            // Pola 5 Kerja : 2 Libur
+                            if ($isStagger) {
+                                $firstOff = (($empIdx * 2) + $startOffset) % 7;
+                                $secondOff = ($firstOff + 1) % 7;
+                                $isOff = ($dayOfWeek === $firstOff || $dayOfWeek === $secondOff);
+                            } else {
+                                $isOff = ($dayOfWeek === 0 || $dayOfWeek === 6);
+                            }
+                            $targetShiftId = $isOff ? null : $defaultShiftId;
+                            $targetStatus = $isOff ? 'off' : 'work';
                         } else {
-                            $isOff = ($dayOfWeek === 0 || $dayOfWeek === 6);
+                            // Pola Roster Siklus / Bergilir
+                            $cycleIdx = ($initialOffset + $dayIndex) % $patternLen;
+                            $val = $pattern[$cycleIdx];
+                            $isOff = ($val === 'OFF' || empty($val));
+                            $targetShiftId = (!$isOff && is_numeric($val)) ? (int) $val : null;
+                            $targetStatus = $isOff ? 'off' : 'work';
                         }
-                        $targetShiftId = $isOff ? null : $defaultShiftId;
-                        $targetStatus = $isOff ? 'off' : 'work';
-                    } else {
-                        // Pola Roster Siklus / Bergilir
-                        $cycleIdx = ($initialOffset + $dayIndex) % $patternLen;
-                        $val = $pattern[$cycleIdx];
-                        $isOff = ($val === 'OFF' || empty($val));
-                        $targetShiftId = (!$isOff && is_numeric($val)) ? (int) $val : null;
-                        $targetStatus = $isOff ? 'off' : 'work';
+
+                        // Verifikasi shift_id valid jika work
+                        if ($targetShiftId && !Shift::where('id', $targetShiftId)->exists()) {
+                            $targetShiftId = $defaultShiftId;
+                        }
+
+                        WorkSchedule::updateOrCreate(
+                            [
+                                'employee_id' => $empId,
+                                'date' => $dateStr,
+                            ],
+                            [
+                                'shift_id' => $targetShiftId,
+                                'status' => $targetStatus,
+                            ]
+                        );
+
+                        $curDate->addDay();
+                        $dayIndex++;
                     }
-
-                    WorkSchedule::updateOrCreate(
-                        [
-                            'employee_id' => $empId,
-                            'date' => $dateStr,
-                        ],
-                        [
-                            'shift_id' => $targetShiftId,
-                            'status' => $targetStatus,
-                        ]
-                    );
-
-                    $curDate->addDay();
-                    $dayIndex++;
                 }
-            }
-        });
+            });
+        } catch (\Throwable $e) {
+            \Log::error('Generate Schedule Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return back()->with('error', 'Gagal menerapkan jadwal: ' . $e->getMessage());
+        }
 
         $daysCount = $startDate->diffInDays($endDate) + 1;
         return back()->with('success', "Jadwal kerja berhasil digenerate otomatis untuk {$daysCount} hari ({$startDate->translatedFormat('d M')} - {$endDate->translatedFormat('d M Y')})!");

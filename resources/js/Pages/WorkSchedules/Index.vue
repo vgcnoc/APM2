@@ -40,6 +40,22 @@
                 </div>
             </div>
 
+            <!-- Flash Alert Messages -->
+            <div v-if="$page.props.flash?.success" class="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between text-xs shadow-xs print:hidden animate-fade-in">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-base">✅</span>
+                    <span class="font-bold">{{ $page.props.flash.success }}</span>
+                </div>
+                <button type="button" @click="$page.props.flash.success = null" class="text-emerald-500 hover:text-emerald-800 p-1 font-bold">✕</button>
+            </div>
+            <div v-if="$page.props.flash?.error" class="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center justify-between text-xs shadow-xs print:hidden animate-fade-in">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-base">⚠️</span>
+                    <span class="font-bold">{{ $page.props.flash.error }}</span>
+                </div>
+                <button type="button" @click="$page.props.flash.error = null" class="text-rose-500 hover:text-rose-800 p-1 font-bold">✕</button>
+            </div>
+
             <!-- 2. SUMMARY STAT CARDS (4 KARTU SEPERTI SCREENSHOT) -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
                 <!-- Card 1: Karyawan -->
@@ -1451,9 +1467,10 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue';
+import { ref, computed, reactive, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     month: String,
@@ -1479,6 +1496,16 @@ const searchQuery = ref(props.filters.search || '');
 // Local Schedules state (untuk batch edit real-time)
 // localMap: { [empId]: { [dateStr]: { shift_id, status } } }
 const localMap = ref(JSON.parse(JSON.stringify(props.schedulesMap || {})));
+
+// Sinkronkan localMap secara otomatis setiap kali props.schedulesMap diperbarui dari server (generate, reset, copy, dsb)
+watch(
+    () => props.schedulesMap,
+    (newMap) => {
+        localMap.value = JSON.parse(JSON.stringify(newMap || {}));
+    },
+    { deep: true }
+);
+
 // List perubahan yang belum disimpan: { employee_id, date, shift_id, status }
 const pendingChanges = ref({});
 const isSaving = ref(false);
@@ -1939,13 +1966,31 @@ const submitClearSchedule = () => {
         shift_id: clearScope.value === 'shift' ? clearShiftId.value : null,
     }, {
         preserveScroll: true,
-        onSuccess: () => {
+        onSuccess: (page) => {
             openClearScheduleModal.value = false;
             isClearing.value = false;
             pendingChanges.value = {};
+            if (page?.props?.schedulesMap) {
+                localMap.value = JSON.parse(JSON.stringify(page.props.schedulesMap));
+            }
+            Swal.fire({
+                icon: 'success',
+                title: 'Jadwal Dikosongkan!',
+                text: page?.props?.flash?.success || 'Jadwal kerja berhasil dihapus/dikosongkan.',
+                timer: 2000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
         },
-        onError: () => {
+        onError: (errors) => {
             isClearing.value = false;
+            const errMsg = Object.values(errors).flat().join(', ') || 'Gagal mengosongkan jadwal.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Hapus Jadwal',
+                text: errMsg,
+            });
         }
     });
 };
@@ -2141,12 +2186,31 @@ const submitGenerateSchedule = () => {
         overwrite_mode: genOverwriteMode.value,
     }, {
         preserveScroll: true,
-        onSuccess: () => {
+        onSuccess: (page) => {
             openGenerateModal.value = false;
             isGenerating.value = false;
+            pendingChanges.value = {};
+            if (page?.props?.schedulesMap) {
+                localMap.value = JSON.parse(JSON.stringify(page.props.schedulesMap));
+            }
+            Swal.fire({
+                icon: 'success',
+                title: 'Jadwal Berhasil Diterapkan & Tersimpan!',
+                text: page?.props?.flash?.success || `Sebanyak ${genTotalSlotCount.value || 42} slot jadwal berhasil diterapkan langsung ke kalender kerja.`,
+                timer: 2500,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
         },
-        onError: () => {
+        onError: (errors) => {
             isGenerating.value = false;
+            const errMsg = Object.values(errors).flat().join(', ') || 'Terjadi kesalahan saat menerapkan jadwal otomatis.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menyimpan Jadwal',
+                text: errMsg,
+            });
         }
     });
 };
