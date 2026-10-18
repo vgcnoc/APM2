@@ -128,13 +128,17 @@
                                             Ada perubahan belum disimpan
                                         </span>
                                     </div>
-                                    <p class="text-xs text-gray-500 mt-1 flex items-center gap-3 flex-wrap">
-                                        <span>Aktif: <b class="text-blue-600 font-semibold">{{ checkedCount }}</b> dari {{ totalCount }} izin</span>
-                                        <span>•</span>
-                                        <span>Persentase: <b class="text-emerald-600 font-semibold">{{ Math.round((checkedCount / totalCount) * 100) }}%</b></span>
-                                        <span>•</span>
-                                        <span>Ditugaskan ke: <b class="text-gray-700 font-semibold">{{ selectedRole.users_count }} user</b></span>
-                                    </p>
+                                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                                            Aktif: <b class="ml-1 font-bold">{{ checkedCount }}</b> / {{ totalCount }} izin
+                                        </span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                            Persentase: <b class="ml-1 font-bold">{{ Math.round((checkedCount / totalCount) * 100) }}%</b>
+                                        </span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                            Ditugaskan ke: <b class="ml-1 font-bold">{{ selectedRole.users_count }} user</b>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -147,10 +151,10 @@
                                 </button>
 
                                 <template v-if="selectedRole.name !== 'admin'">
-                                    <button @click="applyPreset(selectedRole.name)"
+                                    <button @click="openPresetModal"
                                         type="button"
                                         class="px-3 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
-                                        title="Terapkan rekomendasi template hak akses standar untuk role ini">
+                                        title="Pilih dan terapkan template hak akses standar untuk role ini">
                                         <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                         Template Standar
                                     </button>
@@ -493,8 +497,16 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nama Role</label>
-                                <select v-model="formName" required
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">Nama Role</label>
+                                    <button type="button" @click="isCustomRoleName = !isCustomRoleName" 
+                                        class="text-[11px] font-bold text-blue-600 hover:text-blue-700 underline flex items-center gap-1">
+                                        {{ isCustomRoleName ? '← Pilih dari Jabatan' : '+ Ketik Nama Kustom' }}
+                                    </button>
+                                </div>
+
+                                <!-- Mode 1: Select dari Jabatan -->
+                                <select v-if="!isCustomRoleName" v-model="formName" required
                                     class="w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
                                     <option value="" disabled>-- Pilih Jabatan / Posisi --</option>
                                     <option v-for="pos in positions" :key="pos.id" :value="pos.name.toLowerCase()">
@@ -504,7 +516,16 @@
                                         {{ formName }} (Lama)
                                     </option>
                                 </select>
-                                <p class="mt-2 text-[11px] text-gray-500">Nama role dihubungkan dengan data Jabatan operasional. Izin dapat diatur segera setelah role dibuat.</p>
+
+                                <!-- Mode 2: Input Text Kustom -->
+                                <input v-else v-model="formName" type="text" required placeholder="Contoh: koordinator-teknisi, sales-vip, helper-gudang"
+                                    class="w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm" />
+
+                                <p class="mt-2 text-[11px] text-gray-500">
+                                    {{ isCustomRoleName 
+                                        ? 'Ketik nama role baru sesuai kebutuhan organisasi. Format otomatis huruf kecil.' 
+                                        : 'Nama role dihubungkan dengan data Jabatan operasional. Izin dapat diatur segera setelah role dibuat.' }}
+                                </p>
                             </div>
                         </div>
                         <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2.5">
@@ -577,6 +598,67 @@
             </div>
         </Teleport>
 
+        <!-- ── MODAL PILIH TEMPLATE PRESET STANDAR ──────────────── -->
+        <Teleport to="body">
+            <div v-if="showPresetModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showPresetModal = false"></div>
+                <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
+                    <!-- Modal Header -->
+                    <div class="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/80">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="font-extrabold text-gray-900 text-base">Pilih Template Hak Akses Standar</h3>
+                                <p class="text-xs text-gray-500">Terapkan rekomendasi hak akses siap pakai ke role <b class="capitalize text-indigo-600">{{ selectedRole?.name }}</b></p>
+                            </div>
+                        </div>
+                        <button @click="showPresetModal = false" class="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Modal Body / Presets Grid -->
+                    <div class="p-5 overflow-y-auto space-y-3 flex-1">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div v-for="preset in availablePresets" :key="preset.key"
+                                @click="applySelectedPreset(preset.key)"
+                                class="p-3.5 rounded-xl border border-gray-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all cursor-pointer group flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-lg">{{ preset.emoji }}</span>
+                                            <h4 class="font-bold text-gray-900 text-sm group-hover:text-indigo-600 transition-colors">{{ preset.title }}</h4>
+                                        </div>
+                                        <span v-if="isPresetRecommended(preset.key)" class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                            Rekomendasi
+                                        </span>
+                                    </div>
+                                    <p class="text-[11px] text-gray-500 leading-relaxed">{{ preset.desc }}</p>
+                                </div>
+                                <div class="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-xs">
+                                    <span class="font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md">
+                                        {{ (rolePresets[preset.key] || []).length }} Hak Akses
+                                    </span>
+                                    <span class="font-bold text-indigo-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                                        Terapkan →
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+                        <button @click="showPresetModal = false" class="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
     </AppLayout>
 </template>
 
@@ -613,7 +695,11 @@ const showModal = ref(false);
 const isEditing = ref(false);
 const editingId = ref(null);
 const formName = ref('');
+const isCustomRoleName = ref(false);
 const isSubmitting = ref(false);
+
+// Preset Modal State
+const showPresetModal = ref(false);
 
 // Clone Modal State
 const showCloneModal = ref(false);
@@ -885,6 +971,105 @@ const getGroupCheckedCount = (group) => {
     return group.permissions.filter(p => selectedPermissions.value.includes(p.name)).length;
 };
 
+// Template Hak Akses Standar List
+const availablePresets = [
+    {
+        key: 'teknisi',
+        emoji: '🔧',
+        title: 'Teknisi Lapangan',
+        desc: 'Akses PSB instalasi, tiket penanganan gangguan, ODP/ONT lapangan, dan mutasi material.',
+    },
+    {
+        key: 'kepala teknisi',
+        emoji: '👷',
+        title: 'Kepala Teknisi',
+        desc: 'Monitoring teknisi, approval SPK kerja, manajemen ODP/ODC & OLT, serta logistik.',
+    },
+    {
+        key: 'noc',
+        emoji: '🌐',
+        title: 'NOC (Network Operation)',
+        desc: 'Akses penuh topologi, radar FTTH, kapasitas ODP/ODC, OLT, RADIUS MikroTik, dan pemetaan.',
+    },
+    {
+        key: 'maintenance',
+        emoji: '🛠️',
+        title: 'Maintenance / OSP',
+        desc: 'Pemeliharaan jaringan kabel, perbaikan ODP/ODC, data teknis OSP, dan logistik perbaikan.',
+    },
+    {
+        key: 'dispatcher',
+        emoji: '📡',
+        title: 'Dispatcher / Helpdesk',
+        desc: 'Pengaturan penugasan tiket dan jadwal teknisi survei/instalasi secara terpusat.',
+    },
+    {
+        key: 'cs',
+        emoji: '🎧',
+        title: 'Customer Service (CS)',
+        desc: 'Pelayanan tiket kendala pelanggan, input booking registrasi, data tagihan & WhatsApp blast.',
+    },
+    {
+        key: 'admin cs',
+        emoji: '👩‍💼',
+        title: 'Admin Customer Service',
+        desc: 'Pengelolaan booking, aktivasi, billing, broadcast WhatsApp, serta monitoring pelanggan.',
+    },
+    {
+        key: 'sales',
+        emoji: '💼',
+        title: 'Sales / Marketing',
+        desc: 'Pendaftaran booking pelanggan baru, cek kapasitas ODP, voucher gratis, dan komisi afiliasi.',
+    },
+    {
+        key: 'finance',
+        emoji: '💰',
+        title: 'Finance & Keuangan',
+        desc: 'Manajemen invoice tagihan, kas masuk/keluar, penggajian payroll, dan laporan laba rugi.',
+    },
+    {
+        key: 'manager',
+        emoji: '📊',
+        title: 'General Manager',
+        desc: 'Supervisi statistik performa seluruh divisi, HRD karyawan, laporan keuangan, dan operasional.',
+    },
+    {
+        key: 'hrd',
+        emoji: '👥',
+        title: 'HRD / Personalia',
+        desc: 'Manajemen karyawan, data absensi presensi, rekrutmen, dan data kepegawaian internal.',
+    },
+    {
+        key: 'reseller',
+        emoji: '🎫',
+        title: 'Mitra Reseller / Agen',
+        desc: 'Pembuatan dan cetak voucher internet hotspot, serta monitoring pelanggan voucher.',
+    },
+];
+
+const isPresetRecommended = (presetKey) => {
+    if (!selectedRole.value) return false;
+    const roleName = selectedRole.value.name.toLowerCase().trim();
+    const key = presetKey.toLowerCase().trim();
+    return roleName === key || roleName.includes(key) || key.includes(roleName);
+};
+
+const openPresetModal = () => {
+    if (selectedRole.value?.name === 'admin') return;
+    showPresetModal.value = true;
+};
+
+const applySelectedPreset = (presetKey) => {
+    if (selectedRole.value?.name === 'admin') return;
+    const presets = props.rolePresets || {};
+    if (!presets[presetKey]) {
+        alert(`Template "${presetKey}" tidak ditemukan.`);
+        return;
+    }
+    selectedPermissions.value = [...presets[presetKey]];
+    showPresetModal.value = false;
+};
+
 const applyPreset = (presetName) => {
     if (selectedRole.value?.name === 'admin') return;
     const key = (presetName || selectedRole.value?.name || '').toLowerCase().trim();
@@ -902,7 +1087,7 @@ const applyPreset = (presetName) => {
     }
 
     if (!matchingKey || !presets[matchingKey]) {
-        alert(`Template standar untuk role "${selectedRole.value?.name}" belum tersedia.`);
+        openPresetModal();
         return;
     }
 
@@ -974,6 +1159,7 @@ const openCreateModal = () => {
     isEditing.value = false;
     editingId.value = null;
     formName.value = '';
+    isCustomRoleName.value = false;
     showModal.value = true;
 };
 
@@ -981,27 +1167,30 @@ const openEditModal = (role) => {
     isEditing.value = true;
     editingId.value = role.id;
     formName.value = role.name;
+    const isStandard = props.positions && props.positions.some(p => p.name.toLowerCase() === role.name.toLowerCase());
+    isCustomRoleName.value = !isStandard;
     showModal.value = true;
 };
 
 const submitForm = () => {
     isSubmitting.value = true;
+    const cleanName = formName.value.trim().toLowerCase();
     if (isEditing.value) {
         router.post(`/settings/roles/${editingId.value}/update`, {
-            name: formName.value,
+            name: cleanName,
             permissions: selectedRole.value?.id === editingId.value ? selectedPermissions.value : undefined,
         }, {
             preserveScroll: true,
             onSuccess: () => {
                 showModal.value = false;
                 if (selectedRole.value?.id === editingId.value) {
-                    selectedRole.value.name = formName.value;
+                    selectedRole.value.name = cleanName;
                 }
             },
             onFinish: () => isSubmitting.value = false,
         });
     } else {
-        router.post('/settings/roles', { name: formName.value, permissions: [] }, {
+        router.post('/settings/roles', { name: cleanName, permissions: [] }, {
             preserveScroll: true,
             onSuccess: () => showModal.value = false,
             onFinish: () => isSubmitting.value = false,

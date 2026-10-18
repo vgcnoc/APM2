@@ -20,16 +20,22 @@ class RoleController extends Controller
     }
 
     /**
-     * Ensure all permissions from registry exist in DB.
+     * Ensure all permissions from registry exist in DB efficiently in bulk.
      */
     public function syncPermissionsToDb(): void
     {
         $allNames = \App\Support\PermissionRegistry::allNames();
-        foreach ($allNames as $name) {
-            Permission::firstOrCreate([
+        $existing = Permission::where('guard_name', 'web')->pluck('name')->toArray();
+        $missing = array_diff($allNames, $existing);
+        if (!empty($missing)) {
+            $records = array_map(fn($name) => [
                 'name' => $name,
                 'guard_name' => 'web',
-            ]);
+                'created_at' => now(),
+                'updated_at' => now(),
+            ], array_values($missing));
+            Permission::insert($records);
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
         }
     }
 
@@ -62,11 +68,13 @@ class RoleController extends Controller
             'permissions' => 'array',
         ]);
 
-        $role = Role::create(['name' => $request->name, 'guard_name' => 'web']);
+        $role = Role::create(['name' => strtolower(trim($request->name)), 'guard_name' => 'web']);
 
-        if ($request->has('permissions')) {
+        if ($request->has('permissions') && is_array($request->permissions)) {
             $role->syncPermissions($request->permissions);
         }
+
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         return redirect()->back()->with('success', "Role '{$role->name}' berhasil ditambahkan.");
     }
@@ -78,11 +86,16 @@ class RoleController extends Controller
             'permissions' => 'array',
         ]);
 
-        if ($role->name === 'admin' && $request->name !== 'admin') {
-            return redirect()->back()->with('error', 'Nama role Admin tidak dapat diubah.');
+        if ($role->name === 'admin') {
+            if ($request->name !== 'admin') {
+                return redirect()->back()->with('error', 'Nama role Admin tidak dapat diubah.');
+            }
+            $role->syncPermissions(Permission::where('guard_name', 'web')->get());
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+            return redirect()->back()->with('success', "Role Admin terkunci permanen dengan akses penuh.");
         }
 
-        $role->update(['name' => $request->name]);
+        $role->update(['name' => strtolower(trim($request->name))]);
 
         if ($request->has('permissions')) {
             $role->syncPermissions($request->permissions);
