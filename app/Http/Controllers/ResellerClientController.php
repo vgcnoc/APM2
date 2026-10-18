@@ -211,6 +211,13 @@ class ResellerClientController extends Controller
 
         $profile = VoucherProfile::where('is_customer_free', false)->findOrFail($validated['profile_id']);
         
+        // Validasi hak akses profil voucher reseller
+        if ($user->voucherProfiles()->exists() && !$user->voucherProfiles()->where('voucher_profiles.id', $profile->id)->exists()) {
+            return redirect()->back()->withErrors([
+                'error' => "Akun Anda tidak memiliki hak akses untuk menjual profil voucher '{$profile->name}'."
+            ]);
+        }
+        
         // Logika Pemotongan Saldo Reseller (Harga Modal):
         // Harga Modal Reseller = Harga Jual - Fee/Margin Reseller
         // Contoh: Harga Jual Rp 3.000, Fee Rp 1.000 -> Modal Rp 2.000
