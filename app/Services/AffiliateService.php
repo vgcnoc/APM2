@@ -204,13 +204,17 @@ class AffiliateService
         $affiliate = self::ensureAffiliateProfile($user);
 
         return DB::transaction(function () use ($affiliate, $user, $customer, $amount, $isEmployee) {
+            $codeLabel = ($customer->customer_code && !preg_match('/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i', $customer->customer_code))
+                ? " ({$customer->customer_code})"
+                : '';
+
             if ($isEmployee) {
                 // ── KARYAWAN: Masuk ke Insentif Payroll (Status Pending) ──
                 \App\Models\Incentive::create([
                     'user_id' => $user->id,
                     'amount' => $amount,
                     'type' => 'auto',
-                    'description' => "Fee Booking Pelanggan: {$customer->name} ({$customer->customer_code})",
+                    'description' => "Fee Booking Pelanggan: {$customer->name}{$codeLabel}",
                     'reference_id' => 'booking_cust_' . $customer->id,
                     'incentive_date' => now(),
                     'status' => 'pending',
@@ -224,7 +228,7 @@ class AffiliateService
                     'type' => 'booking',
                     'tier_level' => 0,
                     'amount' => $amount,
-                    'description' => "Fee Booking Pelanggan: {$customer->name} ({$customer->customer_code}) [Masuk Insentif Payroll]",
+                    'description' => "Fee Booking Pelanggan: {$customer->name}{$codeLabel} [Masuk Insentif Payroll]",
                     'status' => 'payroll',
                     'paid_at' => null,
                 ]);
@@ -239,7 +243,7 @@ class AffiliateService
                     'type' => 'booking',
                     'tier_level' => 0,
                     'amount' => $amount,
-                    'description' => "Komisi Booking Pelanggan Baru: {$customer->name} ({$customer->customer_code})",
+                    'description' => "Komisi Booking Pelanggan Baru: {$customer->name}{$codeLabel}",
                     'status' => 'approved',
                     'paid_at' => now(),
                 ]);
@@ -338,13 +342,17 @@ class AffiliateService
                 ? "{$diffInMonths} bulan {$remainingDays} hari" 
                 : "{$diffInDays} hari";
 
+            $codeLabel = ($customer->customer_code && !preg_match('/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i', $customer->customer_code))
+                ? " ({$customer->customer_code})"
+                : '';
+
             if ($isEmployee) {
                 // ── KARYAWAN: Otomatis masuk ke Tabel Deductions (Potongan Slip Gaji Payroll) ──
                 \App\Models\Deduction::create([
                     'user_id' => $user->id,
                     'amount' => $penaltyAmount,
                     'type' => 'auto',
-                    'description' => "Pinalti Stop Dini < {$minContractMonths} Bln: Pemotongan Fee Booking {$customer->name} ({$customer->customer_code}) - Masa aktif: {$durationStr}",
+                    'description' => "Pinalti Stop Dini < {$minContractMonths} Bln: Pemotongan Fee Booking {$customer->name}{$codeLabel} - Masa aktif: {$durationStr}",
                     'reference_id' => 'clawback_booking_cust_' . $customer->id,
                     'deduction_date' => now(),
                     'status' => 'pending',
@@ -358,7 +366,7 @@ class AffiliateService
                     'type' => 'clawback_booking',
                     'tier_level' => 0,
                     'amount' => -$penaltyAmount,
-                    'description' => "Pinalti Stop Dini < {$minContractMonths} Bln: Pemotongan Fee Booking [Dipotong dari Slip Gaji Payroll] {$customer->name} ({$customer->customer_code}) - Masa aktif: {$durationStr}",
+                    'description' => "Pinalti Stop Dini < {$minContractMonths} Bln: Pemotongan Fee Booking [Dipotong dari Slip Gaji Payroll] {$customer->name}{$codeLabel} - Masa aktif: {$durationStr}",
                     'status' => 'payroll',
                     'paid_at' => null,
                 ]);

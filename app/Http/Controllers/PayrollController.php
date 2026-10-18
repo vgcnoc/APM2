@@ -346,6 +346,9 @@ class PayrollController extends Controller
      */
     public function storeIncentive(Request $request, User $user)
     {
+        $date = $request->input('incentive_date', $request->input('date', now()->toDateString()));
+        $request->merge(['incentive_date' => $date]);
+
         $request->validate([
             'amount' => 'required|numeric|min:1',
             'description' => 'required|string|max:255',
@@ -381,6 +384,9 @@ class PayrollController extends Controller
      */
     public function storeDeduction(Request $request, User $user)
     {
+        $date = $request->input('deduction_date', $request->input('date', now()->toDateString()));
+        $request->merge(['deduction_date' => $date]);
+
         $request->validate([
             'amount' => 'required|numeric|min:1',
             'description' => 'required|string|max:255',

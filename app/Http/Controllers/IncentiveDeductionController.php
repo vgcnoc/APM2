@@ -50,7 +50,12 @@ class IncentiveDeductionController extends Controller
             });
         }
 
-        $incentives = $incentivesQuery->get()->map(function ($item) {
+        $cleanDescription = function ($desc) {
+            if (!$desc) return '';
+            return trim(preg_replace('/\s*\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\)/i', '', $desc));
+        };
+
+        $incentives = $incentivesQuery->get()->map(function ($item) use ($cleanDescription) {
             return [
                 'id' => 'inc_' . $item->id,
                 'real_id' => $item->id,
@@ -59,14 +64,14 @@ class IncentiveDeductionController extends Controller
                 'record_type' => 'Insentif',
                 'mode' => ucfirst($item->type),
                 'amount' => $item->amount,
-                'description' => $item->description,
+                'description' => $cleanDescription($item->description),
                 'date' => $item->incentive_date,
                 'status' => $item->status,
                 'created_at' => $item->created_at,
             ];
         });
 
-        $deductions = $deductionsQuery->get()->map(function ($item) {
+        $deductions = $deductionsQuery->get()->map(function ($item) use ($cleanDescription) {
             return [
                 'id' => 'ded_' . $item->id,
                 'real_id' => $item->id,
@@ -75,7 +80,7 @@ class IncentiveDeductionController extends Controller
                 'record_type' => 'Potongan',
                 'mode' => ucfirst($item->type),
                 'amount' => $item->amount,
-                'description' => $item->description,
+                'description' => $cleanDescription($item->description),
                 'date' => $item->deduction_date,
                 'status' => $item->status,
                 'created_at' => $item->created_at,
@@ -113,7 +118,7 @@ class IncentiveDeductionController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        $users = User::with('area')->where('is_active', true)->get(['id', 'name', 'area_id']);
+        $users = User::with('area')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'area_id']);
         $categories = \App\Models\PayrollCategory::where('is_active', true)->get();
         $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
@@ -125,6 +130,13 @@ class IncentiveDeductionController extends Controller
                 'countAuto' => $countAuto,
                 'countManual' => $countManual,
             ],
+            'counts' => [
+                'semua' => $incentives->count() + $deductions->count(),
+                'insentif' => $incentives->count(),
+                'potongan' => $deductions->count(),
+                'auto' => $countAuto,
+                'manual' => $countManual,
+            ],
             'filters' => $request->only(['tab', 'month', 'year', 'search', 'area_id']),
             'users' => $users,
             'payrollCategories' => $categories,
@@ -135,13 +147,19 @@ class IncentiveDeductionController extends Controller
     public function destroyRecord(Request $request)
     {
         $id = $request->id;
+        $deleted = false;
         if (str_starts_with($id, 'inc_')) {
             $realId = str_replace('inc_', '', $id);
-            Incentive::where('id', $realId)->where('status', 'pending')->delete();
+            $deleted = Incentive::where('id', $realId)->where('status', 'pending')->delete();
         } elseif (str_starts_with($id, 'ded_')) {
             $realId = str_replace('ded_', '', $id);
-            Deduction::where('id', $realId)->where('status', 'pending')->delete();
+            $deleted = Deduction::where('id', $realId)->where('status', 'pending')->delete();
         }
-        return back()->with('success', 'Data berhasil dihapus.');
+
+        if ($deleted) {
+            return back()->with('success', 'Data insentif/potongan berhasil dihapus.');
+        }
+
+        return back()->with('error', 'Gagal menghapus data atau data sudah dicairkan ke payroll.');
     }
 }
