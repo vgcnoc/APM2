@@ -423,6 +423,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('users', \App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
         Route::post('users/{user}/update', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update.post');
         Route::post('users/{user}/delete', [\App\Http\Controllers\UserController::class, 'destroy'])->name('users.destroy.post');
+        Route::post('users/{user}/toggle', [\App\Http\Controllers\UserController::class, 'toggleActive'])->name('users.toggle');
     });
 
     // ── Billing & Keuangan ─────────────────────────────────────
