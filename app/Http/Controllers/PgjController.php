@@ -33,6 +33,17 @@ class PgjController extends Controller
      */
     public function index(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can('menu_pgj')) {
+            if ($user->can('menu_pgj_laporan')) {
+                return redirect()->route('pgj.laporan');
+            }
+            if ($user->can('menu_pgj_jadwal')) {
+                return redirect()->route('pgj.jadwal');
+            }
+            abort(403, 'Akses ke modul PGJ tidak diizinkan.');
+        }
+
         $query = PgjTicket::with([
             'area',
             'odc',
@@ -117,6 +128,17 @@ class PgjController extends Controller
      */
     public function jadwal(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can('menu_pgj_jadwal')) {
+            if ($user->can('menu_pgj_laporan')) {
+                return redirect()->route('pgj.laporan');
+            }
+            if ($user->can('menu_pgj')) {
+                return redirect()->route('pgj.index');
+            }
+            abort(403, 'Akses ke jadwal PGJ tidak diizinkan.');
+        }
+
         $query = PgjTicket::with([
             'area',
             'odc',
@@ -180,6 +202,17 @@ class PgjController extends Controller
      */
     public function laporan(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can('menu_pgj_laporan')) {
+            if ($user->can('menu_pgj')) {
+                return redirect()->route('pgj.index');
+            }
+            if ($user->can('menu_pgj_jadwal')) {
+                return redirect()->route('pgj.jadwal');
+            }
+            abort(403, 'Akses ke laporan PGJ tidak diizinkan.');
+        }
+
         $query = PgjTicket::with([
             'area',
             'odc',

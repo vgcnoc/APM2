@@ -34,6 +34,17 @@ class PgsController extends Controller
      */
     public function index(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can('menu_pgs')) {
+            if ($user->can('menu_pgs_laporan')) {
+                return redirect()->route('pgs.laporan');
+            }
+            if ($user->can('menu_pgs_jadwal')) {
+                return redirect()->route('pgs.jadwal');
+            }
+            abort(403, 'Akses ke modul PGS tidak diizinkan.');
+        }
+
         $query = PgsTicket::with([
             'area',
             'customer.areaModel',
@@ -148,6 +159,17 @@ class PgsController extends Controller
      */
     public function jadwal(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can('menu_pgs_jadwal')) {
+            if ($user->can('menu_pgs_laporan')) {
+                return redirect()->route('pgs.laporan');
+            }
+            if ($user->can('menu_pgs')) {
+                return redirect()->route('pgs.index');
+            }
+            abort(403, 'Akses ke Jadwal PGS tidak diizinkan.');
+        }
+
         $query = PgsTicket::with([
             'area',
             'customer.areaModel',
@@ -216,6 +238,17 @@ class PgsController extends Controller
      */
     public function laporan(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can('menu_pgs_laporan')) {
+            if ($user->can('menu_pgs')) {
+                return redirect()->route('pgs.index');
+            }
+            if ($user->can('menu_pgs_jadwal')) {
+                return redirect()->route('pgs.jadwal');
+            }
+            abort(403, 'Akses ke Laporan PGS tidak diizinkan.');
+        }
+
         $query = PgsTicket::with([
             'area',
             'customer.areaModel',

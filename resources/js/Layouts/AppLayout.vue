@@ -293,11 +293,11 @@ const menuItems = [
         icon: 'support',
         label: 'Komplain Pelanggan (PGK)',
         active: (url) => (url || '').startsWith('/pgk'),
-        permission: 'menu_pgk',
+        permission: ['menu_pgk', 'menu_pgk_jadwal', 'menu_pgk_laporan'],
         children: [
             { href: '/pgk', label: '1. Komplain Masuk', active: (url) => (url || '').length > 0 && url === '/pgk', permission: 'menu_pgk' },
-            { href: '/pgk/jadwal', label: '2. Jadwal Teknisi', active: (url) => (url || '').startsWith('/pgk/jadwal'), permission: 'menu_pgk' },
-            { href: '/pgk/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgk/laporan'), permission: 'menu_pgk' },
+            { href: '/pgk/jadwal', label: '2. Jadwal Teknisi', active: (url) => (url || '').startsWith('/pgk/jadwal'), permission: 'menu_pgk_jadwal' },
+            { href: '/pgk/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgk/laporan'), permission: 'menu_pgk_laporan' },
         ]
     },
     {
@@ -305,11 +305,11 @@ const menuItems = [
         icon: 'git-branch',
         label: 'Gangguan Jalur (PGJ)',
         active: (url) => (url || '').startsWith('/pgj'),
-        permission: 'menu_pgj',
+        permission: ['menu_pgj', 'menu_pgj_jadwal', 'menu_pgj_laporan'],
         children: [
             { href: '/pgj', label: '1. Temuan Jalur', active: (url) => (url || '').length > 0 && url === '/pgj', permission: 'menu_pgj' },
-            { href: '/pgj/jadwal', label: '2. Jadwal & Material', active: (url) => (url || '').startsWith('/pgj/jadwal'), permission: 'menu_pgj' },
-            { href: '/pgj/laporan', label: '3. Laporan Restorasi', active: (url) => (url || '').startsWith('/pgj/laporan'), permission: 'menu_pgj' },
+            { href: '/pgj/jadwal', label: '2. Jadwal & Material', active: (url) => (url || '').startsWith('/pgj/jadwal'), permission: 'menu_pgj_jadwal' },
+            { href: '/pgj/laporan', label: '3. Laporan Restorasi', active: (url) => (url || '').startsWith('/pgj/laporan'), permission: 'menu_pgj_laporan' },
         ]
     },
     {
@@ -317,11 +317,11 @@ const menuItems = [
         icon: 'zap',
         label: 'Penanganan Sigap (PGS)',
         active: (url) => (url || '').startsWith('/pgs'),
-        permission: 'menu_pgs',
+        permission: ['menu_pgs', 'menu_pgs_jadwal', 'menu_pgs_laporan'],
         children: [
             { href: '/pgs', label: '1. Temuan & Tindakan', active: (url) => (url || '').length > 0 && url === '/pgs', permission: 'menu_pgs' },
-            { href: '/pgs/jadwal', label: '2. Jadwal & Material', active: (url) => (url || '').startsWith('/pgs/jadwal'), permission: 'menu_pgs' },
-            { href: '/pgs/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgs/laporan'), permission: 'menu_pgs' },
+            { href: '/pgs/jadwal', label: '2. Jadwal & Material', active: (url) => (url || '').startsWith('/pgs/jadwal'), permission: 'menu_pgs_jadwal' },
+            { href: '/pgs/laporan', label: '3. Laporan Penanganan', active: (url) => (url || '').startsWith('/pgs/laporan'), permission: 'menu_pgs_laporan' },
         ]
     },
     {
@@ -329,12 +329,12 @@ const menuItems = [
         icon: 'alert-circle',
         label: 'Ticketing & CBP',
         active: (url) => ['/tickets', '/cbp'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_tickets', 'menu_cbp'],
+        permission: ['menu_tickets', 'menu_cbp', 'menu_cbp_jadwal', 'menu_cbp_laporan'],
         children: [
             { href: '/tickets', label: 'Semua Gangguan', active: (url) => (url || '').length > 0 && url === '/tickets', permission: 'menu_tickets' },
             { href: '/cbp', label: 'CBP / Cabut Perangkat', active: (url) => (url || '').length > 0 && url === '/cbp', permission: 'menu_cbp' },
-            { href: '/cbp/jadwal', label: 'Jadwal CBP', active: (url) => (url || '').startsWith('/cbp/jadwal'), permission: 'menu_cbp' },
-            { href: '/cbp/laporan', label: 'Laporan CBP', active: (url) => (url || '').startsWith('/cbp/laporan'), permission: 'menu_cbp' },
+            { href: '/cbp/jadwal', label: 'Jadwal CBP', active: (url) => (url || '').startsWith('/cbp/jadwal'), permission: 'menu_cbp_jadwal' },
+            { href: '/cbp/laporan', label: 'Laporan CBP', active: (url) => (url || '').startsWith('/cbp/laporan'), permission: 'menu_cbp_laporan' },
         ]
     },
 

@@ -10,6 +10,17 @@ class CbpRequestController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can('menu_cbp')) {
+            if ($user->can('menu_cbp_laporan')) {
+                return redirect()->route('cbp.laporan');
+            }
+            if ($user->can('menu_cbp_jadwal')) {
+                return redirect()->route('cbp.jadwal');
+            }
+            abort(403, 'Akses ke modul CBP tidak diizinkan.');
+        }
+
         $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'auditLogs'])->where('status', 'pending');
 
         if ($request->filled('search')) {
@@ -41,6 +52,17 @@ class CbpRequestController extends Controller
 
     public function jadwal(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can('menu_cbp_jadwal')) {
+            if ($user->can('menu_cbp_laporan')) {
+                return redirect()->route('cbp.laporan');
+            }
+            if ($user->can('menu_cbp')) {
+                return redirect()->route('cbp.index');
+            }
+            abort(403, 'Akses ke jadwal CBP tidak diizinkan.');
+        }
+
         $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'auditLogs'])->whereIn('status', ['pending', 'assigned']);
 
         if ($request->filled('search')) {
@@ -67,6 +89,17 @@ class CbpRequestController extends Controller
 
     public function laporan(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can('menu_cbp_laporan')) {
+            if ($user->can('menu_cbp')) {
+                return redirect()->route('cbp.index');
+            }
+            if ($user->can('menu_cbp_jadwal')) {
+                return redirect()->route('cbp.jadwal');
+            }
+            abort(403, 'Akses ke laporan CBP tidak diizinkan.');
+        }
+
         $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'customer.technicianSchedules', 'technicians', 'creator', 'auditLogs'])->whereIn('status', ['assigned', 'completed']);
 
         if ($request->filled('search')) {

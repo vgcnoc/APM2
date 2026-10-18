@@ -34,6 +34,17 @@ class PgkController extends Controller
      */
     public function index(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can('menu_pgk')) {
+            if ($user->can('menu_pgk_laporan')) {
+                return redirect()->route('pgk.laporan');
+            }
+            if ($user->can('menu_pgk_jadwal')) {
+                return redirect()->route('pgk.jadwal');
+            }
+            abort(403, 'Akses ke modul PGK tidak diizinkan.');
+        }
+
         $query = PgkTicket::with([
             'area',
             'customer.areaModel',
@@ -155,6 +166,17 @@ class PgkController extends Controller
      */
     public function jadwal(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can('menu_pgk_jadwal')) {
+            if ($user->can('menu_pgk_laporan')) {
+                return redirect()->route('pgk.laporan');
+            }
+            if ($user->can('menu_pgk')) {
+                return redirect()->route('pgk.index');
+            }
+            abort(403, 'Akses ke Jadwal PGK tidak diizinkan.');
+        }
+
         $query = PgkTicket::with([
             'area',
             'customer.areaModel',
@@ -224,6 +246,17 @@ class PgkController extends Controller
      */
     public function laporan(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can('menu_pgk_laporan')) {
+            if ($user->can('menu_pgk')) {
+                return redirect()->route('pgk.index');
+            }
+            if ($user->can('menu_pgk_jadwal')) {
+                return redirect()->route('pgk.jadwal');
+            }
+            abort(403, 'Akses ke Laporan PGK tidak diizinkan.');
+        }
+
         $query = PgkTicket::with([
             'area',
             'customer.areaModel',

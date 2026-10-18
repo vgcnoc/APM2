@@ -1,24 +1,7 @@
 <template>
     <AppLayout title="Penanganan Sigap (PGS)" subtitle="Manajemen Gangguan Pelanggan & Alur Penanganan Cepat">
         <div class="space-y-6">
-            <!-- Nav Tabs -->
-            <div class="flex items-center gap-2 border-b border-gray-200 pb-2 overflow-x-auto">
-                <Link href="/pgs" class="px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shrink-0 bg-blue-600 text-white shadow-sm shadow-blue-500/20">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                    <span>1. Temuan & Penanganan (Admin)</span>
-                    <span v-if="counts.admin_handling > 0" class="px-2 py-0.5 text-xs font-black rounded-full bg-white text-blue-600 ml-1">{{ counts.admin_handling }}</span>
-                </Link>
-                <Link href="/pgs/jadwal" class="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shrink-0 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200">
-                    <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    <span>2. Jadwal & Material (Ka. Teknisi)</span>
-                    <span v-if="counts.escalated_to_lead > 0" class="px-2 py-0.5 text-xs font-black rounded-full bg-amber-100 text-amber-700 ml-1">{{ counts.escalated_to_lead }}</span>
-                </Link>
-                <Link href="/pgs/laporan" class="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shrink-0 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200">
-                    <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span>3. Laporan Penanganan (Teknisi)</span>
-                    <span v-if="counts.scheduled > 0" class="px-2 py-0.5 text-xs font-black rounded-full bg-indigo-100 text-indigo-700 ml-1">{{ counts.scheduled }}</span>
-                </Link>
-            </div>
+
 
             <!-- Stats Overview Cards -->
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -641,6 +624,9 @@
 import { ref, computed } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { usePermission } from '@/Composables/usePermission';
+
+const { can } = usePermission();
 
 const props = defineProps({
     tickets: Object,
