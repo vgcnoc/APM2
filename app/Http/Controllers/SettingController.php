@@ -306,30 +306,30 @@ class SettingController extends Controller
         Setting::set('attendance_reward_enabled', $request->boolean('attendance_reward_enabled') ? '1' : '0');
         Setting::set('attendance_reward_branch_enabled', $request->boolean('attendance_reward_branch_enabled') ? '1' : '0');
         Setting::set('attendance_reward_global_enabled', $request->boolean('attendance_reward_global_enabled') ? '1' : '0');
-        Setting::set('attendance_reward_branch_1', $request->attendance_reward_branch_1 ?? 200000);
-        Setting::set('attendance_reward_branch_2', $request->attendance_reward_branch_2 ?? 150000);
-        Setting::set('attendance_reward_branch_3', $request->attendance_reward_branch_3 ?? 100000);
-        Setting::set('attendance_reward_global_1', $request->attendance_reward_global_1 ?? 200000);
-        Setting::set('attendance_reward_global_2', $request->attendance_reward_global_2 ?? 150000);
-        Setting::set('attendance_reward_global_3', $request->attendance_reward_global_3 ?? 100000);
+        Setting::set('attendance_reward_branch_1', is_numeric($request->attendance_reward_branch_1) ? (float) $request->attendance_reward_branch_1 : 200000);
+        Setting::set('attendance_reward_branch_2', is_numeric($request->attendance_reward_branch_2) ? (float) $request->attendance_reward_branch_2 : 150000);
+        Setting::set('attendance_reward_branch_3', is_numeric($request->attendance_reward_branch_3) ? (float) $request->attendance_reward_branch_3 : 100000);
+        Setting::set('attendance_reward_global_1', is_numeric($request->attendance_reward_global_1) ? (float) $request->attendance_reward_global_1 : 200000);
+        Setting::set('attendance_reward_global_2', is_numeric($request->attendance_reward_global_2) ? (float) $request->attendance_reward_global_2 : 150000);
+        Setting::set('attendance_reward_global_3', is_numeric($request->attendance_reward_global_3) ? (float) $request->attendance_reward_global_3 : 100000);
         Setting::set('attendance_reward_note', $request->attendance_reward_note ?? '');
 
         // Save Maintenance & Tim Khusus Settings
         Setting::set('attendance_reward_maintenance_enabled', $request->boolean('attendance_reward_maintenance_enabled') ? '1' : '0');
-        Setting::set('attendance_reward_maint_1', $request->attendance_reward_maint_1 ?? 200000);
-        Setting::set('attendance_reward_maint_2', $request->attendance_reward_maint_2 ?? 150000);
-        Setting::set('attendance_reward_maint_3', $request->attendance_reward_maint_3 ?? 100000);
+        Setting::set('attendance_reward_maint_1', is_numeric($request->attendance_reward_maint_1) ? (float) $request->attendance_reward_maint_1 : 200000);
+        Setting::set('attendance_reward_maint_2', is_numeric($request->attendance_reward_maint_2) ? (float) $request->attendance_reward_maint_2 : 150000);
+        Setting::set('attendance_reward_maint_3', is_numeric($request->attendance_reward_maint_3) ? (float) $request->attendance_reward_maint_3 : 100000);
 
         Setting::set('attendance_reward_special_team_enabled', $request->boolean('attendance_reward_special_team_enabled') ? '1' : '0');
-        Setting::set('attendance_reward_special_1', $request->attendance_reward_special_1 ?? 200000);
-        Setting::set('attendance_reward_special_2', $request->attendance_reward_special_2 ?? 150000);
-        Setting::set('attendance_reward_special_3', $request->attendance_reward_special_3 ?? 100000);
+        Setting::set('attendance_reward_special_1', is_numeric($request->attendance_reward_special_1) ? (float) $request->attendance_reward_special_1 : 200000);
+        Setting::set('attendance_reward_special_2', is_numeric($request->attendance_reward_special_2) ? (float) $request->attendance_reward_special_2 : 150000);
+        Setting::set('attendance_reward_special_3', is_numeric($request->attendance_reward_special_3) ? (float) $request->attendance_reward_special_3 : 100000);
 
         // Save Auto Generate Reward Settings
         Setting::set('attendance_reward_auto_generate_enabled', $request->boolean('attendance_reward_auto_generate_enabled') ? '1' : '0');
-        Setting::set('attendance_reward_auto_date', $request->attendance_reward_auto_date ?? 1);
-        Setting::set('attendance_reward_auto_hour', $request->attendance_reward_auto_hour ?? 0);
-        Setting::set('attendance_reward_auto_minute', $request->attendance_reward_auto_minute ?? 6);
+        Setting::set('attendance_reward_auto_date', $request->filled('attendance_reward_auto_date') ? (int) $request->attendance_reward_auto_date : 1);
+        Setting::set('attendance_reward_auto_hour', $request->filled('attendance_reward_auto_hour') ? (int) $request->attendance_reward_auto_hour : 0);
+        Setting::set('attendance_reward_auto_minute', $request->filled('attendance_reward_auto_minute') ? (int) $request->attendance_reward_auto_minute : 6);
 
         return redirect()->back()->with('success', 'Pengaturan absensi & reward terbaik berhasil diperbarui.');
     }

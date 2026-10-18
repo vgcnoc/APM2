@@ -72,12 +72,12 @@
                 <!-- SECTION 1: REWARD ABSEN TERBAIK (LENGKAP SEMUA KATEGORI)       -->
                 <!-- ============================================================== -->
                 <div v-show="activeTab === 'rewards'" class="space-y-5">
-                    <!-- 1. MAIN TOGGLE CARD: AKTIFKAN REWARD ABSEN TERBAIK -->
+                    <!-- 1. MAIN TOGGLE CARD: AKTIFKAN SISTEM REWARD ABSEN TERBAIK -->
                     <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex items-center justify-between">
                         <div>
                             <div class="text-sm font-bold text-slate-900 flex items-center gap-2">
                                 <span class="text-base">🏆</span>
-                                <span>Aktifkan Reward Absen Terbaik</span>
+                                <span>Aktifkan Sistem Reward Absen Terbaik</span>
                             </div>
                             <p class="text-xs text-slate-500 mt-0.5">
                                 Karyawan terbaik peringkat 1-3 per cabang mendapat reward cabang. Juara 1 tiap cabang otomatis masuk nominasi global — Top 3 global mendapat reward tambahan.
@@ -89,51 +89,28 @@
                         </label>
                     </div>
 
-                    <!-- 2. SUB TOGGLE: ABSEN TERBAIK PER CABANG -->
-                    <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex items-center justify-between">
-                        <div>
-                            <div class="text-sm font-bold text-slate-900">Absen Terbaik Per Cabang</div>
-                            <p class="text-xs text-slate-500 mt-0.5">Top 3 karyawan terbaik di masing-masing cabang</p>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                v-model="form.attendance_reward_branch_enabled"
-                                :disabled="!form.attendance_reward_enabled"
-                                class="sr-only peer"
-                            >
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
-                        </label>
-                    </div>
-
-                    <!-- 3. SUB TOGGLE: ABSEN TERBAIK GLOBAL -->
-                    <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex items-center justify-between">
-                        <div>
-                            <div class="text-sm font-bold text-slate-900">Absen Terbaik Global</div>
-                            <p class="text-xs text-slate-500 mt-0.5">Juara 1 tiap cabang berkompetisi — Top 3 terbaik perusahaan</p>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                v-model="form.attendance_reward_global_enabled"
-                                :disabled="!form.attendance_reward_enabled"
-                                class="sr-only peer"
-                            >
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
-                        </label>
-                    </div>
-
-                    <!-- 4. CARD: REWARD PER CABANG (BLUE BORDER) -->
+                    <!-- 2. CARD: REWARD PER CABANG (BLUE BORDER) -->
                     <div class="bg-white rounded-2xl border border-blue-300/90 p-5 shadow-2xs space-y-4 hover:border-blue-400 transition-colors">
-                        <div>
-                            <div class="text-sm font-bold text-blue-900 flex items-center gap-2">
-                                <span class="text-base text-blue-600">🏆</span>
-                                <span>Reward Per Cabang (Top 3 per cabang)</span>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-sm font-bold text-blue-900 flex items-center gap-2">
+                                    <span class="text-base text-blue-600">🏢</span>
+                                    <span>Reward Per Cabang (Top 3 per Cabang)</span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-0.5">Top 3 karyawan terbaik di masing-masing cabang</p>
                             </div>
-                            <p class="text-xs text-slate-500 mt-0.5">Nominal reward untuk peringkat 1-3 di masing-masing cabang</p>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    v-model="form.attendance_reward_branch_enabled"
+                                    :disabled="!form.attendance_reward_enabled"
+                                    class="sr-only peer"
+                                >
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                            </label>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                        <div v-show="form.attendance_reward_branch_enabled" class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                                     <span>🥇</span>
@@ -151,6 +128,7 @@
                                         placeholder="200000"
                                     />
                                 </div>
+                                <p class="text-[11px] text-blue-600 font-medium mt-1">Rp {{ Number(form.attendance_reward_branch_1 || 0).toLocaleString('id-ID') }}</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
@@ -169,6 +147,7 @@
                                         placeholder="150000"
                                     />
                                 </div>
+                                <p class="text-[11px] text-blue-600 font-medium mt-1">Rp {{ Number(form.attendance_reward_branch_2 || 0).toLocaleString('id-ID') }}</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
@@ -187,23 +166,38 @@
                                         placeholder="100000"
                                     />
                                 </div>
+                                <p class="text-[11px] text-blue-600 font-medium mt-1">Rp {{ Number(form.attendance_reward_branch_3 || 0).toLocaleString('id-ID') }}</p>
                             </div>
                         </div>
+                        <p v-show="!form.attendance_reward_branch_enabled" class="text-xs text-slate-400 italic">
+                            Reward kategori per cabang sedang dinonaktifkan.
+                        </p>
                     </div>
 
-                    <!-- 5. CARD: REWARD GLOBAL (EMERALD/GREEN BORDER) -->
+                    <!-- 3. CARD: REWARD GLOBAL (EMERALD/GREEN BORDER) -->
                     <div class="bg-white rounded-2xl border border-emerald-300/90 p-5 shadow-2xs space-y-4 hover:border-emerald-400 transition-colors">
-                        <div>
-                            <div class="text-sm font-bold text-emerald-900 flex items-center gap-2">
-                                <span class="text-base text-emerald-600">🏆</span>
-                                <span>Reward Global (Juara 1 tiap cabang — Top 3)</span>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-sm font-bold text-emerald-900 flex items-center gap-2">
+                                    <span class="text-base text-emerald-600">🌐</span>
+                                    <span>Reward Global (Juara 1 Tiap Cabang — Top 3)</span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-0.5">
+                                    Nominal reward untuk Top 3 dari nominasi global. Karyawan bisa dapat reward cabang + global sekaligus.
+                                </p>
                             </div>
-                            <p class="text-xs text-slate-500 mt-0.5">
-                                Nominal reward untuk Top 3 dari nominasi global. Karyawan bisa dapat reward cabang + global sekaligus.
-                            </p>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    v-model="form.attendance_reward_global_enabled"
+                                    :disabled="!form.attendance_reward_enabled"
+                                    class="sr-only peer"
+                                >
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                            </label>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                        <div v-show="form.attendance_reward_global_enabled" class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                                     <span>🥇</span>
@@ -221,6 +215,7 @@
                                         placeholder="200000"
                                     />
                                 </div>
+                                <p class="text-[11px] text-emerald-600 font-medium mt-1">Rp {{ Number(form.attendance_reward_global_1 || 0).toLocaleString('id-ID') }}</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
@@ -239,6 +234,7 @@
                                         placeholder="150000"
                                     />
                                 </div>
+                                <p class="text-[11px] text-emerald-600 font-medium mt-1">Rp {{ Number(form.attendance_reward_global_2 || 0).toLocaleString('id-ID') }}</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
@@ -257,40 +253,38 @@
                                         placeholder="100000"
                                     />
                                 </div>
+                                <p class="text-[11px] text-emerald-600 font-medium mt-1">Rp {{ Number(form.attendance_reward_global_3 || 0).toLocaleString('id-ID') }}</p>
                             </div>
                         </div>
+                        <p v-show="!form.attendance_reward_global_enabled" class="text-xs text-slate-400 italic">
+                            Reward kategori global sedang dinonaktifkan.
+                        </p>
                     </div>
 
-                    <!-- 6. TOGGLE CARD: REWARD ABSEN MAINTENANCE -->
-                    <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex items-center justify-between">
-                        <div>
-                            <div class="text-sm font-bold text-slate-900">Reward Absen Maintenance</div>
-                            <p class="text-xs text-slate-500 mt-0.5">Top 3 karyawan maintenance terbaik secara global mendapat reward</p>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                v-model="form.attendance_reward_maintenance_enabled"
-                                :disabled="!form.attendance_reward_enabled"
-                                class="sr-only peer"
-                            >
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
-                        </label>
-                    </div>
-
-                    <!-- 7. CARD: REWARD MAINTENANCE (ORANGE BORDER) -->
+                    <!-- 4. CARD: REWARD MAINTENANCE (ORANGE BORDER) -->
                     <div class="bg-white rounded-2xl border border-orange-200/90 p-5 shadow-2xs space-y-4 hover:border-orange-300 transition-colors">
-                        <div>
-                            <div class="text-sm font-bold text-orange-600 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-orange-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                                </svg>
-                                <span>Reward Maintenance (Top 3 Global)</span>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-sm font-bold text-orange-600 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-orange-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                                    </svg>
+                                    <span>Reward Maintenance (Top 3 Global)</span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1">Nominal reward untuk peringkat 1-3 karyawan maintenance terbaik.</p>
                             </div>
-                            <p class="text-xs text-slate-500 mt-1">Nominal reward untuk peringkat 1-3 karyawan maintenance terbaik.</p>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    v-model="form.attendance_reward_maintenance_enabled"
+                                    :disabled="!form.attendance_reward_enabled"
+                                    class="sr-only peer"
+                                >
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                            </label>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                        <div v-show="form.attendance_reward_maintenance_enabled" class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                             <div>
                                 <label class="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
                                     <svg class="w-3.5 h-3.5 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -311,6 +305,7 @@
                                         placeholder="200000"
                                     />
                                 </div>
+                                <p class="text-[11px] text-orange-600 font-medium mt-1">Rp {{ Number(form.attendance_reward_maint_1 || 0).toLocaleString('id-ID') }}</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
@@ -332,6 +327,7 @@
                                         placeholder="150000"
                                     />
                                 </div>
+                                <p class="text-[11px] text-orange-600 font-medium mt-1">Rp {{ Number(form.attendance_reward_maint_2 || 0).toLocaleString('id-ID') }}</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
@@ -353,45 +349,43 @@
                                         placeholder="100000"
                                     />
                                 </div>
+                                <p class="text-[11px] text-orange-600 font-medium mt-1">Rp {{ Number(form.attendance_reward_maint_3 || 0).toLocaleString('id-ID') }}</p>
                             </div>
                         </div>
+                        <p v-show="!form.attendance_reward_maintenance_enabled" class="text-xs text-slate-400 italic">
+                            Reward kategori maintenance sedang dinonaktifkan.
+                        </p>
                     </div>
 
-                    <!-- 8. TOGGLE CARD: REWARD TIM KHUSUS -->
-                    <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex items-center justify-between">
-                        <div>
-                            <div class="text-sm font-bold text-slate-900">Reward Tim Khusus</div>
-                            <p class="text-xs text-slate-500 mt-0.5">Top 3 karyawan terbaik per grup Tim Khusus mendapat reward</p>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                v-model="form.attendance_reward_special_team_enabled"
-                                :disabled="!form.attendance_reward_enabled"
-                                class="sr-only peer"
-                            >
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
-                        </label>
-                    </div>
-
-                    <!-- 9. CARD: REWARD TIM KHUSUS (CYAN BORDER) -->
+                    <!-- 5. CARD: REWARD TIM KHUSUS (CYAN BORDER) -->
                     <div class="bg-white rounded-2xl border border-cyan-200/90 p-5 shadow-2xs space-y-4 hover:border-cyan-300 transition-colors">
-                        <div>
-                            <div class="text-sm font-bold text-cyan-600 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-cyan-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                                    <circle cx="9" cy="7" r="4" />
-                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                                </svg>
-                                <span>Reward Tim Khusus (Top 3 per Grup)</span>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-sm font-bold text-cyan-600 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-cyan-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                        <circle cx="9" cy="7" r="4" />
+                                        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                    </svg>
+                                    <span>Reward Tim Khusus (Top 3 per Grup)</span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1">
+                                    Nominal reward untuk peringkat 1-3 di setiap grup Tim Khusus (berlaku seragam semua grup).
+                                </p>
                             </div>
-                            <p class="text-xs text-slate-500 mt-1">
-                                Nominal reward untuk peringkat 1-3 di setiap grup Tim Khusus (berlaku seragam semua grup).
-                            </p>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    v-model="form.attendance_reward_special_team_enabled"
+                                    :disabled="!form.attendance_reward_enabled"
+                                    class="sr-only peer"
+                                >
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                            </label>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                        <div v-show="form.attendance_reward_special_team_enabled" class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                             <div>
                                 <label class="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
                                     <svg class="w-3.5 h-3.5 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -412,6 +406,7 @@
                                         placeholder="200000"
                                     />
                                 </div>
+                                <p class="text-[11px] text-cyan-600 font-medium mt-1">Rp {{ Number(form.attendance_reward_special_1 || 0).toLocaleString('id-ID') }}</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
@@ -433,6 +428,7 @@
                                         placeholder="150000"
                                     />
                                 </div>
+                                <p class="text-[11px] text-cyan-600 font-medium mt-1">Rp {{ Number(form.attendance_reward_special_2 || 0).toLocaleString('id-ID') }}</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
@@ -454,8 +450,12 @@
                                         placeholder="100000"
                                     />
                                 </div>
+                                <p class="text-[11px] text-cyan-600 font-medium mt-1">Rp {{ Number(form.attendance_reward_special_3 || 0).toLocaleString('id-ID') }}</p>
                             </div>
                         </div>
+                        <p v-show="!form.attendance_reward_special_team_enabled" class="text-xs text-slate-400 italic">
+                            Reward kategori tim khusus sedang dinonaktifkan.
+                        </p>
                     </div>
 
                     <!-- 10. CARD: AUTO GENERATE REWARD (PURPLE BORDER) -->
@@ -976,6 +976,7 @@
 import { ref } from 'vue';
 import { useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     settings: Object,
@@ -1044,6 +1045,27 @@ const form = useForm({
 const submit = () => {
     form.post(route('settings.attendance.update'), {
         preserveScroll: true,
+        onSuccess: () => {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Berhasil Disimpan!',
+                text: 'Pengaturan absensi & reward terbaik berhasil diperbarui.',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        },
+        onError: (errors) => {
+            const firstError = Object.values(errors || {})[0] || 'Gagal menyimpan pengaturan absensi. Silakan periksa kembali data Anda.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menyimpan',
+                text: firstError,
+                confirmButtonColor: '#2563eb'
+            });
+        }
     });
 };
 </script>
