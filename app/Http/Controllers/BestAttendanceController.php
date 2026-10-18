@@ -96,8 +96,19 @@ class BestAttendanceController extends Controller
         // 4. Kalkulasi Performa Setiap Karyawan
         $calculatedEmployees = [];
 
-        // Hitung perkiraan hari kerja default (Senin - Sabtu = 26 hari)
-        $defaultTargetDays = 26;
+        $isCurrentMonth = ($year === Carbon::now()->year && $month === Carbon::now()->month);
+        $asOfDate = $isCurrentMonth ? Carbon::now()->endOfDay() : $endDate;
+
+        // Hitung perkiraan hari kerja default (Senin - Sabtu) pada periode yang telah berjalan
+        $defaultTargetDays = 0;
+        $tempDate = $startDate->copy();
+        while ($tempDate->lte($asOfDate)) {
+            if ($tempDate->dayOfWeek !== 0) { // Bukan hari Minggu
+                $defaultTargetDays++;
+            }
+            $tempDate->addDay();
+        }
+        $defaultTargetDays = max(1, $defaultTargetDays);
 
         foreach ($allEmployees as $emp) {
             $empAtts = $attendances->get($emp->id, collect());
@@ -105,10 +116,11 @@ class BestAttendanceController extends Controller
             $empSpecials = $specialAttendances->get($emp->id, collect());
             $empDuties = $fieldDuties->get($emp->id, collect());
 
-            // Target hari kerja (hanya hitung jadwal kerja aktif, kecualikan hari libur OFF)
+            // Target hari kerja (hanya hitung jadwal kerja aktif hingga tanggal asOfDate)
             if ($empSchedules->count() > 0) {
-                $workDays = $empSchedules->where('status', '!=', 'off')->filter(function ($s) {
-                    return !empty($s->shift_id);
+                $workDays = $empSchedules->filter(function ($s) use ($asOfDate) {
+                    $d = Carbon::parse($s->date);
+                    return $d->lte($asOfDate) && $s->status !== 'off' && !empty($s->shift_id);
                 })->count();
                 $targetDays = $workDays > 0 ? $workDays : $defaultTargetDays;
             } else {
@@ -163,14 +175,18 @@ class BestAttendanceController extends Controller
             }
 
             // FORMULA SKOR:
-            // Base Kehadiran = (Hadir / Target) * 100
+            // Base Kehadiran = (Hadir / Target Hari) * 100
             // Penalti = keterlambatan + alpha + pulang cepat
-            $baseAttendanceRate = ($targetDays > 0) ? ($presents / $targetDays) * 100 : 0;
-            $penaltyLate = ($lates * 0.25) + ($lateMinutes * 0.01);
-            $penaltyAlpha = ($alphas * 2.0);
-            $penaltyEarly = ($earlyLeaves * 0.5);
+            if ($presents === 0) {
+                $finalScore = 0;
+            } else {
+                $baseAttendanceRate = ($targetDays > 0) ? min(100, ($presents / $targetDays) * 100) : 0;
+                $penaltyLate = ($lates * 0.25) + ($lateMinutes * 0.01);
+                $penaltyAlpha = ($alphas * 2.0);
+                $penaltyEarly = ($earlyLeaves * 0.5);
 
-            $finalScore = max(0, round($baseAttendanceRate - $penaltyLate - $penaltyAlpha - $penaltyEarly, 2));
+                $finalScore = max(0, round($baseAttendanceRate - $penaltyLate - $penaltyAlpha - $penaltyEarly, 2));
+            }
 
             $branchName = $emp->area ? $emp->area->name : ($emp->branch ?: 'Pusat');
             $position = $emp->position ?: 'Karyawan';
@@ -195,7 +211,7 @@ class BestAttendanceController extends Controller
                 'is_maintenance' => (bool) $isMaintenance,
                 'reward_amount' => 0,
                 'reward_title' => null,
-                'rank' => 0,
+                'rank' => '-',
                 'is_branch_winner' => false,
                 'is_global_winner' => false,
             ];
@@ -223,14 +239,19 @@ class BestAttendanceController extends Controller
         })->values();
 
         // 5. PENETAPAN JUARA & REWARD BERDASARKAN SCOPE
+        // Syarat mutlak masuk podium: memiliki riwayat kehadiran (presents > 0) dan skor > 0
+        $qualifiedEmployees = $sortedEmployees->filter(function ($emp) {
+            return $emp['presents'] > 0 && $emp['score'] > 0;
+        })->values();
+
         $podium = [];
         $leaderboard = [];
 
         if ($scope === 'global') {
             // "Nominasi global: Juara 1 tiap cabang berkompetisi — Top 3 mendapat reward"
-            // Cari Juara 1 dari setiap cabang
+            // Cari Juara 1 dari setiap cabang di antara yang berkualifikasi
             $branchWinners = [];
-            $byBranch = $sortedEmployees->groupBy('branch');
+            $byBranch = $qualifiedEmployees->groupBy('branch');
 
             foreach ($byBranch as $branchName => $branchGroup) {
                 $topInBranch = $branchGroup->first();
@@ -261,11 +282,11 @@ class BestAttendanceController extends Controller
                 $podiumList[] = $winner;
             }
 
-            // Jika belum ada cukup juara cabang, fallback ke top overall
-            if (count($podiumList) < 3 && $sortedEmployees->count() > count($podiumList)) {
+            // Jika belum ada cukup juara cabang, fallback ke qualified employees lain
+            if (count($podiumList) < 3 && $qualifiedEmployees->count() > count($podiumList)) {
                 $assignedIds = array_column($podiumList, 'id');
-                for ($i = 0; $i < $sortedEmployees->count() && count($podiumList) < 3; $i++) {
-                    $cand = $sortedEmployees[$i];
+                for ($i = 0; $i < $qualifiedEmployees->count() && count($podiumList) < 3; $i++) {
+                    $cand = $qualifiedEmployees[$i];
                     if (!in_array($cand['id'], $assignedIds)) {
                         $rank = count($podiumList) + 1;
                         $cand['rank'] = $rank;
@@ -284,15 +305,19 @@ class BestAttendanceController extends Controller
             $rankedLeaderboard = [];
             $podiumMap = collect($podium)->keyBy('id');
 
-            foreach ($sortedEmployees as $idx => $emp) {
-                $currentRank = $idx + 1;
+            $currentRank = 1;
+            foreach ($sortedEmployees as $emp) {
                 if ($podiumMap->has($emp['id'])) {
                     $rankedLeaderboard[] = $podiumMap->get($emp['id']);
                 } else {
-                    $emp['rank'] = $currentRank;
+                    $hasAttended = ($emp['presents'] > 0 && $emp['score'] > 0);
+                    $emp['rank'] = $hasAttended ? $currentRank : '-';
                     $emp['reward_amount'] = 0;
                     $emp['reward_title'] = null;
                     $rankedLeaderboard[] = $emp;
+                }
+                if ($emp['presents'] > 0 && $emp['score'] > 0) {
+                    $currentRank++;
                 }
             }
             $leaderboard = $rankedLeaderboard;
@@ -300,8 +325,8 @@ class BestAttendanceController extends Controller
         } else {
             // Scope: 'branch' (Per Cabang)
             $podiumList = [];
-            for ($i = 0; $i < min(3, $sortedEmployees->count()); $i++) {
-                $winner = $sortedEmployees[$i];
+            for ($i = 0; $i < min(3, $qualifiedEmployees->count()); $i++) {
+                $winner = $qualifiedEmployees[$i];
                 $rank = $i + 1;
                 $reward = $rewardsConfig['branch'][$rank] ?? 0;
                 $winner['rank'] = $rank;
@@ -314,15 +339,19 @@ class BestAttendanceController extends Controller
 
             $rankedLeaderboard = [];
             $podiumMap = collect($podium)->keyBy('id');
-            foreach ($sortedEmployees as $idx => $emp) {
-                $currentRank = $idx + 1;
+            $currentRank = 1;
+            foreach ($sortedEmployees as $emp) {
                 if ($podiumMap->has($emp['id'])) {
                     $rankedLeaderboard[] = $podiumMap->get($emp['id']);
                 } else {
-                    $emp['rank'] = $currentRank;
+                    $hasAttended = ($emp['presents'] > 0 && $emp['score'] > 0);
+                    $emp['rank'] = $hasAttended ? $currentRank : '-';
                     $emp['reward_amount'] = 0;
                     $emp['reward_title'] = null;
                     $rankedLeaderboard[] = $emp;
+                }
+                if ($emp['presents'] > 0 && $emp['score'] > 0) {
+                    $currentRank++;
                 }
             }
             $leaderboard = $rankedLeaderboard;
@@ -331,13 +360,15 @@ class BestAttendanceController extends Controller
         // 6. Ringkasan Statistik KPI Cards (5 Cards)
         $totalEmployeesCount = $filteredCollection->count();
         $avgScore = $totalEmployeesCount > 0 ? round($filteredCollection->avg('score'), 2) : 0;
-        $perfectScoresCount = $filteredCollection->where('score', '>=', 100)->count();
+        $perfectScoresCount = $filteredCollection->where('score', '>=', 100)->where('presents', '>', 0)->count();
         $totalLates = (int) $filteredCollection->sum('lates');
         $totalAlphas = (int) $filteredCollection->sum('alphas');
 
         // Daftar posisi unik untuk filter departemen
         $positions = Employee::whereNotNull('position')
+            ->where('position', '!=', '')
             ->distinct()
+            ->orderBy('position')
             ->pluck('position')
             ->values();
 
@@ -411,15 +442,19 @@ class BestAttendanceController extends Controller
         $year = (int) $request->input('year', Carbon::now()->year);
         $winners = $request->input('winners', []);
 
-        if (empty($winners)) {
-            return redirect()->back()->with('error', 'Tidak ada data pemenang untuk disinkronkan.');
+        $validWinners = collect($winners)->filter(function ($w) {
+            return !empty($w['id']) && (float) ($w['reward_amount'] ?? 0) > 0 && ($w['presents'] ?? 0) > 0;
+        })->values();
+
+        if ($validWinners->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada data juara dengan presensi valid untuk disinkronkan ke payroll.');
         }
 
         $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth();
         $syncedCount = 0;
 
-        DB::transaction(function () use ($winners, $month, $year, $endDate, &$syncedCount) {
-            foreach ($winners as $winner) {
+        DB::transaction(function () use ($validWinners, $month, $year, $endDate, &$syncedCount) {
+            foreach ($validWinners as $winner) {
                 $empId = $winner['id'] ?? null;
                 $rewardAmount = (float) ($winner['reward_amount'] ?? 0);
                 $rewardTitle = $winner['reward_title'] ?? "Juara Absen Terbaik";

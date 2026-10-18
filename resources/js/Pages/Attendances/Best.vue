@@ -63,7 +63,7 @@
                         <!-- Action: Print / Cetak Pengumuman -->
                         <button
                             type="button"
-                            @click="showPrintModal = true"
+                            @click="handlePrintClick"
                             class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5"
                             title="Cetak Pengumuman Juara"
                         >
@@ -89,12 +89,12 @@
                 <!-- ===================================================== -->
                 <div class="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
                     <!-- Left: Departemen Filter -->
-                    <div class="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl">
+                    <div class="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl overflow-x-auto max-w-full">
                         <button
                             type="button"
                             @click="setDepartment('all')"
                             :class="[
-                                'px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5',
+                                'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0',
                                 currentDepartment === 'all'
                                     ? 'bg-white text-slate-900 shadow-sm'
                                     : 'text-slate-600 hover:text-slate-900'
@@ -106,19 +106,19 @@
                             <span>Semua</span>
                         </button>
                         <button
+                            v-for="dept in departmentTabs"
+                            :key="dept.key"
                             type="button"
-                            @click="setDepartment('maintenance')"
+                            @click="setDepartment(dept.key)"
                             :class="[
-                                'px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5',
-                                currentDepartment === 'maintenance'
+                                'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0',
+                                currentDepartment === dept.key
                                     ? 'bg-white text-slate-900 shadow-sm'
                                     : 'text-slate-600 hover:text-slate-900'
                             ]"
                         >
-                            <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                            </svg>
-                            <span>Maintenance</span>
+                            <span>{{ dept.icon }}</span>
+                            <span>{{ dept.label }}</span>
                         </button>
                     </div>
 
@@ -320,7 +320,7 @@
             <!-- ========================================================= -->
             <!-- 5. PODIUM TOP 3 CARDS (DESAIN MEWAH PERSIS SCREENSHOT)   -->
             <!-- ========================================================= -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+            <div v-if="podium && podium.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
                 <!-- JUARA #1 (EMAS / GOLD) -->
                 <div
                     v-if="podium[0]"
@@ -608,6 +608,28 @@
                 </div>
             </div>
 
+            <!-- EMPTY PODIUM STATE JIKA BELUM ADA DATA PRESENSI -->
+            <div v-else class="bg-white rounded-3xl border border-slate-200/80 p-8 sm:p-12 text-center shadow-xs">
+                <div class="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto text-3xl shadow-xs">
+                    🏆
+                </div>
+                <h3 class="text-base sm:text-lg font-black text-slate-800 mt-4">
+                    Belum Ada Nominasi Juara Periode {{ monthNames[selectedMonth - 1] }} {{ selectedYear }}
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto mt-1.5 leading-relaxed">
+                    Peringkat podium dan bonus reward akan otomatis dihitung dan ditampilkan setelah staf memiliki catatan presensi masuk terverifikasi pada periode ini.
+                </p>
+                <div class="mt-5 flex items-center justify-center gap-2">
+                    <Link
+                        href="/attendances"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition inline-flex items-center gap-1.5"
+                    >
+                        <span>📸</span>
+                        <span>Buka Menu Presensi & Absensi</span>
+                    </Link>
+                </div>
+            </div>
+
             <!-- ========================================================= -->
             <!-- 6. LEADERBOARD LENGKAP (TABEL SELURUH KARYAWAN)            -->
             <!-- ========================================================= -->
@@ -669,8 +691,11 @@
                                     <span v-if="emp.rank === 1" class="text-xl" title="Juara 1">🥇</span>
                                     <span v-else-if="emp.rank === 2" class="text-xl" title="Juara 2">🥈</span>
                                     <span v-else-if="emp.rank === 3" class="text-xl" title="Juara 3">🥉</span>
-                                    <span v-else class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-xs">
+                                    <span v-else-if="emp.rank && emp.rank !== '-'" class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-xs">
                                         #{{ emp.rank }}
+                                    </span>
+                                    <span v-else class="text-slate-400 font-bold text-xs">
+                                        -
                                     </span>
                                 </td>
 
@@ -720,7 +745,10 @@
 
                                 <!-- Kedisiplinan -->
                                 <td class="px-5 py-4 text-center">
-                                    <div class="space-y-0.5 text-[11px]">
+                                    <div v-if="emp.presents === 0" class="text-slate-400 text-[11px] italic">
+                                        Belum Ada Presensi
+                                    </div>
+                                    <div v-else class="space-y-0.5 text-[11px]">
                                         <div v-if="emp.lates > 0" class="text-amber-700 font-semibold">
                                             ⚠️ Telat: {{ emp.lates }}x ({{ emp.late_minutes }}m)
                                         </div>
@@ -740,7 +768,8 @@
                                             'px-3 py-1 rounded-full font-black text-xs inline-block shadow-sm',
                                             emp.score >= 80 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
                                             emp.score >= 50 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                                            'bg-rose-100 text-rose-800 border border-rose-300'
+                                            emp.score > 0 ? 'bg-rose-100 text-rose-800 border border-rose-300' :
+                                            'bg-slate-100 text-slate-500 border border-slate-200'
                                         ]"
                                     >
                                         {{ emp.score }}
@@ -957,7 +986,7 @@
                         </div>
 
                         <!-- Top 3 Winners in Print -->
-                        <div class="grid grid-cols-3 gap-4 pt-2">
+                        <div v-if="podium && podium.length > 0" class="grid grid-cols-3 gap-4 pt-2">
                             <!-- Juara 1 -->
                             <div class="border-2 border-amber-400 bg-amber-50/50 p-4 rounded-xl space-y-2">
                                 <span class="text-2xl">🥇</span>
@@ -984,6 +1013,12 @@
                             </div>
                         </div>
 
+                        <div v-else class="py-8 text-center text-slate-500">
+                            <div class="text-3xl mb-2">📋</div>
+                            <div class="font-bold text-sm text-slate-700">Belum Ada Juara yang Berkualifikasi</div>
+                            <p class="text-xs text-slate-400 mt-1">Belum ada karyawan yang memiliki catatan presensi masuk terverifikasi pada periode {{ monthNames[selectedMonth - 1] }} {{ selectedYear }}.</p>
+                        </div>
+
                         <p class="text-xs text-slate-500 italic max-w-lg mx-auto pt-2">
                             Selamat kepada para pemenang atas dedikasi kedisiplinan dan ketepatan waktu. Terus tingkatkan performa kerja dan jadilah teladan bagi seluruh rekan kerja.
                         </p>
@@ -996,8 +1031,9 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     filters: {
@@ -1045,6 +1081,41 @@ const selectedYear = ref(Number(props.filters.year) || 2026);
 const currentDepartment = ref(props.filters.department || 'all');
 const currentScope = ref(props.filters.scope || 'global');
 const selectedAreaId = ref(props.filters.area_id || null);
+
+const departmentTabs = computed(() => {
+    const rawList = props.positions && props.positions.length > 0
+        ? props.positions
+        : ['Maintenance', 'Teknisi', 'CS', 'Kolektor', 'Admin', 'Finance'];
+
+    const iconMap = {
+        'maintenance': '🛠️',
+        'teknisi': '🔧',
+        'cs': '🎧',
+        'customer service': '🎧',
+        'kolektor': '💼',
+        'admin': '📋',
+        'finance': '💰',
+        'noc': '💻',
+        'infrastruktur': '🌐',
+        'manager': '👔',
+    };
+
+    return rawList.map(pos => {
+        const lower = pos.toLowerCase();
+        let icon = '🏷️';
+        for (const [key, ic] of Object.entries(iconMap)) {
+            if (lower.includes(key)) {
+                icon = ic;
+                break;
+            }
+        }
+        return {
+            key: pos.toLowerCase(),
+            label: pos,
+            icon: icon,
+        };
+    });
+});
 
 const monthNames = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -1133,20 +1204,43 @@ const openDetail = async (emp) => {
     }
 };
 
-const syncToPayroll = () => {
+const handlePrintClick = () => {
     if (!props.podium || props.podium.length === 0) {
-        alert('Tidak ada data juara untuk disinkronkan.');
+        Swal.fire({
+            icon: 'info',
+            title: 'Belum Ada Juara',
+            text: `Belum ada nominasi juara pada periode ${monthNames[selectedMonth.value - 1]} ${selectedYear.value} untuk dicetak karena belum ada data presensi terverifikasi.`,
+            confirmButtonColor: '#2563eb',
+        });
+        return;
+    }
+    showPrintModal.value = true;
+};
+
+const syncToPayroll = async () => {
+    if (!props.podium || props.podium.length === 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Belum Ada Pemenang',
+            text: 'Tidak ada data juara dengan presensi valid untuk disinkronkan ke payroll pada periode ini.',
+            confirmButtonColor: '#2563eb',
+        });
         return;
     }
 
     const monthName = monthNames[selectedMonth.value - 1];
-    if (
-        !confirm(
-            `Sinkronkan seluruh reward juara (${props.podium.length} pemenang) periode ${monthName} ${selectedYear.value} langsung ke modul Payroll?`
-        )
-    ) {
-        return;
-    }
+    const confirmResult = await Swal.fire({
+        title: 'Sinkron ke Payroll?',
+        text: `Sinkronkan seluruh reward juara (${props.podium.length} pemenang) periode ${monthName} ${selectedYear.value} langsung ke modul Payroll?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#059669',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Sinkronkan!',
+        cancelButtonText: 'Batal'
+    });
+
+    if (!confirmResult.isConfirmed) return;
 
     router.post(
         '/absen-terbaik/sync-payroll',
@@ -1157,6 +1251,15 @@ const syncToPayroll = () => {
         },
         {
             preserveScroll: true,
+            onSuccess: () => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: 'Reward juara absensi berhasil disinkronkan ke modul Penggajian (Payroll).',
+                    timer: 2000,
+                    showConfirmButton: false,
+                });
+            }
         }
     );
 };
