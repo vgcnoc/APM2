@@ -5,7 +5,7 @@
 
             <!-- Toolbar & Filter -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+                <div v-if="can('pgk_filter')" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
                     <div class="relative flex-1 sm:w-80">
                         <input 
                             type="text" 
@@ -142,6 +142,7 @@
                                 <td class="p-4 text-center">
                                     <div class="flex items-center justify-center gap-2">
                                         <button 
+                                            v-if="can('pgk_btn_report')"
                                             @click="openReportModal(ticket)" 
                                             class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5"
                                         >
@@ -478,6 +479,7 @@
                                     </p>
                                 </div>
                                 <button 
+                                    v-if="can('pgk_btn_request_material')"
                                     type="button" 
                                     @click="isRequestFormOpen = !isRequestFormOpen" 
                                     class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1 shrink-0"

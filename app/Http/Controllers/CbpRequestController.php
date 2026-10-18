@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\CbpRequest;
+use App\Services\DataScopeService;
 use Inertia\Inertia;
 
 class CbpRequestController extends Controller
@@ -22,6 +23,9 @@ class CbpRequestController extends Controller
         }
 
         $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'auditLogs'])->where('status', 'pending');
+
+        // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
+        DataScopeService::applyCbpScope($query);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -65,6 +69,9 @@ class CbpRequestController extends Controller
 
         $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'auditLogs'])->whereIn('status', ['pending', 'assigned']);
 
+        // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
+        DataScopeService::applyCbpScope($query);
+
         if ($request->filled('search')) {
             $search = strtolower($request->search);
             $query->where('cbp_number', 'like', "%{$search}%")
@@ -102,6 +109,9 @@ class CbpRequestController extends Controller
 
         $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'customer.technicianSchedules', 'technicians', 'creator', 'auditLogs'])->whereIn('status', ['assigned', 'completed']);
 
+        // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
+        DataScopeService::applyCbpScope($query);
+
         if ($request->filled('search')) {
             $search = strtolower($request->search);
             $query->where('cbp_number', 'like', "%{$search}%")
@@ -126,6 +136,11 @@ class CbpRequestController extends Controller
 
     public function store(Request $request, \App\Services\RadiusService $radius)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['cbp_btn_request', 'cbp_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuat permintaan CBP.');
+        }
+
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'reason' => 'required|string',
@@ -156,6 +171,11 @@ class CbpRequestController extends Controller
 
     public function assign(Request $request, CbpRequest $cbp)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['cbp_btn_assign', 'cbp_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menugaskan teknisi CBP.');
+        }
+
         $validated = $request->validate([
             'technicians' => 'required|array',
             'technicians.*' => 'exists:users,id',
@@ -178,6 +198,21 @@ class CbpRequestController extends Controller
 
     public function updateStatus(Request $request, CbpRequest $cbp)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['cbp_btn_report', 'cbp_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melaporkan hasil CBP.');
+        }
+
+        // Jika scope 'own' (teknisi biasa), verifikasi bahwa user memang ditugaskan pada CBP ini
+        if ($user && \App\Services\DataScopeService::getScopeLevel($user, 'cbp') === 'own') {
+            $isAssigned = $cbp->technicians()->where('users.id', $user->id)->exists()
+                || $cbp->created_by === $user->id
+                || $cbp->assigned_to === $user->id;
+            if (!$isAssigned) {
+                abort(403, 'Anda hanya dapat melaporkan tugas CBP yang ditugaskan kepada Anda.');
+            }
+        }
+
         $validated = $request->validate([
             'notes' => 'nullable|string',
             'start_time' => 'required',
@@ -250,6 +285,11 @@ class CbpRequestController extends Controller
 
     public function cancel(CbpRequest $cbp)
     {
+        $user = request()->user();
+        if ($user && !$user->can(['cbp_btn_cancel', 'cbp_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membatalkan CBP.');
+        }
+
         $oldStatus = $cbp->status;
         $cbp->update(['status' => 'canceled']);
         

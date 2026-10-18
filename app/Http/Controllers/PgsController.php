@@ -184,6 +184,9 @@ class PgsController extends Controller
             'materialRequests.reviewer',
         ])->whereIn('status', ['escalated_to_lead', 'scheduled', 'in_progress']);
 
+        // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
+        DataScopeService::applyPgsScope($query);
+
         if ($request->filled('search')) {
             $search = strtolower($request->search);
             $query->where(function($q) use ($search) {
@@ -264,12 +267,8 @@ class PgsController extends Controller
             'materialRequests.reviewer',
         ])->whereIn('status', ['scheduled', 'in_progress', 'completed']);
 
-        // Teknisi hanya melihat tugas miliknya kecuali admin / kepala teknisi
-        if (auth()->check() && auth()->user()->hasRole('teknisi') && !auth()->user()->hasRole('admin') && !auth()->user()->hasRole('kepala teknisi')) {
-            $query->whereHas('technicians', function($tq) {
-                $tq->where('users.id', auth()->id());
-            });
-        }
+        // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
+        DataScopeService::applyPgsScope($query);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -319,6 +318,11 @@ class PgsController extends Controller
      */
     public function store(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgs_btn_create', 'pgs_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuat laporan PGS.');
+        }
+
         $validated = $request->validate([
             'area_id' => 'nullable|exists:areas,id',
             'customer_id' => 'required|exists:customers,id',
@@ -358,6 +362,11 @@ class PgsController extends Controller
      */
     public function resolveByAdmin(Request $request, PgsTicket $pgs)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgs_btn_resolve', 'pgs_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menyelesaikan gangguan PGS di sistem.');
+        }
+
         $validated = $request->validate([
             'admin_notes' => 'required|string',
         ]);
@@ -388,6 +397,11 @@ class PgsController extends Controller
      */
     public function escalateToLead(Request $request, PgsTicket $pgs)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgs_btn_escalate', 'pgs_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menyerahkan tiket PGS ke Kepala Teknisi.');
+        }
+
         $validated = $request->validate([
             'escalation_reason' => 'required|string',
             'lead_technician_id' => 'nullable|exists:users,id',
@@ -418,6 +432,11 @@ class PgsController extends Controller
      */
     public function schedule(Request $request, PgsTicket $pgs)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgs_btn_assign', 'pgs_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menjadwalkan teknisi PGS.');
+        }
+
         // Normalisasi parameter teknisi
         if ($request->has('technician_ids') && !$request->has('technicians')) {
             $request->merge(['technicians' => $request->technician_ids]);
@@ -567,6 +586,21 @@ class PgsController extends Controller
      */
     public function submitReport(Request $request, PgsTicket $pgs)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgs_btn_report', 'pgs_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melaporkan hasil penanganan PGS.');
+        }
+
+        // Jika scope 'own' (teknisi biasa), verifikasi bahwa user memang ditugaskan pada tiket PGS ini
+        if ($user && \App\Services\DataScopeService::getScopeLevel($user, 'pgs') === 'own') {
+            $isAssigned = $pgs->technicians()->where('users.id', $user->id)->exists()
+                || $pgs->created_by === $user->id
+                || $pgs->lead_technician_id === $user->id;
+            if (!$isAssigned) {
+                abort(403, 'Anda hanya dapat melaporkan penanganan PGS yang ditugaskan kepada Anda.');
+            }
+        }
+
         $validated = $request->validate([
             'action_taken' => 'required|string',
             'optical_power_before' => 'nullable|string|max:50',

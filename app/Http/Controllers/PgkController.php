@@ -191,6 +191,9 @@ class PgkController extends Controller
             'materialRequests.reviewer',
         ])->whereIn('status', ['escalated_to_lead', 'scheduled', 'in_progress']);
 
+        // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
+        DataScopeService::applyPgkScope($query);
+
         if ($request->filled('search')) {
             $search = strtolower($request->search);
             $query->where(function($q) use ($search) {
@@ -272,12 +275,8 @@ class PgkController extends Controller
             'materialRequests.reviewer',
         ])->whereIn('status', ['scheduled', 'in_progress', 'completed']);
 
-        // Teknisi hanya melihat tugas miliknya kecuali admin / kepala teknisi
-        if (auth()->check() && auth()->user()->hasRole('teknisi') && !auth()->user()->hasRole('admin') && !auth()->user()->hasRole('kepala teknisi')) {
-            $query->whereHas('technicians', function($tq) {
-                $tq->where('users.id', auth()->id());
-            });
-        }
+        // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
+        DataScopeService::applyPgkScope($query);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -328,6 +327,11 @@ class PgkController extends Controller
      */
     public function store(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgk_btn_create', 'pgk_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mendaftarkan komplain PGK.');
+        }
+
         $validated = $request->validate([
             'area_id' => 'nullable|exists:areas,id',
             'customer_id' => 'required|exists:customers,id',
@@ -377,6 +381,11 @@ class PgkController extends Controller
      */
     public function resolveByAdmin(Request $request, PgkTicket $pgk)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgk_btn_resolve_admin', 'pgk_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menyelesaikan komplain PGK di sistem.');
+        }
+
         $validated = $request->validate([
             'admin_notes' => 'required|string',
         ]);
@@ -407,6 +416,11 @@ class PgkController extends Controller
      */
     public function escalateToLead(Request $request, PgkTicket $pgk)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgk_btn_escalate', 'pgk_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk meneruskan komplain ke Kepala Teknisi.');
+        }
+
         $validated = $request->validate([
             'escalation_reason' => 'required|string',
             'lead_technician_id' => 'nullable|exists:users,id',
@@ -437,6 +451,11 @@ class PgkController extends Controller
      */
     public function schedule(Request $request, PgkTicket $pgk)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgk_btn_assign', 'pgk_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menjadwalkan teknisi PGK.');
+        }
+
         // Normalisasi parameter teknisi
         if ($request->has('technician_ids') && !$request->has('technicians')) {
             $request->merge(['technicians' => $request->technician_ids]);
@@ -584,6 +603,21 @@ class PgkController extends Controller
      */
     public function submitReport(Request $request, PgkTicket $pgk)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgk_btn_report', 'pgk_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melaporkan hasil penanganan PGK.');
+        }
+
+        // Jika scope 'own' (teknisi biasa), verifikasi bahwa user memang ditugaskan pada komplain ini
+        if ($user && \App\Services\DataScopeService::getScopeLevel($user, 'pgk') === 'own') {
+            $isAssigned = $pgk->technicians()->where('users.id', $user->id)->exists()
+                || $pgk->created_by === $user->id
+                || $pgk->lead_technician_id === $user->id;
+            if (!$isAssigned) {
+                abort(403, 'Anda hanya dapat melaporkan komplain PGK yang ditugaskan kepada Anda.');
+            }
+        }
+
         $validated = $request->validate([
             'action_taken' => 'required|string',
             'optical_power_before' => 'nullable|string|max:50',

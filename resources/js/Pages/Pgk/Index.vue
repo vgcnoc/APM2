@@ -4,7 +4,7 @@
 
 
             <!-- Stats Overview Cards -->
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div v-if="can('pgk_card_summary')" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div @click="filterByStatus('all')" class="bg-white p-4 rounded-2xl border transition-all cursor-pointer hover:shadow-md" :class="activeStatus === 'all' ? 'border-sky-500 ring-2 ring-sky-100 shadow-sm' : 'border-gray-100'">
                     <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Komplain PGK</div>
                     <div class="text-2xl font-black text-gray-900 mt-1">{{ counts.all || 0 }}</div>
@@ -50,7 +50,7 @@
 
             <!-- Toolbar & Filter -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 flex-wrap">
+                <div v-if="can('pgk_filter')" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 flex-wrap">
                     <div class="relative flex-1 sm:w-72">
                         <input 
                             type="text" 
@@ -78,7 +78,7 @@
                     </select>
                 </div>
 
-                <button @click="openCreateModal" class="bg-gradient-to-r from-sky-600 to-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-sky-500/20 hover:shadow-lg hover:shadow-sky-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 shrink-0">
+                <button v-if="can('pgk_btn_create')" @click="openCreateModal" class="bg-gradient-to-r from-sky-600 to-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-sky-500/20 hover:shadow-lg hover:shadow-sky-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     <span>+ Terima Komplain Baru</span>
                 </button>
@@ -200,15 +200,15 @@
                                         <!-- Aksi jika masih status admin_handling -->
                                         <template v-if="ticket.status === 'admin_handling'">
                                             <!-- Selesaikan Langsung (Jarak Jauh) -->
-                                            <button @click="openResolveAdminModal(ticket)" title="Selesaikan Jarak Jauh (Remotely)" class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-lg border border-emerald-200 transition-colors flex items-center gap-1">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                                <span>Selesaikan</span>
+                                            <button v-if="can('pgk_btn_resolve_admin')" @click="openResolveAdminModal(ticket)" title="Selesaikan Jarak Jauh (Remotely)" class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-lg border border-emerald-200 transition-colors flex items-center gap-1">
+                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                 <span>Selesaikan</span>
                                             </button>
 
                                             <!-- Eskalasi ke Kepala Teknisi -->
-                                            <button @click="openEscalateModal(ticket)" title="Eskalasikan ke Kepala Teknisi Lapangan" class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs rounded-lg border border-amber-200 transition-colors flex items-center gap-1">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                                                <span>Eskalasi Ka. Teknisi</span>
+                                            <button v-if="can('pgk_btn_escalate')" @click="openEscalateModal(ticket)" title="Eskalasikan ke Kepala Teknisi Lapangan" class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs rounded-lg border border-amber-200 transition-colors flex items-center gap-1">
+                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                                 <span>Eskalasi Ka. Teknisi</span>
                                             </button>
                                         </template>
 

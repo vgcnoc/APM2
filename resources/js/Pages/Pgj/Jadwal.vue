@@ -5,7 +5,7 @@
 
             <!-- Toolbar & Filter -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+                <div v-if="can('pgj_filter')" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
                     <div class="relative flex-1 sm:w-80">
                         <input 
                             type="text" 
@@ -137,6 +137,7 @@
                                 <td class="p-4 text-center">
                                     <div class="flex items-center justify-center gap-2">
                                         <button 
+                                            v-if="can('pgj_btn_assign')"
                                             @click="openScheduleModal(ticket)" 
                                             class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-md shadow-amber-500/20 transition-all flex items-center gap-1.5"
                                         >

@@ -3,7 +3,7 @@
         <div class="space-y-6">
             <!-- Header Actions & Filters -->
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-2">
-                <div class="w-full md:w-auto flex flex-col sm:flex-row gap-3 flex-1">
+                <div v-if="can('cbp_filter')" class="w-full md:w-auto flex flex-col sm:flex-row gap-3 flex-1">
                     <div class="relative w-full sm:w-80">
                         <input 
                             type="text" 
@@ -85,7 +85,7 @@
                                 </td>
                                 <td class="p-4 text-center">
                                     <div class="flex items-center justify-center gap-2">
-                                        <button v-if="req.status === 'assigned'" @click="openProgressModal(req)" class="px-3 py-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors" title="Selesaikan & Laporkan">
+                                        <button v-if="req.status === 'assigned' && can('cbp_btn_report')" @click="openProgressModal(req)" class="px-3 py-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors" title="Selesaikan & Laporkan">
                                             Lapor Selesai
                                         </button>
                                         <button type="button" @click="openHistoryModal(req)" class="p-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors" title="Riwayat CBP">
@@ -286,6 +286,9 @@
 import { ref, computed, watch } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { usePermission } from '@/Composables/usePermission';
+
+const { can } = usePermission();
 
 const props = defineProps({
     requests: Object,

@@ -50,9 +50,6 @@ class DataScopeService
         if (str_starts_with($module, 'customers_')) {
             $viewAllPerms[] = 'customers_all_view_all';
         }
-        if (in_array($module, ['pgs', 'pgk', 'pgj'])) {
-            $viewAllPerms[] = 'tickets_view_all';
-        }
 
         foreach ($viewAllPerms as $perm) {
             if ($user->can($perm)) {
@@ -70,9 +67,6 @@ class DataScopeService
         if (str_starts_with($module, 'customers_')) {
             $viewAreaPerms[] = 'customers_all_view_area';
         }
-        if (in_array($module, ['pgs', 'pgk', 'pgj'])) {
-            $viewAreaPerms[] = 'tickets_view_area';
-        }
 
         foreach ($viewAreaPerms as $perm) {
             if ($user->can($perm)) {
@@ -80,7 +74,7 @@ class DataScopeService
             }
         }
 
-        // Default: Karyawan sendiri (own data)
+        // Default: Karyawan sendiri (own data) / view_assigned
         return 'own';
     }
 
@@ -112,10 +106,19 @@ class DataScopeService
         }
 
         // Level: 'own' (Karyawan sendiri)
-        return $query->where(function ($sub) use ($user) {
-            $sub->where('sales_id', $user->id)
-                ->orWhereHas('technicianSchedules', fn($q) => $q->where('technician_id', $user->id))
-                ->orWhereHas('surveys', fn($q) => $q->where('surveyor_id', $user->id));
+        return $query->where(function ($sub) use ($user, $module) {
+            if ($module === 'customers_survey') {
+                $sub->whereHas('technicianSchedules', fn($q) => $q->where('technician_id', $user->id)->where('type', 'survey'))
+                    ->orWhereHas('surveys', fn($q) => $q->where('surveyor_id', $user->id))
+                    ->orWhere('sales_id', $user->id);
+            } elseif ($module === 'customers_installed') {
+                $sub->whereHas('technicianSchedules', fn($q) => $q->where('technician_id', $user->id)->where('type', 'installation'))
+                    ->orWhere('sales_id', $user->id);
+            } else {
+                $sub->where('sales_id', $user->id)
+                    ->orWhereHas('technicianSchedules', fn($q) => $q->where('technician_id', $user->id))
+                    ->orWhereHas('surveys', fn($q) => $q->where('surveyor_id', $user->id));
+            }
         });
     }
 
@@ -146,6 +149,66 @@ class DataScopeService
         return $query->where(function ($q) use ($user) {
             $q->where('assigned_to', $user->id)
               ->orWhereHas('schedules', fn($sq) => $sq->where('technician_id', $user->id));
+        });
+    }
+
+    /**
+     * Terapkan filter scope pada query Cabut Perangkat (CBP)
+     */
+    public static function applyCbpScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) {
+            return $query;
+        }
+
+        $level = self::getScopeLevel($user, 'cbp');
+
+        if ($level === 'all') {
+            return $query;
+        }
+
+        if ($level === 'area') {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            return $query->whereHas('customer', function ($cq) use ($accessibleAreas) {
+                $cq->whereIn('area_id', $accessibleAreas);
+            });
+        }
+
+        // Level: 'own' (Dibuat oleh user, ditugaskan langsung, atau anggota tim teknisi CBP)
+        return $query->where(function ($sub) use ($user) {
+            $sub->where('created_by', $user->id)
+                ->orWhere('assigned_to', $user->id)
+                ->orWhereHas('technicians', fn($tq) => $tq->where('users.id', $user->id));
+        });
+    }
+
+    /**
+     * Terapkan filter scope pada query Penanganan Gangguan Jalur (PGJ)
+     */
+    public static function applyPgjScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) {
+            return $query;
+        }
+
+        $level = self::getScopeLevel($user, 'pgj');
+
+        if ($level === 'all') {
+            return $query;
+        }
+
+        if ($level === 'area') {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            return $query->whereIn('area_id', $accessibleAreas);
+        }
+
+        // Level: 'own' (Dibuat oleh user, ditugaskan sebagai lead, atau anggota teknisi pelaksana)
+        return $query->where(function ($sub) use ($user) {
+            $sub->where('created_by', $user->id)
+                ->orWhere('lead_technician_id', $user->id)
+                ->orWhereHas('technicians', fn($tq) => $tq->where('users.id', $user->id));
         });
     }
 

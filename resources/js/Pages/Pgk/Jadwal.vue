@@ -5,7 +5,7 @@
 
             <!-- Toolbar & Filter -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+                <div v-if="can('pgk_filter')" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
                     <div class="relative flex-1 sm:w-80">
                         <input 
                             type="text" 
@@ -190,6 +190,7 @@
                                 <td class="p-4 text-center">
                                     <div class="flex flex-col sm:flex-row items-center justify-center gap-1.5">
                                         <button 
+                                            v-if="can('pgk_btn_assign')"
                                             @click="openScheduleModal(ticket)" 
                                             class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-md shadow-amber-500/20 transition-all flex items-center gap-1 shrink-0"
                                         >
@@ -199,7 +200,7 @@
 
                                         <!-- Tombol Review Permintaan Material Lapangan -->
                                         <button 
-                                            v-if="ticket.material_requests && ticket.material_requests.length > 0"
+                                            v-if="ticket.material_requests && ticket.material_requests.length > 0 && can('pgk_btn_assign')"
                                             @click="openMaterialReviewModal(ticket)" 
                                             class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border shadow-sm shrink-0"
                                             :class="ticket.material_requests.some(r => r.status === 'pending') ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500 shadow-amber-500/20 animate-pulse' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'"

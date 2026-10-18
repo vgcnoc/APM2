@@ -4,7 +4,7 @@
 
 
             <!-- Stats Overview Cards -->
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div v-if="can('pgs_card_summary')" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div @click="filterByStatus('all')" class="bg-white p-4 rounded-2xl border transition-all cursor-pointer hover:shadow-md" :class="activeStatus === 'all' ? 'border-blue-500 ring-2 ring-blue-100 shadow-sm' : 'border-gray-100'">
                     <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Kasus PGS</div>
                     <div class="text-2xl font-black text-gray-900 mt-1">{{ counts.all || 0 }}</div>
@@ -50,7 +50,7 @@
 
             <!-- Toolbar & Action Filter -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+                <div v-if="can('pgs_filter')" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
                     <div class="relative flex-1 sm:w-80">
                         <input 
                             type="text" 
@@ -78,7 +78,7 @@
                     </select>
                 </div>
 
-                <button @click="openCreateModal" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 shrink-0">
+                <button v-if="can('pgs_btn_create')" @click="openCreateModal" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     <span>+ Buat Penanganan Sigap</span>
                 </button>
@@ -184,6 +184,7 @@
                                         <!-- Jika Admin Handling: Opsi Selesaikan Langsung ATAU Serahkan ke Ka. Teknisi -->
                                         <template v-if="ticket.status === 'admin_handling'">
                                             <button 
+                                                v-if="can('pgs_btn_resolve')"
                                                 @click="openResolveAdminModal(ticket)" 
                                                 class="px-2.5 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors flex items-center gap-1 shadow-sm"
                                                 title="Selesaikan langsung di sistem"
@@ -193,6 +194,7 @@
                                             </button>
                                             
                                             <button 
+                                                v-if="can('pgs_btn_escalate')"
                                                 @click="openEscalateModal(ticket)" 
                                                 class="px-2.5 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg transition-colors flex items-center gap-1 shadow-sm"
                                                 title="Tidak bisa ditangani, serahkan ke Kepala Teknisi"

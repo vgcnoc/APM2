@@ -13,6 +13,7 @@ use App\Models\Material;
 use App\Models\MaterialTransaction;
 use App\Models\MaterialTransactionItem;
 use App\Models\AuditLog;
+use App\Services\DataScopeService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -54,6 +55,9 @@ class PgjController extends Controller
             'materials.material',
             'resolvedByUser'
         ]);
+
+        // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
+        DataScopeService::applyPgjScope($query);
 
         // Filter pencarian
         if ($request->filled('search')) {
@@ -149,6 +153,9 @@ class PgjController extends Controller
             'materials.material',
         ])->whereIn('status', ['escalated_to_lead', 'scheduled']);
 
+        // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
+        DataScopeService::applyPgjScope($query);
+
         if ($request->filled('search')) {
             $search = strtolower($request->search);
             $query->where(function($q) use ($search) {
@@ -224,6 +231,9 @@ class PgjController extends Controller
             'resolvedByUser'
         ])->whereIn('status', ['scheduled', 'completed']);
 
+        // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
+        DataScopeService::applyPgjScope($query);
+
         if ($request->filled('search')) {
             $search = strtolower($request->search);
             $query->where(function($q) use ($search) {
@@ -291,6 +301,11 @@ class PgjController extends Controller
      */
     public function store(Request $request)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgj_btn_create', 'pgj_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuat laporan PGJ.');
+        }
+
         $validated = $request->validate([
             'segment_type' => 'required|in:backbone,odc,odp,distribution,other',
             'area_id' => 'nullable|exists:areas,id',
@@ -365,6 +380,11 @@ class PgjController extends Controller
      */
     public function resolveByAdmin(Request $request, PgjTicket $pgj)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgj_btn_resolve', 'pgj_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menyelesaikan PGJ.');
+        }
+
         $validated = $request->validate([
             'admin_notes' => 'required|string',
         ]);
@@ -393,6 +413,11 @@ class PgjController extends Controller
      */
     public function escalateToLead(Request $request, PgjTicket $pgj)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgj_btn_escalate', 'pgj_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengeskalasi PGJ.');
+        }
+
         $validated = $request->validate([
             'escalation_reason' => 'required|string',
             'admin_notes' => 'nullable|string',
@@ -421,6 +446,11 @@ class PgjController extends Controller
      */
     public function schedule(Request $request, PgjTicket $pgj)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgj_btn_assign', 'pgj_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menjadwalkan teknisi PGJ.');
+        }
+
         // Normalisasi parameter teknisi
         if ($request->has('technicians') && !$request->has('technician_ids')) {
             $request->merge(['technician_ids' => $request->technicians]);
@@ -561,6 +591,20 @@ class PgjController extends Controller
      */
     public function submitReport(Request $request, PgjTicket $pgj)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgj_btn_report', 'pgj_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melaporkan hasil restorasi PGJ.');
+        }
+
+        // Jika scope 'own' (teknisi biasa), verifikasi bahwa user memang ditugaskan pada PGJ ini
+        if ($user && \App\Services\DataScopeService::getScopeLevel($user, 'pgj') === 'own') {
+            $isAssigned = $pgj->technicians()->where('users.id', $user->id)->exists()
+                || $pgj->created_by === $user->id
+                || $pgj->lead_technician_id === $user->id;
+            if (!$isAssigned) {
+                abort(403, 'Anda hanya dapat melaporkan tugas PGJ yang ditugaskan kepada Anda.');
+            }
+        }
         $validated = $request->validate([
             'action_taken' => 'required|string',
             'core_details' => 'nullable|string|max:255',

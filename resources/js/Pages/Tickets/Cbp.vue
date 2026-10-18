@@ -3,7 +3,7 @@
         <div class="space-y-6">
             <!-- Header Actions & Filters -->
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-2">
-                <div class="w-full md:w-auto flex flex-col sm:flex-row gap-3 flex-1">
+                <div v-if="can('cbp_filter')" class="w-full md:w-auto flex flex-col sm:flex-row gap-3 flex-1">
                     <div class="relative w-full sm:w-80">
                         <input 
                             type="text" 
@@ -26,7 +26,7 @@
                     </select>
                 </div>
 
-                <button @click="openModal()" class="bg-gradient-to-r from-red-600 to-rose-600 text-white px-5 py-2.5 rounded-xl font-bold shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 hover:-translate-y-0.5 transition-all w-full md:w-auto shrink-0 flex items-center justify-center gap-2">
+                <button v-if="can('cbp_btn_request')" @click="openModal()" class="bg-gradient-to-r from-red-600 to-rose-600 text-white px-5 py-2.5 rounded-xl font-bold shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 hover:-translate-y-0.5 transition-all w-full md:w-auto shrink-0 flex items-center justify-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
@@ -110,7 +110,7 @@
                                         <button type="button" @click="openHistoryModal(req)" class="p-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors" title="Riwayat CBP">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                         </button>
-                                        <button v-if="req.status === 'pending'" type="button" @click="cancelCbp(req)" class="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors" title="Batalkan CBP">
+                                        <button v-if="req.status === 'pending' && can('cbp_btn_cancel')" type="button" @click="cancelCbp(req)" class="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors" title="Batalkan CBP">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                         </button>
                                     </div>
@@ -419,6 +419,9 @@
 import { ref, computed } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { usePermission } from '@/Composables/usePermission';
+
+const { can } = usePermission();
 
 const props = defineProps({
     requests: Object,
