@@ -13,6 +13,11 @@ class NetworkRadarController extends Controller
 {
     public function index()
     {
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->can('menu_network_radar') && !$user->can('menu_network_map')) {
+            abort(403, 'Anda tidak memiliki hak akses ke menu Radar Tikor Jaringan.');
+        }
+
         $odcs = Odc::select('id', 'name', 'latitude', 'longitude', 'location as address', 'capacity', 'status', 'area_id')
             ->with(['area:id,name'])
             ->withCount('odps')
