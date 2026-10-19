@@ -81,6 +81,13 @@
                                 <span class="w-1.5 h-1.5 rounded-full bg-slate-600 animate-pulse"></span>
                                 {{ item.label }}
                             </span>
+                            <span 
+                                v-else-if="item.theme === 'violet'"
+                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-violet-100 text-violet-800 border border-violet-200/90 shadow-sm flex items-center gap-1.5"
+                            >
+                                <span class="w-1.5 h-1.5 rounded-full bg-violet-600 animate-pulse"></span>
+                                {{ item.label }}
+                            </span>
                             <span v-else class="text-[10px] font-bold text-gray-400 tracking-wider uppercase">{{ item.label }}</span>
                             <div class="h-px flex-1" :class="themeDividers[item.theme] || 'bg-gray-200/60'"></div>
                         </div>
@@ -263,6 +270,7 @@ const themeLinkClasses = {
     pink: 'sidebar-link-pink',
     brown: 'sidebar-link-brown',
     slate: 'sidebar-link-slate',
+    violet: 'sidebar-link-violet',
 };
 
 const themeSubClasses = {
@@ -274,6 +282,7 @@ const themeSubClasses = {
     pink: 'sidebar-sub-pink',
     brown: 'sidebar-sub-brown',
     slate: 'sidebar-sub-slate',
+    violet: 'sidebar-sub-violet',
 };
 
 const themeSubmenuBg = {
@@ -285,6 +294,7 @@ const themeSubmenuBg = {
     pink: 'bg-pink-100/60 p-1.5 rounded-xl border border-pink-200/80 my-1 space-y-1 shadow-sm',
     brown: 'bg-brown-100/60 p-1.5 rounded-xl border border-brown-200/80 my-1 space-y-1 shadow-sm',
     slate: 'bg-slate-100/90 p-1.5 rounded-xl border border-slate-300/80 my-1 space-y-1 shadow-sm',
+    violet: 'bg-violet-100/60 p-1.5 rounded-xl border border-violet-200/80 my-1 space-y-1 shadow-sm',
 };
 
 const themeIconColors = {
@@ -296,6 +306,7 @@ const themeIconColors = {
     pink: 'text-pink-600',
     brown: 'text-brown-600',
     slate: 'text-slate-600',
+    violet: 'text-violet-600',
 };
 
 const themeChevronColors = {
@@ -307,6 +318,7 @@ const themeChevronColors = {
     pink: 'text-pink-500',
     brown: 'text-brown-500',
     slate: 'text-slate-500',
+    violet: 'text-violet-500',
 };
 
 const themeDividers = {
@@ -318,6 +330,7 @@ const themeDividers = {
     pink: 'bg-pink-200',
     brown: 'bg-brown-200',
     slate: 'bg-slate-300',
+    violet: 'bg-violet-200',
 };
 
 const themeCollapsedDividers = {
@@ -329,6 +342,7 @@ const themeCollapsedDividers = {
     pink: 'border-pink-300',
     brown: 'border-brown-300',
     slate: 'border-slate-300',
+    violet: 'border-violet-300',
 };
 
 const saveScrollPosition = () => {
@@ -682,11 +696,12 @@ const menuItems = [
     },
 
     // 9. PENGATURAN SISTEM
-    { type: 'group', label: 'PENGATURAN SISTEM' },
+    { type: 'group', label: 'PENGATURAN SISTEM', theme: 'violet' },
     {
         type: 'dropdown',
         icon: 'cog',
         label: 'Konfigurasi Sistem',
+        theme: 'violet',
         active: (url) => ['/settings/branding', '/settings/billing', '/settings/payroll', '/settings/resellers', '/settings/api', '/settings/data-migration'].some(path => (url || '').startsWith(path)),
         permission: ['menu_settings_branding', 'menu_settings_billing', 'menu_settings_payroll', 'menu_settings_api', 'menu_settings_roles', 'menu_data_migration'],
         children: [
@@ -702,6 +717,7 @@ const menuItems = [
         type: 'dropdown',
         icon: 'box',
         label: 'Master Data',
+        theme: 'violet',
         active: (url) => ['/settings/areas', '/settings/payroll-categories', '/settings/master-fees', '/settings/expense-categories'].some(path => (url || '').startsWith(path)),
         permission: ['menu_settings_areas', 'menu_settings_payroll', 'menu_master_fees', 'menu_payroll_categories', 'menu_settings_roles'],
         children: [
@@ -715,6 +731,7 @@ const menuItems = [
         type: 'dropdown',
         icon: 'lock-closed',
         label: 'Hak Akses Pengguna',
+        theme: 'violet',
         active: (url) => ['/users', '/settings/roles'].some(path => (url || '').startsWith(path)),
         permission: ['menu_users', 'menu_settings_roles'],
         children: [
