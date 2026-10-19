@@ -12,7 +12,7 @@
                     </p>
                 </div>
                 <div class="flex items-center gap-2 flex-wrap">
-                    <Link :href="route('network-data.terminated')" class="px-3.5 py-2 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 rounded-lg text-sm font-bold shadow-xs flex items-center gap-1.5 transition-colors">
+                    <Link v-if="can('menu_network_data_terminated') || can('menu_cbp')" :href="route('network-data.terminated')" class="px-3.5 py-2 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 rounded-lg text-sm font-bold shadow-xs flex items-center gap-1.5 transition-colors">
                         <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
                         <span>Cabut Perangkat (Stop)</span>
                         <span v-if="stats.proses_cbp > 0" class="bg-rose-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black">
@@ -644,6 +644,9 @@
 import { ref, computed } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { usePermission } from '@/Composables/usePermission';
+
+const { can } = usePermission();
 
 const props = defineProps({
     olts: Array,

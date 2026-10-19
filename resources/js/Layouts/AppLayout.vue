@@ -406,13 +406,13 @@ const menuItems = [
         icon: 'globe',
         label: 'Peta & Topologi',
         active: (url) => ['/network-map', '/network-topology', '/network-radar', '/network-data'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_network_map', 'menu_network_topology', 'menu_network_data', 'menu_ftth'],
+        permission: ['menu_network_map', 'menu_network_topology', 'menu_network_radar', 'menu_network_data', 'menu_network_data_terminated', 'menu_ftth'],
         children: [
             { href: '/network-map', label: '🗺️ GIS Map Jaringan & Rute', active: (url) => (url || '').startsWith('/network-map'), permission: 'menu_network_map' },
             { href: '/network-topology', label: 'Network Topology', active: (url) => (url || '').startsWith('/network-topology'), permission: 'menu_network_topology' },
-            { href: '/network-radar', label: 'Radar Tikor', active: (url) => (url || '').startsWith('/network-radar'), permission: 'menu_network_topology' },
+            { href: '/network-radar', label: 'Radar Tikor', active: (url) => (url || '').startsWith('/network-radar'), permission: 'menu_network_radar' },
             { href: '/network-data', label: 'Data Jaringan', active: (url) => (url || '').startsWith('/network-data') && !(url || '').startsWith('/network-data/terminated'), permission: 'menu_network_data' },
-            { href: '/network-data/terminated', label: 'Cabut Perangkat', active: (url) => (url || '').startsWith('/network-data/terminated'), permission: 'menu_network_data' },
+            { href: '/network-data/terminated', label: 'Cabut Perangkat', active: (url) => (url || '').startsWith('/network-data/terminated'), permission: 'menu_network_data_terminated' },
         ]
     },
     {

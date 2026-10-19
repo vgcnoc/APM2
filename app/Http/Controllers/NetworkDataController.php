@@ -16,6 +16,11 @@ class NetworkDataController extends Controller
 {
     public function index(Request $request): Response
     {
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->can('menu_network_data')) {
+            abort(403, 'Anda tidak memiliki hak akses ke menu Data Jaringan.');
+        }
+
         // Get filter inputs
         $oltId = $request->input('olt_id');
         $odcId = $request->input('odc_id');
@@ -109,6 +114,11 @@ class NetworkDataController extends Controller
 
     public function terminated(Request $request): Response
     {
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->can('menu_network_data_terminated') && !$user->can('menu_cbp')) {
+            abort(403, 'Anda tidak memiliki hak akses ke menu Cabut Perangkat.');
+        }
+
         $search = $request->input('search');
         
         $query = Customer::where('status', 'terminated')->with(['ont.odp.area', 'ont.odp.odc.olt', 'latestCbpRequest.technicians']);

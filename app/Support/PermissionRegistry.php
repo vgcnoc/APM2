@@ -377,6 +377,7 @@ class PermissionRegistry
                     ['name' => 'menu_network_topology', 'type' => 'menu', 'label' => 'Akses Menu Network Topology'],
                     ['name' => 'menu_network_radar', 'type' => 'menu', 'label' => 'Akses Menu Radar Tikor Jaringan'],
                     ['name' => 'menu_network_data', 'type' => 'menu', 'label' => 'Akses Menu Data Jaringan'],
+                    ['name' => 'menu_network_data_terminated', 'type' => 'menu', 'label' => 'Akses Menu Cabut Perangkat (Data Jaringan)'],
                     ['name' => 'menu_ftth', 'type' => 'menu', 'label' => 'Akses FTTH Mapping'],
                     ['name' => 'ftth_card_coverage', 'type' => 'card', 'label' => 'Card Statistik Coverage ODP & Pelanggan'],
                     ['name' => 'ftth_filter_layers', 'type' => 'filter', 'label' => 'Filter Layer OLT, ODC, ODP, Jalur FO'],
@@ -873,7 +874,7 @@ class PermissionRegistry
             'noc' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_btn_refresh',
                 'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
-                'menu_network_topology', 'menu_network_data', 'menu_ftth', 'ftth_manage',
+                'menu_network_topology', 'menu_network_data', 'menu_network_data_terminated', 'menu_ftth', 'ftth_manage',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_all',
                 'menu_network_olt', 'network_olt_card_stats', 'network_olt_filter', 'network_olt_create', 'network_olt_edit', 'network_olt_delete', 'network_olt_delete_all', 'network_olt_view_all',
                 'menu_network_odc', 'network_odc_card_stats', 'network_odc_filter', 'network_odc_create', 'network_odc_edit', 'network_odc_delete', 'network_odc_delete_all', 'network_odc_view_all',
@@ -935,7 +936,7 @@ class PermissionRegistry
             'maintenance' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_btn_refresh',
                 'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
-                'menu_network_topology', 'menu_network_data', 'menu_ftth', 'ftth_manage',
+                'menu_network_topology', 'menu_network_data', 'menu_network_data_terminated', 'menu_ftth', 'ftth_manage',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_area',
                 'menu_network_olt', 'network_olt_card_stats', 'network_olt_filter', 'network_olt_create', 'network_olt_edit', 'network_olt_delete', 'network_olt_delete_all', 'network_olt_view_area',
                 'menu_network_odc', 'network_odc_card_stats', 'network_odc_filter', 'network_odc_create', 'network_odc_edit', 'network_odc_delete', 'network_odc_delete_all', 'network_odc_view_area',
@@ -961,7 +962,7 @@ class PermissionRegistry
             'kepala teknisi' => [
                 'menu_dashboard', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_card_stats', 'dashboard_btn_refresh',
                 'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
-                'menu_network_topology', 'menu_network_data', 'menu_ftth', 'ftth_manage',
+                'menu_network_topology', 'menu_network_data', 'menu_network_data_terminated', 'menu_ftth', 'ftth_manage',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_all',
                 'menu_network_olt', 'network_olt_card_stats', 'network_olt_filter', 'network_olt_create', 'network_olt_edit', 'network_olt_delete', 'network_olt_delete_all', 'network_olt_view_all',
                 'menu_network_odc', 'network_odc_card_stats', 'network_odc_filter', 'network_odc_create', 'network_odc_edit', 'network_odc_delete', 'network_odc_delete_all', 'network_odc_view_all',
