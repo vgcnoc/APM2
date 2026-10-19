@@ -327,6 +327,27 @@ h1, h2, h3, h4, h5, h6 {
     @apply bg-brown-600 text-white font-bold shadow-sm;
 }
 
+/* ── Sidebar Slate / Abu-Abu (Kepegawaian & HRD Block) ───────── */
+.sidebar-link-slate {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
+           bg-slate-100/90 text-slate-900 border border-slate-300/80 shadow-sm
+           transition-all duration-200 hover:bg-slate-200/80 hover:text-slate-950 hover:border-slate-400;
+}
+
+.sidebar-link-slate.active {
+    @apply bg-gradient-to-r from-slate-700 to-slate-800 text-white font-bold
+           border-l-[4px] border-l-slate-950 rounded-l-none pl-[12px] shadow-sm;
+}
+
+.sidebar-sub-slate {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-slate-900
+           transition-all duration-150 hover:bg-slate-200 hover:text-slate-950 pl-8;
+}
+
+.sidebar-sub-slate.active {
+    @apply bg-slate-700 text-white font-bold shadow-sm;
+}
+
 /* ── Animations ─────────────────────────────────────────────── */
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(10px); }

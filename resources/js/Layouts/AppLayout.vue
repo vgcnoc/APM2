@@ -74,11 +74,18 @@
                                 <span class="w-1.5 h-1.5 rounded-full bg-brown-600 animate-pulse"></span>
                                 {{ item.label }}
                             </span>
+                            <span 
+                                v-else-if="item.theme === 'slate'"
+                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-slate-200 text-slate-800 border border-slate-300/90 shadow-sm flex items-center gap-1.5"
+                            >
+                                <span class="w-1.5 h-1.5 rounded-full bg-slate-600 animate-pulse"></span>
+                                {{ item.label }}
+                            </span>
                             <span v-else class="text-[10px] font-bold text-gray-400 tracking-wider uppercase">{{ item.label }}</span>
-                            <div class="h-px flex-1" :class="item.theme === 'purple' ? 'bg-purple-200' : (item.theme === 'rose' ? 'bg-rose-200' : (item.theme === 'blue' ? 'bg-sky-200' : (item.theme === 'green' ? 'bg-emerald-200' : (item.theme === 'orange' ? 'bg-orange-200' : (item.theme === 'pink' ? 'bg-pink-200' : (item.theme === 'brown' ? 'bg-brown-200' : 'bg-gray-200/60'))))))"></div>
+                            <div class="h-px flex-1" :class="themeDividers[item.theme] || 'bg-gray-200/60'"></div>
                         </div>
                     </div>
-                    <div v-else-if="item.type === 'group' && !sidebarOpen" class="my-2 border-t mx-3" :class="item.theme === 'purple' ? 'border-purple-300' : (item.theme === 'rose' ? 'border-rose-300' : (item.theme === 'blue' ? 'border-sky-300' : (item.theme === 'green' ? 'border-emerald-300' : (item.theme === 'orange' ? 'border-orange-300' : (item.theme === 'pink' ? 'border-pink-300' : (item.theme === 'brown' ? 'border-brown-300' : 'border-gray-200/60'))))))"></div>
+                    <div v-else-if="item.type === 'group' && !sidebarOpen" class="my-2 border-t mx-3" :class="themeCollapsedDividers[item.theme] || 'border-gray-200/60'"></div>
 
                     <!-- Link -->
                     <Link 
@@ -86,14 +93,14 @@
                         :href="item.href" 
                         @click="mobileMenuOpen = false" 
                         :class="[
-                            item.theme === 'purple' ? 'sidebar-link-purple' : (item.theme === 'rose' ? 'sidebar-link-rose' : (item.theme === 'blue' ? 'sidebar-link-blue' : (item.theme === 'green' ? 'sidebar-link-green' : (item.theme === 'orange' ? 'sidebar-link-orange' : (item.theme === 'pink' ? 'sidebar-link-pink' : (item.theme === 'brown' ? 'sidebar-link-brown' : 'sidebar-link')))))), 
+                            themeLinkClasses[item.theme] || 'sidebar-link', 
                             { 
                                 active: item.active($page.url), 
-                                'pl-11': item.indent && !['purple', 'rose', 'blue', 'green', 'orange', 'pink', 'brown'].includes(item.theme)
+                                'pl-11': item.indent && !item.theme
                             }
                         ]"
                     >
-                        <svg v-if="!item.indent" class="w-5 h-5 shrink-0" :class="item.theme === 'purple' && !item.active($page.url) ? 'text-purple-600' : (item.theme === 'rose' && !item.active($page.url) ? 'text-rose-600' : (item.theme === 'blue' && !item.active($page.url) ? 'text-sky-600' : (item.theme === 'green' && !item.active($page.url) ? 'text-emerald-600' : (item.theme === 'orange' && !item.active($page.url) ? 'text-orange-600' : (item.theme === 'pink' && !item.active($page.url) ? 'text-pink-600' : (item.theme === 'brown' && !item.active($page.url) ? 'text-brown-600' : ''))))))" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg v-if="!item.indent" class="w-5 h-5 shrink-0" :class="!item.active($page.url) ? (themeIconColors[item.theme] || '') : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
                         </svg>
                         <svg v-else class="w-3.5 h-3.5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,16 +114,16 @@
                         <button 
                             @click="toggleDropdown(index)" 
                             :class="[
-                                item.theme === 'purple' ? 'sidebar-link-purple' : (item.theme === 'rose' ? 'sidebar-link-rose' : (item.theme === 'blue' ? 'sidebar-link-blue' : (item.theme === 'green' ? 'sidebar-link-green' : (item.theme === 'orange' ? 'sidebar-link-orange' : (item.theme === 'pink' ? 'sidebar-link-pink' : (item.theme === 'brown' ? 'sidebar-link-brown' : 'sidebar-link')))))), 
+                                themeLinkClasses[item.theme] || 'sidebar-link', 
                                 'w-full text-left', 
                                 { active: item.active($page.url) }
                             ]"
                         >
-                            <svg class="w-5 h-5 shrink-0" :class="item.theme === 'purple' && !item.active($page.url) ? 'text-purple-600' : (item.theme === 'rose' && !item.active($page.url) ? 'text-rose-600' : (item.theme === 'blue' && !item.active($page.url) ? 'text-sky-600' : (item.theme === 'green' && !item.active($page.url) ? 'text-emerald-600' : (item.theme === 'orange' && !item.active($page.url) ? 'text-orange-600' : (item.theme === 'pink' && !item.active($page.url) ? 'text-pink-600' : (item.theme === 'brown' && !item.active($page.url) ? 'text-brown-600' : ''))))))" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 shrink-0" :class="!item.active($page.url) ? (themeIconColors[item.theme] || '') : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
                             </svg>
                             <span v-if="sidebarOpen" class="truncate flex-1">{{ item.label }}</span>
-                            <svg v-if="sidebarOpen" :class="['w-4 h-4 shrink-0 transition-transform duration-200', openDropdowns.includes(index) ? 'rotate-90' : '', item.theme === 'purple' ? 'text-purple-500' : (item.theme === 'rose' ? 'text-rose-500' : (item.theme === 'blue' ? 'text-sky-500' : (item.theme === 'green' ? 'text-emerald-500' : (item.theme === 'orange' ? 'text-orange-500' : (item.theme === 'pink' ? 'text-pink-500' : (item.theme === 'brown' ? 'text-brown-500' : ''))))))]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg v-if="sidebarOpen" :class="['w-4 h-4 shrink-0 transition-transform duration-200', openDropdowns.includes(index) ? 'rotate-90' : '', themeChevronColors[item.theme] || '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
                         </button>
@@ -124,7 +131,7 @@
                         <!-- Dropdown Items -->
                         <div 
                             v-show="sidebarOpen && openDropdowns.includes(index)" 
-                            :class="item.theme === 'purple' ? 'bg-purple-100/60 p-1.5 rounded-xl border border-purple-200/80 my-1 space-y-1 shadow-sm' : (item.theme === 'rose' ? 'bg-rose-100/60 p-1.5 rounded-xl border border-rose-200/80 my-1 space-y-1 shadow-sm' : (item.theme === 'blue' ? 'bg-sky-100/60 p-1.5 rounded-xl border border-sky-200/80 my-1 space-y-1 shadow-sm' : (item.theme === 'green' ? 'bg-emerald-100/60 p-1.5 rounded-xl border border-emerald-200/80 my-1 space-y-1 shadow-sm' : (item.theme === 'orange' ? 'bg-orange-100/60 p-1.5 rounded-xl border border-orange-200/80 my-1 space-y-1 shadow-sm' : (item.theme === 'pink' ? 'bg-pink-100/60 p-1.5 rounded-xl border border-pink-200/80 my-1 space-y-1 shadow-sm' : (item.theme === 'brown' ? 'bg-brown-100/60 p-1.5 rounded-xl border border-brown-200/80 my-1 space-y-1 shadow-sm' : 'mt-1 space-y-1'))))))"
+                            :class="themeSubmenuBg[item.theme] || 'mt-1 space-y-1'"
                         >
                             <template v-for="(child, childIndex) in item.children" :key="childIndex">
                                 <Link 
@@ -132,11 +139,11 @@
                                     :href="child.href" 
                                     @click="mobileMenuOpen = false" 
                                     :class="[
-                                        item.theme === 'purple' ? 'sidebar-sub-purple' : (item.theme === 'rose' ? 'sidebar-sub-rose' : (item.theme === 'blue' ? 'sidebar-sub-blue' : (item.theme === 'green' ? 'sidebar-sub-green' : (item.theme === 'orange' ? 'sidebar-sub-orange' : (item.theme === 'pink' ? 'sidebar-sub-pink' : (item.theme === 'brown' ? 'sidebar-sub-brown' : 'sidebar-link pl-11')))))), 
+                                        themeSubClasses[item.theme] || 'sidebar-link pl-11', 
                                         { active: child.active($page.url) }
                                     ]"
                                 >
-                                    <svg class="w-3.5 h-3.5 shrink-0" :class="item.theme === 'purple' ? (child.active($page.url) ? 'text-white' : 'text-purple-600') : (item.theme === 'rose' ? (child.active($page.url) ? 'text-white' : 'text-rose-600') : (item.theme === 'blue' ? (child.active($page.url) ? 'text-white' : 'text-sky-600') : (item.theme === 'green' ? (child.active($page.url) ? 'text-white' : 'text-emerald-600') : (item.theme === 'orange' ? (child.active($page.url) ? 'text-white' : 'text-orange-600') : (item.theme === 'pink' ? (child.active($page.url) ? 'text-white' : 'text-pink-600') : (item.theme === 'brown' ? (child.active($page.url) ? 'text-white' : 'text-brown-600') : 'opacity-60'))))))" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-3.5 h-3.5 shrink-0" :class="item.theme ? (child.active($page.url) ? 'text-white' : (themeIconColors[item.theme] || 'opacity-60')) : 'opacity-60'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" :d="iconPaths['submenu-dot']"/>
                                     </svg>
                                     <span class="truncate text-[13px] font-medium">{{ child.label }}</span>
@@ -246,6 +253,83 @@ const mobileMenuOpen = ref(false);
 const sidebarNav = ref(null);
 const isRestored = ref(false);
 const openDropdowns = ref([]);
+
+const themeLinkClasses = {
+    purple: 'sidebar-link-purple',
+    rose: 'sidebar-link-rose',
+    blue: 'sidebar-link-blue',
+    green: 'sidebar-link-green',
+    orange: 'sidebar-link-orange',
+    pink: 'sidebar-link-pink',
+    brown: 'sidebar-link-brown',
+    slate: 'sidebar-link-slate',
+};
+
+const themeSubClasses = {
+    purple: 'sidebar-sub-purple',
+    rose: 'sidebar-sub-rose',
+    blue: 'sidebar-sub-blue',
+    green: 'sidebar-sub-green',
+    orange: 'sidebar-sub-orange',
+    pink: 'sidebar-sub-pink',
+    brown: 'sidebar-sub-brown',
+    slate: 'sidebar-sub-slate',
+};
+
+const themeSubmenuBg = {
+    purple: 'bg-purple-100/60 p-1.5 rounded-xl border border-purple-200/80 my-1 space-y-1 shadow-sm',
+    rose: 'bg-rose-100/60 p-1.5 rounded-xl border border-rose-200/80 my-1 space-y-1 shadow-sm',
+    blue: 'bg-sky-100/60 p-1.5 rounded-xl border border-sky-200/80 my-1 space-y-1 shadow-sm',
+    green: 'bg-emerald-100/60 p-1.5 rounded-xl border border-emerald-200/80 my-1 space-y-1 shadow-sm',
+    orange: 'bg-orange-100/60 p-1.5 rounded-xl border border-orange-200/80 my-1 space-y-1 shadow-sm',
+    pink: 'bg-pink-100/60 p-1.5 rounded-xl border border-pink-200/80 my-1 space-y-1 shadow-sm',
+    brown: 'bg-brown-100/60 p-1.5 rounded-xl border border-brown-200/80 my-1 space-y-1 shadow-sm',
+    slate: 'bg-slate-100/90 p-1.5 rounded-xl border border-slate-300/80 my-1 space-y-1 shadow-sm',
+};
+
+const themeIconColors = {
+    purple: 'text-purple-600',
+    rose: 'text-rose-600',
+    blue: 'text-sky-600',
+    green: 'text-emerald-600',
+    orange: 'text-orange-600',
+    pink: 'text-pink-600',
+    brown: 'text-brown-600',
+    slate: 'text-slate-600',
+};
+
+const themeChevronColors = {
+    purple: 'text-purple-500',
+    rose: 'text-rose-500',
+    blue: 'text-sky-500',
+    green: 'text-emerald-500',
+    orange: 'text-orange-500',
+    pink: 'text-pink-500',
+    brown: 'text-brown-500',
+    slate: 'text-slate-500',
+};
+
+const themeDividers = {
+    purple: 'bg-purple-200',
+    rose: 'bg-rose-200',
+    blue: 'bg-sky-200',
+    green: 'bg-emerald-200',
+    orange: 'bg-orange-200',
+    pink: 'bg-pink-200',
+    brown: 'bg-brown-200',
+    slate: 'bg-slate-300',
+};
+
+const themeCollapsedDividers = {
+    purple: 'border-purple-300',
+    rose: 'border-rose-300',
+    blue: 'border-sky-300',
+    green: 'border-emerald-300',
+    orange: 'border-orange-300',
+    pink: 'border-pink-300',
+    brown: 'border-brown-300',
+    slate: 'border-slate-300',
+};
 
 const saveScrollPosition = () => {
     if (sidebarNav.value) {
@@ -553,11 +637,12 @@ const menuItems = [
     },
 
     // 8. KEPEGAWAIAN & HRD
-    { type: 'group', label: 'KEPEGAWAIAN & HRD' },
+    { type: 'group', label: 'KEPEGAWAIAN & HRD', theme: 'slate' },
     {
         type: 'dropdown',
         icon: 'briefcase',
         label: 'Karyawan & Shift',
+        theme: 'slate',
         active: (url) => ['/employees', '/positions', '/shifts', '/work-schedules'].some(path => (url || '').startsWith(path)),
         permission: ['menu_hr_employees', 'menu_hr_positions', 'menu_shifts'],
         children: [
@@ -571,6 +656,7 @@ const menuItems = [
         type: 'dropdown',
         icon: 'badge-check',
         label: 'Sistem Presensi & Absensi',
+        theme: 'slate',
         active: (url) => ['/attendances', '/absen-terbaik', '/absen-khusus', '/absen-tugas-luar', '/settings/attendance'].some(path => (url || '').startsWith(path)),
         permission: ['menu_attendances', 'attendance_tab_reguler', 'attendance_tab_best', 'attendance_tab_special', 'attendance_tab_field', 'menu_settings_attendance'],
         children: [
@@ -585,6 +671,7 @@ const menuItems = [
         type: 'dropdown',
         icon: 'calculator',
         label: 'Penggajian & Insentif',
+        theme: 'slate',
         active: (url) => ['/payroll', '/bonus-target-market', '/insentif-potongan'].some(path => (url || '').startsWith(path)),
         permission: ['menu_payroll', 'payroll_view_own', 'payroll_tab_slip', 'payroll_tab_incentives', 'menu_target_market', 'menu_incentives_deductions'],
         children: [
