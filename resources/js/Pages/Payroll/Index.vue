@@ -153,14 +153,26 @@
                         </h3>
                         <p class="text-xs text-slate-500 mt-0.5">Rincian gaji pokok, bonus/insentif, potongan BPJS, rekening transfer, dan pencairan</p>
                     </div>
-                    <div class="relative w-full sm:w-72">
-                        <input 
-                            v-model="searchQuery" 
-                            type="text" 
-                            placeholder="Cari nama karyawan / jabatan..." 
-                            class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 focus:bg-white transition-all"
-                        />
-                        <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
+                    <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
+                        <select 
+                            v-if="availableRoles.length > 1"
+                            v-model="filterRole" 
+                            class="py-2 px-3 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white text-slate-700 font-semibold cursor-pointer"
+                        >
+                            <option value="">Semua Jabatan ({{ props.users?.length || 0 }})</option>
+                            <option v-for="r in availableRoles" :key="r" :value="r" class="capitalize">
+                                {{ r }}
+                            </option>
+                        </select>
+                        <div class="relative w-full sm:w-64">
+                            <input 
+                                v-model="searchQuery" 
+                                type="text" 
+                                placeholder="Cari nama karyawan..." 
+                                class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 focus:bg-white transition-all"
+                            />
+                            <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
+                        </div>
                     </div>
                 </div>
 
@@ -746,16 +758,28 @@ const months = [
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 const searchQuery = ref('');
+const filterRole = ref('');
+
+const availableRoles = computed(() => {
+    const roles = (props.users || []).map(u => u.role).filter(Boolean);
+    return Array.from(new Set(roles));
+});
 
 const filteredUsers = computed(() => {
-    if (!searchQuery.value) return props.users || [];
-    const q = searchQuery.value.toLowerCase().trim();
-    return (props.users || []).filter(u => 
-        (u.name && u.name.toLowerCase().includes(q)) || 
-        (u.role && u.role.toLowerCase().includes(q)) ||
-        (u.bank_name && u.bank_name.toLowerCase().includes(q)) ||
-        (u.bank_account_number && u.bank_account_number.includes(q))
-    );
+    let list = props.users || [];
+    if (filterRole.value) {
+        list = list.filter(u => u.role === filterRole.value);
+    }
+    if (searchQuery.value) {
+        const q = searchQuery.value.toLowerCase().trim();
+        list = list.filter(u => 
+            (u.name && u.name.toLowerCase().includes(q)) || 
+            (u.role && u.role.toLowerCase().includes(q)) ||
+            (u.bank_name && u.bank_name.toLowerCase().includes(q)) ||
+            (u.bank_account_number && u.bank_account_number.includes(q))
+        );
+    }
+    return list;
 });
 
 const totalNetSalary = computed(() => {

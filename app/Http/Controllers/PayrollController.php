@@ -122,7 +122,23 @@ class PayrollController extends Controller
         $authUser = auth()->user();
         $isSuperAdmin = $authUser && ($authUser->is_admin || $authUser->hasRole('admin'));
 
+        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin'];
+
         $usersQuery = User::where('is_active', true)
+            ->whereNotIn('role', $excludedRoles)
+            ->whereDoesntHave('roles', function($q) use ($excludedRoles) {
+                $q->whereIn('name', $excludedRoles);
+            })
+            ->whereDoesntHave('customer')
+            ->whereDoesntHave('reseller')
+            ->where(function($q) {
+                $q->where('role', '!=', 'admin')
+                  ->orWhere(function($sub) {
+                      $sub->where('name', 'not like', '%super admin%')
+                          ->where('name', 'not like', '%superadmin%')
+                          ->where('email', 'not like', '%superadmin%');
+                  });
+            })
             ->with([
                 'incentives' => function($q) use ($month, $year) {
                     $q->whereMonth('incentive_date', $month)->whereYear('incentive_date', $year);
@@ -676,7 +692,23 @@ class PayrollController extends Controller
         $month = (int) $request->get('month', now()->month);
         $year = (int) $request->get('year', now()->year);
 
-        $usersQuery = User::where('is_active', true);
+        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin'];
+
+        $usersQuery = User::where('is_active', true)
+            ->whereNotIn('role', $excludedRoles)
+            ->whereDoesntHave('roles', function($q) use ($excludedRoles) {
+                $q->whereIn('name', $excludedRoles);
+            })
+            ->whereDoesntHave('customer')
+            ->whereDoesntHave('reseller')
+            ->where(function($q) {
+                $q->where('role', '!=', 'admin')
+                  ->orWhere(function($sub) {
+                      $sub->where('name', 'not like', '%super admin%')
+                          ->where('name', 'not like', '%superadmin%')
+                          ->where('email', 'not like', '%superadmin%');
+                  });
+            });
         if (!$isSuperAdmin && !$authUser->can('payroll_view_all')) {
             if ($authUser->can('payroll_view_area') && $authUser->area_id) {
                 $usersQuery->where('area_id', $authUser->area_id);
