@@ -25,6 +25,7 @@ class CustomerMonitoringController extends Controller
         $stopReason = $request->query('stop_reason', 'all');
 
         $isRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('monitoring_pelanggan_view_all') && !auth()->user()->can('customers_all_view_all');
+        $isAreaRestricted = $isRestricted;
         $userAreaIds = auth()->check() ? auth()->user()->getAccessibleAreaIds() : [];
 
         // Scoping closures (all, area, own)
