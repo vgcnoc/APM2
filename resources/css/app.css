@@ -264,6 +264,27 @@ h1, h2, h3, h4, h5, h6 {
     @apply bg-emerald-600 text-white font-bold shadow-sm;
 }
 
+/* ── Sidebar Orange / Orange Muda (Marketing & Komunikasi Block) ── */
+.sidebar-link-orange {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
+           bg-orange-50/90 text-orange-950 border border-orange-200/80 shadow-sm
+           transition-all duration-200 hover:bg-orange-100 hover:text-orange-950 hover:border-orange-300;
+}
+
+.sidebar-link-orange.active {
+    @apply bg-gradient-to-r from-orange-500 to-amber-600 text-white font-bold
+           border-l-[4px] border-l-orange-900 rounded-l-none pl-[12px] shadow-sm;
+}
+
+.sidebar-sub-orange {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-orange-950
+           transition-all duration-150 hover:bg-orange-200/80 hover:text-orange-950 pl-8;
+}
+
+.sidebar-sub-orange.active {
+    @apply bg-orange-500 text-white font-bold shadow-sm;
+}
+
 /* ── Animations ─────────────────────────────────────────────── */
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(10px); }
