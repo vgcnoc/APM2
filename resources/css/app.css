@@ -172,117 +172,117 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ── Sidebar ────────────────────────────────────────────────── */
 .sidebar-link {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-gray-600 font-medium
-           transition-all duration-200 hover:bg-gray-100 hover:text-gray-900;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-gray-600 font-semibold
+           transition-all duration-200 hover:bg-gray-100/80 hover:text-gray-900;
 }
 
 .sidebar-link.active {
-    @apply bg-blue-50 text-blue-700 border-l-[3px] border-blue-600 rounded-l-none pl-[13px];
+    @apply bg-blue-50/90 text-blue-700 font-bold border border-blue-200/60 shadow-sm;
 }
 
 /* ── Sidebar Purple (Reseller & Voucher Block) ──────────────── */
 .sidebar-link-purple {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
-           bg-purple-50/90 text-purple-900 border border-purple-200/80 shadow-sm
-           transition-all duration-200 hover:bg-purple-100 hover:text-purple-950 hover:border-purple-300;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold
+           bg-purple-50/70 text-purple-900 border border-purple-200/70 shadow-sm
+           transition-all duration-200 hover:bg-purple-100/90 hover:text-purple-950 hover:border-purple-300 hover:translate-x-0.5;
 }
 
 .sidebar-link-purple.active {
     @apply bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold
-           border-l-[4px] border-l-purple-900 rounded-l-none pl-[12px] shadow-sm;
+           shadow-md shadow-purple-500/25 border-transparent;
 }
 
 .sidebar-sub-purple {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-purple-900
-           transition-all duration-150 hover:bg-purple-200/80 hover:text-purple-950 pl-8;
+    @apply flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-900
+           transition-all duration-150 hover:bg-purple-200/70 hover:text-purple-950 hover:translate-x-0.5;
 }
 
 .sidebar-sub-purple.active {
-    @apply bg-purple-600 text-white font-bold shadow-sm;
+    @apply bg-purple-600 text-white font-bold shadow-sm shadow-purple-500/20;
 }
 
 /* ── Sidebar Rose / Merah Muda (Operasional & Gangguan Block) ── */
 .sidebar-link-rose {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
-           bg-rose-50/90 text-rose-900 border border-rose-200/80 shadow-sm
-           transition-all duration-200 hover:bg-rose-100 hover:text-rose-950 hover:border-rose-300;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold
+           bg-rose-50/70 text-rose-900 border border-rose-200/70 shadow-sm
+           transition-all duration-200 hover:bg-rose-100/90 hover:text-rose-950 hover:border-rose-300 hover:translate-x-0.5;
 }
 
 .sidebar-link-rose.active {
-    @apply bg-gradient-to-r from-rose-600 to-red-600 text-white font-bold
-           border-l-[4px] border-l-rose-900 rounded-l-none pl-[12px] shadow-sm;
+    @apply bg-gradient-to-r from-rose-500 via-rose-600 to-red-600 text-white font-bold
+           shadow-md shadow-rose-500/25 border-transparent;
 }
 
 .sidebar-sub-rose {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-rose-900
-           transition-all duration-150 hover:bg-rose-200/80 hover:text-rose-950 pl-8;
+    @apply flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-900
+           transition-all duration-150 hover:bg-rose-200/70 hover:text-rose-950 hover:translate-x-0.5;
 }
 
 .sidebar-sub-rose.active {
-    @apply bg-rose-600 text-white font-bold shadow-sm;
+    @apply bg-rose-600 text-white font-bold shadow-sm shadow-rose-500/20;
 }
 
 /* ── Sidebar Blue / Biru Muda (Pelanggan & Layanan Block) ───── */
 .sidebar-link-blue {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
-           bg-sky-50/90 text-sky-950 border border-sky-200/80 shadow-sm
-           transition-all duration-200 hover:bg-sky-100 hover:text-sky-950 hover:border-sky-300;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold
+           bg-sky-50/70 text-sky-950 border border-sky-200/70 shadow-sm
+           transition-all duration-200 hover:bg-sky-100/90 hover:text-sky-950 hover:border-sky-300 hover:translate-x-0.5;
 }
 
 .sidebar-link-blue.active {
-    @apply bg-gradient-to-r from-sky-600 to-blue-600 text-white font-bold
-           border-l-[4px] border-l-blue-900 rounded-l-none pl-[12px] shadow-sm;
+    @apply bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 text-white font-bold
+           shadow-md shadow-sky-500/25 border-transparent;
 }
 
 .sidebar-sub-blue {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-sky-950
-           transition-all duration-150 hover:bg-sky-200/80 hover:text-sky-950 pl-8;
+    @apply flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-sky-950
+           transition-all duration-150 hover:bg-sky-200/70 hover:text-sky-950 hover:translate-x-0.5;
 }
 
 .sidebar-sub-blue.active {
-    @apply bg-sky-600 text-white font-bold shadow-sm;
+    @apply bg-sky-600 text-white font-bold shadow-sm shadow-sky-500/20;
 }
 
 /* ── Sidebar Green / Hijau Muda (Billing & Keuangan Block) ──── */
 .sidebar-link-green {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
-           bg-emerald-50/90 text-emerald-950 border border-emerald-200/80 shadow-sm
-           transition-all duration-200 hover:bg-emerald-100 hover:text-emerald-950 hover:border-emerald-300;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold
+           bg-emerald-50/70 text-emerald-950 border border-emerald-200/70 shadow-sm
+           transition-all duration-200 hover:bg-emerald-100/90 hover:text-emerald-950 hover:border-emerald-300 hover:translate-x-0.5;
 }
 
 .sidebar-link-green.active {
-    @apply bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold
-           border-l-[4px] border-l-emerald-900 rounded-l-none pl-[12px] shadow-sm;
+    @apply bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white font-bold
+           shadow-md shadow-emerald-500/25 border-transparent;
 }
 
 .sidebar-sub-green {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-emerald-950
-           transition-all duration-150 hover:bg-emerald-200/80 hover:text-emerald-950 pl-8;
+    @apply flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-950
+           transition-all duration-150 hover:bg-emerald-200/70 hover:text-emerald-950 hover:translate-x-0.5;
 }
 
 .sidebar-sub-green.active {
-    @apply bg-emerald-600 text-white font-bold shadow-sm;
+    @apply bg-emerald-600 text-white font-bold shadow-sm shadow-emerald-500/20;
 }
 
 /* ── Sidebar Orange / Orange Muda (Marketing & Komunikasi Block) ── */
 .sidebar-link-orange {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
-           bg-orange-50/90 text-orange-950 border border-orange-200/80 shadow-sm
-           transition-all duration-200 hover:bg-orange-100 hover:text-orange-950 hover:border-orange-300;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-semibold
+           bg-orange-50/70 text-orange-950 border border-orange-200/70 shadow-sm
+           transition-all duration-200 hover:bg-orange-100/90 hover:text-orange-950 hover:border-orange-300 hover:translate-x-0.5;
 }
 
 .sidebar-link-orange.active {
-    @apply bg-gradient-to-r from-orange-500 to-amber-600 text-white font-bold
-           border-l-[4px] border-l-orange-900 rounded-l-none pl-[12px] shadow-sm;
+    @apply bg-gradient-to-r from-orange-500 via-amber-500 to-amber-600 text-white font-bold
+           shadow-md shadow-orange-500/25 border-transparent;
 }
 
 .sidebar-sub-orange {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-orange-950
-           transition-all duration-150 hover:bg-orange-200/80 hover:text-orange-950 pl-8;
+    @apply flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-orange-950
+           transition-all duration-150 hover:bg-orange-200/70 hover:text-orange-950 hover:translate-x-0.5;
 }
 
 .sidebar-sub-orange.active {
-    @apply bg-orange-500 text-white font-bold shadow-sm;
+    @apply bg-orange-500 text-white font-bold shadow-sm shadow-orange-500/20;
 }
 
 /* ── Animations ─────────────────────────────────────────────── */

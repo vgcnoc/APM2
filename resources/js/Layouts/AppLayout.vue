@@ -23,48 +23,24 @@
             <nav ref="sidebarNav" scroll-region class="flex-1 overflow-y-auto px-3 py-4 space-y-1 transition-opacity duration-100" :class="{ 'opacity-0': !isRestored, 'opacity-100': isRestored }" @scroll="saveScrollPosition">
                 <template v-for="(item, index) in filteredMenuItems" :key="index">
                     <!-- Group Label -->
-                    <div v-if="item.type === 'group' && sidebarOpen" class="pt-5 pb-2 px-3">
+                    <div v-if="item.type === 'group' && sidebarOpen" class="pt-5 pb-2 px-2">
                         <div class="flex items-center gap-2">
                             <span 
-                                v-if="item.theme === 'purple'"
-                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800 border border-purple-200/90 shadow-sm flex items-center gap-1.5"
+                                v-if="item.theme"
+                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-0.5 rounded-full border shadow-2xs inline-flex items-center gap-1.5"
+                                :class="getThemeBadge(item.theme)"
                             >
-                                <span class="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse"></span>
+                                <span class="relative flex h-2 w-2">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :class="getThemeDotPing(item.theme)"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2" :class="getThemeDot(item.theme)"></span>
+                                </span>
                                 {{ item.label }}
                             </span>
-                            <span 
-                                v-else-if="item.theme === 'rose'"
-                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 border border-rose-200/90 shadow-sm flex items-center gap-1.5"
-                            >
-                                <span class="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
-                                {{ item.label }}
-                            </span>
-                            <span 
-                                v-else-if="item.theme === 'blue'"
-                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-sky-100 text-sky-800 border border-sky-200/90 shadow-sm flex items-center gap-1.5"
-                            >
-                                <span class="w-1.5 h-1.5 rounded-full bg-sky-600 animate-pulse"></span>
-                                {{ item.label }}
-                            </span>
-                            <span 
-                                v-else-if="item.theme === 'green'"
-                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200/90 shadow-sm flex items-center gap-1.5"
-                            >
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-                                {{ item.label }}
-                            </span>
-                            <span 
-                                v-else-if="item.theme === 'orange'"
-                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-orange-100 text-orange-800 border border-orange-200/90 shadow-sm flex items-center gap-1.5"
-                            >
-                                <span class="w-1.5 h-1.5 rounded-full bg-orange-600 animate-pulse"></span>
-                                {{ item.label }}
-                            </span>
-                            <span v-else class="text-[10px] font-bold text-gray-400 tracking-wider uppercase">{{ item.label }}</span>
-                            <div class="h-px flex-1" :class="item.theme === 'purple' ? 'bg-purple-200' : (item.theme === 'rose' ? 'bg-rose-200' : (item.theme === 'blue' ? 'bg-sky-200' : (item.theme === 'green' ? 'bg-emerald-200' : (item.theme === 'orange' ? 'bg-orange-200' : 'bg-gray-200/60'))))"></div>
+                            <span v-else class="text-[10px] font-bold text-gray-400 tracking-wider uppercase px-1">{{ item.label }}</span>
+                            <div class="h-px flex-1" :class="getThemeDivider(item.theme)"></div>
                         </div>
                     </div>
-                    <div v-else-if="item.type === 'group' && !sidebarOpen" class="my-2 border-t mx-3" :class="item.theme === 'purple' ? 'border-purple-300' : (item.theme === 'rose' ? 'border-rose-300' : (item.theme === 'blue' ? 'border-sky-300' : (item.theme === 'green' ? 'border-emerald-300' : (item.theme === 'orange' ? 'border-orange-300' : 'border-gray-200/60'))))"></div>
+                    <div v-else-if="item.type === 'group' && !sidebarOpen" class="my-2 border-t mx-3" :class="getThemeDividerCollapsed(item.theme)"></div>
 
                     <!-- Link -->
                     <Link 
@@ -72,16 +48,23 @@
                         :href="item.href" 
                         @click="mobileMenuOpen = false" 
                         :class="[
-                            item.theme === 'purple' ? 'sidebar-link-purple' : (item.theme === 'rose' ? 'sidebar-link-rose' : (item.theme === 'blue' ? 'sidebar-link-blue' : (item.theme === 'green' ? 'sidebar-link-green' : (item.theme === 'orange' ? 'sidebar-link-orange' : 'sidebar-link')))), 
+                            'group',
+                            getLinkThemeClass(item.theme), 
                             { 
                                 active: item.active($page.url), 
-                                'pl-11': item.indent && !['purple', 'rose', 'blue', 'green', 'orange'].includes(item.theme)
+                                'pl-10': item.indent && !item.theme
                             }
                         ]"
                     >
-                        <svg v-if="!item.indent" class="w-5 h-5 shrink-0" :class="item.theme === 'purple' && !item.active($page.url) ? 'text-purple-600' : (item.theme === 'rose' && !item.active($page.url) ? 'text-rose-600' : (item.theme === 'blue' && !item.active($page.url) ? 'text-sky-600' : (item.theme === 'green' && !item.active($page.url) ? 'text-emerald-600' : (item.theme === 'orange' && !item.active($page.url) ? 'text-orange-600' : ''))))" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
-                        </svg>
+                        <span 
+                            v-if="!item.indent" 
+                            class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105"
+                            :class="getIconSquircleClass(item.theme, item.active($page.url))"
+                        >
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
+                            </svg>
+                        </span>
                         <svg v-else class="w-3.5 h-3.5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" :d="iconPaths['submenu-dot']"/>
                         </svg>
@@ -93,16 +76,32 @@
                         <button 
                             @click="toggleDropdown(index)" 
                             :class="[
-                                item.theme === 'purple' ? 'sidebar-link-purple' : (item.theme === 'rose' ? 'sidebar-link-rose' : (item.theme === 'blue' ? 'sidebar-link-blue' : (item.theme === 'green' ? 'sidebar-link-green' : (item.theme === 'orange' ? 'sidebar-link-orange' : 'sidebar-link')))), 
+                                'group',
+                                getLinkThemeClass(item.theme), 
                                 'w-full text-left', 
                                 { active: item.active($page.url) }
                             ]"
                         >
-                            <svg class="w-5 h-5 shrink-0" :class="item.theme === 'purple' && !item.active($page.url) ? 'text-purple-600' : (item.theme === 'rose' && !item.active($page.url) ? 'text-rose-600' : (item.theme === 'blue' && !item.active($page.url) ? 'text-sky-600' : (item.theme === 'green' && !item.active($page.url) ? 'text-emerald-600' : (item.theme === 'orange' && !item.active($page.url) ? 'text-orange-600' : ''))))" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
-                            </svg>
+                            <span 
+                                class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105"
+                                :class="getIconSquircleClass(item.theme, item.active($page.url))"
+                            >
+                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
+                                </svg>
+                            </span>
                             <span v-if="sidebarOpen" class="truncate flex-1">{{ item.label }}</span>
-                            <svg v-if="sidebarOpen" :class="['w-4 h-4 shrink-0 transition-transform duration-200', openDropdowns.includes(index) ? 'rotate-90' : '', item.theme === 'purple' ? 'text-purple-500' : (item.theme === 'rose' ? 'text-rose-500' : (item.theme === 'blue' ? 'text-sky-500' : (item.theme === 'green' ? 'text-emerald-500' : (item.theme === 'orange' ? 'text-orange-500' : ''))))]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg 
+                                v-if="sidebarOpen" 
+                                :class="[
+                                    'w-4 h-4 shrink-0 transition-transform duration-200', 
+                                    openDropdowns.includes(index) ? 'rotate-90' : '', 
+                                    getArrowClass(item.theme, item.active($page.url))
+                                ]" 
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                            >
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
                         </button>
@@ -110,7 +109,7 @@
                         <!-- Dropdown Items -->
                         <div 
                             v-show="sidebarOpen && openDropdowns.includes(index)" 
-                            :class="item.theme === 'purple' ? 'bg-purple-100/60 p-1.5 rounded-xl border border-purple-200/80 my-1 space-y-1 shadow-sm' : (item.theme === 'rose' ? 'bg-rose-100/60 p-1.5 rounded-xl border border-rose-200/80 my-1 space-y-1 shadow-sm' : (item.theme === 'blue' ? 'bg-sky-100/60 p-1.5 rounded-xl border border-sky-200/80 my-1 space-y-1 shadow-sm' : (item.theme === 'green' ? 'bg-emerald-100/60 p-1.5 rounded-xl border border-emerald-200/80 my-1 space-y-1 shadow-sm' : (item.theme === 'orange' ? 'bg-orange-100/60 p-1.5 rounded-xl border border-orange-200/80 my-1 space-y-1 shadow-sm' : 'mt-1 space-y-1'))))"
+                            :class="getSubmenuContainerClass(item.theme)"
                         >
                             <template v-for="(child, childIndex) in item.children" :key="childIndex">
                                 <Link 
@@ -118,14 +117,15 @@
                                     :href="child.href" 
                                     @click="mobileMenuOpen = false" 
                                     :class="[
-                                        item.theme === 'purple' ? 'sidebar-sub-purple' : (item.theme === 'rose' ? 'sidebar-sub-rose' : (item.theme === 'blue' ? 'sidebar-sub-blue' : (item.theme === 'green' ? 'sidebar-sub-green' : (item.theme === 'orange' ? 'sidebar-sub-orange' : 'sidebar-link pl-11')))), 
+                                        getSubmenuLinkClass(item.theme), 
                                         { active: child.active($page.url) }
                                     ]"
                                 >
-                                    <svg class="w-3.5 h-3.5 shrink-0" :class="item.theme === 'purple' ? (child.active($page.url) ? 'text-white' : 'text-purple-600') : (item.theme === 'rose' ? (child.active($page.url) ? 'text-white' : 'text-rose-600') : (item.theme === 'blue' ? (child.active($page.url) ? 'text-white' : 'text-sky-600') : (item.theme === 'green' ? (child.active($page.url) ? 'text-white' : 'text-emerald-600') : (item.theme === 'orange' ? (child.active($page.url) ? 'text-white' : 'text-orange-600') : 'opacity-60'))))" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" :d="iconPaths['submenu-dot']"/>
-                                    </svg>
-                                    <span class="truncate text-[13px] font-medium">{{ child.label }}</span>
+                                    <span 
+                                        class="w-1.5 h-1.5 rounded-full shrink-0 transition-all duration-200"
+                                        :class="child.active($page.url) ? 'bg-white scale-125' : getSubmenuDotColor(item.theme)"
+                                    ></span>
+                                    <span class="truncate">{{ child.label }}</span>
                                 </Link>
                             </template>
                         </div>
@@ -242,6 +242,95 @@ const saveScrollPosition = () => {
 const hasPermission = (permission) => {
     if (!permission) return true;
     return can(permission);
+};
+
+const themeConfig = {
+    purple: {
+        badge: 'bg-purple-100 text-purple-800 border-purple-200/90 shadow-2xs',
+        dot: 'bg-purple-600',
+        dotPing: 'bg-purple-400',
+        divider: 'bg-purple-200',
+        dividerCollapsed: 'border-purple-300',
+        link: 'sidebar-link-purple',
+        subContainer: 'my-1 ml-3.5 pl-3 py-1 space-y-0.5 border-l-2 border-purple-200/90 bg-purple-50/40 rounded-r-xl',
+        subLink: 'sidebar-sub-purple',
+        subDot: 'bg-purple-400',
+        iconNormal: 'bg-purple-100 text-purple-700 group-hover:bg-purple-200 group-hover:text-purple-900',
+        arrow: 'text-purple-500',
+    },
+    rose: {
+        badge: 'bg-rose-100 text-rose-800 border-rose-200/90 shadow-2xs',
+        dot: 'bg-rose-600',
+        dotPing: 'bg-rose-400',
+        divider: 'bg-rose-200',
+        dividerCollapsed: 'border-rose-300',
+        link: 'sidebar-link-rose',
+        subContainer: 'my-1 ml-3.5 pl-3 py-1 space-y-0.5 border-l-2 border-rose-200/90 bg-rose-50/40 rounded-r-xl',
+        subLink: 'sidebar-sub-rose',
+        subDot: 'bg-rose-400',
+        iconNormal: 'bg-rose-100 text-rose-700 group-hover:bg-rose-200 group-hover:text-rose-900',
+        arrow: 'text-rose-500',
+    },
+    blue: {
+        badge: 'bg-sky-100 text-sky-800 border-sky-200/90 shadow-2xs',
+        dot: 'bg-sky-600',
+        dotPing: 'bg-sky-400',
+        divider: 'bg-sky-200',
+        dividerCollapsed: 'border-sky-300',
+        link: 'sidebar-link-blue',
+        subContainer: 'my-1 ml-3.5 pl-3 py-1 space-y-0.5 border-l-2 border-sky-200/90 bg-sky-50/40 rounded-r-xl',
+        subLink: 'sidebar-sub-blue',
+        subDot: 'bg-sky-400',
+        iconNormal: 'bg-sky-100 text-sky-700 group-hover:bg-sky-200 group-hover:text-sky-900',
+        arrow: 'text-sky-500',
+    },
+    green: {
+        badge: 'bg-emerald-100 text-emerald-800 border-emerald-200/90 shadow-2xs',
+        dot: 'bg-emerald-600',
+        dotPing: 'bg-emerald-400',
+        divider: 'bg-emerald-200',
+        dividerCollapsed: 'border-emerald-300',
+        link: 'sidebar-link-green',
+        subContainer: 'my-1 ml-3.5 pl-3 py-1 space-y-0.5 border-l-2 border-emerald-200/90 bg-emerald-50/40 rounded-r-xl',
+        subLink: 'sidebar-sub-green',
+        subDot: 'bg-emerald-400',
+        iconNormal: 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200 group-hover:text-emerald-900',
+        arrow: 'text-emerald-500',
+    },
+    orange: {
+        badge: 'bg-orange-100 text-orange-800 border-orange-200/90 shadow-2xs',
+        dot: 'bg-orange-600',
+        dotPing: 'bg-orange-400',
+        divider: 'bg-orange-200',
+        dividerCollapsed: 'border-orange-300',
+        link: 'sidebar-link-orange',
+        subContainer: 'my-1 ml-3.5 pl-3 py-1 space-y-0.5 border-l-2 border-orange-200/90 bg-orange-50/40 rounded-r-xl',
+        subLink: 'sidebar-sub-orange',
+        subDot: 'bg-orange-400',
+        iconNormal: 'bg-orange-100 text-orange-700 group-hover:bg-orange-200 group-hover:text-orange-900',
+        arrow: 'text-orange-500',
+    },
+};
+
+const getThemeBadge = (theme) => themeConfig[theme]?.badge || 'text-[10px] font-bold text-gray-400 tracking-wider uppercase';
+const getThemeDot = (theme) => themeConfig[theme]?.dot || 'bg-gray-400';
+const getThemeDotPing = (theme) => themeConfig[theme]?.dotPing || 'bg-gray-300';
+const getThemeDivider = (theme) => themeConfig[theme]?.divider || 'bg-gray-200/60';
+const getThemeDividerCollapsed = (theme) => themeConfig[theme]?.dividerCollapsed || 'border-gray-200/60';
+const getLinkThemeClass = (theme) => themeConfig[theme]?.link || 'sidebar-link';
+const getSubmenuContainerClass = (theme) => themeConfig[theme]?.subContainer || 'mt-1 space-y-0.5 ml-3 pl-3 border-l-2 border-gray-200/80';
+const getSubmenuLinkClass = (theme) => themeConfig[theme]?.subLink || 'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900';
+const getSubmenuDotColor = (theme) => themeConfig[theme]?.subDot || 'bg-gray-400';
+const getIconSquircleClass = (theme, isActive) => {
+    if (isActive) {
+        if (theme) return 'bg-white/25 text-white shadow-inner backdrop-blur-xs';
+        return 'bg-blue-600 text-white shadow-sm';
+    }
+    return themeConfig[theme]?.iconNormal || 'text-gray-500 group-hover:text-gray-800';
+};
+const getArrowClass = (theme, isActive) => {
+    if (isActive) return 'text-white';
+    return themeConfig[theme]?.arrow || 'text-gray-400 group-hover:text-gray-600';
 };
 
 const menuItems = [
