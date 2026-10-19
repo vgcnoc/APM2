@@ -155,7 +155,15 @@ class PayrollController extends Controller
                 $payroll = $user->payrolls->first();
                 $isPaid = $payroll && $payroll->status === 'paid';
                 
-                $baseSalary = $isPaid ? (float) $payroll->base_salary : (float) $user->base_salary;
+                $rawBaseSalary = (float) $user->base_salary;
+                if ($rawBaseSalary <= 0) {
+                    $emp = $user->employee ?: \App\Models\Employee::where('email', $user->email)->orWhere('name', $user->name)->first();
+                    if ($emp && (float) $emp->base_salary > 0) {
+                        $rawBaseSalary = (float) $emp->base_salary;
+                        $user->update(['base_salary' => $rawBaseSalary]);
+                    }
+                }
+                $baseSalary = $isPaid ? (float) $payroll->base_salary : $rawBaseSalary;
                 $totalIncentive = $isPaid ? (float) $payroll->total_incentive : ($totalAuto + $totalManual);
                 $finalDeduction = $isPaid ? (float) $payroll->total_deduction : $totalDeduction;
 
@@ -336,11 +344,13 @@ class PayrollController extends Controller
     public function updateBpjsBank(Request $request, User $user)
     {
         $authUser = auth()->user();
-        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_btn_settings_bpjs') && !$authUser->can('payroll_manage')) {
-            abort(403, 'Anda tidak memiliki hak akses untuk mengubah data BPJS & Bank.');
+        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_btn_settings_bpjs') && !$authUser->can('payroll_manage') && !$authUser->can('payroll_btn_update_bpjs_bank')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah data Gaji, BPJS & Bank.');
         }
 
         $validated = $request->validate([
+            'base_salary' => 'nullable|numeric|min:0',
+            'incentive_rate' => 'nullable|numeric|min:0',
             'bpjs_kesehatan' => 'nullable|boolean',
             'bpjs_kesehatan_no' => 'nullable|string|max:50',
             'bpjs_ketenagakerjaan' => 'nullable|boolean',
@@ -350,7 +360,7 @@ class PayrollController extends Controller
             'bank_account_holder' => 'nullable|string|max:100',
         ]);
 
-        $user->update([
+        $updateData = [
             'bpjs_kesehatan' => $request->boolean('bpjs_kesehatan'),
             'bpjs_kesehatan_no' => $request->input('bpjs_kesehatan_no'),
             'bpjs_ketenagakerjaan' => $request->boolean('bpjs_ketenagakerjaan'),
@@ -358,9 +368,33 @@ class PayrollController extends Controller
             'bank_name' => $request->input('bank_name'),
             'bank_account_number' => $request->input('bank_account_number'),
             'bank_account_holder' => $request->input('bank_account_holder'),
-        ]);
+        ];
 
-        return back()->with('success', "Data BPJS & Rekening untuk {$user->name} berhasil diperbarui.");
+        if ($request->has('base_salary')) {
+            $updateData['base_salary'] = (float) $request->input('base_salary', 0);
+        }
+        if ($request->has('incentive_rate')) {
+            $updateData['incentive_rate'] = (float) $request->input('incentive_rate', 0);
+        }
+
+        $user->update($updateData);
+
+        // Sinkronkan ke data Employee HR jika ada
+        $emp = $user->employee ?: \App\Models\Employee::where('email', $user->email)->orWhere('name', $user->name)->first();
+        if ($emp) {
+            $empUpdate = [];
+            if ($request->has('base_salary')) {
+                $empUpdate['base_salary'] = (float) $request->input('base_salary', 0);
+            }
+            if ($request->filled('bank_name')) $empUpdate['bank_name'] = $request->input('bank_name');
+            if ($request->filled('bank_account_number')) $empUpdate['bank_account_number'] = $request->input('bank_account_number');
+            if ($request->filled('bank_account_holder')) $empUpdate['bank_account_holder'] = $request->input('bank_account_holder');
+            if (!empty($empUpdate)) {
+                $emp->update($empUpdate);
+            }
+        }
+
+        return back()->with('success', "Data Gaji Pokok, BPJS & Rekening untuk {$user->name} berhasil diperbarui.");
     }
 
     /**
@@ -497,9 +531,17 @@ class PayrollController extends Controller
             $totalIncentive = (float) $pendingIncentives->sum('amount');
             $totalDeduction = (float) $pendingDeductions->sum('amount');
 
-            // Hitung BPJS
-            $bpjs = self::calculateBpjs($user, (float) $user->base_salary);
-            $netSalary = max(0, $user->base_salary + $totalIncentive - $totalDeduction - $bpjs['total_employee']);
+            // Hitung Gaji Pokok & BPJS
+            $rawBaseSalary = (float) $user->base_salary;
+            if ($rawBaseSalary <= 0) {
+                $emp = $user->employee ?: \App\Models\Employee::where('email', $user->email)->orWhere('name', $user->name)->first();
+                if ($emp && (float) $emp->base_salary > 0) {
+                    $rawBaseSalary = (float) $emp->base_salary;
+                    $user->update(['base_salary' => $rawBaseSalary]);
+                }
+            }
+            $bpjs = self::calculateBpjs($user, $rawBaseSalary);
+            $netSalary = max(0, $rawBaseSalary + $totalIncentive - $totalDeduction - $bpjs['total_employee']);
 
             $bpjsNotes = [];
             if ($bpjs['total_employee'] > 0) {
@@ -526,7 +568,7 @@ class PayrollController extends Controller
                     'year' => $year
                 ],
                 [
-                    'base_salary' => $user->base_salary,
+                    'base_salary' => $rawBaseSalary,
                     'total_incentive' => $totalIncentive,
                     'total_deduction' => $totalDeduction,
                     'bpjs_kesehatan_employee' => $bpjs['kesehatan_employee'],
@@ -682,8 +724,16 @@ class PayrollController extends Controller
 
                 $totalIncentive = (float) $pendingIncentives->sum('amount');
                 $totalDeduction = (float) $pendingDeductions->sum('amount');
-                $bpjs = self::calculateBpjs($user, (float) $user->base_salary);
-                $netSalary = max(0, $user->base_salary + $totalIncentive - $totalDeduction - $bpjs['total_employee']);
+                $rawBaseSalary = (float) $user->base_salary;
+                if ($rawBaseSalary <= 0) {
+                    $emp = $user->employee ?: \App\Models\Employee::where('email', $user->email)->orWhere('name', $user->name)->first();
+                    if ($emp && (float) $emp->base_salary > 0) {
+                        $rawBaseSalary = (float) $emp->base_salary;
+                        $user->update(['base_salary' => $rawBaseSalary]);
+                    }
+                }
+                $bpjs = self::calculateBpjs($user, $rawBaseSalary);
+                $netSalary = max(0, $rawBaseSalary + $totalIncentive - $totalDeduction - $bpjs['total_employee']);
 
                 $bpjsNotes = [];
                 if ($bpjs['total_employee'] > 0) {
@@ -712,7 +762,7 @@ class PayrollController extends Controller
                         'year' => $year
                     ],
                     [
-                        'base_salary' => $user->base_salary,
+                        'base_salary' => $rawBaseSalary,
                         'total_incentive' => $totalIncentive,
                         'total_deduction' => $totalDeduction,
                         'bpjs_kesehatan_employee' => $bpjs['kesehatan_employee'],

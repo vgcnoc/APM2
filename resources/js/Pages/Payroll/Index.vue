@@ -215,8 +215,21 @@
                                 </td>
 
                                 <!-- Gaji Pokok -->
-                                <td class="px-5 py-4 whitespace-nowrap text-slate-900 font-extrabold font-mono">
-                                    Rp {{ formatRupiah(user.base_salary) }}
+                                <td class="px-5 py-4 whitespace-nowrap">
+                                    <button 
+                                        type="button"
+                                        @click="openBpjsBankModal(user)" 
+                                        class="group flex items-center gap-1.5 text-left transition-transform hover:scale-[1.02]"
+                                        title="Klik untuk ubah Gaji Pokok & BPJS"
+                                    >
+                                        <span class="font-extrabold font-mono" :class="user.base_salary > 0 ? 'text-slate-900' : 'text-amber-600'">
+                                            Rp {{ formatRupiah(user.base_salary) }}
+                                        </span>
+                                        <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                    </button>
+                                    <span v-if="user.base_salary <= 0" class="text-[10px] text-amber-600 font-medium block">
+                                        Klik untuk isi gaji
+                                    </span>
                                 </td>
 
                                 <!-- Insentif & Bonus -->
@@ -315,15 +328,15 @@
                                             📄 Slip
                                         </button>
 
-                                        <!-- Tombol Edit BPJS & Rekening -->
+                                        <!-- Tombol Edit Gaji Pokok, BPJS & Rekening -->
                                         <button
                                             v-if="can('payroll_btn_update_bpjs_bank') || can('payroll_btn_settings_bpjs') || can('payroll_manage')"
                                             type="button"
                                             @click="openBpjsBankModal(user)"
-                                            class="px-2.5 py-1 text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-xs font-bold transition-colors shadow-2xs"
-                                            title="Atur BPJS & Nomor Rekening"
+                                            class="px-2.5 py-1 text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-xs font-bold transition-colors shadow-2xs flex items-center gap-1"
+                                            title="Atur Gaji Pokok, BPJS & Rekening"
                                         >
-                                            🛡️ BPJS/Bank
+                                            ⚙️ Gaji/BPJS
                                         </button>
 
                                         <!-- Tombol Bonus & Potongan -->
@@ -491,13 +504,32 @@
                 <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 p-6 sm:p-7">
                     <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
                         <div>
-                            <h3 class="text-base font-bold text-slate-900">Pengaturan BPJS &amp; Rekening</h3>
+                            <h3 class="text-base font-bold text-slate-900">Pengaturan Gaji Pokok, BPJS &amp; Rekening</h3>
                             <p class="text-xs text-slate-500 mt-0.5">Karyawan: <strong>{{ selectedBpjsUser.name }}</strong></p>
                         </div>
                         <button type="button" @click="showBpjsBankModal = false" class="text-slate-400 hover:text-slate-600">✕</button>
                     </div>
 
                     <form @submit.prevent="submitBpjsBank" class="space-y-4">
+                        <!-- Gaji Pokok & Insentif Rate -->
+                        <div class="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-2xl space-y-3">
+                            <span class="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                                💵 Gaji Pokok &amp; Rate Insentif
+                            </span>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Gaji Pokok Bulanan (Rp)</label>
+                                    <input v-model.number="bpjsBankForm.base_salary" type="number" min="0" step="50000" placeholder="Contoh: 3000000" class="w-full text-xs px-3 py-2 border border-indigo-300 rounded-xl font-bold font-mono focus:ring-indigo-500 focus:border-indigo-500">
+                                    <span class="text-[10px] text-indigo-700 font-bold mt-0.5 block">Rp {{ formatRupiah(bpjsBankForm.base_salary || 0) }}</span>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Rate Insentif Otomatis (Rp)</label>
+                                    <input v-model.number="bpjsBankForm.incentive_rate" type="number" min="0" step="1000" placeholder="Per tindakan" class="w-full text-xs px-3 py-2 border border-slate-300 rounded-xl font-mono">
+                                    <span class="text-[10px] text-slate-500 mt-0.5 block">Rp {{ formatRupiah(bpjsBankForm.incentive_rate || 0) }}</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- BPJS Kesehatan -->
                         <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
                             <label class="flex items-center gap-2 cursor-pointer">
@@ -813,6 +845,8 @@ const printSlip = () => {
 const showBpjsBankModal = ref(false);
 const selectedBpjsUser = ref(null);
 const bpjsBankForm = useForm({
+    base_salary: 0,
+    incentive_rate: 0,
     bpjs_kesehatan: false,
     bpjs_kesehatan_no: '',
     bpjs_ketenagakerjaan: false,
@@ -824,6 +858,8 @@ const bpjsBankForm = useForm({
 
 const openBpjsBankModal = (user) => {
     selectedBpjsUser.value = user;
+    bpjsBankForm.base_salary = user.base_salary || 0;
+    bpjsBankForm.incentive_rate = user.auto_incentive_rate || 0;
     bpjsBankForm.bpjs_kesehatan = Boolean(user.bpjs_kesehatan);
     bpjsBankForm.bpjs_kesehatan_no = user.bpjs_kesehatan_no || '';
     bpjsBankForm.bpjs_ketenagakerjaan = Boolean(user.bpjs_ketenagakerjaan);
