@@ -28,7 +28,7 @@ class BestAttendanceController extends Controller
         $month = (int) $request->input('month', Carbon::now()->month);
         $year = (int) $request->input('year', Carbon::now()->year);
         $department = $request->input('department', 'all'); // 'all', 'maintenance', or specific position
-        $scope = $request->input('scope', 'global'); // 'global' or 'branch'
+        $scope = $request->input('scope', 'global'); // 'global', 'branch', 'maintenance', or 'special_team'
         $selectedAreaId = $request->input('area_id', null);
 
         $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth();
@@ -36,9 +36,9 @@ class BestAttendanceController extends Controller
 
         // 1. Ambil seluruh data master
         $areas = Area::orderBy('name')->get();
-        $employeesQuery = Employee::with(['area', 'shift']);
+        $employeesQuery = Employee::with(['area', 'shift', 'specialTeamMembers']);
 
-        if ($scope === 'branch' && $selectedAreaId) {
+        if (($scope === 'branch' || $scope === 'maintenance') && $selectedAreaId) {
             $employeesQuery->where('area_id', $selectedAreaId);
         }
 
@@ -81,6 +81,7 @@ class BestAttendanceController extends Controller
             'global_enabled' => Setting::get('attendance_reward_global_enabled', '1') === '1',
             'branch_enabled' => Setting::get('attendance_reward_branch_enabled', '1') === '1',
             'maintenance_enabled' => Setting::get('attendance_reward_maintenance_enabled', '1') === '1',
+            'special_team_enabled' => Setting::get('attendance_reward_special_team_enabled', '1') === '1',
             'global' => [
                 1 => (float) Setting::get('attendance_reward_global_1', 200000),
                 2 => (float) Setting::get('attendance_reward_global_2', 150000),
@@ -95,6 +96,11 @@ class BestAttendanceController extends Controller
                 1 => (float) Setting::get('attendance_reward_maint_1', 200000),
                 2 => (float) Setting::get('attendance_reward_maint_2', 150000),
                 3 => (float) Setting::get('attendance_reward_maint_3', 100000),
+            ],
+            'special_team' => [
+                1 => (float) Setting::get('attendance_reward_special_1', 200000),
+                2 => (float) Setting::get('attendance_reward_special_2', 150000),
+                3 => (float) Setting::get('attendance_reward_special_3', 100000),
             ],
         ];
 
@@ -195,7 +201,15 @@ class BestAttendanceController extends Controller
 
             $branchName = $emp->area ? $emp->area->name : ($emp->branch ?: 'Pusat');
             $position = $emp->position ?: 'Karyawan';
-            $isMaintenance = preg_match('/(teknisi|maintenance|noc|jaringan|lapangan)/i', $position);
+            $isMaintenance = (bool) preg_match('/(teknisi|maintenance|noc|jaringan|lapangan|field|serbu|fiber|fo|infrastruktur)/i', $position . ' ' . ($emp->employee_type ?? ''));
+
+            $isSpecialTeam = false;
+            if (method_exists($emp, 'specialTeamMembers') && $emp->specialTeamMembers && $emp->specialTeamMembers->isNotEmpty()) {
+                $isSpecialTeam = true;
+            }
+            if (!$isSpecialTeam) {
+                $isSpecialTeam = (bool) preg_match('/(khusus|special|serbu)/i', $position . ' ' . ($emp->employee_type ?? ''));
+            }
 
             $calculatedEmployees[] = [
                 'id' => $emp->id,
@@ -214,17 +228,24 @@ class BestAttendanceController extends Controller
                 'early_leaves' => $earlyLeaves,
                 'score' => $finalScore,
                 'is_maintenance' => (bool) $isMaintenance,
+                'is_special_team' => (bool) $isSpecialTeam,
                 'reward_amount' => 0,
                 'reward_title' => null,
                 'rank' => '-',
                 'is_branch_winner' => false,
                 'is_global_winner' => false,
+                'is_maintenance_winner' => false,
+                'is_special_winner' => false,
             ];
         }
 
-        // Filter departemen / divisi
+        // Filter departemen / divisi & scope
         $filteredCollection = collect($calculatedEmployees);
-        if ($department === 'maintenance') {
+        if ($scope === 'maintenance') {
+            $filteredCollection = $filteredCollection->where('is_maintenance', true);
+        } elseif ($scope === 'special_team') {
+            $filteredCollection = $filteredCollection->where('is_special_team', true);
+        } elseif ($department === 'maintenance') {
             $filteredCollection = $filteredCollection->where('is_maintenance', true);
         } elseif ($department !== 'all') {
             $filteredCollection = $filteredCollection->filter(function ($item) use ($department) {
@@ -310,6 +331,74 @@ class BestAttendanceController extends Controller
             $rankedLeaderboard = [];
             $podiumMap = collect($podium)->keyBy('id');
 
+            $currentRank = 1;
+            foreach ($sortedEmployees as $emp) {
+                if ($podiumMap->has($emp['id'])) {
+                    $rankedLeaderboard[] = $podiumMap->get($emp['id']);
+                } else {
+                    $hasAttended = ($emp['presents'] > 0 && $emp['score'] > 0);
+                    $emp['rank'] = $hasAttended ? $currentRank : '-';
+                    $emp['reward_amount'] = 0;
+                    $emp['reward_title'] = null;
+                    $rankedLeaderboard[] = $emp;
+                }
+                if ($emp['presents'] > 0 && $emp['score'] > 0) {
+                    $currentRank++;
+                }
+            }
+            $leaderboard = $rankedLeaderboard;
+
+        } elseif ($scope === 'maintenance') {
+            // "Reward Maintenance: Top 3 Karyawan Maintenance & Teknisi Lapangan"
+            $podiumList = [];
+            for ($i = 0; $i < min(3, $qualifiedEmployees->count()); $i++) {
+                $winner = $qualifiedEmployees[$i];
+                $rank = $i + 1;
+                $reward = $rewardsConfig['maintenance'][$rank] ?? 0;
+                $winner['rank'] = $rank;
+                $winner['reward_amount'] = $reward;
+                $winner['reward_title'] = "Juara #{$rank} Maintenance";
+                $winner['is_maintenance_winner'] = true;
+                $podiumList[] = $winner;
+            }
+            $podium = $podiumList;
+
+            $rankedLeaderboard = [];
+            $podiumMap = collect($podium)->keyBy('id');
+            $currentRank = 1;
+            foreach ($sortedEmployees as $emp) {
+                if ($podiumMap->has($emp['id'])) {
+                    $rankedLeaderboard[] = $podiumMap->get($emp['id']);
+                } else {
+                    $hasAttended = ($emp['presents'] > 0 && $emp['score'] > 0);
+                    $emp['rank'] = $hasAttended ? $currentRank : '-';
+                    $emp['reward_amount'] = 0;
+                    $emp['reward_title'] = null;
+                    $rankedLeaderboard[] = $emp;
+                }
+                if ($emp['presents'] > 0 && $emp['score'] > 0) {
+                    $currentRank++;
+                }
+            }
+            $leaderboard = $rankedLeaderboard;
+
+        } elseif ($scope === 'special_team') {
+            // "Reward Tim Khusus: Top 3 Anggota Tim Khusus"
+            $podiumList = [];
+            for ($i = 0; $i < min(3, $qualifiedEmployees->count()); $i++) {
+                $winner = $qualifiedEmployees[$i];
+                $rank = $i + 1;
+                $reward = $rewardsConfig['special_team'][$rank] ?? 0;
+                $winner['rank'] = $rank;
+                $winner['reward_amount'] = $reward;
+                $winner['reward_title'] = "Juara #{$rank} Tim Khusus";
+                $winner['is_special_winner'] = true;
+                $podiumList[] = $winner;
+            }
+            $podium = $podiumList;
+
+            $rankedLeaderboard = [];
+            $podiumMap = collect($podium)->keyBy('id');
             $currentRank = 1;
             foreach ($sortedEmployees as $emp) {
                 if ($podiumMap->has($emp['id'])) {

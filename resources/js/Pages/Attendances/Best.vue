@@ -17,10 +17,16 @@
                             </h1>
                             <p class="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
                                 <span v-if="currentScope === 'global'">
-                                    Nominasi global: Juara 1 tiap cabang berkompetisi — Top 3 mendapat reward
+                                    Nominasi global: Juara 1 tiap cabang berkompetisi — Top 3 mendapat reward perusahaan
                                 </span>
-                                <span v-else>
+                                <span v-else-if="currentScope === 'branch'">
                                     Peringkat kedisiplinan dan absensi terbaik tingkat cabang — Top 3 mendapat reward cabang
+                                </span>
+                                <span v-else-if="currentScope === 'maintenance'">
+                                    Nominasi khusus divisi Maintenance & Teknisi Lapangan — Top 3 mendapat reward maintenance
+                                </span>
+                                <span v-else-if="currentScope === 'special_team'">
+                                    Nominasi khusus Tim Khusus & Tugas Lapangan — Top 3 mendapat reward tim khusus
                                 </span>
                             </p>
                         </div>
@@ -124,14 +130,14 @@
                         </button>
                     </div>
 
-                    <!-- Right: Scope Global vs Per Cabang -->
+                    <!-- Right: Scope Global vs Per Cabang vs Juara Maintenance vs Tim Khusus -->
                     <div class="flex items-center gap-2">
                         <div class="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl">
                             <button
                                 type="button"
                                 @click="setScope('global')"
                                 :class="[
-                                    'px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5',
+                                    'px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5',
                                     currentScope === 'global'
                                         ? 'bg-white text-slate-900 shadow-sm'
                                         : 'text-slate-600 hover:text-slate-900'
@@ -144,7 +150,7 @@
                                 type="button"
                                 @click="setScope('branch')"
                                 :class="[
-                                    'px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5',
+                                    'px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5',
                                     currentScope === 'branch'
                                         ? 'bg-white text-slate-900 shadow-sm'
                                         : 'text-slate-600 hover:text-slate-900'
@@ -153,10 +159,38 @@
                                 <span>🏢</span>
                                 <span>Per Cabang</span>
                             </button>
+                            <button
+                                v-if="rewardsConfig.maintenance_enabled"
+                                type="button"
+                                @click="setScope('maintenance')"
+                                :class="[
+                                    'px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5',
+                                    currentScope === 'maintenance'
+                                        ? 'bg-white text-slate-900 shadow-sm'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                ]"
+                            >
+                                <span>🛠️</span>
+                                <span>Juara Maintenance</span>
+                            </button>
+                            <button
+                                v-if="rewardsConfig.special_team_enabled"
+                                type="button"
+                                @click="setScope('special_team')"
+                                :class="[
+                                    'px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5',
+                                    currentScope === 'special_team'
+                                        ? 'bg-white text-slate-900 shadow-sm'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                ]"
+                            >
+                                <span>👥</span>
+                                <span>Tim Khusus</span>
+                            </button>
                         </div>
 
-                        <!-- Dropdown Cabang saat scope branch aktif -->
-                        <div v-if="currentScope === 'branch'" class="relative">
+                        <!-- Dropdown Cabang saat scope branch atau maintenance aktif -->
+                        <div v-if="currentScope === 'branch' || (currentScope === 'maintenance' && areas.length > 0)" class="relative">
                             <select
                                 v-model="selectedAreaId"
                                 @change="applyFilters"
@@ -228,11 +262,11 @@
                             <p class="text-[11px] text-slate-500 mt-1">Pemotongan skor signifikan untuk ketidakhadiran tanpa keterangan.</p>
                         </div>
                         <div class="bg-white/80 p-3 rounded-xl border border-blue-100">
-                            <span class="font-bold text-blue-900 block mb-1">4. Reward Pemenang:</span>
+                            <span class="font-bold text-blue-900 block mb-1">4. Reward Pemenang ({{ currentScopeLabel }}):</span>
                             <p class="text-[11px] text-emerald-700 font-bold mt-1">
-                                🥇 Juara 1: Rp {{ formatRupiah(rewardsConfig.global[1] || 200000) }}<br>
-                                🥈 Juara 2: Rp {{ formatRupiah(rewardsConfig.global[2] || 150000) }}<br>
-                                🥉 Juara 3: Rp {{ formatRupiah(rewardsConfig.global[3] || 100000) }}
+                                🥇 Juara 1: Rp {{ formatRupiah(currentRewards[1] || 200000) }}<br>
+                                🥈 Juara 2: Rp {{ formatRupiah(currentRewards[2] || 150000) }}<br>
+                                🥉 Juara 3: Rp {{ formatRupiah(currentRewards[3] || 100000) }}
                             </p>
                         </div>
                     </div>
@@ -337,7 +371,7 @@
                         <!-- Badge Juara -->
                         <div class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-200/80 text-xs font-black mx-auto">
                             <span>🥇</span>
-                            <span>Absen Terbaik #1</span>
+                            <span>{{ podium[0].reward_title || 'Absen Terbaik #1' }}</span>
                         </div>
 
                         <!-- Avatar Photo -->
@@ -416,7 +450,7 @@
                 <!-- Empty placeholder if no Juara 1 -->
                 <div v-else class="bg-white rounded-3xl border-2 border-dashed border-slate-200 p-8 text-center flex flex-col items-center justify-center text-slate-400">
                     <span class="text-3xl mb-2">🥇</span>
-                    <span class="text-xs font-bold">Belum ada kandidat Juara #1</span>
+                    <span class="text-xs font-bold">Belum ada kandidat Juara #1 ({{ currentScopeShortLabel }})</span>
                 </div>
 
                 <!-- JUARA #2 (PERAK / SILVER) -->
@@ -432,7 +466,7 @@
                         <!-- Badge Juara -->
                         <div class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-slate-200 text-slate-800 border border-slate-300 text-xs font-black mx-auto">
                             <span>🥈</span>
-                            <span>Absen Terbaik #2</span>
+                            <span>{{ podium[1].reward_title || 'Absen Terbaik #2' }}</span>
                         </div>
 
                         <!-- Avatar Photo -->
@@ -511,7 +545,7 @@
                 <!-- Empty placeholder if no Juara 2 -->
                 <div v-else class="bg-white rounded-3xl border-2 border-dashed border-slate-200 p-8 text-center flex flex-col items-center justify-center text-slate-400">
                     <span class="text-3xl mb-2">🥈</span>
-                    <span class="text-xs font-bold">Belum ada kandidat Juara #2</span>
+                    <span class="text-xs font-bold">Belum ada kandidat Juara #2 ({{ currentScopeShortLabel }})</span>
                 </div>
 
                 <!-- JUARA #3 (PERUNGGU / BRONZE) -->
@@ -527,7 +561,7 @@
                         <!-- Badge Juara -->
                         <div class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs font-black mx-auto">
                             <span>🥉</span>
-                            <span>Absen Terbaik #3</span>
+                            <span>{{ podium[2].reward_title || 'Absen Terbaik #3' }}</span>
                         </div>
 
                         <!-- Avatar Photo -->
@@ -606,7 +640,7 @@
                 <!-- Empty placeholder if no Juara 3 -->
                 <div v-else class="bg-white rounded-3xl border-2 border-dashed border-slate-200 p-8 text-center flex flex-col items-center justify-center text-slate-400">
                     <span class="text-3xl mb-2">🥉</span>
-                    <span class="text-xs font-bold">Belum ada kandidat Juara #3</span>
+                    <span class="text-xs font-bold">Belum ada kandidat Juara #3 ({{ currentScopeShortLabel }})</span>
                 </div>
             </div>
 
@@ -780,15 +814,23 @@
 
                                 <!-- Status Reward -->
                                 <td class="px-5 py-4 text-center">
-                                    <span
-                                        v-if="emp.reward_amount > 0"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-black shadow-sm"
-                                    >
-                                        <span>💵</span>
-                                        <span>Rp {{ formatRupiah(emp.reward_amount) }}</span>
-                                    </span>
+                                    <div v-if="emp.reward_amount > 0">
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-black shadow-sm">
+                                            <span>💵</span>
+                                            <span>Rp {{ formatRupiah(emp.reward_amount) }}</span>
+                                        </span>
+                                        <div v-if="emp.reward_title" class="text-[10px] text-emerald-800 font-bold mt-0.5">
+                                            {{ emp.reward_title }}
+                                        </div>
+                                    </div>
                                     <span v-else-if="emp.is_branch_winner" class="text-amber-700 font-bold text-[11px]">
                                         Nominasi Cabang
+                                    </span>
+                                    <span v-else-if="emp.is_maintenance_winner" class="text-orange-700 font-bold text-[11px]">
+                                        Top Maintenance
+                                    </span>
+                                    <span v-else-if="emp.is_special_winner" class="text-cyan-700 font-bold text-[11px]">
+                                        Top Tim Khusus
                                     </span>
                                     <span v-else class="text-slate-400 text-[11px]">
                                         -
@@ -982,7 +1024,10 @@
                             <h2 class="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
                                 KARYAWAN ABSEN TERBAIK
                             </h2>
-                            <p class="text-sm text-slate-600 font-medium">
+                            <p class="text-xs sm:text-sm font-bold text-amber-800 tracking-wide mt-0.5">
+                                {{ printScopeSubtitle }}
+                            </p>
+                            <p class="text-sm text-slate-600 font-medium mt-1">
                                 Periode: <strong>{{ monthNames[selectedMonth - 1] }} {{ selectedYear }}</strong>
                             </p>
                         </div>
@@ -992,7 +1037,7 @@
                             <!-- Juara 1 -->
                             <div class="border-2 border-amber-400 bg-amber-50/50 p-4 rounded-xl space-y-2">
                                 <span class="text-2xl">🥇</span>
-                                <div class="text-xs font-black text-amber-800">JUARA 1</div>
+                                <div class="text-xs font-black text-amber-800">{{ podium[0]?.reward_title ? podium[0]?.reward_title.toUpperCase() : 'JUARA 1' }}</div>
                                 <div class="font-black text-sm text-slate-900 truncate">{{ podium[0]?.name || '-' }}</div>
                                 <div class="text-[11px] text-slate-500 truncate">{{ podium[0]?.position || '-' }}</div>
                                 <div class="text-xs font-black text-emerald-700">Rp {{ formatRupiah(podium[0]?.reward_amount || 0) }}</div>
@@ -1000,7 +1045,7 @@
                             <!-- Juara 2 -->
                             <div class="border-2 border-slate-300 bg-slate-50 p-4 rounded-xl space-y-2">
                                 <span class="text-2xl">🥈</span>
-                                <div class="text-xs font-black text-slate-800">JUARA 2</div>
+                                <div class="text-xs font-black text-slate-800">{{ podium[1]?.reward_title ? podium[1]?.reward_title.toUpperCase() : 'JUARA 2' }}</div>
                                 <div class="font-black text-sm text-slate-900 truncate">{{ podium[1]?.name || '-' }}</div>
                                 <div class="text-[11px] text-slate-500 truncate">{{ podium[1]?.position || '-' }}</div>
                                 <div class="text-xs font-black text-emerald-700">Rp {{ formatRupiah(podium[1]?.reward_amount || 0) }}</div>
@@ -1008,7 +1053,7 @@
                             <!-- Juara 3 -->
                             <div class="border-2 border-amber-500/60 bg-orange-50/30 p-4 rounded-xl space-y-2">
                                 <span class="text-2xl">🥉</span>
-                                <div class="text-xs font-black text-amber-900">JUARA 3</div>
+                                <div class="text-xs font-black text-amber-900">{{ podium[2]?.reward_title ? podium[2]?.reward_title.toUpperCase() : 'JUARA 3' }}</div>
                                 <div class="font-black text-sm text-slate-900 truncate">{{ podium[2]?.name || '-' }}</div>
                                 <div class="text-[11px] text-slate-500 truncate">{{ podium[2]?.position || '-' }}</div>
                                 <div class="text-xs font-black text-emerald-700">Rp {{ formatRupiah(podium[2]?.reward_amount || 0) }}</div>
@@ -1074,8 +1119,14 @@ const props = defineProps({
     rewardsConfig: {
         type: Object,
         default: () => ({
+            global_enabled: true,
+            branch_enabled: true,
+            maintenance_enabled: true,
+            special_team_enabled: true,
             global: { 1: 200000, 2: 150000, 3: 100000 },
             branch: { 1: 200000, 2: 150000, 3: 100000 },
+            maintenance: { 1: 200000, 2: 150000, 3: 100000 },
+            special_team: { 1: 200000, 2: 150000, 3: 100000 },
         }),
     },
 });
@@ -1086,6 +1137,43 @@ const selectedYear = ref(Number(props.filters.year) || 2026);
 const currentDepartment = ref(props.filters.department || 'all');
 const currentScope = ref(props.filters.scope || 'global');
 const selectedAreaId = ref(props.filters.area_id || null);
+
+const currentScopeLabel = computed(() => {
+    if (currentScope.value === 'maintenance') return 'Maintenance';
+    if (currentScope.value === 'special_team') return 'Tim Khusus';
+    if (currentScope.value === 'branch') return 'Per Cabang';
+    return 'Global';
+});
+
+const currentScopeShortLabel = computed(() => {
+    if (currentScope.value === 'maintenance') return 'Maintenance';
+    if (currentScope.value === 'special_team') return 'Tim Khusus';
+    if (currentScope.value === 'branch') return 'Cabang';
+    return 'Global';
+});
+
+const currentRewards = computed(() => {
+    if (currentScope.value === 'maintenance') {
+        return props.rewardsConfig.maintenance || { 1: 200000, 2: 150000, 3: 100000 };
+    }
+    if (currentScope.value === 'special_team') {
+        return props.rewardsConfig.special_team || { 1: 200000, 2: 150000, 3: 100000 };
+    }
+    if (currentScope.value === 'branch') {
+        return props.rewardsConfig.branch || { 1: 200000, 2: 150000, 3: 100000 };
+    }
+    return props.rewardsConfig.global || { 1: 200000, 2: 150000, 3: 100000 };
+});
+
+const printScopeSubtitle = computed(() => {
+    if (currentScope.value === 'maintenance') return 'KATEGORI KHUSUS DIVISI MAINTENANCE & TEKNISI LAPANGAN';
+    if (currentScope.value === 'special_team') return 'KATEGORI KHUSUS TIM KHUSUS LAPANGAN';
+    if (currentScope.value === 'branch') {
+        const area = props.areas.find(a => a.id === selectedAreaId.value);
+        return area ? `TINGKAT CABANG: ${area.name.toUpperCase()}` : 'TINGKAT PER CABANG';
+    }
+    return 'TINGKAT GLOBAL PERUSAHAAN';
+});
 
 const departmentTabs = computed(() => {
     const rawList = props.positions && props.positions.length > 0
@@ -1160,7 +1248,7 @@ const setDepartment = (dept) => {
 
 const setScope = (scope) => {
     currentScope.value = scope;
-    if (scope === 'global') {
+    if (scope === 'global' || scope === 'special_team') {
         selectedAreaId.value = null;
     }
     applyFilters();
