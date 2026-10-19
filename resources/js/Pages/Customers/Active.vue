@@ -86,29 +86,29 @@
                         <div class="relative shrink-0">
                             <div :class="[
                                 'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-sm',
-                                row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)
+                                isCustomerOnline(row)
                                     ? 'bg-gradient-to-br from-emerald-500 to-green-600 ring-2 ring-emerald-400/60'
                                     : 'bg-gradient-to-br from-rose-500 to-red-600 ring-2 ring-rose-400/60'
                             ]">
                                 {{ row.name.charAt(0) }}
                             </div>
-                            <span v-if="row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-300"></span>
+                            <span v-if="isCustomerOnline(row)" class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-300"></span>
                             <span v-else class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white ring-1 ring-rose-300"></span>
                         </div>
                         <div>
                             <Link :href="`/customers/${row.id}`" 
                                 :class="[
                                     'font-semibold transition-colors inline-flex items-center gap-1.5',
-                                    row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user) 
+                                    isCustomerOnline(row) 
                                         ? 'text-emerald-600 hover:text-emerald-700 font-bold' 
                                         : 'text-rose-600 hover:text-rose-700 font-bold'
                                 ]">
-                                <span v-if="row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                                <span v-if="isCustomerOnline(row)" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
                                 <span v-else class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
                                 {{ row.name }}
                             </Link>
                             <div class="flex items-center gap-2 mt-0.5">
-                                <span :class="row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user) ? 'text-emerald-700/80 font-medium' : 'text-rose-700/80 font-medium'" class="text-xs font-mono">{{ row.customer_code }}</span>
+                                <span :class="isCustomerOnline(row) ? 'text-emerald-700/80 font-medium' : 'text-rose-700/80 font-medium'" class="text-xs font-mono">{{ row.customer_code }}</span>
                                 <span v-if="row.registration_date" class="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100/70 px-1.5 py-0.5 rounded font-medium" title="Tanggal Daftar">
                                     📅 {{ formatDate(row.registration_date) }}
                                 </span>
@@ -129,16 +129,19 @@
                 </td>
                 <td>
                     <div class="flex flex-col gap-1 items-start">
-                        <div v-if="row.ont?.pppoe_user">
-                            <span v-if="onlineUsernames?.includes(row.ont.pppoe_user)" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <div v-if="row.ont?.pppoe_user || row.ont?.hotspot_user">
+                            <span v-if="isCustomerOnline(row)" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Online
                             </span>
                             <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                                 <span class="w-2 h-2 rounded-full bg-rose-500"></span> Offline
                             </span>
-                            <span class="block text-[11px] text-gray-400 font-mono mt-0.5">{{ row.ont.pppoe_user }}</span>
+                            <span class="block text-[11px] text-gray-400 font-mono mt-0.5">
+                                <span v-if="row.ont.hotspot_user && !row.ont.pppoe_user" class="text-[9px] font-bold text-amber-600 bg-amber-50 px-1 py-0.2 rounded border border-amber-200 mr-1">HOTSPOT</span>
+                                {{ row.ont.hotspot_user && !row.ont.pppoe_user ? row.ont.hotspot_user : row.ont.pppoe_user }}
+                            </span>
                         </div>
-                        <span v-else class="text-xs text-gray-400 italic">No PPPoE</span>
+                        <span v-else class="text-xs text-gray-400 italic">No Account</span>
                     </div>
                 </td>
                 <td>
@@ -275,6 +278,12 @@ function formatDate(dateStr) {
 
 function formatRupiah(val) {
     return 'Rp ' + Number(val || 0).toLocaleString('id-ID');
+}
+
+function isCustomerOnline(row) {
+    const pppoe = row.ont?.pppoe_user;
+    const hotspot = row.ont?.hotspot_user;
+    return (pppoe && props.onlineUsernames?.includes(pppoe)) || (hotspot && props.onlineUsernames?.includes(hotspot));
 }
 
 function signalClass(rx) {

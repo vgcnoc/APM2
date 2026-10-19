@@ -140,7 +140,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
@@ -153,17 +153,31 @@ const props = defineProps({
     totalOnline: { type: Number, default: 0 },
 });
 
-const columns = [
-    { key: 'index', label: '#' },
-    { key: 'name', label: 'PELANGGAN' },
-    { key: 'area', label: 'AREA' },
-    { key: 'package', label: 'PAKET' },
-    { key: 'username', label: 'USERNAME PPP' },
-    { key: 'access_mode', label: 'MODE' },
-    { key: 'ip_address', label: 'IP ADDRESS' },
-    { key: 'mac_address', label: 'MAC ADDRESS' },
-    { key: 'uptime', label: 'UPTIME / LOGIN' },
-];
+const filterArea = ref(props.filters?.area_id || '');
+const filterPackage = ref(props.filters?.package_id || '');
+const filterMode = ref(props.filters?.tab || '');
+const refreshing = ref(false);
+const kicking = ref(null);
+
+const columns = computed(() => {
+    let userLabel = 'USERNAME';
+    if (filterMode.value === 'hotspot') {
+        userLabel = 'USERNAME HOTSPOT';
+    } else if (filterMode.value === 'pppoe') {
+        userLabel = 'USERNAME PPP';
+    }
+    return [
+        { key: 'index', label: '#' },
+        { key: 'name', label: 'PELANGGAN' },
+        { key: 'area', label: 'AREA' },
+        { key: 'package', label: 'PAKET' },
+        { key: 'username', label: userLabel },
+        { key: 'access_mode', label: 'MODE' },
+        { key: 'ip_address', label: 'IP ADDRESS' },
+        { key: 'mac_address', label: 'MAC ADDRESS' },
+        { key: 'uptime', label: 'UPTIME / LOGIN' },
+    ];
+});
 
 function getAvatarColor(name) {
     if (!name) return 'bg-gray-500';
@@ -172,12 +186,6 @@ function getAvatarColor(name) {
     for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
     return colors[Math.abs(hash) % colors.length];
 }
-
-const filterArea = ref(props.filters?.area_id || '');
-const filterPackage = ref(props.filters?.package_id || '');
-const filterMode = ref(props.filters?.tab || '');
-const refreshing = ref(false);
-const kicking = ref(null);
 
 function applyFilters() {
     router.get('/customers/online', {

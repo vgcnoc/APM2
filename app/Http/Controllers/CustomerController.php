@@ -147,8 +147,9 @@ class CustomerController extends Controller
         // 2. Cocokkan dengan ONT pelanggan (voucher tidak punya ONT → otomatis terfilter)
         $customers = collect();
         if ($sessions->isNotEmpty()) {
+            $sessionKeys = $sessions->keys()->all();
             $customers = Customer::with(['package', 'areaModel', 'ont'])
-                ->whereHas('ont', fn ($q) => $q->whereIn('pppoe_user', $sessions->keys()->all()))
+                ->whereHas('ont', fn ($q) => $q->whereIn('pppoe_user', $sessionKeys)->orWhereIn('hotspot_user', $sessionKeys))
                 ->whereDoesntHave('package', fn ($q) => $q->where('access_mode', 'voucher'))
                 ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function ($q) {
                     if (auth()->user()->can('customers_all_view_area')) {
@@ -170,8 +171,20 @@ class CustomerController extends Controller
 
         // 3. Gabungkan data pelanggan + sesi
         $rows = $customers->map(function (Customer $c) use ($sessions) {
-            $username = $c->ont?->pppoe_user;
-            $s = $sessions->get($username);
+            $mode = mb_strtolower($c->package?->access_mode ?? $c->ont?->access_mode ?? 'pppoe');
+            $isHotspot = str_contains($mode, 'hotspot');
+            $username = $isHotspot
+                ? ($c->ont?->hotspot_user ?: $c->ont?->pppoe_user)
+                : ($c->ont?->pppoe_user ?: $c->ont?->hotspot_user);
+
+            $s = ($username ? $sessions->get($username) : null)
+                ?: ($c->ont?->pppoe_user ? $sessions->get($c->ont->pppoe_user) : null)
+                ?: ($c->ont?->hotspot_user ? $sessions->get($c->ont->hotspot_user) : null);
+
+            if ($s && $s->username) {
+                $username = $s->username;
+            }
+
             return [
                 'id' => $c->id,
                 'customer_code' => $c->customer_code,
@@ -181,7 +194,7 @@ class CustomerController extends Controller
                 'username' => $username,
                 'access_mode' => $c->package?->access_mode ?? $c->ont?->access_mode,
                 'ip_address' => $s?->framedipaddress,
-                'mac_address' => $s?->callingstationid,
+                'mac_address' => $s?->callingstationid ?: $c->ont?->mac_address,
                 'nas_ip' => $s?->nasipaddress,
                 'start_time' => $s?->acctstarttime ? (string) $s->acctstarttime : null,
                 'session_time' => $s ? $s->liveSessionTime() : 0,
@@ -193,8 +206,10 @@ class CustomerController extends Controller
         // 4. Pencarian dan Filter Tab
         $tab = $request->query('tab', '');
         if ($tab) {
-            $rows = $rows->filter(function ($r) use ($tab) {
-                return mb_strtolower($r['access_mode']) === mb_strtolower($tab);
+            $tabLower = mb_strtolower($tab);
+            $rows = $rows->filter(function ($r) use ($tabLower) {
+                $m = mb_strtolower($r['access_mode'] ?? '');
+                return $m === $tabLower || str_contains($m, $tabLower);
             });
         }
 
@@ -246,7 +261,13 @@ class CustomerController extends Controller
             ->whereDoesntHave('package', fn ($q) => $q->where('access_mode', 'voucher'))
             ->whereHas('ont', function ($q) use ($onlineUsernames) {
                 if (!empty($onlineUsernames)) {
-                    $q->whereNotIn('pppoe_user', $onlineUsernames);
+                    $q->where(function ($sub) use ($onlineUsernames) {
+                        $sub->whereNull('pppoe_user')
+                            ->orWhereNotIn('pppoe_user', $onlineUsernames);
+                    })->where(function ($sub) use ($onlineUsernames) {
+                        $sub->whereNull('hotspot_user')
+                            ->orWhereNotIn('hotspot_user', $onlineUsernames);
+                    });
                 }
             })
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function ($q) {
@@ -266,7 +287,10 @@ class CustomerController extends Controller
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
             ->get();
 
-        $offlineUsernames = $customers->pluck('ont.pppoe_user')->filter()->toArray();
+        $offlineUsernames = $customers->flatMap(function (Customer $c) {
+            return array_filter([$c->ont?->pppoe_user, $c->ont?->hotspot_user]);
+        })->unique()->values()->toArray();
+
         $offlineSessions = collect();
         if (!empty($offlineUsernames)) {
             try {
@@ -281,8 +305,16 @@ class CustomerController extends Controller
         }
 
         $rows = $customers->map(function (Customer $c) use ($offlineSessions) {
-            $username = $c->ont?->pppoe_user;
-            $s = $offlineSessions->get($username);
+            $mode = mb_strtolower($c->package?->access_mode ?? $c->ont?->access_mode ?? 'pppoe');
+            $isHotspot = str_contains($mode, 'hotspot');
+            $username = $isHotspot
+                ? ($c->ont?->hotspot_user ?: $c->ont?->pppoe_user)
+                : ($c->ont?->pppoe_user ?: $c->ont?->hotspot_user);
+
+            $s = ($username ? $offlineSessions->get($username) : null)
+                ?: ($c->ont?->pppoe_user ? $offlineSessions->get($c->ont->pppoe_user) : null)
+                ?: ($c->ont?->hotspot_user ? $offlineSessions->get($c->ont->hotspot_user) : null);
+
             return [
                 'id' => $c->id,
                 'customer_code' => $c->customer_code,
@@ -291,7 +323,7 @@ class CustomerController extends Controller
                 'package' => $c->package?->name,
                 'username' => $username,
                 'access_mode' => $c->package?->access_mode ?? $c->ont?->access_mode,
-                'mac_address' => $s?->callingstationid,
+                'mac_address' => $s?->callingstationid ?: $c->ont?->mac_address,
                 'last_logout' => $s?->acctstoptime ? (string) $s->acctstoptime : null,
                 'status' => $c->status,
             ];
@@ -299,8 +331,10 @@ class CustomerController extends Controller
 
         $tab = $request->query('tab', '');
         if ($tab) {
-            $rows = $rows->filter(function ($r) use ($tab) {
-                return mb_strtolower($r['access_mode']) === mb_strtolower($tab);
+            $tabLower = mb_strtolower($tab);
+            $rows = $rows->filter(function ($r) use ($tabLower) {
+                $m = mb_strtolower($r['access_mode'] ?? '');
+                return $m === $tabLower || str_contains($m, $tabLower);
             });
         }
 
@@ -1038,8 +1072,12 @@ class CustomerController extends Controller
 
         // Calculate statistics based on baseQuery
         $totalAktif = (clone $baseQuery)->count();
-        $onlineAktif = (clone $baseQuery)->whereHas('ont', fn ($q) => $q->whereIn('pppoe_user', $onlineUsernames))->count();
-        $offlineAktif = (clone $baseQuery)->where(fn ($q) => $q->doesntHave('ont')->orWhereHas('ont', fn ($oq) => $oq->whereNotIn('pppoe_user', $onlineUsernames)->orWhereNull('pppoe_user')))->count();
+        $onlineAktif = (clone $baseQuery)->whereHas('ont', fn ($q) => $q->whereIn('pppoe_user', $onlineUsernames)->orWhereIn('hotspot_user', $onlineUsernames))->count();
+        $offlineAktif = (clone $baseQuery)->where(fn ($q) => $q->doesntHave('ont')->orWhereHas('ont', fn ($oq) => $oq->where(function ($sub) use ($onlineUsernames) {
+            $sub->whereNull('pppoe_user')->orWhereNotIn('pppoe_user', $onlineUsernames);
+        })->where(function ($sub) use ($onlineUsernames) {
+            $sub->whereNull('hotspot_user')->orWhereNotIn('hotspot_user', $onlineUsernames);
+        })))->count();
         $totalOmset = (clone $baseQuery)->with('package')->get()->sum(fn ($c) => $c->base_amount > 0 ? (float)$c->base_amount : (float)($c->package?->price ?? 0));
 
         $stats = [
@@ -1067,8 +1105,12 @@ class CustomerController extends Controller
                 });
             })
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
-            ->when($request->connection_status === 'online', fn ($q) => $q->whereHas('ont', fn ($oq) => $oq->whereIn('pppoe_user', $onlineUsernames)))
-            ->when($request->connection_status === 'offline', fn ($q) => $q->where(fn ($sq) => $sq->doesntHave('ont')->orWhereHas('ont', fn ($oq) => $oq->whereNotIn('pppoe_user', $onlineUsernames)->orWhereNull('pppoe_user'))))
+            ->when($request->connection_status === 'online', fn ($q) => $q->whereHas('ont', fn ($oq) => $oq->whereIn('pppoe_user', $onlineUsernames)->orWhereIn('hotspot_user', $onlineUsernames)))
+            ->when($request->connection_status === 'offline', fn ($q) => $q->where(fn ($sq) => $sq->doesntHave('ont')->orWhereHas('ont', fn ($oq) => $oq->where(function ($sub) use ($onlineUsernames) {
+                $sub->whereNull('pppoe_user')->orWhereNotIn('pppoe_user', $onlineUsernames);
+            })->where(function ($sub) use ($onlineUsernames) {
+                $sub->whereNull('hotspot_user')->orWhereNotIn('hotspot_user', $onlineUsernames);
+            }))))
             ->search($request->search)
             ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
             ->paginate(15)

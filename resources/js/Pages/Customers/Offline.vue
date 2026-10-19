@@ -114,7 +114,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
@@ -127,16 +127,29 @@ const props = defineProps({
     totalOffline: { type: Number, default: 0 },
 });
 
-const columns = [
-    { key: 'index', label: '#' },
-    { key: 'name', label: 'PELANGGAN' },
-    { key: 'area', label: 'AREA' },
-    { key: 'package', label: 'PAKET' },
-    { key: 'username', label: 'USERNAME PPP' },
-    { key: 'access_mode', label: 'MODE' },
-    { key: 'mac_address', label: 'MAC ADDRESS' },
-    { key: 'last_logout', label: 'STATUS' },
-];
+const filterArea = ref(props.filters?.area_id || '');
+const filterPackage = ref(props.filters?.package_id || '');
+const filterMode = ref(props.filters?.tab || '');
+const refreshing = ref(false);
+
+const columns = computed(() => {
+    let userLabel = 'USERNAME';
+    if (filterMode.value === 'hotspot') {
+        userLabel = 'USERNAME HOTSPOT';
+    } else if (filterMode.value === 'pppoe') {
+        userLabel = 'USERNAME PPP';
+    }
+    return [
+        { key: 'index', label: '#' },
+        { key: 'name', label: 'PELANGGAN' },
+        { key: 'area', label: 'AREA' },
+        { key: 'package', label: 'PAKET' },
+        { key: 'username', label: userLabel },
+        { key: 'access_mode', label: 'MODE' },
+        { key: 'mac_address', label: 'MAC ADDRESS' },
+        { key: 'last_logout', label: 'STATUS' },
+    ];
+});
 
 function getAvatarColor(name) {
     if (!name) return 'bg-gray-500';
@@ -145,11 +158,6 @@ function getAvatarColor(name) {
     for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
     return colors[Math.abs(hash) % colors.length];
 }
-
-const filterArea = ref(props.filters?.area_id || '');
-const filterPackage = ref(props.filters?.package_id || '');
-const filterMode = ref(props.filters?.tab || '');
-const refreshing = ref(false);
 
 function applyFilters() {
     router.get('/customers/offline', {
