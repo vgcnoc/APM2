@@ -157,7 +157,7 @@
                                 <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filter Wilayah Tertentu:</label>
                                 <select
                                     v-model="selectedAreaFilter"
-                                    @change="refreshMarkers"
+                                    @change="onAreaFilterChange"
                                     class="w-full text-xs rounded-lg border-slate-200 py-1.5 focus:ring-indigo-500 focus:border-indigo-500"
                                 >
                                     <option value="all">Semua Wilayah</option>
@@ -205,7 +205,7 @@
                         title="Penggaris Jarak & Estimasi Redaman dBm"
                     >
                         <svg class="w-4 h-4" :class="isRulerActive ? 'text-white' : 'text-amber-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21.3 8.7L8.7 21.3c-1 1-2.5 1-3.4 0l-2.6-2.6c-1-1-1-2.5 0-3.4L15.3 2.7c1-1 2.5-1 3.4 0l2.6 2.6c1 1 1 2.5 0 3.4zM14.5 5.5l2 2M11.5 8.5l2 2M8.5 11.5l2 2M5.5 14.5l2 2" />
                         </svg>
                     </button>
 
@@ -245,19 +245,19 @@
                     <div class="grid grid-cols-4 gap-2 text-center pb-2 border-b border-slate-800">
                         <div class="bg-slate-800/70 p-1.5 rounded-xl border border-slate-700/40">
                             <div class="text-[10px] text-slate-400 font-medium">Pelanggan</div>
-                            <div class="text-sm font-black text-emerald-400">{{ customers.length }}</div>
+                            <div class="text-sm font-black text-emerald-400">{{ filteredCustomersCount }}</div>
                         </div>
                         <div class="bg-slate-800/70 p-1.5 rounded-xl border border-slate-700/40">
                             <div class="text-[10px] text-slate-400 font-medium">ODP</div>
-                            <div class="text-sm font-black text-amber-400">{{ odps.length }}</div>
+                            <div class="text-sm font-black text-amber-400">{{ filteredOdpsCount }}</div>
                         </div>
                         <div class="bg-slate-800/70 p-1.5 rounded-xl border border-slate-700/40">
                             <div class="text-[10px] text-slate-400 font-medium">ODC</div>
-                            <div class="text-sm font-black text-blue-400">{{ odcs.length }}</div>
+                            <div class="text-sm font-black text-blue-400">{{ filteredOdcsCount }}</div>
                         </div>
                         <div class="bg-slate-800/70 p-1.5 rounded-xl border border-slate-700/40">
                             <div class="text-[10px] text-slate-400 font-medium">Wilayah</div>
-                            <div class="text-sm font-black text-purple-400">{{ areas.length }}</div>
+                            <div class="text-sm font-black text-purple-400">{{ filteredAreasCount }}</div>
                         </div>
                     </div>
 
@@ -841,6 +841,30 @@ const layers = ref({
     cluster: true,
 });
 
+// Filtered Counts for HUD
+const filteredCustomersCount = computed(() => {
+    if (selectedAreaFilter.value === 'all') return props.customers.length;
+    return props.customers.filter(c => c.area_id == selectedAreaFilter.value).length;
+});
+const filteredOdpsCount = computed(() => {
+    if (selectedAreaFilter.value === 'all') return props.odps.length;
+    return props.odps.filter(o => o.area_id == selectedAreaFilter.value).length;
+});
+const filteredOdcsCount = computed(() => {
+    if (selectedAreaFilter.value === 'all') return props.odcs.length;
+    return props.odcs.filter(o => o.area_id == selectedAreaFilter.value).length;
+});
+const filteredAreasCount = computed(() => {
+    if (selectedAreaFilter.value === 'all') return props.areas.length;
+    return props.areas.filter(a => a.id == selectedAreaFilter.value).length;
+});
+
+const onAreaFilterChange = () => {
+    refreshMarkers();
+    toggleAreasLayer();
+    toggleFiberLines();
+};
+
 // Basemaps
 const activeBasemap = ref('osm');
 const basemaps = [
@@ -1058,8 +1082,8 @@ onMounted(async () => {
     changeBasemap(activeBasemap.value);
 
     // Initialize Layer Groups
-    odcLayerGroup = L.layerGroup();
-    odpLayerGroup = L.layerGroup();
+    odcLayerGroup = L.layerGroup().addTo(map);
+    odpLayerGroup = L.layerGroup().addTo(map);
     customerLayerGroup = L.layerGroup();
     areaLayerGroup = L.layerGroup().addTo(map);
     fiberLinesLayerGroup = L.layerGroup().addTo(map);
@@ -1068,9 +1092,10 @@ onMounted(async () => {
 
     clusterGroup = L.markerClusterGroup({
         showCoverageOnHover: false,
-        maxClusterRadius: 45,
+        maxClusterRadius: 30,
         spiderfyOnMaxZoom: true,
-        disableClusteringAtZoom: 18,
+        disableClusteringAtZoom: 15,
+        spiderfyDistanceMultiplier: 1.5,
     });
     map.addLayer(clusterGroup);
 
@@ -1084,9 +1109,19 @@ onMounted(async () => {
     toggleAreasLayer();
     toggleFiberLines();
 
-    // 7. Auto Locate if no initial focus
+    // 7. Auto fit bounds to visible assets or auto locate
     if (!props.initialFocus || !props.initialFocus.lat) {
-        locateMe(false);
+        const allPoints = [];
+        props.odcs.forEach(o => { if (o.latitude && o.longitude) allPoints.push([parseFloat(o.latitude), parseFloat(o.longitude)]); });
+        props.odps.forEach(o => { if (o.latitude && o.longitude) allPoints.push([parseFloat(o.latitude), parseFloat(o.longitude)]); });
+        props.customers.forEach(c => { if (c.latitude && c.longitude) allPoints.push([parseFloat(c.latitude), parseFloat(c.longitude)]); });
+
+        if (allPoints.length > 0) {
+            const bounds = L.latLngBounds(allPoints);
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        } else {
+            locateMe(false);
+        }
     }
 
     // Auto Invalidate Size
@@ -1208,7 +1243,15 @@ const refreshMarkers = () => {
     odpLayerGroup.clearLayers();
     customerLayerGroup.clearLayers();
 
-    // 1. Plot ODCs
+    // Mapping koordinat ODP untuk cek tumpukan titik dengan pelanggan
+    const odpCoordsMap = new Map();
+    props.odps.forEach(odp => {
+        if (odp.latitude && odp.longitude) {
+            odpCoordsMap.set(odp.id, [parseFloat(odp.latitude), parseFloat(odp.longitude)]);
+        }
+    });
+
+    // 1. Plot ODCs (Infrastruktur Utama - Tidak digabung dalam cluster pelanggan)
     if (layers.value.odcs) {
         props.odcs.forEach(odc => {
             if (selectedAreaFilter.value !== 'all' && odc.area_id != selectedAreaFilter.value) return;
@@ -1247,15 +1290,11 @@ const refreshMarkers = () => {
                 </div>
             `);
 
-            if (layers.value.cluster) {
-                clusterGroup.addLayer(marker);
-            } else {
-                odcLayerGroup.addLayer(marker);
-            }
+            odcLayerGroup.addLayer(marker);
         });
     }
 
-    // 2. Plot ODPs
+    // 2. Plot ODPs (Titik Distribusi Tiang - Selalu tampil jelas dengan status port)
     if (layers.value.odps) {
         props.odps.forEach(odp => {
             if (selectedAreaFilter.value !== 'all' && odp.area_id != selectedAreaFilter.value) return;
@@ -1298,20 +1337,28 @@ const refreshMarkers = () => {
                 </div>
             `);
 
-            if (layers.value.cluster) {
-                clusterGroup.addLayer(marker);
-            } else {
-                odpLayerGroup.addLayer(marker);
-            }
+            odpLayerGroup.addLayer(marker);
         });
     }
 
-    // 3. Plot Customers
+    // 3. Plot Customers (Titik Pelanggan)
     if (layers.value.customers) {
         props.customers.forEach(cust => {
             if (selectedAreaFilter.value !== 'all' && cust.area_id != selectedAreaFilter.value) return;
 
-            const marker = L.marker([parseFloat(cust.latitude), parseFloat(cust.longitude)], {
+            let cLat = parseFloat(cust.latitude);
+            let cLng = parseFloat(cust.longitude);
+
+            // Jitter / offset (~10 meter) jika titik pelanggan persis sama dengan titik ODP-nya
+            if (cust.odp_id && odpCoordsMap.has(cust.odp_id)) {
+                const odpCoords = odpCoordsMap.get(cust.odp_id);
+                if (Math.abs(cLat - odpCoords[0]) < 0.00002 && Math.abs(cLng - odpCoords[1]) < 0.00002) {
+                    cLat += 0.00010;
+                    cLng += 0.00010;
+                }
+            }
+
+            const marker = L.marker([cLat, cLng], {
                 icon: createCustomerIcon(cust.status),
                 title: cust.name,
             });
@@ -1341,10 +1388,10 @@ const refreshMarkers = () => {
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-1.5 pt-1">
-                        <button onclick="window.networkMapSetRouteDest(${cust.latitude}, ${cust.longitude}, '${cust.name}')" class="py-1 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-semibold text-center transition-colors">
+                        <button onclick="window.networkMapSetRouteDest(${cLat}, ${cLng}, '${cust.name}')" class="py-1 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-semibold text-center transition-colors">
                             🚗 Buat Rute
                         </button>
-                        <button onclick="window.networkMapFindNearbyOdp(${cust.latitude}, ${cust.longitude}, '${cust.name}')" class="py-1 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold text-center transition-colors">
+                        <button onclick="window.networkMapFindNearbyOdp(${cLat}, ${cLng}, '${cust.name}')" class="py-1 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold text-center transition-colors">
                             🎯 ODP Terdekat
                         </button>
                     </div>
@@ -1359,10 +1406,30 @@ const refreshMarkers = () => {
         });
     }
 
-    if (!layers.value.cluster) {
-        odcLayerGroup.addTo(map);
-        odpLayerGroup.addTo(map);
-        customerLayerGroup.addTo(map);
+    // Kelola visibilitas layer group pada Leaflet map
+    if (layers.value.odcs) {
+        if (!map.hasLayer(odcLayerGroup)) map.addLayer(odcLayerGroup);
+    } else {
+        if (map.hasLayer(odcLayerGroup)) map.removeLayer(odcLayerGroup);
+    }
+
+    if (layers.value.odps) {
+        if (!map.hasLayer(odpLayerGroup)) map.addLayer(odpLayerGroup);
+    } else {
+        if (map.hasLayer(odpLayerGroup)) map.removeLayer(odpLayerGroup);
+    }
+
+    if (layers.value.customers) {
+        if (layers.value.cluster) {
+            if (!map.hasLayer(clusterGroup)) map.addLayer(clusterGroup);
+            if (map.hasLayer(customerLayerGroup)) map.removeLayer(customerLayerGroup);
+        } else {
+            if (map.hasLayer(clusterGroup)) map.removeLayer(clusterGroup);
+            if (!map.hasLayer(customerLayerGroup)) map.addLayer(customerLayerGroup);
+        }
+    } else {
+        if (map.hasLayer(clusterGroup)) map.removeLayer(clusterGroup);
+        if (map.hasLayer(customerLayerGroup)) map.removeLayer(customerLayerGroup);
     }
 };
 
@@ -1434,8 +1501,8 @@ const toggleFiberLines = () => {
                 const odcCoords = odcCoordsMap.get(odp.odc_id);
                 const poly = L.polyline([odcCoords, odpCoords], {
                     color: '#3b82f6',
-                    weight: 2,
-                    opacity: 0.65,
+                    weight: 2.5,
+                    opacity: 0.75,
                     dashArray: '6, 6',
                 });
                 fiberLinesLayerGroup.addLayer(poly);
@@ -1446,14 +1513,19 @@ const toggleFiberLines = () => {
     // 2. Drop Lines: ODP to Customer
     props.customers.forEach(cust => {
         if (cust.latitude && cust.longitude && cust.odp_id && odpCoordsMap.has(cust.odp_id)) {
-            const custCoords = [parseFloat(cust.latitude), parseFloat(cust.longitude)];
             const odpCoords = odpCoordsMap.get(cust.odp_id);
+            let custCoords = [parseFloat(cust.latitude), parseFloat(cust.longitude)];
+
+            // Jika koordinat pelanggan sama dengan ODP, sesuaikan titik akhir garis dengan offset marker
+            if (Math.abs(custCoords[0] - odpCoords[0]) < 0.00002 && Math.abs(custCoords[1] - odpCoords[1]) < 0.00002) {
+                custCoords = [custCoords[0] + 0.00010, custCoords[1] + 0.00010];
+            }
 
             const dropPoly = L.polyline([odpCoords, custCoords], {
                 color: '#10b981',
-                weight: 1.5,
-                opacity: 0.45,
-                dashArray: '3, 4',
+                weight: 1.8,
+                opacity: 0.65,
+                dashArray: '4, 4',
             });
             fiberLinesLayerGroup.addLayer(dropPoly);
         }
@@ -1585,9 +1657,11 @@ const calculateRoute = async () => {
             dest_lng: routeDest.value.lng,
         });
 
-        if (response.data && response.data.success) {
+        if (response.data && (response.data.success || response.data.status === 'success' || response.data.status === 'fallback')) {
             activeRoute.value = response.data;
             renderRouteOnMap(response.data.geometry);
+        } else {
+            alert('Tidak dapat menemukan rute jalan ke titik tersebut.');
         }
     } catch (err) {
         console.error('Failed to calculate route:', err);
@@ -1666,8 +1740,8 @@ const findNearbyOdps = async () => {
             limit: 6,
         });
 
-        if (response.data && response.data.success) {
-            nearbyOdps.value = response.data.nearby_odps;
+        if (response.data && (response.data.success || response.data.status === 'success')) {
+            nearbyOdps.value = response.data.nearby_odps || response.data.odps || [];
         }
     } catch (err) {
         console.error('Failed to get nearby ODPs:', err);

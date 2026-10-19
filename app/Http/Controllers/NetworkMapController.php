@@ -22,8 +22,6 @@ class NetworkMapController extends Controller
 
         // 1. Data ODC
         $odcQuery = Odc::select('id', 'name', 'latitude', 'longitude', 'location as address', 'capacity', 'status', 'area_id')
-            ->whereNotNull('latitude')
-            ->whereNotNull('longitude')
             ->with(['area:id,name'])
             ->withCount('odps');
 
@@ -47,21 +45,54 @@ class NetworkMapController extends Controller
         if ($user && !$user->hasRole('admin') && !$user->hasRole('super admin') && $user->role !== 'admin' && $user->role !== 'super admin') {
             \App\Services\DataScopeService::applyCustomerScope($customerQuery, $user);
 
-            $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'network_map');
-            if ($scopeLevel === 'area') {
-                $accessibleAreas = $user->getAccessibleAreaIds();
-                $odcQuery->whereIn('area_id', $accessibleAreas);
-                $odpQuery->whereIn('area_id', $accessibleAreas);
-                $areaQuery->whereIn('id', $accessibleAreas);
+            // Wilayah relevan untuk user (wilayah kerja tugas + wilayah pelanggan yang ditugaskan)
+            $accessibleAreas = (array)$user->getAccessibleAreaIds();
+            $customerAreaIds = (clone $customerQuery)->pluck('area_id')->filter()->unique()->toArray();
+            $relevantAreaIds = array_values(array_unique(array_merge($accessibleAreas, $customerAreaIds)));
+
+            if (!empty($relevantAreaIds)) {
+                $odcQuery->whereIn('area_id', $relevantAreaIds);
+                $odpQuery->whereIn('area_id', $relevantAreaIds);
+                $areaQuery->whereIn('id', $relevantAreaIds);
             }
         }
 
-        $odcs = $odcQuery->get()
+        $odps = $odpQuery->get()
             ->filter(fn($item) => (float)$item->latitude != 0 && (float)$item->longitude != 0)
             ->values();
 
-        $odps = $odpQuery->get()
-            ->filter(fn($item) => (float)$item->latitude != 0 && (float)$item->longitude != 0)
+        $odcs = $odcQuery->get()
+            ->map(function ($odc) use ($odps) {
+                $lat = (float)($odc->latitude ?: 0);
+                $lng = (float)($odc->longitude ?: 0);
+
+                // Auto-fallback: Jika ODC belum punya koordinat, hitung centroid rata-rata dari ODP terkait
+                if ($lat == 0 || $lng == 0) {
+                    $connectedOdps = $odps->where('odc_id', $odc->id);
+                    if ($connectedOdps->count() > 0) {
+                        $lat = (float)$connectedOdps->avg('latitude');
+                        $lng = (float)$connectedOdps->avg('longitude');
+                    }
+                }
+
+                if ($lat == 0 || $lng == 0) {
+                    return null;
+                }
+
+                return (object)[
+                    'id' => $odc->id,
+                    'name' => $odc->name,
+                    'latitude' => $lat,
+                    'longitude' => $lng,
+                    'address' => $odc->address ?: ($odc->location ?: 'Pusat Distribusi Jaringan'),
+                    'capacity' => $odc->capacity ?: 48,
+                    'status' => $odc->status ?: 'active',
+                    'area_id' => $odc->area_id,
+                    'area' => $odc->area,
+                    'odps_count' => $odc->odps_count ?: 0,
+                ];
+            })
+            ->filter()
             ->values();
 
         $customers = $customerQuery->get()
@@ -168,6 +199,7 @@ class NetworkMapController extends Controller
                 if (!empty($data['routes'][0])) {
                     $route = $data['routes'][0];
                     return response()->json([
+                        'success' => true,
                         'status' => 'success',
                         'source' => 'osrm',
                         'distance' => $route['distance'], // meters
@@ -186,6 +218,7 @@ class NetworkMapController extends Controller
         $estDuration = ($distance / 40000) * 3600; // estimasi 40 km/h
 
         return response()->json([
+            'success' => true,
             'status' => 'fallback',
             'source' => 'straight_line',
             'distance' => $distance,
@@ -246,8 +279,10 @@ class NetworkMapController extends Controller
 
         return response()->json([
             'success' => true,
+            'status' => 'success',
             'target' => ['lat' => $lat, 'lng' => $lng],
             'odps' => $odps,
+            'nearby_odps' => $odps,
         ]);
     }
 
