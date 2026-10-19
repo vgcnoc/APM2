@@ -151,5 +151,18 @@ class Employee extends Model
     {
         return $this->hasMany(Attendance::class);
     }
+
+    public function specialTeamMembers()
+    {
+        return $this->hasMany(SpecialTeamMember::class);
+    }
+
+    public function specialTeams()
+    {
+        return $this->belongsToMany(SpecialTeam::class, 'special_team_members')
+            ->withPivot('role', 'is_leader')
+            ->withTimestamps();
+    }
 }
+
 

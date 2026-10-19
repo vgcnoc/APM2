@@ -10,6 +10,8 @@ use App\Models\Incentive;
 use App\Models\Position;
 use App\Models\Setting;
 use App\Models\Shift;
+use App\Models\SpecialTeam;
+use App\Models\SpecialTeamMember;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use Carbon\Carbon;
@@ -27,6 +29,18 @@ class AttendanceController extends Controller
     {
         $user = auth()->user();
         if ($user && !$user->hasRole('admin') && $user->role !== 'admin') {
+            // Karyawan yang terdaftar dalam Tim Khusus dialihkan langsung ke Absen Tim Khusus
+            $userEmployee = Employee::where('email', $user->email)->first();
+            if ($userEmployee) {
+                $specialTeamMember = SpecialTeamMember::with('team')
+                    ->where('employee_id', $userEmployee->id)
+                    ->whereHas('team', fn($q) => $q->where('is_active', true))
+                    ->first();
+                if ($specialTeamMember && $specialTeamMember->team) {
+                    return redirect()->route('special-attendances.index', ['team_id' => $specialTeamMember->special_team_id]);
+                }
+            }
+
             if (!$user->can('attendance_tab_reguler')) {
                 if ($user->can('attendance_tab_field')) {
                     return redirect()->route('field-duties.index');
@@ -268,10 +282,31 @@ class AttendanceController extends Controller
             ];
         });
 
+        $isCurrentEmployeeSpecialTeam = false;
+        $currentEmployeeSpecialTeam = null;
+        if ($currentEmployee) {
+            $specialMember = SpecialTeamMember::with('team')
+                ->where('employee_id', $currentEmployee->id)
+                ->whereHas('team', fn($q) => $q->where('is_active', true))
+                ->first();
+            if ($specialMember && $specialMember->team) {
+                $isCurrentEmployeeSpecialTeam = true;
+                $currentEmployeeSpecialTeam = $specialMember->team;
+            }
+        }
+
         return Inertia::render('Attendances/Index', [
             'todayDateStr' => $now->translatedFormat('l, d F Y'),
             'todayIso' => $today,
             'currentEmployee' => $currentEmployee,
+            'isCurrentEmployeeSpecialTeam' => $isCurrentEmployeeSpecialTeam,
+            'currentEmployeeSpecialTeam' => $currentEmployeeSpecialTeam ? [
+                'id' => $currentEmployeeSpecialTeam->id,
+                'name' => $currentEmployeeSpecialTeam->name,
+                'code' => $currentEmployeeSpecialTeam->code,
+                'start_time' => $currentEmployeeSpecialTeam->start_time,
+                'end_time' => $currentEmployeeSpecialTeam->end_time,
+            ] : null,
             'allEmployees' => $allEmployees,
             'allShifts' => $allShifts,
             'todaySchedule' => $todaySchedule,
@@ -322,6 +357,15 @@ class AttendanceController extends Controller
         ]);
 
         $employee = Employee::with(['area', 'shift'])->findOrFail($request->employee_id);
+
+        // Karyawan Tim Khusus harus absen lewat menu Absen Tim Khusus
+        $specialCheck = SpecialTeamMember::with('team')
+            ->where('employee_id', $employee->id)
+            ->whereHas('team', fn($q) => $q->where('is_active', true))
+            ->first();
+        if ($specialCheck && $specialCheck->team) {
+            return back()->with('error', "Karyawan {$employee->name} terdaftar dalam Absen Tim Khusus ({$specialCheck->team->name}). Silakan gunakan halaman Absen Tim Khusus.");
+        }
         $today = Carbon::today()->format('Y-m-d');
         $now = Carbon::now();
         $timeStr = $now->format('H:i:s');
@@ -432,6 +476,16 @@ class AttendanceController extends Controller
         ]);
 
         $employee = Employee::findOrFail($request->employee_id);
+
+        // Karyawan Tim Khusus harus absen lewat menu Absen Tim Khusus
+        $specialCheck = SpecialTeamMember::with('team')
+            ->where('employee_id', $employee->id)
+            ->whereHas('team', fn($q) => $q->where('is_active', true))
+            ->first();
+        if ($specialCheck && $specialCheck->team) {
+            return back()->with('error', "Karyawan {$employee->name} terdaftar dalam Absen Tim Khusus ({$specialCheck->team->name}). Silakan gunakan halaman Absen Tim Khusus.");
+        }
+
         $today = Carbon::today()->format('Y-m-d');
         $now = Carbon::now();
         $timeStr = $now->format('H:i:s');

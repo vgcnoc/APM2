@@ -1297,6 +1297,7 @@ const props = defineProps({
     rewardsConfig: Object,
     allTeamsDeductions: Object,
     allEmployees: Array,
+    isCurrentEmployeeMember: Boolean,
     filters: Object,
 });
 

@@ -63,31 +63,6 @@ class SpecialAttendanceController extends Controller
             $teams = SpecialTeam::withCount('members')->where('is_active', true)->get();
         }
 
-        // Tentukan Tim Aktif
-        $currentTeam = null;
-        if ($request->filled('team_id')) {
-            $currentTeam = SpecialTeam::with('employees')->find($request->team_id);
-        }
-        if (!$currentTeam) {
-            $currentTeam = SpecialTeam::with('employees')->first();
-        }
-        if (!$currentTeam) {
-            $currentTeam = SpecialTeam::create([
-                'name' => 'GRUP TIM KHUSUS',
-                'code' => 'TK-01',
-                'start_time' => '08:30:00',
-                'end_time' => '18:00:00',
-                'tolerance_minutes' => 15,
-                'without_radius' => true,
-                'late_deduction_amount' => 10000,
-                'no_out_deduction_amount' => 10000,
-                'alpha_deduction_amount' => 35000,
-                'description' => 'Grup absensi tim khusus tanpa batasan radius kantor.',
-                'is_active' => true,
-            ]);
-            $teams = SpecialTeam::withCount('members')->where('is_active', true)->get();
-        }
-
         // Scope Perizinan
         $canViewAll = $user && ($user->hasRole('admin') || $user->can('attendances_view_all'));
         $canViewArea = $user && $user->can('attendances_view_area');
@@ -109,18 +84,45 @@ class SpecialAttendanceController extends Controller
             $currentEmployee = Employee::with(['area'])->first();
         }
 
-        // Jika current employee belum terdaftar di tim aktif, auto-assign
+        // Tentukan Tim Aktif
+        $currentTeam = null;
+        if ($request->filled('team_id')) {
+            $currentTeam = SpecialTeam::with('employees')->find($request->team_id);
+        }
+        // Jika tidak ada parameter team_id dan karyawan ini merupakan anggota tim tertentu, utamakan timnya
+        if (!$currentTeam && $currentEmployee) {
+            $mySpecialMember = SpecialTeamMember::where('employee_id', $currentEmployee->id)
+                ->whereHas('team', fn($q) => $q->where('is_active', true))
+                ->first();
+            if ($mySpecialMember) {
+                $currentTeam = SpecialTeam::with('employees')->find($mySpecialMember->special_team_id);
+            }
+        }
+        if (!$currentTeam) {
+            $currentTeam = SpecialTeam::with('employees')->first();
+        }
+        if (!$currentTeam) {
+            $currentTeam = SpecialTeam::create([
+                'name' => 'GRUP TIM KHUSUS',
+                'code' => 'TK-01',
+                'start_time' => '08:30:00',
+                'end_time' => '18:00:00',
+                'tolerance_minutes' => 15,
+                'without_radius' => true,
+                'late_deduction_amount' => 10000,
+                'no_out_deduction_amount' => 10000,
+                'alpha_deduction_amount' => 35000,
+                'description' => 'Grup absensi tim khusus tanpa batasan radius kantor.',
+                'is_active' => true,
+            ]);
+            $teams = SpecialTeam::withCount('members')->where('is_active', true)->get();
+        }
+
+        $isCurrentEmployeeMember = false;
         if ($currentEmployee && $currentTeam) {
-            SpecialTeamMember::firstOrCreate(
-                [
-                    'special_team_id' => $currentTeam->id,
-                    'employee_id' => $currentEmployee->id,
-                ],
-                [
-                    'role' => $currentEmployee->position ?? 'Anggota',
-                    'is_leader' => false,
-                ]
-            );
+            $isCurrentEmployeeMember = SpecialTeamMember::where('special_team_id', $currentTeam->id)
+                ->where('employee_id', $currentEmployee->id)
+                ->exists();
         }
 
         // 3. Absensi Hari Ini untuk Karyawan Aktif
@@ -305,6 +307,7 @@ class SpecialAttendanceController extends Controller
             'rewardsConfig' => $rewardsConfig,
             'allTeamsDeductions' => $allTeamsDeductions,
             'allEmployees' => $allEmployees,
+            'isCurrentEmployeeMember' => $isCurrentEmployeeMember,
             'filters' => $request->only(['team_id', 'start_date', 'end_date', 'filter_employee_id', 'filter_status', 'month']),
         ]);
     }

@@ -3,17 +3,33 @@
         <!-- TOP ACCENT HEADER -->
         <div class="px-5 py-4 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800">
             <div class="flex flex-wrap items-center gap-2.5">
-                <span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg text-[11px] font-bold tracking-wider uppercase border border-emerald-500/20 flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Presensi Reguler
-                </span>
+                <!-- Mode Badge: Tim Khusus vs Reguler -->
+                <template v-if="isSpecialTeam">
+                    <span class="px-2.5 py-1 bg-purple-500/20 text-purple-300 rounded-lg text-[11px] font-black tracking-wider uppercase border border-purple-500/30 flex items-center gap-1.5 shadow-xs">
+                        <span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+                        ⚡ Absen Tim Khusus: {{ specialTeam?.name || 'TIM KHUSUS' }}
+                    </span>
+                </template>
+                <template v-else>
+                    <span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg text-[11px] font-bold tracking-wider uppercase border border-emerald-500/20 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Presensi Reguler
+                    </span>
+                </template>
+
                 <span class="text-xs text-slate-500">•</span>
                 <span class="text-xs font-semibold text-slate-300">
                     {{ attendanceData?.todayDateStr || todayDateDisplay }}
                 </span>
 
-                <!-- Shift Badge -->
-                <div class="hidden sm:flex items-center gap-1.5 ml-2">
+                <!-- Shift / Jam Kerja Badge -->
+                <div v-if="isSpecialTeam" class="hidden sm:flex items-center gap-1.5 ml-2">
+                    <span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-500/20 text-purple-200 border border-purple-500/30 flex items-center gap-1">
+                        <span>⏱️</span>
+                        <span>Jam Kerja: {{ formatSpecialTeamTime(specialTeam) }} (Tanpa Radius)</span>
+                    </span>
+                </div>
+                <div v-else class="hidden sm:flex items-center gap-1.5 ml-2">
                     <span
                         v-if="shiftToday"
                         class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1"
@@ -42,12 +58,12 @@
                     </span>
                 </div>
 
-                <!-- Link ke Halaman Absensi Reguler Lengkap -->
+                <!-- Link ke Halaman Absensi Lengkap -->
                 <Link
-                    href="/attendances"
+                    :href="isSpecialTeam ? `/absen-khusus?team_id=${specialTeam?.id}` : '/attendances'"
                     class="text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 transition"
                 >
-                    <span>Rekap Lengkap</span>
+                    <span>{{ isSpecialTeam ? 'Portal Absen Khusus' : 'Rekap Lengkap' }}</span>
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                     </svg>
@@ -60,7 +76,14 @@
             <!-- COL 1: KARYAWAN & STATUS (5 COLS) -->
             <div class="lg:col-span-5 space-y-3.5">
                 <div class="flex items-center gap-3.5">
-                    <div class="w-13 h-13 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-xl flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+                    <div
+                        :class="[
+                            isSpecialTeam
+                                ? 'bg-gradient-to-tr from-purple-700 via-indigo-600 to-purple-800 text-white shadow-purple-500/20'
+                                : 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-blue-500/20',
+                            'w-13 h-13 rounded-2xl font-black text-xl flex items-center justify-center shrink-0 shadow-md'
+                        ]"
+                    >
                         {{ (currentEmployee?.name || 'K').charAt(0).toUpperCase() }}
                     </div>
                     <div class="min-w-0 flex-1">
@@ -70,6 +93,9 @@
                             </h3>
                             <span v-if="currentEmployee?.iak_number" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
                                 {{ currentEmployee.iak_number }}
+                            </span>
+                            <span v-if="isSpecialTeam" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200">
+                                {{ specialTeam?.name || 'Tim Khusus' }}
                             </span>
                         </div>
                         <div class="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 mt-0.5">
@@ -90,7 +116,7 @@
                             class="text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-2.5 py-1.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer w-full transition"
                         >
                             <option v-for="emp in allEmployees" :key="emp.id" :value="emp.id">
-                                {{ emp.name }} — {{ emp.position || 'Staf' }}
+                                {{ emp.name }} — {{ emp.position || 'Staf' }} {{ emp.is_special_team ? `[⭐ ${emp.special_team_name || 'Tim Khusus'}]` : '' }}
                             </option>
                         </select>
                     </div>
@@ -104,7 +130,7 @@
                         'p-3 rounded-2xl border flex items-center gap-3 transition-colors'
                     ]"
                 >
-                    <div :class="[statusBannerConfig.iconBg, 'w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-base']">
+                    <div :class="[statusBannerConfig.iconBg, 'w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-base font-bold']">
                         {{ statusBannerConfig.icon }}
                     </div>
                     <div class="min-w-0 flex-1">
@@ -124,14 +150,14 @@
                 <div
                     :class="[
                         todayAttendance?.clock_in
-                            ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+                            ? (isSpecialTeam ? 'bg-purple-50/70 border-purple-200 text-purple-900' : 'bg-emerald-50/70 border-emerald-200 text-emerald-900')
                             : 'bg-slate-50 border-slate-200/80 text-slate-700',
                         'p-3.5 rounded-2xl border shadow-2xs transition'
                     ]"
                 >
                     <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
                         <span>Absen Masuk</span>
-                        <span v-if="todayAttendance?.clock_in" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span v-if="todayAttendance?.clock_in" class="w-2 h-2 rounded-full" :class="isSpecialTeam ? 'bg-purple-500' : 'bg-emerald-500'"></span>
                     </div>
                     <div class="text-lg font-black mt-1 font-mono tracking-tight">
                         {{ todayAttendance?.clock_in ? todayAttendance.clock_in.slice(0, 5) : '--:--' }}
@@ -145,7 +171,10 @@
                         </span>
                         <span
                             v-else-if="todayAttendance?.clock_in"
-                            class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700"
+                            :class="[
+                                isSpecialTeam ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-700',
+                                'px-1.5 py-0.5 rounded text-[10px] font-bold'
+                            ]"
                         >
                             Tepat Waktu
                         </span>
@@ -187,8 +216,15 @@
                     </div>
                 </div>
 
-                <!-- Quick Geofence Indicator -->
-                <div class="col-span-2 px-3 py-2 bg-slate-50/80 rounded-xl border border-slate-200/60 flex items-center justify-between text-[11px] text-slate-600">
+                <!-- Geofence / Mode Lapangan Indicator -->
+                <div v-if="isSpecialTeam" class="col-span-2 px-3 py-2 bg-purple-50/80 rounded-xl border border-purple-200/70 flex items-center justify-between text-[11px] text-purple-900">
+                    <div class="flex items-center gap-1.5 truncate font-medium">
+                        <span>🚀</span>
+                        <span class="truncate">Absen Lapangan: {{ specialTeam?.name }}</span>
+                    </div>
+                    <span class="font-black text-purple-700 shrink-0">Bebas Radius Kantor</span>
+                </div>
+                <div v-else class="col-span-2 px-3 py-2 bg-slate-50/80 rounded-xl border border-slate-200/60 flex items-center justify-between text-[11px] text-slate-600">
                     <div class="flex items-center gap-1.5 truncate">
                         <span>📍</span>
                         <span class="font-medium truncate">{{ officeLocation?.name || 'Kantor Cabang Terdaftar' }}</span>
@@ -205,16 +241,21 @@
                         type="button"
                         @click="openModal('in')"
                         :disabled="!currentEmployee"
-                        class="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-blue-500/25 active:scale-95 transition-all cursor-pointer"
+                        :class="[
+                            isSpecialTeam
+                                ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/25'
+                                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25',
+                            'w-full py-3.5 px-4 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 shadow-lg active:scale-95 transition-all cursor-pointer'
+                        ]"
                     >
                         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        <span>Absen Masuk Sekarang</span>
+                        <span>{{ isSpecialTeam ? 'Absen Masuk Tim Khusus' : 'Absen Masuk Sekarang' }}</span>
                     </button>
                     <p class="text-[11px] text-center text-slate-400 font-medium">
-                        Verifikasi Kamera Selfie & GPS
+                        {{ isSpecialTeam ? 'Verifikasi Wajah (Bebas Radius Kantor)' : 'Verifikasi Kamera Selfie & GPS' }}
                     </p>
                 </template>
 
@@ -223,12 +264,17 @@
                     <button
                         type="button"
                         @click="openModal('out')"
-                        class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer"
+                        :class="[
+                            isSpecialTeam
+                                ? 'bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 shadow-teal-500/25'
+                                : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25',
+                            'w-full py-3.5 px-4 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 shadow-lg active:scale-95 transition-all cursor-pointer'
+                        ]"
                     >
                         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
-                        <span>Absen Pulang Sekarang</span>
+                        <span>{{ isSpecialTeam ? 'Absen Pulang Tim Khusus' : 'Absen Pulang Sekarang' }}</span>
                     </button>
                     <p class="text-[11px] text-center text-slate-400 font-medium">
                         Selesaikan tugas harian Anda
@@ -251,7 +297,8 @@
                 <!-- Ringkasan Karyawan Hari Ini (Summary Pill) -->
                 <div v-if="attendanceSummary" class="pt-1 text-center">
                     <span class="text-[11px] font-semibold text-slate-500">
-                        Kehadiran Staf: <strong class="text-slate-800">{{ attendanceSummary.present_today || 0 }}/{{ attendanceSummary.total_employees || 0 }}</strong> Hadir
+                        {{ isSpecialTeam ? `Anggota ${specialTeam?.name || 'Tim'}:` : 'Kehadiran Staf:' }}
+                        <strong class="text-slate-800">{{ attendanceSummary.present_today || 0 }}/{{ attendanceSummary.total_employees || 0 }}</strong> Hadir
                     </span>
                 </div>
             </div>
@@ -267,7 +314,9 @@
                     <div class="flex items-center gap-2.5">
                         <div
                             :class="[
-                                modalType === 'in' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200',
+                                isSpecialTeam
+                                    ? (modalType === 'in' ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-teal-50 text-teal-600 border-teal-200')
+                                    : (modalType === 'in' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'),
                                 'w-9 h-9 rounded-xl border flex items-center justify-center text-lg'
                             ]"
                         >
@@ -275,10 +324,13 @@
                         </div>
                         <div>
                             <h4 class="text-sm font-black text-slate-900 tracking-tight">
-                                {{ modalType === 'in' ? 'Verifikasi Absen Masuk' : 'Verifikasi Absen Pulang' }}
+                                {{ isSpecialTeam
+                                    ? (modalType === 'in' ? 'Verifikasi Absen Masuk Tim Khusus' : 'Verifikasi Absen Pulang Tim Khusus')
+                                    : (modalType === 'in' ? 'Verifikasi Absen Masuk' : 'Verifikasi Absen Pulang')
+                                }}
                             </h4>
                             <p class="text-[11px] text-slate-500 font-medium">
-                                {{ currentEmployee?.name }} • {{ shiftToday?.name || 'Shift Reguler' }}
+                                {{ currentEmployee?.name }} • {{ isSpecialTeam ? `${specialTeam?.name} (Bebas Radius)` : (shiftToday?.name || 'Shift Reguler') }}
                             </p>
                         </div>
                     </div>
@@ -291,8 +343,28 @@
                     </button>
                 </div>
 
-                <!-- Tipe Kehadiran (Hanya saat Clock In) -->
-                <div v-if="modalType === 'in'" class="space-y-1.5">
+                <!-- Penjelasan Tim Khusus vs Pilihan WFO/Dinas Reguler -->
+                <div v-if="isSpecialTeam" class="p-3 bg-purple-50/80 rounded-2xl border border-purple-200/80 text-xs text-purple-900 space-y-1">
+                    <div class="flex items-center gap-1.5 font-bold text-purple-800">
+                        <span>⭐</span>
+                        <span>Absensi Grup: {{ specialTeam?.name || 'TIM KHUSUS' }}</span>
+                    </div>
+                    <p class="text-[11px] text-purple-700 leading-relaxed">
+                        Presensi dilakukan langsung dari titik operasional/lapangan tanpa batas radius kantor cabang. Koordinat GPS dan foto selfie akan dicatat secara realtime.
+                    </p>
+                    <div class="pt-1.5 space-y-1">
+                        <label class="text-[11px] font-bold text-purple-900">Lokasi / Titik Penugasan (Opsional):</label>
+                        <input
+                            type="text"
+                            v-model="dutyLocation"
+                            placeholder="Contoh: Titik Operasi Serbu / Lapangan / Rumah"
+                            class="w-full text-xs rounded-xl border-purple-200 focus:border-purple-500 focus:ring-purple-500/20 bg-white"
+                        />
+                    </div>
+                </div>
+
+                <!-- Tipe Kehadiran (Hanya saat Clock In Reguler) -->
+                <div v-else-if="modalType === 'in'" class="space-y-1.5">
                     <label class="text-xs font-bold text-slate-700">Tipe Kehadiran Hari Ini:</label>
                     <div class="grid grid-cols-2 gap-2">
                         <button
@@ -453,7 +525,11 @@
                     </div>
 
                     <div v-if="userCoordinates" class="text-slate-600 space-y-1 text-[11px]">
-                        <div v-if="attendanceType === 'wfo'" class="flex items-center justify-between">
+                        <div v-if="isSpecialTeam" class="text-purple-700 font-semibold flex items-center gap-1">
+                            <span>✓</span>
+                            <span>Mode Tim Khusus: Tanpa batasan radius kantor (GPS dicatat realtime).</span>
+                        </div>
+                        <div v-else-if="attendanceType === 'wfo'" class="flex items-center justify-between">
                             <span>Jarak ke Kantor Cabang:</span>
                             <span class="font-bold" :class="isWithinRadius ? 'text-emerald-600' : 'text-amber-600'">
                                 {{ formatDistance(distanceToOffice) }}
@@ -465,8 +541,8 @@
                         </div>
                     </div>
 
-                    <!-- Toleransi Lokasi PC / Bypass Radius -->
-                    <div v-if="gpsAccuracy > 1000 || !isWithinRadius" class="pt-1.5 border-t border-slate-200">
+                    <!-- Toleransi Lokasi PC / Bypass Radius (Khusus Reguler WFO) -->
+                    <div v-if="!isSpecialTeam && (gpsAccuracy > 1000 || !isWithinRadius)" class="pt-1.5 border-t border-slate-200">
                         <label class="flex items-center gap-2 text-[11px] text-slate-700 cursor-pointer">
                             <input
                                 type="checkbox"
@@ -497,9 +573,13 @@
                         :disabled="!canSubmit || isSubmitting"
                         :class="[
                             canSubmit
-                                ? (modalType === 'in'
-                                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25 active:scale-95'
-                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/25 active:scale-95')
+                                ? (isSpecialTeam
+                                    ? (modalType === 'in'
+                                        ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/25 active:scale-95'
+                                        : 'bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/25 active:scale-95')
+                                    : (modalType === 'in'
+                                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25 active:scale-95'
+                                        : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/25 active:scale-95'))
                                 : 'bg-slate-200 text-slate-400 cursor-not-allowed',
                             'w-full py-3.5 px-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition cursor-pointer'
                         ]"
@@ -507,7 +587,10 @@
                         <span v-if="isSubmitting">Memproses Presensi...</span>
                         <span v-else-if="!capturedPhoto">Ambil Foto Selfie Dulu</span>
                         <span v-else>
-                            {{ modalType === 'in' ? 'Kirim Absen Masuk' : 'Kirim Absen Pulang' }}
+                            {{ isSpecialTeam
+                                ? (modalType === 'in' ? 'Kirim Absen Masuk Tim Khusus' : 'Kirim Absen Pulang Tim Khusus')
+                                : (modalType === 'in' ? 'Kirim Absen Masuk' : 'Kirim Absen Pulang')
+                            }}
                         </span>
                     </button>
                 </div>
@@ -532,6 +615,9 @@ const props = defineProps({
 
 // Extract nested props cleanly
 const currentEmployee = computed(() => props.attendanceData?.currentEmployee || null);
+const isSpecialTeam = computed(() => Boolean(props.attendanceData?.isSpecialTeam));
+const specialTeam = computed(() => props.attendanceData?.specialTeam || null);
+const specialTeamMember = computed(() => props.attendanceData?.specialTeamMember || null);
 const shiftToday = computed(() => props.attendanceData?.shiftToday || null);
 const todayAttendance = computed(() => props.attendanceData?.todayAttendance || null);
 const officeLocation = computed(() => props.attendanceData?.officeLocation || null);
@@ -560,6 +646,13 @@ const formatShiftTime = (shift) => {
     return `${s} - ${e}`;
 };
 
+const formatSpecialTeamTime = (team) => {
+    if (!team) return '08:30 - 18:00 WIB';
+    const s = team.start_time ? team.start_time.slice(0, 5) : '08:30';
+    const e = team.end_time ? team.end_time.slice(0, 5) : '18:00';
+    return `${s} - ${e} WIB`;
+};
+
 // Switch active employee for admin
 const switchEmployee = (empId) => {
     if (!empId) return;
@@ -574,35 +667,47 @@ const switchEmployee = (empId) => {
 const statusBannerConfig = computed(() => {
     if (todayAttendance.value?.clock_in && todayAttendance.value?.clock_out) {
         return {
-            bgColor: 'bg-blue-50/70',
-            borderColor: 'border-blue-200',
-            iconBg: 'bg-blue-100 text-blue-700',
+            bgColor: isSpecialTeam.value ? 'bg-purple-50/70' : 'bg-blue-50/70',
+            borderColor: isSpecialTeam.value ? 'border-purple-200' : 'border-blue-200',
+            iconBg: isSpecialTeam.value ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700',
             icon: '✓',
-            textColor: 'text-blue-900',
-            title: 'Presensi Lengkap Hari Ini',
+            textColor: isSpecialTeam.value ? 'text-purple-900' : 'text-blue-900',
+            title: isSpecialTeam.value
+                ? `Presensi ${specialTeam.value?.name || 'Tim Khusus'} Selesai`
+                : 'Presensi Lengkap Hari Ini',
             subtitle: `Masuk: ${todayAttendance.value.clock_in} • Pulang: ${todayAttendance.value.clock_out}`,
         };
     }
     if (todayAttendance.value?.clock_in) {
         const isLate = todayAttendance.value.status === 'late';
         return {
-            bgColor: isLate ? 'bg-amber-50/70' : 'bg-emerald-50/70',
-            borderColor: isLate ? 'border-amber-200' : 'border-emerald-200',
-            iconBg: isLate ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700',
-            icon: isLate ? '⚠️' : '🟢',
-            textColor: isLate ? 'text-amber-900' : 'text-emerald-900',
-            title: isLate ? `Sedang Bertugas (Telat ${todayAttendance.value.late_minutes}m)` : 'Sedang Bertugas Aktif',
+            bgColor: isLate ? 'bg-amber-50/70' : (isSpecialTeam.value ? 'bg-purple-50/70' : 'bg-emerald-50/70'),
+            borderColor: isLate ? 'border-amber-200' : (isSpecialTeam.value ? 'border-purple-200' : 'border-emerald-200'),
+            iconBg: isLate ? 'bg-amber-100 text-amber-700' : (isSpecialTeam.value ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'),
+            icon: isLate ? '⚠️' : (isSpecialTeam.value ? '⚡' : '🟢'),
+            textColor: isLate ? 'text-amber-900' : (isSpecialTeam.value ? 'text-purple-900' : 'text-emerald-900'),
+            title: isLate
+                ? (isSpecialTeam.value
+                    ? `Bertugas ${specialTeam.value?.name || 'Tim Khusus'} (Telat ${todayAttendance.value.late_minutes}m)`
+                    : `Sedang Bertugas (Telat ${todayAttendance.value.late_minutes}m)`)
+                : (isSpecialTeam.value
+                    ? `Bertugas Aktif: ${specialTeam.value?.name || 'Tim Khusus'}`
+                    : 'Sedang Bertugas Aktif'),
             subtitle: `Tercatat masuk pada ${todayAttendance.value.clock_in} WIB`,
         };
     }
     return {
-        bgColor: 'bg-slate-50',
-        borderColor: 'border-slate-200',
-        iconBg: 'bg-amber-100 text-amber-700',
-        icon: '⏱️',
-        textColor: 'text-slate-800',
-        title: 'Belum Melakukan Absen Masuk',
-        subtitle: 'Silakan klik tombol di samping untuk absen masuk sekarang',
+        bgColor: isSpecialTeam.value ? 'bg-purple-50/50' : 'bg-slate-50',
+        borderColor: isSpecialTeam.value ? 'border-purple-200/90' : 'border-slate-200',
+        iconBg: isSpecialTeam.value ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700',
+        icon: isSpecialTeam.value ? '⚡' : '⏱️',
+        textColor: isSpecialTeam.value ? 'text-purple-950' : 'text-slate-800',
+        title: isSpecialTeam.value
+            ? `Belum Absen Masuk (${specialTeam.value?.name || 'Tim Khusus'})`
+            : 'Belum Melakukan Absen Masuk',
+        subtitle: isSpecialTeam.value
+            ? 'Presensi tim khusus tanpa batasan radius kantor. Silakan klik tombol untuk absen.'
+            : 'Silakan klik tombol di samping untuk absen masuk sekarang',
     };
 });
 
@@ -640,6 +745,11 @@ const initGeolocation = () => {
 };
 
 const calcDistance = () => {
+    if (isSpecialTeam.value || officeLocation.value?.without_radius) {
+        isWithinRadius.value = true;
+        distanceToOffice.value = 0;
+        return;
+    }
     if (!userCoordinates.value || !officeLocation.value?.latitude || !officeLocation.value?.longitude) {
         isWithinRadius.value = true;
         distanceToOffice.value = 15;
@@ -740,13 +850,14 @@ const drawWatermark = (ctx, w, h) => {
     ctx.font = 'bold 12px sans-serif';
     const empName = currentEmployee.value?.name || 'Karyawan APM';
     const timeStr = `${new Date().toLocaleDateString('id-ID')} ${new Date().toLocaleTimeString('id-ID')} WIB`;
-    ctx.fillText(`${empName} • ${timeStr}`, 12, h - 24);
+    const teamBadge = isSpecialTeam.value ? ` • ${specialTeam.value?.name || 'TIM KHUSUS'}` : '';
+    ctx.fillText(`${empName}${teamBadge} • ${timeStr}`, 12, h - 24);
 
     ctx.font = '10px sans-serif';
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = isSpecialTeam.value ? '#c084fc' : '#38bdf8';
     const geoStr = userCoordinates.value
-        ? `GPS: ${userCoordinates.value.latitude.toFixed(6)}, ${userCoordinates.value.longitude.toFixed(6)} (${attendanceType.value.toUpperCase()})`
-        : `Mode: ${attendanceType.value.toUpperCase()}`;
+        ? `GPS: ${userCoordinates.value.latitude.toFixed(6)}, ${userCoordinates.value.longitude.toFixed(6)} (${isSpecialTeam.value ? 'TIM KHUSUS' : attendanceType.value.toUpperCase()})`
+        : `Mode: ${isSpecialTeam.value ? 'TIM KHUSUS' : attendanceType.value.toUpperCase()}`;
     ctx.fillText(geoStr, 12, h - 10);
     ctx.restore();
 };
@@ -769,6 +880,7 @@ const openModal = async (type) => {
     modalType.value = type;
     capturedPhoto.value = null;
     attendanceNotes.value = '';
+    dutyLocation.value = '';
     showModal.value = true;
     initGeolocation();
     await nextTick();
@@ -794,6 +906,59 @@ const submitAttendance = () => {
     if (!canSubmit.value || isSubmitting.value) return;
     isSubmitting.value = true;
 
+    // JIKA KARYAWAN TIM KHUSUS: Gunakan Route Absen Tim Khusus
+    if (isSpecialTeam.value) {
+        if (modalType.value === 'in') {
+            router.post(
+                route('special-attendances.clock-in'),
+                {
+                    special_team_id: specialTeam.value?.id,
+                    employee_id: currentEmployee.value.id,
+                    photo: capturedPhoto.value,
+                    latitude: userCoordinates.value?.latitude || null,
+                    longitude: userCoordinates.value?.longitude || null,
+                    location_name: dutyLocation.value || (specialTeam.value?.name ? `Penugasan ${specialTeam.value.name}` : 'Dashboard Presensi'),
+                    notes: attendanceNotes.value || null,
+                },
+                {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        isSubmitting.value = false;
+                        closeModal();
+                    },
+                    onError: () => {
+                        isSubmitting.value = false;
+                    },
+                }
+            );
+        } else {
+            router.post(
+                route('special-attendances.clock-out'),
+                {
+                    special_team_id: specialTeam.value?.id,
+                    employee_id: currentEmployee.value.id,
+                    photo: capturedPhoto.value,
+                    latitude: userCoordinates.value?.latitude || null,
+                    longitude: userCoordinates.value?.longitude || null,
+                    location_name: dutyLocation.value || (specialTeam.value?.name ? `Penugasan ${specialTeam.value.name}` : 'Dashboard Presensi'),
+                    notes: attendanceNotes.value || null,
+                },
+                {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        isSubmitting.value = false;
+                        closeModal();
+                    },
+                    onError: () => {
+                        isSubmitting.value = false;
+                    },
+                }
+            );
+        }
+        return;
+    }
+
+    // PRESENSI REGULER STANDAR
     if (modalType.value === 'in') {
         router.post(
             route('attendances.clock-in'),

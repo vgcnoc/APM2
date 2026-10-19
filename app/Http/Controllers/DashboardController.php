@@ -14,6 +14,9 @@ use App\Models\InternetPackage;
 use App\Models\Area;
 use App\Models\Employee;
 use App\Models\Attendance;
+use App\Models\SpecialAttendance;
+use App\Models\SpecialTeam;
+use App\Models\SpecialTeamMember;
 use App\Models\WorkSchedule;
 use App\Models\Shift;
 use Carbon\Carbon;
@@ -326,7 +329,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Ambil data presensi reguler hari ini untuk widget dashboard
+     * Ambil data presensi hari ini untuk widget dashboard (Reguler atau Tim Khusus)
      */
     protected function getAttendanceDashboardData(?int $employeeId = null): array
     {
@@ -347,33 +350,88 @@ class DashboardController extends Controller
             $currentEmployee = Employee::with(['area', 'shift'])->first();
         }
 
+        // Cek apakah karyawan ini terdaftar di grup Tim Khusus aktif
+        $specialTeamMember = null;
+        $specialTeam = null;
+        $isSpecialTeam = false;
+
+        if ($currentEmployee) {
+            $specialTeamMember = SpecialTeamMember::with('team')
+                ->where('employee_id', $currentEmployee->id)
+                ->whereHas('team', function ($q) {
+                    $q->where('is_active', true);
+                })
+                ->first();
+
+            if ($specialTeamMember && $specialTeamMember->team) {
+                $isSpecialTeam = true;
+                $specialTeam = $specialTeamMember->team;
+            }
+        }
+
         $todaySchedule = null;
         $shiftToday = null;
         $todayAttendance = null;
         $officeLocation = null;
 
         if ($currentEmployee) {
-            $todaySchedule = WorkSchedule::with('shift')
-                ->where('employee_id', $currentEmployee->id)
-                ->where('date', $today)
-                ->first();
+            if ($isSpecialTeam) {
+                // Absensi Tim Khusus
+                $todayAttendance = SpecialAttendance::where('special_team_id', $specialTeam->id)
+                    ->where('employee_id', $currentEmployee->id)
+                    ->where('date', $today)
+                    ->first();
 
-            $shiftToday = $todaySchedule?->shift ?: $currentEmployee->shift;
+                // Shift khusus dari aturan Tim Khusus
+                $startTimeStr = $specialTeam->start_time ? substr($specialTeam->start_time, 0, 5) : '08:30';
+                $endTimeStr = $specialTeam->end_time ? substr($specialTeam->end_time, 0, 5) : '18:00';
 
-            $todayAttendance = Attendance::with('shift')
-                ->where('employee_id', $currentEmployee->id)
-                ->where('date', $today)
-                ->first();
-
-            if ($currentEmployee->area) {
-                $officeLocation = [
-                    'id' => $currentEmployee->area->id,
-                    'name' => $currentEmployee->area->name,
-                    'address' => $currentEmployee->area->address,
-                    'latitude' => $currentEmployee->area->latitude ? (float) $currentEmployee->area->latitude : null,
-                    'longitude' => $currentEmployee->area->longitude ? (float) $currentEmployee->area->longitude : null,
-                    'radius_meters' => $currentEmployee->area->radius_meters ? (int) $currentEmployee->area->radius_meters : 200,
+                $shiftToday = (object) [
+                    'id' => null,
+                    'name' => $specialTeam->name,
+                    'start_time' => $specialTeam->start_time,
+                    'end_time' => $specialTeam->end_time,
+                    'formatted_time' => "{$startTimeStr} - {$endTimeStr} WIB",
+                    'color' => 'indigo',
+                    'tolerance_minutes' => (int) $specialTeam->tolerance_minutes,
+                    'without_radius' => (bool) $specialTeam->without_radius,
+                    'is_special' => true,
                 ];
+
+                $officeLocation = [
+                    'id' => null,
+                    'name' => $specialTeam->name . ' (Penugasan Lapangan)',
+                    'address' => 'Absensi Bebas Radius Kantor',
+                    'latitude' => null,
+                    'longitude' => null,
+                    'radius_meters' => 999999,
+                    'without_radius' => true,
+                ];
+            } else {
+                // Absensi Reguler Standar
+                $todaySchedule = WorkSchedule::with('shift')
+                    ->where('employee_id', $currentEmployee->id)
+                    ->where('date', $today)
+                    ->first();
+
+                $shiftToday = $todaySchedule?->shift ?: $currentEmployee->shift;
+
+                $todayAttendance = Attendance::with('shift')
+                    ->where('employee_id', $currentEmployee->id)
+                    ->where('date', $today)
+                    ->first();
+
+                if ($currentEmployee->area) {
+                    $officeLocation = [
+                        'id' => $currentEmployee->area->id,
+                        'name' => $currentEmployee->area->name,
+                        'address' => $currentEmployee->area->address,
+                        'latitude' => $currentEmployee->area->latitude ? (float) $currentEmployee->area->latitude : null,
+                        'longitude' => $currentEmployee->area->longitude ? (float) $currentEmployee->area->longitude : null,
+                        'radius_meters' => $currentEmployee->area->radius_meters ? (int) $currentEmployee->area->radius_meters : 200,
+                        'without_radius' => false,
+                    ];
+                }
             }
         }
 
@@ -381,19 +439,49 @@ class DashboardController extends Controller
 
         $allEmployees = [];
         if ($user && in_array($user->role, ['superadmin', 'admin', 'hrd'])) {
-            $allEmployees = Employee::with(['area', 'shift'])
+            $allEmployees = Employee::with(['area', 'shift', 'specialTeams'])
                 ->orderBy('name')
-                ->get(['id', 'name', 'position', 'branch', 'area_id', 'shift_id', 'email', 'iak_number']);
+                ->get(['id', 'name', 'position', 'branch', 'area_id', 'shift_id', 'email', 'iak_number'])
+                ->map(function ($emp) {
+                    $activeSpecialTeam = $emp->specialTeams->where('is_active', true)->first();
+                    $empArr = $emp->toArray();
+                    $empArr['is_special_team'] = !empty($activeSpecialTeam);
+                    $empArr['special_team_name'] = $activeSpecialTeam ? $activeSpecialTeam->name : null;
+                    return $empArr;
+                });
         }
 
-        $totalEmployees = Employee::count();
-        $presentToday = Attendance::where('date', $today)->whereNotNull('clock_in')->count();
-        $lateToday = Attendance::where('date', $today)->where('status', 'late')->count();
-        $completedToday = Attendance::where('date', $today)->whereNotNull('clock_out')->count();
+        if ($isSpecialTeam) {
+            $totalEmployees = SpecialTeamMember::where('special_team_id', $specialTeam->id)->count();
+            $presentToday = SpecialAttendance::where('special_team_id', $specialTeam->id)->where('date', $today)->whereNotNull('clock_in')->count();
+            $lateToday = SpecialAttendance::where('special_team_id', $specialTeam->id)->where('date', $today)->where('status', 'late')->count();
+            $completedToday = SpecialAttendance::where('special_team_id', $specialTeam->id)->where('date', $today)->whereNotNull('clock_out')->count();
+        } else {
+            $totalEmployees = Employee::count();
+            $presentToday = Attendance::where('date', $today)->whereNotNull('clock_in')->count();
+            $lateToday = Attendance::where('date', $today)->where('status', 'late')->count();
+            $completedToday = Attendance::where('date', $today)->whereNotNull('clock_out')->count();
+        }
 
         return [
             'todayDateStr' => $now->translatedFormat('l, d F Y'),
             'todayIso' => $today,
+            'isSpecialTeam' => $isSpecialTeam,
+            'specialTeam' => $specialTeam ? [
+                'id' => $specialTeam->id,
+                'name' => $specialTeam->name,
+                'code' => $specialTeam->code,
+                'start_time' => $specialTeam->start_time,
+                'end_time' => $specialTeam->end_time,
+                'tolerance_minutes' => (int) $specialTeam->tolerance_minutes,
+                'without_radius' => (bool) $specialTeam->without_radius,
+                'late_deduction_amount' => (float) $specialTeam->late_deduction_amount,
+                'no_out_deduction_amount' => (float) $specialTeam->no_out_deduction_amount,
+            ] : null,
+            'specialTeamMember' => $specialTeamMember ? [
+                'role' => $specialTeamMember->role,
+                'is_leader' => (bool) $specialTeamMember->is_leader,
+            ] : null,
             'currentEmployee' => $currentEmployee,
             'allEmployees' => $allEmployees,
             'allShifts' => $allShifts,

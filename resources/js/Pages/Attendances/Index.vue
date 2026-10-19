@@ -121,6 +121,33 @@
             <!-- TAB 1: PRESENSI SAYA (SMART ATTENDANCE PORTAL)                -->
             <!-- ============================================================== -->
             <div v-if="activeTab === 'self'" class="space-y-5">
+                <!-- BANNER NOTIFIKASI KHUSUS TIM KHUSUS -->
+                <div v-if="isCurrentEmployeeSpecialTeam" class="bg-gradient-to-r from-purple-900 via-indigo-950 to-slate-900 rounded-2xl p-5 text-white shadow-md border border-purple-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-start gap-3.5">
+                        <div class="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-xl shrink-0">
+                            ⚡
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold uppercase tracking-wider text-purple-300">Penugasan Tim Khusus</span>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-500/30 text-purple-200 border border-purple-400/40">{{ currentEmployeeSpecialTeam?.name || 'TIM KHUSUS' }}</span>
+                            </div>
+                            <h3 class="text-base font-black text-white mt-0.5">Karyawan Ini Menggunakan Absensi Tim Khusus</h3>
+                            <p class="text-xs text-purple-200/80 mt-1 max-w-2xl leading-relaxed">
+                                Staf ini terdaftar dalam grup <strong>{{ currentEmployeeSpecialTeam?.name }}</strong> dengan sistem absensi operasional tanpa batasan radius kantor dan jam kerja <strong>{{ currentEmployeeSpecialTeam?.start_time?.slice(0, 5) }} - {{ currentEmployeeSpecialTeam?.end_time?.slice(0, 5) }} WIB</strong>.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="shrink-0 flex items-center gap-2.5">
+                        <Link
+                            :href="`/absen-khusus?team_id=${currentEmployeeSpecialTeam?.id}&employee_id=${currentEmployee?.id}`"
+                            class="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/30 transition flex items-center gap-2"
+                        >
+                            <span>⚡ Buka Absen Tim Khusus</span>
+                        </Link>
+                    </div>
+                </div>
+
                 <!-- 1. BANNER STATUS SHIFT DENGAN SMART SELECTOR -->
                 <div class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -365,8 +392,29 @@
 
                             <!-- TOMBOL UTAMA ABSENSI -->
                             <div class="pt-2">
+                                <!-- State: Karyawan Tim Khusus -->
+                                <div v-if="isCurrentEmployeeSpecialTeam" class="p-5 bg-purple-50/90 border border-purple-200 rounded-2xl text-center space-y-3">
+                                    <div class="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center mx-auto shadow-xs font-black text-lg">
+                                        ⚡
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-black text-purple-900 uppercase tracking-wide">
+                                            Karyawan Ini Masuk Absen Tim Khusus
+                                        </div>
+                                        <p class="text-[11px] text-purple-700 mt-1">
+                                            Grup: <strong>{{ currentEmployeeSpecialTeam?.name || 'TIM KHUSUS' }}</strong>. Presensi reguler dinonaktifkan untuk staf ini agar tidak terkena validasi radius kantor.
+                                        </p>
+                                    </div>
+                                    <Link
+                                        :href="`/absen-khusus?team_id=${currentEmployeeSpecialTeam?.id}&employee_id=${currentEmployee?.id}`"
+                                        class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-500/20 transition-all w-full"
+                                    >
+                                        <span>⚡ Buka Absen Tim Khusus Sekarang</span>
+                                    </Link>
+                                </div>
+
                                 <!-- State: Selesai Hari Ini -->
-                                <div v-if="todayAttendance?.clock_in && todayAttendance?.clock_out" class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center">
+                                <div v-else-if="todayAttendance?.clock_in && todayAttendance?.clock_out" class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center">
                                     <div class="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto mb-2 shadow-xs font-bold text-lg">
                                         ✓
                                     </div>
@@ -1076,6 +1124,8 @@ const props = defineProps({
     todayDateStr: String,
     todayIso: String,
     currentEmployee: Object,
+    isCurrentEmployeeSpecialTeam: Boolean,
+    currentEmployeeSpecialTeam: Object,
     allEmployees: Array,
     allShifts: Array,
     todaySchedule: Object,
