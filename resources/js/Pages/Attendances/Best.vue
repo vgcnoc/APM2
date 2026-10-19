@@ -25,9 +25,6 @@
                                 <span v-else-if="currentScope === 'maintenance'">
                                     Nominasi khusus divisi Maintenance & Teknisi Reguler (Tim Khusus & Tim Serbu tidak masuk) — Top 3 mendapat reward maintenance
                                 </span>
-                                <span v-else-if="currentScope === 'special_team'">
-                                    Nominasi khusus Tim Khusus & Tugas Lapangan — Top 3 mendapat reward tim khusus
-                                </span>
                             </p>
                         </div>
                     </div>
@@ -172,20 +169,6 @@
                             >
                                 <span>🛠️</span>
                                 <span>Juara Maintenance</span>
-                            </button>
-                            <button
-                                v-if="rewardsConfig.special_team_enabled"
-                                type="button"
-                                @click="setScope('special_team')"
-                                :class="[
-                                    'px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5',
-                                    currentScope === 'special_team'
-                                        ? 'bg-white text-slate-900 shadow-sm'
-                                        : 'text-slate-600 hover:text-slate-900'
-                                ]"
-                            >
-                                <span>👥</span>
-                                <span>Tim Khusus</span>
                             </button>
                         </div>
 
@@ -829,9 +812,6 @@
                                     <span v-else-if="emp.is_maintenance_winner" class="text-orange-700 font-bold text-[11px]">
                                         Top Maintenance
                                     </span>
-                                    <span v-else-if="emp.is_special_winner" class="text-cyan-700 font-bold text-[11px]">
-                                        Top Tim Khusus
-                                    </span>
                                     <span v-else class="text-slate-400 text-[11px]">
                                         -
                                     </span>
@@ -1122,11 +1102,9 @@ const props = defineProps({
             global_enabled: true,
             branch_enabled: true,
             maintenance_enabled: true,
-            special_team_enabled: true,
             global: { 1: 200000, 2: 150000, 3: 100000 },
             branch: { 1: 200000, 2: 150000, 3: 100000 },
             maintenance: { 1: 200000, 2: 150000, 3: 100000 },
-            special_team: { 1: 200000, 2: 150000, 3: 100000 },
         }),
     },
 });
@@ -1140,14 +1118,12 @@ const selectedAreaId = ref(props.filters.area_id || null);
 
 const currentScopeLabel = computed(() => {
     if (currentScope.value === 'maintenance') return 'Maintenance';
-    if (currentScope.value === 'special_team') return 'Tim Khusus';
     if (currentScope.value === 'branch') return 'Per Cabang';
     return 'Global';
 });
 
 const currentScopeShortLabel = computed(() => {
     if (currentScope.value === 'maintenance') return 'Maintenance';
-    if (currentScope.value === 'special_team') return 'Tim Khusus';
     if (currentScope.value === 'branch') return 'Cabang';
     return 'Global';
 });
@@ -1155,9 +1131,6 @@ const currentScopeShortLabel = computed(() => {
 const currentRewards = computed(() => {
     if (currentScope.value === 'maintenance') {
         return props.rewardsConfig.maintenance || { 1: 200000, 2: 150000, 3: 100000 };
-    }
-    if (currentScope.value === 'special_team') {
-        return props.rewardsConfig.special_team || { 1: 200000, 2: 150000, 3: 100000 };
     }
     if (currentScope.value === 'branch') {
         return props.rewardsConfig.branch || { 1: 200000, 2: 150000, 3: 100000 };
@@ -1167,7 +1140,6 @@ const currentRewards = computed(() => {
 
 const printScopeSubtitle = computed(() => {
     if (currentScope.value === 'maintenance') return 'KATEGORI KHUSUS DIVISI MAINTENANCE & TEKNISI LAPANGAN';
-    if (currentScope.value === 'special_team') return 'KATEGORI KHUSUS TIM KHUSUS LAPANGAN';
     if (currentScope.value === 'branch') {
         const area = props.areas.find(a => a.id === selectedAreaId.value);
         return area ? `TINGKAT CABANG: ${area.name.toUpperCase()}` : 'TINGKAT PER CABANG';
@@ -1248,7 +1220,7 @@ const setDepartment = (dept) => {
 
 const setScope = (scope) => {
     currentScope.value = scope;
-    if (scope === 'global' || scope === 'special_team') {
+    if (scope === 'global') {
         selectedAreaId.value = null;
     }
     applyFilters();
