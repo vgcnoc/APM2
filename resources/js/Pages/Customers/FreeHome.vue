@@ -233,15 +233,24 @@
                                 <!-- Pelanggan Info -->
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-sm shadow-xs border border-amber-200 shrink-0">
-                                            🏠
+                                        <div class="relative shrink-0">
+                                            <div :class="[
+                                                'w-10 h-10 rounded-2xl font-bold flex items-center justify-center text-sm shadow-xs border',
+                                                isCustomerOnline(c) 
+                                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300 ring-2 ring-emerald-400/60' 
+                                                    : 'bg-amber-100 text-amber-800 border-amber-200'
+                                            ]">
+                                                🏠
+                                            </div>
+                                            <span v-if="isCustomerOnline(c)" class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-300"></span>
                                         </div>
                                         <div>
-                                            <div class="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                                            <div :class="isCustomerOnline(c) ? 'text-emerald-600' : 'text-gray-900'" class="text-sm font-bold flex items-center gap-1.5">
+                                                <span v-if="isCustomerOnline(c)" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
                                                 <span>{{ c.name }}</span>
                                                 <span v-if="c.is_reseller" class="text-[9px] font-black uppercase px-1.5 py-0.2 bg-purple-100 text-purple-700 rounded">Reseller</span>
                                             </div>
-                                            <div class="text-xs text-gray-500 font-mono mt-0.5">
+                                            <div :class="isCustomerOnline(c) ? 'text-emerald-700/80 font-medium' : 'text-gray-500'" class="text-xs font-mono mt-0.5">
                                                 {{ c.customer_code }}
                                             </div>
                                             <div class="text-xs text-gray-400 flex items-center gap-2 mt-0.5">
@@ -559,6 +568,10 @@ const resetFilters = () => {
 
 const formatRupiah = (val) => {
     return new Intl.NumberFormat('id-ID').format(val || 0);
+};
+
+const isCustomerOnline = (c) => {
+    return !!(c.ont?.pppoe_user && props.onlineUsernames?.includes(c.ont.pppoe_user));
 };
 
 // Modal switch status ke berbayar

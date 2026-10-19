@@ -73,14 +73,21 @@
                 </td>
                 <td>
                     <div class="flex items-center gap-3">
-                        <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0', getAvatarColor(row.name)]">
-                            {{ row.name?.charAt(0).toUpperCase() }}
+                        <div class="relative shrink-0">
+                            <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm ring-2 ring-emerald-400/60', getAvatarColor(row.name)]">
+                                {{ row.name?.charAt(0).toUpperCase() }}
+                            </div>
+                            <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-300"></span>
                         </div>
                         <div class="flex flex-col">
                             <div class="flex items-center gap-2">
-                                <Link :href="`/customers/${row.id}`" class="text-gray-900 font-semibold text-sm hover:text-blue-500 transition-colors">
+                                <Link :href="`/customers/${row.id}`" class="text-emerald-600 hover:text-emerald-700 font-bold text-sm transition-colors flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
                                     {{ row.name }}
                                 </Link>
+                                <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wider">
+                                    Online
+                                </span>
                                 <button
                                     v-can="'customers_active_suspend'"
                                     :id="`btn-kick-${row.id}`"
@@ -95,7 +102,7 @@
                                     {{ kicking === row.username ? 'PROSES' : 'KICK' }}
                                 </button>
                             </div>
-                            <p class="text-[10px] text-gray-500 font-mono">{{ row.customer_code }}</p>
+                            <p class="text-[10px] text-emerald-700/80 font-mono font-medium">{{ row.customer_code }}</p>
                         </div>
                     </div>
                 </td>

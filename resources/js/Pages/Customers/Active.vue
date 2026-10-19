@@ -83,15 +83,30 @@
             <template #row="{ row }">
                 <td>
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-sm">
-                            {{ row.name.charAt(0) }}
+                        <div class="relative shrink-0">
+                            <div :class="[
+                                'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-sm',
+                                row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)
+                                    ? 'bg-gradient-to-br from-emerald-500 to-green-600 ring-2 ring-emerald-400/60'
+                                    : 'bg-gradient-to-br from-gray-400 to-slate-500'
+                            ]">
+                                {{ row.name.charAt(0) }}
+                            </div>
+                            <span v-if="row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-300"></span>
                         </div>
                         <div>
-                            <Link :href="`/customers/${row.id}`" class="text-gray-900 font-semibold hover:text-blue-600 transition-colors">
+                            <Link :href="`/customers/${row.id}`" 
+                                :class="[
+                                    'font-semibold transition-colors inline-flex items-center gap-1.5',
+                                    row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user) 
+                                        ? 'text-emerald-600 hover:text-emerald-700 font-bold' 
+                                        : 'text-gray-900 hover:text-blue-600'
+                                ]">
+                                <span v-if="row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
                                 {{ row.name }}
                             </Link>
                             <div class="flex items-center gap-2 mt-0.5">
-                                <span class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</span>
+                                <span :class="row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user) ? 'text-emerald-700/80 font-medium' : 'text-gray-500'" class="text-xs font-mono">{{ row.customer_code }}</span>
                                 <span v-if="row.registration_date" class="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100/70 px-1.5 py-0.5 rounded font-medium" title="Tanggal Daftar">
                                     📅 {{ formatDate(row.registration_date) }}
                                 </span>
