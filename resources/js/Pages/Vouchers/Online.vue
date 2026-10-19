@@ -233,7 +233,7 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        <tr v-for="(row, idx) in paginatedOnlineData.data" :key="row.id" class="hover:bg-gray-50 transition-colors">
+                        <tr v-for="(row, idx) in paginatedOnlineData.data" :key="row.id" class="bg-emerald-50/75 hover:bg-emerald-100/80 border-l-4 border-l-emerald-500 transition-colors">
                             <td class="px-4 py-3.5 text-center text-xs text-gray-400 font-mono">
                                 {{ (paginatedOnlineData.current_page - 1) * perPage + idx + 1 }}
                             </td>
@@ -364,7 +364,7 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        <tr v-for="(row, idx) in paginatedOfflineData.data" :key="row.id" class="hover:bg-gray-50 transition-colors">
+                        <tr v-for="(row, idx) in paginatedOfflineData.data" :key="row.id" class="bg-rose-50/75 hover:bg-rose-100/80 border-l-4 border-l-rose-500 transition-colors">
                             <td class="px-4 py-3.5 text-center text-xs text-gray-400 font-mono">
                                 {{ (paginatedOfflineData.current_page - 1) * perPage + idx + 1 }}
                             </td>

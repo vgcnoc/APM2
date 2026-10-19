@@ -24,6 +24,15 @@ class VoucherController extends Controller
         // Jalankan pengecekan voucher expired terlebih dahulu
         self::checkAndExpireVouchers();
 
+        // Online Usernames dari RADIUS
+        $onlineUsernames = (function() {
+            try {
+                return RadAcct::online()->pluck('username')->toArray();
+            } catch (\Exception $e) {
+                return [];
+            }
+        })();
+
         // 1. Query Data Voucher Gratis (Hasil Generate & Khusus)
         $voucherQuery = Voucher::with(['profile', 'customer.areaModel', 'reseller.customer'])
             ->where(function($q) {
@@ -50,7 +59,16 @@ class VoucherController extends Controller
         }
 
         if ($request->filled('status')) {
-            $voucherQuery->where('status', $request->status);
+            if ($request->status === 'online') {
+                $voucherQuery->whereIn('username', $onlineUsernames);
+            } elseif ($request->status === 'offline') {
+                $voucherQuery->where(function($q) use ($onlineUsernames) {
+                    $q->whereNotIn('username', $onlineUsernames)
+                      ->orWhereNull('username');
+                });
+            } else {
+                $voucherQuery->where('status', $request->status);
+            }
         }
 
         if ($request->filled('profile_id')) {
@@ -75,19 +93,24 @@ class VoucherController extends Controller
                   });
             });
         }
+
+        if ($request->filled('connection_status')) {
+            if ($request->connection_status === 'online') {
+                $customerQuery->whereHas('ont', function($q) use ($onlineUsernames) {
+                    $q->where('free_hotspot', true)->whereIn('hotspot_user', $onlineUsernames);
+                });
+            } elseif ($request->connection_status === 'offline') {
+                $customerQuery->whereHas('ont', function($q) use ($onlineUsernames) {
+                    $q->where('free_hotspot', true)->where(function($sq) use ($onlineUsernames) {
+                        $sq->whereNotIn('hotspot_user', $onlineUsernames)->orWhereNull('hotspot_user');
+                    });
+                });
+            }
+        }
         
         $customers = $customerQuery->latest()->paginate(15, ['*'], 'customers_page')->withQueryString();
 
-        // 3. Online Usernames dari RADIUS
-        $onlineUsernames = (function() {
-            try {
-                return RadAcct::online()->pluck('username')->toArray();
-            } catch (\Exception $e) {
-                return [];
-            }
-        })();
-
-        // 4. Statistik Voucher Gratis
+        // 3. Statistik Voucher Gratis
         $statsBase = Voucher::query()
             ->where(function($q) {
                 $q->where('is_free', true)
@@ -101,12 +124,17 @@ class VoucherController extends Controller
         $availableFree = (clone $statsBase)->where('status', 'available')->count();
         $usedFree = (clone $statsBase)->where('status', 'used')->count();
         $expiredFree = (clone $statsBase)->where('status', 'expired')->count();
-        $onlineFree = count(array_intersect(
-            $onlineUsernames,
-            (clone $statsBase)->where('status', 'used')->pluck('username')->filter()->toArray()
-        ));
+        $allFreeUsernames = (clone $statsBase)->pluck('username')->filter()->toArray();
+        $onlineFree = count(array_intersect($onlineUsernames, $allFreeUsernames));
+        $offlineFree = max(0, $totalFree - $onlineFree);
 
-        // 5. Profil Voucher yang tersedia
+        // Statistik Pelanggan ONT
+        $baseCustQuery = Customer::whereHas('ont', fn($q) => $q->where('free_hotspot', true));
+        $ontTotal = (clone $baseCustQuery)->count();
+        $ontOnline = (clone $baseCustQuery)->whereHas('ont', fn($q) => $q->whereIn('hotspot_user', $onlineUsernames))->count();
+        $ontOffline = max(0, $ontTotal - $ontOnline);
+
+        // 4. Profil Voucher yang tersedia
         $freeProfiles = VoucherProfile::where(function($q) {
             $q->where('is_customer_free', true)->orWhere('price', 0);
         })->get();
@@ -132,9 +160,12 @@ class VoucherController extends Controller
                 'used' => $usedFree,
                 'expired' => $expiredFree,
                 'online' => $onlineFree,
-                'customer_count' => $customerQuery->count(),
+                'offline' => $offlineFree,
+                'customer_count' => $ontTotal,
+                'ont_online' => $ontOnline,
+                'ont_offline' => $ontOffline,
             ],
-            'filters' => $request->only(['search', 'status', 'profile_id', 'tab', 'search_customer'])
+            'filters' => $request->only(['search', 'status', 'profile_id', 'tab', 'search_customer', 'connection_status'])
         ]);
     }
 
@@ -239,6 +270,15 @@ class VoucherController extends Controller
         // Jalankan pengecekan voucher expired terlebih dahulu
         self::checkAndExpireVouchers();
 
+        // Online Usernames dari RADIUS
+        $onlineUsernames = (function() {
+            try {
+                return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
+            } catch (\Exception $e) {
+                return [];
+            }
+        })();
+
         $query = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel']);
 
         if ($request->filled('profile_id')) {
@@ -246,7 +286,16 @@ class VoucherController extends Controller
         }
 
         if ($request->filled('status')) {
-            $query->where('vouchers.status', $request->status);
+            if ($request->status === 'online') {
+                $query->whereIn('vouchers.username', $onlineUsernames);
+            } elseif ($request->status === 'offline') {
+                $query->where(function($q) use ($onlineUsernames) {
+                    $q->whereNotIn('vouchers.username', $onlineUsernames)
+                      ->orWhereNull('vouchers.username');
+                });
+            } else {
+                $query->where('vouchers.status', $request->status);
+            }
         }
         
         if ($request->filled('search')) {
@@ -307,15 +356,6 @@ class VoucherController extends Controller
         
         $resellers = \App\Models\Reseller::with('customer.areaModel')->get();
         $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
-
-        // Online Usernames dari RADIUS
-        $onlineUsernames = (function() {
-            try {
-                return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
-            } catch (\Exception $e) {
-                return [];
-            }
-        })();
 
         // Query Dasar Statistik (mengikuti batasan user / reseller / area yang dipilih)
         $statsBase = Voucher::query();

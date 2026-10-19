@@ -72,12 +72,27 @@
                     <div class="text-2xl font-black text-emerald-900 tracking-tight">
                         {{ Number(stats?.used || 0).toLocaleString('id-ID') }}
                     </div>
-                    <div class="text-[11px] text-emerald-700 font-semibold mt-0.5 flex items-center gap-1.5">
-                        <span class="relative flex h-2 w-2">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                        </span>
-                        <span>{{ Number(stats?.online || 0) }} Online Hotspot</span>
+                    <div class="text-[11px] font-semibold mt-1 flex items-center gap-1.5 flex-wrap">
+                        <button 
+                            type="button"
+                            @click.stop="filterByStatus('online')"
+                            :class="statusFilter === 'online' ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'"
+                            class="px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] transition-all cursor-pointer"
+                            title="Filter Hanya Voucher Online"
+                        >
+                            <span class="w-1.5 h-1.5 rounded-full" :class="statusFilter === 'online' ? 'bg-white' : 'bg-emerald-500 animate-pulse'"></span>
+                            {{ Number(stats?.online || 0) }} Online
+                        </button>
+                        <button 
+                            type="button"
+                            @click.stop="filterByStatus('offline')"
+                            :class="statusFilter === 'offline' ? 'bg-rose-600 text-white shadow-2xs font-bold' : 'bg-rose-100 text-rose-800 hover:bg-rose-200'"
+                            class="px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] transition-all cursor-pointer"
+                            title="Filter Hanya Voucher Offline"
+                        >
+                            <span class="w-1.5 h-1.5 rounded-full" :class="statusFilter === 'offline' ? 'bg-white' : 'bg-rose-500'"></span>
+                            {{ Number(stats?.offline || 0) }} Offline
+                        </button>
                     </div>
                 </div>
             </div>
@@ -151,6 +166,8 @@
                     <option value="">Semua Status</option>
                     <option value="available">Tersedia</option>
                     <option value="used">Digunakan</option>
+                    <option v-if="can('voucher_free_filter_connection')" value="online">🟢 Sesi Online</option>
+                    <option v-if="can('voucher_free_filter_connection')" value="offline">🔴 Sesi Offline</option>
                     <option value="expired">Expired</option>
                 </select>
 
@@ -199,6 +216,27 @@
             </div>
         </div>
 
+        <!-- VISUAL COLOR INDICATOR LEGEND -->
+        <div v-if="can('voucher_free_color_indicator')" class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-gray-50/90 rounded-xl border border-gray-200 text-xs shadow-2xs mb-4">
+            <div class="flex items-center gap-3 flex-wrap">
+                <span class="font-bold text-gray-700 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+                    Indikator Barisan:
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-[11px]">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Barisan Hijau = Sesi Online ({{ stats?.online || 0 }})
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 font-bold text-[11px]">
+                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                    Barisan Merah = Sesi Offline ({{ stats?.offline || 0 }})
+                </span>
+            </div>
+            <div class="text-[11px] text-gray-500">
+                Status sesi voucher real-time FreeRADIUS
+            </div>
+        </div>
+
         <!-- TABLE -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
@@ -220,7 +258,18 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        <tr v-for="voucher in vouchers.data" :key="voucher.id" class="hover:bg-gray-50 transition-colors">
+                        <tr 
+                            v-for="voucher in vouchers.data" 
+                            :key="voucher.id" 
+                            :class="[
+                                can('voucher_free_color_indicator') 
+                                    ? (onlineUsernames.includes(voucher.username) 
+                                        ? 'bg-emerald-50/80 hover:bg-emerald-100/90 border-l-4 border-l-emerald-500' 
+                                        : 'bg-rose-50/75 hover:bg-rose-100/80 border-l-4 border-l-rose-500')
+                                    : 'hover:bg-gray-50'
+                            ]"
+                            class="transition-colors"
+                        >
                             <td class="px-6 py-4">
                                 <input type="checkbox" v-model="selectedVouchers" :value="voucher.id" class="rounded border-gray-300 text-indigo-600 shadow-sm">
                             </td>
@@ -290,12 +339,12 @@
                                     <span v-if="!voucher.is_active" class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold bg-rose-100 text-rose-700 uppercase tracking-widest">
                                         Nonaktif
                                     </span>
-                                    <span v-else-if="onlineUsernames.includes(voucher.username)" class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-700">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                        Aktif
+                                    <span v-else-if="onlineUsernames.includes(voucher.username)" class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 shadow-2xs">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        Online
                                     </span>
-                                    <span v-else class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-600">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                    <span v-else class="inline-flex items-center gap-1.5 text-xs font-bold text-rose-800 bg-rose-100 px-2.5 py-0.5 rounded-full border border-rose-300 shadow-2xs">
+                                        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
                                         Offline
                                     </span>
                                 </div>
@@ -818,8 +867,10 @@ import { useForm, router, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ClientAreaLayout from '@/Layouts/ClientAreaLayout.vue';
 import Swal from 'sweetalert2';
+import { usePermission } from '@/Composables/usePermission';
 
 const page = usePage();
+const { can, hasRole } = usePermission();
 const layoutComponent = computed(() => {
     return page.props.auth?.user?.role === 'reseller' || page.props.auth?.user?.role === 'customer' 
         ? ClientAreaLayout 

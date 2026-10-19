@@ -25,15 +25,33 @@
                     <!-- Group Label -->
                     <div v-if="item.type === 'group' && sidebarOpen" class="pt-5 pb-2 px-3">
                         <div class="flex items-center gap-2">
-                            <span class="text-[10px] font-bold text-gray-400 tracking-wider uppercase">{{ item.label }}</span>
-                            <div class="h-px bg-gray-200/60 flex-1"></div>
+                            <span 
+                                v-if="item.theme === 'purple'"
+                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800 border border-purple-200/90 shadow-2xs flex items-center gap-1.5"
+                            >
+                                <span class="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse"></span>
+                                {{ item.label }}
+                            </span>
+                            <span v-else class="text-[10px] font-bold text-gray-400 tracking-wider uppercase">{{ item.label }}</span>
+                            <div class="h-px flex-1" :class="item.theme === 'purple' ? 'bg-purple-200' : 'bg-gray-200/60'"></div>
                         </div>
                     </div>
-                    <div v-else-if="item.type === 'group' && !sidebarOpen" class="my-2 border-t border-gray-200/60 mx-3"></div>
+                    <div v-else-if="item.type === 'group' && !sidebarOpen" class="my-2 border-t mx-3" :class="item.theme === 'purple' ? 'border-purple-300' : 'border-gray-200/60'"></div>
 
                     <!-- Link -->
-                    <Link v-if="item.type === 'link'" :href="item.href" @click="mobileMenuOpen = false" :class="['sidebar-link', { active: item.active($page.url), 'pl-11': item.indent }]">
-                        <svg v-if="!item.indent" class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <Link 
+                        v-if="item.type === 'link'" 
+                        :href="item.href" 
+                        @click="mobileMenuOpen = false" 
+                        :class="[
+                            item.theme === 'purple' ? 'sidebar-link-purple' : 'sidebar-link', 
+                            { 
+                                active: item.active($page.url), 
+                                'pl-11': item.indent && item.theme !== 'purple' 
+                            }
+                        ]"
+                    >
+                        <svg v-if="!item.indent" class="w-5 h-5 shrink-0" :class="item.theme === 'purple' && !item.active($page.url) ? 'text-purple-600' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
                         </svg>
                         <svg v-else class="w-3.5 h-3.5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -46,27 +64,37 @@
                     <div v-else-if="item.type === 'dropdown'">
                         <button 
                             @click="toggleDropdown(index)" 
-                            :class="['sidebar-link w-full text-left', { active: item.active($page.url) }]"
+                            :class="[
+                                item.theme === 'purple' ? 'sidebar-link-purple' : 'sidebar-link', 
+                                'w-full text-left', 
+                                { active: item.active($page.url) }
+                            ]"
                         >
-                            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 shrink-0" :class="item.theme === 'purple' && !item.active($page.url) ? 'text-purple-600' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
                             </svg>
                             <span v-if="sidebarOpen" class="truncate flex-1">{{ item.label }}</span>
-                            <svg v-if="sidebarOpen" :class="['w-4 h-4 shrink-0 transition-transform duration-200', openDropdowns.includes(index) ? 'rotate-90' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg v-if="sidebarOpen" :class="['w-4 h-4 shrink-0 transition-transform duration-200', openDropdowns.includes(index) ? 'rotate-90' : '', item.theme === 'purple' && !item.active($page.url) ? 'text-purple-500' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
                         </button>
                         
                         <!-- Dropdown Items -->
-                        <div v-show="sidebarOpen && openDropdowns.includes(index)" class="mt-1 space-y-1">
+                        <div 
+                            v-show="sidebarOpen && openDropdowns.includes(index)" 
+                            :class="item.theme === 'purple' ? 'bg-purple-100/60 p-1.5 rounded-xl border border-purple-200/80 my-1 space-y-1 shadow-2xs' : 'mt-1 space-y-1'"
+                        >
                             <template v-for="(child, childIndex) in item.children" :key="childIndex">
                                 <Link 
                                     v-if="!child.permission || hasPermission(child.permission)"
                                     :href="child.href" 
                                     @click="mobileMenuOpen = false" 
-                                    :class="['sidebar-link pl-11', { active: child.active($page.url) }]"
+                                    :class="[
+                                        item.theme === 'purple' ? 'sidebar-sub-purple' : 'sidebar-link pl-11', 
+                                        { active: child.active($page.url) }
+                                    ]"
                                 >
-                                    <svg class="w-3.5 h-3.5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-3.5 h-3.5 shrink-0" :class="item.theme === 'purple' ? (child.active($page.url) ? 'text-white' : 'text-purple-600') : 'opacity-60'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" :d="iconPaths['submenu-dot']"/>
                                     </svg>
                                     <span class="truncate text-[13px] font-medium">{{ child.label }}</span>
@@ -338,11 +366,12 @@ const menuItems = [
     },
 
     // 5. RESELLER & VOUCHER
-    { type: 'group', label: 'RESELLER & VOUCHER' },
+    { type: 'group', label: 'RESELLER & VOUCHER', theme: 'purple' },
     { 
         type: 'dropdown',
         icon: 'ticket',
         label: 'Sistem Voucher',
+        theme: 'purple',
         active: (url) => (url || '').startsWith('/vouchers'),
         permission: 'menu_vouchers',
         children: [
@@ -353,11 +382,12 @@ const menuItems = [
             { href: '/vouchers/free', label: 'Voucher Gratis', active: (url) => (url || '').startsWith('/vouchers/free'), permission: 'menu_vouchers_free' },
         ]
     },
-    { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
+    { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', theme: 'purple', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
     {
         type: 'dropdown',
         icon: 'credit-card',
         label: 'Keuangan Reseller',
+        theme: 'purple',
         active: (url) => ['/reseller-requests', '/reseller-billing', '/reseller-settlements', '/reseller-reports'].some(path => (url || '').startsWith(path)),
         permission: 'menu_resellers',
         children: [

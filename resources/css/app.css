@@ -180,6 +180,27 @@ h1, h2, h3, h4, h5, h6 {
     @apply bg-blue-50 text-blue-700 border-l-[3px] border-blue-600 rounded-l-none pl-[13px];
 }
 
+/* ── Sidebar Purple (Reseller & Voucher Block) ──────────────── */
+.sidebar-link-purple {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
+           bg-purple-50/90 text-purple-900 border border-purple-200/80 shadow-sm
+           transition-all duration-200 hover:bg-purple-100 hover:text-purple-950 hover:border-purple-300;
+}
+
+.sidebar-link-purple.active {
+    @apply bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold
+           border-l-[4px] border-l-purple-900 rounded-l-none pl-[12px] shadow-sm;
+}
+
+.sidebar-sub-purple {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-purple-900
+           transition-all duration-150 hover:bg-purple-200/80 hover:text-purple-950 pl-8;
+}
+
+.sidebar-sub-purple.active {
+    @apply bg-purple-600 text-white font-bold shadow-sm;
+}
+
 /* ── Animations ─────────────────────────────────────────────── */
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(10px); }

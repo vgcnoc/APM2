@@ -73,12 +73,27 @@
                     <div class="text-2xl font-black text-purple-900 tracking-tight">
                         {{ Number(stats?.used || 0).toLocaleString('id-ID') }}
                     </div>
-                    <div class="text-[11px] text-purple-700 font-semibold mt-0.5 flex items-center gap-1.5">
-                        <span class="relative flex h-2 w-2">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                        </span>
-                        <span>{{ Number(stats?.online || 0) }} Sesi Online Live</span>
+                    <div class="text-[11px] font-semibold mt-1 flex items-center gap-1.5 flex-wrap">
+                        <button 
+                            type="button"
+                            @click.stop="filterByStatus('online')"
+                            :class="currentTab === 'vouchers' && statusFilter === 'online' ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'"
+                            class="px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] transition-all cursor-pointer"
+                            title="Filter Hanya Voucher Online"
+                        >
+                            <span class="w-1.5 h-1.5 rounded-full" :class="currentTab === 'vouchers' && statusFilter === 'online' ? 'bg-white' : 'bg-emerald-500 animate-pulse'"></span>
+                            {{ Number(stats?.online || 0) }} Online
+                        </button>
+                        <button 
+                            type="button"
+                            @click.stop="filterByStatus('offline')"
+                            :class="currentTab === 'vouchers' && statusFilter === 'offline' ? 'bg-rose-600 text-white shadow-2xs font-bold' : 'bg-rose-100 text-rose-800 hover:bg-rose-200'"
+                            class="px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] transition-all cursor-pointer"
+                            title="Filter Hanya Voucher Offline"
+                        >
+                            <span class="w-1.5 h-1.5 rounded-full" :class="currentTab === 'vouchers' && statusFilter === 'offline' ? 'bg-white' : 'bg-rose-500'"></span>
+                            {{ Number(stats?.offline || 0) }} Offline
+                        </button>
                     </div>
                 </div>
             </div>
@@ -126,8 +141,27 @@
                     <div class="text-2xl font-black text-indigo-900 tracking-tight">
                         {{ Number(stats?.customer_count || 0).toLocaleString('id-ID') }}
                     </div>
-                    <div class="text-[11px] text-indigo-700 font-semibold mt-0.5">
-                        Free Hotspot ONT Aktivasi
+                    <div class="text-[11px] font-semibold mt-1 flex items-center gap-1.5 flex-wrap">
+                        <button 
+                            type="button"
+                            @click.stop="filterCustomerByConnection('online')"
+                            :class="currentTab === 'customers' && connectionStatusFilter === 'online' ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'"
+                            class="px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] transition-all cursor-pointer"
+                            title="Filter Pelanggan ONT Online"
+                        >
+                            <span class="w-1.5 h-1.5 rounded-full" :class="currentTab === 'customers' && connectionStatusFilter === 'online' ? 'bg-white' : 'bg-emerald-500 animate-pulse'"></span>
+                            {{ Number(stats?.ont_online || 0) }} Online
+                        </button>
+                        <button 
+                            type="button"
+                            @click.stop="filterCustomerByConnection('offline')"
+                            :class="currentTab === 'customers' && connectionStatusFilter === 'offline' ? 'bg-rose-600 text-white shadow-2xs font-bold' : 'bg-rose-100 text-rose-800 hover:bg-rose-200'"
+                            class="px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] transition-all cursor-pointer"
+                            title="Filter Pelanggan ONT Offline"
+                        >
+                            <span class="w-1.5 h-1.5 rounded-full" :class="currentTab === 'customers' && connectionStatusFilter === 'offline' ? 'bg-white' : 'bg-rose-500'"></span>
+                            {{ Number(stats?.ont_offline || 0) }} Offline
+                        </button>
                     </div>
                 </div>
             </div>
@@ -244,6 +278,8 @@
                         <option value="">Semua Status</option>
                         <option value="available">Tersedia</option>
                         <option value="used">Digunakan</option>
+                        <option v-if="can('voucher_free_filter_connection')" value="online">🟢 Sesi Online</option>
+                        <option v-if="can('voucher_free_filter_connection')" value="offline">🔴 Sesi Offline</option>
                         <option value="expired">Expired</option>
                     </select>
 
@@ -265,6 +301,27 @@
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         <span>Reset</span>
                     </button>
+                </div>
+            </div>
+
+            <!-- VISUAL COLOR INDICATOR LEGEND -->
+            <div v-if="can('voucher_free_color_indicator')" class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-gray-50/90 rounded-xl border border-gray-200 text-xs shadow-2xs">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <span class="font-bold text-gray-700 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+                        Indikator Barisan:
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-[11px]">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Barisan Hijau = Sesi Online ({{ stats?.online || 0 }})
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 font-bold text-[11px]">
+                        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                        Barisan Merah = Sesi Offline ({{ stats?.offline || 0 }})
+                    </span>
+                </div>
+                <div class="text-[11px] text-gray-500">
+                    Status sesi voucher real-time FreeRADIUS
                 </div>
             </div>
 
@@ -292,7 +349,18 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-100">
-                            <tr v-for="voucher in vouchers.data" :key="voucher.id" class="hover:bg-emerald-50/20 transition-colors">
+                            <tr 
+                                v-for="voucher in vouchers.data" 
+                                :key="voucher.id" 
+                                :class="[
+                                    can('voucher_free_color_indicator') 
+                                        ? (isVoucherOnline(voucher) 
+                                            ? 'bg-emerald-50/80 hover:bg-emerald-100/90 border-l-4 border-l-emerald-500' 
+                                            : 'bg-rose-50/75 hover:bg-rose-100/80 border-l-4 border-l-rose-500')
+                                        : 'hover:bg-emerald-50/20'
+                                ]"
+                                class="transition-colors"
+                            >
                                 <td class="px-5 py-4">
                                     <input 
                                         type="checkbox" 
@@ -389,12 +457,12 @@
                                             <span v-if="!voucher.is_active" class="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 uppercase">
                                                 Nonaktif
                                             </span>
-                                            <span v-else-if="onlineUsernames.includes(voucher.username)" class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                                Sesi Aktif Online
+                                            <span v-else-if="isVoucherOnline(voucher)" class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 shadow-2xs">
+                                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                Online
                                             </span>
-                                            <span v-else class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500">
-                                                <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                            <span v-else class="inline-flex items-center gap-1.5 text-xs font-bold text-rose-800 bg-rose-100 px-2.5 py-0.5 rounded-full border border-rose-300 shadow-2xs">
+                                                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
                                                 Offline
                                             </span>
                                         </div>
@@ -517,27 +585,65 @@
                 </Link>
             </div>
 
-            <!-- SEARCH FILTER FOR CUSTOMERS -->
-            <div class="flex justify-between items-center gap-3">
-                <div class="relative flex-1 max-w-md">
-                    <input 
-                        v-model="searchCustomer" 
-                        type="text" 
-                        placeholder="Cari nama pelanggan, ID pelanggan, atau username hotspot..." 
-                        class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm shadow-2xs"
-                        @keyup.enter="doFilterCustomers"
+            <!-- SEARCH & CONNECTION FILTER FOR CUSTOMERS -->
+            <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                <div class="flex flex-wrap items-center gap-2 flex-1">
+                    <div class="relative flex-1 min-w-[240px]">
+                        <input 
+                            v-model="searchCustomer" 
+                            type="text" 
+                            placeholder="Cari nama pelanggan, ID pelanggan, atau username hotspot..." 
+                            class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm shadow-2xs"
+                            @keyup.enter="doFilterCustomers"
+                        >
+                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+
+                    <!-- Connection Filter -->
+                    <select 
+                        v-if="can('voucher_free_filter_connection')" 
+                        v-model="connectionStatusFilter" 
+                        @change="doFilterCustomers" 
+                        class="bg-white border-gray-300 rounded-xl text-sm shadow-2xs focus:ring-indigo-500 focus:border-indigo-500 font-medium"
                     >
-                    <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
+                        <option value="">Semua Sesi Koneksi</option>
+                        <option value="online">🟢 Sesi Online</option>
+                        <option value="offline">🔴 Sesi Offline</option>
+                    </select>
+
+                    <button 
+                        v-if="searchCustomer || connectionStatusFilter" 
+                        @click="resetCustomerFilter" 
+                        class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                        title="Reset Filter Pelanggan"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        <span>Reset</span>
+                    </button>
                 </div>
-                <button 
-                    v-if="searchCustomer" 
-                    @click="searchCustomer = ''; doFilterCustomers()" 
-                    class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-semibold"
-                >
-                    Reset
-                </button>
+            </div>
+
+            <!-- VISUAL COLOR INDICATOR LEGEND FOR CUSTOMERS -->
+            <div v-if="can('voucher_free_color_indicator')" class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-gray-50/90 rounded-xl border border-gray-200 text-xs shadow-2xs">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <span class="font-bold text-gray-700 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+                        Indikator Barisan:
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-[11px]">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Barisan Hijau = Sesi Online ({{ stats?.ont_online || 0 }})
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 font-bold text-[11px]">
+                        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                        Barisan Merah = Sesi Offline ({{ stats?.ont_offline || 0 }})
+                    </span>
+                </div>
+                <div class="text-[11px] text-gray-500">
+                    Status sesi modem ONT real-time FreeRADIUS
+                </div>
             </div>
 
             <!-- TABLE OF CUSTOMERS WITH FREE HOTSPOT -->
@@ -556,7 +662,18 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-100">
-                            <tr v-for="customer in customers.data" :key="customer.id" class="hover:bg-indigo-50/20 transition-colors">
+                            <tr 
+                                v-for="customer in customers.data" 
+                                :key="customer.id" 
+                                :class="[
+                                    can('voucher_free_color_indicator') 
+                                        ? (isCustomerOnline(customer) 
+                                            ? 'bg-emerald-50/80 hover:bg-emerald-100/90 border-l-4 border-l-emerald-500' 
+                                            : 'bg-rose-50/75 hover:bg-rose-100/80 border-l-4 border-l-rose-500')
+                                        : 'hover:bg-indigo-50/20'
+                                ]"
+                                class="transition-colors"
+                            >
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-bold text-gray-900">{{ customer.name }}</div>
                                     <div class="text-xs text-gray-500">{{ customer.area_model?.name || customer.area || 'Area -' }}</div>
@@ -577,10 +694,22 @@
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                                         </button>
                                     </div>
-                                    <span v-if="onlineUsernames.includes(customer.ont?.hotspot_user)" class="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 mt-1">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                        Sedang Online
-                                    </span>
+                                    <div class="mt-1">
+                                        <span 
+                                            v-if="isCustomerOnline(customer)" 
+                                            class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 shadow-2xs"
+                                        >
+                                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            Online
+                                        </span>
+                                        <span 
+                                            v-else 
+                                            class="inline-flex items-center gap-1.5 text-xs font-bold text-rose-800 bg-rose-100 px-2.5 py-0.5 rounded-full border border-rose-300 shadow-2xs"
+                                        >
+                                            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                                            Offline
+                                        </span>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center gap-2">
@@ -964,6 +1093,17 @@ const props = defineProps({
 
 // Tab state
 const currentTab = ref(props.filters?.tab || 'vouchers');
+
+// Helper to check if customer or voucher is currently online in FreeRADIUS
+const isCustomerOnline = (customer) => {
+    const user = customer?.ont?.hotspot_user;
+    return !!(user && props.onlineUsernames?.includes(user));
+};
+
+const isVoucherOnline = (voucher) => {
+    return !!(voucher?.username && props.onlineUsernames?.includes(voucher.username));
+};
+
 const switchTab = (tab) => {
     currentTab.value = tab;
     router.get('/vouchers/free', {
@@ -972,6 +1112,7 @@ const switchTab = (tab) => {
         status: statusFilter.value,
         profile_id: profileFilter.value,
         search_customer: searchCustomer.value,
+        connection_status: connectionStatusFilter.value,
     }, {
         preserveState: true,
         replace: true
@@ -1012,16 +1153,35 @@ const resetVoucherFilter = () => {
     doFilterVouchers();
 };
 
-// Search filter for Customers tab
+// Search & Connection Filter for Customers tab
 const searchCustomer = ref(props.filters?.search_customer || '');
+const connectionStatusFilter = ref(props.filters?.connection_status || '');
+
 const doFilterCustomers = () => {
     router.get('/vouchers/free', {
         tab: 'customers',
         search_customer: searchCustomer.value,
+        connection_status: connectionStatusFilter.value,
     }, {
         preserveState: true,
         replace: true
     });
+};
+
+const filterCustomerByConnection = (status) => {
+    currentTab.value = 'customers';
+    if (connectionStatusFilter.value === status) {
+        connectionStatusFilter.value = '';
+    } else {
+        connectionStatusFilter.value = status;
+    }
+    doFilterCustomers();
+};
+
+const resetCustomerFilter = () => {
+    searchCustomer.value = '';
+    connectionStatusFilter.value = '';
+    doFilterCustomers();
 };
 
 // Selection and bulk actions
