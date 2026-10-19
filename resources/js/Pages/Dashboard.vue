@@ -145,9 +145,9 @@
         <!-- ═══ Presensi Reguler Staf Widget ═══ -->
         <DashboardAttendanceWidget :attendance-data="attendanceData" class="mb-6" />
 
-        <!-- ═══ Stat Cards ═══ -->
+        <!-- ═══ Stat Cards (Operasional Umum Karyawan - Tanpa Keuangan) ═══ -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-            <!-- Pelanggan Aktif -->
+            <!-- 1. Pelanggan Aktif -->
             <div v-can="'dashboard_card_stats'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
                 <div class="flex items-start justify-between">
                     <div>
@@ -157,92 +157,103 @@
                             </div>
                             <p class="text-sm font-medium text-gray-500">Pelanggan Aktif</p>
                         </div>
-                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ customerStats.total_active }}</p>
-                        <p class="text-xs text-gray-500 mt-1">Total {{ customerStats.total_all }} pelanggan</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ customerStats?.total_active || 0 }}</p>
+                        <p class="text-xs text-gray-500 mt-1">Total {{ customerStats?.total_all || 0 }} pelanggan terdaftar</p>
                     </div>
                     <span class="inline-flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
                         <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
-                        {{ customerStats.total_all > 0 ? Math.round(customerStats.total_active / customerStats.total_all * 100) : 0 }}%
+                        {{ (customerStats?.total_all || 0) > 0 ? Math.round((customerStats?.total_active || 0) / customerStats.total_all * 100) : 0 }}%
                     </span>
                 </div>
-                <div class="mt-3 h-8">
-                    <svg class="w-full h-full text-blue-200" viewBox="0 0 120 30" preserveAspectRatio="none">
-                        <path d="M0 25 Q20 15 40 20 T80 10 T120 15 V30 H0Z" fill="currentColor" opacity="0.5"/>
-                        <path d="M0 25 Q20 15 40 20 T80 10 T120 15" fill="none" stroke="rgb(59,130,246)" stroke-width="1.5"/>
-                    </svg>
+                <div class="mt-3 flex items-center justify-between pt-2 border-t border-gray-50 text-[11px]">
+                    <span class="text-gray-400 font-medium">Pelanggan Berlangganan</span>
+                    <a href="/customers" class="font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5 transition-colors">
+                        Semua Pelanggan →
+                    </a>
                 </div>
             </div>
 
-            <!-- Pelanggan Sudah Bayar -->
-            <div v-can="'dashboard_card_revenue'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <div class="flex items-center gap-2 mb-1">
-                            <div class="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center">
-                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            </div>
-                            <p class="text-sm font-medium text-gray-500">Pelanggan Sudah Bayar</p>
-                        </div>
-                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ invoiceStats?.paid_this_month || 0 }}</p>
-                        <p class="text-xs text-gray-500 mt-1">Bulan Ini</p>
-                    </div>
-                    <span class="inline-flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
-                        {{ ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) > 0 ? Math.round((invoiceStats?.paid_this_month || 0) / ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) * 100) : 0 }}%
-                    </span>
-                </div>
-                <div class="mt-3 w-full bg-gray-100 rounded-full h-2">
-                    <div class="bg-gradient-to-r from-emerald-400 to-emerald-600 h-2 rounded-full transition-all"
-                        :style="{ width: (((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) > 0 ? (invoiceStats?.paid_this_month || 0) / ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) * 100 : 0) + '%' }"></div>
-                </div>
-            </div>
-
-            <!-- Pelanggan Belum Bayar -->
-            <div v-can="'dashboard_card_revenue'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <div class="flex items-center gap-2 mb-1">
-                            <div class="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center">
-                                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            </div>
-                            <p class="text-sm font-medium text-gray-500">Pelanggan Belum Bayar</p>
-                        </div>
-                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ invoiceStats?.unpaid_this_month || 0 }}</p>
-                        <p class="text-xs text-gray-500 mt-1">Bulan Ini</p>
-                    </div>
-                    <span class="inline-flex items-center text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded-lg">
-                        {{ ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) > 0 ? Math.round((invoiceStats?.paid_this_month || 0) / ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) * 100) : 0 }}%
-                    </span>
-                </div>
-                <div class="mt-3 w-full bg-gray-100 rounded-full h-2">
-                    <div class="bg-gradient-to-r from-red-400 to-red-600 h-2 rounded-full transition-all"
-                        :style="{ width: (((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) > 0 ? (invoiceStats?.paid_this_month || 0) / ((invoiceStats?.paid_this_month || 0) + (invoiceStats?.unpaid_this_month || 0)) * 100 : 0) + '%' }"></div>
-                </div>
-            </div>
-
-            <!-- Reseller Voucher Belum Bayar -->
-            <div v-can="'dashboard_card_revenue'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+            <!-- 2. Antrean Pasang Baru (PSB) -->
+            <div v-can="'dashboard_card_stats'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <div class="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center">
-                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                                </svg>
+                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                             </div>
-                            <p class="text-sm font-medium text-gray-500">Reseller Voucher Belum Bayar</p>
+                            <p class="text-sm font-medium text-gray-500">Antrean Pasang Baru</p>
                         </div>
-                        <p class="text-3xl font-bold text-gray-900 mt-2">Rp {{ formatCurrency(resellerUnpaidAmount) }}</p>
-                        <p class="text-xs text-gray-500 mt-1">{{ resellerUnpaidCount || 0 }} tagihan belum lunas</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-2">
+                            {{ (customerStats?.total_booking || 0) + (customerStats?.total_survey || 0) + (customerStats?.total_installing || 0) + (customerStats?.total_activation || 0) }}
+                        </p>
+                        <p class="text-xs text-gray-500 mt-1">
+                            {{ customerStats?.total_installing || 0 }} Pasang · {{ customerStats?.total_survey || 0 }} Survey · {{ customerStats?.total_booking || 0 }} Booking
+                        </p>
                     </div>
-                    <span class="inline-flex items-center text-xs font-bold px-2 py-1 rounded-lg"
-                        :class="(resellerUnpaidCount || 0) > 0 ? 'text-amber-700 bg-amber-50 border border-amber-200' : 'text-emerald-700 bg-emerald-50 border border-emerald-200'">
-                        {{ (resellerUnpaidCount || 0) > 0 ? (resellerUnpaidCount + ' Invoice') : 'Lunas' }}
+                    <span class="inline-flex items-center text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
+                        {{ (customerStats?.total_activation || 0) > 0 ? (customerStats.total_activation + ' Siap Aktif') : 'Pipeline PSB' }}
                     </span>
                 </div>
                 <div class="mt-3 flex items-center justify-between pt-2 border-t border-gray-50 text-[11px]">
-                    <span class="text-gray-400 font-medium">Kasbon / Piutang</span>
-                    <a href="/reseller-billing" class="font-bold text-amber-600 hover:text-amber-700 flex items-center gap-0.5 transition-colors">
-                        Penagihan →
+                    <span class="text-gray-400 font-medium">Instalasi &amp; Aktivasi</span>
+                    <a href="/customers/installed" class="font-bold text-amber-600 hover:text-amber-700 flex items-center gap-0.5 transition-colors">
+                        Lihat Antrean →
+                    </a>
+                </div>
+            </div>
+
+            <!-- 3. Tiket Gangguan & Kendala -->
+            <div v-can="'dashboard_card_tickets'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <div class="w-8 h-8 rounded-xl bg-rose-100 flex items-center justify-center">
+                                <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            </div>
+                            <p class="text-sm font-medium text-gray-500">Tiket Gangguan</p>
+                        </div>
+                        <p class="text-3xl font-bold text-gray-900 mt-2">
+                            {{ (ticketStats?.open || 0) + (ticketStats?.in_progress || 0) }}
+                        </p>
+                        <p class="text-xs text-gray-500 mt-1">
+                            {{ ticketStats?.open || 0 }} Menunggu · {{ ticketStats?.in_progress || 0 }} Dikerjakan
+                        </p>
+                    </div>
+                    <span class="inline-flex items-center text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">
+                        {{ ticketStats?.resolved_today || 0 }} Selesai Hari Ini
+                    </span>
+                </div>
+                <div class="mt-3 flex items-center justify-between pt-2 border-t border-gray-50 text-[11px]">
+                    <span class="text-gray-400 font-medium">Customer Support &amp; NOC</span>
+                    <a href="/tickets" class="font-bold text-rose-600 hover:text-rose-700 flex items-center gap-0.5 transition-colors">
+                        Kelola Tiket →
+                    </a>
+                </div>
+            </div>
+
+            <!-- 4. Infrastruktur ODP & FTTH -->
+            <div v-can="'dashboard_card_infra'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <div class="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center">
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                            </div>
+                            <p class="text-sm font-medium text-gray-500">Infrastruktur ODP</p>
+                        </div>
+                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ infraStats?.odp_total || 0 }}</p>
+                        <p class="text-xs text-gray-500 mt-1">
+                            {{ infraStats?.odp_active || 0 }} ODP Tersedia · {{ infraStats?.ont_total || 0 }} ONT Aktif
+                        </p>
+                    </div>
+                    <span class="inline-flex items-center text-xs font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-1 rounded-lg">
+                        {{ infraStats?.olt_total || 0 }} OLT Terhubung
+                    </span>
+                </div>
+                <div class="mt-3 flex items-center justify-between pt-2 border-t border-gray-50 text-[11px]">
+                    <span class="text-gray-400 font-medium">Topologi FTTH</span>
+                    <a href="/network-capacity" class="font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-0.5 transition-colors">
+                        Kapasitas Port →
                     </a>
                 </div>
             </div>
