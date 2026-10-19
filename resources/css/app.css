@@ -222,6 +222,27 @@ h1, h2, h3, h4, h5, h6 {
     @apply bg-rose-600 text-white font-bold shadow-sm;
 }
 
+/* ── Sidebar Blue / Biru Muda (Pelanggan & Layanan Block) ───── */
+.sidebar-link-blue {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
+           bg-sky-50/90 text-sky-950 border border-sky-200/80 shadow-sm
+           transition-all duration-200 hover:bg-sky-100 hover:text-sky-950 hover:border-sky-300;
+}
+
+.sidebar-link-blue.active {
+    @apply bg-gradient-to-r from-sky-600 to-blue-600 text-white font-bold
+           border-l-[4px] border-l-blue-900 rounded-l-none pl-[12px] shadow-sm;
+}
+
+.sidebar-sub-blue {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-sky-950
+           transition-all duration-150 hover:bg-sky-200/80 hover:text-sky-950 pl-8;
+}
+
+.sidebar-sub-blue.active {
+    @apply bg-sky-600 text-white font-bold shadow-sm;
+}
+
 /* ── Animations ─────────────────────────────────────────────── */
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(10px); }
