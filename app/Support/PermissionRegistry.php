@@ -32,6 +32,7 @@ class PermissionRegistry
                     ['name' => 'dashboard_view_stats', 'type' => 'card', 'label' => 'Lihat Ringkasan Statistik Global'],
                     ['name' => 'dashboard_view_charts', 'type' => 'card', 'label' => 'Lihat Grafik Pendapatan & Pertumbuhan'],
                     ['name' => 'dashboard_filter_period', 'type' => 'filter', 'label' => 'Filter Rentang Periode & Cabang'],
+                    ['name' => 'dashboard_filter_area', 'type' => 'filter', 'label' => 'Filter Dropdown Wilayah / Area Operasional'],
                     ['name' => 'dashboard_btn_refresh', 'type' => 'button', 'label' => 'Tombol Sinkron / Refresh Data'],
                     ['name' => 'dashboard_btn_quick_action', 'type' => 'button', 'label' => 'Tombol Pintasan Cepat (Booking, Tiket, Kas)'],
                 ],
@@ -872,7 +873,7 @@ class PermissionRegistry
         return [
             'admin' => self::allNames(),
             'noc' => [
-                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_btn_refresh',
+                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_filter_area', 'dashboard_btn_refresh',
                 'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_network_topology', 'menu_network_data', 'menu_network_data_terminated', 'menu_ftth', 'ftth_manage',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_all',
@@ -907,7 +908,7 @@ class PermissionRegistry
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'teknisi' => [
-                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_btn_refresh',
+                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_filter_area', 'dashboard_btn_refresh',
                 'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_ftth', 'ftth_manage',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_view_area',
@@ -934,7 +935,7 @@ class PermissionRegistry
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'maintenance' => [
-                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_btn_refresh',
+                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_filter_area', 'dashboard_btn_refresh',
                 'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_network_topology', 'menu_network_data', 'menu_network_data_terminated', 'menu_ftth', 'ftth_manage',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_area',
@@ -960,7 +961,7 @@ class PermissionRegistry
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'kepala teknisi' => [
-                'menu_dashboard', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_card_stats', 'dashboard_btn_refresh',
+                'menu_dashboard', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_card_stats', 'dashboard_filter_area', 'dashboard_btn_refresh',
                 'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_network_topology', 'menu_network_data', 'menu_network_data_terminated', 'menu_ftth', 'ftth_manage',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_all',
@@ -987,7 +988,7 @@ class PermissionRegistry
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'dispatcher' => [
-                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_btn_refresh',
+                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_filter_area', 'dashboard_btn_refresh',
                 'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_view_all',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_request_survey', 'customers_booking_whatsapp', 'customers_booking_view_all',
@@ -1001,7 +1002,7 @@ class PermissionRegistry
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_all',
             ],
             'cs' => [
-                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_revenue', 'dashboard_btn_quick_action', 'dashboard_btn_refresh',
+                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_revenue', 'dashboard_filter_area', 'dashboard_btn_quick_action', 'dashboard_btn_refresh',
                 'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_filter', 'network_capacity_view_all',
                 'menu_customers_all', 'customers_card_summary', 'customers_card_billing_status', 'customers_all_create', 'customers_all_edit', 'customers_all_export', 'customers_btn_whatsapp', 'customers_all_view_all',
@@ -1030,7 +1031,7 @@ class PermissionRegistry
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_all',
             ],
             'admin cs' => [
-                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_revenue', 'dashboard_btn_quick_action', 'dashboard_btn_refresh',
+                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_revenue', 'dashboard_filter_area', 'dashboard_btn_quick_action', 'dashboard_btn_refresh',
                 'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_filter', 'network_capacity_view_all',
                 'menu_customers_all', 'customers_card_summary', 'customers_card_billing_status', 'customers_all_create', 'customers_all_edit', 'customers_all_export', 'customers_btn_whatsapp', 'customers_all_view_all',
@@ -1060,7 +1061,7 @@ class PermissionRegistry
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_all',
             ],
             'sales' => [
-                'menu_dashboard', 'dashboard_card_stats',
+                'menu_dashboard', 'dashboard_card_stats', 'dashboard_filter_area',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_filter', 'network_capacity_view_area',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_edit', 'customers_booking_whatsapp', 'customers_booking_view_area', 'customers_booking_view_own',
                 'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_view_area',
@@ -1076,7 +1077,7 @@ class PermissionRegistry
                 'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
             ],
             'finance' => [
-                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_revenue', 'dashboard_btn_refresh',
+                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_revenue', 'dashboard_filter_area', 'dashboard_btn_refresh',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_create', 'customers_booking_view_all',
                 'menu_invoices', 'invoices_card_summary', 'invoices_card_revenue', 'invoices_tab_all', 'invoices_tab_unpaid', 'invoices_tab_paid', 'invoices_tab_isolated', 'invoices_filter_search', 'invoices_filter_status', 'invoices_filter_period', 'invoices_filter_area', 'invoices_create', 'invoices_edit', 'invoices_delete', 'invoices_pay', 'invoices_promise', 'invoices_print', 'invoices_btn_whatsapp', 'invoices_btn_export', 'invoices_rollback', 'invoices_view_all',
                 'menu_customer_billing', 'customer_billing_collect',
@@ -1103,7 +1104,7 @@ class PermissionRegistry
                 'menu_vouchers_monitoring', 'voucher_monitoring_card_stats', 'voucher_monitoring_tab_online', 'voucher_monitoring_tab_offline', 'voucher_monitoring_filter',
             ],
             'manager' => [
-                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_revenue', 'dashboard_card_infra', 'dashboard_view_stats', 'dashboard_view_charts', 'dashboard_btn_refresh',
+                'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_revenue', 'dashboard_card_infra', 'dashboard_view_stats', 'dashboard_view_charts', 'dashboard_filter_area', 'dashboard_btn_refresh',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_view_all',
                 'menu_customers_all', 'customers_card_summary', 'customers_card_billing_status', 'customers_all_view_all', 'customers_all_export',
                 'menu_customers_active', 'customers_active_view_all',
@@ -1130,7 +1131,7 @@ class PermissionRegistry
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'hrd' => [
-                'menu_dashboard', 'dashboard_card_stats', 'dashboard_btn_refresh',
+                'menu_dashboard', 'dashboard_card_stats', 'dashboard_filter_area', 'dashboard_btn_refresh',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_create', 'customers_booking_view_all',
                 'menu_hr_employees', 'hr_card_stats', 'hr_filter_department', 'hr_filter_area', 'hr_filter_status',
                 'hr_employees_create', 'hr_employees_view', 'hr_employees_update', 'hr_employees_edit', 'hr_employees_delete', 'hr_employees_delete_all', 'hr_employees_resign', 'hr_employees_reactivate',

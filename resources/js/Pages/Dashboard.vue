@@ -1,8 +1,8 @@
 <template>
     <AppLayout title="Dashboard" subtitle="Ringkasan statistik jaringan & pelanggan ISP">
-        <!-- ═══ Area / Wilayah Smart Filter Bar ═══ -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 transition-all">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <!-- ═══ Area / Wilayah Smart Filter Bar (Dropdown Selector) ═══ -->
+        <div v-can="'dashboard_filter_area'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 transition-all">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <!-- Left: Title & Active Context Info -->
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-500/20 text-lg shrink-0">
@@ -29,31 +29,102 @@
                             </span>
                         </div>
                         <p class="text-xs text-gray-500 mt-0.5 truncate flex items-center gap-1.5">
-                            <span>Menyaring otomatis seluruh statistik pelanggan, tagihan, tiket & infrastruktur.</span>
+                            <span>Menyaring otomatis statistik pelanggan, tagihan, tiket & infrastruktur.</span>
                             <span v-if="selectedAreaId !== 'all'" class="text-blue-600 font-bold">• {{ customerStats?.total_active || 0 }} Pelanggan Aktif</span>
                         </p>
                     </div>
                 </div>
 
-                <!-- Right: Quick Filter Buttons & Dropdown -->
-                <div class="flex items-center gap-2 flex-wrap shrink-0">
-                    <!-- Dropdown Area -->
-                    <div class="relative min-w-[190px]">
-                        <select
-                            :value="selectedAreaId"
-                            @change="changeArea($event.target.value)"
+                <!-- Right: Sleek Dropdown Selector & Reset -->
+                <div class="flex items-center gap-2.5 shrink-0 relative">
+                    <!-- Dropdown Container -->
+                    <div class="relative" ref="dropdownRef">
+                        <button
+                            @click="isDropdownOpen = !isDropdownOpen"
+                            type="button"
                             :disabled="isFiltering"
-                            class="w-full text-xs font-bold rounded-xl border-gray-200 bg-gray-50/90 hover:bg-white focus:bg-white py-2 pl-3 pr-8 text-gray-800 focus:border-blue-500 focus:ring-blue-500 transition-colors shadow-2xs cursor-pointer"
+                            class="inline-flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl border text-xs font-bold transition-all shadow-2xs select-none min-w-[200px]"
+                            :class="[
+                                selectedAreaId !== 'all'
+                                    ? 'bg-blue-50/90 border-blue-300 text-blue-800 hover:bg-blue-100'
+                                    : 'bg-gray-50 hover:bg-white border-gray-200 text-gray-700 hover:border-gray-300'
+                            ]"
                         >
-                            <option value="all">🌐 Semua Wilayah (Nasional)</option>
-                            <option
-                                v-for="area in availableAreas"
-                                :key="area.id"
-                                :value="area.id"
-                            >
-                                📍 {{ area.name }}
-                            </option>
-                        </select>
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span v-if="selectedAreaId === 'all'" class="text-sm">🌐</span>
+                                <span v-else class="text-sm">📍</span>
+                                <span class="truncate">{{ currentAreaName }}</span>
+                            </div>
+                            <svg class="w-4 h-4 text-gray-500 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': isDropdownOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        <!-- Floating Popover Menu -->
+                        <div
+                            v-if="isDropdownOpen"
+                            class="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-150"
+                        >
+                            <!-- Search box in dropdown if more than 4 areas -->
+                            <div v-if="availableAreas && availableAreas.length > 4" class="px-3 pb-2 pt-1 border-b border-gray-100">
+                                <div class="relative">
+                                    <input
+                                        v-model="searchQuery"
+                                        type="text"
+                                        placeholder="Cari nama wilayah..."
+                                        class="w-full text-xs rounded-lg border-gray-200 bg-gray-50 py-1.5 pl-7 pr-3 text-gray-800 focus:bg-white focus:border-blue-500 focus:ring-blue-500"
+                                        @click.stop
+                                    />
+                                    <span class="absolute left-2.5 top-2 text-gray-400 text-xs">🔍</span>
+                                    <button
+                                        v-if="searchQuery"
+                                        @click.stop="searchQuery = ''"
+                                        class="absolute right-2 top-1.5 text-gray-400 hover:text-gray-600 text-xs"
+                                    >✕</button>
+                                </div>
+                            </div>
+
+                            <div class="max-h-64 overflow-y-auto px-1 py-1 space-y-0.5">
+                                <!-- Option: Semua Wilayah -->
+                                <button
+                                    @click="selectAndClose('all')"
+                                    type="button"
+                                    class="w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition-colors"
+                                    :class="selectedAreaId === 'all' ? 'bg-blue-50 font-bold text-blue-700' : 'text-gray-700 hover:bg-gray-50'"
+                                >
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <span class="text-sm">🌐</span>
+                                        <span class="truncate font-semibold">Semua Wilayah (Nasional)</span>
+                                    </div>
+                                    <span v-if="selectedAreaId === 'all'" class="text-blue-600 font-bold text-sm">✓</span>
+                                </button>
+
+                                <div class="my-1 border-t border-gray-100"></div>
+
+                                <!-- Filtered Area Options -->
+                                <button
+                                    v-for="area in filteredAreas"
+                                    :key="area.id"
+                                    @click="selectAndClose(area.id)"
+                                    type="button"
+                                    class="w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition-colors"
+                                    :class="selectedAreaId == area.id ? 'bg-blue-50 font-bold text-blue-700' : 'text-gray-700 hover:bg-gray-50'"
+                                >
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <span class="text-sm">📍</span>
+                                        <div class="min-w-0">
+                                            <p class="truncate font-semibold">{{ area.name }}</p>
+                                            <p v-if="area.address" class="text-[10px] text-gray-400 truncate">{{ area.address }}</p>
+                                        </div>
+                                    </div>
+                                    <span v-if="selectedAreaId == area.id" class="text-blue-600 font-bold text-sm shrink-0 ml-2">✓</span>
+                                </button>
+
+                                <div v-if="filteredAreas.length === 0" class="text-center py-4 text-xs text-gray-400">
+                                    Wilayah tidak ditemukan
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Reset to All Button -->
@@ -61,46 +132,13 @@
                         v-if="selectedAreaId !== 'all'"
                         @click="changeArea('all')"
                         type="button"
-                        class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center gap-1 active:scale-95"
+                        class="px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center gap-1 active:scale-95"
                         title="Tampilkan Seluruh Wilayah"
                     >
                         <span>✕</span>
                         <span>Reset</span>
                     </button>
                 </div>
-            </div>
-
-            <!-- Quick Pill Buttons for Instant 1-Click Switch -->
-            <div v-if="availableAreas && availableAreas.length > 0" class="mt-3 pt-3 border-t border-gray-100 flex items-center gap-1.5 overflow-x-auto pb-1">
-                <span class="text-[11px] font-bold text-gray-400 shrink-0 mr-1 flex items-center gap-1">
-                    <span>Akses Cepat:</span>
-                </span>
-                <button
-                    @click="changeArea('all')"
-                    :class="[
-                        'px-3 py-1 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1',
-                        selectedAreaId === 'all'
-                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                    ]"
-                >
-                    <span>🌐</span>
-                    <span>Semua Wilayah</span>
-                </button>
-                <button
-                    v-for="area in availableAreas"
-                    :key="area.id"
-                    @click="changeArea(area.id)"
-                    :class="[
-                        'px-3 py-1 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1',
-                        selectedAreaId == area.id
-                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                    ]"
-                >
-                    <span>📍</span>
-                    <span>{{ area.name }}</span>
-                </button>
             </div>
         </div>
 
@@ -497,7 +535,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DashboardAttendanceWidget from '@/Components/Attendance/DashboardAttendanceWidget.vue';
@@ -526,16 +564,40 @@ const props = defineProps({
     availableAreas: { type: Array, default: () => [] },
     selectedAreaDetail: { type: Object, default: null },
     canViewAllAreas: { type: Boolean, default: true },
+    canFilterArea: { type: Boolean, default: true },
 });
 
 // ── Area Filter State & Action ────────────────────
 const isFiltering = ref(false);
+const isDropdownOpen = ref(false);
+const dropdownRef = ref(null);
+const searchQuery = ref('');
 
 const currentAreaName = computed(() => {
-    if (props.selectedAreaId === 'all') return 'Semua Wilayah';
+    if (props.selectedAreaId === 'all') return 'Semua Wilayah (Nasional)';
     const found = props.availableAreas?.find((a) => a.id == props.selectedAreaId);
     return found ? found.name : `Wilayah #${props.selectedAreaId}`;
 });
+
+const filteredAreas = computed(() => {
+    if (!searchQuery.value) return props.availableAreas || [];
+    const q = searchQuery.value.toLowerCase().trim();
+    return (props.availableAreas || []).filter(
+        (a) => a.name?.toLowerCase().includes(q) || (a.address && a.address.toLowerCase().includes(q))
+    );
+});
+
+const selectAndClose = (areaId) => {
+    isDropdownOpen.value = false;
+    searchQuery.value = '';
+    changeArea(areaId);
+};
+
+const handleClickOutside = (e) => {
+    if (dropdownRef.value && !dropdownRef.value.contains(e.target)) {
+        isDropdownOpen.value = false;
+    }
+};
 
 const changeArea = (newAreaId) => {
     if (props.selectedAreaId == newAreaId && !isFiltering.value) return;
@@ -558,6 +620,7 @@ const changeArea = (newAreaId) => {
 };
 
 onMounted(() => {
+    document.addEventListener('click', handleClickOutside);
     try {
         const saved = localStorage.getItem('dashboard_selected_area');
         const urlParams = new URLSearchParams(window.location.search);
@@ -568,6 +631,10 @@ onMounted(() => {
             }
         }
     } catch (e) {}
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside);
 });
 
 // ── Pipeline Tab ──────────────────────────────────

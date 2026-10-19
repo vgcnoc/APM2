@@ -75,6 +75,12 @@ class DashboardController extends Controller
             $user->can('customers_all_view_all')
         );
 
+        $canFilterArea = $user && (
+            $canViewAllAreas ||
+            $user->can('dashboard_filter_area') ||
+            $user->can('dashboard_filter_period')
+        );
+
         $userAccessibleAreaIds = $user ? $user->getAccessibleAreaIds() : [];
 
         // Daftar Wilayah yang Diizinkan untuk Dipilih
@@ -86,7 +92,7 @@ class DashboardController extends Controller
 
         // Penentuan Wilayah Terpilih
         $selectedAreaId = 'all';
-        if ($request->filled('area_id')) {
+        if ($request->filled('area_id') && $canFilterArea) {
             $reqArea = $request->input('area_id');
             if ($reqArea === 'all') {
                 $selectedAreaId = 'all';
@@ -99,8 +105,8 @@ class DashboardController extends Controller
                 }
             }
         } else {
-            // Otomatis & Cerdas: Jika user hanya memiliki 1 area yang ditugaskan, default langsung ke areanya
-            if (!$canViewAllAreas && count($userAccessibleAreaIds) === 1) {
+            // Otomatis & Cerdas: Jika user hanya memiliki 1 area yang ditugaskan atau tidak memiliki izin filter, default langsung ke areanya
+            if ((!$canViewAllAreas || !$canFilterArea) && count($userAccessibleAreaIds) === 1) {
                 $selectedAreaId = $userAccessibleAreaIds[0];
             } else {
                 $selectedAreaId = 'all';
@@ -374,6 +380,7 @@ class DashboardController extends Controller
             'availableAreas'       => $availableAreas,
             'selectedAreaDetail'   => $selectedAreaDetail,
             'canViewAllAreas'      => $canViewAllAreas,
+            'canFilterArea'        => $canFilterArea,
         ]);
     }
 
