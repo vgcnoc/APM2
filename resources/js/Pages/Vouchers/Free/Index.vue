@@ -256,15 +256,112 @@
         <!-- SUB-TAB 1: DAFTAR VOUCHER GRATIS (HASIL GENERATE) -->
         <!-- ========================================================================================= -->
         <div v-if="currentTab === 'vouchers'" class="space-y-4">
-            <!-- FILTER BAR -->
+            <!-- FILTER BAR & SEGMENTED PILLS -->
             <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
-                <div class="flex flex-wrap items-center gap-2 flex-1">
+                <!-- Segmented Filter Pills for Vouchers -->
+                <div class="flex items-center gap-1.5 p-1 bg-gray-100 rounded-2xl border border-gray-200 shadow-2xs overflow-x-auto shrink-0">
+                    <!-- Tab: Semua -->
+                    <button 
+                        type="button" 
+                        @click="setVoucherStatus('')"
+                        :class="statusFilter === '' 
+                            ? 'bg-white text-emerald-900 shadow-xs font-bold border border-gray-200' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-white/60 font-semibold border border-transparent'"
+                        class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+                    >
+                        <span>Semua</span>
+                        <span 
+                            :class="statusFilter === '' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-700'"
+                            class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
+                        >
+                            {{ Number(stats?.total || 0).toLocaleString('id-ID') }}
+                        </span>
+                    </button>
+
+                    <!-- Tab: Tersedia -->
+                    <button 
+                        type="button" 
+                        @click="setVoucherStatus('available')"
+                        :class="statusFilter === 'available' 
+                            ? 'bg-blue-600 text-white shadow-xs font-bold border border-blue-700' 
+                            : 'text-blue-800 hover:bg-blue-100/70 font-semibold border border-transparent'"
+                        class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+                    >
+                        <span>Tersedia</span>
+                        <span 
+                            :class="statusFilter === 'available' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800'"
+                            class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
+                        >
+                            {{ Number(stats?.available || 0).toLocaleString('id-ID') }}
+                        </span>
+                    </button>
+
+                    <!-- Tab: 🟢 Online -->
+                    <button 
+                        v-if="can('voucher_free_filter_connection')"
+                        type="button" 
+                        @click="setVoucherStatus('online')"
+                        :class="statusFilter === 'online' 
+                            ? 'bg-emerald-600 text-white shadow-xs font-bold border border-emerald-700' 
+                            : 'text-emerald-800 hover:bg-emerald-100/70 font-semibold border border-transparent'"
+                        class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+                    >
+                        <span class="w-2 h-2 rounded-full" :class="statusFilter === 'online' ? 'bg-white' : 'bg-emerald-500 animate-pulse'"></span>
+                        <span>🟢 Sesi Online</span>
+                        <span 
+                            :class="statusFilter === 'online' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'"
+                            class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
+                        >
+                            {{ Number(stats?.online || 0) }}
+                        </span>
+                    </button>
+
+                    <!-- Tab: 🔴 Offline -->
+                    <button 
+                        v-if="can('voucher_free_filter_connection')"
+                        type="button" 
+                        @click="setVoucherStatus('offline')"
+                        :class="statusFilter === 'offline' 
+                            ? 'bg-rose-600 text-white shadow-xs font-bold border border-rose-700' 
+                            : 'text-rose-800 hover:bg-rose-100/70 font-semibold border border-transparent'"
+                        class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+                    >
+                        <span class="w-2 h-2 rounded-full" :class="statusFilter === 'offline' ? 'bg-white' : 'bg-rose-500'"></span>
+                        <span>🔴 Sesi Offline</span>
+                        <span 
+                            :class="statusFilter === 'offline' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-800'"
+                            class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
+                        >
+                            {{ Number(stats?.offline || 0) }}
+                        </span>
+                    </button>
+
+                    <!-- Tab: Expired -->
+                    <button 
+                        type="button" 
+                        @click="setVoucherStatus('expired')"
+                        :class="statusFilter === 'expired' 
+                            ? 'bg-gray-700 text-white shadow-xs font-bold border border-gray-800' 
+                            : 'text-gray-700 hover:bg-gray-200/70 font-semibold border border-transparent'"
+                        class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+                    >
+                        <span>Expired</span>
+                        <span 
+                            :class="statusFilter === 'expired' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-800'"
+                            class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
+                        >
+                            {{ Number(stats?.expired || 0).toLocaleString('id-ID') }}
+                        </span>
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 flex-1 justify-end">
                     <!-- Search Input -->
-                    <div class="relative flex-1 min-w-[220px]">
+                    <div class="relative flex-1 min-w-[200px] max-w-sm">
                         <input 
                             v-model="search" 
                             type="text" 
-                            placeholder="Cari kode / username / nama pelanggan..." 
+                            placeholder="Cari kode / username / nama..." 
                             class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm shadow-2xs"
                             @keyup.enter="doFilterVouchers"
                         >
@@ -273,18 +370,8 @@
                         </svg>
                     </div>
 
-                    <!-- Status Filter -->
-                    <select v-model="statusFilter" @change="doFilterVouchers" class="bg-white border-gray-300 rounded-xl text-sm shadow-2xs focus:ring-emerald-500 focus:border-emerald-500">
-                        <option value="">Semua Status</option>
-                        <option value="available">Tersedia</option>
-                        <option value="used">Digunakan</option>
-                        <option v-if="can('voucher_free_filter_connection')" value="online">🟢 Sesi Online</option>
-                        <option v-if="can('voucher_free_filter_connection')" value="offline">🔴 Sesi Offline</option>
-                        <option value="expired">Expired</option>
-                    </select>
-
                     <!-- Profile Filter -->
-                    <select v-model="profileFilter" @change="doFilterVouchers" class="bg-white border-gray-300 rounded-xl text-sm shadow-2xs focus:ring-emerald-500 focus:border-emerald-500 max-w-[220px]">
+                    <select v-model="profileFilter" @change="doFilterVouchers" class="bg-white border-gray-300 rounded-xl text-sm shadow-2xs focus:ring-emerald-500 focus:border-emerald-500 max-w-[200px]">
                         <option value="">Semua Profil</option>
                         <option v-for="prof in (freeProfiles?.length ? freeProfiles : allProfiles)" :key="prof.id" :value="prof.id">
                             {{ prof.name }} ({{ prof.duration || 'Unlimited' }})
@@ -295,7 +382,7 @@
                     <button 
                         v-if="search || statusFilter || profileFilter" 
                         @click="resetVoucherFilter" 
-                        class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                        class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs shrink-0"
                         title="Reset Filter"
                     >
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -585,14 +672,74 @@
                 </Link>
             </div>
 
-            <!-- SEARCH & CONNECTION FILTER FOR CUSTOMERS -->
-            <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
-                <div class="flex flex-wrap items-center gap-2 flex-1">
-                    <div class="relative flex-1 min-w-[240px]">
+            <!-- SEGMENTED TABS (SEMUA / ONLINE / OFFLINE) & SEARCH FOR CUSTOMERS -->
+            <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
+                <!-- Segmented Filter Pills -->
+                <div class="flex items-center gap-1.5 p-1 bg-gray-100 rounded-2xl border border-gray-200 shadow-2xs overflow-x-auto shrink-0">
+                    <!-- Tab: Semua -->
+                    <button 
+                        type="button" 
+                        @click="setCustomerConnection('')"
+                        :class="connectionStatusFilter === '' 
+                            ? 'bg-white text-indigo-900 shadow-xs font-bold border border-gray-200' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-white/60 font-semibold border border-transparent'"
+                        class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+                    >
+                        <span>Semua Pelanggan ONT</span>
+                        <span 
+                            :class="connectionStatusFilter === '' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-200 text-gray-700'"
+                            class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
+                        >
+                            {{ Number(stats?.customer_count || 0).toLocaleString('id-ID') }}
+                        </span>
+                    </button>
+
+                    <!-- Tab: Online -->
+                    <button 
+                        type="button" 
+                        @click="setCustomerConnection('online')"
+                        :class="connectionStatusFilter === 'online' 
+                            ? 'bg-emerald-600 text-white shadow-xs font-bold border border-emerald-700' 
+                            : 'text-emerald-800 hover:bg-emerald-100/70 font-semibold border border-transparent'"
+                        class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+                    >
+                        <span class="w-2 h-2 rounded-full" :class="connectionStatusFilter === 'online' ? 'bg-white' : 'bg-emerald-500 animate-pulse'"></span>
+                        <span>🟢 Sesi Online</span>
+                        <span 
+                            :class="connectionStatusFilter === 'online' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'"
+                            class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
+                        >
+                            {{ Number(stats?.ont_online || 0) }}
+                        </span>
+                    </button>
+
+                    <!-- Tab: Offline -->
+                    <button 
+                        type="button" 
+                        @click="setCustomerConnection('offline')"
+                        :class="connectionStatusFilter === 'offline' 
+                            ? 'bg-rose-600 text-white shadow-xs font-bold border border-rose-700' 
+                            : 'text-rose-800 hover:bg-rose-100/70 font-semibold border border-transparent'"
+                        class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+                    >
+                        <span class="w-2 h-2 rounded-full" :class="connectionStatusFilter === 'offline' ? 'bg-white' : 'bg-rose-500'"></span>
+                        <span>🔴 Sesi Offline</span>
+                        <span 
+                            :class="connectionStatusFilter === 'offline' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-800'"
+                            class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
+                        >
+                            {{ Number(stats?.ont_offline || 0) }}
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Search Input & Reset -->
+                <div class="flex items-center gap-2 flex-1 max-w-md">
+                    <div class="relative flex-1">
                         <input 
                             v-model="searchCustomer" 
                             type="text" 
-                            placeholder="Cari nama pelanggan, ID pelanggan, atau username hotspot..." 
+                            placeholder="Cari nama pelanggan, ID, atau hotspot user..." 
                             class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm shadow-2xs"
                             @keyup.enter="doFilterCustomers"
                         >
@@ -601,22 +748,10 @@
                         </svg>
                     </div>
 
-                    <!-- Connection Filter -->
-                    <select 
-                        v-if="can('voucher_free_filter_connection')" 
-                        v-model="connectionStatusFilter" 
-                        @change="doFilterCustomers" 
-                        class="bg-white border-gray-300 rounded-xl text-sm shadow-2xs focus:ring-indigo-500 focus:border-indigo-500 font-medium"
-                    >
-                        <option value="">Semua Sesi Koneksi</option>
-                        <option value="online">🟢 Sesi Online</option>
-                        <option value="offline">🔴 Sesi Offline</option>
-                    </select>
-
                     <button 
                         v-if="searchCustomer || connectionStatusFilter" 
                         @click="resetCustomerFilter" 
-                        class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                        class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs whitespace-nowrap shrink-0"
                         title="Reset Filter Pelanggan"
                     >
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -1146,6 +1281,11 @@ const filterByStatus = (status) => {
     doFilterVouchers();
 };
 
+const setVoucherStatus = (status) => {
+    statusFilter.value = status;
+    doFilterVouchers();
+};
+
 const resetVoucherFilter = () => {
     search.value = '';
     statusFilter.value = '';
@@ -1175,6 +1315,11 @@ const filterCustomerByConnection = (status) => {
     } else {
         connectionStatusFilter.value = status;
     }
+    doFilterCustomers();
+};
+
+const setCustomerConnection = (status) => {
+    connectionStatusFilter.value = status;
     doFilterCustomers();
 };
 
