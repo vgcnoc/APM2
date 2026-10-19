@@ -322,11 +322,16 @@
         </div>
 
         <!-- Modal Laporan Survey -->
-        <div v-if="showReportModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div v-if="showReportModal" @click.self="closeReportModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-hidden animate-fade-in-up">
                 <div class="p-5 border-b border-gray-200 flex items-center justify-between">
-                    <h3 class="text-lg font-bold text-gray-900">Buat Laporan Survey</h3>
-                    <button @click="showReportModal = false" class="text-gray-500 hover:text-gray-900">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">{{ isEditingSurvey ? 'Edit Laporan Survey' : 'Buat Laporan Survey' }}</h3>
+                        <p v-if="activeCustomer" class="text-xs text-gray-500 mt-0.5">
+                            Pelanggan: <span class="font-semibold text-gray-800">{{ activeCustomer.name }}</span> <span v-if="activeCustomer.address">({{ activeCustomer.address }})</span>
+                        </p>
+                    </div>
+                    <button type="button" @click="closeReportModal" class="text-gray-500 hover:text-gray-900">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -437,7 +442,7 @@
                         </div>
                     </div>
                     <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
-                        <button type="button" @click="showReportModal = false" class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">Batal</button>
+                        <button type="button" @click="closeReportModal" class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm">Batal</button>
                         <button type="submit" :disabled="reportForm.processing" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                             {{ reportForm.processing ? 'Menyimpan...' : 'Simpan Laporan' }}
                         </button>
@@ -693,14 +698,22 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { Link, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import StatCard from '@/Components/StatCard.vue';
 
-const props = defineProps({ customers: Object, availableOdps: Array, technicians: Array, areas: Array, stats: Object, filters: Object });
+const props = defineProps({ 
+    customers: Object, 
+    availableOdps: Array, 
+    technicians: Array, 
+    areas: Array, 
+    stats: Object, 
+    filters: Object,
+    openCustomer: Object,
+});
 
 const page = usePage();
 const hasPermission = (permission) => {
@@ -1006,25 +1019,41 @@ function findNearestOdp() {
     );
 }
 
+function closeReportModal() {
+    showReportModal.value = false;
+    try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('open_report')) {
+            url.searchParams.delete('open_report');
+            window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+        }
+    } catch (e) {
+        // ignore
+    }
+}
+
 function openReportModal(customer) {
+    if (!customer) return;
     isEditingSurvey.value = false;
     activeCustomer.value = customer;
     reportForm.reset();
     
     // Filter ODPs based on customer's area
     const customerAreaId = customer.area_id;
-    const filteredOdps = props.availableOdps.filter(odp => {
-        if (!customerAreaId) return false; // Prevent choosing ODP if customer has no area
+    const filteredOdps = (props.availableOdps || []).filter(odp => {
+        if (!customerAreaId) return true; // Allow all ODPs if customer has no area assigned yet
         return Number(odp.area_id) === Number(customerAreaId);
     });
         
-    sortedOdps.value = [...filteredOdps];
+    sortedOdps.value = filteredOdps.length > 0 ? [...filteredOdps] : [...(props.availableOdps || [])];
     nearestOdpMsg.value = '';
     
     // Auto-select surveyor if already scheduled
     const schedule = customer.technician_schedules?.find(s => s.type === 'survey' && s.status === 'scheduled');
     if (schedule) {
         reportForm.surveyor_id = schedule.technician_id;
+    } else if (page.props.auth?.user?.id) {
+        reportForm.surveyor_id = page.props.auth.user.id;
     }
     
     // Default documentation photos
@@ -1039,17 +1068,18 @@ function openReportModal(customer) {
 }
 
 function openEditReportModal(customer) {
+    if (!customer) return;
     isEditingSurvey.value = true;
     activeCustomer.value = customer;
     reportForm.reset();
     
     // Filter ODPs
     const customerAreaId = customer.area_id;
-    const filteredOdps = props.availableOdps.filter(odp => {
-        if (!customerAreaId) return false;
+    const filteredOdps = (props.availableOdps || []).filter(odp => {
+        if (!customerAreaId) return true;
         return Number(odp.area_id) === Number(customerAreaId);
     });
-    sortedOdps.value = [...filteredOdps];
+    sortedOdps.value = filteredOdps.length > 0 ? [...filteredOdps] : [...(props.availableOdps || [])];
     nearestOdpMsg.value = '';
 
     const survey = customer.surveys && customer.surveys.length > 0 ? customer.surveys[0] : null;
@@ -1076,10 +1106,8 @@ function openEditReportModal(customer) {
                 { label: 'Foto ODP', file: null }
             ];
         }
-        
-        if (reportForm.odp_id) {
-            // port list will be populated by computed property
-        }
+    } else if (page.props.auth?.user?.id) {
+        reportForm.surveyor_id = page.props.auth.user.id;
     }
     showReportModal.value = true;
 }
@@ -1114,10 +1142,35 @@ function submitReport() {
         preserveScroll: true,
         forceFormData: true,
         onSuccess: () => {
-            showReportModal.value = false;
+            closeReportModal();
         }
     });
 }
+
+function checkAutoOpenReport() {
+    const cust = props.openCustomer || (props.customers?.data?.find(c => c.id == (new URLSearchParams(window.location.search)).get('open_report')));
+    if (cust && hasPermission('customers_survey_report')) {
+        if (cust.surveys && cust.surveys.length > 0) {
+            openEditReportModal(cust);
+        } else {
+            openReportModal(cust);
+        }
+    }
+}
+
+onMounted(() => {
+    checkAutoOpenReport();
+});
+
+watch(() => props.openCustomer, (newCust) => {
+    if (newCust && hasPermission('customers_survey_report')) {
+        if (newCust.surveys && newCust.surveys.length > 0) {
+            openEditReportModal(newCust);
+        } else {
+            openReportModal(newCust);
+        }
+    }
+});
 
 // Ready Install Modal Logic
 const showInstallModal = ref(false);

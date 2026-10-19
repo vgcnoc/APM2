@@ -12,6 +12,17 @@ defineProps({
     ticketTasks: Array,
     attendanceData: { type: Object, default: () => ({}) },
 });
+
+const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch (e) {
+        return dateStr;
+    }
+};
 </script>
 
 <template>
@@ -63,7 +74,7 @@ defineProps({
                                 <p class="text-xs text-gray-500 mt-1 line-clamp-1">{{ task.address }}</p>
                             </div>
                             <div class="flex flex-col items-end gap-1">
-                                <span class="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">{{ task.schedule_date }}</span>
+                                <span class="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">{{ formatDate(task.schedule_date) }}</span>
                                 <Link :href="`/customers/${task.id}?source=instalasi`" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-white border border-indigo-200 px-3 py-1 rounded-md hover:bg-indigo-50 transition-colors">Buka</Link>
                             </div>
                         </li>
@@ -91,8 +102,8 @@ defineProps({
                                 <p class="text-xs text-gray-500 mt-1 line-clamp-1">{{ task.address }}</p>
                             </div>
                             <div class="flex flex-col items-end gap-1">
-                                <span class="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md">{{ task.schedule_date }}</span>
-                                <Link :href="`/customers/${task.id}?source=survey`" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-white border border-indigo-200 px-3 py-1 rounded-md hover:bg-indigo-50 transition-colors">Buka</Link>
+                                <span class="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md">{{ formatDate(task.schedule_date) }}</span>
+                                <Link :href="`/customers/survey?open_report=${task.id}`" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-white border border-indigo-200 px-3 py-1 rounded-md hover:bg-indigo-50 transition-colors">Buka</Link>
                             </div>
                         </li>
                     </ul>

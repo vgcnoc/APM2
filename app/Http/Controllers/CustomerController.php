@@ -780,13 +780,32 @@ class CustomerController extends Controller
         // Get all areas for dropdown
         $areas = \App\Models\Area::orderBy('name')->pluck('name')->toArray();
 
+        $openCustomer = null;
+        if ($request->filled('open_report')) {
+            $openCustomerQuery = Customer::with(['package', 'surveys.odp', 'surveys.surveyor', 'technicianSchedules.technician']);
+            if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_survey_view_all')) {
+                if (auth()->user()->hasRole('teknisi')) {
+                    $openCustomerQuery->where(function($sub) {
+                        $sub->whereHas('technicianSchedules', function($sq) {
+                            $sq->where('technician_id', auth()->id())->where('type', 'survey');
+                        })
+                        ->orWhereHas('surveys', function($sq) {
+                            $sq->where('surveyor_id', auth()->id());
+                        });
+                    });
+                }
+            }
+            $openCustomer = $openCustomerQuery->find($request->open_report);
+        }
+
         return Inertia::render('Customers/Survey', [
             'customers' => $customers,
             'availableOdps' => Odp::active()->with(['odc.olt', 'ports'])->get(),
             'technicians' => $technicians,
             'areas' => $areas,
             'stats' => $stats,
-            'filters' => $request->only(['search', 'tab', 'technician_id', 'date', 'area']),
+            'filters' => $request->only(['search', 'tab', 'technician_id', 'date', 'area', 'open_report']),
+            'openCustomer' => $openCustomer,
         ]);
     }
 

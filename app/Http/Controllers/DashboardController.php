@@ -417,7 +417,9 @@ class DashboardController extends Controller
                 'id' => $c->id,
                 'name' => $c->name,
                 'address' => $c->address,
-                'schedule_date' => $c->technicianSchedules->first()?->scheduled_date,
+                'schedule_date' => $c->technicianSchedules->first()?->scheduled_date 
+                    ? \Carbon\Carbon::parse($c->technicianSchedules->first()->scheduled_date)->format('Y-m-d') 
+                    : null,
             ]);
 
         // ── Daftar Tugas Instalasi ───────────────────────────
@@ -434,7 +436,9 @@ class DashboardController extends Controller
                 'id' => $c->id,
                 'name' => $c->name,
                 'address' => $c->address,
-                'schedule_date' => $c->technicianSchedules->first()?->scheduled_date,
+                'schedule_date' => $c->technicianSchedules->first()?->scheduled_date 
+                    ? \Carbon\Carbon::parse($c->technicianSchedules->first()->scheduled_date)->format('Y-m-d') 
+                    : null,
             ]);
 
         // ── Daftar Tiket Gangguan ────────────────────────────
