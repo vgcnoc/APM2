@@ -18,6 +18,19 @@ export default {
                 gray: {
                     950: '#0a0e1a',
                 },
+                brown: {
+                    50: '#fdf8f5',
+                    100: '#f5e9e2',
+                    200: '#e8d2c4',
+                    300: '#d4b29d',
+                    400: '#ba8d72',
+                    500: '#9e6b4e',
+                    600: '#7c4a2d',
+                    700: '#643820',
+                    800: '#4f2a17',
+                    900: '#3d1f10',
+                    950: '#291309',
+                },
             },
             animation: {
                 'fade-in-up': 'fadeInUp 0.4s ease-out forwards',

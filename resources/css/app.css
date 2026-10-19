@@ -306,6 +306,27 @@ h1, h2, h3, h4, h5, h6 {
     @apply bg-pink-600 text-white font-bold shadow-sm;
 }
 
+/* ── Sidebar Brown / Coklat (Logistik & Gudang Block) ────────── */
+.sidebar-link-brown {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
+           bg-brown-50/90 text-brown-950 border border-brown-200/80 shadow-sm
+           transition-all duration-200 hover:bg-brown-100 hover:text-brown-950 hover:border-brown-300;
+}
+
+.sidebar-link-brown.active {
+    @apply bg-gradient-to-r from-brown-600 to-brown-700 text-white font-bold
+           border-l-[4px] border-l-brown-900 rounded-l-none pl-[12px] shadow-sm;
+}
+
+.sidebar-sub-brown {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-brown-950
+           transition-all duration-150 hover:bg-brown-200/80 hover:text-brown-950 pl-8;
+}
+
+.sidebar-sub-brown.active {
+    @apply bg-brown-600 text-white font-bold shadow-sm;
+}
+
 /* ── Animations ─────────────────────────────────────────────── */
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(10px); }
