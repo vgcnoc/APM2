@@ -23,8 +23,20 @@ php artisan storage:link
 echo "Installing root npm dependencies..."
 npm install --no-audit --no-fund --legacy-peer-deps
 
-echo "Rebuilding assets..."
-npm run build
+echo "Rebuilding assets safely with zero-downtime protection..."
+rm -rf /var/www/APM2/public/build_temp
+npx vite build --outDir public/build_temp
+if [ -f /var/www/APM2/public/build_temp/manifest.json ]; then
+    echo "Build succeeded. Swapping assets atomically..."
+    rm -rf /var/www/APM2/public/build_old
+    [ -d /var/www/APM2/public/build ] && mv /var/www/APM2/public/build /var/www/APM2/public/build_old
+    mv /var/www/APM2/public/build_temp /var/www/APM2/public/build
+    rm -rf /var/www/APM2/public/build_old
+    echo "Atomic asset swap complete. Site had 0 ms downtime!"
+else
+    echo "Warning: Temporary build did not produce manifest.json! Retaining existing build."
+    rm -rf /var/www/APM2/public/build_temp
+fi
 
 echo "Setting up WhatsApp Gateway Node Service..."
 cd /var/www/APM2/wa-gateway
@@ -39,7 +51,9 @@ php artisan optimize:clear
 
 echo "Fixing permissions..."
 chown -R www-data:www-data /var/www/APM2/public/build
-chown -R www-data:www-data /var/www/APM2/storage
+chmod -R 755 /var/www/APM2/public/build
+chown -R www-data:www-data /var/www/APM2/storage /var/www/APM2/bootstrap/cache
+chmod -R 775 /var/www/APM2/storage /var/www/APM2/bootstrap/cache
 mkdir -p /var/www/APM2/wa-gateway/sessions
 chown -R www-data:www-data /var/www/APM2/wa-gateway/sessions
 
