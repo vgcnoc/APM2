@@ -1125,25 +1125,91 @@
 
                         <!-- Pilih Anggota Tim -->
                         <div>
-                            <label class="block font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                                <span>Pilih Anggota Tim Khusus:</span>
-                                <span class="text-slate-400">{{ kelolaForm.member_ids.length }} Dipilih</span>
-                            </label>
-                            <div class="max-h-48 overflow-y-auto rounded-xl border border-slate-200 p-2 space-y-1.5 bg-slate-50/50">
-                                <label
-                                    v-for="emp in allEmployees"
-                                    :key="emp.id"
-                                    class="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-white cursor-pointer transition-colors"
-                                >
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block font-bold text-slate-700">Pilih Anggota Tim Khusus:</label>
+                                <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                    {{ kelolaForm.member_ids.length }} Dipilih
+                                </span>
+                            </div>
+
+                            <!-- Search bar & Quick actions -->
+                            <div class="space-y-1.5 mb-2">
+                                <div class="relative">
                                     <input
-                                        type="checkbox"
-                                        :value="emp.id"
-                                        v-model="kelolaForm.member_ids"
-                                        class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                        type="text"
+                                        v-model="memberSearchQuery"
+                                        placeholder="Cari nama karyawan atau jabatan..."
+                                        class="w-full text-xs rounded-xl border-slate-200 pl-8 pr-7 py-1.5 focus:border-blue-500 focus:ring-blue-500 bg-white"
                                     />
-                                    <span class="font-bold text-slate-800">{{ emp.name }}</span>
-                                    <span class="text-[10px] text-slate-400">({{ emp.position || 'Staff' }})</span>
+                                    <span class="absolute left-2.5 top-1.5 text-slate-400 text-xs">🔍</span>
+                                    <button
+                                        v-if="memberSearchQuery"
+                                        type="button"
+                                        @click="memberSearchQuery = ''"
+                                        class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                                    >✕</button>
+                                </div>
+                                <div class="flex items-center justify-between text-[11px] text-slate-500 px-1">
+                                    <span>Menampilkan {{ filteredKelolaEmployees.length }} dari {{ (allEmployees || []).length }} karyawan</span>
+                                    <div class="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            @click="selectAllFiltered"
+                                            class="text-blue-600 hover:text-blue-700 font-bold hover:underline"
+                                        >
+                                            Pilih Semua
+                                        </button>
+                                        <span class="text-slate-300">|</span>
+                                        <button
+                                            type="button"
+                                            @click="deselectAllFiltered"
+                                            class="text-rose-600 hover:text-rose-700 font-bold hover:underline"
+                                        >
+                                            Batal Pilih
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- List Karyawan -->
+                            <div class="max-h-52 overflow-y-auto rounded-xl border border-slate-200 p-2 space-y-1.5 bg-slate-50/50">
+                                <label
+                                    v-for="emp in filteredKelolaEmployees"
+                                    :key="emp.id"
+                                    :class="[
+                                        'flex items-center justify-between p-2 rounded-xl cursor-pointer transition-all border',
+                                        kelolaForm.member_ids.includes(emp.id)
+                                            ? 'bg-blue-50/70 border-blue-200 text-blue-900 shadow-2xs'
+                                            : 'bg-white hover:bg-slate-50 border-slate-100 text-slate-700'
+                                    ]"
+                                >
+                                    <div class="flex items-center gap-2.5">
+                                        <input
+                                            type="checkbox"
+                                            :value="emp.id"
+                                            v-model="kelolaForm.member_ids"
+                                            class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                                        />
+                                        <div>
+                                            <div class="font-bold text-xs">{{ emp.name }}</div>
+                                            <div class="text-[10px] text-slate-400">{{ emp.position || 'Staff' }} {{ emp.branch ? '• ' + emp.branch : '' }}</div>
+                                        </div>
+                                    </div>
+                                    <span
+                                        v-if="kelolaForm.member_ids.includes(emp.id)"
+                                        class="text-[10px] font-bold text-blue-600 bg-white px-2 py-0.5 rounded-md border border-blue-200"
+                                    >
+                                        ✓ Terpilih
+                                    </span>
                                 </label>
+
+                                <div
+                                    v-if="filteredKelolaEmployees.length === 0"
+                                    class="py-8 text-center text-slate-400 text-xs font-medium space-y-1"
+                                >
+                                    <div class="text-lg">🔍</div>
+                                    <div>Tidak ada karyawan yang sesuai pencarian.</div>
+                                </div>
                             </div>
                         </div>
 
@@ -1676,6 +1742,32 @@ const submitCreateGroup = () => {
 // MODAL KELOLA GRUP & ANGGOTA
 // ========================================================
 const isKelolaModalOpen = ref(false);
+const memberSearchQuery = ref('');
+
+const filteredKelolaEmployees = computed(() => {
+    const list = props.allEmployees || [];
+    if (!memberSearchQuery.value || !memberSearchQuery.value.trim()) {
+        return list;
+    }
+    const q = memberSearchQuery.value.toLowerCase().trim();
+    return list.filter((emp) =>
+        (emp.name && emp.name.toLowerCase().includes(q)) ||
+        (emp.position && emp.position.toLowerCase().includes(q)) ||
+        (emp.branch && emp.branch.toLowerCase().includes(q))
+    );
+});
+
+const selectAllFiltered = () => {
+    const ids = new Set(kelolaForm.member_ids);
+    filteredKelolaEmployees.value.forEach((emp) => ids.add(emp.id));
+    kelolaForm.member_ids = Array.from(ids);
+};
+
+const deselectAllFiltered = () => {
+    const idsToRemove = new Set(filteredKelolaEmployees.value.map((e) => e.id));
+    kelolaForm.member_ids = kelolaForm.member_ids.filter((id) => !idsToRemove.has(id));
+};
+
 const kelolaForm = useForm({
     name: '',
     start_time: '08:30',
@@ -1691,6 +1783,7 @@ const kelolaForm = useForm({
 
 const openKelolaModal = () => {
     if (!props.currentTeam) return;
+    memberSearchQuery.value = '';
     kelolaForm.name = props.currentTeam.name;
     kelolaForm.start_time = (props.currentTeam.start_time || '08:30:00').slice(0, 5);
     kelolaForm.end_time = (props.currentTeam.end_time || '18:00:00').slice(0, 5);
