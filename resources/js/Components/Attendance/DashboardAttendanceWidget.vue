@@ -60,6 +60,7 @@
 
                 <!-- Link ke Halaman Absensi Lengkap -->
                 <Link
+                    v-if="can('attendance_recap_link')"
                     :href="isSpecialTeam ? `/absen-khusus?team_id=${specialTeam?.id}` : '/attendances'"
                     class="text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 transition"
                 >
