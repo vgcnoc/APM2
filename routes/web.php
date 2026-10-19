@@ -525,7 +525,7 @@ Route::middleware(['auth'])->group(function () {
     // Route::resource('schedules', TechnicianScheduleController::class);
 
     // ── Penggajian & Insentif (Payroll) ────────────────────────
-    Route::middleware(['permission:menu_payroll|payroll_view_own|payroll_tab_slip|payroll_tab_incentives|menu_target_market'])->group(function () {
+    Route::middleware(['permission:menu_payroll|payroll_view_own|payroll_tab_slip|payroll_tab_incentives|menu_target_market|menu_incentives_deductions|menu_settings_payroll|menu_payroll_categories|menu_master_fees'])->group(function () {
         Route::get('/payroll', [\App\Http\Controllers\PayrollController::class, 'index'])->name('payroll.index');
         Route::post('/payroll/settings', [\App\Http\Controllers\PayrollController::class, 'updateSettings'])->name('payroll.settings.update');
         Route::post('/payroll/{user}/incentives', [\App\Http\Controllers\PayrollController::class, 'storeIncentive'])->name('payroll.incentive.store');

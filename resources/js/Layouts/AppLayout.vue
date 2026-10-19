@@ -495,11 +495,11 @@ const menuItems = [
         icon: 'calculator',
         label: 'Penggajian & Insentif',
         active: (url) => ['/payroll', '/bonus-target-market', '/insentif-potongan'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_payroll', 'payroll_view_own', 'payroll_tab_slip', 'payroll_tab_incentives', 'menu_target_market'],
+        permission: ['menu_payroll', 'payroll_view_own', 'payroll_tab_slip', 'payroll_tab_incentives', 'menu_target_market', 'menu_incentives_deductions'],
         children: [
             { href: '/payroll', label: 'Gaji & Payroll', active: (url) => (url || '').length > 0 && url === '/payroll', permission: ['menu_payroll', 'payroll_view_own', 'payroll_tab_slip'] },
             { href: '/bonus-target-market', label: 'Bonus Target Market', active: (url) => (url || '').startsWith('/bonus-target-market'), permission: 'menu_target_market' },
-            { href: '/insentif-potongan', label: 'Histori Insentif', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: ['menu_payroll', 'payroll_tab_incentives', 'payroll_view_own'] },
+            { href: '/insentif-potongan', label: 'Histori Insentif', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: ['menu_incentives_deductions', 'menu_payroll', 'payroll_tab_incentives', 'payroll_view_own'] },
         ]
     },
 
@@ -525,12 +525,12 @@ const menuItems = [
         icon: 'box',
         label: 'Master Data',
         active: (url) => ['/settings/areas', '/settings/payroll-categories', '/settings/master-fees', '/settings/expense-categories'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_settings_areas', 'menu_settings_payroll', 'menu_settings_roles'],
+        permission: ['menu_settings_areas', 'menu_settings_payroll', 'menu_master_fees', 'menu_payroll_categories', 'menu_settings_roles'],
         children: [
             { href: '/settings/areas', label: 'Master Area', active: (url) => (url || '').startsWith('/settings/areas'), permission: 'menu_settings_areas' },
             { href: '/settings/expense-categories', label: 'Kategori Pengeluaran', active: (url) => (url || '').startsWith('/settings/expense-categories'), permission: 'menu_settings_areas' },
-            { href: '/settings/master-fees', label: 'Master Fee Teknisi/Sales', active: (url) => (url || '').startsWith('/settings/master-fees'), permission: 'menu_settings_payroll' },
-            { href: '/settings/payroll-categories', label: 'Kategori Insentif/Potongan', active: (url) => (url || '').startsWith('/settings/payroll-categories'), permission: 'menu_settings_payroll' },
+            { href: '/settings/master-fees', label: 'Master Fee Teknisi/Sales', active: (url) => (url || '').startsWith('/settings/master-fees'), permission: ['menu_master_fees', 'menu_settings_payroll'] },
+            { href: '/settings/payroll-categories', label: 'Kategori Insentif/Potongan', active: (url) => (url || '').startsWith('/settings/payroll-categories'), permission: ['menu_payroll_categories', 'menu_settings_payroll'] },
         ]
     },
     {

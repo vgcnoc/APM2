@@ -21,21 +21,21 @@
 
                 <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
                     <!-- Tombol Hitung Ulang -->
-                    <button @click="triggerRecalculate" :disabled="processingRecalc"
+                    <button v-if="can('target_market_recalculate') || can('target_market_manage')" @click="triggerRecalculate" :disabled="processingRecalc"
                         class="px-3.5 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
                         <svg class="w-4 h-4" :class="{ 'animate-spin': processingRecalc }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         <span>Hitung Ulang</span>
                     </button>
 
                     <!-- Tombol Transfer ke Payroll -->
-                    <button @click="triggerSyncPayroll" :disabled="processingSync"
+                    <button v-if="can('target_market_sync_payroll') || can('target_market_manage')" @click="triggerSyncPayroll" :disabled="processingSync"
                         class="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-sm shadow-emerald-200 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <span>Cairkan ke Payroll</span>
                     </button>
 
                     <!-- Tombol Tambah Program Target -->
-                    <button @click="openCreateModal"
+                    <button v-if="can('target_market_program_create') || can('target_market_manage')" @click="openCreateModal"
                         class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         <span>Buat Program Target</span>
@@ -290,7 +290,7 @@
                                     {{ getConceptLabel(prog.concept) }}
                                 </span>
                                 <div class="flex items-center gap-1.5">
-                                    <button @click="toggleProgram(prog)"
+                                    <button v-if="can('target_market_program_toggle') || can('target_market_manage')" @click="toggleProgram(prog)"
                                         :class="prog.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'"
                                         class="px-2 py-0.5 rounded-md text-[10px] font-bold cursor-pointer">
                                         {{ prog.is_active ? 'Aktif' : 'Nonaktif' }}
@@ -323,17 +323,18 @@
                         </div>
 
                         <div class="flex items-center justify-between pt-4 mt-4 border-t border-gray-100 text-xs">
-                            <button @click="editProgram(prog)" class="text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer">
+                            <button v-if="can('target_market_program_create') || can('target_market_manage')" @click="editProgram(prog)" class="text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer">
                                 Edit Aturan ⚙️
                             </button>
-                            <button @click="deleteProgram(prog)" class="text-red-500 hover:text-red-700 font-medium cursor-pointer">
+                            <span v-else></span>
+                            <button v-if="can('target_market_program_delete') || can('target_market_manage')" @click="deleteProgram(prog)" class="text-red-500 hover:text-red-700 font-medium cursor-pointer">
                                 Hapus
                             </button>
                         </div>
                     </div>
 
                     <!-- Card Buat Baru -->
-                    <button @click="openCreateModal"
+                    <button v-if="can('target_market_program_create') || can('target_market_manage')" @click="openCreateModal"
                         class="border-2 border-dashed border-gray-200 hover:border-indigo-400 rounded-3xl p-8 flex flex-col items-center justify-center text-center group cursor-pointer transition-colors min-h-[220px]">
                         <div class="w-12 h-12 rounded-2xl bg-indigo-50 group-hover:bg-indigo-100 text-indigo-600 flex items-center justify-center text-xl mb-2 transition-colors">
                             ➕
@@ -556,6 +557,9 @@ import { ref } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
+import { usePermission } from '@/Composables/usePermission';
+
+const { can, hasRole } = usePermission();
 
 const props = defineProps({
     month: Number,

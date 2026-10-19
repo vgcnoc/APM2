@@ -7,7 +7,7 @@
                     <p class="text-xs text-gray-500 mt-0.5">Daftar semua bonus, insentif, dan potongan karyawan</p>
                 </div>
                 <div class="flex gap-2">
-                    <button v-if="can('payroll_incentives') || can('payroll_manage')" @click="showManualModal = true" class="inline-flex items-center px-4 py-2.5 bg-indigo-600 border border-transparent rounded-xl font-bold text-xs text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all cursor-pointer">
+                    <button v-if="can('payroll_incentives') || can('payroll_deductions') || can('payroll_manage')" @click="showManualModal = true" class="inline-flex items-center px-4 py-2.5 bg-indigo-600 border border-transparent rounded-xl font-bold text-xs text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all cursor-pointer">
                         <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                         Tambah Manual
                     </button>
@@ -180,7 +180,7 @@
                                 <th scope="col" class="px-5 py-4">Jumlah</th>
                                 <th scope="col" class="px-6 py-4">Keterangan</th>
                                 <th scope="col" class="px-5 py-4">Tanggal</th>
-                                <th v-if="can('payroll_incentives') || can('payroll_manage')" scope="col" class="px-5 py-4 text-center">Aksi</th>
+                                <th v-if="can('payroll_incentives_delete') || can('payroll_incentives') || can('payroll_manage')" scope="col" class="px-5 py-4 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50 font-medium">
@@ -214,7 +214,7 @@
                                 <td class="px-5 py-4 whitespace-nowrap text-xs text-gray-500 font-medium">
                                     {{ formatDate(record.date) }}
                                 </td>
-                                <td v-if="can('payroll_incentives') || can('payroll_manage')" class="px-5 py-4 whitespace-nowrap text-center text-xs font-medium">
+                                <td v-if="can('payroll_incentives_delete') || can('payroll_incentives') || can('payroll_manage')" class="px-5 py-4 whitespace-nowrap text-center text-xs font-medium">
                                     <button v-if="record.status === 'pending'" @click="deleteRecord(record)" class="text-rose-500 hover:text-rose-700 p-2 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer" title="Hapus Data">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                     </button>

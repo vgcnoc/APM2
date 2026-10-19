@@ -80,7 +80,7 @@
                     </button>
 
                     <button
-                        v-if="can('payroll_disburse') && totalPendingCount > 0"
+                        v-if="(can('payroll_disburse_all') || can('payroll_disburse')) && totalPendingCount > 0"
                         type="button"
                         @click="disburseAll"
                         class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-1.5"
@@ -317,7 +317,7 @@
 
                                         <!-- Tombol Edit BPJS & Rekening -->
                                         <button
-                                            v-if="can('payroll_btn_settings_bpjs') || can('payroll_manage')"
+                                            v-if="can('payroll_btn_update_bpjs_bank') || can('payroll_btn_settings_bpjs') || can('payroll_manage')"
                                             type="button"
                                             @click="openBpjsBankModal(user)"
                                             class="px-2.5 py-1 text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-xs font-bold transition-colors shadow-2xs"
@@ -329,7 +329,7 @@
                                         <!-- Tombol Bonus & Potongan -->
                                         <template v-if="!user.is_paid">
                                             <button 
-                                                v-if="can('payroll_incentives')"
+                                                v-if="can('payroll_incentives') || can('payroll_manage')"
                                                 type="button"
                                                 @click="openManualModal(user, 'incentive')" 
                                                 class="px-2 py-1 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-bold transition-colors shadow-2xs"
@@ -338,7 +338,7 @@
                                                 +Bonus
                                             </button>
                                             <button 
-                                                v-if="can('payroll_incentives')"
+                                                v-if="can('payroll_deductions') || can('payroll_incentives') || can('payroll_manage')"
                                                 type="button"
                                                 @click="openManualModal(user, 'deduction')" 
                                                 class="px-2 py-1 text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold transition-colors shadow-2xs"
