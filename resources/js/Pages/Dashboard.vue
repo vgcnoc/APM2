@@ -1,5 +1,109 @@
 <template>
     <AppLayout title="Dashboard" subtitle="Ringkasan statistik jaringan & pelanggan ISP">
+        <!-- ═══ Area / Wilayah Smart Filter Bar ═══ -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 transition-all">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <!-- Left: Title & Active Context Info -->
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-500/20 text-lg shrink-0">
+                        🗺️
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 class="text-sm font-bold text-gray-900">Filter Wilayah Operasional</h2>
+                            <span
+                                v-if="selectedAreaId !== 'all'"
+                                class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200"
+                            >
+                                <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+                                📍 {{ currentAreaName }}
+                            </span>
+                            <span
+                                v-else
+                                class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            >
+                                🌐 Seluruh Wilayah (Nasional)
+                            </span>
+                            <span v-if="isFiltering" class="text-[10px] text-blue-600 font-semibold animate-pulse">
+                                Memuat data...
+                            </span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5 truncate flex items-center gap-1.5">
+                            <span>Menyaring otomatis seluruh statistik pelanggan, tagihan, tiket & infrastruktur.</span>
+                            <span v-if="selectedAreaId !== 'all'" class="text-blue-600 font-bold">• {{ customerStats?.total_active || 0 }} Pelanggan Aktif</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Right: Quick Filter Buttons & Dropdown -->
+                <div class="flex items-center gap-2 flex-wrap shrink-0">
+                    <!-- Dropdown Area -->
+                    <div class="relative min-w-[190px]">
+                        <select
+                            :value="selectedAreaId"
+                            @change="changeArea($event.target.value)"
+                            :disabled="isFiltering"
+                            class="w-full text-xs font-bold rounded-xl border-gray-200 bg-gray-50/90 hover:bg-white focus:bg-white py-2 pl-3 pr-8 text-gray-800 focus:border-blue-500 focus:ring-blue-500 transition-colors shadow-2xs cursor-pointer"
+                        >
+                            <option value="all">🌐 Semua Wilayah (Nasional)</option>
+                            <option
+                                v-for="area in availableAreas"
+                                :key="area.id"
+                                :value="area.id"
+                            >
+                                📍 {{ area.name }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Reset to All Button -->
+                    <button
+                        v-if="selectedAreaId !== 'all'"
+                        @click="changeArea('all')"
+                        type="button"
+                        class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center gap-1 active:scale-95"
+                        title="Tampilkan Seluruh Wilayah"
+                    >
+                        <span>✕</span>
+                        <span>Reset</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Pill Buttons for Instant 1-Click Switch -->
+            <div v-if="availableAreas && availableAreas.length > 0" class="mt-3 pt-3 border-t border-gray-100 flex items-center gap-1.5 overflow-x-auto pb-1">
+                <span class="text-[11px] font-bold text-gray-400 shrink-0 mr-1 flex items-center gap-1">
+                    <span>Akses Cepat:</span>
+                </span>
+                <button
+                    @click="changeArea('all')"
+                    :class="[
+                        'px-3 py-1 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1',
+                        selectedAreaId === 'all'
+                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                    ]"
+                >
+                    <span>🌐</span>
+                    <span>Semua Wilayah</span>
+                </button>
+                <button
+                    v-for="area in availableAreas"
+                    :key="area.id"
+                    @click="changeArea(area.id)"
+                    :class="[
+                        'px-3 py-1 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1',
+                        selectedAreaId == area.id
+                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                    ]"
+                >
+                    <span>📍</span>
+                    <span>{{ area.name }}</span>
+                </button>
+            </div>
+        </div>
+
         <!-- ═══ Presensi Reguler Staf Widget ═══ -->
         <DashboardAttendanceWidget :attendance-data="attendanceData" class="mb-6" />
 
@@ -158,7 +262,12 @@
                             </div>
                             <div class="min-w-0">
                                 <p class="text-sm font-semibold text-gray-900 truncate">{{ cust.name }}</p>
-                                <p class="text-[11px] text-gray-400 truncate">{{ cust.package }}</p>
+                                <p class="text-[11px] text-gray-400 truncate flex items-center gap-1.5">
+                                    <span>{{ cust.package }}</span>
+                                    <span v-if="cust.area_name && cust.area_name !== '-'" class="inline-flex items-center text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.2 rounded">
+                                        📍 {{ cust.area_name }}
+                                    </span>
+                                </p>
                             </div>
                         </div>
                         <div class="text-right shrink-0 ml-3">
@@ -262,47 +371,134 @@
                 </div>
             </div>
 
-            <!-- Top 5 Area -->
+            <!-- Top 5 Area vs Detail Wilayah Terpilih -->
             <div v-can="'dashboard_card_stats'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <div class="flex items-center justify-between mb-5">
-                    <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-                        Top 5 Area Pelanggan
-                    </h3>
-                    <span class="text-xs text-gray-400 font-medium">Semua Area</span>
-                </div>
-
-                <div class="space-y-3">
-                    <div v-for="(area, idx) in topAreas" :key="idx"
-                        class="flex items-center gap-3">
-                        <span class="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0"
-                            :class="idx < 3 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'">
-                            {{ idx + 1 }}
+                <!-- Mode 1: Jika Wilayah Spesifik Dipilih -->
+                <template v-if="selectedAreaDetail">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
+                            <span class="text-lg">📍</span>
+                            <span>Wilayah {{ selectedAreaDetail.name }}</span>
+                        </h3>
+                        <span class="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                            Filter Aktif
                         </span>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center justify-between mb-1">
-                                <span class="text-xs font-semibold text-gray-900 truncate">{{ area.name }}</span>
-                                <span class="text-[10px] text-gray-400 shrink-0 ml-2">{{ area.total }} pelanggan</span>
+                    </div>
+
+                    <div class="space-y-3.5">
+                        <div class="p-3 rounded-xl bg-gray-50 border border-gray-100 text-xs text-gray-600 space-y-1">
+                            <div class="font-bold text-gray-800 flex items-center gap-1">
+                                <span>🏢</span>
+                                <span>Alamat / Lokasi:</span>
                             </div>
-                            <div class="w-full bg-gray-100 rounded-full h-1.5">
-                                <div class="h-1.5 rounded-full transition-all"
-                                    :class="idx === 0 ? 'bg-blue-500' : idx === 1 ? 'bg-blue-400' : idx === 2 ? 'bg-blue-300' : 'bg-blue-200'"
-                                    :style="{ width: (totalCustomersInAreas > 0 ? area.total / totalCustomersInAreas * 100 : 0) + '%' }"></div>
+                            <p class="text-gray-500 leading-relaxed">{{ selectedAreaDetail.address }}</p>
+                            <p v-if="selectedAreaDetail.radius_meters > 0" class="text-[11px] text-gray-400">
+                                Radius Presensi: {{ selectedAreaDetail.radius_meters }} meter
+                            </p>
+                        </div>
+
+                        <!-- Mini stats grid -->
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="p-2.5 rounded-xl bg-blue-50/60 border border-blue-100">
+                                <span class="text-[10px] font-bold text-blue-600 uppercase">Pelanggan Aktif</span>
+                                <div class="text-lg font-black text-blue-900 mt-0.5">
+                                    {{ selectedAreaDetail.active_customers }}
+                                    <span class="text-xs font-normal text-blue-600">/ {{ selectedAreaDetail.total_customers }}</span>
+                                </div>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-100">
+                                <span class="text-[10px] font-bold text-emerald-600 uppercase">Infrastruktur ODP</span>
+                                <div class="text-lg font-black text-emerald-900 mt-0.5">
+                                    {{ selectedAreaDetail.total_odp }}
+                                    <span class="text-xs font-normal text-emerald-600">Unit</span>
+                                </div>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-purple-50/60 border border-purple-100">
+                                <span class="text-[10px] font-bold text-purple-600 uppercase">ODC / Distribusi</span>
+                                <div class="text-lg font-black text-purple-900 mt-0.5">
+                                    {{ selectedAreaDetail.total_odc }}
+                                    <span class="text-xs font-normal text-purple-600">Unit</span>
+                                </div>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-amber-50/60 border border-amber-100">
+                                <span class="text-[10px] font-bold text-amber-600 uppercase">ONT Terpasang</span>
+                                <div class="text-lg font-black text-amber-900 mt-0.5">
+                                    {{ selectedAreaDetail.total_ont }}
+                                    <span class="text-xs font-normal text-amber-600">Unit</span>
+                                </div>
                             </div>
                         </div>
-                        <span class="text-xs font-bold text-gray-600 shrink-0 w-12 text-right">{{ totalCustomersInAreas > 0 ? (area.total / totalCustomersInAreas * 100).toFixed(1) : 0 }}%</span>
+
+                        <div class="pt-2 flex items-center justify-between border-t border-gray-100 text-xs">
+                            <button
+                                @click="changeArea('all')"
+                                type="button"
+                                class="text-gray-500 hover:text-gray-800 font-bold flex items-center gap-1 hover:underline"
+                            >
+                                ← Tampilkan Semua Area
+                            </button>
+                            <a
+                                :href="'/customers?area_id=' + selectedAreaDetail.id"
+                                class="font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                            >
+                                Kelola Pelanggan →
+                            </a>
+                        </div>
                     </div>
-                    <div v-if="topAreas.length === 0" class="text-center py-6 text-gray-400 text-xs">
-                        Belum ada data area.
+                </template>
+
+                <!-- Mode 2: Tampilan Top 5 Area (Semua Wilayah) -->
+                <template v-else>
+                    <div class="flex items-center justify-between mb-5">
+                        <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                            Top 5 Area Pelanggan
+                        </h3>
+                        <span class="text-xs text-gray-400 font-medium">Klik area untuk filter</span>
                     </div>
-                </div>
+
+                    <div class="space-y-3">
+                        <div v-for="(area, idx) in topAreas" :key="idx"
+                            @click="area.id && changeArea(area.id)"
+                            :class="[
+                                'flex items-center gap-3 p-1.5 -mx-1.5 rounded-xl transition-colors',
+                                area.id ? 'hover:bg-blue-50/70 cursor-pointer group' : ''
+                            ]"
+                            title="Klik untuk menyaring dashboard ke area ini"
+                        >
+                            <span class="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0"
+                                :class="idx < 3 ? 'bg-blue-100 text-blue-700 group-hover:bg-blue-600 group-hover:text-white transition-colors' : 'bg-gray-100 text-gray-600'">
+                                {{ idx + 1 }}
+                            </span>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs font-semibold text-gray-900 group-hover:text-blue-700 transition-colors truncate">
+                                        {{ area.name }}
+                                        <span v-if="area.id" class="text-[10px] text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity ml-1">📍 Filter</span>
+                                    </span>
+                                    <span class="text-[10px] text-gray-400 shrink-0 ml-2">{{ area.total }} pelanggan</span>
+                                </div>
+                                <div class="w-full bg-gray-100 rounded-full h-1.5">
+                                    <div class="h-1.5 rounded-full transition-all"
+                                        :class="idx === 0 ? 'bg-blue-500' : idx === 1 ? 'bg-blue-400' : idx === 2 ? 'bg-blue-300' : 'bg-blue-200'"
+                                        :style="{ width: (totalCustomersInAreas > 0 ? area.total / totalCustomersInAreas * 100 : 0) + '%' }"></div>
+                                </div>
+                            </div>
+                            <span class="text-xs font-bold text-gray-600 shrink-0 w-12 text-right">{{ totalCustomersInAreas > 0 ? (area.total / totalCustomersInAreas * 100).toFixed(1) : 0 }}%</span>
+                        </div>
+                        <div v-if="topAreas.length === 0" class="text-center py-6 text-gray-400 text-xs">
+                            Belum ada data area.
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
     </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DashboardAttendanceWidget from '@/Components/Attendance/DashboardAttendanceWidget.vue';
 
@@ -326,6 +522,52 @@ const props = defineProps({
     topAreas: Array,
     totalCustomersInAreas: Number,
     attendanceData: { type: Object, default: () => ({}) },
+    selectedAreaId: { type: [String, Number], default: 'all' },
+    availableAreas: { type: Array, default: () => [] },
+    selectedAreaDetail: { type: Object, default: null },
+    canViewAllAreas: { type: Boolean, default: true },
+});
+
+// ── Area Filter State & Action ────────────────────
+const isFiltering = ref(false);
+
+const currentAreaName = computed(() => {
+    if (props.selectedAreaId === 'all') return 'Semua Wilayah';
+    const found = props.availableAreas?.find((a) => a.id == props.selectedAreaId);
+    return found ? found.name : `Wilayah #${props.selectedAreaId}`;
+});
+
+const changeArea = (newAreaId) => {
+    if (props.selectedAreaId == newAreaId && !isFiltering.value) return;
+    isFiltering.value = true;
+    try {
+        localStorage.setItem('dashboard_selected_area', String(newAreaId));
+    } catch (e) {}
+
+    router.get(
+        '/',
+        { area_id: newAreaId },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            onFinish: () => {
+                isFiltering.value = false;
+            },
+        }
+    );
+};
+
+onMounted(() => {
+    try {
+        const saved = localStorage.getItem('dashboard_selected_area');
+        const urlParams = new URLSearchParams(window.location.search);
+        if (!urlParams.has('area_id') && saved && saved !== String(props.selectedAreaId)) {
+            const isValid = saved === 'all' || props.availableAreas?.some((a) => String(a.id) === saved);
+            if (isValid) {
+                changeArea(saved);
+            }
+        }
+    } catch (e) {}
 });
 
 // ── Pipeline Tab ──────────────────────────────────

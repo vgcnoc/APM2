@@ -63,47 +63,142 @@ class DashboardController extends Controller
             }
         }
 
-        // ── Statistik Pelanggan ──────────────────────────────
+        $user = auth()->user();
+
+        // ── 0. Hak Akses & Filter Wilayah (Auto, Cerdas, Sempurna) ──
+        $canViewAllAreas = $user && (
+            $user->hasRole('admin') || 
+            $user->role === 'admin' || 
+            $user->hasRole('super admin') || 
+            $user->role === 'super admin' || 
+            $user->can('dashboard_view_all') || 
+            $user->can('customers_all_view_all')
+        );
+
+        $userAccessibleAreaIds = $user ? $user->getAccessibleAreaIds() : [];
+
+        // Daftar Wilayah yang Diizinkan untuk Dipilih
+        if ($canViewAllAreas) {
+            $availableAreas = Area::orderBy('name')->get(['id', 'name', 'address', 'radius_meters']);
+        } else {
+            $availableAreas = Area::whereIn('id', $userAccessibleAreaIds)->orderBy('name')->get(['id', 'name', 'address', 'radius_meters']);
+        }
+
+        // Penentuan Wilayah Terpilih
+        $selectedAreaId = 'all';
+        if ($request->filled('area_id')) {
+            $reqArea = $request->input('area_id');
+            if ($reqArea === 'all') {
+                $selectedAreaId = 'all';
+            } else {
+                $reqAreaId = (int) $reqArea;
+                if ($canViewAllAreas || in_array($reqAreaId, $userAccessibleAreaIds)) {
+                    $selectedAreaId = $reqAreaId;
+                } else {
+                    $selectedAreaId = $canViewAllAreas ? 'all' : (count($userAccessibleAreaIds) > 0 ? $userAccessibleAreaIds[0] : 'all');
+                }
+            }
+        } else {
+            // Otomatis & Cerdas: Jika user hanya memiliki 1 area yang ditugaskan, default langsung ke areanya
+            if (!$canViewAllAreas && count($userAccessibleAreaIds) === 1) {
+                $selectedAreaId = $userAccessibleAreaIds[0];
+            } else {
+                $selectedAreaId = 'all';
+            }
+        }
+
+        // Closures untuk scoping query per area
+        $applyCustomerArea = function ($query) use ($selectedAreaId, $canViewAllAreas, $userAccessibleAreaIds) {
+            if (is_numeric($selectedAreaId)) {
+                $query->where('area_id', $selectedAreaId);
+            } elseif (!$canViewAllAreas && count($userAccessibleAreaIds) > 0) {
+                $query->whereIn('area_id', $userAccessibleAreaIds);
+            }
+            return $query;
+        };
+
+        $applyInvoiceArea = function ($query) use ($selectedAreaId, $canViewAllAreas, $userAccessibleAreaIds) {
+            if (is_numeric($selectedAreaId)) {
+                $query->whereHas('customer', fn($q) => $q->where('area_id', $selectedAreaId));
+            } elseif (!$canViewAllAreas && count($userAccessibleAreaIds) > 0) {
+                $query->whereHas('customer', fn($q) => $q->whereIn('area_id', $userAccessibleAreaIds));
+            }
+            return $query;
+        };
+
+        $applyTicketArea = function ($query) use ($selectedAreaId, $canViewAllAreas, $userAccessibleAreaIds) {
+            if (is_numeric($selectedAreaId)) {
+                $query->whereHas('customer', fn($q) => $q->where('area_id', $selectedAreaId));
+            } elseif (!$canViewAllAreas && count($userAccessibleAreaIds) > 0) {
+                $query->whereHas('customer', fn($q) => $q->whereIn('area_id', $userAccessibleAreaIds));
+            }
+            return $query;
+        };
+
+        $applyInfraArea = function ($query) use ($selectedAreaId, $canViewAllAreas, $userAccessibleAreaIds) {
+            if (is_numeric($selectedAreaId)) {
+                $query->where('area_id', $selectedAreaId);
+            } elseif (!$canViewAllAreas && count($userAccessibleAreaIds) > 0) {
+                $query->whereIn('area_id', $userAccessibleAreaIds);
+            }
+            return $query;
+        };
+
+        // ── 1. Statistik Pelanggan ──────────────────────────
+        $custBase = Customer::query();
+        $applyCustomerArea($custBase);
+
         $customerStats = [
-            'total_active'     => Customer::where('status', 'active')->whereNotNull('package_id')->count(),
-            'total_booking'    => Customer::where('status', 'booking')->count(),
-            'total_survey'     => Customer::whereIn('status', ['survey'])->count(),
-            'total_installing' => Customer::where('status', 'installing')->count(),
-            'total_activation' => Customer::where('status', 'menunggu_aktivasi')->count(),
-            'total_all'        => Customer::count(),
+            'total_active'     => (clone $custBase)->where('status', 'active')->whereNotNull('package_id')->count(),
+            'total_booking'    => (clone $custBase)->where('status', 'booking')->count(),
+            'total_survey'     => (clone $custBase)->whereIn('status', ['survey'])->count(),
+            'total_installing' => (clone $custBase)->where('status', 'installing')->count(),
+            'total_activation' => (clone $custBase)->where('status', 'menunggu_aktivasi')->count(),
+            'total_all'        => (clone $custBase)->count(),
         ];
 
-        // ── Statistik Infrastruktur ─────────────────────────
+        // ── 2. Statistik Infrastruktur ─────────────────────
+        $oltQuery = $applyInfraArea(Olt::query());
+        $odcQuery = $applyInfraArea(Odc::query());
+        $odpQuery = $applyInfraArea(Odp::query());
+        $ontQuery = $applyInfraArea(Ont::query());
+
         $infraStats = [
-            'olt_total'   => Olt::count(),
-            'olt_active'  => Olt::where('status', 'active')->count(),
-            'odc_total'   => Odc::count(),
-            'odc_active'  => Odc::where('status', 'active')->count(),
-            'odp_total'   => Odp::count(),
-            'odp_active'  => Odp::where('status', '!=', 'full')->count(),
-            'ont_total'   => Ont::count(),
-            'ont_active'  => Ont::where('status', 'active')->count(),
+            'olt_total'   => (clone $oltQuery)->count(),
+            'olt_active'  => (clone $oltQuery)->where('status', 'active')->count(),
+            'odc_total'   => (clone $odcQuery)->count(),
+            'odc_active'  => (clone $odcQuery)->where('status', 'active')->count(),
+            'odp_total'   => (clone $odpQuery)->count(),
+            'odp_active'  => (clone $odpQuery)->where('status', '!=', 'full')->count(),
+            'ont_total'   => (clone $ontQuery)->count(),
+            'ont_active'  => (clone $ontQuery)->where('status', 'active')->count(),
         ];
 
-        // ── Tiket ───────────────────────────────────────────
+        // ── 3. Tiket ───────────────────────────────────────
+        $ticketBase = Ticket::query();
+        $applyTicketArea($ticketBase);
+
         $ticketStats = [
-            'open'           => Ticket::where('status', 'open')->count(),
-            'in_progress'    => Ticket::where('status', 'in_progress')->count(),
-            'resolved_today' => Ticket::where('status', 'resolved')
+            'open'           => (clone $ticketBase)->where('status', 'open')->count(),
+            'in_progress'    => (clone $ticketBase)->where('status', 'in_progress')->count(),
+            'resolved_today' => (clone $ticketBase)->where('status', 'resolved')
                 ->whereDate('resolved_at', today())->count(),
         ];
 
-        // ── Pendapatan ──────────────────────────────────────
+        // ── 4. Pendapatan & Invoice ────────────────────────
         $currentMonth = now()->month;
         $currentYear  = now()->year;
 
+        $invoiceBase = Invoice::query();
+        $applyInvoiceArea($invoiceBase);
+
         $invoiceStats = [
-            'paid_this_month'   => Invoice::where('period_month', $currentMonth)->where('period_year', $currentYear)->where('status', 'paid')->count(),
-            'unpaid_this_month' => Invoice::where('period_month', $currentMonth)->where('period_year', $currentYear)->whereIn('status', ['unpaid', 'overdue'])->count(),
+            'paid_this_month'   => (clone $invoiceBase)->where('period_month', $currentMonth)->where('period_year', $currentYear)->where('status', 'paid')->count(),
+            'unpaid_this_month' => (clone $invoiceBase)->where('period_month', $currentMonth)->where('period_year', $currentYear)->whereIn('status', ['unpaid', 'overdue'])->count(),
         ];
 
         // ── Reseller Voucher Belum Bayar ────────────────────
-        $resellerUnpaidInvoices = Invoice::where('is_reseller_balance', true)
+        $resellerUnpaidInvoices = (clone $invoiceBase)->where('is_reseller_balance', true)
             ->whereIn('status', ['unpaid', 'partial', 'overdue'])
             ->with(['payments' => function ($q) {
                 $q->where('status', 'verified');
@@ -116,12 +211,12 @@ class DashboardController extends Controller
             return max(0, (float) $inv->amount - (float) $paid);
         });
 
-        $monthlyRevenue = Invoice::where('period_month', $currentMonth)
+        $monthlyRevenue = (clone $invoiceBase)->where('period_month', $currentMonth)
             ->where('period_year', $currentYear)
             ->where('status', 'paid')
             ->sum('amount');
 
-        $totalRevenue = Invoice::where('status', 'paid')->sum('amount');
+        $totalRevenue = (clone $invoiceBase)->where('status', 'paid')->sum('amount');
 
         // Pendapatan per bulan (6 bulan terakhir)
         $revenueChart = [];
@@ -129,7 +224,7 @@ class DashboardController extends Controller
             $date  = now()->subMonths($i);
             $month = $date->month;
             $year  = $date->year;
-            $total = Invoice::where('period_month', $month)
+            $total = (clone $invoiceBase)->where('period_month', $month)
                 ->where('period_year', $year)
                 ->where('status', 'paid')
                 ->sum('amount');
@@ -143,29 +238,30 @@ class DashboardController extends Controller
 
         // Rata-rata bulanan & total transaksi
         $avgMonthly    = count($revenueChart) > 0 ? collect($revenueChart)->avg('total') : 0;
-        $totalInvoices = Invoice::where('status', 'paid')->count();
+        $totalInvoices = (clone $invoiceBase)->where('status', 'paid')->count();
 
         // Pelanggan baru bulan ini
-        $newCustomersThisMonth = Customer::whereMonth('created_at', $currentMonth)
+        $newCustomersThisMonth = (clone $custBase)->whereMonth('created_at', $currentMonth)
             ->whereYear('created_at', $currentYear)
             ->count();
 
-        // ── Pipeline Pelanggan (5 terbaru) ──────────────────
-        $recentCustomers = Customer::with('package')
+        // ── 5. Pipeline Pelanggan (Terbaru) ─────────────────
+        $recentCustomers = (clone $custBase)->with(['package', 'area'])
             ->orderByDesc('created_at')
-            ->limit(5)
+            ->limit(10)
             ->get()
             ->map(fn($c) => [
                 'id'         => $c->id,
                 'name'       => $c->name,
                 'package'    => $c->package?->name ?? '-',
+                'area_name'  => $c->area?->name ?? '-',
                 'status'     => $c->status,
                 'initial'    => strtoupper(substr($c->name, 0, 1)),
                 'created_at' => $c->created_at->format('d M Y'),
             ]);
 
-        // ── Tiket Terbaru (5) ───────────────────────────────
-        $recentTickets = Ticket::with(['customer', 'assignee'])
+        // ── 6. Tiket Terbaru (5) ────────────────────────────
+        $recentTickets = (clone $ticketBase)->with(['customer', 'assignee'])
             ->where('status', '!=', 'closed')
             ->orderByDesc('created_at')
             ->limit(5)
@@ -181,7 +277,7 @@ class DashboardController extends Controller
                 'created_at'    => $t->created_at->format('d M Y'),
             ]);
 
-        // ── Aktivitas Terbaru ───────────────────────────────
+        // ── 7. Aktivitas Terbaru ────────────────────────────
         $recentActivities = AuditLog::orderByDesc('created_at')
             ->limit(6)
             ->get()
@@ -196,8 +292,8 @@ class DashboardController extends Controller
                 'created_date' => $a->created_at->format('d M Y H:i'),
             ]);
 
-        // ── Distribusi Paket Pelanggan ──────────────────────
-        $packageDistribution = Customer::where('status', 'active')
+        // ── 8. Distribusi Paket Pelanggan ───────────────────
+        $packageDistribution = (clone $custBase)->where('status', 'active')
             ->select('package_id', DB::raw('COUNT(*) as total'))
             ->groupBy('package_id')
             ->with('package:id,name')
@@ -209,16 +305,20 @@ class DashboardController extends Controller
             ->sortByDesc('total')
             ->values();
 
-        // ── Top 5 Area Pelanggan ────────────────────────────
-        $topAreas = Customer::select('area_id', DB::raw('COUNT(*) as total'))
-            ->whereNotNull('area_id')
-            ->groupBy('area_id')
+        // ── 9. Top 5 Area vs Detail Wilayah Terpilih ────────
+        $topAreasQuery = Customer::select('area_id', DB::raw('COUNT(*) as total'))
+            ->whereNotNull('area_id');
+        if (!$canViewAllAreas && count($userAccessibleAreaIds) > 0) {
+            $topAreasQuery->whereIn('area_id', $userAccessibleAreaIds);
+        }
+        $topAreas = $topAreasQuery->groupBy('area_id')
             ->orderByDesc('total')
             ->limit(5)
             ->get()
             ->map(function ($item) {
                 $area = Area::find($item->area_id);
                 return [
+                    'id'    => $item->area_id,
                     'name'  => $area?->name ?? 'Unknown',
                     'total' => $item->total,
                 ];
@@ -226,6 +326,28 @@ class DashboardController extends Controller
 
         $totalCustomersInAreas = $topAreas->sum('total');
 
+        // Detail Wilayah Spesifik jika ada area yang dipilih
+        $selectedAreaDetail = null;
+        if (is_numeric($selectedAreaId)) {
+            $curArea = Area::find($selectedAreaId);
+            if ($curArea) {
+                $curAreaCust = Customer::where('area_id', $curArea->id);
+                $selectedAreaDetail = [
+                    'id'               => $curArea->id,
+                    'name'             => $curArea->name,
+                    'address'          => $curArea->address ?: 'Wilayah Operasional',
+                    'radius_meters'    => $curArea->radius_meters ?? 0,
+                    'total_customers'  => (clone $curAreaCust)->count(),
+                    'active_customers' => (clone $curAreaCust)->where('status', 'active')->count(),
+                    'total_odp'        => Odp::where('area_id', $curArea->id)->count(),
+                    'total_odc'        => Odc::where('area_id', $curArea->id)->count(),
+                    'total_olt'        => Olt::where('area_id', $curArea->id)->count(),
+                    'total_ont'        => Ont::where('area_id', $curArea->id)->count(),
+                ];
+            }
+        }
+
+        // ── 10. Data Presensi Widget ────────────────────────
         $attendanceData = $this->getAttendanceDashboardData($request->input('employee_id'));
 
         return Inertia::render('Dashboard', [
@@ -248,6 +370,10 @@ class DashboardController extends Controller
             'topAreas'             => $topAreas,
             'totalCustomersInAreas' => $totalCustomersInAreas,
             'attendanceData'       => $attendanceData,
+            'selectedAreaId'       => $selectedAreaId,
+            'availableAreas'       => $availableAreas,
+            'selectedAreaDetail'   => $selectedAreaDetail,
+            'canViewAllAreas'      => $canViewAllAreas,
         ]);
     }
 
