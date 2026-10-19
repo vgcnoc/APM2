@@ -363,8 +363,8 @@
                     </div>
                 </div>
 
-                <!-- Tipe Kehadiran (Hanya saat Clock In Reguler) -->
-                <div v-else-if="modalType === 'in'" class="space-y-1.5">
+                <!-- Tipe Kehadiran (Hanya saat Clock In Reguler dan diizinkan oleh Role Akses) -->
+                <div v-else-if="modalType === 'in' && can('attendance_select_type')" class="space-y-1.5">
                     <label class="text-xs font-bold text-slate-700">Tipe Kehadiran Hari Ini:</label>
                     <div class="grid grid-cols-2 gap-2">
                         <button
@@ -605,6 +605,9 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
+import { usePermission } from '@/Composables/usePermission';
+
+const { can } = usePermission();
 
 const props = defineProps({
     attendanceData: {
@@ -881,6 +884,7 @@ const openModal = async (type) => {
     capturedPhoto.value = null;
     attendanceNotes.value = '';
     dutyLocation.value = '';
+    attendanceType.value = 'wfo';
     showModal.value = true;
     initGeolocation();
     await nextTick();
@@ -966,8 +970,8 @@ const submitAttendance = () => {
                 employee_id: currentEmployee.value.id,
                 photo: capturedPhoto.value,
                 shift_id: shiftToday.value?.id || undefined,
-                attendance_type: attendanceType.value,
-                duty_location: dutyLocation.value || undefined,
+                attendance_type: can('attendance_select_type') ? attendanceType.value : 'wfo',
+                duty_location: can('attendance_select_type') && attendanceType.value === 'dinas_luar' ? (dutyLocation.value || undefined) : undefined,
                 latitude: userCoordinates.value?.latitude || null,
                 longitude: userCoordinates.value?.longitude || null,
                 distance: distanceToOffice.value || 0,

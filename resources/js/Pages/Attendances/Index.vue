@@ -279,7 +279,7 @@
                             </div>
 
                             <!-- Pilihan Tipe Kehadiran (Smart Modes) -->
-                            <div class="space-y-1.5">
+                            <div v-if="can('attendance_select_type')" class="space-y-1.5">
                                 <label class="text-xs font-bold text-slate-700">Tipe Kehadiran Hari Ini:</label>
                                 <div class="grid grid-cols-2 gap-2">
                                     <button
@@ -319,7 +319,7 @@
                             </div>
 
                             <!-- Input Keterangan Penugasan jika Dinas Lapangan -->
-                            <div v-if="attendanceType === 'dinas_luar'" class="space-y-1">
+                            <div v-if="can('attendance_select_type') && attendanceType === 'dinas_luar'" class="space-y-1">
                                 <label class="text-xs font-bold text-indigo-700">Lokasi / Tugas Lapangan:</label>
                                 <input
                                     type="text"
@@ -1443,8 +1443,8 @@ const submitClockIn = () => {
         employee_id: props.currentEmployee.id,
         photo: capturedPhoto.value,
         shift_id: selectedShiftId.value || props.shiftToday?.id || undefined,
-        attendance_type: attendanceType.value,
-        duty_location: dutyLocation.value || undefined,
+        attendance_type: can('attendance_select_type') ? attendanceType.value : 'wfo',
+        duty_location: can('attendance_select_type') && attendanceType.value === 'dinas_luar' ? (dutyLocation.value || undefined) : undefined,
         latitude: userCoordinates.value?.latitude || null,
         longitude: userCoordinates.value?.longitude || null,
         distance: distanceToOffice.value || 0,

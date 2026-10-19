@@ -403,10 +403,16 @@ class AttendanceController extends Controller
             );
         }
 
-        // Hitung Keterlambatan
+        // Hitung Keterlambatan & Validasi Izin Tipe Kehadiran
         $status = 'present';
         $lateMinutes = 0;
         $attendanceType = $request->attendance_type ?: 'wfo';
+
+        // Jika role user tidak memiliki izin memilih tipe kehadiran, otomatis paksa ke 'wfo'
+        $user = $request->user();
+        if ($user && method_exists($user, 'can') && !$user->can('attendance_select_type')) {
+            $attendanceType = 'wfo';
+        }
 
         if ($shift && $shift->start_time && $attendanceType !== 'dinas_luar') {
             $shiftStartTime = Carbon::createFromFormat('Y-m-d H:i', $today . ' ' . substr($shift->start_time, 0, 5));
