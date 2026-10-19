@@ -19,6 +19,9 @@ class IncentiveDeductionController extends Controller
         $search = $request->query('search', '');
         $areaId = $request->query('area_id', '');
         
+        $authUser = auth()->user();
+        $isSuperAdmin = $authUser && ($authUser->is_admin || $authUser->hasRole('admin'));
+
         $incentivesQuery = Incentive::with(['user.area'])
             ->whereMonth('incentive_date', $month)
             ->whereYear('incentive_date', $year);
@@ -26,6 +29,17 @@ class IncentiveDeductionController extends Controller
         $deductionsQuery = Deduction::with(['user.area'])
             ->whereMonth('deduction_date', $month)
             ->whereYear('deduction_date', $year);
+
+        // Scope per karyawan jika bukan admin dan tidak memiliki payroll_view_all
+        if (!$isSuperAdmin && !$authUser->can('payroll_view_all')) {
+            if ($authUser->can('payroll_view_area') && $authUser->area_id) {
+                $incentivesQuery->whereHas('user', fn($q) => $q->where('area_id', $authUser->area_id));
+                $deductionsQuery->whereHas('user', fn($q) => $q->where('area_id', $authUser->area_id));
+            } else {
+                $incentivesQuery->where('user_id', $authUser->id);
+                $deductionsQuery->where('user_id', $authUser->id);
+            }
+        }
 
         if ($areaId) {
             $incentivesQuery->whereHas('user', function($q) use ($areaId) {
@@ -118,7 +132,15 @@ class IncentiveDeductionController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        $users = User::with('area')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'area_id']);
+        $usersQuery = User::with('area')->where('is_active', true)->orderBy('name');
+        if (!$isSuperAdmin && !$authUser->can('payroll_view_all')) {
+            if ($authUser->can('payroll_view_area') && $authUser->area_id) {
+                $usersQuery->where('area_id', $authUser->area_id);
+            } else {
+                $usersQuery->where('id', $authUser->id);
+            }
+        }
+        $users = $usersQuery->get(['id', 'name', 'area_id']);
         $categories = \App\Models\PayrollCategory::where('is_active', true)->get();
         $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
@@ -146,6 +168,12 @@ class IncentiveDeductionController extends Controller
 
     public function destroyRecord(Request $request)
     {
+        $authUser = auth()->user();
+        $isSuperAdmin = $authUser && ($authUser->is_admin || $authUser->hasRole('admin'));
+        if (!$isSuperAdmin && !$authUser->can('payroll_incentives') && !$authUser->can('payroll_manage')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus data insentif/potongan.');
+        }
+
         $id = $request->id;
         $deleted = false;
         if (str_starts_with($id, 'inc_')) {

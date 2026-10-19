@@ -204,9 +204,9 @@ class EmployeeController extends Controller
         ]);
 
         if (!empty($validated['position'])) {
-            $spatieRole = strtolower($validated['position']);
-            \Spatie\Permission\Models\Role::firstOrCreate(['name' => $spatieRole, 'guard_name' => 'web']);
-            $user->syncRoles([$spatieRole]);
+            $targetRole = self::mapPositionToRole($validated['position']);
+            \Spatie\Permission\Models\Role::firstOrCreate(['name' => $targetRole, 'guard_name' => 'web']);
+            $user->syncRoles([$targetRole]);
         }
 
         return redirect()->route('employees.index')->with('success', 'Data karyawan berhasil ditambahkan.');
@@ -274,9 +274,9 @@ class EmployeeController extends Controller
                 ]);
                 
                 if (!empty($validated['position'])) {
-                    $spatieRole = strtolower($validated['position']);
-                    \Spatie\Permission\Models\Role::firstOrCreate(['name' => $spatieRole, 'guard_name' => 'web']);
-                    $user->syncRoles([$spatieRole]);
+                    $targetRole = self::mapPositionToRole($validated['position']);
+                    \Spatie\Permission\Models\Role::firstOrCreate(['name' => $targetRole, 'guard_name' => 'web']);
+                    $user->syncRoles([$targetRole]);
                 }
             }
         }

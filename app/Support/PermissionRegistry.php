@@ -1089,8 +1089,18 @@ class PermissionRegistry
                 'menu_hr_positions', 'hr_positions_create', 'hr_positions_edit', 'hr_positions_delete',
                 'menu_shifts', 'shifts_manage',
                 'menu_attendances', 'attendance_card_stats', 'attendance_tab_reguler', 'attendances_tab_monitoring', 'attendances_tab_recap', 'attendances_tab_geofence', 'attendances_btn_rules_link', 'attendances_geofence_edit', 'attendances_sync_payroll', 'attendance_tab_special', 'attendances_special_manage', 'attendances_special_create_group', 'attendances_special_tab_admin', 'attendance_tab_field', 'attendances_field_settings', 'attendances_field_create', 'attendances_field_delete', 'attendances_field_export', 'attendances_field_import', 'attendance_tab_best', 'attendance_best_btn_sync', 'attendance_best_btn_print', 'attendance_filter_date', 'attendance_filter_area', 'attendances_manage', 'attendance_btn_export', 'attendances_view_all',
-                'menu_payroll', 'payroll_tab_incentives', 'payroll_tab_target', 'payroll_filter_period', 'payroll_manage', 'payroll_disburse', 'payroll_incentives', 'target_market_manage', 'payroll_btn_print_slip', 'payroll_btn_auto_transfer', 'payroll_btn_settings_bpjs', 'payroll_view_all',
             ],
         ];
+
+        // Role alias / turunan jabatan agar sinkron otomatis saat sinkronisasi izin
+        $presets['kolektor'] = $presets['sales'];
+        $presets['infrastruktur'] = $presets['teknisi'];
+        $presets['tim serbu'] = $presets['teknisi'];
+        $presets['customer care'] = $presets['cs'];
+        $presets['admin customer care'] = $presets['admin cs'];
+        $presets['staff administrasi'] = $presets['admin cs'];
+        $presets['Dispatcher'] = $presets['dispatcher'];
+
+        return $presets;
     }
 }

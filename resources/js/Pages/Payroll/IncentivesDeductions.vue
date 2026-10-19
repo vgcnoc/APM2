@@ -7,7 +7,7 @@
                     <p class="text-xs text-gray-500 mt-0.5">Daftar semua bonus, insentif, dan potongan karyawan</p>
                 </div>
                 <div class="flex gap-2">
-                    <button @click="showManualModal = true" class="inline-flex items-center px-4 py-2.5 bg-indigo-600 border border-transparent rounded-xl font-bold text-xs text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all cursor-pointer">
+                    <button v-if="can('payroll_incentives') || can('payroll_manage')" @click="showManualModal = true" class="inline-flex items-center px-4 py-2.5 bg-indigo-600 border border-transparent rounded-xl font-bold text-xs text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all cursor-pointer">
                         <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                         Tambah Manual
                     </button>
@@ -101,7 +101,7 @@
                     </div>
 
                     <!-- Area / Wilayah Filter -->
-                    <div>
+                    <div v-if="can('payroll_view_all') || can('payroll_view_area')">
                         <label class="block text-xs font-bold text-gray-600 mb-1 flex items-center gap-1">
                             <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                             Area / Wilayah
@@ -180,7 +180,7 @@
                                 <th scope="col" class="px-5 py-4">Jumlah</th>
                                 <th scope="col" class="px-6 py-4">Keterangan</th>
                                 <th scope="col" class="px-5 py-4">Tanggal</th>
-                                <th scope="col" class="px-5 py-4 text-center">Aksi</th>
+                                <th v-if="can('payroll_incentives') || can('payroll_manage')" scope="col" class="px-5 py-4 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50 font-medium">
@@ -214,7 +214,7 @@
                                 <td class="px-5 py-4 whitespace-nowrap text-xs text-gray-500 font-medium">
                                     {{ formatDate(record.date) }}
                                 </td>
-                                <td class="px-5 py-4 whitespace-nowrap text-center text-xs font-medium">
+                                <td v-if="can('payroll_incentives') || can('payroll_manage')" class="px-5 py-4 whitespace-nowrap text-center text-xs font-medium">
                                     <button v-if="record.status === 'pending'" @click="deleteRecord(record)" class="text-rose-500 hover:text-rose-700 p-2 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer" title="Hapus Data">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                     </button>
@@ -222,7 +222,7 @@
                                 </td>
                             </tr>
                             <tr v-if="records.data.length === 0">
-                                <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                                <td :colspan="(can('payroll_incentives') || can('payroll_manage')) ? 7 : 6" class="px-6 py-12 text-center text-gray-500">
                                     <div class="flex flex-col items-center justify-center">
                                         <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
                                         <span class="text-sm font-bold text-gray-700">Tidak Ada Data Ditemukan</span>
@@ -336,6 +336,9 @@ import { ref, reactive, watch, computed } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
+import { usePermission } from '@/Composables/usePermission';
+
+const { can } = usePermission();
 
 const props = defineProps({
     records: Object,
