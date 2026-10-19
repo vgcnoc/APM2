@@ -16,7 +16,12 @@ html {
 body {
     @apply text-gray-900 antialiased bg-gray-50 min-h-screen selection:bg-blue-500/30 selection:text-blue-900;
     font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    zoom: 85%;
+    zoom: 80%;
+}
+
+/* Halaman login & otentikasi publik mengikuti skala native layar perangkat */
+body.auth-device-scale {
+    zoom: 100% !important;
 }
 
 @media print {

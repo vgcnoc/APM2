@@ -20,6 +20,22 @@ const form = useForm({
     area_id: '',
 });
 
+import { onMounted, onUnmounted } from 'vue';
+
+onMounted(() => {
+    if (typeof document !== 'undefined') {
+        document.body.classList.add('auth-device-scale');
+        document.body.style.zoom = '100%';
+    }
+});
+
+onUnmounted(() => {
+    if (typeof document !== 'undefined') {
+        document.body.classList.remove('auth-device-scale');
+        document.body.style.zoom = '80%';
+    }
+});
+
 const submit = () => {
     form.post(route('register-reseller.store'), {
         onFinish: () => form.reset('password', 'password_confirmation'),

@@ -39,11 +39,19 @@ const updateClock = () => {
 };
 
 onMounted(() => {
+    if (typeof document !== 'undefined') {
+        document.body.classList.add('auth-device-scale');
+        document.body.style.zoom = '100%';
+    }
     updateClock();
     timerInterval = setInterval(updateClock, 1000);
 });
 
 onUnmounted(() => {
+    if (typeof document !== 'undefined') {
+        document.body.classList.remove('auth-device-scale');
+        document.body.style.zoom = '80%';
+    }
     if (timerInterval) clearInterval(timerInterval);
 });
 

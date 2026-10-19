@@ -786,6 +786,12 @@ const toggleDropdown = (index) => {
 };
 
 onMounted(() => {
+    // 0. Set default application scale to 80%
+    if (typeof document !== 'undefined') {
+        document.body.classList.remove('auth-device-scale');
+        document.body.style.zoom = '80%';
+    }
+
     // 1. Restore open dropdowns state from storage
     const savedDropdowns = localStorage.getItem('sidebarOpenDropdowns');
     if (savedDropdowns) {

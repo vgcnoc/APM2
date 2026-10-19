@@ -1,7 +1,21 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import AppLogo from '@/Components/AppLogo.vue';
+
+onMounted(() => {
+    if (typeof document !== 'undefined') {
+        document.body.classList.add('auth-device-scale');
+        document.body.style.zoom = '100%';
+    }
+});
+
+onUnmounted(() => {
+    if (typeof document !== 'undefined') {
+        document.body.classList.remove('auth-device-scale');
+        document.body.style.zoom = '80%';
+    }
+});
 
 const props = defineProps({
     initialRef: String,

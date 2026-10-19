@@ -10,16 +10,31 @@ router.on('invalid', (event) => {
     }
 });
 
+// Atur skala tampilan: default aplikasi 80%, halaman login & auth mengikuti layar perangkat (100% responsive)
+const applyDeviceScale = (componentName) => {
+    if (typeof document === 'undefined') return;
+    const isAuth = (componentName || '').startsWith('Auth/');
+    if (isAuth) {
+        document.body.classList.add('auth-device-scale');
+        document.body.style.zoom = '100%';
+    } else {
+        document.body.classList.remove('auth-device-scale');
+        document.body.style.zoom = '80%';
+    }
+};
+
 router.on('navigate', (event) => {
     if (event.detail?.page?.props) {
         window.__pageProps = event.detail.page.props;
     }
+    applyDeviceScale(event.detail?.page?.component);
 });
 
 router.on('success', (event) => {
     if (event.detail?.page?.props) {
         window.__pageProps = event.detail.page.props;
     }
+    applyDeviceScale(event.detail?.page?.component);
 });
 
 import { canDirective, checkUserPermission } from './Directives/can';
@@ -33,6 +48,7 @@ createInertiaApp({
     },
     setup({ el, App, props, plugin }) {
         window.__pageProps = props.initialPage.props;
+        applyDeviceScale(props.initialPage.component);
         const app = createApp({ render: () => h(App, props) });
         app.config.globalProperties.route = window.route;
 
