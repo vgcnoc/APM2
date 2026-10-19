@@ -187,7 +187,11 @@ class GenerateAttendanceRewards extends Command
                 ];
 
                 $maintSorted = collect($performance)->filter(function ($item) {
-                    $pos = strtolower($item['employee']->position ?? '');
+                    $emp = $item['employee'];
+                    $pos = strtolower($emp->position ?? '');
+                    $type = strtolower($emp->employee_type ?? '');
+                    $isSpecial = str_contains($pos, 'khusus') || str_contains($pos, 'special') || str_contains($pos, 'serbu') || str_contains($type, 'khusus') || (method_exists($emp, 'specialTeamMembers') && $emp->specialTeamMembers && $emp->specialTeamMembers->isNotEmpty());
+                    if ($isSpecial) return false;
                     return str_contains($pos, 'maint') || str_contains($pos, 'teknisi') || str_contains($pos, 'field');
                 })->sortByDesc('score')->values();
 

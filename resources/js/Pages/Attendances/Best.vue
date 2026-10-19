@@ -23,7 +23,7 @@
                                     Peringkat kedisiplinan dan absensi terbaik tingkat cabang — Top 3 mendapat reward cabang
                                 </span>
                                 <span v-else-if="currentScope === 'maintenance'">
-                                    Nominasi khusus divisi Maintenance & Teknisi Lapangan — Top 3 mendapat reward maintenance
+                                    Nominasi khusus divisi Maintenance & Teknisi Reguler (Tim Khusus & Tim Serbu tidak masuk) — Top 3 mendapat reward maintenance
                                 </span>
                                 <span v-else-if="currentScope === 'special_team'">
                                     Nominasi khusus Tim Khusus & Tugas Lapangan — Top 3 mendapat reward tim khusus

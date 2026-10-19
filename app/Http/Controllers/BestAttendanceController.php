@@ -201,14 +201,32 @@ class BestAttendanceController extends Controller
 
             $branchName = $emp->area ? $emp->area->name : ($emp->branch ?: 'Pusat');
             $position = $emp->position ?: 'Karyawan';
-            $isMaintenance = (bool) preg_match('/(teknisi|maintenance|noc|jaringan|lapangan|field|serbu|fiber|fo|infrastruktur)/i', $position . ' ' . ($emp->employee_type ?? ''));
 
+            // 1. Identifikasi apakah karyawan adalah Tim Khusus / Tim Serbu:
+            // - Terdaftar di specialTeamMembers
+            // - Memiliki riwayat SpecialAttendance
+            // - Posisi atau tipe karyawan mengandung kata 'khusus', 'special', atau 'serbu'
             $isSpecialTeam = false;
             if (method_exists($emp, 'specialTeamMembers') && $emp->specialTeamMembers && $emp->specialTeamMembers->isNotEmpty()) {
                 $isSpecialTeam = true;
             }
+            if (!$isSpecialTeam && class_exists(SpecialAttendance::class)) {
+                if ($specialAttendances->has($emp->id) && $specialAttendances->get($emp->id)->isNotEmpty()) {
+                    $isSpecialTeam = true;
+                }
+            }
             if (!$isSpecialTeam) {
                 $isSpecialTeam = (bool) preg_match('/(khusus|special|serbu)/i', $position . ' ' . ($emp->employee_type ?? ''));
+            }
+
+            // 2. Identifikasi apakah karyawan adalah Maintenance / Teknisi Reguler:
+            // SYARAT MUTLAK: Tim Khusus & Tim Serbu HARUS TIDAK MASUK kategori Maintenance
+            $isMaintenance = false;
+            if (!$isSpecialTeam) {
+                $isNotSerbuOrKhusus = !preg_match('/(serbu|khusus|special)/i', $position . ' ' . ($emp->employee_type ?? ''));
+                if ($isNotSerbuOrKhusus) {
+                    $isMaintenance = (bool) preg_match('/(teknisi|maintenance|jaringan|lapangan|field|fiber|fo)/i', $position);
+                }
             }
 
             $calculatedEmployees[] = [
@@ -242,14 +260,14 @@ class BestAttendanceController extends Controller
         // Filter departemen / divisi & scope
         $filteredCollection = collect($calculatedEmployees);
         if ($scope === 'maintenance') {
-            $filteredCollection = $filteredCollection->where('is_maintenance', true);
+            $filteredCollection = $filteredCollection->where('is_maintenance', true)->where('is_special_team', false);
         } elseif ($scope === 'special_team') {
             $filteredCollection = $filteredCollection->where('is_special_team', true);
         } elseif ($department === 'maintenance') {
-            $filteredCollection = $filteredCollection->where('is_maintenance', true);
+            $filteredCollection = $filteredCollection->where('is_maintenance', true)->where('is_special_team', false);
         } elseif ($department !== 'all') {
             $filteredCollection = $filteredCollection->filter(function ($item) use ($department) {
-                return stripos($item['position'], $department) !== false;
+                return stripos($item['position'], $department) !== false && !$item['is_special_team'];
             });
         }
 
@@ -458,9 +476,11 @@ class BestAttendanceController extends Controller
         $totalLates = (int) $filteredCollection->sum('lates');
         $totalAlphas = (int) $filteredCollection->sum('alphas');
 
-        // Daftar posisi unik untuk filter departemen
+        // Daftar posisi unik untuk filter departemen (kecualikan tim serbu dan tim khusus)
         $positions = Employee::whereNotNull('position')
             ->where('position', '!=', '')
+            ->where('position', 'NOT LIKE', '%serbu%')
+            ->where('position', 'NOT LIKE', '%khusus%')
             ->distinct()
             ->orderBy('position')
             ->pluck('position')
