@@ -112,6 +112,14 @@ class Customer extends Model
     }
 
     /**
+     * Alias area untuk relasi ke Area
+     */
+    public function area(): BelongsTo
+    {
+        return $this->belongsTo(Area::class, 'area_id');
+    }
+
+    /**
      * Alias areaRef untuk kompatibilitas WhatsApp Blast & Notifikasi
      */
     public function areaRef(): BelongsTo

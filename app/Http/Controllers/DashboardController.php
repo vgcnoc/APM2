@@ -246,7 +246,7 @@ class DashboardController extends Controller
             ->count();
 
         // ── 5. Pipeline Pelanggan (Terbaru) ─────────────────
-        $recentCustomers = (clone $custBase)->with(['package', 'area'])
+        $recentCustomers = (clone $custBase)->with(['package', 'areaModel'])
             ->orderByDesc('created_at')
             ->limit(10)
             ->get()
@@ -254,7 +254,7 @@ class DashboardController extends Controller
                 'id'         => $c->id,
                 'name'       => $c->name,
                 'package'    => $c->package?->name ?? '-',
-                'area_name'  => $c->area?->name ?? '-',
+                'area_name'  => $c->areaModel?->name ?? ($c->area ?: '-'),
                 'status'     => $c->status,
                 'initial'    => strtoupper(substr($c->name, 0, 1)),
                 'created_at' => $c->created_at->format('d M Y'),
