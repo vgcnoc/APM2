@@ -25,6 +25,11 @@ class MaterialTransactionItem extends Model
         return $this->belongsTo(MaterialTransaction::class, 'material_transaction_id');
     }
 
+    public function materialTransaction(): BelongsTo
+    {
+        return $this->belongsTo(MaterialTransaction::class, 'material_transaction_id');
+    }
+
     public function material(): BelongsTo
     {
         return $this->belongsTo(Material::class);

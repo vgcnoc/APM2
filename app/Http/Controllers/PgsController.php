@@ -496,7 +496,7 @@ class PgsController extends Controller
                     $orderItem = $prevMat->material_transaction_item_id 
                         ? MaterialTransactionItem::find($prevMat->material_transaction_item_id)
                         : null;
-                    $targetAreaId = $areaId ?? $orderItem?->materialTransaction?->area_id;
+                    $targetAreaId = $areaId ?? $orderItem?->materialTransaction?->area_id ?? $orderItem?->transaction?->area_id;
                     if ($targetAreaId) {
                         $matStock = \App\Models\MaterialStock::where('material_id', $prevMat->material_id)
                             ->where('area_id', $targetAreaId)
@@ -537,9 +537,9 @@ class PgsController extends Controller
                     if ($qty <= 0) continue;
 
                     $trxItemId = $matItem['material_transaction_item_id'] ?? null;
-                    $orderTrxItem = $trxItemId ? MaterialTransactionItem::with('materialTransaction')->find($trxItemId) : null;
-                    $trxNumber = $matItem['trx_number'] ?? $orderTrxItem?->materialTransaction?->transaction_number;
-                    $targetAreaId = $areaId ?? $orderTrxItem?->materialTransaction?->area_id;
+                    $orderTrxItem = $trxItemId ? MaterialTransactionItem::with(['materialTransaction', 'transaction'])->find($trxItemId) : null;
+                    $trxNumber = $matItem['trx_number'] ?? $orderTrxItem?->materialTransaction?->transaction_number ?? $orderTrxItem?->transaction?->transaction_number;
+                    $targetAreaId = $areaId ?? $orderTrxItem?->materialTransaction?->area_id ?? $orderTrxItem?->transaction?->area_id;
 
                     $matStock = null;
                     if ($targetAreaId) {
@@ -683,7 +683,7 @@ class PgsController extends Controller
                             $orderItem = $pgsMat->material_transaction_item_id 
                                 ? MaterialTransactionItem::find($pgsMat->material_transaction_item_id)
                                 : null;
-                            $targetAreaId = $areaId ?? $orderItem?->materialTransaction?->area_id;
+                            $targetAreaId = $areaId ?? $orderItem?->materialTransaction?->area_id ?? $orderItem?->transaction?->area_id;
 
                             $matStock = null;
                             if ($targetAreaId) {
