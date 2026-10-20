@@ -1,28 +1,31 @@
 <template>
-    <div class="flex items-center justify-center">
+    <div class="flex items-center" :class="[context === 'login' ? 'justify-start' : 'justify-center']">
         <!-- Logo from Settings (mengikuti Logo Perusahaan atau Logo Aplikasi) -->
         <img v-if="logoSrc && !imageError" 
              :src="logoSrc" 
              class="object-contain w-auto transition-all duration-300" 
-             :class="sizeClasses"
+             :class="[
+                 sizeClasses,
+                 isWhiteLogo ? 'brightness-0 invert drop-shadow-[0_2px_12px_rgba(255,255,255,0.25)]' : ''
+             ]"
              :alt="displayName" 
              @error="handleImageError" />
              
         <!-- Default Fallback Logo (rendered as a single SVG jika belum ada logo yang diupload) -->
         <div v-else class="flex items-center" :class="[sidebarCollapsed ? 'justify-center w-full' : '']">
             <!-- Full Logo SVG for fallback -->
-            <svg v-if="!sidebarCollapsed" :class="sizeClasses" class="text-blue-600" viewBox="0 0 200 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg v-if="!sidebarCollapsed" :class="sizeClasses" class="text-cyan-400" viewBox="0 0 200 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <!-- Icon background -->
                 <rect width="40" height="40" y="4" rx="10" fill="currentColor"/>
                 <!-- Lightning Icon -->
                 <path d="M22 14V7L13 18H20V25L29 14H22Z" fill="white" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 <!-- Text: Dynamic App/Company Name -->
-                <text x="52" y="24" fill="#111827" font-family="system-ui, sans-serif" font-size="17" font-weight="800">{{ displayName }}</text>
-                <text v-if="displayName !== ''" x="52" y="38" fill="currentColor" font-family="system-ui, sans-serif" font-size="10" font-weight="700" letter-spacing="0.1em">OFFICIAL PORTAL</text>
+                <text x="52" y="24" :fill="isWhiteLogo ? '#FFFFFF' : '#111827'" font-family="system-ui, sans-serif" font-size="17" font-weight="800">{{ displayName }}</text>
+                <text v-if="displayName !== ''" x="52" y="38" :fill="isWhiteLogo ? '#94A3B8' : 'currentColor'" font-family="system-ui, sans-serif" font-size="10" font-weight="700" letter-spacing="0.1em">OFFICIAL PORTAL</text>
             </svg>
             
             <!-- Icon-only SVG for collapsed sidebar -->
-            <svg v-else :class="sizeClasses" class="text-blue-600 max-w-[40px]" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg v-else :class="sizeClasses" class="text-cyan-400 max-w-[40px]" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect width="40" height="40" rx="10" fill="currentColor"/>
                 <path d="M22 10V3L13 14H20V21L29 10H22Z" fill="white" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -47,7 +50,15 @@ const props = defineProps({
     preferCompanyLogo: {
         type: Boolean,
         default: false
+    },
+    white: {
+        type: Boolean,
+        default: false
     }
+});
+
+const isWhiteLogo = computed(() => {
+    return props.white || props.context === 'login';
 });
 
 const page = usePage();
@@ -91,7 +102,7 @@ const sizeClasses = computed(() => {
         case 'navbar':
             return 'h-[34px] sm:h-[40px] max-w-[180px] w-auto';
         case 'login':
-            return 'h-[48px] sm:h-[64px] max-w-[240px] w-auto mb-4';
+            return 'h-[44px] sm:h-[56px] max-w-[260px] w-auto';
         default:
             return 'h-[38px] sm:h-[44px] max-w-[180px] w-auto';
     }

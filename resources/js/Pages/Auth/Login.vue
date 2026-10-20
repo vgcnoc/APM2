@@ -240,18 +240,19 @@ const handleCheckBill = async () => {
                 <!-- ── LEFT PANEL: FUTURISTIC SHOWCASE (DESKTOP) ── -->
                 <div class="hidden lg:flex lg:col-span-6 flex-col justify-center space-y-6 text-left">
                     <!-- Brand Identity & Badge -->
-                    <div class="space-y-3">
-                        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold uppercase tracking-wider backdrop-blur-md">
+                    <div class="flex flex-col items-start space-y-4">
+                        <!-- Next-Gen Badge di Paling Atas -->
+                        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-300 text-xs font-semibold uppercase tracking-wider backdrop-blur-md shadow-sm">
                             <span class="text-cyan-400">⚡</span>
                             <span>Next-Gen ISP Orchestration Engine</span>
                         </div>
                         
-                        <!-- High-Tech Glass Logo Wrapper -->
-                        <div class="inline-block p-3 rounded-2xl bg-slate-900/60 border border-slate-700/50 backdrop-blur-xl shadow-xl">
+                        <!-- Logo Vizbill Berada di BAWAH Badge Next-Gen -->
+                        <div class="py-1">
                             <AppLogo context="login" />
                         </div>
 
-                        <h1 class="text-3xl xl:text-4xl font-extrabold text-white tracking-tight leading-tight">
+                        <h1 class="text-3xl xl:text-4xl font-extrabold text-white tracking-tight leading-tight pt-1">
                             Platform Billing &amp; <br />
                             <span class="bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
                                 Manajemen Jaringan Terpadu
@@ -319,8 +320,12 @@ const handleCheckBill = async () => {
                 <div class="w-full lg:col-span-6 flex flex-col items-center">
                     
                     <!-- Mobile Logo Header (visible only on small screens) -->
-                    <div class="lg:hidden mb-5 text-center flex flex-col items-center">
-                        <div class="p-2.5 rounded-2xl bg-slate-900/60 border border-slate-800 backdrop-blur-xl inline-block mb-2">
+                    <div class="lg:hidden mb-6 text-center flex flex-col items-center">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[11px] font-semibold uppercase tracking-wider backdrop-blur-md mb-2">
+                            <span class="text-cyan-400">⚡</span>
+                            <span>Next-Gen ISP Orchestration Engine</span>
+                        </div>
+                        <div class="py-1 mb-2">
                             <AppLogo context="login" />
                         </div>
                         <h2 class="text-lg font-bold text-white tracking-tight">Portal Akses Terpadu</h2>
