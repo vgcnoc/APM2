@@ -320,24 +320,6 @@ const menuItems = [
             { href: '/customers/terminated', label: 'Stop Permanen', active: (url) => (url || '').startsWith('/customers/terminated'), permission: 'menu_customers_all' },
         ]
     },
-    { 
-        type: 'link', 
-        href: '/customers/gratis', 
-        icon: 'gift', 
-        label: 'Pelanggan Gratis', 
-        theme: 'blue',
-        active: (url) => (url || '').startsWith('/customers/gratis'), 
-        permission: 'menu_customers_gratis' 
-    },
-    { 
-        type: 'link', 
-        href: '/customers/free-home', 
-        icon: 'home', 
-        label: 'Pelanggan Free Home', 
-        theme: 'blue',
-        active: (url) => (url || '').startsWith('/customers/free-home'), 
-        permission: 'menu_customers_free_home' 
-    },
     {
         type: 'link',
         href: '/monitoring-pelanggan',
