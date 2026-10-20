@@ -91,6 +91,74 @@
             </div>
         </div>
 
+        <!-- TAB KATEGORI KONTRAK STOP PERMANEN -->
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+            <div class="flex flex-wrap items-center gap-2">
+                <!-- Tab 1: Semua Stop -->
+                <button
+                    type="button"
+                    @click="setTab('all')"
+                    class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    :class="currentTab === 'all'
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    <span>Semua Pelanggan Stop</span>
+                    <span 
+                        class="px-2 py-0.5 rounded-full text-[10px] font-extrabold"
+                        :class="currentTab === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200/70 text-slate-700'"
+                    >
+                        {{ stats.total || 0 }}
+                    </span>
+                </button>
+
+                <!-- Tab 2: Berhenti < 4 Bulan (Stop Dini / Potong Gaji) -->
+                <button
+                    type="button"
+                    @click="setTab('under_4_months')"
+                    class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border"
+                    :class="currentTab === 'under_4_months'
+                        ? 'bg-amber-500 border-amber-600 text-white shadow-sm shadow-amber-500/20'
+                        : 'border-amber-200 text-amber-800 bg-amber-50/70 hover:bg-amber-100/70'"
+                >
+                    <span class="text-sm">⚠️</span>
+                    <span>Berhenti &lt; 4 Bulan (Stop Dini)</span>
+                    <span 
+                        class="px-2 py-0.5 rounded-full text-[10px] font-black"
+                        :class="currentTab === 'under_4_months' ? 'bg-white text-amber-800' : 'bg-amber-200/80 text-amber-900'"
+                    >
+                        {{ stats.under_4_months || 0 }}
+                    </span>
+                </button>
+
+                <!-- Tab 3: Lulus Kontrak (≥ 4 Bulan) -->
+                <button
+                    type="button"
+                    @click="setTab('above_4_months')"
+                    class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border"
+                    :class="currentTab === 'above_4_months'
+                        ? 'bg-emerald-600 border-emerald-700 text-white shadow-sm shadow-emerald-600/20'
+                        : 'border-emerald-200 text-emerald-800 bg-emerald-50/70 hover:bg-emerald-100/70'"
+                >
+                    <span class="text-sm">✅</span>
+                    <span>Lulus Kontrak (&ge; 4 Bulan)</span>
+                    <span 
+                        class="px-2 py-0.5 rounded-full text-[10px] font-black"
+                        :class="currentTab === 'above_4_months' ? 'bg-white text-emerald-800' : 'bg-emerald-200/80 text-emerald-900'"
+                    >
+                        {{ stats.above_4_months || 0 }}
+                    </span>
+                </button>
+            </div>
+
+            <!-- Info Batas Kontrak -->
+            <div class="text-[11px] text-slate-500 flex items-center gap-1.5 font-medium px-2">
+                <span class="inline-block w-2 h-2 rounded-full bg-amber-400"></span>
+                <span>Standar Minimal Kontrak: <strong>4 Bulan</strong></span>
+            </div>
+        </div>
+
         <!-- DataTable Pelanggan Stop Permanen -->
         <DataTable
             :data="customers.data"
@@ -215,35 +283,47 @@
                     </div>
                 </td>
 
-                <!-- 3. Penghentian (Tgl, Alasan & Masa Kontrak) -->
+                <!-- 3. Penghentian (Tgl, Alasan & Lama Berlangganan) -->
                 <td>
-                    <div class="py-1 space-y-1">
+                    <div class="py-1 space-y-1.5 min-w-[210px]">
+                        <!-- Tanggal Berhenti -->
                         <div class="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
                             <svg class="w-3.5 h-3.5 text-rose-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            <span class="font-bold">{{ formatDate(row.cancel_date) }}</span>
+                            <span class="font-bold text-slate-800">Berhenti: {{ formatDate(row.cancel_date) }}</span>
                         </div>
+
+                        <!-- Alasan Berhenti -->
                         <div class="text-xs text-slate-600 line-clamp-2 max-w-xs" :title="row.cancel_reason">
                             <span class="font-semibold text-slate-700">Alasan:</span> {{ row.cancel_reason || 'Permintaan pelanggan' }}
                         </div>
 
-                        <!-- Masa Aktif / Status Kontrak 4 Bulan -->
-                        <div v-if="row.active_duration && row.active_duration.text" class="flex flex-wrap items-center gap-1 pt-0.5">
-                            <span 
-                                v-if="row.active_duration.is_under_4_months"
-                                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200"
-                                :title="'Masa aktif: ' + row.active_duration.text + ' (Kurang dari 4 bulan)'"
-                            >
-                                <span>⚠️ Stop Dini</span>
-                                <span class="font-normal text-amber-700">({{ row.active_duration.text }})</span>
-                            </span>
-                            <span 
-                                v-else
-                                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                :title="'Masa aktif: ' + row.active_duration.text"
-                            >
-                                <span>✅ Lulus Kontrak</span>
-                                <span class="font-normal text-emerald-600">({{ row.active_duration.text }})</span>
-                            </span>
+                        <!-- Keterangan Lama Berlangganan -->
+                        <div v-if="row.active_duration" class="pt-1.5 border-t border-slate-100 mt-1">
+                            <div class="flex items-center gap-1.5 text-xs font-extrabold" :class="row.active_duration.is_under_4_months ? 'text-amber-800' : 'text-emerald-800'">
+                                <svg class="w-3.5 h-3.5 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span>Lama Langganan: {{ row.active_duration.text }}</span>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-0.5 font-medium">
+                                {{ row.active_duration.start_date }} s/d {{ row.active_duration.end_date }}
+                            </div>
+
+                            <!-- Badge Status Kontrak -->
+                            <div class="mt-1 flex flex-wrap items-center gap-1">
+                                <span 
+                                    v-if="row.active_duration.is_under_4_months"
+                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs"
+                                    :title="'Pelanggan berhenti sebelum minimal komitmen 4 bulan (' + row.active_duration.text + ')'"
+                                >
+                                    <span>⚠️ Stop Dini (&lt; 4 Bulan)</span>
+                                </span>
+                                <span 
+                                    v-else
+                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs"
+                                    :title="'Pelanggan telah memenuhi masa komitmen 4 bulan (' + row.active_duration.text + ')'"
+                                >
+                                    <span>✅ Lulus Kontrak (≥ 4 Bulan)</span>
+                                </span>
+                            </div>
                         </div>
 
                         <!-- Pemotongan Fee Booking Afiliasi Otomatis -->
@@ -799,14 +879,30 @@ const vClickOutside = {
 };
 
 // Filter states
+const currentTab = ref(props.filters?.tab || 'all');
 const currentArea = ref(props.filters?.area_id || '');
 const currentPackage = ref(props.filters?.package_id || '');
 const currentOntStatus = ref(props.filters?.ont_status || '');
 const currentBillingStatus = ref(props.filters?.billing_status || '');
 
 const hasActiveFilters = computed(() => {
-    return !!(currentArea.value || currentPackage.value || currentOntStatus.value || currentBillingStatus.value);
+    return !!(currentArea.value || currentPackage.value || currentOntStatus.value || currentBillingStatus.value || (currentTab.value && currentTab.value !== 'all'));
 });
+
+function setTab(tab) {
+    currentTab.value = tab;
+    router.get('/customers/terminated', {
+        search: props.filters?.search || undefined,
+        area_id: currentArea.value || undefined,
+        package_id: currentPackage.value || undefined,
+        ont_status: currentOntStatus.value || undefined,
+        billing_status: currentBillingStatus.value || undefined,
+        tab: tab === 'all' ? undefined : tab,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+    });
+}
 
 function applyFilters() {
     router.get('/customers/terminated', {
@@ -815,6 +911,7 @@ function applyFilters() {
         package_id: currentPackage.value || undefined,
         ont_status: currentOntStatus.value || undefined,
         billing_status: currentBillingStatus.value || undefined,
+        tab: currentTab.value === 'all' ? undefined : currentTab.value,
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -831,6 +928,7 @@ function resetFilters() {
     currentPackage.value = '';
     currentOntStatus.value = '';
     currentBillingStatus.value = '';
+    currentTab.value = 'all';
     router.get('/customers/terminated', {}, {
         preserveState: false,
     });

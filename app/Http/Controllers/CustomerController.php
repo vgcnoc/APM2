@@ -1243,6 +1243,8 @@ class CustomerController extends Controller
             }
         }
 
+        $tab = $request->query('tab', 'all');
+
         // Stats
         $totalTerminated = (clone $baseQuery)->count();
         $thisMonthTerminated = (clone $baseQuery)->whereMonth('cancel_date', now()->month)
@@ -1254,15 +1256,25 @@ class CustomerController extends Controller
             $q->where('status', 'terminated');
         })->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false)->sum('amount');
 
+        $under4MonthsCount = (clone $baseQuery)
+            ->whereRaw('TIMESTAMPDIFF(MONTH, COALESCE(activation_date, registration_date, created_at), COALESCE(cancel_date, NOW())) < 4')
+            ->count();
+
+        $above4MonthsCount = (clone $baseQuery)
+            ->whereRaw('TIMESTAMPDIFF(MONTH, COALESCE(activation_date, registration_date, created_at), COALESCE(cancel_date, NOW())) >= 4')
+            ->count();
+
         $stats = [
             'total' => $totalTerminated,
             'this_month' => $thisMonthTerminated,
             'pending_ont' => $pendingOntCount,
             'total_piutang' => $totalPiutang,
+            'under_4_months' => $under4MonthsCount,
+            'above_4_months' => $above4MonthsCount,
         ];
 
         // Query
-        $customers = (clone $baseQuery)
+        $customersQuery = (clone $baseQuery)
             ->with([
                 'package', 
                 'areaModel', 
@@ -1295,17 +1307,56 @@ class CustomerController extends Controller
             ->when($request->ont_status === 'returned', fn($q) => $q->whereDoesntHave('ont'))
             ->when($request->billing_status === 'unpaid', fn($q) => $q->has('invoices'))
             ->when($request->billing_status === 'paid', fn($q) => $q->doesntHave('invoices'))
+            ->when($tab === 'under_4_months', function ($q) {
+                $q->whereRaw('TIMESTAMPDIFF(MONTH, COALESCE(activation_date, registration_date, created_at), COALESCE(cancel_date, NOW())) < 4');
+            })
+            ->when($tab === 'above_4_months', function ($q) {
+                $q->whereRaw('TIMESTAMPDIFF(MONTH, COALESCE(activation_date, registration_date, created_at), COALESCE(cancel_date, NOW())) >= 4');
+            })
             ->orderByDesc('cancel_date')
-            ->orderByDesc('updated_at')
-            ->paginate($request->per_page ?? 15)
-            ->withQueryString();
+            ->orderByDesc('updated_at');
+
+        $customers = $customersQuery->paginate($request->per_page ?? 15)->withQueryString();
+
+        $customers->getCollection()->transform(function ($customer) {
+            $startDate = $customer->activation_date 
+                ? \Carbon\Carbon::parse($customer->activation_date) 
+                : ($customer->registration_date ? \Carbon\Carbon::parse($customer->registration_date) : ($customer->created_at ? \Carbon\Carbon::parse($customer->created_at) : now()));
+
+            $endDate = $customer->cancel_date ? \Carbon\Carbon::parse($customer->cancel_date) : now();
+
+            $diffInDays = max(1, (int) $startDate->diffInDays($endDate));
+            $diffInMonths = (int) $startDate->diffInMonths($endDate);
+            $remainingDays = $diffInDays % 30;
+
+            if ($diffInMonths >= 12) {
+                $years = floor($diffInMonths / 12);
+                $months = $diffInMonths % 12;
+                $durationText = "{$years} tahun " . ($months > 0 ? "{$months} bulan " : '') . "{$remainingDays} hari";
+            } elseif ($diffInMonths > 0) {
+                $durationText = "{$diffInMonths} bulan {$remainingDays} hari";
+            } else {
+                $durationText = "{$diffInDays} hari";
+            }
+
+            $customer->active_duration = [
+                'days' => $diffInDays,
+                'months' => $diffInMonths,
+                'text' => $durationText,
+                'is_under_4_months' => $diffInMonths < 4,
+                'start_date' => $startDate->format('d M Y'),
+                'end_date' => $endDate->format('d M Y'),
+            ];
+
+            return $customer;
+        });
 
         return Inertia::render('Customers/Terminated', [
             'customers' => $customers,
             'packages' => InternetPackage::active()->get(['id', 'name', 'price']),
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'stats' => $stats,
-            'filters' => $request->only(['search', 'area_id', 'package_id', 'ont_status', 'billing_status']),
+            'filters' => array_merge($request->only(['search', 'area_id', 'package_id', 'ont_status', 'billing_status']), ['tab' => $tab]),
             'company' => [
                 'name' => Setting::get('company_name', config('app.name', 'ISP Provider')),
                 'phone' => Setting::get('company_phone', ''),
