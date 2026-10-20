@@ -113,12 +113,53 @@
 
             </div>
 
+            <!-- ── 2. TABS STATUS KONEKSI (SEMUA / ONLINE / OFFLINE) ── -->
+            <div class="flex items-center gap-2 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+                <button 
+                    @click="setConnectionTab('')"
+                    class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+                    :class="!filterForm.connection_status ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'"
+                >
+                    <span>📋</span> Semua Pelanggan Gratis
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-black"
+                        :class="!filterForm.connection_status ? 'bg-white text-emerald-700' : 'bg-gray-100 text-gray-700'">
+                        {{ stats.total || 0 }}
+                    </span>
+                </button>
+
+                <button 
+                    @click="setConnectionTab('online')"
+                    class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+                    :class="filterForm.connection_status === 'online' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'"
+                >
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Pelanggan Online
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-black"
+                        :class="filterForm.connection_status === 'online' ? 'bg-white text-emerald-700' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'">
+                        {{ stats.online || 0 }}
+                    </span>
+                </button>
+
+                <button 
+                    @click="setConnectionTab('offline')"
+                    class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+                    :class="filterForm.connection_status === 'offline' ? 'bg-rose-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'"
+                >
+                    <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
+                    Pelanggan Offline
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-black"
+                        :class="filterForm.connection_status === 'offline' ? 'bg-white text-rose-700' : 'bg-rose-50 text-rose-700 border border-rose-200'">
+                        {{ stats.offline || 0 }}
+                    </span>
+                </button>
+            </div>
+
             <!-- ── FILTER BAR ── -->
             <div v-can="'customers_filter_search'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 transition-all">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
                     
                     <!-- Search Input -->
-                    <div class="lg:col-span-4">
+                    <div class="lg:col-span-3">
                         <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                             Pencarian Data
                         </label>
@@ -128,7 +169,7 @@
                                 v-model="filterForm.search" 
                                 @input="onSearchInput"
                                 @keyup.enter="applyFilters"
-                                placeholder="Cari nama, kode pelanggan, no HP, alamat..." 
+                                placeholder="Cari nama, kode, HP, user PPPoE..." 
                                 class="block w-full text-xs rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 pl-8 pr-3 py-2 transition-colors"
                             />
                             <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,7 +179,7 @@
                     </div>
 
                     <!-- Filter Area / Wilayah -->
-                    <div class="lg:col-span-3">
+                    <div class="lg:col-span-2">
                         <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                             Wilayah / Area
                         </label>
@@ -168,6 +209,23 @@
                             <option v-for="p in packages" :key="p.id" :value="p.id">
                                 {{ p.name }} ({{ p.speed_mbps }} Mbps)
                             </option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Mode Akses -->
+                    <div class="lg:col-span-2">
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                            Mode Akses
+                        </label>
+                        <select 
+                            v-model="filterForm.access_mode" 
+                            @change="applyFilters"
+                            class="block w-full text-xs rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 py-2 transition-colors cursor-pointer font-medium"
+                        >
+                            <option value="">Semua Mode</option>
+                            <option value="pppoe">⚡ PPPoE</option>
+                            <option value="static">🌐 Static IP</option>
+                            <option value="hotspot">📶 Hotspot</option>
                         </select>
                     </div>
 
@@ -223,7 +281,7 @@
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Paket &amp; Bandwidth</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status Layanan</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Wilayah &amp; Alamat</th>
-                                <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status Koneksi</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status &amp; Mode Akses</th>
                                 <th scope="col" class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
@@ -308,26 +366,36 @@
                                     </div>
                                 </td>
 
-                                <!-- Status Koneksi -->
+                                <!-- Status & Mode Akses -->
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center gap-1.5">
                                         <span 
                                             class="w-2.5 h-2.5 rounded-full"
-                                            :class="isCustomerOnline(c) ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'"
+                                            :class="isCustomerOnline(c) ? 'bg-emerald-500 animate-pulse' : 'bg-rose-400'"
                                         ></span>
                                         <span 
-                                            class="text-xs font-bold"
-                                            :class="isCustomerOnline(c) ? 'text-emerald-700' : 'text-gray-500'"
+                                            class="text-xs font-black"
+                                            :class="isCustomerOnline(c) ? 'text-emerald-700' : 'text-rose-600'"
                                         >
                                             {{ isCustomerOnline(c) ? 'Online' : 'Offline' }}
                                         </span>
+                                        <span 
+                                            class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border ml-1 shadow-2xs"
+                                            :class="getAccessModeBadgeClass(getAccessMode(c))"
+                                        >
+                                            {{ getAccessModeLabel(getAccessMode(c)) }}
+                                        </span>
                                     </div>
-                                    <div class="text-[10px] text-gray-400 font-mono mt-0.5">
-                                        {{ c.ont?.pppoe_user || 'PPPoE -' }}
+                                    <div class="text-[11px] text-gray-500 font-mono mt-1 flex items-center gap-1">
+                                        <span class="text-gray-400 text-[10px]">User:</span>
+                                        <span class="font-bold text-gray-700 truncate max-w-[130px]">{{ c.ont?.pppoe_user || c.ont?.ip_login || '-' }}</span>
                                     </div>
-                                    <div class="mt-0.5">
+                                    <div class="mt-0.5 flex items-center gap-1.5">
                                         <span class="text-[9px] uppercase px-1.5 py-0.2 rounded font-bold" :class="c.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'">
-                                            {{ c.status }}
+                                            {{ c.status === 'active' ? 'Aktif' : c.status }}
+                                        </span>
+                                        <span v-if="c.ont?.serial_number" class="text-[9px] text-gray-400 font-mono">
+                                            SN: {{ c.ont.serial_number }}
                                         </span>
                                     </div>
                                 </td>
@@ -492,10 +560,17 @@ const filterForm = reactive({
     area_id: props.filters?.area_id || '',
     package_id: props.filters?.package_id || '',
     status: props.filters?.status || '',
+    connection_status: props.filters?.connection_status || '',
+    access_mode: props.filters?.access_mode || '',
 });
 
+const setConnectionTab = (status) => {
+    filterForm.connection_status = status;
+    applyFilters();
+};
+
 const hasActiveFilters = computed(() => {
-    return !!(filterForm.search || filterForm.area_id || filterForm.package_id || filterForm.status);
+    return !!(filterForm.search || filterForm.area_id || filterForm.package_id || filterForm.status || filterForm.connection_status || filterForm.access_mode);
 });
 
 let searchTimeout = null;
@@ -512,6 +587,8 @@ const applyFilters = () => {
         area_id: filterForm.area_id || undefined,
         package_id: filterForm.package_id || undefined,
         status: filterForm.status || undefined,
+        connection_status: filterForm.connection_status || undefined,
+        access_mode: filterForm.access_mode || undefined,
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -524,6 +601,8 @@ const resetFilters = () => {
     filterForm.area_id = '';
     filterForm.package_id = '';
     filterForm.status = '';
+    filterForm.connection_status = '';
+    filterForm.access_mode = '';
     applyFilters();
 };
 
@@ -535,6 +614,25 @@ const isCustomerOnline = (customer) => {
     const user = customer.ont?.pppoe_user;
     if (!user) return false;
     return (props.onlineUsernames || []).includes(user);
+};
+
+const getAccessMode = (customer) => {
+    const mode = customer.package?.access_mode || customer.ont?.access_mode || (customer.ont?.pppoe_user ? 'pppoe' : 'static');
+    return (mode || 'pppoe').toLowerCase();
+};
+
+const getAccessModeLabel = (mode) => {
+    if (mode === 'pppoe') return 'PPPoE';
+    if (mode === 'static' || mode === 'static_ip' || mode === 'ip_static') return 'Static IP';
+    if (mode === 'hotspot') return 'Hotspot';
+    return (mode || 'PPPoE').toUpperCase();
+};
+
+const getAccessModeBadgeClass = (mode) => {
+    if (mode === 'pppoe') return 'bg-blue-50 text-blue-700 border-blue-200';
+    if (mode === 'static' || mode === 'static_ip' || mode === 'ip_static') return 'bg-purple-50 text-purple-700 border-purple-200';
+    if (mode === 'hotspot') return 'bg-amber-50 text-amber-700 border-amber-200';
+    return 'bg-gray-100 text-gray-700 border-gray-200';
 };
 
 // Modal switch status

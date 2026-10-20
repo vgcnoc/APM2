@@ -400,10 +400,28 @@ class CustomerController extends Controller
         $totalBandwidthMbps = (clone $baseQuery)->with('package')->get()->sum(fn($c) => $c->package?->speed_mbps ?? 0);
         $totalCsrValue = (clone $baseQuery)->with('package')->get()->sum(fn($c) => $c->package?->price ?? 0);
         $onlineGratis = (clone $baseQuery)->whereHas('ont', fn($q) => $q->whereIn('pppoe_user', $onlineUsernames))->count();
+        $offlineGratis = max(0, $totalGratis - $onlineGratis);
 
         // Data Pelanggan Gratis dengan filter & pagination
         $customers = (clone $baseQuery)
             ->with(['package', 'ont.odp', 'areaModel', 'user', 'sales'])
+            ->when($request->filled('connection_status') && in_array($request->connection_status, ['online', 'offline']), function($q) use ($request, $onlineUsernames) {
+                if ($request->connection_status === 'online') {
+                    $q->whereHas('ont', fn($oq) => $oq->whereIn('pppoe_user', $onlineUsernames));
+                } elseif ($request->connection_status === 'offline') {
+                    $q->where(function($sq) use ($onlineUsernames) {
+                        $sq->whereDoesntHave('ont')
+                           ->orWhereHas('ont', fn($oq) => $oq->whereNotIn('pppoe_user', $onlineUsernames)->orWhereNull('pppoe_user'));
+                    });
+                }
+            })
+            ->when($request->filled('access_mode') && $request->access_mode !== '', function($q) use ($request) {
+                $mode = strtolower(trim($request->access_mode));
+                $q->where(function($sq) use ($mode) {
+                    $sq->whereHas('package', fn($pq) => $pq->where('access_mode', $mode))
+                       ->orWhereHas('ont', fn($oq) => $oq->where('access_mode', $mode));
+                });
+            })
             ->when($request->filled('search'), function($q) use ($request) {
                 $search = trim($request->search);
                 $q->where(function($sq) use ($search) {
@@ -430,14 +448,15 @@ class CustomerController extends Controller
 
         return Inertia::render('Customers/Gratis', [
             'customers' => $customers,
-            'packages' => InternetPackage::active()->get(['id', 'name', 'speed_mbps', 'price']),
+            'packages' => InternetPackage::active()->get(['id', 'name', 'speed_mbps', 'price', 'access_mode']),
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
-            'filters' => $request->only(['search', 'area_id', 'package_id', 'status']),
+            'filters' => $request->only(['search', 'area_id', 'package_id', 'status', 'connection_status', 'access_mode']),
             'onlineUsernames' => $onlineUsernames,
             'stats' => [
                 'total' => $totalGratis,
                 'active' => $activeGratis,
                 'online' => $onlineGratis,
+                'offline' => $offlineGratis,
                 'total_bandwidth' => $totalBandwidthMbps,
                 'monthly_csr_value' => $totalCsrValue,
             ],
