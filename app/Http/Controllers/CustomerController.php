@@ -138,147 +138,28 @@ class CustomerController extends Controller
     }
 
     /**
-     * Daftar pelanggan yang sedang online (RADIUS), tanpa voucher.
+     * Monitoring Status Koneksi Pelanggan (Online & Offline Terpadu)
      */
-    public function online(Request $request): Response
+    public function connections(Request $request): Response
     {
-        // 1. Ambil semua sesi online dari RADIUS
+        // 1. Ambil seluruh sesi online aktif dari RADIUS
         try {
-            $sessions = \App\Models\Radius\RadAcct::online()
+            $onlineSessions = \App\Models\Radius\RadAcct::online()
                 ->orderByDesc('acctstarttime')
                 ->get(['radacctid', 'username', 'framedipaddress', 'callingstationid', 'nasipaddress', 'acctstarttime', 'acctsessiontime', 'acctinputoctets', 'acctoutputoctets'])
                 ->unique('username')
                 ->keyBy('username');
         } catch (\Exception $e) {
-            $sessions = collect();
+            $onlineSessions = collect();
         }
 
-        // 2. Cocokkan dengan ONT pelanggan (voucher tidak punya ONT → otomatis terfilter)
-        $customers = collect();
-        if ($sessions->isNotEmpty()) {
-            $sessionKeys = $sessions->keys()->all();
-            $customers = Customer::with(['package', 'areaModel', 'ont'])
-                ->whereHas('ont', fn ($q) => $q->whereIn('pppoe_user', $sessionKeys)->orWhereIn('hotspot_user', $sessionKeys))
-                ->whereDoesntHave('package', fn ($q) => $q->where('access_mode', 'voucher'))
-                ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function ($q) {
-                    if (auth()->user()->can('customers_all_view_area')) {
-                        $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-                    } else {
-                        $q->where('sales_id', auth()->id());
-                    }
-                })
-                ->when($request->area_id, function ($q, $areaId) {
-                    $q->where(function ($sub) use ($areaId) {
-                        $sub->where('area_id', $areaId);
-                        $areaName = \App\Models\Area::where('id', $areaId)->value('name');
-                        if ($areaName) $sub->orWhere('area', $areaName);
-                    });
-                })
-                ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
-                ->get();
-        }
+        $onlineUsernames = $onlineSessions->keys()->all();
 
-        // 3. Gabungkan data pelanggan + sesi
-        $rows = $customers->map(function (Customer $c) use ($sessions) {
-            $mode = mb_strtolower($c->package?->access_mode ?? $c->ont?->access_mode ?? 'pppoe');
-            $isHotspot = str_contains($mode, 'hotspot');
-            $username = $isHotspot
-                ? ($c->ont?->hotspot_user ?: $c->ont?->pppoe_user)
-                : ($c->ont?->pppoe_user ?: $c->ont?->hotspot_user);
-
-            $s = ($username ? $sessions->get($username) : null)
-                ?: ($c->ont?->pppoe_user ? $sessions->get($c->ont->pppoe_user) : null)
-                ?: ($c->ont?->hotspot_user ? $sessions->get($c->ont->hotspot_user) : null);
-
-            if ($s && $s->username) {
-                $username = $s->username;
-            }
-
-            return [
-                'id' => $c->id,
-                'customer_code' => $c->customer_code,
-                'name' => $c->name,
-                'area' => $c->areaModel?->name ?? $c->area,
-                'package' => $c->package?->name,
-                'username' => $username,
-                'access_mode' => $c->package?->access_mode ?? $c->ont?->access_mode,
-                'ip_address' => $s?->framedipaddress,
-                'mac_address' => $s?->callingstationid ?: $c->ont?->mac_address,
-                'nas_ip' => $s?->nasipaddress,
-                'start_time' => $s?->acctstarttime ? (string) $s->acctstarttime : null,
-                'session_time' => $s ? $s->liveSessionTime() : 0,
-                'upload' => (int) ($s?->acctinputoctets ?? 0),
-                'download' => (int) ($s?->acctoutputoctets ?? 0),
-            ];
-        });
-
-        // 4. Pencarian dan Filter Tab
-        $tab = $request->query('tab', '');
-        if ($tab) {
-            $tabLower = mb_strtolower($tab);
-            $rows = $rows->filter(function ($r) use ($tabLower) {
-                $m = mb_strtolower($r['access_mode'] ?? '');
-                return $m === $tabLower || str_contains($m, $tabLower);
-            });
-        }
-
-        if ($search = trim((string) $request->search)) {
-            $needle = mb_strtolower($search);
-            $rows = $rows->filter(function ($r) use ($needle) {
-                foreach (['name', 'customer_code', 'area', 'package', 'username', 'ip_address', 'mac_address'] as $f) {
-                    if ($r[$f] && str_contains(mb_strtolower($r[$f]), $needle)) return true;
-                }
-                return false;
-            });
-        }
-
-        $rows = $rows->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
-
-        // 5. Paginasi manual
-        $perPage = (int) ($request->per_page ?? 20);
-        $page = \Illuminate\Pagination\Paginator::resolveCurrentPage();
-        $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
-            $rows->forPage($page, $perPage)->values(),
-            $rows->count(),
-            $perPage,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-
-        return Inertia::render('Customers/Online', [
-            'customers' => $paginated,
-            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
-            'packages' => InternetPackage::where('access_mode', '!=', 'voucher')->orderBy('name')->get(['id', 'name']),
-            'filters' => $request->only(['search', 'area_id', 'package_id', 'tab']),
-            'totalOnline' => $rows->count(),
-        ]);
-    }
-
-    /**
-     * Daftar pelanggan yang sedang offline (RADIUS), tanpa voucher.
-     */
-    public function offline(Request $request): Response
-    {
-        try {
-            $onlineUsernames = \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
-        } catch (\Exception $e) {
-            $onlineUsernames = [];
-        }
-
-        $customers = Customer::with(['package', 'areaModel', 'ont'])
+        // 2. Query Pelanggan Aktif / Suspended yang memiliki ONT (tanpa voucher)
+        $customersQuery = Customer::with(['package', 'areaModel', 'ont.odp'])
             ->whereIn('status', ['active', 'suspended'])
             ->whereDoesntHave('package', fn ($q) => $q->where('access_mode', 'voucher'))
-            ->whereHas('ont', function ($q) use ($onlineUsernames) {
-                if (!empty($onlineUsernames)) {
-                    $q->where(function ($sub) use ($onlineUsernames) {
-                        $sub->whereNull('pppoe_user')
-                            ->orWhereNotIn('pppoe_user', $onlineUsernames);
-                    })->where(function ($sub) use ($onlineUsernames) {
-                        $sub->whereNull('hotspot_user')
-                            ->orWhereNotIn('hotspot_user', $onlineUsernames);
-                    });
-                }
-            })
+            ->whereHas('ont')
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function ($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
                     $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
@@ -293,19 +174,30 @@ class CustomerController extends Controller
                     if ($areaName) $sub->orWhere('area', $areaName);
                 });
             })
-            ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
-            ->get();
+            ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg));
 
-        $offlineUsernames = $customers->flatMap(function (Customer $c) {
-            return array_filter([$c->ont?->pppoe_user, $c->ont?->hotspot_user]);
-        })->unique()->values()->toArray();
+        $customers = $customersQuery->get();
 
-        $offlineSessions = collect();
+        // 3. Ambil riwayat sesi offline terakhir bagi pengguna yang saat ini tidak online
+        $offlineUsernames = [];
+        foreach ($customers as $c) {
+            $u1 = $c->ont?->pppoe_user;
+            $u2 = $c->ont?->hotspot_user;
+            $isOnline = ($u1 && in_array($u1, $onlineUsernames)) || ($u2 && in_array($u2, $onlineUsernames));
+            if (!$isOnline) {
+                if ($u1) $offlineUsernames[] = $u1;
+                if ($u2) $offlineUsernames[] = $u2;
+            }
+        }
+        $offlineUsernames = array_values(array_unique(array_filter($offlineUsernames)));
+
+        $lastOfflineSessions = collect();
         if (!empty($offlineUsernames)) {
             try {
-                $offlineSessions = \App\Models\Radius\RadAcct::whereIn('username', $offlineUsernames)
+                $lastOfflineSessions = \App\Models\Radius\RadAcct::whereIn('username', $offlineUsernames)
+                    ->whereNotNull('acctstoptime')
                     ->orderByDesc('acctstoptime')
-                    ->get()
+                    ->get(['username', 'acctstoptime', 'callingstationid', 'terminate_cause'])
                     ->unique('username')
                     ->keyBy('username');
             } catch (\Exception $e) {
@@ -313,69 +205,154 @@ class CustomerController extends Controller
             }
         }
 
-        $rows = $customers->map(function (Customer $c) use ($offlineSessions) {
+        // 4. Transformasi Data Baris
+        $rows = $customers->map(function (Customer $c) use ($onlineSessions, $lastOfflineSessions) {
             $mode = mb_strtolower($c->package?->access_mode ?? $c->ont?->access_mode ?? 'pppoe');
             $isHotspot = str_contains($mode, 'hotspot');
             $username = $isHotspot
                 ? ($c->ont?->hotspot_user ?: $c->ont?->pppoe_user)
                 : ($c->ont?->pppoe_user ?: $c->ont?->hotspot_user);
 
-            $s = ($username ? $offlineSessions->get($username) : null)
-                ?: ($c->ont?->pppoe_user ? $offlineSessions->get($c->ont->pppoe_user) : null)
-                ?: ($c->ont?->hotspot_user ? $offlineSessions->get($c->ont->hotspot_user) : null);
+            // Cek sesi online
+            $s = ($username ? $onlineSessions->get($username) : null)
+                ?: ($c->ont?->pppoe_user ? $onlineSessions->get($c->ont->pppoe_user) : null)
+                ?: ($c->ont?->hotspot_user ? $onlineSessions->get($c->ont->hotspot_user) : null);
+
+            $isOnline = !is_null($s);
+
+            if ($s && $s->username) {
+                $username = $s->username;
+            }
+
+            $lastSession = null;
+            if (!$isOnline && $username) {
+                $lastSession = $lastOfflineSessions->get($username)
+                    ?: ($c->ont?->pppoe_user ? $lastOfflineSessions->get($c->ont->pppoe_user) : null)
+                    ?: ($c->ont?->hotspot_user ? $lastOfflineSessions->get($c->ont->hotspot_user) : null);
+            }
 
             return [
                 'id' => $c->id,
                 'customer_code' => $c->customer_code,
                 'name' => $c->name,
+                'phone' => $c->phone,
                 'area' => $c->areaModel?->name ?? $c->area,
                 'package' => $c->package?->name,
+                'package_price' => $c->package?->price,
                 'username' => $username,
-                'access_mode' => $c->package?->access_mode ?? $c->ont?->access_mode,
-                'mac_address' => $s?->callingstationid ?: $c->ont?->mac_address,
-                'last_logout' => $s?->acctstoptime ? (string) $s->acctstoptime : null,
-                'status' => $c->status,
+                'access_mode' => $c->package?->access_mode ?? $c->ont?->access_mode ?? 'pppoe',
+                'is_online' => $isOnline,
+                'status_connection' => $isOnline ? 'online' : 'offline',
+                'ip_address' => $isOnline ? $s?->framedipaddress : null,
+                'mac_address' => $s?->callingstationid ?: $lastSession?->callingstationid ?: $c->ont?->mac_address,
+                'nas_ip' => $s?->nasipaddress,
+                'start_time' => $s?->acctstarttime ? (string) $s->acctstarttime : null,
+                'session_time' => $s ? $s->liveSessionTime() : 0,
+                'upload' => (int) ($s?->acctinputoctets ?? 0),
+                'download' => (int) ($s?->acctoutputoctets ?? 0),
+                'last_logout' => $lastSession?->acctstoptime ? (string) $lastSession->acctstoptime : null,
+                'disconnect_cause' => $lastSession?->terminate_cause ?? null,
+                'customer_status' => $c->status,
+                'odp_name' => $c->ont?->odp?->name,
+                'ont_sn' => $c->ont?->sn,
             ];
         });
 
-        $tab = $request->query('tab', '');
-        if ($tab) {
-            $tabLower = mb_strtolower($tab);
-            $rows = $rows->filter(function ($r) use ($tabLower) {
+        // 5. Hitung Statistik Keseluruhan
+        $totalAll = $rows->count();
+        $totalOnline = $rows->where('is_online', true)->count();
+        $totalOffline = $rows->where('is_online', false)->count();
+        $healthRate = $totalAll > 0 ? round(($totalOnline / $totalAll) * 100, 1) : 0;
+
+        $pppoeCount = $rows->filter(fn($r) => str_contains(mb_strtolower($r['access_mode']), 'pppoe'))->count();
+        $hotspotCount = $rows->filter(fn($r) => str_contains(mb_strtolower($r['access_mode']), 'hotspot'))->count();
+
+        $stats = [
+            'total' => $totalAll,
+            'online' => $totalOnline,
+            'offline' => $totalOffline,
+            'health_rate' => $healthRate,
+            'pppoe_count' => $pppoeCount,
+            'hotspot_count' => $hotspotCount,
+        ];
+
+        // 6. Filter Berdasarkan Tab Status: 'all', 'online', 'offline'
+        $statusTab = $request->query('status');
+        if (!$statusTab && $request->is('*offline*')) {
+            $statusTab = 'offline';
+        }
+        $statusTab = $statusTab ?: 'all';
+
+        $filtered = $rows;
+        if ($statusTab === 'online') {
+            $filtered = $filtered->where('is_online', true);
+        } elseif ($statusTab === 'offline') {
+            $filtered = $filtered->where('is_online', false);
+        }
+
+        // 7. Filter Berdasarkan Mode Akses: 'pppoe', 'hotspot'
+        $modeFilter = $request->query('mode') ?: $request->query('tab');
+        if ($modeFilter && $modeFilter !== 'all') {
+            $mLower = mb_strtolower($modeFilter);
+            $filtered = $filtered->filter(function ($r) use ($mLower) {
                 $m = mb_strtolower($r['access_mode'] ?? '');
-                return $m === $tabLower || str_contains($m, $tabLower);
+                return $m === $mLower || str_contains($m, $mLower);
             });
         }
 
+        // 8. Filter Pencarian Text
         if ($search = trim((string) $request->search)) {
             $needle = mb_strtolower($search);
-            $rows = $rows->filter(function ($r) use ($needle) {
-                foreach (['name', 'customer_code', 'area', 'package', 'username', 'mac_address'] as $f) {
-                    if ($r[$f] && str_contains(mb_strtolower($r[$f]), $needle)) return true;
+            $filtered = $filtered->filter(function ($r) use ($needle) {
+                foreach (['name', 'customer_code', 'phone', 'area', 'package', 'username', 'ip_address', 'mac_address', 'ont_sn', 'odp_name'] as $f) {
+                    if (!empty($r[$f]) && str_contains(mb_strtolower((string) $r[$f]), $needle)) return true;
                 }
                 return false;
             });
         }
 
-        $rows = $rows->sortByDesc('last_logout')->values();
+        // 9. Sorting: Jika 'all', prioritaskan Online di atas, lalu abjad Nama
+        $filtered = $filtered->sortBy([
+            fn($a, $b) => ($b['is_online'] ? 1 : 0) <=> ($a['is_online'] ? 1 : 0),
+            ['name', 'asc']
+        ])->values();
 
+        // 10. Paginasi
         $perPage = (int) ($request->per_page ?? 20);
         $page = \Illuminate\Pagination\Paginator::resolveCurrentPage();
         $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
-            $rows->forPage($page, $perPage)->values(),
-            $rows->count(),
+            $filtered->forPage($page, $perPage)->values(),
+            $filtered->count(),
             $perPage,
             $page,
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        return Inertia::render('Customers/Offline', [
+        return Inertia::render('Customers/Online', [
             'customers' => $paginated,
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
-            'packages' => \App\Models\InternetPackage::where('access_mode', '!=', 'voucher')->orderBy('name')->get(['id', 'name']),
-            'filters' => $request->only(['search', 'area_id', 'package_id', 'tab']),
-            'totalOffline' => $rows->count(),
+            'packages' => InternetPackage::where('access_mode', '!=', 'voucher')->orderBy('name')->get(['id', 'name']),
+            'filters' => [
+                'search' => $request->search,
+                'area_id' => $request->area_id,
+                'package_id' => $request->package_id,
+                'status' => $statusTab,
+                'mode' => $modeFilter ?: 'all',
+            ],
+            'stats' => $stats,
+            'totalOnline' => $stats['online'],
+            'totalOffline' => $stats['offline'],
         ]);
+    }
+
+    public function online(Request $request): Response
+    {
+        return $this->connections($request);
+    }
+
+    public function offline(Request $request): Response
+    {
+        return $this->connections($request);
     }
 
     /**

@@ -118,8 +118,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/free-home', [CustomerController::class, 'freeHome'])->name('free-home');
         Route::post('/{customer}/toggle-service-status', [CustomerController::class, 'toggleServiceStatus'])->name('toggle-service-status');
         Route::get('/isolir', [CustomerController::class, 'isolir'])->name('isolir');
-        Route::get('/online', [CustomerController::class, 'online'])->name('online');
-        Route::get('/offline', [CustomerController::class, 'offline'])->name('offline');
+        Route::get('/connections', [CustomerController::class, 'connections'])->name('connections');
+        Route::get('/online', [CustomerController::class, 'connections'])->name('online');
+        Route::get('/offline', [CustomerController::class, 'connections'])->name('offline');
         Route::get('/canceled', [CustomerController::class, 'canceled'])->name('canceled');
         Route::get('/terminated', [CustomerController::class, 'terminated'])->name('terminated');
 
