@@ -321,8 +321,8 @@ const formatDate = (dateStr) => {
                                 <div class="flex justify-between py-1 border-b border-slate-200/60">
                                     <span class="text-slate-500">Kapasitas Perangkat:</span>
                                     <span class="font-bold text-indigo-600">
-                                        {{ workOrder.capacity }} {{ workOrder.type === 'odc_deployment' ? 'Core' : 'Port' }}
-                                        <template v-if="workOrder.core_capacity && workOrder.type === 'odp_deployment'">
+                                        {{ workOrder.capacity }} Port
+                                        <template v-if="workOrder.core_capacity">
                                             &bull; {{ workOrder.core_capacity }} Core FO
                                         </template>
                                         (Rasio: {{ workOrder.splitter_ratio || 'Normal' }})

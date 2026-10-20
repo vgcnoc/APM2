@@ -233,7 +233,7 @@ const formatDate = (dateStr) => {
                                         <span class="font-bold text-slate-900">{{ wo.target_name }}</span>
                                     </div>
                                     <span class="text-[11px] text-slate-500 mt-0.5 block">
-                                        Kapasitas: {{ wo.capacity }} Port ({{ wo.splitter_ratio || 'Normal' }})
+                                        Kapasitas: {{ wo.capacity }} Port <template v-if="wo.core_capacity">&bull; {{ wo.core_capacity }} Core</template> ({{ wo.splitter_ratio || 'Normal' }})
                                     </span>
                                 </td>
 

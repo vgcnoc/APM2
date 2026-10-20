@@ -66,7 +66,7 @@
                                 </tr>
                                 <tr>
                                     <td class="text-gray-500 py-1 font-medium">Target Perangkat</td>
-                                    <td class="font-bold text-gray-900 py-1">{{ workOrder.target_name }} (Kapasitas {{ workOrder.capacity }} Core)</td>
+                                    <td class="font-bold text-gray-900 py-1">{{ workOrder.target_name }} (Kapasitas {{ workOrder.capacity }} Port<template v-if="workOrder.core_capacity"> &bull; {{ workOrder.core_capacity }} Core FO</template>)</td>
                                 </tr>
                                 <tr>
                                     <td class="text-gray-500 py-1 font-medium">Wilayah / Area</td>

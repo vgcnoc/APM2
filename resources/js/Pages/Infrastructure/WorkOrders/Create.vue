@@ -174,7 +174,7 @@ watch([() => form.type, () => form.area_id, () => form.odc_id, () => form.olt_id
     form.target_name = generateTargetName();
 }, { immediate: true });
 
-// Penanganan perubahan tipe perangkat (Normal, Split 2, Closure, Pedestal, Pole Mount)
+// Penanganan perubahan tipe perangkat (Normal, Split 2, Closure, Pedestal, Pole Mount, Wall Mount, FAT Mini, Inline Closure, Split, Mini ODC)
 const onDeviceTypeChange = () => {
     if (form.type === 'odp_deployment') {
         if (form.device_type === 'Split 2') {
@@ -183,12 +183,28 @@ const onDeviceTypeChange = () => {
             form.splitter_ratio = `Closure 1:${form.capacity}`;
         } else if (form.device_type === 'Pedestal') {
             form.splitter_ratio = `1:${form.capacity} (Pedestal)`;
+        } else if (form.device_type === 'Pole Mount') {
+            form.splitter_ratio = `1:${form.capacity} (Pole Mount)`;
+        } else if (form.device_type === 'Wall Mount') {
+            form.splitter_ratio = `1:${form.capacity} (Wall Mount)`;
+        } else if (form.device_type === 'FAT Mini') {
+            form.splitter_ratio = `1:${form.capacity} (FAT Mini)`;
+        } else if (form.device_type === 'Inline Closure') {
+            form.splitter_ratio = `1:${form.capacity} (Inline)`;
         } else {
             form.splitter_ratio = `1:${form.capacity}`;
         }
     } else {
         if (form.device_type === 'Split') {
             form.splitter_ratio = 'Split 1:2 FBT';
+        } else if (form.device_type === 'Pedestal') {
+            form.splitter_ratio = '1:8 PLC (Pedestal)';
+        } else if (form.device_type === 'Pole Mount') {
+            form.splitter_ratio = '1:8 PLC (Pole Mount)';
+        } else if (form.device_type === 'Wall Mount') {
+            form.splitter_ratio = '1:8 PLC (Wall Mount)';
+        } else if (form.device_type === 'Mini ODC') {
+            form.splitter_ratio = '1:4 PLC (Mini ODC)';
         } else {
             form.splitter_ratio = '1:8 PLC';
         }
@@ -685,6 +701,10 @@ const submit = () => {
                                 <option value="Split 2">Split 2 (Bercabang 2 Box / Cascading)</option>
                                 <option value="Closure">Closure (Dome / Sambungan Inline)</option>
                                 <option value="Pedestal">Pedestal (Box Bawah Tanah / Ground)</option>
+                                <option value="Pole Mount">Pole Mount (Bracket Tiang Outdoor)</option>
+                                <option value="Wall Mount">Wall Mount (Dinding Indoor / Koridor)</option>
+                                <option value="FAT Mini">FAT Mini (Compact Micro 4-8 Port)</option>
+                                <option value="Inline Closure">Inline Closure (Gantung Kabel Udara)</option>
                             </select>
                             <p class="text-[11px] text-slate-400 mt-1">
                                 {{ form.device_type === 'Split 2' ? '⚡ Menggunakan splitter cascading' : 'Konstruksi fisik & model housing' }}
@@ -700,11 +720,15 @@ const submit = () => {
                                 v-model.number="form.capacity"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800"
                             >
+                                <option :value="2">2 Port</option>
                                 <option :value="4">4 Port</option>
                                 <option :value="8">8 Port (Standar)</option>
+                                <option :value="12">12 Port</option>
                                 <option :value="16">16 Port</option>
                                 <option :value="24">24 Port</option>
                                 <option :value="32">32 Port</option>
+                                <option :value="48">48 Port</option>
+                                <option :value="64">64 Port</option>
                             </select>
                             <p class="text-[11px] text-slate-400 mt-1">
                                 Jumlah port distribusi ke pelanggan
@@ -747,8 +771,8 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <!-- Layout ODC: 3 Kolom (Tipe, Kapasitas Core, Rasio Splitter) -->
-                    <div v-else class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <!-- Layout ODC: 4 Kolom (Tipe, Kapasitas Port, Kapasitas Core, Rasio Splitter) -->
+                    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
                                 <span>Tipe ODC</span>
@@ -763,9 +787,36 @@ const submit = () => {
                                 <option value="Split">Split (ODC Split Bercabang Feeder)</option>
                                 <option value="Pedestal">Pedestal (Kabinet Lantai Beton)</option>
                                 <option value="Pole Mount">Pole Mount (ODC Tiang / Pole Mounted)</option>
+                                <option value="Wall Mount">Wall Mount (ODC Dinding / Indoor Cabinet)</option>
+                                <option value="Mini ODC">Mini ODC (Sub-ODC Feeder Compact)</option>
                             </select>
                             <p class="text-[11px] text-slate-400 mt-1">
                                 {{ form.device_type === 'Split' ? '⚡ Menggunakan splitter cabang cascading' : 'Konstruksi fisik & model housing boks' }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
+                                <span>Kapasitas Port</span>
+                                <span class="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">Port Feeder</span>
+                            </label>
+                            <select
+                                v-model.number="form.capacity"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800"
+                            >
+                                <option :value="8">8 Port</option>
+                                <option :value="12">12 Port</option>
+                                <option :value="16">16 Port</option>
+                                <option :value="24">24 Port (Standar)</option>
+                                <option :value="32">32 Port</option>
+                                <option :value="48">48 Port</option>
+                                <option :value="72">72 Port</option>
+                                <option :value="96">96 Port</option>
+                                <option :value="144">144 Port</option>
+                                <option :value="288">288 Port</option>
+                            </select>
+                            <p class="text-[11px] text-slate-400 mt-1">
+                                Jumlah port output / feeder distribusi ODC
                             </p>
                         </div>
 
@@ -775,13 +826,13 @@ const submit = () => {
                                 <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Tray Core</span>
                             </label>
                             <select
-                                v-model.number="form.capacity"
-                                @change="form.core_capacity = form.capacity"
+                                v-model.number="form.core_capacity"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800"
                             >
                                 <option :value="12">12 Core</option>
                                 <option :value="24">24 Core (Standar)</option>
                                 <option :value="48">48 Core</option>
+                                <option :value="72">72 Core</option>
                                 <option :value="96">96 Core</option>
                                 <option :value="144">144 Core</option>
                                 <option :value="288">288 Core</option>
@@ -796,7 +847,7 @@ const submit = () => {
                             <input
                                 v-model="form.splitter_ratio"
                                 type="text"
-                                placeholder="Contoh: 1:8 PLC / Split 2"
+                                placeholder="Contoh: 1:8 PLC / Split 1:2 FBT"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800"
                             />
                             <p class="text-[11px] text-slate-400 mt-1">Rasio modul pembagi sinyal optik</p>
@@ -1214,8 +1265,8 @@ const submit = () => {
                         <span class="font-bold text-indigo-900 block mb-1">📋 Konfirmasi Terbit Penugasan:</span>
                         <div>
                             &bull; <b>Perangkat:</b> {{ form.target_name }} ({{ form.type === 'odc_deployment' ? 'ODC' : 'ODP' }} - Tipe {{ form.device_type }})
-                            &bull; {{ form.capacity }} {{ form.type === 'odc_deployment' ? 'Core' : 'Port' }}
-                            <template v-if="form.type === 'odp_deployment' && form.core_capacity">
+                            &bull; {{ form.capacity }} Port
+                            <template v-if="form.core_capacity">
                                 &bull; {{ form.core_capacity }} Core FO
                             </template>
                             <template v-if="form.planned_latitude && form.planned_longitude">
