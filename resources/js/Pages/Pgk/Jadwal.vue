@@ -397,16 +397,16 @@
                         </div>
                     </div>
 
-                    <!-- Penyiapan Material dari Order Toko / Surat Jalan -->
+                    <!-- Penyiapan Material dari Order Toko / Restock -->
                     <div class="space-y-2">
                         <div class="flex items-center justify-between">
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase">Material dari Order Toko / Surat Jalan</label>
-                                <span class="text-[11px] text-gray-500">Pilih material dari stok pesanan/surat jalan yang tersedia</span>
+                                <label class="block text-xs font-bold text-gray-700 uppercase">Material dari Order Toko (Restock)</label>
+                                <span class="text-[11px] text-gray-500">Ambil material dari stok order toko (restock) wilayah terkait</span>
                             </div>
                             <button type="button" @click="addMaterialRow" class="text-xs font-bold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg border border-amber-200 flex items-center gap-1 transition-colors">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                <span>+ Tambah dari Order</span>
+                                <span>+ Tambah dari Order Toko</span>
                             </button>
                         </div>
 
@@ -420,9 +420,9 @@
                                             class="w-full rounded-xl border-gray-300 text-xs py-2 bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 truncate" 
                                             required
                                         >
-                                            <option value="">-- Pilih Material dari Order Toko / Surat Jalan --</option>
+                                            <option value="">-- Pilih Material dari Order Toko (Restock) --</option>
                                             <option v-for="ord in availableMaterialItems" :key="ord.id" :value="ord.id">
-                                                {{ ord.name }} (Order: {{ ord.trx_number }}) - Stok: {{ ord.area_stock }} {{ ord.unit }} [{{ ord.area_name }}]
+                                                {{ ord.name }} (PO: {{ ord.trx_number }}) — Stok Order: {{ ord.area_stock }} {{ ord.unit }} [Wilayah: {{ ord.area_name }}]
                                             </option>
                                             <!-- Fallback jika record sebelumnya tidak memiliki order id -->
                                             <option v-if="!item.material_transaction_item_id && item.material_id" :value="''">
@@ -453,18 +453,18 @@
                                 </div>
                                 <div v-if="item.trx_number || item.max_stock" class="flex items-center justify-between text-[10px] text-gray-500 px-1">
                                     <span class="truncate">
-                                        <span class="font-medium text-gray-400">Sumber Order/SJ:</span> 
+                                        <span class="font-medium text-gray-400">Sumber Order Toko:</span> 
                                         <b class="font-mono text-amber-800 ml-1">{{ item.trx_number || '-' }}</b>
                                     </span>
                                     <span v-if="item.max_stock" class="shrink-0 text-emerald-700 font-medium">
-                                        Maks Stok: {{ item.max_stock }} {{ item.unit }}
+                                        Sisa Stok Order: {{ item.max_stock }} {{ item.unit }}
                                     </span>
                                 </div>
                             </div>
-                            <p class="text-[11px] text-gray-400 italic">* Stok diambil dari Order/Surat Jalan dan otomatis dipotong untuk penugasan ini. Sisa material dapat dikembalikan saat laporan teknisi selesai.</p>
+                            <p class="text-[11px] text-gray-400 italic">* Stok diambil dari Order Toko (Restock) wilayah dan otomatis dialokasikan untuk penugasan ini. Sisa material dapat dikembalikan saat laporan teknisi selesai.</p>
                         </div>
                         <div v-else class="p-3 rounded-xl bg-amber-50/40 border border-dashed border-amber-200 text-center text-xs text-amber-700">
-                            Belum ada material yang ditambahkan dari Order Toko / Surat Jalan. Klik <b>+ Tambah dari Order</b> jika teknisi membawa material.
+                            Belum ada material yang ditambahkan dari Order Toko (Restock). Klik <b>+ Tambah dari Order Toko</b> jika teknisi membawa bekal material.
                         </div>
                     </div>
 
@@ -632,14 +632,35 @@ const showMaterialReviewModal = ref(false);
 const reviewTicket = ref(null);
 
 const customerAreaId = computed(() => {
-    return selectedTicket.value?.area_id || selectedTicket.value?.customer?.area_id || null;
+    return selectedTicket.value?.area_id || 
+           selectedTicket.value?.area?.id || 
+           selectedTicket.value?.customer?.area_id || 
+           selectedTicket.value?.customer?.areaModel?.id || 
+           null;
+});
+
+const customerAreaName = computed(() => {
+    return selectedTicket.value?.area?.name || 
+           selectedTicket.value?.customer?.area || 
+           selectedTicket.value?.customer?.areaModel?.name || 
+           '';
 });
 
 const filteredMaterialTransactions = computed(() => {
     const allTrx = props.materialTransactions || [];
     const areaId = customerAreaId.value;
-    if (!areaId) return allTrx;
-    const matched = allTrx.filter(trx => !trx.area_id || trx.area_id == areaId);
+    const areaName = customerAreaName.value ? customerAreaName.value.toLowerCase().trim() : '';
+
+    if (!areaId && !areaName) return allTrx;
+
+    const matched = allTrx.filter(trx => {
+        if (areaId && trx.area_id && trx.area_id == areaId) return true;
+        if (areaName && trx.area && trx.area.toLowerCase().trim() === areaName) return true;
+        if (areaName && trx.technician_name && trx.technician_name.toLowerCase().trim() === areaName) return true;
+        if (areaName && trx.area_model?.name && trx.area_model.name.toLowerCase().trim() === areaName) return true;
+        return false;
+    });
+
     return matched.length > 0 ? matched : allTrx;
 });
 
@@ -657,7 +678,13 @@ const availableMaterialItems = computed(() => {
                 const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
 
                 if (!isRegistered && !name.includes('modem') && !category.includes('modem')) {
-                    let areaStock = 0;
+                    // Ambil sisa kuota yang dihitung dari transaksi restock/order toko
+                    let remainingInOrder = typeof item.remaining_quantity !== 'undefined'
+                        ? parseFloat(item.remaining_quantity)
+                        : parseFloat(item.quantity);
+
+                    // Cek stok real-time di Area jika ada
+                    let areaStock = null;
                     if (item.material.stocks && areaId) {
                         const stockObj = item.material.stocks.find(s => s.area_id == areaId);
                         if (stockObj) {
@@ -665,11 +692,11 @@ const availableMaterialItems = computed(() => {
                         }
                     }
 
-                    if (areaStock <= 0 && item.material.stock) {
-                        areaStock = parseFloat(item.material.stock) || 0;
+                    // Kuota yang tersedia diambil dari sisa order (atau dibatasi stok area jika lebih sedikit)
+                    let availableQty = remainingInOrder;
+                    if (areaStock !== null && areaStock < availableQty) {
+                        availableQty = areaStock;
                     }
-
-                    const availableQty = areaStock > 0 ? areaStock : (parseFloat(item.quantity) || 0);
 
                     if (availableQty > 0) {
                         items.push({
@@ -678,10 +705,11 @@ const availableMaterialItems = computed(() => {
                             trx_number: trx.transaction_number,
                             trx_date: trx.date,
                             purpose: trx.purpose,
-                            area_name: trx.area_model?.name || trx.area || 'Semua Area',
+                            area_name: trx.area_model?.name || trx.area || trx.technician_name || 'Semua Area',
                             name: item.material.name,
                             category: item.material.category,
                             area_stock: availableQty,
+                            initial_order_qty: parseFloat(item.quantity) || 0,
                             unit: item.unit || item.material.unit || 'pcs',
                             material: item.material,
                         });

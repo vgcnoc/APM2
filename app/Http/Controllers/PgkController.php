@@ -13,6 +13,7 @@ use App\Models\MaterialTransaction;
 use App\Models\MaterialTransactionItem;
 use App\Models\AuditLog;
 use App\Services\DataScopeService;
+use App\Services\RestockStockService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -227,11 +228,7 @@ class PgkController extends Controller
         }
 
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get();
-        $materialTransactions = MaterialTransaction::where('type', 'in')
-            ->with(['items.material.stocks', 'areaModel'])
-            ->latest('id')
-            ->limit(200)
-            ->get();
+        $materialTransactions = RestockStockService::getRestockTransactions();
         $areas = Area::select('id', 'name')->orderBy('name')->get();
 
         return Inertia::render('Pgk/Jadwal', [
@@ -306,11 +303,7 @@ class PgkController extends Controller
         $tickets = $query->latest('id')->paginate($request->per_page ?? 15)->withQueryString();
 
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->with('stocks')->get();
-        $materialTransactions = MaterialTransaction::where('type', 'in')
-            ->with(['items.material.stocks', 'areaModel'])
-            ->latest('id')
-            ->limit(200)
-            ->get();
+        $materialTransactions = RestockStockService::getRestockTransactions();
         $areas = Area::select('id', 'name')->orderBy('name')->get();
 
         return Inertia::render('Pgk/Laporan', [
@@ -511,10 +504,32 @@ class PgkController extends Controller
 
         // Penyiapan material dari gudang / order
         if (!empty($validated['materials'])) {
-            $pgk->materials()->delete();
-
             $techNames = User::whereIn('id', $techIds)->pluck('name')->join(', ');
             $areaId = $pgk->area_id ?? $pgk->customer?->area_id;
+
+            // Kembalikan alokasi material sebelumnya ke stok area jika ini adalah revisi jadwal
+            $previousMaterials = $pgk->materials()->get();
+            foreach ($previousMaterials as $prevMat) {
+                $prevQty = (float) $prevMat->quantity_prepared;
+                if ($prevQty > 0) {
+                    $orderItem = $prevMat->material_transaction_item_id 
+                        ? MaterialTransactionItem::find($prevMat->material_transaction_item_id)
+                        : null;
+                    $targetAreaId = $areaId ?? $orderItem?->materialTransaction?->area_id;
+                    if ($targetAreaId) {
+                        $matStock = \App\Models\MaterialStock::where('material_id', $prevMat->material_id)
+                            ->where('area_id', $targetAreaId)
+                            ->first();
+                        if ($matStock) {
+                            $matStock->increment('stock', $prevQty);
+                        }
+                    } elseif (!$prevMat->material_transaction_item_id) {
+                        Material::where('id', $prevMat->material_id)->increment('stock', $prevQty);
+                    }
+                }
+            }
+
+            $pgk->materials()->delete();
 
             $sourceOrders = array_filter(array_unique(array_column($validated['materials'], 'trx_number')));
             $orderRefStr = !empty($sourceOrders) ? ' (Ref Order/SJ: ' . implode(', ', $sourceOrders) . ')' : '';
@@ -538,14 +553,26 @@ class PgkController extends Controller
                     $qty = (float) ($matItem['quantity_prepared'] ?? $matItem['quantity'] ?? 0);
                     if ($qty <= 0) continue;
 
-                    $stockBefore = (float) $material->stock;
+                    $trxItemId = $matItem['material_transaction_item_id'] ?? null;
+                    $orderTrxItem = $trxItemId ? MaterialTransactionItem::with('materialTransaction')->find($trxItemId) : null;
+                    $trxNumber = $matItem['trx_number'] ?? $orderTrxItem?->materialTransaction?->transaction_number;
+                    $targetAreaId = $areaId ?? $orderTrxItem?->materialTransaction?->area_id;
+
+                    $matStock = null;
+                    if ($targetAreaId) {
+                        $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                            ->where('area_id', $targetAreaId)
+                            ->first();
+                    }
+
+                    $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
                     $stockAfter = max(0, $stockBefore - $qty);
 
                     PgkMaterial::create([
                         'pgk_ticket_id' => $pgk->id,
                         'material_id' => $material->id,
-                        'material_transaction_item_id' => $matItem['material_transaction_item_id'] ?? null,
-                        'trx_number' => $matItem['trx_number'] ?? null,
+                        'material_transaction_item_id' => $trxItemId,
+                        'trx_number' => $trxNumber,
                         'quantity_prepared' => $qty,
                         'quantity_used' => $qty,
                         'quantity_returned' => 0,
@@ -571,18 +598,13 @@ class PgkController extends Controller
                         'stock_after' => $stockAfter,
                     ]);
 
-                    // Kurangkan stok area jika ada
-                    if ($areaId) {
-                        $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
-                            ->where('area_id', $areaId)
-                            ->first();
-                        if ($matStock) {
-                            $matStock->decrement('stock', $qty);
-                        }
+                    // Potong stok dari Area (stok order toko/restock)
+                    // Tidak memotong produk master jika bersumber dari restock order
+                    if ($matStock) {
+                        $matStock->decrement('stock', $qty);
+                    } elseif (!$trxItemId) {
+                        $material->decrement('stock', $qty);
                     }
-
-                    // Kurangkan stok gudang
-                    $material->decrement('stock', $qty);
                 }
             }
         }
@@ -671,11 +693,23 @@ class PgkController extends Controller
                         'quantity_returned' => $qtyReturned,
                     ]);
 
-                    // Jika ada sisa material yang dikembalikan, tambahkan kembali ke stok gudang & stok area
+                    // Jika ada sisa material yang dikembalikan, tambahkan kembali ke stok area/order
                     if ($qtyReturned > 0) {
                         $material = Material::find($pgkMat->material_id);
                         if ($material) {
-                            $stockBefore = (float) $material->stock;
+                            $orderItem = $pgkMat->material_transaction_item_id 
+                                ? MaterialTransactionItem::find($pgkMat->material_transaction_item_id)
+                                : null;
+                            $targetAreaId = $areaId ?? $orderItem?->materialTransaction?->area_id;
+
+                            $matStock = null;
+                            if ($targetAreaId) {
+                                $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                                    ->where('area_id', $targetAreaId)
+                                    ->first();
+                            }
+
+                            $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
                             $stockAfter = $stockBefore + $qtyReturned;
 
                             $returnTrans = MaterialTransaction::create([
@@ -684,10 +718,10 @@ class PgkController extends Controller
                                 'status' => 'approved',
                                 'date' => now(),
                                 'technician_name' => auth()->user()->name,
-                                'purpose' => 'Pengembalian Sisa Material PGK: ' . $pgk->ticket_number,
+                                'purpose' => 'Pengembalian Sisa Material PGK: ' . $pgk->ticket_number . ($pgkMat->trx_number ? ' (Order: ' . $pgkMat->trx_number . ')' : ''),
                                 'user_id' => auth()->id(),
                                 'customer_id' => $pgk->customer_id,
-                                'area_id' => $areaId,
+                                'area_id' => $targetAreaId,
                             ]);
 
                             $unitRet = $pgkMat->unit ?? $material->unit;
@@ -708,15 +742,10 @@ class PgkController extends Controller
                                 'stock_after' => $stockAfter,
                             ]);
 
-                            $material->increment('stock', $qtyReturned);
-
-                            if ($areaId) {
-                                $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
-                                    ->where('area_id', $areaId)
-                                    ->first();
-                                if ($matStock) {
-                                    $matStock->increment('stock', $qtyReturned);
-                                }
+                            if ($matStock) {
+                                $matStock->increment('stock', $qtyReturned);
+                            } elseif (!$pgkMat->material_transaction_item_id) {
+                                $material->increment('stock', $qtyReturned);
                             }
                         }
                     }
@@ -880,8 +909,14 @@ class PgkController extends Controller
         $qty = (float) $materialRequest->quantity;
         $areaId = $pgk->area_id ?? $pgk->customer?->area_id;
 
-        // Potong stok gudang
-        $stockBefore = (float) $material->stock;
+        $matStock = null;
+        if ($areaId) {
+            $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                ->where('area_id', $areaId)
+                ->first();
+        }
+
+        $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
         $stockAfter = max(0, $stockBefore - $qty);
 
         // Catat transaksi pengeluaran barang
@@ -916,15 +951,10 @@ class PgkController extends Controller
             'stock_after' => $stockAfter,
         ]);
 
-        $material->decrement('stock', $qty);
-
-        if ($areaId) {
-            $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
-                ->where('area_id', $areaId)
-                ->first();
-            if ($matStock) {
-                $matStock->decrement('stock', $qty);
-            }
+        if ($matStock) {
+            $matStock->decrement('stock', $qty);
+        } else {
+            $material->decrement('stock', $qty);
         }
 
         // Tambahkan ke pgk_materials (jika sudah ada, tambahkan quantity_prepared, jika belum buat baru)
