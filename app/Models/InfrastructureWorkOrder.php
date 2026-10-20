@@ -36,6 +36,7 @@ class InfrastructureWorkOrder extends Model
         'status',
         'start_point',
         'end_point',
+        'cable_pull',
         'cable_meter_start',
         'cable_meter_end',
         'cable_length_used',

@@ -39,9 +39,32 @@ const form = useForm({
     scheduled_date: new Date().toISOString().slice(0, 10),
     start_point: '',
     end_point: '',
+    cable_pull: 'Individu',
     cable_length_estimate: 150,
     notes: '',
     materials: [],
+    split_units: [
+        {
+            name: '',
+            ratio: 4,
+            location: '',
+            latitude: '',
+            longitude: '',
+            start_point: '',
+            end_point: '',
+            cable_pull: 'Individu',
+        },
+        {
+            name: '',
+            ratio: 4,
+            location: '',
+            latitude: '',
+            longitude: '',
+            start_point: '',
+            end_point: '',
+            cable_pull: 'Individu',
+        }
+    ],
 });
 
 const isLocating = ref(false);
@@ -230,6 +253,147 @@ watch(() => form.capacity, (newCap) => {
     }
 });
 
+const activeTab = ref(0);
+
+const isSplitMode = computed(() => {
+    return (form.type === 'odc_deployment' && form.device_type === 'Split') ||
+           (form.type === 'odp_deployment' && form.device_type === 'Split 2');
+});
+
+const totalSplitPorts = computed(() => {
+    return Number(form.split_units[0].ratio || 0) + Number(form.split_units[1].ratio || 0);
+});
+
+// Watch area_id to reset unselected OLT/ODC
+watch(() => form.area_id, () => {
+    if (form.olt_id && !filteredOlts.value.some(o => o.id === form.olt_id)) {
+        form.olt_id = '';
+        form.pon_port = 1;
+    }
+    if (form.odc_id && !filteredOdcs.value.some(o => o.id === form.odc_id)) {
+        form.odc_id = '';
+    }
+});
+
+// Watch split mode to initialize ratios and names
+watch([() => form.type, () => form.device_type, () => form.capacity, () => form.target_name], () => {
+    if (isSplitMode.value) {
+        const half = Math.floor(form.capacity / 2) || 4;
+        if (!form.split_units[0].ratio) form.split_units[0].ratio = half;
+        if (!form.split_units[1].ratio) form.split_units[1].ratio = half;
+        const defaultName0 = form.target_name ? `${form.target_name}-A` : (form.type === 'odc_deployment' ? 'ODC Induk' : 'ODP Induk');
+        const defaultName1 = form.target_name ? `${form.target_name}-B` : (form.type === 'odc_deployment' ? 'ODC Lanjutan' : 'ODP Lanjutan');
+        if (!form.split_units[0].name || form.split_units[0].name.endsWith('-A') || form.split_units[0].name.includes('Induk')) {
+            form.split_units[0].name = defaultName0;
+        }
+        if (!form.split_units[1].name || form.split_units[1].name.endsWith('-B') || form.split_units[1].name.includes('Lanjutan')) {
+            form.split_units[1].name = defaultName1;
+        }
+    }
+}, { immediate: true });
+
+const selectedOltPonPorts = computed(() => {
+    if (!form.olt_id) return [];
+    const olt = props.olts.find(o => o.id === form.olt_id);
+    if (!olt || !olt.total_pon_ports) return [];
+    return Array.from({ length: olt.total_pon_ports }, (_, i) => i + 1);
+});
+
+function getVlanAccessMode(vlan) {
+    if (vlan.access_mode) return vlan.access_mode;
+    const name = (vlan.name || '').toLowerCase();
+    if (name.includes('pppoe')) return 'PPPOE';
+    if (name.includes('hotspot')) return 'Hotspot';
+    if (name.includes('static')) return 'Static';
+    if (name.includes('dhcp')) return 'DHCP';
+    if (name.includes('bridge')) return 'Bridge';
+    if (name.includes('trunk') || name.includes('tagged')) return 'Tagged';
+    if (name.includes('access') || name.includes('untagged')) return 'Untagged';
+    return 'PPPOE';
+}
+
+function getModeBadgeClass(mode) {
+    switch ((mode || '').toUpperCase()) {
+        case 'PPPOE':
+            return 'bg-blue-50 text-blue-700 border-blue-200';
+        case 'HOTSPOT':
+            return 'bg-purple-50 text-purple-700 border-purple-200';
+        case 'STATIC':
+        case 'STATIC IP':
+            return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        case 'DHCP':
+            return 'bg-amber-50 text-amber-700 border-amber-200';
+        case 'BRIDGE':
+            return 'bg-cyan-50 text-cyan-700 border-cyan-200';
+        case 'TAGGED':
+        case 'TRUNK':
+            return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+        default:
+            return 'bg-gray-50 text-gray-700 border-gray-200';
+    }
+}
+
+const currentModalPonVlans = computed(() => {
+    if (!form.olt_id || !form.pon_port) return [];
+    const olt = props.olts.find(o => o.id === form.olt_id);
+    if (!olt || !olt.pon_vlans) return [];
+    let vlans = olt.pon_vlans;
+    if (typeof vlans === 'string') {
+        try { vlans = JSON.parse(vlans); } catch (e) { return []; }
+    }
+    if (!Array.isArray(vlans)) return [];
+    const ponData = vlans.find(p => p.port == form.pon_port);
+    if (!ponData || !ponData.vlans || !Array.isArray(ponData.vlans)) return [];
+    return ponData.vlans.map(v => ({
+        name: v.name,
+        vlan_id: v.vlan_id,
+        access_mode: getVlanAccessMode(v)
+    }));
+});
+
+const selectedOdcInfo = computed(() => {
+    if (!form.odc_id) return null;
+    return props.odcs.find(o => o.id === form.odc_id);
+});
+
+const currentModalOdpVlans = computed(() => {
+    if (!selectedOdcInfo.value || !selectedOdcInfo.value.pon_port || !selectedOdcInfo.value.olt || !selectedOdcInfo.value.olt.pon_vlans) return [];
+    let vlans = selectedOdcInfo.value.olt.pon_vlans;
+    if (typeof vlans === 'string') {
+        try { vlans = JSON.parse(vlans); } catch (e) { return []; }
+    }
+    if (!Array.isArray(vlans)) return [];
+    const ponData = vlans.find(p => p.port == selectedOdcInfo.value.pon_port);
+    if (!ponData || !ponData.vlans || !Array.isArray(ponData.vlans)) return [];
+    return ponData.vlans.map(v => ({
+        name: v.name,
+        vlan_id: v.vlan_id,
+        access_mode: getVlanAccessMode(v)
+    }));
+});
+
+const isBranchMismatch = computed(() => {
+    if (!form.area_id || !selectedOdcInfo.value) return false;
+    return selectedOdcInfo.value.area_id != form.area_id;
+});
+
+const getLocationForSplit = (tabIndex) => {
+    if (!navigator.geolocation) {
+        alert('Geolocation tidak didukung oleh browser Anda.');
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            form.split_units[tabIndex].latitude = position.coords.latitude.toFixed(7);
+            form.split_units[tabIndex].longitude = position.coords.longitude.toFixed(7);
+        },
+        (error) => {
+            alert('Gagal mendeteksi lokasi GPS: ' + error.message);
+        },
+        { enableHighAccuracy: true, timeout: 12000 }
+    );
+};
+
 // Info Wilayah / Area Terpilih
 const selectedArea = computed(() => {
     return props.areas?.find(a => a.id == form.area_id) || null;
@@ -355,8 +519,27 @@ watch([() => form.type, () => form.device_type, () => form.capacity, () => form.
     }
 });
 
+const syncSplitDataIfApplicable = () => {
+    if (isSplitMode.value) {
+        const unit0 = form.split_units[0];
+        const unit1 = form.split_units[1];
+        if (unit0.location && !form.location) form.location = unit0.location;
+        if (unit0.latitude && !form.planned_latitude) form.planned_latitude = unit0.latitude;
+        if (unit0.longitude && !form.planned_longitude) form.planned_longitude = unit0.longitude;
+        if (unit0.start_point && !form.start_point) form.start_point = unit0.start_point;
+        if (unit0.end_point && !form.end_point) form.end_point = unit0.end_point;
+        if (unit0.cable_pull && !form.cable_pull) form.cable_pull = unit0.cable_pull;
+
+        const splitSummary = `[Split Unit 1: ${unit0.name || 'Unit A'} (${unit0.ratio} Port) - Lokasi: ${unit0.location || '-'}, GPS: ${unit0.latitude || '-'}/${unit0.longitude || '-'}, Kabel: ${unit0.start_point || '-'} -> ${unit0.end_point || '-'} (${unit0.cable_pull || 'Individu'})] | [Split Unit 2: ${unit1.name || 'Unit B'} (${unit1.ratio} Port) - Lokasi: ${unit1.location || '-'}, GPS: ${unit1.latitude || '-'}/${unit1.longitude || '-'}, Kabel: ${unit1.start_point || '-'} -> ${unit1.end_point || '-'} (${unit1.cable_pull || 'Individu'})]`;
+        if (!form.notes.includes('[Split Unit 1:')) {
+            form.notes = form.notes ? `${form.notes}\n${splitSummary}` : splitSummary;
+        }
+    }
+};
+
 const nextStep = () => {
     if (currentStep.value === 1) {
+        syncSplitDataIfApplicable();
         fetchAutoBOM();
     }
     currentStep.value++;
@@ -446,6 +629,7 @@ const submitErrorMessage = ref('');
 const isSubmitting = ref(false);
 
 const submit = () => {
+    syncSplitDataIfApplicable();
     submitErrorMessage.value = '';
 
     // 1. Validasi / Auto-generate Nama Target
@@ -637,50 +821,122 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <!-- Induk Jaringan (OLT / ODC) -->
-                    <div v-if="form.type === 'odc_deployment'" class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">OLT Induk</label>
-                            <select
-                                v-model="form.olt_id"
-                                class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                            >
-                                <option value="">-- Pilih OLT di Area Ini --</option>
-                                <option v-for="o in filteredOlts" :key="o.id" :value="o.id">{{ o.name }}</option>
-                            </select>
+                    <!-- Induk Jaringan ODC (OLT Induk & Port PON) -->
+                    <div v-if="form.type === 'odc_deployment'" class="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">OLT Induk</label>
+                                <select
+                                    v-model="form.olt_id"
+                                    :disabled="!form.area_id"
+                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50"
+                                >
+                                    <option value="">-- Pilih OLT di Area Ini --</option>
+                                    <option v-for="o in filteredOlts" :key="o.id" :value="o.id">{{ o.name }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Port PON OLT</label>
+                                <select
+                                    v-if="selectedOltPonPorts.length > 0"
+                                    v-model.number="form.pon_port"
+                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-indigo-500 focus:border-indigo-500"
+                                >
+                                    <option :value="null">-- Pilih Port PON (Opsional) --</option>
+                                    <option v-for="port in selectedOltPonPorts" :key="port" :value="port">PON {{ port }}</option>
+                                </select>
+                                <input
+                                    v-else
+                                    v-model.number="form.pon_port"
+                                    type="number"
+                                    min="1"
+                                    max="16"
+                                    placeholder="Nomor PON (1 - 16)"
+                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Port PON OLT</label>
-                            <input
-                                v-model.number="form.pon_port"
-                                type="number"
-                                min="1"
-                                max="16"
-                                class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                            />
+
+                        <!-- Preview Sinkronisasi VLAN & Mode Akses dari OLT -->
+                        <div v-if="form.olt_id && form.pon_port" class="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                    <span>Sinkronisasi VLAN & Mode Akses dari OLT (PON {{ form.pon_port }})</span>
+                                </span>
+                                <span class="text-[11px] text-blue-700 font-bold bg-blue-100 px-2 py-0.5 rounded-full">{{ currentModalPonVlans.length }} VLAN Terdeteksi</span>
+                            </div>
+                            <div v-if="currentModalPonVlans.length > 0" class="flex flex-wrap gap-1.5 pt-1">
+                                <span v-for="(v, vi) in currentModalPonVlans" :key="vi" class="px-2 py-1 rounded-lg text-xs font-semibold border flex items-center gap-1.5 bg-white shadow-2xs" :class="getModeBadgeClass(v.access_mode)">
+                                    <span class="font-mono font-bold">{{ v.vlan_id }}</span>
+                                    <span class="text-slate-700">· {{ v.name }}</span>
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border bg-slate-50">{{ v.access_mode }}</span>
+                                </span>
+                            </div>
+                            <div v-else class="text-xs text-blue-600/80 italic">
+                                Belum ada VLAN diset di OLT untuk PON {{ form.pon_port }}. ODC ini akan otomatis tersinkron begitu VLAN diset di OLT.
+                            </div>
                         </div>
                     </div>
 
-                    <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">ODC Induk</label>
-                            <select
-                                v-model="form.odc_id"
-                                class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                            >
-                                <option value="">-- Pilih ODC di Area Ini --</option>
-                                <option v-for="odc in filteredOdcs" :key="odc.id" :value="odc.id">{{ odc.name }} (Kapasitas {{ odc.capacity }})</option>
-                            </select>
+                    <!-- Induk Jaringan ODP (ODC Induk & Port Feeder) -->
+                    <div v-else class="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">ODC Induk</label>
+                                <select
+                                    v-model="form.odc_id"
+                                    :disabled="!form.area_id"
+                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50"
+                                >
+                                    <option value="">-- Pilih ODC di Area Ini --</option>
+                                    <option v-for="odc in filteredOdcs" :key="odc.id" :value="odc.id">{{ odc.name }} (Kapasitas {{ odc.capacity }})</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Port Feeder ODC</label>
+                                <input
+                                    v-model.number="form.odc_splitter_port"
+                                    type="number"
+                                    min="1"
+                                    max="48"
+                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Port Feeder ODC</label>
-                            <input
-                                v-model.number="form.odc_splitter_port"
-                                type="number"
-                                min="1"
-                                max="48"
-                                class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                            />
+
+                        <!-- Preview Sinkronisasi VLAN & Mode Akses dari OLT melalui ODC -->
+                        <div v-if="selectedOdcInfo" class="bg-purple-50/70 border border-purple-200 rounded-xl p-3.5 space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                    <span>Sinkronisasi VLAN & Mode Akses dari OLT (via {{ selectedOdcInfo.name }})</span>
+                                </span>
+                                <span class="text-[11px] text-purple-700 font-bold bg-purple-100 px-2 py-0.5 rounded-full">{{ currentModalOdpVlans.length }} VLAN Terdeteksi</span>
+                            </div>
+                            <div class="text-[11px] text-purple-800">
+                                Induk OLT: <strong>{{ selectedOdcInfo.olt ? selectedOdcInfo.olt.name : '-' }}</strong>
+                                <span v-if="selectedOdcInfo.pon_port"> · Port <strong>PON {{ selectedOdcInfo.pon_port }}</strong></span>
+                            </div>
+                            <div v-if="currentModalOdpVlans.length > 0" class="flex flex-wrap gap-1.5 pt-1">
+                                <span v-for="(v, vi) in currentModalOdpVlans" :key="vi" class="px-2 py-1 rounded-lg text-xs font-semibold border flex items-center gap-1.5 bg-white shadow-2xs" :class="getModeBadgeClass(v.access_mode)">
+                                    <span class="font-mono font-bold">{{ v.vlan_id }}</span>
+                                    <span class="text-slate-700">· {{ v.name }}</span>
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border bg-slate-50">{{ v.access_mode }}</span>
+                                </span>
+                            </div>
+                            <div v-else class="text-xs text-purple-600/80 italic">
+                                Belum ada VLAN diset di OLT untuk ODC ini. ODP akan otomatis tersinkron begitu VLAN diset di OLT.
+                            </div>
+                        </div>
+
+                        <!-- Branch Mismatch Warning -->
+                        <div v-if="isBranchMismatch" class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-3 text-amber-900">
+                            <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            <div>
+                                <h4 class="text-xs font-bold text-amber-900">Cabang ODP tidak sesuai dengan ODC!</h4>
+                                <p class="text-[11px] text-amber-800 mt-0.5">ODC terdaftar di cabang/wilayah yang berbeda dengan wilayah ODP yang Anda pilih. Pastikan data wilayah sudah benar.</p>
+                            </div>
                         </div>
                     </div>
 
@@ -854,110 +1110,287 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <!-- Lokasi & Titik Koordinat (Auto GPS / Ketik Manual) -->
-                    <div class="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
-                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5">
-                            <div>
-                                <label class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                                    <span>📍</span>
-                                    <span>Lokasi &amp; Titik Koordinat Target</span>
-                                </label>
-                                <p class="text-[11px] text-slate-500">
-                                    Bisa <b>Auto GPS</b> (ambil dari posisi perangkat saat ini) atau <b>ketik manual</b> koordinat.
+                    <!-- ════ UI KHUSUS SPLIT MODE (ODC Split / ODP Split 2) ════ -->
+                    <div v-if="isSplitMode" class="space-y-4 pt-2">
+                        <!-- Alert Split Banner -->
+                        <div :class="form.type === 'odc_deployment' ? 'bg-indigo-50 border-indigo-200 text-indigo-900' : 'bg-purple-50 border-purple-200 text-purple-900'" class="px-4 py-3.5 rounded-2xl border text-sm flex items-start gap-3 shadow-2xs">
+                            <svg class="w-5 h-5 shrink-0 mt-0.5" :class="form.type === 'odc_deployment' ? 'text-indigo-600' : 'text-purple-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <div class="flex-1">
+                                <p class="font-bold text-xs uppercase tracking-wider">
+                                    Mode Split: {{ form.type === 'odc_deployment' ? 'ODC' : 'ODP' }} dibagi menjadi 2 unit dengan konfigurasi khusus
+                                </p>
+                                <p class="text-xs mt-1" :class="totalSplitPorts > form.capacity ? 'text-rose-600 font-bold' : 'opacity-85'">
+                                    Total Kapasitas Sub-Unit: <span class="font-bold font-mono">{{ totalSplitPorts }}</span> / <span class="font-bold font-mono">{{ form.capacity }}</span> Port
+                                    <span v-if="totalSplitPorts > form.capacity" class="ml-1 bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">(Melebihi kapasitas utama!)</span>
                                 </p>
                             </div>
+                        </div>
 
-                            <!-- Auto GPS Action Button -->
-                            <div class="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    @click="getAutoLocation"
-                                    :disabled="isLocating"
-                                    class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all disabled:opacity-60 cursor-pointer"
-                                >
-                                    <svg v-if="isLocating" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                                    </svg>
-                                    <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <span>{{ isLocating ? 'Mendeteksi GPS...' : '📍 Auto GPS (Ambil Lokasi)' }}</span>
-                                </button>
+                        <!-- Tabs Split Units -->
+                        <div class="flex gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/70">
+                            <button
+                                type="button"
+                                @click="activeTab = 0"
+                                class="flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                :class="activeTab === 0 ? 'bg-white shadow-xs text-indigo-700' : 'text-slate-600 hover:text-slate-900'"
+                            >
+                                <span>Unit Induk</span>
+                                <span class="text-[11px] font-mono px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold">{{ form.type === 'odc_deployment' ? form.split_units[0].ratio + ' Port' : '1:' + form.split_units[0].ratio }}</span>
+                            </button>
+                            <button
+                                type="button"
+                                @click="activeTab = 1"
+                                class="flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                :class="activeTab === 1 ? 'bg-white shadow-xs text-indigo-700' : 'text-slate-600 hover:text-slate-900'"
+                            >
+                                <span>Unit Lanjutan</span>
+                                <span class="text-[11px] font-mono px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold">{{ form.type === 'odc_deployment' ? form.split_units[1].ratio + ' Port' : '1:' + form.split_units[1].ratio }}</span>
+                            </button>
+                        </div>
 
-                                <a
-                                    v-if="form.planned_latitude && form.planned_longitude"
-                                    :href="`https://www.google.com/maps?q=${form.planned_latitude},${form.planned_longitude}`"
-                                    target="_blank"
-                                    class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:text-indigo-600 rounded-xl text-xs font-semibold flex items-center gap-1 shadow-2xs hover:border-indigo-300 transition-all"
-                                    title="Lihat titik di Google Maps"
-                                >
-                                    <span>🗺️ Cek Maps</span>
-                                </a>
-
-                                <button
-                                    v-if="form.planned_latitude || form.planned_longitude"
-                                    type="button"
-                                    @click="clearCoordinates"
-                                    class="px-2 py-1.5 text-slate-400 hover:text-rose-600 text-xs font-medium rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 transition-all"
-                                    title="Kosongkan koordinat"
-                                >
-                                    ✕ Reset
-                                </button>
+                        <!-- Tab Content: Detail Sub-Unit -->
+                        <div class="border border-slate-200/80 rounded-2xl overflow-hidden bg-slate-50/50 p-4 sm:p-5 space-y-4">
+                            <div class="flex items-center justify-between pb-3 border-b border-slate-200/70">
+                                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">{{ activeTab === 0 ? 'A' : 'B' }}</span>
+                                    <span>{{ activeTab === 0 ? (form.type === 'odc_deployment' ? 'ODC Induk' : 'ODP Induk') : (form.type === 'odc_deployment' ? 'ODC Lanjutan' : 'ODP Lanjutan') }}</span>
+                                </h4>
+                                <span class="text-xs font-semibold text-slate-500">Konfigurasi Jalur & Titik Sub-Unit</span>
                             </div>
-                        </div>
 
-                        <!-- Status Toast/Banner for GPS -->
-                        <div v-if="gpsStatusMsg" class="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold flex items-center gap-1.5 animate-fadeIn">
-                            <span>✅</span>
-                            <span>{{ gpsStatusMsg }}</span>
-                        </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nama Sub-Unit</label>
+                                    <input
+                                        v-model="form.split_units[activeTab].name"
+                                        type="text"
+                                        placeholder="Contoh: ODC-01-A atau ODP-01-A"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Kapasitas Port / Rasio</label>
+                                    <input
+                                        v-model.number="form.split_units[activeTab].ratio"
+                                        type="number"
+                                        min="1"
+                                        placeholder="Contoh: 8 atau 16"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+                            </div>
 
-                        <!-- 3 Input Fields Grid -->
-                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                            <div class="sm:col-span-5">
-                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Deskripsi Tiang / Lokasi</label>
-                                <input
-                                    v-model="form.location"
-                                    type="text"
-                                    placeholder="Contoh: Tiang PLN Depan Gang Mawar No 4"
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Alamat / Lokasi Sub-Unit</label>
+                                <textarea
+                                    v-model="form.split_units[activeTab].location"
+                                    rows="2"
+                                    placeholder="Masukkan alamat lengkap atau keterangan tiang penempatan unit ini"
                                     class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-indigo-500 focus:border-indigo-500"
-                                />
+                                ></textarea>
                             </div>
 
-                            <div class="sm:col-span-3">
-                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
-                                    <span>Latitude Rencana</span>
-                                    <span class="text-[10px] text-slate-400 font-normal">Ketik manual</span>
-                                </label>
-                                <input
-                                    v-model="form.planned_latitude"
-                                    @paste="handleLatPaste"
-                                    type="text"
-                                    placeholder="-6.123456"
-                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-medium focus:ring-indigo-500 focus:border-indigo-500"
-                                />
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="block text-xs font-bold text-slate-700 uppercase">Titik Koordinat Sub-Unit</label>
+                                    <button
+                                        type="button"
+                                        @click="getLocationForSplit(activeTab)"
+                                        :disabled="isLocating"
+                                        class="px-3 py-1 bg-white border border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-600 rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                                    >
+                                        <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                        <span>Auto GPS</span>
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <input
+                                        v-model="form.split_units[activeTab].latitude"
+                                        type="text"
+                                        placeholder="Latitude (-6.123456)"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                    <input
+                                        v-model="form.split_units[activeTab].longitude"
+                                        type="text"
+                                        placeholder="Longitude (106.123456)"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
                             </div>
 
-                            <div class="sm:col-span-4">
-                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
-                                    <span>Longitude Rencana</span>
-                                    <span class="text-[10px] text-slate-400 font-normal">Ketik manual</span>
-                                </label>
-                                <input
-                                    v-model="form.planned_longitude"
-                                    @paste="handleLngPaste"
-                                    type="text"
-                                    placeholder="106.123456"
-                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-medium focus:ring-indigo-500 focus:border-indigo-500"
-                                />
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Titik Awal Tarikan</label>
+                                    <input
+                                        v-model="form.split_units[activeTab].start_point"
+                                        type="text"
+                                        placeholder="Contoh: OLT Server / Tiang ODC-01"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Titik Akhir Tarikan</label>
+                                    <input
+                                        v-model="form.split_units[activeTab].end_point"
+                                        type="text"
+                                        placeholder="Contoh: Tiang No 12 RW 03"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Penarikan Kabel</label>
+                                    <select
+                                        v-model="form.split_units[activeTab].cable_pull"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-indigo-500 focus:border-indigo-500"
+                                    >
+                                        <option value="Individu">Individu (Kabel Dedicated)</option>
+                                        <option value="Bersama">Bersama (Bundled / Sharing)</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="text-[11px] text-slate-400 flex items-center justify-between pt-1">
-                            <span>💡 <i>Klik tombol <b>Auto GPS</b> untuk mengambil koordinat perangkat saat ini secara otomatis, atau ketik manual / paste format <code>lat, long</code>.</i></span>
-                            <span v-if="gpsAccuracy" class="text-emerald-600 font-medium whitespace-nowrap">Akurasi GPS: &plusmn;{{ gpsAccuracy }}m</span>
+                    <!-- ════ UI STANDAR / NORMAL MODE ════ -->
+                    <div v-else class="space-y-4 pt-2">
+                        <!-- Lokasi & Titik Koordinat (Auto GPS / Ketik Manual) -->
+                        <div class="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
+                            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span>📍</span>
+                                        <span>Lokasi &amp; Titik Koordinat Target</span>
+                                    </label>
+                                    <p class="text-[11px] text-slate-500">
+                                        Bisa <b>Auto GPS</b> (ambil dari posisi perangkat saat ini) atau <b>ketik manual</b> koordinat.
+                                    </p>
+                                </div>
+
+                                <!-- Auto GPS Action Button -->
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        @click="getAutoLocation"
+                                        :disabled="isLocating"
+                                        class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all disabled:opacity-60 cursor-pointer"
+                                    >
+                                        <svg v-if="isLocating" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                        </svg>
+                                        <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        <span>{{ isLocating ? 'Mendeteksi GPS...' : '📍 Auto GPS (Ambil Lokasi)' }}</span>
+                                    </button>
+
+                                    <a
+                                        v-if="form.planned_latitude && form.planned_longitude"
+                                        :href="`https://www.google.com/maps?q=${form.planned_latitude},${form.planned_longitude}`"
+                                        target="_blank"
+                                        class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:text-indigo-600 rounded-xl text-xs font-semibold flex items-center gap-1 shadow-2xs hover:border-indigo-300 transition-all"
+                                        title="Lihat titik di Google Maps"
+                                    >
+                                        <span>🗺️ Cek Maps</span>
+                                    </a>
+
+                                    <button
+                                        v-if="form.planned_latitude || form.planned_longitude"
+                                        type="button"
+                                        @click="clearCoordinates"
+                                        class="px-2 py-1.5 text-slate-400 hover:text-rose-600 text-xs font-medium rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 transition-all cursor-pointer"
+                                        title="Kosongkan koordinat"
+                                    >
+                                        ✕ Reset
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Status Toast/Banner for GPS -->
+                            <div v-if="gpsStatusMsg" class="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold flex items-center gap-1.5 animate-fadeIn">
+                                <span>✅</span>
+                                <span>{{ gpsStatusMsg }}</span>
+                            </div>
+
+                            <!-- 3 Input Fields Grid: Lokasi, Lat, Long -->
+                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                <div class="sm:col-span-5">
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Deskripsi Tiang / Lokasi Target</label>
+                                    <input
+                                        v-model="form.location"
+                                        type="text"
+                                        placeholder="Contoh: Tiang PLN Depan Gang Mawar No 4"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+
+                                <div class="sm:col-span-3">
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
+                                        <span>Latitude Rencana</span>
+                                        <span class="text-[10px] text-slate-400 font-normal">Ketik manual</span>
+                                    </label>
+                                    <input
+                                        v-model="form.planned_latitude"
+                                        @paste="handleLatPaste"
+                                        type="text"
+                                        placeholder="-6.123456"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-medium focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+
+                                <div class="sm:col-span-4">
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
+                                        <span>Longitude Rencana</span>
+                                        <span class="text-[10px] text-slate-400 font-normal">Ketik manual</span>
+                                    </label>
+                                    <input
+                                        v-model="form.planned_longitude"
+                                        @paste="handleLngPaste"
+                                        type="text"
+                                        placeholder="106.123456"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-medium focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <!-- Jalur Tarikan Kabel & Metode Penarikan (Normal Mode) -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 border-t border-slate-200/60">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Titik Awal (Start Point)</label>
+                                    <input
+                                        v-model="form.start_point"
+                                        type="text"
+                                        placeholder="Contoh: Server OLT / ODC Induk"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Titik Akhir Kabel (End Point)</label>
+                                    <input
+                                        v-model="form.end_point"
+                                        type="text"
+                                        placeholder="Contoh: Tiang Distribusi ODP"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Penarikan Kabel</label>
+                                    <select
+                                        v-model="form.cable_pull"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-indigo-500 focus:border-indigo-500"
+                                    >
+                                        <option value="Individu">Individu (Kabel Dedicated)</option>
+                                        <option value="Bersama">Bersama (Bundled / Sharing)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="text-[11px] text-slate-400 flex items-center justify-between pt-1">
+                                <span>💡 <i>Klik tombol <b>Auto GPS</b> untuk mengambil koordinat perangkat saat ini secara otomatis, atau ketik manual / paste format <code>lat, long</code>.</i></span>
+                                <span v-if="gpsAccuracy" class="text-emerald-600 font-medium whitespace-nowrap">Akurasi GPS: &plusmn;{{ gpsAccuracy }}m</span>
+                            </div>
                         </div>
                     </div>
 

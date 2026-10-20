@@ -114,8 +114,8 @@ class InfrastructureWorkOrderController extends Controller
 
         return Inertia::render('Infrastructure/WorkOrders/Create', [
             'areas' => Area::orderBy('name')->get(['id', 'name']),
-            'olts' => Olt::where('status', 'active')->get(['id', 'name', 'area_id', 'total_pon_ports']),
-            'odcs' => Odc::where('status', 'active')->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
+            'olts' => Olt::where('status', 'active')->get(['id', 'name', 'area_id', 'total_pon_ports', 'pon_vlans']),
+            'odcs' => Odc::with('olt')->where('status', 'active')->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
             'technicians' => User::whereIn('role', ['teknisi', 'admin', 'noc'])->orderBy('name')->get(['id', 'name']),
             'materials' => $materials,
             'materialTransactions' => $materialTransactions,
@@ -152,7 +152,7 @@ class InfrastructureWorkOrderController extends Controller
     public function store(Request $request)
     {
         // Normalisasi input string kosong menjadi null
-        foreach (['odc_id', 'olt_id', 'pon_port', 'odc_splitter_port', 'planned_latitude', 'planned_longitude', 'location', 'start_point', 'end_point', 'notes', 'splitter_ratio', 'core_capacity'] as $f) {
+        foreach (['odc_id', 'olt_id', 'pon_port', 'odc_splitter_port', 'planned_latitude', 'planned_longitude', 'location', 'start_point', 'end_point', 'cable_pull', 'notes', 'splitter_ratio', 'core_capacity'] as $f) {
             if ($request->has($f) && ($request->$f === '' || $request->$f === 'null' || $request->$f === null)) {
                 $request->merge([$f => null]);
             }
@@ -200,6 +200,7 @@ class InfrastructureWorkOrderController extends Controller
             'scheduled_date' => 'required|date',
             'start_point' => 'nullable|string|max:255',
             'end_point' => 'nullable|string|max:255',
+            'cable_pull' => 'nullable|string|max:50',
             'notes' => 'nullable|string|max:1000',
             'materials' => 'required|array|min:1',
             'materials.*.material_id' => 'required|exists:materials,id',

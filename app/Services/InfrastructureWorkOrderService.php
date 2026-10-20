@@ -467,7 +467,7 @@ class InfrastructureWorkOrderService
                     'status' => 'active',
                     'start_point' => $workOrder->start_point,
                     'end_point' => $workOrder->end_point,
-                    'cable_pull' => $workOrder->cable_length_used ? "{$workOrder->cable_length_used}m" : null,
+                    'cable_pull' => $workOrder->cable_pull ?: ($workOrder->cable_length_used ? "{$workOrder->cable_length_used}m" : 'Individu'),
                     'is_split' => $isSplit,
                 ]);
                 $createdOdcId = $odc->id;
@@ -486,7 +486,7 @@ class InfrastructureWorkOrderService
                     'longitude' => $lng,
                     'start_point' => $workOrder->start_point,
                     'end_point' => $workOrder->end_point,
-                    'cable_pull' => $workOrder->cable_length_used ? "{$workOrder->cable_length_used}m" : null,
+                    'cable_pull' => $workOrder->cable_pull ?: ($workOrder->cable_length_used ? "{$workOrder->cable_length_used}m" : 'Individu'),
                     'photo' => $photo,
                     'is_split' => $isSplit,
                     'total_ports' => $workOrder->capacity ?: 8,
