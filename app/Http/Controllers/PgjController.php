@@ -116,12 +116,18 @@ class PgjController extends Controller
             $q->whereIn('name', ['teknisi', 'kepala teknisi']);
         })->orWhere('role', 'teknisi')->orderBy('name')->get();
 
+        $leadTechnicians = User::role(['kepala teknisi', 'admin', 'noc', 'manager'])->select('id', 'name')->get();
+        if ($leadTechnicians->isEmpty()) {
+            $leadTechnicians = User::select('id', 'name')->get();
+        }
+
         return Inertia::render('Pgj/Index', [
             'tickets' => $tickets,
             'areas' => $areas,
             'odcs' => $odcs,
             'odps' => $odps,
             'technicians' => $technicians,
+            'leadTechnicians' => $leadTechnicians,
             'counts' => $counts,
             'filters' => $request->only(['search', 'status', 'priority', 'segment_type', 'area_id']),
         ]);
@@ -425,6 +431,7 @@ class PgjController extends Controller
 
         $validated = $request->validate([
             'escalation_reason' => 'required|string',
+            'lead_technician_id' => 'nullable|exists:users,id',
             'admin_notes' => 'nullable|string',
         ]);
 
@@ -433,6 +440,7 @@ class PgjController extends Controller
             'status' => 'escalated_to_lead',
             'escalation_reason' => $validated['escalation_reason'],
             'admin_notes' => $validated['admin_notes'] ?: $pgj->admin_notes,
+            'lead_technician_id' => $validated['lead_technician_id'] ?? $pgj->lead_technician_id,
         ]);
 
         AuditLog::createLog(

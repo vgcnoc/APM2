@@ -422,6 +422,7 @@ class PgkController extends Controller
         $validated = $request->validate([
             'escalation_reason' => 'required|string',
             'lead_technician_id' => 'nullable|exists:users,id',
+            'admin_notes' => 'nullable|string',
         ]);
 
         $oldStatus = $pgk->status;
@@ -430,6 +431,7 @@ class PgkController extends Controller
             'status' => 'escalated_to_lead',
             'escalated_at' => now(),
             'escalation_reason' => $validated['escalation_reason'],
+            'admin_notes' => $validated['admin_notes'] ?: $pgk->admin_notes,
             'lead_technician_id' => $validated['lead_technician_id'] ?? $pgk->lead_technician_id,
         ]);
 

@@ -184,8 +184,11 @@
                                         {{ getStatusLabel(ticket.status) }}
                                     </span>
 
-                                    <!-- Info Penugasan Teknisi -->
-                                    <div v-if="ticket.technicians && ticket.technicians.length > 0" class="mt-2 text-xs text-gray-600">
+                                    <!-- Info Penugasan Ka. Teknisi & Teknisi -->
+                                    <div v-if="ticket.lead_technician || ticket.leadTechnician" class="mt-1 text-[11px] text-amber-800">
+                                        <span class="font-bold text-gray-500">Ka. Teknisi:</span> {{ (ticket.lead_technician || ticket.leadTechnician)?.name }}
+                                    </div>
+                                    <div v-if="ticket.technicians && ticket.technicians.length > 0" class="mt-1 text-xs text-gray-600">
                                         <div class="text-[10px] text-gray-400 font-bold uppercase">Tim Lapangan:</div>
                                         <div class="font-semibold text-gray-800">{{ ticket.technicians.map(t => t.name).join(', ') }}</div>
                                     </div>
@@ -502,6 +505,14 @@
                     </div>
 
                     <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tujukan Kepala Teknisi (Opsional)</label>
+                        <select v-model="escalateForm.lead_technician_id" class="w-full rounded-xl border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 text-sm">
+                            <option value="">-- Semua Kepala Teknisi / Default --</option>
+                            <option v-for="lead in leadTechnicians" :key="lead.id" :value="lead.id">{{ lead.name }}</option>
+                        </select>
+                    </div>
+
+                    <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan Tambahan Admin</label>
                         <textarea 
                             v-model="escalateForm.admin_notes" 
@@ -586,9 +597,20 @@
                         </div>
                     </div>
 
+                    <!-- Info Eskalasi ke Ka. Teknisi jika belum dijadwalkan -->
+                    <div v-if="detailTicket?.status === 'escalated_to_lead'" class="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1">
+                        <div class="text-[10px] font-bold uppercase text-amber-800">Menunggu Penjadwalan Lapangan:</div>
+                        <div class="text-xs text-amber-950">
+                            Ditujukan ke: <strong>{{ (detailTicket?.lead_technician || detailTicket?.leadTechnician)?.name || 'Semua Kepala Teknisi / Default' }}</strong>
+                        </div>
+                    </div>
+
                     <!-- Jadwal & Tim Teknisi -->
                     <div v-if="detailTicket?.status === 'scheduled' || detailTicket?.status === 'completed'" class="p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-100 space-y-1">
                         <div class="text-[10px] font-bold uppercase text-indigo-800">Jadwal & Tim Teknisi:</div>
+                        <div v-if="detailTicket?.lead_technician || detailTicket?.leadTechnician" class="text-xs text-amber-900">
+                            Ka. Teknisi: <strong>{{ (detailTicket?.lead_technician || detailTicket?.leadTechnician)?.name }}</strong>
+                        </div>
                         <div class="text-xs text-gray-700">Tanggal: <strong>{{ formatDate(detailTicket?.scheduled_date) }}</strong> ({{ detailTicket?.scheduled_time || 'Segera' }})</div>
                         <div class="text-xs text-gray-700">Tim Pelaksana: <strong>{{ detailTicket?.technicians?.map(t => t.name).join(', ') || '-' }}</strong></div>
                         <div v-if="detailTicket?.lead_notes" class="text-xs text-indigo-900 mt-1 italic">
@@ -634,6 +656,7 @@ const props = defineProps({
     odcs: Array,
     odps: Array,
     technicians: Array,
+    leadTechnicians: Array,
     counts: Object,
     filters: Object,
 });
@@ -674,6 +697,7 @@ const resolveForm = useForm({
 
 const escalateForm = useForm({
     escalation_reason: '',
+    lead_technician_id: '',
     admin_notes: '',
 });
 
@@ -799,6 +823,7 @@ const submitResolveAdmin = () => {
 const openEscalateModal = (ticket) => {
     selectedTicket.value = ticket;
     escalateForm.reset();
+    escalateForm.lead_technician_id = ticket.lead_technician_id || '';
     showEscalateModal.value = true;
 };
 
