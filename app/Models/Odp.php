@@ -27,6 +27,7 @@ class Odp extends Model
         'parent_odp_id',
         'total_ports',
         'used_ports',
+        'core_capacity',
         'status',
         'description',
     ];
@@ -38,6 +39,7 @@ class Odp extends Model
             'longitude' => 'decimal:8',
             'total_ports' => 'integer',
             'used_ports' => 'integer',
+            'core_capacity' => 'integer',
         ];
     }
 

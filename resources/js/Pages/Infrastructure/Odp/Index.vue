@@ -645,6 +645,21 @@
                                     <input v-model="form.total_ports" type="number" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
                                     <p v-if="form.errors.total_ports" class="text-red-500 text-xs mt-1">{{ form.errors.total_ports }}</p>
                                 </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Kapasitas Core</label>
+                                    <select v-model="form.core_capacity" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option :value="1">1 Core</option>
+                                        <option :value="2">2 Core</option>
+                                        <option :value="4">4 Core</option>
+                                        <option :value="6">6 Core</option>
+                                        <option :value="8">8 Core (Standar)</option>
+                                        <option :value="12">12 Core</option>
+                                        <option :value="24">24 Core</option>
+                                        <option :value="48">48 Core</option>
+                                        <option :value="96">96 Core</option>
+                                    </select>
+                                    <p v-if="form.errors.core_capacity" class="text-red-500 text-xs mt-1">{{ form.errors.core_capacity }}</p>
+                                </div>
                             </div>
                         </div>
 
@@ -1041,6 +1056,7 @@ const form = useForm({
     area_id: '',
     type: 'Normal',
     total_ports: 8,
+    core_capacity: 8,
     address: '',
     latitude: '',
     longitude: '',
@@ -1150,6 +1166,7 @@ function openEditModal(odp) {
     form.area_id = odp.area_id;
     form.type = odp.type || 'Normal';
     form.total_ports = odp.total_ports;
+    form.core_capacity = odp.core_capacity || 8;
     form.address = odp.address;
     form.latitude = odp.latitude;
     form.longitude = odp.longitude;

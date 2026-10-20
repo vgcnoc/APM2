@@ -145,6 +145,7 @@ class InfrastructureWorkOrderController extends Controller
             'odc_id' => 'nullable|required_if:type,odp_deployment|exists:odcs,id',
             'odc_splitter_port' => 'nullable|integer|min:1',
             'capacity' => 'required|integer|min:1',
+            'core_capacity' => 'nullable|integer|min:1',
             'splitter_ratio' => 'nullable|string|max:50',
             'location' => 'nullable|string|max:500',
             'planned_latitude' => 'nullable|numeric|between:-90,90',

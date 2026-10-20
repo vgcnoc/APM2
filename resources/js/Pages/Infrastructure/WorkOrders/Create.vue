@@ -25,6 +25,7 @@ const form = useForm({
     odc_id: '',
     odc_splitter_port: 1,
     capacity: 8,
+    core_capacity: 8,
     splitter_ratio: '1:8',
     location: '',
     planned_latitude: '',
@@ -38,6 +39,84 @@ const form = useForm({
     notes: '',
     materials: [],
 });
+
+const isLocating = ref(false);
+const gpsAccuracy = ref(null);
+const gpsStatusMsg = ref('');
+
+const getAutoLocation = () => {
+    if (!navigator.geolocation) {
+        alert('Geolocation tidak didukung oleh browser Anda.');
+        return;
+    }
+    isLocating.value = true;
+    gpsStatusMsg.value = 'Mencari sinyal GPS perangkat...';
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            isLocating.value = false;
+            form.planned_latitude = position.coords.latitude.toFixed(7);
+            form.planned_longitude = position.coords.longitude.toFixed(7);
+            gpsAccuracy.value = Math.round(position.coords.accuracy);
+            gpsStatusMsg.value = `Lokasi GPS berhasil diambil (Akurasi: ±${gpsAccuracy.value}m)`;
+            setTimeout(() => {
+                gpsStatusMsg.value = '';
+            }, 5000);
+        },
+        (error) => {
+            isLocating.value = false;
+            gpsStatusMsg.value = '';
+            let msg = 'Gagal mendeteksi lokasi GPS.';
+            if (error.code === 1) msg = 'Akses lokasi ditolak browser. Anda bisa ketik koordinat manual atau izinkan akses lokasi pada browser/HP.';
+            else if (error.code === 2) msg = 'Sinyal lokasi tidak tersedia. Silakan ketik koordinat manual.';
+            else if (error.code === 3) msg = 'Waktu pencarian sinyal GPS habis. Silakan coba lagi atau ketik koordinat manual.';
+            alert(msg);
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 12000,
+            maximumAge: 0,
+        }
+    );
+};
+
+const clearCoordinates = () => {
+    form.planned_latitude = '';
+    form.planned_longitude = '';
+    gpsAccuracy.value = null;
+    gpsStatusMsg.value = '';
+};
+
+const parseAndSetCoordinates = (text) => {
+    if (!text || typeof text !== 'string') return false;
+    const trimmed = text.trim();
+    const match = trimmed.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
+    if (match) {
+        form.planned_latitude = parseFloat(match[1]).toFixed(7);
+        form.planned_longitude = parseFloat(match[2]).toFixed(7);
+        gpsStatusMsg.value = 'Koordinat berhasil dipaste!';
+        setTimeout(() => { gpsStatusMsg.value = ''; }, 3000);
+        return true;
+    }
+    return false;
+};
+
+const handleLatPaste = (e) => {
+    const text = (e.clipboardData || window.clipboardData)?.getData('text');
+    if (text && (text.includes(',') || text.includes('http') || text.includes(' ') || text.includes('\t'))) {
+        if (parseAndSetCoordinates(text)) {
+            e.preventDefault();
+        }
+    }
+};
+
+const handleLngPaste = (e) => {
+    const text = (e.clipboardData || window.clipboardData)?.getData('text');
+    if (text && (text.includes(',') || text.includes('http') || text.includes(' ') || text.includes('\t'))) {
+        if (parseAndSetCoordinates(text)) {
+            e.preventDefault();
+        }
+    }
+};
 
 const toggleTechnician = (id) => {
     const idx = form.technician_ids.indexOf(id);
@@ -112,9 +191,11 @@ watch(() => form.type, (newType) => {
     form.device_type = 'Normal';
     if (newType === 'odc_deployment') {
         form.capacity = 24;
+        form.core_capacity = 24;
         form.splitter_ratio = '1:8 PLC';
     } else {
         form.capacity = 8;
+        form.core_capacity = 8;
         form.splitter_ratio = '1:8';
     }
 });
@@ -134,6 +215,7 @@ const fetchAutoBOM = async () => {
                 type: form.type,
                 device_type: form.device_type,
                 capacity: form.capacity,
+                core_capacity: form.core_capacity,
                 cable_length: form.cable_length_estimate,
                 area_id: form.area_id,
             }
@@ -157,7 +239,7 @@ const fetchAutoBOM = async () => {
     }
 };
 
-watch([() => form.type, () => form.device_type, () => form.capacity, () => form.cable_length_estimate, () => form.area_id], () => {
+watch([() => form.type, () => form.device_type, () => form.capacity, () => form.core_capacity, () => form.cable_length_estimate, () => form.area_id], () => {
     if (currentStep.value >= 2) {
         fetchAutoBOM();
     }
@@ -348,10 +430,11 @@ const submit = () => {
                     </div>
 
                     <!-- Tipe Perangkat, Kapasitas & Rasio Splitter -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <!-- Layout ODP: 4 Kolom (Tipe, Kapasitas Port, Kapasitas Core, Rasio Splitter) -->
+                    <div v-if="form.type === 'odp_deployment'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
-                                <span>{{ form.type === 'odc_deployment' ? 'Tipe ODC' : 'Tipe ODP' }}</span>
+                                <span>Tipe ODP</span>
                                 <span class="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">Tipe Boks</span>
                             </label>
                             <select
@@ -359,49 +442,113 @@ const submit = () => {
                                 @change="onDeviceTypeChange"
                                 class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-indigo-500 focus:border-indigo-500 shadow-xs"
                             >
-                                <template v-if="form.type === 'odp_deployment'">
-                                    <option value="Normal">Normal (Standar Tiang Solid)</option>
-                                    <option value="Split 2">Split 2 (Bercabang 2 Box / Cascading)</option>
-                                    <option value="Closure">Closure (Dome / Sambungan Inline)</option>
-                                    <option value="Pedestal">Pedestal (Box Bawah Tanah / Ground)</option>
-                                </template>
-                                <template v-else>
-                                    <option value="Normal">Normal (Kabinet Standar Outdoor)</option>
-                                    <option value="Split">Split (ODC Split Bercabang Feeder)</option>
-                                    <option value="Pedestal">Pedestal (Kabinet Lantai Beton)</option>
-                                    <option value="Pole Mount">Pole Mount (ODC Tiang / Pole Mounted)</option>
-                                </template>
+                                <option value="Normal">Normal (Standar Tiang Solid)</option>
+                                <option value="Split 2">Split 2 (Bercabang 2 Box / Cascading)</option>
+                                <option value="Closure">Closure (Dome / Sambungan Inline)</option>
+                                <option value="Pedestal">Pedestal (Box Bawah Tanah / Ground)</option>
                             </select>
                             <p class="text-[11px] text-slate-400 mt-1">
-                                {{ form.device_type === 'Split 2' || form.device_type === 'Split' ? '⚡ Menggunakan splitter cabang cascading' : 'Konstruksi fisik & model housing boks' }}
+                                {{ form.device_type === 'Split 2' ? '⚡ Menggunakan splitter cascading' : 'Konstruksi fisik & model housing' }}
                             </p>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
-                                {{ form.type === 'odc_deployment' ? 'Kapasitas Core' : 'Kapasitas Port' }}
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
+                                <span>Kapasitas Port</span>
+                                <span class="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">Port Drop</span>
                             </label>
                             <select
                                 v-model.number="form.capacity"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800"
                             >
-                                <template v-if="form.type === 'odp_deployment'">
-                                    <option :value="4">4 Port</option>
-                                    <option :value="8">8 Port (Standar)</option>
-                                    <option :value="16">16 Port</option>
-                                    <option :value="24">24 Port</option>
-                                    <option :value="32">32 Port</option>
-                                </template>
-                                <template v-else>
-                                    <option :value="12">12 Core</option>
-                                    <option :value="24">24 Core (Standar)</option>
-                                    <option :value="48">48 Core</option>
-                                    <option :value="96">96 Core</option>
-                                    <option :value="144">144 Core</option>
-                                </template>
+                                <option :value="4">4 Port</option>
+                                <option :value="8">8 Port (Standar)</option>
+                                <option :value="16">16 Port</option>
+                                <option :value="24">24 Port</option>
+                                <option :value="32">32 Port</option>
                             </select>
                             <p class="text-[11px] text-slate-400 mt-1">
-                                {{ form.type === 'odc_deployment' ? 'Total kapasitas tray core ODC' : 'Jumlah port distribusi ke pelanggan' }}
+                                Jumlah port distribusi ke pelanggan
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
+                                <span>Kapasitas Core</span>
+                                <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Core FO</span>
+                            </label>
+                            <select
+                                v-model.number="form.core_capacity"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800"
+                            >
+                                <option :value="1">1 Core</option>
+                                <option :value="2">2 Core</option>
+                                <option :value="4">4 Core</option>
+                                <option :value="6">6 Core</option>
+                                <option :value="8">8 Core (Standar)</option>
+                                <option :value="12">12 Core</option>
+                                <option :value="24">24 Core</option>
+                                <option :value="48">48 Core</option>
+                                <option :value="96">96 Core</option>
+                            </select>
+                            <p class="text-[11px] text-slate-400 mt-1">
+                                Kapasitas core kabel / tray ODP
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Rasio Splitter</label>
+                            <input
+                                v-model="form.splitter_ratio"
+                                type="text"
+                                placeholder="Contoh: 1:8 PLC / Split 2"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800"
+                            />
+                            <p class="text-[11px] text-slate-400 mt-1">Rasio modul pembagi sinyal</p>
+                        </div>
+                    </div>
+
+                    <!-- Layout ODC: 3 Kolom (Tipe, Kapasitas Core, Rasio Splitter) -->
+                    <div v-else class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
+                                <span>Tipe ODC</span>
+                                <span class="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">Tipe Boks</span>
+                            </label>
+                            <select
+                                v-model="form.device_type"
+                                @change="onDeviceTypeChange"
+                                class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-indigo-500 focus:border-indigo-500 shadow-xs"
+                            >
+                                <option value="Normal">Normal (Kabinet Standar Outdoor)</option>
+                                <option value="Split">Split (ODC Split Bercabang Feeder)</option>
+                                <option value="Pedestal">Pedestal (Kabinet Lantai Beton)</option>
+                                <option value="Pole Mount">Pole Mount (ODC Tiang / Pole Mounted)</option>
+                            </select>
+                            <p class="text-[11px] text-slate-400 mt-1">
+                                {{ form.device_type === 'Split' ? '⚡ Menggunakan splitter cabang cascading' : 'Konstruksi fisik & model housing boks' }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
+                                <span>Kapasitas Core</span>
+                                <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Tray Core</span>
+                            </label>
+                            <select
+                                v-model.number="form.capacity"
+                                @change="form.core_capacity = form.capacity"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800"
+                            >
+                                <option :value="12">12 Core</option>
+                                <option :value="24">24 Core (Standar)</option>
+                                <option :value="48">48 Core</option>
+                                <option :value="96">96 Core</option>
+                                <option :value="144">144 Core</option>
+                                <option :value="288">288 Core</option>
+                            </select>
+                            <p class="text-[11px] text-slate-400 mt-1">
+                                Total kapasitas tray core ODC
                             </p>
                         </div>
 
@@ -417,34 +564,110 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <!-- Lokasi & Koordinat Target -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div class="sm:col-span-1">
-                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Deskripsi Tiang / Lokasi</label>
-                            <input
-                                v-model="form.location"
-                                type="text"
-                                placeholder="Contoh: Tiang PLN Depan Gang Mawar No 4"
-                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                            />
+                    <!-- Lokasi & Titik Koordinat (Auto GPS / Ketik Manual) -->
+                    <div class="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5">
+                            <div>
+                                <label class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>📍</span>
+                                    <span>Lokasi &amp; Titik Koordinat Target</span>
+                                </label>
+                                <p class="text-[11px] text-slate-500">
+                                    Bisa <b>Auto GPS</b> (ambil dari posisi perangkat saat ini) atau <b>ketik manual</b> koordinat.
+                                </p>
+                            </div>
+
+                            <!-- Auto GPS Action Button -->
+                            <div class="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    @click="getAutoLocation"
+                                    :disabled="isLocating"
+                                    class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all disabled:opacity-60 cursor-pointer"
+                                >
+                                    <svg v-if="isLocating" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                    </svg>
+                                    <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <span>{{ isLocating ? 'Mendeteksi GPS...' : '📍 Auto GPS (Ambil Lokasi)' }}</span>
+                                </button>
+
+                                <a
+                                    v-if="form.planned_latitude && form.planned_longitude"
+                                    :href="`https://www.google.com/maps?q=${form.planned_latitude},${form.planned_longitude}`"
+                                    target="_blank"
+                                    class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:text-indigo-600 rounded-xl text-xs font-semibold flex items-center gap-1 shadow-2xs hover:border-indigo-300 transition-all"
+                                    title="Lihat titik di Google Maps"
+                                >
+                                    <span>🗺️ Cek Maps</span>
+                                </a>
+
+                                <button
+                                    v-if="form.planned_latitude || form.planned_longitude"
+                                    type="button"
+                                    @click="clearCoordinates"
+                                    class="px-2 py-1.5 text-slate-400 hover:text-rose-600 text-xs font-medium rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 transition-all"
+                                    title="Kosongkan koordinat"
+                                >
+                                    ✕ Reset
+                                </button>
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Latitude Rencana</label>
-                            <input
-                                v-model="form.planned_latitude"
-                                type="text"
-                                placeholder="-6.123456"
-                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono"
-                            />
+
+                        <!-- Status Toast/Banner for GPS -->
+                        <div v-if="gpsStatusMsg" class="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold flex items-center gap-1.5 animate-fadeIn">
+                            <span>✅</span>
+                            <span>{{ gpsStatusMsg }}</span>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Longitude Rencana</label>
-                            <input
-                                v-model="form.planned_longitude"
-                                type="text"
-                                placeholder="106.123456"
-                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono"
-                            />
+
+                        <!-- 3 Input Fields Grid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                            <div class="sm:col-span-5">
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Deskripsi Tiang / Lokasi</label>
+                                <input
+                                    v-model="form.location"
+                                    type="text"
+                                    placeholder="Contoh: Tiang PLN Depan Gang Mawar No 4"
+                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                            </div>
+
+                            <div class="sm:col-span-3">
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
+                                    <span>Latitude Rencana</span>
+                                    <span class="text-[10px] text-slate-400 font-normal">Ketik manual</span>
+                                </label>
+                                <input
+                                    v-model="form.planned_latitude"
+                                    @paste="handleLatPaste"
+                                    type="text"
+                                    placeholder="-6.123456"
+                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-medium focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                            </div>
+
+                            <div class="sm:col-span-4">
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
+                                    <span>Longitude Rencana</span>
+                                    <span class="text-[10px] text-slate-400 font-normal">Ketik manual</span>
+                                </label>
+                                <input
+                                    v-model="form.planned_longitude"
+                                    @paste="handleLngPaste"
+                                    type="text"
+                                    placeholder="106.123456"
+                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-medium focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="text-[11px] text-slate-400 flex items-center justify-between pt-1">
+                            <span>💡 <i>Klik tombol <b>Auto GPS</b> untuk mengambil koordinat perangkat saat ini secara otomatis, atau ketik manual / paste format <code>lat, long</code>.</i></span>
+                            <span v-if="gpsAccuracy" class="text-emerald-600 font-medium whitespace-nowrap">Akurasi GPS: &plusmn;{{ gpsAccuracy }}m</span>
                         </div>
                     </div>
 
@@ -689,7 +912,16 @@ const submit = () => {
                     <!-- Summary Ringkasan Box -->
                     <div class="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 text-xs text-slate-700 space-y-1">
                         <span class="font-bold text-indigo-900 block mb-1">📋 Konfirmasi Terbit Penugasan:</span>
-                        <div>&bull; <b>Perangkat:</b> {{ form.target_name }} ({{ form.type === 'odc_deployment' ? 'ODC' : 'ODP' }} - Tipe {{ form.device_type }}) &bull; {{ form.capacity }} {{ form.type === 'odc_deployment' ? 'Core' : 'Port' }}</div>
+                        <div>
+                            &bull; <b>Perangkat:</b> {{ form.target_name }} ({{ form.type === 'odc_deployment' ? 'ODC' : 'ODP' }} - Tipe {{ form.device_type }})
+                            &bull; {{ form.capacity }} {{ form.type === 'odc_deployment' ? 'Core' : 'Port' }}
+                            <template v-if="form.type === 'odp_deployment' && form.core_capacity">
+                                &bull; {{ form.core_capacity }} Core FO
+                            </template>
+                            <template v-if="form.planned_latitude && form.planned_longitude">
+                                &bull; Koordinat: {{ form.planned_latitude }}, {{ form.planned_longitude }}
+                            </template>
+                        </div>
                         <div>&bull; <b>Material Dialokasikan:</b> {{ form.materials.length }} Item Material</div>
                         <div>&bull; <b>Alur Berikutnya:</b> Gudang akan menerima notifikasi penyiapan material &rarr; Surat Jalan Outbound &rarr; Teknisi pengerjaan lapangan &rarr; QC Redaman Optik.</div>
                     </div>

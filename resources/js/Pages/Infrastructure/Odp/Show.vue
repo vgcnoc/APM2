@@ -15,7 +15,7 @@
                             </span>
                         </h2>
                         <p class="text-sm text-gray-500 mt-1">
-                            Total Kapasitas: {{ odp.total_ports }} Port | Terpakai: {{ odp.onts ? odp.onts.length : 0 }} Port
+                            Total Kapasitas: {{ odp.total_ports }} Port <span v-if="odp.core_capacity">| {{ odp.core_capacity }} Core FO</span> | Terpakai: {{ odp.onts ? odp.onts.length : 0 }} Port
                         </p>
                     </div>
                 </div>

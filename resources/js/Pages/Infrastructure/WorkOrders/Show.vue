@@ -37,6 +37,27 @@ const reportForm = useForm({
     })),
 });
 
+const isReportLocating = ref(false);
+const getReportLocation = () => {
+    if (!navigator.geolocation) {
+        alert('Geolocation tidak didukung oleh browser Anda.');
+        return;
+    }
+    isReportLocating.value = true;
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            isReportLocating.value = false;
+            reportForm.actual_latitude = position.coords.latitude.toFixed(7);
+            reportForm.actual_longitude = position.coords.longitude.toFixed(7);
+        },
+        (error) => {
+            isReportLocating.value = false;
+            alert('Gagal mendeteksi lokasi: ' + error.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+};
+
 const getStatusBadge = (status) => {
     switch (status) {
         case 'pending_material':
@@ -299,7 +320,13 @@ const formatDate = (dateStr) => {
                                 </div>
                                 <div class="flex justify-between py-1 border-b border-slate-200/60">
                                     <span class="text-slate-500">Kapasitas Perangkat:</span>
-                                    <span class="font-bold text-indigo-600">{{ workOrder.capacity }} Port (Rasio: {{ workOrder.splitter_ratio || 'Normal' }})</span>
+                                    <span class="font-bold text-indigo-600">
+                                        {{ workOrder.capacity }} {{ workOrder.type === 'odc_deployment' ? 'Core' : 'Port' }}
+                                        <template v-if="workOrder.core_capacity && workOrder.type === 'odp_deployment'">
+                                            &bull; {{ workOrder.core_capacity }} Core FO
+                                        </template>
+                                        (Rasio: {{ workOrder.splitter_ratio || 'Normal' }})
+                                    </span>
                                 </div>
                                 <div class="flex justify-between py-1">
                                     <span class="text-slate-500">Wilayah / Area:</span>
@@ -323,6 +350,14 @@ const formatDate = (dateStr) => {
                                     <div class="flex items-center gap-1.5 font-mono text-[11px]">
                                         <span class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">Lat: {{ workOrder.planned_latitude || '-' }}</span>
                                         <span class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">Long: {{ workOrder.planned_longitude || '-' }}</span>
+                                        <a
+                                            v-if="workOrder.planned_latitude && workOrder.planned_longitude"
+                                            :href="`https://www.google.com/maps?q=${workOrder.planned_latitude},${workOrder.planned_longitude}`"
+                                            target="_blank"
+                                            class="text-indigo-600 hover:text-indigo-800 text-[10px] font-bold underline ml-1"
+                                        >
+                                            Maps ↗
+                                        </a>
                                     </div>
                                 </div>
                                 <div class="flex justify-between items-center py-1.5 border-b border-slate-200/60">
@@ -330,6 +365,14 @@ const formatDate = (dateStr) => {
                                     <div class="flex items-center gap-1.5 font-mono text-[11px]">
                                         <span class="bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded border border-indigo-200">Lat: {{ workOrder.actual_latitude || '-' }}</span>
                                         <span class="bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded border border-indigo-200">Long: {{ workOrder.actual_longitude || '-' }}</span>
+                                        <a
+                                            v-if="workOrder.actual_latitude && workOrder.actual_longitude"
+                                            :href="`https://www.google.com/maps?q=${workOrder.actual_latitude},${workOrder.actual_longitude}`"
+                                            target="_blank"
+                                            class="text-indigo-600 hover:text-indigo-800 text-[10px] font-bold underline ml-1"
+                                        >
+                                            Maps ↗
+                                        </a>
                                     </div>
                                 </div>
                                 <div class="flex justify-between py-1 border-b border-slate-200/60">
@@ -508,6 +551,43 @@ const formatDate = (dateStr) => {
                     </div>
 
                     <form @submit.prevent="submitFieldReport" class="space-y-5">
+                        <!-- Titik Koordinat Aktual Tiang / Lapangan -->
+                        <div class="p-4 bg-slate-50 rounded-2xl space-y-2 border border-slate-100">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-[11px] font-bold text-slate-700 uppercase">
+                                    📍 Titik Koordinat Aktual Tiang (GPS / Ketik Manual)
+                                </label>
+                                <button
+                                    type="button"
+                                    @click="getReportLocation"
+                                    :disabled="isReportLocating"
+                                    class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs transition-all disabled:opacity-60 cursor-pointer"
+                                >
+                                    <span>{{ isReportLocating ? 'Mendeteksi GPS...' : '📍 Auto GPS Saat Ini' }}</span>
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-1">Latitude Aktual (Ketik Manual / Auto)</label>
+                                    <input
+                                        v-model="reportForm.actual_latitude"
+                                        type="text"
+                                        placeholder="-6.123456"
+                                        class="w-full text-xs font-mono font-medium rounded-xl border-slate-200"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-1">Longitude Aktual (Ketik Manual / Auto)</label>
+                                    <input
+                                        v-model="reportForm.actual_longitude"
+                                        type="text"
+                                        placeholder="106.123456"
+                                        class="w-full text-xs font-mono font-medium rounded-xl border-slate-200"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Meteran Kabel -->
                         <div class="grid grid-cols-3 gap-3 p-4 bg-slate-50 rounded-2xl">
                             <div>
