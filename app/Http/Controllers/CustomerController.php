@@ -2195,6 +2195,9 @@ class CustomerController extends Controller
                         'date' => now(),
                         'technician_name' => auth()->user()->name,
                         'purpose' => 'Pemakaian Material Instalasi Pelanggan ' . $customer->name,
+                        'source_type' => 'instalasi',
+                        'source_id' => $customer->id,
+                        'source_reference' => $customer->customer_id ?? ('CUST-' . $customer->id),
                         'user_id' => auth()->id(),
                         'customer_id' => $customer->id,
                         'area_id' => $customer->area_id,
@@ -2247,63 +2250,24 @@ class CustomerController extends Controller
                     $transactionOut->update(['total_cost' => $totalCostOut]);
                 }
 
-                // Proses Pengembalian Sisa ke Inventory Gudang (Status Approved & Menambah Stok Gudang & Area)
+                // Proses Serah Terima Pengembalian Sisa ke Gudang (Verifikasi Fisik oleh Petugas Gudang / Ka. Teknisi)
                 if (count($returnItems) > 0) {
-                    $transactionReturn = \App\Models\MaterialTransaction::create([
-                        'transaction_number' => 'RTR-EXCESS-' . date('YmdHis'),
-                        'type' => 'in',
-                        'status' => 'approved',
-                        'date' => now(),
-                        'technician_name' => auth()->user()->name,
-                        'purpose' => 'Pengembalian Sisa Material Instalasi Pelanggan ' . $customer->name,
-                        'user_id' => auth()->id(),
-                        'customer_id' => $customer->id,
-                        'area_id' => $customer->area_id,
-                        'notes' => "Rincian Hitungan Sisa:\n" . implode("\n", $rincianNotesReturn)
-                    ]);
-
-                    $totalCostReturn = 0;
-                    $targetAreaId = $customer->area_id ?: ($customer->areaModel?->id ?? null);
-
-                    foreach ($returnItems as $ri) {
-                        $ppuReturn = $ri['material']->selling_price ?: ($ri['material']->price_per_unit ?? 0);
-                        if (strtolower($ri['material']->category ?? '') === 'kabel' && strtolower($ri['unit'] ?? '') === 'meter') {
-                            $mpr = $ri['material']->meter_per_roll > 0 ? $ri['material']->meter_per_roll : 1000;
-                            $ppuReturn = $ppuReturn / $mpr;
-                        }
-                        $totalItemPriceReturn = $ppuReturn * $ri['qty'];
-                        $totalCostReturn += $totalItemPriceReturn;
-
-                        $matStock = null;
-                        if ($targetAreaId) {
-                            $matStock = \App\Models\MaterialStock::firstOrCreate(
-                                ['material_id' => $ri['material']->id, 'area_id' => $targetAreaId],
-                                ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-                            );
-                        }
-
-                        $stockBefore = $matStock ? (float) $matStock->stock : (float) $ri['material']->stock;
-                        $stockAfter = $stockBefore + $ri['qty'];
-
-                        \App\Models\MaterialTransactionItem::create([
-                            'material_transaction_id' => $transactionReturn->id,
-                            'material_id' => $ri['material']->id,
-                            'quantity' => $ri['qty'],
-                            'unit' => $ri['unit'],
-                            'price_per_unit' => $ppuReturn,
-                            'total_price' => $totalItemPriceReturn,
-                            'stock_before' => $stockBefore,
-                            'stock_after' => $stockAfter,
-                            'condition' => 'Layak Pakai'
-                        ]);
-
-                        // Kembalikan ke Inventory Gudang (Stok Area & Stok Master)
-                        if ($matStock) {
-                            $matStock->increment('stock', $ri['qty']);
-                        }
-                        $ri['material']->increment('stock', $ri['qty']);
-                    }
-                    $transactionReturn->update(['total_cost' => $totalCostReturn]);
+                    \App\Services\MaterialHandoverService::submitReturnHandover(
+                        sourceType: 'instalasi',
+                        sourceId: $customer->id,
+                        sourceRef: $customer->customer_id ?? ('CUST-' . $customer->id),
+                        items: array_map(function ($ri) {
+                            return [
+                                'material_id' => $ri['material']->id,
+                                'quantity' => $ri['qty'],
+                                'unit' => $ri['unit'],
+                                'condition' => 'Layak Pakai',
+                            ];
+                        }, $returnItems),
+                        technicianName: auth()->user()->name,
+                        areaId: $customer->area_id,
+                        notes: "Pengembalian Sisa Material Instalasi Pelanggan {$customer->name} (" . ($customer->customer_id ?? 'ID:'.$customer->id) . ")\nRincian Hitungan Sisa:\n" . implode("\n", $rincianNotesReturn)
+                    );
                 }
             }
             

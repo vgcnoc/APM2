@@ -367,7 +367,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('warehouse-stocks', [\App\Http\Controllers\WarehouseStockController::class, 'index'])->name('warehouse-stocks.index');
     Route::delete('warehouse-stocks/{id}', [\App\Http\Controllers\WarehouseStockController::class, 'destroy'])->name('warehouse-stocks.destroy');
 
-    // ── Permintaan Material (Teknisi -> Gudang Utama) ────────────────────
+    // ── Serah Terima & Request Material Lapangan ───────────────
+    Route::get('material-handovers', [\App\Http\Controllers\MaterialHandoverController::class, 'index'])->name('material-handovers.index');
+    Route::post('material-handovers/{transaction}/receive', [\App\Http\Controllers\MaterialHandoverController::class, 'receive'])->name('material-handovers.receive');
+    Route::post('material-handovers/{transaction}/reject-handover', [\App\Http\Controllers\MaterialHandoverController::class, 'rejectHandover'])->name('material-handovers.reject-handover');
+    Route::post('material-handovers/return', [\App\Http\Controllers\MaterialHandoverController::class, 'storeReturn'])->name('material-handovers.store-return');
+    Route::post('material-handovers/request', [\App\Http\Controllers\MaterialHandoverController::class, 'storeRequest'])->name('material-handovers.store-request');
+    Route::post('material-handovers/{transaction}/approve-request', [\App\Http\Controllers\MaterialHandoverController::class, 'approveRequest'])->name('material-handovers.approve-request');
+    Route::post('material-handovers/{transaction}/reject-request', [\App\Http\Controllers\MaterialHandoverController::class, 'rejectRequest'])->name('material-handovers.reject-request');
 
 
     // ── Data Jaringan (Dashboard Topology) ─────────────────────

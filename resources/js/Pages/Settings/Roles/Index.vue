@@ -191,7 +191,7 @@
                         </div>
 
                         <!-- ── GRANULAR TYPE BREAKDOWN COUNTERS ────────── -->
-                        <div class="mt-4 pt-3 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-center">
+                        <div class="mt-4 pt-3 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 text-center">
                             <div @click="typeFilter = typeFilter === 'menu' ? 'all' : 'menu'" class="p-2 rounded-xl border cursor-pointer transition-all"
                                 :class="typeFilter === 'menu' ? 'bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200' : 'bg-gray-50/70 border-gray-100 hover:bg-gray-100/60'">
                                 <span class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">📑 Menu</span>
@@ -216,6 +216,11 @@
                                 :class="typeFilter === 'button' ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-200' : 'bg-gray-50/70 border-gray-100 hover:bg-gray-100/60'">
                                 <span class="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">⚡ Tombol</span>
                                 <span class="text-sm font-extrabold text-gray-900">{{ typeCounts.button.checked }} / {{ typeCounts.button.total }}</span>
+                            </div>
+                            <div @click="typeFilter = typeFilter === 'field' ? 'all' : 'field'" class="p-2 rounded-xl border cursor-pointer transition-all"
+                                :class="typeFilter === 'field' ? 'bg-teal-50 border-teal-300 ring-2 ring-teal-200' : 'bg-gray-50/70 border-gray-100 hover:bg-gray-100/60'">
+                                <span class="text-[10px] font-bold text-teal-700 uppercase tracking-wider block">📝 Field</span>
+                                <span class="text-sm font-extrabold text-gray-900">{{ typeCounts.field?.checked || 0 }} / {{ typeCounts.field?.total || 0 }}</span>
                             </div>
                             <div @click="typeFilter = typeFilter === 'feature' ? 'all' : 'feature'" class="p-2 rounded-xl border cursor-pointer transition-all"
                                 :class="typeFilter === 'feature' ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-200' : 'bg-gray-50/70 border-gray-100 hover:bg-gray-100/60'">
@@ -274,6 +279,7 @@
                                     <option value="tab">📑 Tab Halaman</option>
                                     <option value="filter">🔍 Filter & Cari</option>
                                     <option value="button">⚡ Tombol Aksi</option>
+                                    <option value="field">📝 Field / Kolom</option>
                                     <option value="feature">🌐 Fitur / Scope</option>
                                 </select>
 
@@ -742,6 +748,7 @@ const categoryMap = {
     ],
     'gudang': [
         'Material & Logistik Gudang',
+        'Serah Terima & Request Material Lapangan',
     ],
     'hrd': [
         'Karyawan & SDM (HR)',
@@ -819,7 +826,7 @@ const countPermissionsByCategory = (catKey) => {
 
 // Type Breakdown Counts for selected role
 const typeCounts = computed(() => {
-    const types = ['menu', 'card', 'tab', 'filter', 'button', 'feature'];
+    const types = ['menu', 'card', 'tab', 'filter', 'button', 'field', 'feature'];
     const res = {};
     types.forEach(t => {
         res[t] = { total: 0, checked: 0 };
@@ -1154,6 +1161,7 @@ const getTypeLabel = (type) => {
         case 'tab': return '📑 Tab';
         case 'filter': return '🔍 Filter';
         case 'button': return '⚡ Tombol';
+        case 'field': return '📝 Field';
         case 'feature': return '🌐 Scope';
         default: return 'Aksi';
     }
@@ -1166,6 +1174,7 @@ const getTypeBadgeClass = (type) => {
         case 'tab': return 'bg-violet-50 text-violet-700 border-violet-200';
         case 'filter': return 'bg-sky-50 text-sky-700 border-sky-200';
         case 'button': return 'bg-amber-50 text-amber-700 border-amber-200';
+        case 'field': return 'bg-teal-50 text-teal-700 border-teal-200';
         case 'feature': return 'bg-rose-50 text-rose-700 border-rose-200';
         default: return 'bg-gray-50 text-gray-700 border-gray-200';
     }

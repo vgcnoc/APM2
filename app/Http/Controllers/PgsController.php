@@ -549,6 +549,9 @@ class PgsController extends Controller
                 'date' => now(),
                 'technician_name' => $techNames ?: auth()->user()->name,
                 'purpose' => 'Penyiapan Material PGS: ' . $pgs->ticket_number . ' (' . ($pgs->customer?->name ?? '') . ')' . $orderRefStr,
+                'source_type' => 'pgs',
+                'source_id' => $pgs->id,
+                'source_reference' => $pgs->ticket_number,
                 'user_id' => auth()->id(),
                 'customer_id' => $pgs->customer_id,
                 'area_id' => $areaId,
@@ -684,6 +687,7 @@ class PgsController extends Controller
 
         // 1. Handle Rekonsiliasi Material Bekal Awal (Kembalikan sisa material yang tidak terpakai ke gudang)
         if (!empty($request->materials) && is_array($request->materials)) {
+            $itemsToReturn = [];
             foreach ($request->materials as $matInput) {
                 $pgsMatId = $matInput['id'] ?? $matInput['pgs_material_id'] ?? null;
                 if (!$pgsMatId) continue;
@@ -701,64 +705,28 @@ class PgsController extends Controller
                         'quantity_returned' => $qtyReturned,
                     ]);
 
-                    // Jika ada sisa material yang dikembalikan, tambahkan kembali ke stok area/order
+                    // Jika ada sisa material yang dikembalikan, kumpulkan untuk serah terima ke gudang
                     if ($qtyReturned > 0) {
-                        $material = Material::find($pgsMat->material_id);
-                        if ($material) {
-                            $orderItem = $pgsMat->material_transaction_item_id 
-                                ? MaterialTransactionItem::find($pgsMat->material_transaction_item_id)
-                                : null;
-                            $targetAreaId = $areaId ?? $orderItem?->materialTransaction?->area_id ?? $orderItem?->transaction?->area_id;
-
-                            $matStock = null;
-                            if ($targetAreaId) {
-                                $matStock = \App\Models\MaterialStock::firstOrCreate(
-                                    ['material_id' => $material->id, 'area_id' => $targetAreaId],
-                                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-                                );
-                            }
-
-                            $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
-                            $stockAfter = $stockBefore + $qtyReturned;
-
-                            $returnTrans = MaterialTransaction::create([
-                                'transaction_number' => 'IN-PGS-RET-' . date('YmdHis') . rand(10, 99),
-                                'type' => 'in',
-                                'status' => 'approved',
-                                'date' => now(),
-                                'technician_name' => auth()->user()->name,
-                                'purpose' => 'Pengembalian Sisa Material PGS: ' . $pgs->ticket_number . ($pgsMat->trx_number ? ' (Order: ' . $pgsMat->trx_number . ')' : ''),
-                                'user_id' => auth()->id(),
-                                'customer_id' => $pgs->customer_id,
-                                'area_id' => $targetAreaId,
-                            ]);
-
-                            $unitRet = $pgsMat->unit ?? $material->unit;
-                            $ppuRet = $material->selling_price ?: ($material->price_per_unit ?? 0);
-                            if (strtolower($material->category ?? '') === 'kabel' && strtolower($unitRet) === 'meter') {
-                                $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
-                                $ppuRet = $ppuRet / $mpr;
-                            }
-
-                            MaterialTransactionItem::create([
-                                'material_transaction_id' => $returnTrans->id,
-                                'material_id' => $material->id,
-                                'quantity' => $qtyReturned,
-                                'unit' => $unitRet,
-                                'price_per_unit' => $ppuRet,
-                                'total_price' => $ppuRet * $qtyReturned,
-                                'stock_before' => $stockBefore,
-                                'stock_after' => $stockAfter,
-                            ]);
-
-                            // Kembalikan sisa material ke Inventory Gudang (Stok Area & Stok Master)
-                            if ($matStock) {
-                                $matStock->increment('stock', $qtyReturned);
-                            }
-                            $material->increment('stock', $qtyReturned);
-                        }
+                        $itemsToReturn[] = [
+                            'material_id' => $pgsMat->material_id,
+                            'quantity' => $qtyReturned,
+                            'unit' => $pgsMat->unit ?? 'pcs',
+                            'condition' => 'Layak Pakai',
+                        ];
                     }
                 }
+            }
+
+            if (!empty($itemsToReturn)) {
+                \App\Services\MaterialHandoverService::submitReturnHandover(
+                    sourceType: 'pgs',
+                    sourceId: $pgs->id,
+                    sourceRef: $pgs->ticket_number,
+                    items: $itemsToReturn,
+                    technicianName: auth()->user()->name,
+                    areaId: $areaId,
+                    notes: 'Pengembalian Sisa Material PGS: ' . $pgs->ticket_number
+                );
             }
         }
 
@@ -776,6 +744,10 @@ class PgsController extends Controller
                     'date' => now(),
                     'technician_name' => auth()->user()->name,
                     'purpose' => 'Material Tambahan Lapangan PGS: ' . $pgs->ticket_number . ' (' . ($pgs->customer?->name ?? '') . ')',
+                    'source_type' => 'pgs',
+                    'source_id' => $pgs->id,
+                    'source_reference' => $pgs->ticket_number,
+                    'request_type' => 'additional_material',
                     'user_id' => auth()->id(),
                     'customer_id' => $pgs->customer_id,
                     'area_id' => $areaId,

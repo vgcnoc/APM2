@@ -568,6 +568,9 @@ class PgkController extends Controller
                 'date' => now(),
                 'technician_name' => $techNames ?: auth()->user()->name,
                 'purpose' => 'Penyiapan Material PGK: ' . $pgk->ticket_number . ' (' . ($pgk->customer?->name ?? '') . ')' . $orderRefStr,
+                'source_type' => 'pgk',
+                'source_id' => $pgk->id,
+                'source_reference' => $pgk->ticket_number,
                 'user_id' => auth()->id(),
                 'customer_id' => $pgk->customer_id,
                 'area_id' => $areaId,
@@ -701,8 +704,9 @@ class PgkController extends Controller
 
         $areaId = $pgk->area_id ?? $pgk->customer?->area_id;
 
-        // 1. Handle Rekonsiliasi Material Bekal Awal (Kembalikan sisa material yang tidak terpakai ke gudang)
+        // 1. Handle Rekonsiliasi Material Bekal Awal (Serah Terima Pengembalian Gudang)
         if (!empty($request->materials) && is_array($request->materials)) {
+            $itemsToReturn = [];
             foreach ($request->materials as $matInput) {
                 $pgkMatId = $matInput['id'] ?? $matInput['pgk_material_id'] ?? null;
                 if (!$pgkMatId) continue;
@@ -720,64 +724,28 @@ class PgkController extends Controller
                         'quantity_returned' => $qtyReturned,
                     ]);
 
-                    // Jika ada sisa material yang dikembalikan, tambahkan kembali ke stok area/order
+                    // Jika ada sisa material yang dikembalikan, kumpulkan untuk serah terima ke gudang
                     if ($qtyReturned > 0) {
-                        $material = Material::find($pgkMat->material_id);
-                        if ($material) {
-                            $orderItem = $pgkMat->material_transaction_item_id 
-                                ? MaterialTransactionItem::find($pgkMat->material_transaction_item_id)
-                                : null;
-                            $targetAreaId = $areaId ?? $orderItem?->materialTransaction?->area_id ?? $orderItem?->transaction?->area_id;
-
-                            $matStock = null;
-                            if ($targetAreaId) {
-                                $matStock = \App\Models\MaterialStock::firstOrCreate(
-                                    ['material_id' => $material->id, 'area_id' => $targetAreaId],
-                                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-                                );
-                            }
-
-                            $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
-                            $stockAfter = $stockBefore + $qtyReturned;
-
-                            $returnTrans = MaterialTransaction::create([
-                                'transaction_number' => 'IN-PGK-RET-' . date('YmdHis') . rand(10, 99),
-                                'type' => 'in',
-                                'status' => 'approved',
-                                'date' => now(),
-                                'technician_name' => auth()->user()->name,
-                                'purpose' => 'Pengembalian Sisa Material PGK: ' . $pgk->ticket_number . ($pgkMat->trx_number ? ' (Order: ' . $pgkMat->trx_number . ')' : ''),
-                                'user_id' => auth()->id(),
-                                'customer_id' => $pgk->customer_id,
-                                'area_id' => $targetAreaId,
-                            ]);
-
-                            $unitRet = $pgkMat->unit ?? $material->unit;
-                            $ppuRet = $material->selling_price ?: ($material->price_per_unit ?? 0);
-                            if (strtolower($material->category ?? '') === 'kabel' && strtolower($unitRet) === 'meter') {
-                                $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
-                                $ppuRet = $ppuRet / $mpr;
-                            }
-
-                            MaterialTransactionItem::create([
-                                'material_transaction_id' => $returnTrans->id,
-                                'material_id' => $material->id,
-                                'quantity' => $qtyReturned,
-                                'unit' => $unitRet,
-                                'price_per_unit' => $ppuRet,
-                                'total_price' => $ppuRet * $qtyReturned,
-                                'stock_before' => $stockBefore,
-                                'stock_after' => $stockAfter,
-                            ]);
-
-                            // Kembalikan sisa material ke Inventory Gudang (Stok Area & Stok Master)
-                            if ($matStock) {
-                                $matStock->increment('stock', $qtyReturned);
-                            }
-                            $material->increment('stock', $qtyReturned);
-                        }
+                        $itemsToReturn[] = [
+                            'material_id' => $pgkMat->material_id,
+                            'quantity' => $qtyReturned,
+                            'unit' => $pgkMat->unit ?? 'pcs',
+                            'condition' => 'Layak Pakai',
+                        ];
                     }
                 }
+            }
+
+            if (!empty($itemsToReturn)) {
+                \App\Services\MaterialHandoverService::submitReturnHandover(
+                    sourceType: 'pgk',
+                    sourceId: $pgk->id,
+                    sourceRef: $pgk->ticket_number,
+                    items: $itemsToReturn,
+                    technicianName: auth()->user()->name,
+                    areaId: $areaId,
+                    notes: 'Pengembalian Sisa Material PGK: ' . $pgk->ticket_number
+                );
             }
         }
 
@@ -795,6 +763,10 @@ class PgkController extends Controller
                     'date' => now(),
                     'technician_name' => auth()->user()->name,
                     'purpose' => 'Material Tambahan Lapangan PGK: ' . $pgk->ticket_number . ' (' . ($pgk->customer?->name ?? '') . ')',
+                    'source_type' => 'pgk',
+                    'source_id' => $pgk->id,
+                    'source_reference' => $pgk->ticket_number,
+                    'request_type' => 'additional_material',
                     'user_id' => auth()->id(),
                     'customer_id' => $pgk->customer_id,
                     'area_id' => $areaId,

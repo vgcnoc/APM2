@@ -232,37 +232,31 @@ class CbpRequestController extends Controller
         if ($cbp->status !== 'completed') {
             $validated['completed_at'] = now();
 
-            // Handle Returned Materials
+            // Handle Returned Materials via Serah Terima Gudang
             if (!empty($validated['materials'])) {
-                $transaction = \App\Models\MaterialTransaction::create([
-                    'transaction_number' => 'IN-' . date('YmdHis') . rand(10, 99),
-                    'type' => 'in',
-                    'date' => now(),
-                    'technician_name' => auth()->user()->name,
-                    'purpose' => 'Pengembalian Cabut Perangkat ' . $cbp->cbp_number,
-                    'user_id' => auth()->id(),
-                ]);
-
+                $returnItems = [];
                 foreach ($validated['materials'] as $item) {
                     $material = \App\Models\Material::find($item['material_id']);
                     if ($material) {
-                        \App\Models\MaterialTransactionItem::create([
-                            'material_transaction_id' => $transaction->id,
-                            'material_id' => $item['material_id'],
-                            'quantity' => $item['quantity'],
-                            'unit' => $item['unit'] ?? $material->unit,
-                            'price_per_unit' => $material->price_per_unit ?? 0,
-                            'total_price' => ($material->price_per_unit ?? 0) * $item['quantity'],
-                        ]);
-                        
-                        // Restock based on categories
-                        if ($material->category === 'kabel') {
-                            $material->increment('stock', $item['quantity']);
-                            $material->increment('total_pieces', $item['quantity']);
-                        } else {
-                            $material->increment('stock', $item['quantity']);
-                        }
+                        $returnItems[] = [
+                            'material_id' => $material->id,
+                            'quantity' => (float) $item['quantity'],
+                            'unit' => $item['unit'] ?? $material->unit ?? 'pcs',
+                            'condition' => 'Layak Pakai',
+                        ];
                     }
+                }
+
+                if (!empty($returnItems)) {
+                    \App\Services\MaterialHandoverService::submitReturnHandover(
+                        sourceType: 'cbp',
+                        sourceId: $cbp->id,
+                        sourceRef: $cbp->cbp_number,
+                        items: $returnItems,
+                        technicianName: auth()->user()->name,
+                        areaId: $cbp->area_id ?? null,
+                        notes: 'Pengembalian Cabut Perangkat ' . $cbp->cbp_number . ' (' . ($cbp->customer?->name ?? '') . ')'
+                    );
                 }
             }
         }

@@ -550,6 +550,9 @@ class PgjController extends Controller
                 'status' => 'approved',
                 'technician_name' => $techNames ?: auth()->user()->name,
                 'purpose' => "Material Jalur PGJ #{$pgj->ticket_number} ({$pgj->segment_type}: {$pgj->category}){$orderRefStr}",
+                'source_type' => 'pgj',
+                'source_id' => $pgj->id,
+                'source_reference' => $pgj->ticket_number,
                 'date' => now(),
                 'area_id' => $pgj->area_id,
             ]);
@@ -660,9 +663,9 @@ class PgjController extends Controller
             $photoAfterPath = $request->file('photo_after')->store('pgj_photos', 'public');
         }
 
-        // Rekonsiliasi material terpakai vs sisa dikembalikan ke gudang
+        // Rekonsiliasi material terpakai vs sisa dikembalikan ke gudang (Serah Terima Gudang)
         if (!empty($validated['materials'])) {
-            $returnTransaction = null;
+            $itemsToReturn = [];
 
             foreach ($validated['materials'] as $matItem) {
                 $pgjMat = PgjMaterial::find($matItem['pgj_material_id']);
@@ -676,55 +679,28 @@ class PgjController extends Controller
                         'quantity_returned' => $qtyReturned,
                     ]);
 
-                    // Jika ada sisa material, kembalikan ke stok gudang
+                    // Jika ada sisa material, catat ke daftar serah terima pengembalian gudang
                     if ($qtyReturned > 0) {
-                        if (!$returnTransaction) {
-                            $returnTransaction = MaterialTransaction::create([
-                                'transaction_number' => 'IN-PGJ-RET-' . date('YmdHis') . rand(10, 99),
-                                'user_id' => auth()->id(),
-                                'type' => 'in',
-                                'status' => 'approved',
-                                'technician_name' => auth()->user()->name,
-                                'purpose' => "Pengembalian Sisa Material Jalur PGJ #{$pgj->ticket_number}",
-                                'date' => now(),
-                                'area_id' => $pgj->area_id,
-                            ]);
-                        }
-
-                        $material = Material::find($pgjMat->material_id);
-                        if ($material) {
-                            $matStock = null;
-                            if ($pgj->area_id) {
-                                $matStock = \App\Models\MaterialStock::firstOrCreate(
-                                    ['material_id' => $material->id, 'area_id' => $pgj->area_id],
-                                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-                                );
-                            }
-
-                            $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
-                            $stockAfter = $stockBefore + $qtyReturned;
-
-                            if ($matStock) {
-                                $matStock->increment('stock', $qtyReturned);
-                            }
-                            $material->increment('stock', $qtyReturned);
-
-                            $ppu = $material->selling_price ?: ($material->price_per_unit ?? 0);
-
-                            MaterialTransactionItem::create([
-                                'material_transaction_id' => $returnTransaction->id,
-                                'material_id' => $material->id,
-                                'quantity' => $qtyReturned,
-                                'unit' => $pgjMat->unit ?? $material->unit ?? 'pcs',
-                                'price_per_unit' => $ppu,
-                                'total_price' => $ppu * $qtyReturned,
-                                'stock_before' => $stockBefore,
-                                'stock_after' => $stockAfter,
-                                'condition' => 'Layak Pakai'
-                            ]);
-                        }
+                        $itemsToReturn[] = [
+                            'material_id' => $pgjMat->material_id,
+                            'quantity' => $qtyReturned,
+                            'unit' => $pgjMat->unit ?? 'pcs',
+                            'condition' => 'Layak Pakai',
+                        ];
                     }
                 }
+            }
+
+            if (!empty($itemsToReturn)) {
+                \App\Services\MaterialHandoverService::submitReturnHandover(
+                    sourceType: 'pgj',
+                    sourceId: $pgj->id,
+                    sourceRef: $pgj->ticket_number,
+                    items: $itemsToReturn,
+                    technicianName: auth()->user()->name,
+                    areaId: $pgj->area_id,
+                    notes: "Pengembalian Sisa Material Jalur PGJ #{$pgj->ticket_number}"
+                );
             }
         }
 

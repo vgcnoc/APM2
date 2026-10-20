@@ -15,6 +15,7 @@ use App\Models\Odp;
 use App\Models\OdpPort;
 use App\Models\Olt;
 use App\Models\User;
+use App\Services\MaterialHandoverService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -274,6 +275,9 @@ class InfrastructureWorkOrderService
                 'date' => now()->toDateString(),
                 'technician_name' => $workOrder->technician?->name ?? 'Tim Teknisi',
                 'purpose' => "Material Rollout {$workOrder->target_name} ({$workOrder->wo_number})",
+                'source_type' => 'rollout_odc_odp',
+                'source_id' => $workOrder->id,
+                'source_reference' => $workOrder->wo_number,
                 'area' => $areaName,
                 'area_id' => $workOrder->area_id,
                 'user_id' => $userId,
@@ -498,60 +502,27 @@ class InfrastructureWorkOrderService
                 $createdOdpId = $odp->id;
             }
 
-            // 3. Kembalikan material retur ke Inventory Gudang secara otomatis
+            // 3. Kembalikan material retur ke Inventory Gudang melalui Serah Terima Pengembalian
             $returnedMats = $workOrder->materials->filter(fn($m) => (float) $m->returned_qty > 0);
             if ($returnedMats->isNotEmpty()) {
-                $returnTrans = MaterialTransaction::create([
-                    'transaction_number' => 'IN-WO-RET-' . date('YmdHis') . rand(10, 99),
-                    'type' => 'in',
-                    'status' => 'approved',
-                    'date' => now(),
-                    'technician_name' => $workOrder->technician?->name ?: auth()->user()->name,
-                    'purpose' => 'Pengembalian Sisa Material Rollout ' . ($workOrder->type === 'odc_deployment' ? 'ODC' : 'ODP') . ' ' . $workOrder->wo_number,
-                    'user_id' => auth()->id(),
-                    'area_id' => $workOrder->area_id,
-                ]);
-
-                $totalCostReturn = 0;
-                foreach ($returnedMats as $woMat) {
-                    $returnQty = (float) $woMat->returned_qty;
-                    $material = $woMat->material;
-                    if (!$material) continue;
-
-                    $matStock = null;
-                    if ($workOrder->area_id) {
-                        $matStock = MaterialStock::firstOrCreate(
-                            ['material_id' => $material->id, 'area_id' => $workOrder->area_id],
-                            ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-                        );
-                    }
-
-                    $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
-                    $stockAfter = $stockBefore + $returnQty;
-
-                    if ($matStock) {
-                        $matStock->increment('stock', $returnQty);
-                    }
-                    $material->increment('stock', $returnQty);
-
-                    $unitPrice = (float) ($material->price_per_unit ?? 0);
-                    $itemCost = $returnQty * $unitPrice;
-                    $totalCostReturn += $itemCost;
-
-                    MaterialTransactionItem::create([
-                        'material_transaction_id' => $returnTrans->id,
-                        'material_id' => $material->id,
-                        'quantity' => $returnQty,
-                        'unit' => $woMat->unit ?? $material->unit ?? 'pcs',
-                        'price_per_unit' => $unitPrice,
-                        'total_price' => $itemCost,
-                        'stock_before' => $stockBefore,
-                        'stock_after' => $stockAfter,
+                $itemsToReturn = $returnedMats->map(function ($woMat) {
+                    return [
+                        'material_id' => $woMat->material_id,
+                        'quantity' => (float) $woMat->returned_qty,
+                        'unit' => $woMat->unit ?? 'pcs',
                         'condition' => 'Layak Pakai',
-                    ]);
-                }
+                    ];
+                })->values()->toArray();
 
-                $returnTrans->update(['total_cost' => $totalCostReturn]);
+                MaterialHandoverService::submitReturnHandover(
+                    sourceType: 'rollout_odc_odp',
+                    sourceId: $workOrder->id,
+                    sourceRef: $workOrder->wo_number,
+                    items: $itemsToReturn,
+                    technicianName: $workOrder->technician?->name ?: auth()->user()->name,
+                    areaId: $workOrder->area_id,
+                    notes: 'Pengembalian Sisa Material Rollout ' . ($workOrder->type === 'odc_deployment' ? 'ODC' : 'ODP') . ' ' . $workOrder->wo_number
+                );
             }
 
             $workOrder->update([

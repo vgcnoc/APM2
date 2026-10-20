@@ -6,12 +6,13 @@ class PermissionRegistry
 {
     /**
      * Master registry of all permissions in APM2 ISP Management.
-     * Categorized across 5 Granular Types:
+     * Categorized across 6 Granular Types:
      * - 'menu': Menu / Submenu Navigasi
      * - 'card': Widget & Kartu Statistik
      * - 'tab': Tab Navigasi Halaman
      * - 'filter': Filter Data & Pencarian
      * - 'button': Tombol Aksi (Create, Edit, Delete, Cetak, Bayar, Kirim WA, dll)
+     * - 'field': Kolom / Field Data Sensitif & Pilihan Tampilan
      * - 'feature': Fitur Khusus & Hak Scope Data (View All vs View Area)
      */
     public static function get(): array
@@ -536,11 +537,52 @@ class PermissionRegistry
                     ['name' => 'material_transactions_create', 'type' => 'button', 'label' => 'Tombol Buat Transaksi Pengambilan Teknisi'],
                     ['name' => 'material_transactions_delete', 'type' => 'button', 'label' => 'Tombol Hapus / Batal Transaksi'],
                     ['name' => 'inventory_manage', 'type' => 'button', 'label' => 'Tombol Kelola Stock Opname & Koreksi Stok'],
+                    
+                    // Field
+                    ['name' => 'materials_field_price', 'type' => 'field', 'label' => 'Field / Kolom Harga Modal & Harga Jual'],
+                    ['name' => 'materials_field_supplier', 'type' => 'field', 'label' => 'Field / Kolom Nama Supplier'],
+                    ['name' => 'materials_field_initial_stock', 'type' => 'field', 'label' => 'Field / Kolom Stok Awal'],
+
                     ['name' => 'materials_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Gudang'],
                     ['name' => 'materials_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Gudang Sesuai Area User'],
                     ['name' => 'material_transactions_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Transaksi'],
                     ['name' => 'material_transactions_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Transaksi Sesuai Area'],
                     ['name' => 'material_transactions_view_own', 'type' => 'feature', 'label' => 'Scope: Hanya Tampilkan Transaksi Pengambilan Sendiri'],
+                ],
+            ],
+
+            // ── 14B. SERAH TERIMA & REQUEST MATERIAL LAPANGAN ─────────
+            [
+                'group' => 'Serah Terima & Request Material Lapangan',
+                'category' => 'gudang',
+                'icon' => 'switch-horizontal',
+                'menu_parent' => 'menu_material_handovers',
+                'permissions' => [
+                    ['name' => 'menu_material_handovers', 'type' => 'menu', 'label' => 'Akses Menu Serah Terima & Request Material'],
+                    ['name' => 'material_handover_card_stats', 'type' => 'card', 'label' => 'Card Statistik Serah Terima & Request'],
+                    ['name' => 'material_handover_tab_returns', 'type' => 'tab', 'label' => 'Tab Serah Terima Pengembalian Gudang'],
+                    ['name' => 'material_handover_tab_requests', 'type' => 'tab', 'label' => 'Tab Permintaan Material & Ganti ONT'],
+                    ['name' => 'material_handover_tab_history', 'type' => 'tab', 'label' => 'Tab Riwayat Selesai & Berita Acara'],
+                    ['name' => 'material_handover_filter_status', 'type' => 'filter', 'label' => 'Filter Status (Menunggu, Selesai, Ditolak)'],
+                    ['name' => 'material_handover_filter_source', 'type' => 'filter', 'label' => 'Filter Sumber (Instalasi, PGS, PGK, PGJ, Rollout)'],
+                    ['name' => 'material_handover_filter_area', 'type' => 'filter', 'label' => 'Filter Berdasarkan Area Gudang'],
+                    
+                    // Tombol / Aksi
+                    ['name' => 'material_handover_btn_receive', 'type' => 'button', 'label' => 'Tombol Terima Serah Terima Gudang (Karyawan Gudang/Ka.Teknisi)'],
+                    ['name' => 'material_handover_btn_reject_handover', 'type' => 'button', 'label' => 'Tombol Tolak / Revisi Serah Terima Pengembalian'],
+                    ['name' => 'material_handover_btn_approve_request', 'type' => 'button', 'label' => 'Tombol Setujui Permintaan Material & Ganti ONT (Ka.Teknisi)'],
+                    ['name' => 'material_handover_btn_reject_request', 'type' => 'button', 'label' => 'Tombol Tolak Permintaan Material & Ganti ONT'],
+                    ['name' => 'material_handover_btn_create_return', 'type' => 'button', 'label' => 'Tombol Ajukan Pengembalian Sisa / Rusak'],
+                    ['name' => 'material_handover_btn_create_request', 'type' => 'button', 'label' => 'Tombol Ajukan Permintaan Material Tambahan / Ganti ONT'],
+
+                    // Field
+                    ['name' => 'material_handover_field_condition', 'type' => 'field', 'label' => 'Field Kondisi Material (Layak Pakai / Tidak Layak / Rusak)'],
+                    ['name' => 'material_handover_field_cost', 'type' => 'field', 'label' => 'Field Nilai / Estimasi Biaya Material'],
+                    ['name' => 'material_handover_field_notes', 'type' => 'field', 'label' => 'Field Catatan / Berita Acara'],
+
+                    // Scope
+                    ['name' => 'material_handover_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Serah Terima Seluruh Cabang'],
+                    ['name' => 'material_handover_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Serah Terima Sesuai Wilayah/Area User'],
                 ],
             ],
 
@@ -925,6 +967,7 @@ class PermissionRegistry
                 'menu_materials', 'materials_card_stats', 'materials_filter_category', 'materials_view_area',
                 'menu_material_transactions', 'material_transactions_create', 'material_transactions_view_area', 'material_transactions_view_own',
                 'materials_tab_transactions',
+                'menu_material_handovers', 'material_handover_tab_returns', 'material_handover_tab_requests', 'material_handover_btn_create_return', 'material_handover_btn_create_request', 'material_handover_field_condition', 'material_handover_view_area',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_edit', 'customers_booking_whatsapp', 'customers_booking_view_area', 'customers_booking_view_own',
                 'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_filter', 'customers_survey_report', 'customers_survey_view_assigned',
                 'menu_customers_installed', 'customers_installed_card_stats', 'customers_installed_filter', 'customers_installed_report', 'customers_installed_edit',
@@ -953,6 +996,7 @@ class PermissionRegistry
                 'menu_materials', 'materials_card_stats', 'materials_filter_category', 'materials_view_area',
                 'menu_material_transactions', 'material_transactions_create', 'material_transactions_view_area', 'material_transactions_view_own',
                 'materials_tab_transactions',
+                'menu_material_handovers', 'material_handover_tab_returns', 'material_handover_tab_requests', 'material_handover_btn_create_return', 'material_handover_btn_create_request', 'material_handover_field_condition', 'material_handover_view_area',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_edit', 'customers_booking_whatsapp', 'customers_booking_view_area', 'customers_booking_view_own',
                 'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_filter', 'customers_survey_report', 'customers_survey_view_assigned',
                 'menu_customers_installed', 'customers_installed_card_stats', 'customers_installed_filter', 'customers_installed_report', 'customers_installed_edit', 'customers_installed_whatsapp', 'customers_installed_view_assigned',
@@ -977,9 +1021,10 @@ class PermissionRegistry
                 'menu_network_find_onu',
                 'menu_infrastructure_work_orders', 'infrastructure_work_orders_create', 'infrastructure_work_orders_edit',
                 'infrastructure_work_orders_dispatch', 'infrastructure_work_orders_report', 'infrastructure_work_orders_approve', 'infrastructure_work_orders_view_all',
-                'menu_materials', 'materials_card_stats', 'materials_filter_category', 'materials_create', 'materials_edit', 'materials_add_stock', 'materials_view_all',
+                'menu_materials', 'materials_card_stats', 'materials_filter_category', 'materials_create', 'materials_edit', 'materials_add_stock', 'materials_field_price', 'materials_field_supplier', 'materials_view_all',
                 'menu_material_transactions', 'material_transactions_create', 'material_transactions_view_all',
                 'materials_tab_transactions',
+                'menu_material_handovers', 'material_handover_card_stats', 'material_handover_tab_returns', 'material_handover_tab_requests', 'material_handover_tab_history', 'material_handover_filter_status', 'material_handover_filter_source', 'material_handover_filter_area', 'material_handover_btn_receive', 'material_handover_btn_reject_handover', 'material_handover_btn_approve_request', 'material_handover_btn_reject_request', 'material_handover_btn_create_return', 'material_handover_btn_create_request', 'material_handover_field_condition', 'material_handover_view_all',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_edit', 'customers_booking_whatsapp', 'customers_booking_view_all',
                 'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_filter', 'customers_survey_assign', 'customers_survey_reschedule', 'customers_survey_report', 'customers_survey_mark_ready', 'customers_survey_view_all',
                 'menu_customers_installed', 'customers_installed_card_stats', 'customers_installed_filter', 'customers_installed_assign', 'customers_installed_whatsapp', 'customers_installed_audit', 'customers_installed_report', 'customers_installed_edit', 'customers_installed_view_all',
