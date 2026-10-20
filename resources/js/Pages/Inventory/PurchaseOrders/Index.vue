@@ -39,7 +39,175 @@
             </div>
 
             <!-- Main Content Area -->
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10 space-y-6">
+                <!-- Summary Metrics Bar -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Transaksi Order</p>
+                            <h3 class="text-2xl font-black text-gray-900 mt-1">{{ formatNumber(summary?.total_count || transactions?.total || 0) }}</h3>
+                            <p class="text-xs text-indigo-600 font-medium mt-0.5">Sesuai filter aktif</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Biaya Belanja</p>
+                            <h3 class="text-2xl font-black text-emerald-600 mt-1">Rp {{ formatNumber(summary?.total_cost || 0) }}</h3>
+                            <p class="text-xs text-gray-400 mt-0.5">Tercatat di Buku Kas</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Filter Cerdas</p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-2xl font-black" :class="activeFilterCount > 0 ? 'text-indigo-600' : 'text-gray-400'">{{ activeFilterCount }}</span>
+                                <span class="text-xs font-semibold text-gray-500">Kriteria Aktif</span>
+                            </div>
+                            <button v-if="activeFilterCount > 0" @click="resetFilters" class="text-xs text-rose-500 hover:text-rose-700 font-bold mt-0.5 inline-flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                Reset Semua Filter
+                            </button>
+                            <p v-else class="text-xs text-gray-400 mt-0.5">Menampilkan seluruh data</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="activeFilterCount > 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-50 text-gray-400'">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comprehensive Filter Panel -->
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                    <div class="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
+                        <!-- Search Box -->
+                        <div class="relative flex-1 group">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-600 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            </div>
+                            <input 
+                                type="text" 
+                                v-model="filterSearch" 
+                                @input="debouncedApply" 
+                                placeholder="Cari No. PO, area/wilayah, nama barang, catatan..." 
+                                class="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all placeholder:text-gray-400"
+                            />
+                            <button v-if="filterSearch" @click="filterSearch = ''; applyFilters()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <!-- Area Filter -->
+                        <div class="w-full lg:w-48">
+                            <select v-model="filterArea" @change="applyFilters" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-medium text-gray-700">
+                                <option value="">Semua Area</option>
+                                <option v-for="a in areas" :key="a.id" :value="a.name">{{ a.name }}</option>
+                            </select>
+                        </div>
+
+                        <!-- Material Filter -->
+                        <div class="w-full lg:w-56">
+                            <select v-model="filterMaterialId" @change="applyFilters" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-medium text-gray-700">
+                                <option value="">Semua Barang / Produk</option>
+                                <option v-for="m in materials" :key="m.id" :value="m.id">{{ m.name }}</option>
+                            </select>
+                        </div>
+
+                        <!-- ONT Filter -->
+                        <div class="w-full lg:w-40">
+                            <select v-model="filterOnt" @change="applyFilters" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-medium text-gray-700">
+                                <option value="">Semua Jenis</option>
+                                <option value="with_ont">Memuat ONT</option>
+                                <option value="without_ont">Non-ONT</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Date Filters & Quick Presets -->
+                    <div class="pt-3 border-t border-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-sm">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mr-1">Pilihan Cepat:</span>
+                            <button 
+                                type="button" 
+                                @click="setQuickDate('all')" 
+                                :class="[!filterDateFrom && !filterDateTo ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'bg-slate-100 text-gray-600 hover:bg-slate-200']"
+                                class="px-3 py-1.5 rounded-lg text-xs transition"
+                            >
+                                Semua
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="setQuickDate('today')" 
+                                :class="[quickActive === 'today' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'bg-slate-100 text-gray-600 hover:bg-slate-200']"
+                                class="px-3 py-1.5 rounded-lg text-xs transition"
+                            >
+                                Hari Ini
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="setQuickDate('week')" 
+                                :class="[quickActive === 'week' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'bg-slate-100 text-gray-600 hover:bg-slate-200']"
+                                class="px-3 py-1.5 rounded-lg text-xs transition"
+                            >
+                                7 Hari Terakhir
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="setQuickDate('month')" 
+                                :class="[quickActive === 'month' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'bg-slate-100 text-gray-600 hover:bg-slate-200']"
+                                class="px-3 py-1.5 rounded-lg text-xs transition"
+                            >
+                                Bulan Ini
+                            </button>
+                        </div>
+
+                        <!-- Date range picker -->
+                        <div class="flex items-center gap-2 w-full md:w-auto">
+                            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs">
+                                <span class="text-gray-400 font-medium">Dari:</span>
+                                <input type="date" v-model="filterDateFrom" @change="applyFilters" class="bg-transparent border-0 p-0 text-xs text-gray-700 focus:ring-0" />
+                            </div>
+                            <span class="text-gray-400 text-xs">s/d</span>
+                            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs">
+                                <span class="text-gray-400 font-medium">Sampai:</span>
+                                <input type="date" v-model="filterDateTo" @change="applyFilters" class="bg-transparent border-0 p-0 text-xs text-gray-700 focus:ring-0" />
+                            </div>
+                            <button v-if="activeFilterCount > 0" @click="resetFilters" class="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Hapus Filter">
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Active Filter Chips -->
+                    <div v-if="activeFilterCount > 0" class="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
+                        <span class="text-gray-400 font-medium">Filter Diterapkan:</span>
+                        <span v-if="filterSearch" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
+                            Pencarian: "{{ filterSearch }}"
+                            <button @click="filterSearch = ''; applyFilters()" class="hover:text-indigo-900">✕</button>
+                        </span>
+                        <span v-if="filterArea" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
+                            Area: {{ filterArea }}
+                            <button @click="filterArea = ''; applyFilters()" class="hover:text-indigo-900">✕</button>
+                        </span>
+                        <span v-if="filterMaterialId" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
+                            Barang: {{ getMaterialName(filterMaterialId) }}
+                            <button @click="filterMaterialId = ''; applyFilters()" class="hover:text-indigo-900">✕</button>
+                        </span>
+                        <span v-if="filterOnt" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
+                            {{ filterOnt === 'with_ont' ? 'Memuat ONT' : 'Non-ONT' }}
+                            <button @click="filterOnt = ''; applyFilters()" class="hover:text-indigo-900">✕</button>
+                        </span>
+                        <span v-if="filterDateFrom || filterDateTo" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
+                            Rentang: {{ filterDateFrom || '...' }} s/d {{ filterDateTo || '...' }}
+                            <button @click="filterDateFrom = ''; filterDateTo = ''; applyFilters()" class="hover:text-indigo-900">✕</button>
+                        </span>
+                    </div>
+                </div>
+
                 <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
@@ -291,12 +459,95 @@ import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useForm, Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue';
+import { debounce } from 'lodash';
 
 const props = defineProps({
     transactions: Object,
     materials: Array,
     areas: { type: Array, default: () => [] },
+    filters: { type: Object, default: () => ({}) },
+    summary: { type: Object, default: () => ({}) },
 });
+
+// Comprehensive Filters state
+const filterSearch = ref(props.filters?.search || '');
+const filterArea = ref(props.filters?.area || '');
+const filterMaterialId = ref(props.filters?.material_id || '');
+const filterDateFrom = ref(props.filters?.date_from || '');
+const filterDateTo = ref(props.filters?.date_to || '');
+const filterOnt = ref(props.filters?.ont_filter || '');
+const quickActive = ref('');
+
+const activeFilterCount = computed(() => {
+    let count = 0;
+    if (filterSearch.value) count++;
+    if (filterArea.value) count++;
+    if (filterMaterialId.value) count++;
+    if (filterDateFrom.value || filterDateTo.value) count++;
+    if (filterOnt.value) count++;
+    return count;
+});
+
+const getMaterialName = (id) => {
+    const m = (props.materials || []).find(mat => mat.id == id);
+    return m ? m.name : `ID #${id}`;
+};
+
+const applyFilters = () => {
+    const params = {};
+    if (filterSearch.value) params.search = filterSearch.value;
+    if (filterArea.value) params.area = filterArea.value;
+    if (filterMaterialId.value) params.material_id = filterMaterialId.value;
+    if (filterDateFrom.value) params.date_from = filterDateFrom.value;
+    if (filterDateTo.value) params.date_to = filterDateTo.value;
+    if (filterOnt.value) params.ont_filter = filterOnt.value;
+
+    router.get('/order-toko', params, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+};
+
+const debouncedApply = debounce(() => {
+    applyFilters();
+}, 350);
+
+const setQuickDate = (preset) => {
+    quickActive.value = preset;
+    const today = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    if (preset === 'today') {
+        filterDateFrom.value = fmt(today);
+        filterDateTo.value = fmt(today);
+    } else if (preset === 'week') {
+        const last7 = new Date();
+        last7.setDate(today.getDate() - 7);
+        filterDateFrom.value = fmt(last7);
+        filterDateTo.value = fmt(today);
+    } else if (preset === 'month') {
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        filterDateFrom.value = fmt(firstDay);
+        filterDateTo.value = fmt(today);
+    } else if (preset === 'all') {
+        filterDateFrom.value = '';
+        filterDateTo.value = '';
+    }
+    applyFilters();
+};
+
+const resetFilters = () => {
+    filterSearch.value = '';
+    filterArea.value = '';
+    filterMaterialId.value = '';
+    filterDateFrom.value = '';
+    filterDateTo.value = '';
+    filterOnt.value = '';
+    quickActive.value = '';
+    applyFilters();
+};
 
 const isModalOpen = ref(false);
 const pickerOpen = ref(false);

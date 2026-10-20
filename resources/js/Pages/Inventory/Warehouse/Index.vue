@@ -25,17 +25,141 @@
             </div>
 
             <!-- Main Content Area -->
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10 space-y-6">
                 
-                <!-- Filters -->
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4 items-center justify-between mb-8">
-                    <div class="relative w-full sm:w-96 group">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg class="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
+                <!-- Summary Metrics Bar -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Varian Barang</p>
+                            <h3 class="text-2xl font-black text-gray-900 mt-1">{{ formatNum(summary?.total_materials || materials.total || 0) }}</h3>
+                            <p class="text-xs text-indigo-600 font-medium mt-0.5">Master material terdaftar</p>
                         </div>
-                        <input type="text" v-model="search" @input="debouncedSearch" class="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all" placeholder="Cari area gudang..." />
+                        <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-emerald-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-emerald-500 uppercase tracking-wider">Stok Tersedia</p>
+                            <h3 class="text-2xl font-black text-emerald-600 mt-1">{{ formatNum(summary?.available || 0) }}</h3>
+                            <p class="text-xs text-emerald-400 mt-0.5">Memiliki stok di gudang</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-rose-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-rose-500 uppercase tracking-wider">Stok Kosong / Habis</p>
+                            <h3 class="text-2xl font-black text-rose-600 mt-1">{{ formatNum(summary?.out_of_stock || 0) }}</h3>
+                            <p class="text-xs text-rose-400 mt-0.5">Perlu restock / order toko</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comprehensive Filters Toolbar -->
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                    <!-- Top row: Search Box and Quick Reset -->
+                    <div class="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
+                        <div class="relative flex-1 group">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-500 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            </div>
+                            <input 
+                                type="text" 
+                                v-model="filterSearch" 
+                                @input="debouncedApply" 
+                                class="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all placeholder:text-gray-400" 
+                                placeholder="Cari nama barang, kategori, supplier, unit, deskripsi..." 
+                            />
+                            <button v-if="filterSearch" @click="filterSearch = ''; applyFilters()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <!-- Sort By -->
+                        <div class="w-full lg:w-48">
+                            <select v-model="filterSortBy" @change="applyFilters" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-medium text-gray-700">
+                                <option value="name_asc">Urutkan: Nama A - Z</option>
+                                <option value="name_desc">Urutkan: Nama Z - A</option>
+                                <option value="category">Urutkan: Kategori</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Middle row: Dropdown Filters -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <!-- Category Filter -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Kategori Barang</label>
+                            <select v-model="filterCategory" @change="applyFilters" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-medium text-gray-700">
+                                <option value="">Semua Kategori</option>
+                                <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+                            </select>
+                        </div>
+
+                        <!-- Area Gudang Filter -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Area Gudang</label>
+                            <select v-model="filterAreaId" @change="applyFilters" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-medium text-gray-700">
+                                <option value="">Semua Area Gudang</option>
+                                <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                            </select>
+                        </div>
+
+                        <!-- Stock Status Filter -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Status Stok</label>
+                            <select v-model="filterStockStatus" @change="applyFilters" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-medium text-gray-700">
+                                <option value="">Semua Status Stok</option>
+                                <option value="available">Stok Tersedia (&gt; 0)</option>
+                                <option value="low_stock">Stok Menipis (&le; 20)</option>
+                                <option value="out_of_stock">Stok Kosong / Habis (0)</option>
+                            </select>
+                        </div>
+
+                        <!-- Unit Filter -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Satuan Unit</label>
+                            <select v-model="filterUnit" @change="applyFilters" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-medium text-gray-700">
+                                <option value="">Semua Satuan</option>
+                                <option v-for="u in units" :key="u" :value="u">{{ u }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Active Filter Chips & Reset -->
+                    <div v-if="activeFilterCount > 0" class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-gray-400 font-medium">Filter Diterapkan ({{ activeFilterCount }}):</span>
+                            <span v-if="filterSearch" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
+                                Cari: "{{ filterSearch }}"
+                                <button @click="filterSearch = ''; applyFilters()" class="hover:text-indigo-900">✕</button>
+                            </span>
+                            <span v-if="filterCategory" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
+                                Kategori: {{ filterCategory }}
+                                <button @click="filterCategory = ''; applyFilters()" class="hover:text-indigo-900">✕</button>
+                            </span>
+                            <span v-if="filterAreaId" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
+                                Area: {{ getAreaName(filterAreaId) }}
+                                <button @click="filterAreaId = ''; applyFilters()" class="hover:text-indigo-900">✕</button>
+                            </span>
+                            <span v-if="filterStockStatus" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
+                                Status: {{ getStatusLabel(filterStockStatus) }}
+                                <button @click="filterStockStatus = ''; applyFilters()" class="hover:text-indigo-900">✕</button>
+                            </span>
+                            <span v-if="filterUnit" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
+                                Satuan: {{ filterUnit }}
+                                <button @click="filterUnit = ''; applyFilters()" class="hover:text-indigo-900">✕</button>
+                            </span>
+                        </div>
+                        <button @click="resetFilters" class="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Hapus Semua Filter">
+                            Reset Semua Filter
+                        </button>
                     </div>
                 </div>
 
@@ -71,9 +195,11 @@
                                     </td>
                                     <td class="px-6 py-4">
                                         <div v-if="material.stocks && material.stocks.length > 0" class="flex flex-wrap gap-2">
-                                            <div v-for="stock in material.stocks" :key="stock.id" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-indigo-50 border border-indigo-100 text-indigo-700">
-                                                <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                                <span>{{ stock.area?.name || 'Area ?' }}: <strong class="text-indigo-900">{{ formatNum(stock.stock) }}</strong> {{ material.unit }} <span class="font-bold text-[9px] text-indigo-500">{{ formatSecondaryUnit(material, stock.stock) }}</span></span>
+                                            <div v-for="stock in material.stocks" :key="stock.id" 
+                                                 class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold border transition"
+                                                 :class="[filterAreaId && stock.area_id == filterAreaId ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm ring-2 ring-indigo-200' : 'bg-indigo-50 border-indigo-100 text-indigo-700']">
+                                                <svg class="w-3.5 h-3.5" :class="filterAreaId && stock.area_id == filterAreaId ? 'text-indigo-200' : 'text-indigo-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                <span>{{ stock.area?.name || 'Area ?' }}: <strong :class="filterAreaId && stock.area_id == filterAreaId ? 'text-white' : 'text-indigo-900'">{{ formatNum(stock.stock) }}</strong> {{ material.unit }} <span class="font-bold text-[9px]" :class="filterAreaId && stock.area_id == filterAreaId ? 'text-indigo-100' : 'text-indigo-500'">{{ formatSecondaryUnit(material, stock.stock) }}</span></span>
                                             </div>
                                         </div>
                                         <span v-else class="text-xs text-gray-400 italic">Belum ada distribusi area</span>
@@ -81,8 +207,19 @@
                                     <td class="px-6 py-4 text-right">
                                         <div class="flex flex-col items-end justify-center">
                                             <div>
-                                                <span class="text-sm font-black text-slate-800">{{ formatNum(material.stocks?.reduce((a, b) => a + Number(b.stock), 0) || 0) }}</span>
-                                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">{{ material.unit }} <span class="text-slate-400 normal-case">{{ formatSecondaryUnit(material, material.stocks?.reduce((a, b) => a + Number(b.stock), 0)) }}</span></span>
+                                                <span class="text-sm font-black text-slate-800">{{ formatNum(getTotalStock(material)) }}</span>
+                                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">{{ material.unit }} <span class="text-slate-400 normal-case">{{ formatSecondaryUnit(material, getTotalStock(material)) }}</span></span>
+                                            </div>
+                                            <div class="mt-1">
+                                                <span v-if="getTotalStock(material) <= 0" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200">
+                                                    Stok Habis
+                                                </span>
+                                                <span v-else-if="getTotalStock(material) <= 20" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                    Menipis
+                                                </span>
+                                                <span v-else class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    Tersedia
+                                                </span>
                                             </div>
                                             <div class="inline-flex items-center gap-1 text-[11px] text-slate-500 mt-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
                                                 <span class="text-slate-400 font-normal">Awal:</span>
@@ -111,7 +248,7 @@
                                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
                                         </div>
                                         <h3 class="text-lg font-bold text-gray-900 mb-1">Barang tidak ditemukan</h3>
-                                        <p class="text-sm text-gray-500">Gunakan kata kunci lain atau pastikan data barang sudah ditambahkan.</p>
+                                        <p class="text-sm text-gray-500">Gunakan kata kunci atau filter lain untuk menemukan barang.</p>
                                     </td>
                                 </tr>
                             </tbody>
@@ -150,28 +287,87 @@
     </AppLayout>
 </template>
 
-
-
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { debounce } from 'lodash';
 
 const props = defineProps({
     materials: Object,
-    filters: Object
+    categories: { type: Array, default: () => [] },
+    units: { type: Array, default: () => [] },
+    areas: { type: Array, default: () => [] },
+    filters: { type: Object, default: () => ({}) },
+    summary: { type: Object, default: () => ({}) },
 });
 
-const search = ref(props.filters.search || '');
+// Comprehensive Filter State
+const filterSearch = ref(props.filters?.search || '');
+const filterCategory = ref(props.filters?.category || '');
+const filterAreaId = ref(props.filters?.area_id || '');
+const filterStockStatus = ref(props.filters?.stock_status || '');
+const filterUnit = ref(props.filters?.unit || '');
+const filterSortBy = ref(props.filters?.sort_by || 'name_asc');
 
-const debouncedSearch = debounce(() => {
-    router.get('/warehouse-stocks', { search: search.value }, {
+const activeFilterCount = computed(() => {
+    let count = 0;
+    if (filterSearch.value) count++;
+    if (filterCategory.value) count++;
+    if (filterAreaId.value) count++;
+    if (filterStockStatus.value) count++;
+    if (filterUnit.value) count++;
+    if (filterSortBy.value && filterSortBy.value !== 'name_asc') count++;
+    return count;
+});
+
+const getAreaName = (id) => {
+    const a = (props.areas || []).find(item => item.id == id);
+    return a ? a.name : `Area #${id}`;
+};
+
+const getStatusLabel = (status) => {
+    switch (status) {
+        case 'available': return 'Stok Tersedia (> 0)';
+        case 'low_stock': return 'Stok Menipis (<= 20)';
+        case 'out_of_stock': return 'Stok Kosong / Habis (0)';
+        default: return status;
+    }
+};
+
+const getTotalStock = (material) => {
+    return material.stocks?.reduce((a, b) => a + Number(b.stock), 0) || 0;
+};
+
+const applyFilters = () => {
+    const params = {};
+    if (filterSearch.value) params.search = filterSearch.value;
+    if (filterCategory.value) params.category = filterCategory.value;
+    if (filterAreaId.value) params.area_id = filterAreaId.value;
+    if (filterStockStatus.value) params.stock_status = filterStockStatus.value;
+    if (filterUnit.value) params.unit = filterUnit.value;
+    if (filterSortBy.value && filterSortBy.value !== 'name_asc') params.sort_by = filterSortBy.value;
+
+    router.get('/warehouse-stocks', params, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
     });
-}, 300);
+};
+
+const debouncedApply = debounce(() => {
+    applyFilters();
+}, 350);
+
+const resetFilters = () => {
+    filterSearch.value = '';
+    filterCategory.value = '';
+    filterAreaId.value = '';
+    filterStockStatus.value = '';
+    filterUnit.value = '';
+    filterSortBy.value = 'name_asc';
+    applyFilters();
+};
 
 const formatNum = (n) => {
     return new Intl.NumberFormat('id-ID').format(Number(n) || 0);

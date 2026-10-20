@@ -19,21 +19,79 @@ class StockInOutController extends Controller
         $query = MaterialTransaction::where('purpose', '!=', 'Pembelian Toko / Supplier')
                             ->with('items.material');
 
-        if ($request->search) {
-            $query->where(function($q) use ($request) {
-                $q->where('technician_name', 'like', "%{$request->search}%")
-                  ->orWhere('transaction_number', 'like', "%{$request->search}%")
-                  ->orWhere('purpose', 'like', "%{$request->search}%");
+        // 1. Pencarian Teks Fleksibel (No Ref, Teknisi/Penerima, Area, Keperluan, Catatan, Nama Material)
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function($q) use ($search) {
+                $q->where('technician_name', 'like', "%{$search}%")
+                  ->orWhere('area', 'like', "%{$search}%")
+                  ->orWhere('transaction_number', 'like', "%{$search}%")
+                  ->orWhere('purpose', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%")
+                  ->orWhereHas('items.material', function ($mq) use ($search) {
+                      $mq->where('name', 'like', "%{$search}%")
+                         ->orWhere('category', 'like', "%{$search}%");
+                  });
             });
         }
+
+        // 2. Filter Tipe Transaksi (in / out)
+        if ($request->filled('type') && in_array($request->type, ['in', 'out'])) {
+            $query->where('type', $request->type);
+        }
+
+        // 3. Filter Keperluan / Purpose
+        if ($request->filled('purpose')) {
+            $query->where('purpose', $request->purpose);
+        }
+
+        // 4. Filter Area / Teknisi
+        if ($request->filled('technician_name')) {
+            $tech = trim($request->technician_name);
+            $query->where(function ($q) use ($tech) {
+                $q->where('technician_name', $tech)
+                  ->orWhere('area', $tech);
+            });
+        }
+
+        // 5. Filter Material / Barang
+        if ($request->filled('material_id')) {
+            $materialId = $request->material_id;
+            $query->whereHas('items', function ($q) use ($materialId) {
+                $q->where('material_id', $materialId);
+            });
+        }
+
+        // 6. Filter Rentang Tanggal
+        if ($request->filled('date_from')) {
+            $query->whereDate('date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('date', '<=', $request->date_to);
+        }
         
-        $transactions = $query->latest()->paginate(15)->withQueryString();
+        // Hitung ringkasan total mutasi masuk dan keluar sesuai filter
+        $summaryQuery = clone $query;
+        $inCount = (clone $summaryQuery)->where('type', 'in')->count();
+        $outCount = (clone $summaryQuery)->where('type', 'out')->count();
+
+        $transactions = $query->latest('date')->latest('id')->paginate(15)->withQueryString();
         $materials = Material::orderBy('name')->get();
+        $purposes = MaterialTransaction::where('purpose', '!=', 'Pembelian Toko / Supplier')
+            ->distinct()->pluck('purpose')->filter()->values();
+        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Inventory/StockInOut/Index', [
             'transactions' => $transactions,
             'materials' => $materials,
-            'filters' => $request->only(['search'])
+            'purposes' => $purposes,
+            'areas' => $areas,
+            'filters' => $request->only(['search', 'type', 'purpose', 'technician_name', 'material_id', 'date_from', 'date_to']),
+            'summary' => [
+                'total_count' => $transactions->total(),
+                'in_count' => $inCount,
+                'out_count' => $outCount,
+            ]
         ]);
     }
 

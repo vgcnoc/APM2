@@ -41,17 +41,207 @@
             </div>
 
             <!-- Main Content Area -->
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+            <!-- Main Content Area -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10 space-y-6">
                 
-                <!-- Filters -->
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4 items-center justify-between mb-8">
-                    <div class="relative w-full sm:w-96 group">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg class="h-5 w-5 text-gray-400 group-focus-within:text-rose-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
+                <!-- Summary Metrics Bar -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Mutasi & Opname</p>
+                            <h3 class="text-2xl font-black text-gray-900 mt-1">{{ formatQty(summary?.total_count || transactions.total || 0) }}</h3>
+                            <p class="text-xs text-gray-500 font-medium mt-0.5">Transaksi tercatat</p>
                         </div>
-                        <input type="text" v-model="search" @input="debouncedSearch" class="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-rose-500 focus:border-rose-500 sm:text-sm transition-all" placeholder="Cari teknisi, no. transaksi, atau tujuan..." />
+                        <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-rose-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-rose-500 uppercase tracking-wider">Stok Keluar (Distribusi)</p>
+                            <h3 class="text-2xl font-black text-rose-600 mt-1">{{ formatQty(summary?.out_count || 0) }}</h3>
+                            <p class="text-xs text-rose-400 mt-0.5">Pemakaian teknisi / area</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-emerald-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-emerald-500 uppercase tracking-wider">Stok Masuk (Retur)</p>
+                            <h3 class="text-2xl font-black text-emerald-600 mt-1">{{ formatQty(summary?.in_count || 0) }}</h3>
+                            <p class="text-xs text-emerald-400 mt-0.5">Pengembalian sisa / retur</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comprehensive Filters Card -->
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                    <!-- Top row: Type Tabs and Quick Search -->
+                    <div class="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
+                        <!-- Type Pill Buttons -->
+                        <div class="inline-flex p-1 bg-slate-100 rounded-2xl w-fit">
+                            <button 
+                                type="button" 
+                                @click="filterType = ''; applyFilters()" 
+                                :class="[!filterType ? 'bg-white text-gray-900 shadow-sm font-bold' : 'text-gray-500 hover:text-gray-900 font-medium']"
+                                class="px-4 py-2 rounded-xl text-xs sm:text-sm transition-all"
+                            >
+                                Semua Tipe
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="filterType = 'out'; applyFilters()" 
+                                :class="[filterType === 'out' ? 'bg-rose-500 text-white shadow-sm font-bold' : 'text-gray-500 hover:text-rose-600 font-medium']"
+                                class="px-4 py-2 rounded-xl text-xs sm:text-sm transition-all inline-flex items-center gap-1.5"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                                Stok Keluar
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="filterType = 'in'; applyFilters()" 
+                                :class="[filterType === 'in' ? 'bg-emerald-600 text-white shadow-sm font-bold' : 'text-gray-500 hover:text-emerald-600 font-medium']"
+                                class="px-4 py-2 rounded-xl text-xs sm:text-sm transition-all inline-flex items-center gap-1.5"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                                Stok Masuk
+                            </button>
+                        </div>
+
+                        <!-- Search Box -->
+                        <div class="relative flex-1 group max-w-md">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-rose-500 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            </div>
+                            <input 
+                                type="text" 
+                                v-model="filterSearch" 
+                                @input="debouncedApply" 
+                                placeholder="Cari No. Ref, teknisi/penerima, area, barang, catatan..." 
+                                class="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500 transition-all placeholder:text-gray-400"
+                            />
+                            <button v-if="filterSearch" @click="filterSearch = ''; applyFilters()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Middle row: Dropdown filters -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <!-- Purpose Filter -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Keperluan / Tujuan</label>
+                            <select v-model="filterPurpose" @change="applyFilters" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500 transition-all font-medium text-gray-700">
+                                <option value="">Semua Keperluan</option>
+                                <option v-for="p in purposes" :key="p" :value="p">{{ p }}</option>
+                            </select>
+                        </div>
+
+                        <!-- Area / Teknisi Filter -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Area / Penerima</label>
+                            <select v-model="filterTechnician" @change="applyFilters" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500 transition-all font-medium text-gray-700">
+                                <option value="">Semua Area / Penerima</option>
+                                <option v-for="a in areas" :key="a.id" :value="a.name">{{ a.name }}</option>
+                            </select>
+                        </div>
+
+                        <!-- Material Filter -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Material / Barang</label>
+                            <select v-model="filterMaterialId" @change="applyFilters" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500 transition-all font-medium text-gray-700">
+                                <option value="">Semua Barang</option>
+                                <option v-for="m in materials" :key="m.id" :value="m.id">{{ m.name }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Bottom row: Date Filters & Quick Presets -->
+                    <div class="pt-3 border-t border-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-sm">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mr-1">Pilihan Cepat:</span>
+                            <button 
+                                type="button" 
+                                @click="setQuickDate('all')" 
+                                :class="[!filterDateFrom && !filterDateTo ? 'bg-rose-600 text-white font-bold shadow-xs' : 'bg-slate-100 text-gray-600 hover:bg-slate-200']"
+                                class="px-3 py-1.5 rounded-lg text-xs transition"
+                            >
+                                Semua
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="setQuickDate('today')" 
+                                :class="[quickActive === 'today' ? 'bg-rose-600 text-white font-bold shadow-xs' : 'bg-slate-100 text-gray-600 hover:bg-slate-200']"
+                                class="px-3 py-1.5 rounded-lg text-xs transition"
+                            >
+                                Hari Ini
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="setQuickDate('week')" 
+                                :class="[quickActive === 'week' ? 'bg-rose-600 text-white font-bold shadow-xs' : 'bg-slate-100 text-gray-600 hover:bg-slate-200']"
+                                class="px-3 py-1.5 rounded-lg text-xs transition"
+                            >
+                                7 Hari Terakhir
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="setQuickDate('month')" 
+                                :class="[quickActive === 'month' ? 'bg-rose-600 text-white font-bold shadow-xs' : 'bg-slate-100 text-gray-600 hover:bg-slate-200']"
+                                class="px-3 py-1.5 rounded-lg text-xs transition"
+                            >
+                                Bulan Ini
+                            </button>
+                        </div>
+
+                        <!-- Date range picker -->
+                        <div class="flex items-center gap-2 w-full md:w-auto">
+                            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs">
+                                <span class="text-gray-400 font-medium">Dari:</span>
+                                <input type="date" v-model="filterDateFrom" @change="applyFilters" class="bg-transparent border-0 p-0 text-xs text-gray-700 focus:ring-0" />
+                            </div>
+                            <span class="text-gray-400 text-xs">s/d</span>
+                            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs">
+                                <span class="text-gray-400 font-medium">Sampai:</span>
+                                <input type="date" v-model="filterDateTo" @change="applyFilters" class="bg-transparent border-0 p-0 text-xs text-gray-700 focus:ring-0" />
+                            </div>
+                            <button v-if="activeFilterCount > 0" @click="resetFilters" class="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Hapus Filter">
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Active Filter Chips -->
+                    <div v-if="activeFilterCount > 0" class="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
+                        <span class="text-gray-400 font-medium">Filter Diterapkan ({{ activeFilterCount }}):</span>
+                        <span v-if="filterType" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold" :class="filterType === 'out' ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'">
+                            Tipe: {{ filterType === 'out' ? 'Stok Keluar' : 'Stok Masuk' }}
+                            <button @click="filterType = ''; applyFilters()" class="hover:opacity-75">✕</button>
+                        </span>
+                        <span v-if="filterSearch" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 font-semibold border border-rose-100">
+                            Pencarian: "{{ filterSearch }}"
+                            <button @click="filterSearch = ''; applyFilters()" class="hover:text-rose-900">✕</button>
+                        </span>
+                        <span v-if="filterPurpose" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 font-semibold border border-rose-100">
+                            Keperluan: {{ filterPurpose }}
+                            <button @click="filterPurpose = ''; applyFilters()" class="hover:text-rose-900">✕</button>
+                        </span>
+                        <span v-if="filterTechnician" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 font-semibold border border-rose-100">
+                            Area / Teknisi: {{ filterTechnician }}
+                            <button @click="filterTechnician = ''; applyFilters()" class="hover:text-rose-900">✕</button>
+                        </span>
+                        <span v-if="filterMaterialId" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 font-semibold border border-rose-100">
+                            Barang: {{ getMaterialName(filterMaterialId) }}
+                            <button @click="filterMaterialId = ''; applyFilters()" class="hover:text-rose-900">✕</button>
+                        </span>
+                        <span v-if="filterDateFrom || filterDateTo" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 font-semibold border border-rose-100">
+                            Rentang: {{ filterDateFrom || '...' }} s/d {{ filterDateTo || '...' }}
+                            <button @click="filterDateFrom = ''; filterDateTo = ''; applyFilters()" class="hover:text-rose-900">✕</button>
+                        </span>
                     </div>
                 </div>
 
@@ -249,7 +439,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useForm, Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue';
@@ -258,18 +448,95 @@ import { debounce } from 'lodash';
 const props = defineProps({
     transactions: Object,
     materials: Array,
-    filters: Object
+    purposes: { type: Array, default: () => [] },
+    areas: { type: Array, default: () => [] },
+    filters: { type: Object, default: () => ({}) },
+    summary: { type: Object, default: () => ({}) },
 });
 
-const search = ref(props.filters.search || '');
+// Comprehensive Filter State
+const filterSearch = ref(props.filters?.search || '');
+const filterType = ref(props.filters?.type || '');
+const filterPurpose = ref(props.filters?.purpose || '');
+const filterTechnician = ref(props.filters?.technician_name || '');
+const filterMaterialId = ref(props.filters?.material_id || '');
+const filterDateFrom = ref(props.filters?.date_from || '');
+const filterDateTo = ref(props.filters?.date_to || '');
+const quickActive = ref('');
 
-const debouncedSearch = debounce(() => {
-    router.get('/stok-in-out', { search: search.value }, {
+const activeFilterCount = computed(() => {
+    let count = 0;
+    if (filterSearch.value) count++;
+    if (filterType.value) count++;
+    if (filterPurpose.value) count++;
+    if (filterTechnician.value) count++;
+    if (filterMaterialId.value) count++;
+    if (filterDateFrom.value || filterDateTo.value) count++;
+    return count;
+});
+
+const getMaterialName = (id) => {
+    const m = (props.materials || []).find(mat => mat.id == id);
+    return m ? m.name : `ID #${id}`;
+};
+
+const applyFilters = () => {
+    const params = {};
+    if (filterSearch.value) params.search = filterSearch.value;
+    if (filterType.value) params.type = filterType.value;
+    if (filterPurpose.value) params.purpose = filterPurpose.value;
+    if (filterTechnician.value) params.technician_name = filterTechnician.value;
+    if (filterMaterialId.value) params.material_id = filterMaterialId.value;
+    if (filterDateFrom.value) params.date_from = filterDateFrom.value;
+    if (filterDateTo.value) params.date_to = filterDateTo.value;
+
+    router.get('/stok-in-out', params, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
     });
-}, 300);
+};
+
+const debouncedApply = debounce(() => {
+    applyFilters();
+}, 350);
+
+const setQuickDate = (preset) => {
+    quickActive.value = preset;
+    const today = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    if (preset === 'today') {
+        filterDateFrom.value = fmt(today);
+        filterDateTo.value = fmt(today);
+    } else if (preset === 'week') {
+        const last7 = new Date();
+        last7.setDate(today.getDate() - 7);
+        filterDateFrom.value = fmt(last7);
+        filterDateTo.value = fmt(today);
+    } else if (preset === 'month') {
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        filterDateFrom.value = fmt(firstDay);
+        filterDateTo.value = fmt(today);
+    } else if (preset === 'all') {
+        filterDateFrom.value = '';
+        filterDateTo.value = '';
+    }
+    applyFilters();
+};
+
+const resetFilters = () => {
+    filterSearch.value = '';
+    filterType.value = '';
+    filterPurpose.value = '';
+    filterTechnician.value = '';
+    filterMaterialId.value = '';
+    filterDateFrom.value = '';
+    filterDateTo.value = '';
+    quickActive.value = '';
+    applyFilters();
+};
 
 const isModalOpen = ref(false);
 

@@ -18,10 +18,69 @@ class PurchaseOrderController extends Controller
     public function index(Request $request)
     {
         // Only get transactions with purpose indicating it's a purchase
-        $transactions = MaterialTransaction::where('purpose', 'Pembelian Toko / Supplier')
-                            ->with(['items.material', 'items.onts', 'expense.category'])
-                            ->latest()
-                            ->paginate(15);
+        $query = MaterialTransaction::where('purpose', 'Pembelian Toko / Supplier')
+                            ->with(['items.material', 'items.onts', 'expense.category']);
+
+        // 1. Pencarian Teks Fleksibel (No PO, Area/Teknisi, Catatan, Nama Material)
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('transaction_number', 'like', "%{$search}%")
+                  ->orWhere('technician_name', 'like', "%{$search}%")
+                  ->orWhere('area', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%")
+                  ->orWhereHas('items.material', function ($mq) use ($search) {
+                      $mq->where('name', 'like', "%{$search}%")
+                         ->orWhere('category', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // 2. Filter Area / Wilayah
+        if ($request->filled('area')) {
+            $area = trim($request->area);
+            $query->where(function ($q) use ($area) {
+                $q->where('technician_name', $area)
+                  ->orWhere('area', $area);
+            });
+        }
+
+        // 3. Filter Material / Barang Tertentu
+        if ($request->filled('material_id')) {
+            $materialId = $request->material_id;
+            $query->whereHas('items', function ($q) use ($materialId) {
+                $q->where('material_id', $materialId);
+            });
+        }
+
+        // 4. Filter Rentang Tanggal
+        if ($request->filled('date_from')) {
+            $query->whereDate('date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('date', '<=', $request->date_to);
+        }
+
+        // 5. Filter Status ONT
+        if ($request->filled('ont_filter')) {
+            if ($request->ont_filter === 'with_ont') {
+                $query->whereHas('items.material', function ($q) {
+                    $q->where('category', 'like', '%ont%')
+                      ->orWhere('name', 'like', '%ont%');
+                });
+            } elseif ($request->ont_filter === 'without_ont') {
+                $query->whereDoesntHave('items.material', function ($q) {
+                    $q->where('category', 'like', '%ont%')
+                      ->orWhere('name', 'like', '%ont%');
+                });
+            }
+        }
+
+        // Clone query for summary calculation before pagination
+        $summaryQuery = clone $query;
+        $totalCost = (float) $summaryQuery->sum('total_cost');
+
+        $transactions = $query->latest('date')->latest('id')->paginate(15)->withQueryString();
 
         // Hanya produk aktif dari menu Data Produk yang bisa diorder
         $materials = Material::where(function ($q) {
@@ -35,6 +94,11 @@ class PurchaseOrderController extends Controller
             'transactions' => $transactions,
             'materials' => $materials,
             'areas' => $areas,
+            'filters' => $request->only(['search', 'area', 'material_id', 'date_from', 'date_to', 'ont_filter']),
+            'summary' => [
+                'total_cost' => $totalCost,
+                'total_count' => $transactions->total(),
+            ],
         ]);
     }
 
