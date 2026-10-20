@@ -278,23 +278,31 @@ class Customer extends Model
     {
         $startDate = $this->activation_date 
             ? \Carbon\Carbon::parse($this->activation_date) 
-            : ($this->registration_date ? \Carbon\Carbon::parse($this->registration_date) : $this->created_at);
+            : ($this->registration_date ? \Carbon\Carbon::parse($this->registration_date) : ($this->created_at ? \Carbon\Carbon::parse($this->created_at) : now()));
         
         $endDate = $this->cancel_date ? \Carbon\Carbon::parse($this->cancel_date) : now();
 
-        $diffInDays = (int) $startDate->diffInDays($endDate);
+        $diffInDays = max(1, (int) $startDate->diffInDays($endDate));
         $diffInMonths = (int) $startDate->diffInMonths($endDate);
         $remainingDays = $diffInDays % 30;
 
-        $text = $diffInMonths > 0 
-            ? "{$diffInMonths} bln {$remainingDays} hr" 
-            : "{$diffInDays} hr";
+        if ($diffInMonths >= 12) {
+            $years = floor($diffInMonths / 12);
+            $months = $diffInMonths % 12;
+            $text = "{$years} tahun " . ($months > 0 ? "{$months} bulan " : '') . ($remainingDays > 0 ? "{$remainingDays} hari" : '');
+        } elseif ($diffInMonths > 0) {
+            $text = "{$diffInMonths} bulan" . ($remainingDays > 0 ? " {$remainingDays} hari" : '');
+        } else {
+            $text = "{$diffInDays} hari";
+        }
 
         return [
             'months' => $diffInMonths,
             'days' => $diffInDays,
-            'text' => $text,
+            'text' => trim($text),
             'is_under_4_months' => $diffInMonths < 4,
+            'start_date' => $startDate->format('d M Y'),
+            'end_date' => $endDate->format('d M Y'),
         ];
     }
 

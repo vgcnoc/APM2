@@ -1318,37 +1318,8 @@ class CustomerController extends Controller
 
         $customers = $customersQuery->paginate($request->per_page ?? 15)->withQueryString();
 
-        $customers->getCollection()->transform(function ($customer) {
-            $startDate = $customer->activation_date 
-                ? \Carbon\Carbon::parse($customer->activation_date) 
-                : ($customer->registration_date ? \Carbon\Carbon::parse($customer->registration_date) : ($customer->created_at ? \Carbon\Carbon::parse($customer->created_at) : now()));
-
-            $endDate = $customer->cancel_date ? \Carbon\Carbon::parse($customer->cancel_date) : now();
-
-            $diffInDays = max(1, (int) $startDate->diffInDays($endDate));
-            $diffInMonths = (int) $startDate->diffInMonths($endDate);
-            $remainingDays = $diffInDays % 30;
-
-            if ($diffInMonths >= 12) {
-                $years = floor($diffInMonths / 12);
-                $months = $diffInMonths % 12;
-                $durationText = "{$years} tahun " . ($months > 0 ? "{$months} bulan " : '') . "{$remainingDays} hari";
-            } elseif ($diffInMonths > 0) {
-                $durationText = "{$diffInMonths} bulan {$remainingDays} hari";
-            } else {
-                $durationText = "{$diffInDays} hari";
-            }
-
-            $customer->active_duration = [
-                'days' => $diffInDays,
-                'months' => $diffInMonths,
-                'text' => $durationText,
-                'is_under_4_months' => $diffInMonths < 4,
-                'start_date' => $startDate->format('d M Y'),
-                'end_date' => $endDate->format('d M Y'),
-            ];
-
-            return $customer;
+        $customers->getCollection()->each(function ($customer) {
+            $customer->append('active_duration');
         });
 
         return Inertia::render('Customers/Terminated', [
