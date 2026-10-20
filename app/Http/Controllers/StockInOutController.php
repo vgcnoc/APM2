@@ -69,6 +69,14 @@ class StockInOutController extends Controller
         if ($request->filled('date_to')) {
             $query->whereDate('date', '<=', $request->date_to);
         }
+
+        // 7. Filter Kondisi Barang (Layak Pakai, Tidak Layak, Rusak)
+        if ($request->filled('condition')) {
+            $cond = $request->condition;
+            $query->whereHas('items', function ($q) use ($cond) {
+                $q->where('condition', $cond);
+            });
+        }
         
         // Hitung ringkasan total mutasi masuk dan keluar sesuai filter
         $summaryQuery = clone $query;
@@ -86,7 +94,7 @@ class StockInOutController extends Controller
             'materials' => $materials,
             'purposes' => $purposes,
             'areas' => $areas,
-            'filters' => $request->only(['search', 'type', 'purpose', 'technician_name', 'material_id', 'date_from', 'date_to']),
+            'filters' => $request->only(['search', 'type', 'purpose', 'technician_name', 'material_id', 'date_from', 'date_to', 'condition']),
             'summary' => [
                 'total_count' => $transactions->total(),
                 'in_count' => $inCount,
@@ -106,6 +114,7 @@ class StockInOutController extends Controller
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
             'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.condition' => 'nullable|string|max:50',
         ]);
 
         DB::beginTransaction();
@@ -137,7 +146,8 @@ class StockInOutController extends Controller
                     'material_id' => $material->id,
                     'quantity' => $quantity,
                     'price_per_unit' => $material->price_per_unit,
-                    'total_price' => $quantity * $material->price_per_unit
+                    'total_price' => $quantity * $material->price_per_unit,
+                    'condition' => $item['condition'] ?? 'Layak Pakai',
                 ]);
 
                 // Update Stock

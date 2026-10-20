@@ -131,7 +131,7 @@
                     </div>
 
                     <!-- Middle row: Dropdown filters -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         <!-- Purpose Filter -->
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Keperluan / Tujuan</label>
@@ -156,6 +156,17 @@
                             <select v-model="filterMaterialId" @change="applyFilters" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500 transition-all font-medium text-gray-700">
                                 <option value="">Semua Barang</option>
                                 <option v-for="m in materials" :key="m.id" :value="m.id">{{ m.name }}</option>
+                            </select>
+                        </div>
+
+                        <!-- Condition Filter -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Kondisi Barang</label>
+                            <select v-model="filterCondition" @change="applyFilters" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500 transition-all font-medium text-gray-700">
+                                <option value="">Semua Kondisi</option>
+                                <option value="Layak Pakai">Layak Pakai</option>
+                                <option value="Tidak Layak">Tidak Layak</option>
+                                <option value="Rusak">Rusak</option>
                             </select>
                         </div>
                     </div>
@@ -238,6 +249,10 @@
                             Barang: {{ getMaterialName(filterMaterialId) }}
                             <button @click="filterMaterialId = ''; applyFilters()" class="hover:text-rose-900">✕</button>
                         </span>
+                        <span v-if="filterCondition" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 font-semibold border border-rose-100">
+                            Kondisi: {{ filterCondition }}
+                            <button @click="filterCondition = ''; applyFilters()" class="hover:text-rose-900">✕</button>
+                        </span>
                         <span v-if="filterDateFrom || filterDateTo" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 font-semibold border border-rose-100">
                             Rentang: {{ filterDateFrom || '...' }} s/d {{ filterDateTo || '...' }}
                             <button @click="filterDateFrom = ''; filterDateTo = ''; applyFilters()" class="hover:text-rose-900">✕</button>
@@ -253,7 +268,7 @@
                                     <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal & No. Ref</th>
                                     <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Jenis & Tujuan</th>
                                     <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Penerima / Pengirim</th>
-                                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Detail Barang</th>
+                                    <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Detail Barang & Kondisi</th>
                                     <th scope="col" class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Total Stock</th>
                                     <th scope="col" class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                                 </tr>
@@ -285,10 +300,17 @@
                                     </td>
                                     <td class="px-6 py-4">
                                         <div class="space-y-1.5">
-                                            <div v-for="item in trx.items" :key="item.id" class="flex items-center gap-2 text-sm">
+                                            <div v-for="item in trx.items" :key="item.id" class="flex flex-wrap items-center gap-2 text-sm">
                                                 <div :class="['w-1.5 h-1.5 rounded-full shrink-0', trx.type === 'out' ? 'bg-rose-500' : 'bg-emerald-500']"></div>
                                                 <span class="font-medium text-gray-900">{{ item.material ? item.material.name : 'Unknown' }}</span>
-                                                <span v-if="item.condition" class="text-xs text-gray-400">({{ item.condition }})</span>
+                                                <span v-if="item.condition" class="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase" :class="{
+                                                    'bg-emerald-50 text-emerald-700 border border-emerald-200': item.condition === 'Layak Pakai',
+                                                    'bg-amber-50 text-amber-700 border border-amber-200': item.condition === 'Tidak Layak',
+                                                    'bg-rose-50 text-rose-700 border border-rose-200': item.condition === 'Rusak',
+                                                    'bg-gray-100 text-gray-600': !['Layak Pakai', 'Tidak Layak', 'Rusak'].includes(item.condition)
+                                                }">
+                                                    {{ item.condition }}
+                                                </span>
                                             </div>
                                         </div>
                                     </td>
@@ -390,14 +412,23 @@
                                             </select>
                                         </div>
 
-                                        <div class="w-full md:w-48">
-                                            <label class="block text-xs font-bold text-gray-500 mb-1 md:hidden">Jumlah (Dalam Satuan Terkecil)</label>
+                                        <div class="w-full md:w-36">
+                                            <label class="block text-xs font-bold text-gray-500 mb-1 md:hidden">Jumlah</label>
                                             <div class="relative">
-                                                <input type="number" step="0.01" v-model="item.quantity" class="w-full text-sm pl-3 pr-16 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500" placeholder="Jumlah" required>
+                                                <input type="number" step="0.01" v-model="item.quantity" class="w-full text-sm pl-3 pr-14 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500" placeholder="Qty" required>
                                                 <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                                                     <span class="text-xs font-bold text-gray-400">{{ getUnit(item.material_id) }}</span>
                                                 </div>
                                             </div>
+                                        </div>
+
+                                        <div class="w-full md:w-40">
+                                            <label class="block text-xs font-bold text-gray-500 mb-1 md:hidden">Kondisi</label>
+                                            <select v-model="item.condition" class="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 bg-white font-medium" :class="item.condition === 'Rusak' ? 'text-rose-600 font-bold' : (item.condition === 'Tidak Layak' ? 'text-amber-600 font-bold' : 'text-emerald-700 font-bold')">
+                                                <option value="Layak Pakai">Layak Pakai</option>
+                                                <option value="Tidak Layak">Tidak Layak</option>
+                                                <option value="Rusak">Rusak</option>
+                                            </select>
                                         </div>
                                         
                                         <div class="w-full md:w-auto mt-2 md:mt-0 flex justify-end">
@@ -460,6 +491,7 @@ const filterType = ref(props.filters?.type || '');
 const filterPurpose = ref(props.filters?.purpose || '');
 const filterTechnician = ref(props.filters?.technician_name || '');
 const filterMaterialId = ref(props.filters?.material_id || '');
+const filterCondition = ref(props.filters?.condition || '');
 const filterDateFrom = ref(props.filters?.date_from || '');
 const filterDateTo = ref(props.filters?.date_to || '');
 const quickActive = ref('');
@@ -471,6 +503,7 @@ const activeFilterCount = computed(() => {
     if (filterPurpose.value) count++;
     if (filterTechnician.value) count++;
     if (filterMaterialId.value) count++;
+    if (filterCondition.value) count++;
     if (filterDateFrom.value || filterDateTo.value) count++;
     return count;
 });
@@ -487,6 +520,7 @@ const applyFilters = () => {
     if (filterPurpose.value) params.purpose = filterPurpose.value;
     if (filterTechnician.value) params.technician_name = filterTechnician.value;
     if (filterMaterialId.value) params.material_id = filterMaterialId.value;
+    if (filterCondition.value) params.condition = filterCondition.value;
     if (filterDateFrom.value) params.date_from = filterDateFrom.value;
     if (filterDateTo.value) params.date_to = filterDateTo.value;
 
@@ -532,6 +566,7 @@ const resetFilters = () => {
     filterPurpose.value = '';
     filterTechnician.value = '';
     filterMaterialId.value = '';
+    filterCondition.value = '';
     filterDateFrom.value = '';
     filterDateTo.value = '';
     quickActive.value = '';
@@ -547,7 +582,7 @@ const form = useForm({
     purpose: '',
     notes: '',
     items: [
-        { material_id: '', quantity: null }
+        { material_id: '', quantity: null, condition: 'Layak Pakai' }
     ]
 });
 
@@ -558,7 +593,7 @@ const getUnit = (materialId) => {
 };
 
 const addItem = () => {
-    form.items.push({ material_id: '', quantity: null });
+    form.items.push({ material_id: '', quantity: null, condition: 'Layak Pakai' });
 };
 
 const removeItem = (index) => {
@@ -607,7 +642,7 @@ const openModal = (type) => {
     form.date = new Date().toISOString().split('T')[0];
     form.technician_name = '';
     form.notes = '';
-    form.items = [{ material_id: '', quantity: null }];
+    form.items = [{ material_id: '', quantity: null, condition: 'Layak Pakai' }];
     form.clearErrors();
     
     // Set default purposes based on type

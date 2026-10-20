@@ -20,6 +20,7 @@ const props = defineProps({
 
 const search = ref(props.filters.search || '');
 const typeFilter = ref(props.filters.type || '');
+const conditionFilter = ref(props.filters.condition || '');
 
 const formatNumber = (number) => {
     return new Intl.NumberFormat('id-ID').format(number || 0);
@@ -33,10 +34,11 @@ const formatDate = (dateString) => {
     });
 };
 
-watch([search, typeFilter], debounce(([newSearch, newType]) => {
+watch([search, typeFilter, conditionFilter], debounce(([newSearch, newType, newCondition]) => {
     router.get('/material-mutations', {
         search: newSearch,
         type: newType,
+        condition: newCondition,
     }, { preserveState: true, preserveScroll: true, replace: true });
 }, 300));
 </script>
@@ -63,6 +65,16 @@ watch([search, typeFilter], debounce(([newSearch, newType]) => {
                         <option value="">Semua Tipe</option>
                         <option value="in">Masuk (IN)</option>
                         <option value="out">Keluar (OUT)</option>
+                    </select>
+                </div>
+
+                <div class="w-full sm:w-48">
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Kondisi Barang</label>
+                    <select v-model="conditionFilter" class="block w-full pl-3 pr-10 py-2 text-base border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all">
+                        <option value="">Semua Kondisi</option>
+                        <option value="Layak Pakai">Layak Pakai</option>
+                        <option value="Tidak Layak">Tidak Layak</option>
+                        <option value="Rusak">Rusak</option>
                     </select>
                 </div>
             </div>
@@ -121,7 +133,12 @@ watch([search, typeFilter], debounce(([newSearch, newType]) => {
                                     </div>
                                 </td>
                                 <td class="py-4 px-5 align-top text-center">
-                                    <span v-if="mutation.condition" class="inline-flex px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                    <span v-if="mutation.condition" class="inline-flex px-2.5 py-1 rounded-full text-xs font-bold" :class="{
+                                        'bg-emerald-50 text-emerald-700 border border-emerald-200': mutation.condition === 'Layak Pakai',
+                                        'bg-amber-50 text-amber-700 border border-amber-200': mutation.condition === 'Tidak Layak',
+                                        'bg-rose-50 text-rose-700 border border-rose-200': mutation.condition === 'Rusak',
+                                        'bg-gray-100 text-gray-700': !['Layak Pakai', 'Tidak Layak', 'Rusak'].includes(mutation.condition)
+                                    }">
                                         {{ mutation.condition }}
                                     </span>
                                     <span v-else class="text-xs text-gray-400 italic">Layak Pakai</span>

@@ -29,11 +29,15 @@ class MaterialMutationController extends Controller
             });
         }
 
+        if ($request->has('condition') && $request->condition != '') {
+            $query->where('condition', $request->condition);
+        }
+
         $mutations = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
         return Inertia::render('MaterialMutations/Index', [
             'mutations' => $mutations,
-            'filters' => $request->only(['search', 'type']),
+            'filters' => $request->only(['search', 'type', 'condition']),
         ]);
     }
 }
