@@ -1236,7 +1236,7 @@
                                                 'bg-emerald-100 text-emerald-800': c.type === 'monthly_direct',
                                                 'bg-purple-100 text-purple-800': c.type === 'upline_tier_1',
                                                 'bg-amber-100 text-amber-800': c.type === 'upline_tier_2',
-                                                'bg-rose-100 text-rose-800 border border-rose-200': c.type === 'clawback_booking',
+                                                'bg-rose-100 text-rose-800 border border-rose-200': c.type === 'clawback_booking' || c.type === 'clawback_survey',
                                             }"
                                         >
                                             <template v-if="c.type === 'booking'">🎯 Booking Baru</template>
@@ -1244,23 +1244,24 @@
                                             <template v-else-if="c.type === 'upline_tier_1'">🚀 Upline Tier 1</template>
                                             <template v-else-if="c.type === 'upline_tier_2'">🌟 Upline Tier 2</template>
                                             <template v-else-if="c.type === 'clawback_booking'">✂️ Potong Booking (&lt; 4 Bln)</template>
+                                            <template v-else-if="c.type === 'clawback_survey'">✂️ Potong Survey (&lt; 4 Bln)</template>
                                             <template v-else>{{ c.type }}</template>
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-slate-700">{{ c.description }}</td>
-                                    <td class="px-4 py-3 text-right font-extrabold whitespace-nowrap" :class="c.amount < 0 || c.type === 'clawback_booking' ? 'text-rose-600' : 'text-emerald-600'">
-                                        {{ (c.amount < 0 || c.type === 'clawback_booking') ? '-' : '+' }}{{ formatRupiah(Math.abs(c.amount)) }}
+                                    <td class="px-4 py-3 text-right font-extrabold whitespace-nowrap" :class="c.amount < 0 || c.type === 'clawback_booking' || c.type === 'clawback_survey' ? 'text-rose-600' : 'text-emerald-600'">
+                                        {{ (c.amount < 0 || c.type === 'clawback_booking' || c.type === 'clawback_survey') ? '-' : '+' }}{{ formatRupiah(Math.abs(c.amount)) }}
                                     </td>
                                     <td class="px-4 py-3 text-center">
                                         <span 
                                             class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border"
                                             :class="{
-                                                'bg-rose-50 text-rose-700 border-rose-200': c.type === 'clawback_booking',
-                                                'bg-purple-50 text-purple-700 border-purple-200': c.status === 'payroll' && c.type !== 'clawback_booking',
-                                                'bg-emerald-50 text-emerald-700 border-emerald-200': c.status === 'approved' && c.type !== 'clawback_booking'
+                                                'bg-rose-50 text-rose-700 border-rose-200': c.type === 'clawback_booking' || c.type === 'clawback_survey',
+                                                'bg-purple-50 text-purple-700 border-purple-200': c.status === 'payroll' && c.type !== 'clawback_booking' && c.type !== 'clawback_survey',
+                                                'bg-emerald-50 text-emerald-700 border-emerald-200': c.status === 'approved' && c.type !== 'clawback_booking' && c.type !== 'clawback_survey'
                                             }"
                                         >
-                                            {{ c.type === 'clawback_booking' ? (c.status === 'payroll' ? 'Potong Gaji' : 'Dipotong') : (c.status === 'payroll' ? 'Slip Gaji' : c.status) }}
+                                            {{ (c.type === 'clawback_booking' || c.type === 'clawback_survey') ? (c.status === 'payroll' ? 'Potong Gaji' : 'Dipotong') : (c.status === 'payroll' ? 'Slip Gaji' : c.status) }}
                                         </span>
                                     </td>
                                 </tr>

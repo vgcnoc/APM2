@@ -1269,6 +1269,7 @@ class CustomerController extends Controller
                 'ont.odp', 
                 'sales:id,name',
                 'clawbackCommission',
+                'clawbackSurveyCommission.affiliate:id,name',
                 'invoices' => function($q) {
                     $q->whereIn('status', ['unpaid', 'partial'])
                       ->where('is_reseller_balance', false)
@@ -1332,14 +1333,35 @@ class CustomerController extends Controller
         if ($request->notes) {
             $notes = $notes ? $notes . ' | ' . $request->notes : $request->notes;
         }
+
+        $penaltyMessages = [];
         if ($clawback && $clawback['penalty_applied']) {
-            $formattedAmount = 'Rp ' . number_format($clawback['amount'], 0, ',', '.');
-            if (!empty($clawback['is_employee'])) {
-                $penaltyNote = "[Pinalti Stop Dini < 4 Bln]: Fee booking {$formattedAmount} otomatis dipotong pada Slip Gaji / Payroll Karyawan {$clawback['affiliate_name']} (Masa aktif: {$clawback['duration']})";
-            } else {
-                $penaltyNote = "[Pinalti Stop Dini < 4 Bln]: Fee booking {$formattedAmount} otomatis dipotong dari saldo dompet afiliasi {$clawback['affiliate_name']} (Masa aktif: {$clawback['duration']})";
+            $penaltyNotes = [];
+
+            if (!empty($clawback['booking_penalty'])) {
+                $bp = $clawback['booking_penalty'];
+                $formattedAmount = 'Rp ' . number_format($bp['amount'], 0, ',', '.');
+                $targetStr = $bp['is_employee'] 
+                    ? "Slip Gaji / Payroll Karyawan {$bp['name']}" 
+                    : "saldo dompet afiliasi {$bp['name']}";
+                $penaltyNotes[] = "[Pinalti Stop Dini < 4 Bln]: Fee booking {$formattedAmount} otomatis dipotong pada {$targetStr} (Masa aktif: {$clawback['duration']})";
+                $penaltyMessages[] = "Fee booking {$formattedAmount} otomatis dipotong dari {$targetStr}";
             }
-            $notes = $notes ? $notes . " | {$penaltyNote}" : $penaltyNote;
+
+            if (!empty($clawback['survey_penalty'])) {
+                $sp = $clawback['survey_penalty'];
+                $formattedAmount = 'Rp ' . number_format($sp['amount'], 0, ',', '.');
+                $targetStr = $sp['is_employee'] 
+                    ? "Slip Gaji / Payroll Teknisi {$sp['name']}" 
+                    : "saldo dompet {$sp['name']}";
+                $penaltyNotes[] = "[Pinalti Stop Dini < 4 Bln]: Fee survey {$formattedAmount} otomatis dipotong pada {$targetStr} (Masa aktif: {$clawback['duration']})";
+                $penaltyMessages[] = "Fee survey {$formattedAmount} otomatis dipotong dari {$targetStr}";
+            }
+
+            if (!empty($penaltyNotes)) {
+                $combinedNotes = implode(' | ', $penaltyNotes);
+                $notes = $notes ? $notes . " | {$combinedNotes}" : $combinedNotes;
+            }
         }
 
         $customer->update([
@@ -1360,13 +1382,8 @@ class CustomerController extends Controller
         });
 
         $msg = "Pelanggan {$customer->name} ({$customer->customer_code}) berhasil di-Stop Permanen dan dipindahkan ke menu Stop Permanen.";
-        if ($clawback && $clawback['penalty_applied']) {
-            $formattedAmount = 'Rp ' . number_format($clawback['amount'], 0, ',', '.');
-            if (!empty($clawback['is_employee'])) {
-                $msg .= " ⚠️ Pinalti Stop Dini (< 4 Bulan) Diterapkan: Fee booking {$formattedAmount} otomatis dipotong pada Slip Gaji / Payroll Karyawan {$clawback['affiliate_name']} (Masa aktif: {$clawback['duration']}).";
-            } else {
-                $msg .= " ⚠️ Pinalti Stop Dini (< 4 Bulan) Diterapkan: Fee booking {$formattedAmount} otomatis dipotong dari saldo dompet afiliasi/sales {$clawback['affiliate_name']} (Masa aktif: {$clawback['duration']}).";
-            }
+        if (!empty($penaltyMessages)) {
+            $msg .= " ⚠️ Pinalti Stop Dini (< 4 Bulan) Diterapkan (Masa aktif: {$clawback['duration']}): " . implode(', dan ', $penaltyMessages) . ".";
         }
 
         return back()->with('success', $msg);

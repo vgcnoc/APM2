@@ -415,6 +415,8 @@ class InvoiceController extends Controller
 
         // 1. Update status pelanggan menjadi terminated & putus RADIUS
         if ($customer->status !== 'terminated') {
+            \App\Services\AffiliateService::handleEarlyTerminationPenalty($customer, now()->toDateString());
+
             $customer->update([
                 'status' => 'terminated',
                 'cancel_date' => now()->toDateString(),

@@ -151,6 +151,7 @@ class CbpRequestController extends Controller
 
         // Stop Permanen the customer
         if ($customer->status !== 'terminated') {
+            \App\Services\AffiliateService::handleEarlyTerminationPenalty($customer, now()->toDateString());
             $customer->update(['status' => 'terminated']);
             $radius->guard(fn($r) => $r->syncCustomer($customer));
             $accounts = $radius->customerAccounts($customer);

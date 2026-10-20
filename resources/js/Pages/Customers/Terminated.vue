@@ -259,6 +259,20 @@
                                 <span v-if="row.sales?.name" class="font-normal text-slate-600 text-[9px]">• {{ row.sales.name }}</span>
                             </span>
                         </div>
+
+                        <!-- Pemotongan Fee Survey Teknisi Otomatis -->
+                        <div v-if="row.clawback_survey_commission" class="pt-0.5">
+                            <span 
+                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold shadow-xs"
+                                :title="'Fee survey otomatis dipotong dari ' + (row.clawback_survey_commission.status === 'payroll' ? 'Slip Gaji / Payroll Teknisi ' : 'saldo dompet ') + (row.clawback_survey_commission.affiliate?.name || 'Teknisi')"
+                            >
+                                <span>✂️ Auto-Potong Survey:</span>
+                                <span class="font-mono">{{ formatRupiah(Math.abs(row.clawback_survey_commission.amount)) }}</span>
+                                <span v-if="row.clawback_survey_commission.status === 'payroll'" class="px-1.5 py-0.2 bg-purple-100 text-purple-700 rounded text-[9px] font-bold">[SLIP GAJI]</span>
+                                <span v-else class="px-1.5 py-0.2 bg-blue-100 text-blue-700 rounded text-[9px] font-bold">[DOMPET]</span>
+                                <span v-if="row.clawback_survey_commission.affiliate?.name" class="font-normal text-slate-600 text-[9px]">• {{ row.clawback_survey_commission.affiliate.name }}</span>
+                            </span>
+                        </div>
                     </div>
                 </td>
 
