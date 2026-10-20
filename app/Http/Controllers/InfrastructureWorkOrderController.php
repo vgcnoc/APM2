@@ -151,14 +151,42 @@ class InfrastructureWorkOrderController extends Controller
      */
     public function store(Request $request)
     {
+        // Normalisasi input string kosong menjadi null
+        foreach (['odc_id', 'olt_id', 'pon_port', 'odc_splitter_port', 'planned_latitude', 'planned_longitude', 'location', 'start_point', 'end_point', 'notes', 'splitter_ratio', 'core_capacity'] as $f) {
+            if ($request->has($f) && ($request->$f === '' || $request->$f === 'null' || $request->$f === null)) {
+                $request->merge([$f => null]);
+            }
+        }
+
+        // Auto-fallback jika target_name kosong
+        if (empty($request->target_name)) {
+            $prefix = ($request->type === 'odc_deployment') ? 'ODC' : 'ODP';
+            $area = Area::find($request->area_id);
+            $areaCode = $area ? strtoupper(substr($area->name, 0, 3)) : 'DST';
+            $request->merge(['target_name' => "{$prefix}-{$areaCode}-" . date('His')]);
+        }
+
+        // Auto-fallback jika technician_ids kosong
+        if (empty($request->technician_ids)) {
+            if (!empty($request->technician_id)) {
+                $request->merge(['technician_ids' => [(int) $request->technician_id]]);
+            } else {
+                $firstTech = User::whereIn('role', ['teknisi', 'admin', 'noc'])->value('id') ?? Auth::id();
+                $request->merge([
+                    'technician_ids' => [$firstTech],
+                    'technician_id' => $firstTech,
+                ]);
+            }
+        }
+
         $validated = $request->validate([
             'type' => 'required|in:odc_deployment,odp_deployment',
             'device_type' => 'nullable|string|max:50',
             'target_name' => 'required|string|max:255',
             'area_id' => 'required|exists:areas,id',
-            'olt_id' => 'nullable|required_if:type,odc_deployment|exists:olts,id',
+            'olt_id' => 'nullable|exists:olts,id',
             'pon_port' => 'nullable|integer|min:1',
-            'odc_id' => 'nullable|required_if:type,odp_deployment|exists:odcs,id',
+            'odc_id' => 'nullable|exists:odcs,id',
             'odc_splitter_port' => 'nullable|integer|min:1',
             'capacity' => 'required|integer|min:1',
             'core_capacity' => 'nullable|integer|min:1',

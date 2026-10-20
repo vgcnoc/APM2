@@ -155,20 +155,24 @@ const filteredOdcs = computed(() => {
 });
 
 // Auto-Naming Cerdas
-watch([() => form.type, () => form.area_id, () => form.odc_id, () => form.olt_id, () => form.pon_port], () => {
-    const area = props.areas.find(a => a.id == form.area_id);
+const generateTargetName = () => {
+    const area = props.areas?.find(a => a.id == form.area_id);
     const areaCode = area ? area.name.substring(0, 3).toUpperCase() : 'DST';
 
     if (form.type === 'odc_deployment') {
-        const olt = props.olts.find(o => o.id == form.olt_id);
+        const olt = props.olts?.find(o => o.id == form.olt_id);
         const oltName = olt ? olt.name.replace(/\s+/g, '') : 'OLT1';
-        form.target_name = `ODC-${areaCode}-${oltName}-P${form.pon_port || 1}`;
+        return `ODC-${areaCode}-${oltName}-P${form.pon_port || 1}`;
     } else {
-        const odc = props.odcs.find(o => o.id == form.odc_id);
-        const odcName = odc ? odc.name.replace(/\s+/g, '') : 'ODC01';
-        form.target_name = `ODP-${odcName}-01`;
+        const odc = props.odcs?.find(o => o.id == form.odc_id);
+        const odcName = odc ? odc.name.replace(/\s+/g, '') : (areaCode ? `${areaCode}01` : 'ODC01');
+        return `ODP-${odcName}-01`;
     }
-});
+};
+
+watch([() => form.type, () => form.area_id, () => form.odc_id, () => form.olt_id, () => form.pon_port], () => {
+    form.target_name = generateTargetName();
+}, { immediate: true });
 
 // Penanganan perubahan tipe perangkat (Normal, Split 2, Closure, Pedestal, Pole Mount)
 const onDeviceTypeChange = () => {
@@ -422,8 +426,93 @@ const removeMaterialRow = (index) => {
     form.materials.splice(index, 1);
 };
 
+const submitErrorMessage = ref('');
+const isSubmitting = ref(false);
+
 const submit = () => {
-    form.post(route('infrastructure.work-orders.store'));
+    submitErrorMessage.value = '';
+
+    // 1. Validasi / Auto-generate Nama Target
+    if (!form.target_name || !form.target_name.trim()) {
+        form.target_name = generateTargetName();
+    }
+
+    // 2. Validasi Area
+    if (!form.area_id) {
+        currentStep.value = 1;
+        submitErrorMessage.value = 'Silakan pilih Wilayah / Area terlebih dahulu pada Langkah 1.';
+        alert(submitErrorMessage.value);
+        return;
+    }
+
+    // 3. Validasi Material
+    if (!form.materials || form.materials.length === 0) {
+        currentStep.value = 2;
+        submitErrorMessage.value = 'Minimal 1 item material wajib dialokasikan pada Langkah 2.';
+        alert(submitErrorMessage.value);
+        return;
+    }
+
+    // Validasi setiap baris material
+    for (let i = 0; i < form.materials.length; i++) {
+        const m = form.materials[i];
+        if (!m.material_id) {
+            currentStep.value = 2;
+            submitErrorMessage.value = `Baris material ke-${i + 1} belum memilih jenis material.`;
+            alert(submitErrorMessage.value);
+            return;
+        }
+        if (!m.quantity || parseFloat(m.quantity) <= 0) {
+            currentStep.value = 2;
+            submitErrorMessage.value = `Jumlah untuk material "${m.name || 'item ' + (i + 1)}" harus lebih dari 0.`;
+            alert(submitErrorMessage.value);
+            return;
+        }
+    }
+
+    // 4. Validasi Tim Teknisi (Minimal 1 teknisi)
+    if (!form.technician_ids || form.technician_ids.length === 0) {
+        if (form.technician_id) {
+            form.technician_ids = [form.technician_id];
+        } else if (props.technicians && props.technicians.length > 0) {
+            form.technician_ids = [props.technicians[0].id];
+            form.technician_id = props.technicians[0].id;
+        } else {
+            submitErrorMessage.value = 'Silakan pilih minimal 1 teknisi pelaksana penugasan pada Langkah 3.';
+            alert(submitErrorMessage.value);
+            return;
+        }
+    }
+
+    if (!form.technician_id && form.technician_ids.length > 0) {
+        form.technician_id = form.technician_ids[0];
+    }
+
+    // 5. Validasi Tanggal
+    if (!form.scheduled_date) {
+        form.scheduled_date = new Date().toISOString().slice(0, 10);
+    }
+
+    isSubmitting.value = true;
+
+    form.post(route('infrastructure.work-orders.store'), {
+        preserveScroll: true,
+        onError: (errors) => {
+            console.error('Validation errors received:', errors);
+            const errorList = Object.values(errors);
+            submitErrorMessage.value = errorList.join(' • ');
+            alert('Gagal menerbitkan penugasan karena data belum lengkap:\n\n• ' + errorList.join('\n• '));
+
+            if (errors.target_name || errors.area_id || errors.odc_id || errors.olt_id || errors.capacity) {
+                currentStep.value = 1;
+            } else if (errors.materials || Object.keys(errors).some(k => k.startsWith('materials'))) {
+                currentStep.value = 2;
+            }
+        },
+        onFinish: () => {
+            isSubmitting.value = false;
+        }
+    });
 };
 </script>
 
@@ -1137,20 +1226,37 @@ const submit = () => {
                         <div>&bull; <b>Alur Berikutnya:</b> Gudang akan menerima notifikasi penyiapan material &rarr; Surat Jalan Outbound &rarr; Teknisi pengerjaan lapangan &rarr; QC Redaman Optik.</div>
                     </div>
 
+                    <!-- Error Notification Banner -->
+                    <div v-if="submitErrorMessage || Object.keys(form.errors).length > 0" class="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold space-y-1">
+                        <div class="flex items-center gap-2 font-bold text-rose-900">
+                            <span>⚠️</span>
+                            <span>Penerbitan Penugasan Belum Berhasil:</span>
+                        </div>
+                        <p v-if="submitErrorMessage">{{ submitErrorMessage }}</p>
+                        <ul v-if="Object.keys(form.errors).length > 0" class="list-disc pl-5 text-[11px] space-y-0.5">
+                            <li v-for="(err, key) in form.errors" :key="key">{{ err }}</li>
+                        </ul>
+                    </div>
+
                     <div class="flex justify-between pt-4 border-t border-slate-100">
                         <button
                             type="button"
                             @click="prevStep"
-                            class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+                            class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
                         >
                             &larr; Kembali
                         </button>
                         <button
-                            type="submit"
-                            :disabled="form.processing"
-                            class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-1.5"
+                            type="button"
+                            @click="submit"
+                            :disabled="form.processing || isSubmitting"
+                            class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                         >
-                            <span>🚀 Terbitkan Work Order Resmi</span>
+                            <svg v-if="form.processing || isSubmitting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                            </svg>
+                            <span>{{ (form.processing || isSubmitting) ? 'Menerbitkan Penugasan...' : '🚀 Terbitkan Work Order Resmi' }}</span>
                         </button>
                     </div>
                 </div>
