@@ -74,6 +74,21 @@
                                     <div class="text-[10px] text-emerald-700 font-semibold mt-0.5">
                                         ODP: {{ ticket.customer?.ont?.odp?.name || '-' }} · Area: {{ ticket.area?.name || ticket.customer?.area_model?.name || '-' }}
                                     </div>
+                                    <!-- Badge Status Pergantian ONT -->
+                                    <div v-if="ticket.ont_replacement_status && ticket.ont_replacement_status !== 'none'" class="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                        <span v-if="ticket.ont_replacement_status === 'requested'" class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                                            🔄 Req Ganti ONT
+                                        </span>
+                                        <span v-else-if="ticket.ont_replacement_status === 'prepared'" class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                                            📦 ONT Disiapkan: {{ ticket.prepared_ont?.serial_number || 'Unit Baru' }}
+                                        </span>
+                                        <span v-else-if="ticket.ont_replacement_status === 'installed'" class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                            ✅ ONT Diganti: {{ ticket.prepared_ont?.serial_number || '-' }}
+                                        </span>
+                                        <span v-else-if="ticket.ont_replacement_status === 'cancelled'" class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200">
+                                            ↩️ Ganti Batal (Retur Gudang)
+                                        </span>
+                                    </div>
                                 </td>
 
                                 <!-- 2. Instruksi & Material Disiapkan -->
@@ -638,7 +653,189 @@
                         </div>
                     </div>
 
-                    <!-- ════════ SECTION 5: UPLOAD FOTO BUKTI LAPANGAN ════════ -->
+                    <!-- ════════ SECTION 5: PERGANTIAN PERANGKAT ONT PELANGGAN ════════ -->
+                    <div class="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-3">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <div>
+                                <label class="block text-xs font-black text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>🔄</span> 5. Pergantian Unit ONT Pelanggan
+                                </label>
+                                <p class="text-[11px] text-indigo-800">
+                                    Alur pergantian ONT: Teknisi mengajukan permintaan ke Ka. Teknisi. Jika tidak jadi dipasang, unit ONT baru otomatis dikembalikan ke Inventory Gudang.
+                                </p>
+                            </div>
+                            <!-- Status Badge -->
+                            <span v-if="selectedTicket?.ont_replacement_status === 'requested'" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                                ⏳ Menunggu Ka. Teknisi Siapkan ONT
+                            </span>
+                            <span v-else-if="selectedTicket?.ont_replacement_status === 'prepared'" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                                📦 ONT Baru Telah Disiapkan
+                            </span>
+                            <span v-else-if="selectedTicket?.ont_replacement_status === 'installed'" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                ✅ ONT Telah Sukses Diganti
+                            </span>
+                            <span v-else-if="selectedTicket?.ont_replacement_status === 'cancelled'" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-100 text-gray-700 border border-gray-300">
+                                ↩️ Dibatalkan / Retur Gudang
+                            </span>
+                        </div>
+
+                        <!-- Info ONT Lama Pelanggan -->
+                        <div class="p-3 rounded-xl bg-white border border-indigo-100 flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-400">ONT Terpasang Saat Ini:</span>
+                                <span class="font-mono font-bold text-gray-900">{{ selectedTicket?.customer?.ont?.serial_number || 'Tidak terdeteksi / Belum ada' }}</span>
+                                <span v-if="selectedTicket?.customer?.ont?.brand" class="text-gray-500">({{ selectedTicket.customer.ont.brand }} {{ selectedTicket.customer.ont.model }})</span>
+                            </div>
+                            <span v-if="selectedTicket?.customer?.ont?.status" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-gray-100 text-gray-700">
+                                Status: {{ selectedTicket.customer.ont.status }}
+                            </span>
+                        </div>
+
+                        <!-- KONDISI 1: Belum ada request atau Dibatalkan -> Tombol Ajukan Request -->
+                        <div v-if="!selectedTicket?.ont_replacement_status || selectedTicket?.ont_replacement_status === 'none' || selectedTicket?.ont_replacement_status === 'cancelled'" class="space-y-3">
+                            <div v-if="!isOntRequestFormOpen" class="flex justify-end">
+                                <button 
+                                    type="button" 
+                                    @click="isOntRequestFormOpen = true" 
+                                    class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    <span>+ Ajukan Permintaan Pergantian ONT ke Ka. Teknisi</span>
+                                </button>
+                            </div>
+
+                            <!-- Form Request Pergantian ONT -->
+                            <div v-if="isOntRequestFormOpen" class="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-300 space-y-3 animate-fade-in-up">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-amber-950">📝 Formulir Pengajuan Pergantian ONT</span>
+                                    <button type="button" @click="isOntRequestFormOpen = false" class="text-xs text-amber-700 hover:text-amber-900 font-bold">✕ Tutup</button>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-amber-900 mb-1">Alasan Pergantian ONT *</label>
+                                    <textarea 
+                                        v-model="ontRequestForm.requested_ont_notes" 
+                                        rows="2" 
+                                        placeholder="Contoh: ONT mati total tersambar petir / port LAN rusak terbakar / redaman LOS tinggi mesin rusak..." 
+                                        class="w-full text-xs rounded-xl border-amber-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 bg-white"
+                                    ></textarea>
+                                </div>
+                                <div class="flex justify-end gap-2">
+                                    <button type="button" @click="isOntRequestFormOpen = false" class="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-semibold bg-white text-gray-700">Batal</button>
+                                    <button 
+                                        type="button" 
+                                        @click="sendOntRequest" 
+                                        :disabled="ontRequestForm.processing || !ontRequestForm.requested_ont_notes" 
+                                        class="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold disabled:opacity-50 transition-all flex items-center gap-1"
+                                    >
+                                        <span>{{ ontRequestForm.processing ? 'Mengirim...' : 'Kirim Request ke Ka. Teknisi' }}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- KONDISI 2: Request Sedang Menunggu Ka. Teknisi -->
+                        <div v-else-if="selectedTicket?.ont_replacement_status === 'requested'" class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <div class="font-bold flex items-center gap-1.5 text-amber-900">
+                                    <span>⏳</span>
+                                    <span>Permintaan Pergantian ONT Sedang Ditinjau Ka. Teknisi</span>
+                                </div>
+                                <button type="button" @click="cancelPreparedOnt(selectedTicket)" class="text-rose-600 hover:text-rose-800 text-[11px] font-bold underline">
+                                    Batalkan Permintaan
+                                </button>
+                            </div>
+                            <div class="text-[11px] text-amber-800 bg-white/80 p-2 rounded-xl border border-amber-200">
+                                <strong>Catatan Permintaan:</strong> "{{ selectedTicket.requested_ont_notes }}"
+                                <span class="block text-[10px] text-amber-600 mt-0.5">Diajukan: {{ formatDate(selectedTicket.requested_ont_at) }}</span>
+                            </div>
+                            <p class="text-[10px] text-amber-700 italic">
+                                Kepala Teknisi akan menyiapkan unit ONT pengganti dari persediaan Gudang melalui menu Jadwal.
+                            </p>
+                        </div>
+
+                        <!-- KONDISI 3: Ka. Teknisi Telah Menyiapkan ONT Baru dari Gudang -->
+                        <div v-else-if="selectedTicket?.ont_replacement_status === 'prepared'" class="p-4 rounded-2xl bg-emerald-50/90 border-2 border-emerald-300 text-xs text-emerald-950 space-y-3">
+                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                <div class="font-bold flex items-center gap-1.5 text-emerald-950 text-sm">
+                                    <span>📦</span>
+                                    <span>Unit ONT Baru Telah Disiapkan dari Gudang!</span>
+                                </div>
+                                <button 
+                                    type="button" 
+                                    @click="cancelPreparedOnt(selectedTicket)" 
+                                    class="px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 text-[11px] font-bold transition-all shadow-sm"
+                                    title="Jika tidak jadi ganti ONT, klik untuk mengembalikan langsung ke inventory gudang"
+                                >
+                                    ↩️ Ganti Tidak Jadi & Retur ke Gudang Sekarang
+                                </button>
+                            </div>
+
+                            <div class="p-3 rounded-xl bg-white border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
+                                <div>
+                                    <div class="text-[10px] font-bold text-gray-400 uppercase">Unit ONT Baru yang Dibawa:</div>
+                                    <div class="font-mono font-black text-sm text-emerald-700">
+                                        SN: {{ selectedTicket.prepared_ont?.serial_number || '-' }}
+                                    </div>
+                                    <div class="text-[11px] text-gray-600">
+                                        Merk/Model: {{ selectedTicket.prepared_ont?.brand || 'ONT' }} {{ selectedTicket.prepared_ont?.model || '' }}
+                                    </div>
+                                </div>
+                                <div class="text-[11px] text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 self-start sm:self-auto">
+                                    Disiapkan oleh: <b>{{ selectedTicket.prepared_by_user?.name || 'Kepala Teknisi' }}</b>
+                                </div>
+                            </div>
+
+                            <!-- Pilihan Aksi di Laporan: Jadi vs Tidak Jadi -->
+                            <div class="space-y-2 pt-2 border-t border-emerald-200">
+                                <label class="block text-[11px] font-bold text-emerald-950 uppercase tracking-wider">
+                                    Keputusan Pergantian Saat Penyelesaian:
+                                </label>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <label 
+                                        class="p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all"
+                                        :class="reportForm.ont_replacement_action === 'installed' ? 'bg-white border-emerald-500 ring-2 ring-emerald-200 text-emerald-950 font-bold shadow-sm' : 'bg-emerald-50/50 border-emerald-200 text-gray-700'"
+                                    >
+                                        <input type="radio" v-model="reportForm.ont_replacement_action" value="installed" class="text-emerald-600 focus:ring-emerald-500">
+                                        <div>
+                                            <div class="text-xs">🟢 Pergantian Berhasil Dipasang</div>
+                                            <div class="text-[10px] text-gray-500 font-normal">ONT baru dipasangkan ke pelanggan, ONT lama ditarik/rusak.</div>
+                                        </div>
+                                    </label>
+
+                                    <label 
+                                        class="p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all"
+                                        :class="reportForm.ont_replacement_action === 'cancelled' ? 'bg-white border-rose-500 ring-2 ring-rose-200 text-rose-950 font-bold shadow-sm' : 'bg-emerald-50/50 border-emerald-200 text-gray-700'"
+                                    >
+                                        <input type="radio" v-model="reportForm.ont_replacement_action" value="cancelled" class="text-rose-600 focus:ring-rose-500">
+                                        <div>
+                                            <div class="text-xs">🔴 Tidak Jadi Ganti (Retur Gudang)</div>
+                                            <div class="text-[10px] text-gray-500 font-normal">ONT baru otomatis dikembalikan ke Inventory Gudang.</div>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <div v-if="reportForm.ont_replacement_action === 'cancelled'" class="mt-2 animate-fade-in-up">
+                                    <label class="block text-[10px] font-bold text-rose-800 uppercase mb-0.5">Alasan Tidak Jadi / Retur Gudang:</label>
+                                    <input 
+                                        type="text" 
+                                        v-model="reportForm.ont_replacement_notes" 
+                                        placeholder="Contoh: Kabel putus sudah disambung, ONT lama ternyata masih normal..." 
+                                        class="w-full text-xs rounded-xl border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 bg-white"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- KONDISI 4: Sudah Selesai Diganti -->
+                        <div v-else-if="selectedTicket?.ont_replacement_status === 'installed'" class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="text-base">✅</span>
+                                <span>ONT Pelanggan telah berhasil diganti dengan unit <b>SN: {{ selectedTicket.prepared_ont?.serial_number || '-' }}</b>.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ════════ SECTION 6: UPLOAD FOTO BUKTI LAPANGAN ════════ -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="space-y-1">
                             <label class="block text-xs font-bold text-gray-700 uppercase">Foto Bukti Sebelum Perbaikan</label>
@@ -769,6 +966,10 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    availableOnts: {
+        type: Array,
+        default: () => []
+    },
     filters: Object,
 });
 
@@ -797,6 +998,12 @@ const materialRequestForm = useForm({
     notes: '',
 });
 
+// Permintaan Pergantian ONT ke Ka. Teknisi State
+const isOntRequestFormOpen = ref(false);
+const ontRequestForm = useForm({
+    requested_ont_notes: '',
+});
+
 // Photo Previews
 const photoBeforePreview = ref(null);
 const photoAfterPreview = ref(null);
@@ -810,6 +1017,8 @@ const reportForm = useForm({
     resolution_notes: '',
     photo_before: null,
     photo_after: null,
+    ont_replacement_action: 'installed',
+    ont_replacement_notes: '',
     materials: [],
 });
 
@@ -917,6 +1126,8 @@ const saveDraft = () => {
             start_time: reportForm.start_time,
             end_time: reportForm.end_time,
             resolution_notes: reportForm.resolution_notes,
+            ont_replacement_action: reportForm.ont_replacement_action,
+            ont_replacement_notes: reportForm.ont_replacement_notes,
             started_at: startedAt.value,
             is_working: isWorking.value,
             materials: reportForm.materials.map(m => ({
@@ -975,6 +1186,8 @@ const openReportModal = (ticket, ignoreDraft = false) => {
             reportForm.start_time = draft.start_time || '';
             reportForm.end_time = draft.end_time || '';
             reportForm.resolution_notes = draft.resolution_notes || '';
+            reportForm.ont_replacement_action = draft.ont_replacement_action || 'installed';
+            reportForm.ont_replacement_notes = draft.ont_replacement_notes || '';
 
             if (Array.isArray(draft.materials) && draft.materials.length > 0) {
                 reportForm.materials = draft.materials;
@@ -1011,6 +1224,8 @@ const openReportModal = (ticket, ignoreDraft = false) => {
         reportForm.start_time = ticket.start_time || '';
         reportForm.end_time = ticket.end_time || '';
         reportForm.resolution_notes = ticket.resolution_notes || '';
+        reportForm.ont_replacement_action = ticket.ont_replacement_action || 'installed';
+        reportForm.ont_replacement_notes = ticket.ont_replacement_notes || '';
 
         initPreparedMaterials(ticket);
 
@@ -1130,6 +1345,39 @@ const sendMaterialRequest = () => {
             materialRequestForm.reset();
             isRequestFormOpen.value = false;
             // Sinkronkan selectedTicket dengan data terbaru di props
+            const fresh = props.tickets?.data?.find(t => t.id === selectedTicket.value?.id);
+            if (fresh) {
+                selectedTicket.value = fresh;
+            }
+        }
+    });
+};
+
+const sendOntRequest = () => {
+    if (!ontRequestForm.requested_ont_notes) {
+        alert('Harap isi alasan pergantian ONT!');
+        return;
+    }
+    ontRequestForm.post(`/pgs/${selectedTicket.value.id}/request-ont`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            ontRequestForm.reset();
+            isOntRequestFormOpen.value = false;
+            const fresh = props.tickets?.data?.find(t => t.id === selectedTicket.value?.id);
+            if (fresh) {
+                selectedTicket.value = fresh;
+            }
+        }
+    });
+};
+
+const cancelPreparedOnt = (ticket) => {
+    if (!confirm('Apakah Anda yakin ingin membatalkan pergantian ONT ini? Unit ONT baru akan otomatis dikembalikan ke stok Inventory Gudang.')) {
+        return;
+    }
+    router.post(`/pgs/${ticket.id}/cancel-ont`, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
             const fresh = props.tickets?.data?.find(t => t.id === selectedTicket.value?.id);
             if (fresh) {
                 selectedTicket.value = fresh;

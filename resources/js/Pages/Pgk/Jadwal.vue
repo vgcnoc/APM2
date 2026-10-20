@@ -77,6 +77,34 @@
                                         ODP: {{ ticket.customer?.ont?.odp?.name || '-' }} · Area: {{ ticket.area?.name || ticket.customer?.area_model?.name || '-' }}
                                     </div>
 
+                                    <!-- Alert Permintaan Pergantian ONT dari Teknisi Lapangan -->
+                                    <div v-if="ticket.ont_replacement_status === 'requested'" class="mt-2 p-2 rounded-xl bg-indigo-100 border border-indigo-300 text-indigo-950 text-xs flex items-center justify-between gap-2 shadow-sm animate-pulse">
+                                        <div class="flex items-center gap-1.5 font-bold">
+                                            <span class="text-base">🔄</span>
+                                            <span>Ada Request Ganti ONT Lapangan!</span>
+                                        </div>
+                                        <button 
+                                            type="button" 
+                                            @click="openOntPrepareModal(ticket)" 
+                                            class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-[10px] shadow-sm transition-all shrink-0"
+                                        >
+                                            Siapkan ONT &rarr;
+                                        </button>
+                                    </div>
+                                    <div v-else-if="ticket.ont_replacement_status === 'prepared'" class="mt-2 p-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-[11px] flex items-center justify-between gap-1 shadow-sm">
+                                        <div class="flex items-center gap-1 font-semibold truncate">
+                                            <span>📦 ONT Disiapkan:</span>
+                                            <b class="font-mono text-blue-800">{{ ticket.prepared_ont?.serial_number || 'Unit Baru' }}</b>
+                                        </div>
+                                        <button 
+                                            type="button" 
+                                            @click="openOntPrepareModal(ticket)" 
+                                            class="text-blue-700 hover:text-blue-900 underline font-bold shrink-0 text-[10px]"
+                                        >
+                                            Kelola
+                                        </button>
+                                    </div>
+
                                     <!-- Alert Permintaan Tambahan Material dari Teknisi Lapangan -->
                                     <div v-if="ticket.material_requests?.some(r => r.status === 'pending')" class="mt-2 p-2 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 text-xs flex items-center justify-between gap-2 shadow-sm animate-pulse">
                                         <div class="flex items-center gap-1.5 font-bold">
@@ -211,6 +239,18 @@
                                             <span v-if="ticket.material_requests.some(r => r.status === 'pending')" class="px-1.5 py-0.2 rounded-full bg-white text-amber-700 font-mono text-[10px]">
                                                 {{ ticket.material_requests.filter(r => r.status === 'pending').length }}
                                             </span>
+                                        </button>
+
+                                        <!-- Tombol Siapkan Unit ONT dari Gudang -->
+                                        <button 
+                                            v-if="can('pgk_btn_assign')"
+                                            @click="openOntPrepareModal(ticket)" 
+                                            class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border shadow-sm shrink-0"
+                                            :class="ticket.ont_replacement_status === 'requested' ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600 shadow-indigo-600/20 animate-pulse' : (ticket.ont_replacement_status === 'prepared' ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200')"
+                                            title="Siapkan Unit ONT Pengganti dari Stok Gudang"
+                                        >
+                                            <span>🔄</span>
+                                            <span>{{ ticket.ont_replacement_status === 'prepared' ? 'ONT Disiapkan' : 'Siapkan ONT' }}</span>
                                         </button>
 
                                         <a :href="`/pgk/${ticket.id}/print`" target="_blank" title="Cetak SPK Tugas Lapangan" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
@@ -595,6 +635,145 @@
                 </div>
             </div>
         </div>
+
+        <!-- ════════ MODAL SIAPKAN UNIT ONT DARI GUDANG ════════ -->
+        <div v-if="showOntPrepareModal" class="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div class="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-gray-100 overflow-hidden animate-fade-in-up my-auto flex flex-col max-h-[90vh]">
+                <!-- Header Modal -->
+                <div class="px-6 py-4 bg-gradient-to-r from-indigo-700 via-indigo-600 to-blue-700 text-white flex justify-between items-center shrink-0">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-black text-lg">Siapkan ONT Baru dari Inventory Gudang</h3>
+                            <span class="px-2 py-0.5 rounded-md bg-white/20 text-white font-mono text-xs font-bold">#{{ ontTicket?.ticket_number }}</span>
+                        </div>
+                        <p class="text-xs text-indigo-100 mt-0.5">Pilih unit modem ONT siap pakai dari stok gudang untuk dibekalkan ke teknisi</p>
+                    </div>
+                    <button @click="showOntPrepareModal = false" class="text-white/80 hover:text-white text-2xl font-bold leading-none p-1 rounded-lg hover:bg-white/10 transition-colors">&times;</button>
+                </div>
+
+                <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                    <!-- Ringkasan Tiket & Pelanggan -->
+                    <div class="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-xs text-indigo-950 space-y-1">
+                        <div class="font-bold flex justify-between">
+                            <span>Pelanggan: {{ ontTicket?.customer?.name }} ({{ ontTicket?.customer?.customer_code }})</span>
+                            <span>Area: {{ ontTicket?.area?.name || ontTicket?.customer?.area_model?.name || '-' }}</span>
+                        </div>
+                        <div>Alamat: {{ ontTicket?.customer?.address || '-' }}</div>
+                        <div class="text-gray-600">Teknisi Ditugaskan: <b>{{ ontTicket?.technicians?.map(t => t.name).join(', ') || 'Belum ada teknisi' }}</b></div>
+                    </div>
+
+                    <!-- Info ONT Lama Pelanggan -->
+                    <div class="p-3 rounded-xl bg-white border border-gray-200 text-xs space-y-1">
+                        <div class="text-[10px] font-bold text-gray-400 uppercase">ONT Lama Pelanggan Saat Ini:</div>
+                        <div class="flex items-center justify-between">
+                            <span class="font-mono font-bold text-gray-800">{{ ontTicket?.customer?.ont?.serial_number || 'Tidak terdeteksi / Belum ada' }}</span>
+                            <span class="text-gray-500 font-medium">{{ ontTicket?.customer?.ont?.brand || '' }} {{ ontTicket?.customer?.ont?.model || '' }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Catatan Permintaan dari Teknisi (Jika Ada) -->
+                    <div v-if="ontTicket?.requested_ont_notes" class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
+                        <div class="font-bold flex items-center gap-1.5 text-amber-800 text-[11px]">
+                            <span>📢</span> Catatan Kebutuhan dari Teknisi Lapangan:
+                        </div>
+                        <div class="italic bg-white/70 p-2 rounded-lg border border-amber-200">
+                            "{{ ontTicket.requested_ont_notes }}"
+                        </div>
+                        <div class="text-[10px] text-amber-700">
+                            Diajukan oleh: <b>{{ ontTicket.requested_by_user?.name || 'Teknisi' }}</b> ({{ formatDate(ontTicket.requested_ont_at) }})
+                        </div>
+                    </div>
+
+                    <!-- Jika Unit Sudah Disiapkan Saat Ini -->
+                    <div v-if="ontTicket?.ont_replacement_status === 'prepared'" class="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-950 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="font-bold text-emerald-900 flex items-center gap-1.5">
+                                <span>📦</span>
+                                <span>Unit Saat Ini yang Sedang Disiapkan:</span>
+                            </div>
+                            <button 
+                                type="button" 
+                                @click="cancelPreparedOntFromLead(ontTicket)" 
+                                class="px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold border border-rose-300 text-[11px] transition-all shadow-sm"
+                            >
+                                ↩️ Batalkan & Retur ke Gudang
+                            </button>
+                        </div>
+                        <div class="bg-white p-2.5 rounded-xl border border-emerald-200 font-mono text-sm font-bold text-emerald-700 flex justify-between items-center">
+                            <span>SN: {{ ontTicket.prepared_ont?.serial_number }}</span>
+                            <span class="text-xs text-gray-500 font-sans font-medium">({{ ontTicket.prepared_ont?.brand }} {{ ontTicket.prepared_ont?.model }})</span>
+                        </div>
+                        <p class="text-[10px] text-emerald-700 italic">
+                            Jika ingin mengganti dengan unit lain, pilih unit baru di bawah dan klik konfirmasi simpan.
+                        </p>
+                    </div>
+
+                    <!-- Pilih Unit ONT dari Stok Inventory Gudang -->
+                    <div class="space-y-2 pt-1">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                Pilih Unit ONT Baru dari Gudang (Tersedia: {{ availableOnts?.length || 0 }} unit) *
+                            </label>
+                        </div>
+
+                        <!-- Search Input -->
+                        <div class="relative">
+                            <input 
+                                type="text" 
+                                v-model="ontSearchQuery" 
+                                placeholder="Ketik nomor SN atau Merk ONT untuk memfilter..." 
+                                class="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-xs focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 bg-gray-50/50"
+                            />
+                            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </div>
+
+                        <!-- List Pilihan Unit ONT -->
+                        <div class="max-h-48 overflow-y-auto space-y-1.5 border border-gray-200 rounded-2xl p-2 bg-gray-50/30">
+                            <label 
+                                v-for="ont in filteredAvailableOnts" 
+                                :key="'avail-ont-' + ont.id"
+                                class="p-2.5 rounded-xl border flex items-center justify-between gap-2 cursor-pointer transition-all"
+                                :class="ontPrepareForm.prepared_ont_id == ont.id ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-200' : 'bg-white hover:bg-gray-50 border-gray-200'"
+                            >
+                                <div class="flex items-center gap-2.5">
+                                    <input type="radio" v-model="ontPrepareForm.prepared_ont_id" :value="ont.id" class="text-indigo-600 focus:ring-indigo-500">
+                                    <div>
+                                        <div class="font-mono font-bold text-xs text-gray-900">{{ ont.serial_number }}</div>
+                                        <div class="text-[10px] text-gray-500">{{ ont.brand || 'ONT' }} {{ ont.model || '' }} · ID: {{ ont.ont_id || '-' }}</div>
+                                    </div>
+                                </div>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    {{ ont.status || 'Siap' }}
+                                </span>
+                            </label>
+
+                            <div v-if="filteredAvailableOnts.length === 0" class="p-4 text-center text-xs text-gray-400 italic">
+                                Tidak ada unit ONT yang sesuai dengan pencarian atau stok gudang kosong.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Action -->
+                    <div class="pt-3 border-t flex items-center justify-end gap-2">
+                        <button 
+                            type="button" 
+                            @click="showOntPrepareModal = false" 
+                            class="px-4 py-2 border border-gray-200 rounded-xl text-gray-700 text-xs font-bold hover:bg-gray-50"
+                        >
+                            Tutup
+                        </button>
+                        <button 
+                            type="button" 
+                            @click="submitPrepareOnt" 
+                            :disabled="ontPrepareForm.processing || !ontPrepareForm.prepared_ont_id" 
+                            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-md shadow-indigo-600/20 disabled:opacity-50 transition-all flex items-center gap-1.5"
+                        >
+                            <span>{{ ontPrepareForm.processing ? 'Menyimpan...' : '✓ Konfirmasi Siapkan ONT untuk Teknisi' }}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </AppLayout>
 </template>
 
@@ -615,6 +794,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    availableOnts: {
+        type: Array,
+        default: () => [],
+    },
     filters: Object,
 });
 
@@ -626,6 +809,60 @@ const selectedTicket = ref(null);
 
 const showMaterialReviewModal = ref(false);
 const reviewTicket = ref(null);
+
+// Modal Siapkan ONT dari Gudang State
+const showOntPrepareModal = ref(false);
+const ontTicket = ref(null);
+const ontSearchQuery = ref('');
+const ontPrepareForm = useForm({
+    prepared_ont_id: '',
+});
+
+const openOntPrepareModal = (ticket) => {
+    ontTicket.value = ticket;
+    ontSearchQuery.value = '';
+    ontPrepareForm.prepared_ont_id = ticket.prepared_ont_id || '';
+    showOntPrepareModal.value = true;
+};
+
+const filteredAvailableOnts = computed(() => {
+    const q = ontSearchQuery.value.toLowerCase().trim();
+    const list = props.availableOnts || [];
+    if (!q) return list;
+    return list.filter(o => 
+        (o.serial_number && o.serial_number.toLowerCase().includes(q)) ||
+        (o.brand && o.brand.toLowerCase().includes(q)) ||
+        (o.model && o.model.toLowerCase().includes(q)) ||
+        (o.ont_id && o.ont_id.toLowerCase().includes(q))
+    );
+});
+
+const submitPrepareOnt = () => {
+    if (!ontPrepareForm.prepared_ont_id) {
+        alert('Silakan pilih salah satu unit ONT dari stok gudang!');
+        return;
+    }
+    ontPrepareForm.post(`/pgk/${ontTicket.value.id}/prepare-ont`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showOntPrepareModal.value = false;
+            ontTicket.value = null;
+        }
+    });
+};
+
+const cancelPreparedOntFromLead = (ticket) => {
+    if (!confirm('Apakah Anda yakin ingin membatalkan unit ONT ini? Unit ONT akan dikembalikan ke stok inventory gudang.')) {
+        return;
+    }
+    router.post(`/pgk/${ticket.id}/cancel-ont`, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showOntPrepareModal.value = false;
+            ontTicket.value = null;
+        }
+    });
+};
 
 const customerAreaId = computed(() => {
     return selectedTicket.value?.area_id || 

@@ -485,6 +485,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('pgs/{pgs}/request-material', [\App\Http\Controllers\PgsController::class, 'requestMaterial'])->name('pgs.request-material');
     Route::post('pgs/{pgs}/material-requests/{materialRequest}/approve', [\App\Http\Controllers\PgsController::class, 'approveMaterialRequest'])->name('pgs.material-requests.approve');
     Route::post('pgs/{pgs}/material-requests/{materialRequest}/reject', [\App\Http\Controllers\PgsController::class, 'rejectMaterialRequest'])->name('pgs.material-requests.reject');
+    Route::post('pgs/{pgs}/request-ont', [\App\Http\Controllers\PgsController::class, 'requestOnt'])->name('pgs.request-ont');
+    Route::post('pgs/{pgs}/prepare-ont', [\App\Http\Controllers\PgsController::class, 'prepareOnt'])->name('pgs.prepare-ont');
+    Route::post('pgs/{pgs}/cancel-ont', [\App\Http\Controllers\PgsController::class, 'cancelOnt'])->name('pgs.cancel-ont');
     Route::delete('pgs/{pgs}', [\App\Http\Controllers\PgsController::class, 'destroy'])->name('pgs.destroy');
 
     // ── Penanganan Gangguan Komplain (PGK) ───────────────────────
@@ -500,6 +503,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('pgk/{pgk}/request-material', [\App\Http\Controllers\PgkController::class, 'requestMaterial'])->name('pgk.request-material');
     Route::post('pgk/{pgk}/material-requests/{materialRequest}/approve', [\App\Http\Controllers\PgkController::class, 'approveMaterialRequest'])->name('pgk.material-requests.approve');
     Route::post('pgk/{pgk}/material-requests/{materialRequest}/reject', [\App\Http\Controllers\PgkController::class, 'rejectMaterialRequest'])->name('pgk.material-requests.reject');
+    Route::post('pgk/{pgk}/request-ont', [\App\Http\Controllers\PgkController::class, 'requestOnt'])->name('pgk.request-ont');
+    Route::post('pgk/{pgk}/prepare-ont', [\App\Http\Controllers\PgkController::class, 'prepareOnt'])->name('pgk.prepare-ont');
+    Route::post('pgk/{pgk}/cancel-ont', [\App\Http\Controllers\PgkController::class, 'cancelOnt'])->name('pgk.cancel-ont');
     Route::delete('pgk/{pgk}', [\App\Http\Controllers\PgkController::class, 'destroy'])->name('pgk.destroy');
 
     // ── Penanganan Gangguan Jalur (PGJ) ──────────────────────────

@@ -41,11 +41,22 @@ class PgkTicket extends Model
         'resolution_notes',
         'resolved_by',
         'resolved_at',
+        'ont_replacement_status',
+        'requested_ont_notes',
+        'requested_ont_at',
+        'requested_by',
+        'prepared_ont_id',
+        'prepared_ont_at',
+        'prepared_by',
+        'old_ont_id',
+        'ont_replacement_action',
+        'ont_replacement_notes',
     ];
 
     protected $attributes = [
         'status' => 'admin_handling',
         'channel' => 'whatsapp',
+        'ont_replacement_status' => 'none',
     ];
 
     protected function casts(): array
@@ -54,6 +65,8 @@ class PgkTicket extends Model
             'scheduled_date' => 'date',
             'escalated_at' => 'datetime',
             'resolved_at' => 'datetime',
+            'requested_ont_at' => 'datetime',
+            'prepared_ont_at' => 'datetime',
         ];
     }
 
@@ -95,6 +108,26 @@ class PgkTicket extends Model
     public function resolvedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'resolved_by');
+    }
+
+    public function preparedOnt(): BelongsTo
+    {
+        return $this->belongsTo(Ont::class, 'prepared_ont_id');
+    }
+
+    public function oldOnt(): BelongsTo
+    {
+        return $this->belongsTo(Ont::class, 'old_ont_id');
+    }
+
+    public function requestedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function preparedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'prepared_by');
     }
 
     protected static function booted(): void

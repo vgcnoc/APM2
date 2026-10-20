@@ -12,6 +12,7 @@ use App\Models\Material;
 use App\Models\MaterialTransaction;
 use App\Models\MaterialTransactionItem;
 use App\Models\AuditLog;
+use App\Models\Ont;
 use App\Services\DataScopeService;
 use App\Services\RestockStockService;
 use Illuminate\Http\Request;
@@ -190,6 +191,10 @@ class PgkController extends Controller
             'materialRequests.material',
             'materialRequests.requester',
             'materialRequests.reviewer',
+            'preparedOnt',
+            'oldOnt',
+            'requestedByUser',
+            'preparedByUser',
         ])->whereIn('status', ['escalated_to_lead', 'scheduled', 'in_progress']);
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
@@ -235,6 +240,11 @@ class PgkController extends Controller
             ->get();
         $materialTransactions = RestockStockService::getRestockTransactions();
         $areas = Area::select('id', 'name')->orderBy('name')->get();
+        $availableOnts = Ont::whereNull('customer_id')
+            ->whereIn('status', ['Sudah Set', 'Belum Set/Baru Input'])
+            ->select('id', 'ont_id', 'serial_number', 'brand', 'model', 'status', 'area_id')
+            ->orderBy('serial_number')
+            ->get();
 
         return Inertia::render('Pgk/Jadwal', [
             'tickets' => $tickets,
@@ -242,6 +252,7 @@ class PgkController extends Controller
             'technicians' => $technicians,
             'materials' => $materials,
             'materialTransactions' => $materialTransactions,
+            'availableOnts' => $availableOnts,
             'filters' => $request->only(['search', 'area_id']),
         ]);
     }
@@ -275,6 +286,10 @@ class PgkController extends Controller
             'materialRequests.material',
             'materialRequests.requester',
             'materialRequests.reviewer',
+            'preparedOnt',
+            'oldOnt',
+            'requestedByUser',
+            'preparedByUser',
         ])->whereIn('status', ['scheduled', 'in_progress', 'completed']);
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
@@ -310,12 +325,18 @@ class PgkController extends Controller
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->with('stocks')->get();
         $materialTransactions = RestockStockService::getRestockTransactions();
         $areas = Area::select('id', 'name')->orderBy('name')->get();
+        $availableOnts = Ont::whereNull('customer_id')
+            ->whereIn('status', ['Sudah Set', 'Belum Set/Baru Input'])
+            ->select('id', 'ont_id', 'serial_number', 'brand', 'model', 'status', 'area_id')
+            ->orderBy('serial_number')
+            ->get();
 
         return Inertia::render('Pgk/Laporan', [
             'tickets' => $tickets,
             'areas' => $areas,
             'materials' => $materials,
             'materialTransactions' => $materialTransactions,
+            'availableOnts' => $availableOnts,
             'filters' => $request->only(['search', 'area_id']),
         ]);
     }
@@ -653,6 +674,8 @@ class PgkController extends Controller
             'resolution_notes' => 'nullable|string',
             'photo_before' => 'nullable|image|max:5120',
             'photo_after' => 'nullable|image|max:5120',
+            'ont_replacement_action' => 'nullable|in:installed,cancelled',
+            'ont_replacement_notes' => 'nullable|string',
             'materials' => 'nullable|array',
             'materials.*.id' => 'nullable',
             'materials.*.pgk_material_id' => 'nullable',
@@ -835,6 +858,69 @@ class PgkController extends Controller
 
         $oldStatus = $pgk->status;
 
+        // 3. Handle Eksekusi Pergantian ONT (Jadi vs Tidak Jadi/Retur Gudang)
+        $ontAction = $request->input('ont_replacement_action');
+        $preparedOnt = $pgk->prepared_ont_id ? Ont::find($pgk->prepared_ont_id) : null;
+        $ontSwapped = false;
+        $ontReturned = false;
+
+        if ($preparedOnt && ($pgk->ont_replacement_status === 'prepared' || $ontAction)) {
+            if ($ontAction === 'installed') {
+                $customer = $pgk->customer;
+                $oldOnt = Ont::where('customer_id', $pgk->customer_id)
+                    ->where('id', '!=', $preparedOnt->id)
+                    ->first() ?: ($pgk->old_ont_id ? Ont::find($pgk->old_ont_id) : null);
+
+                $odpId = $oldOnt?->odp_id;
+                $portNum = $oldOnt?->port_number;
+                $odpPortId = $oldOnt?->odp_port_id;
+
+                // Lepas ONT lama pelanggan dan tandai rusak/ditarik
+                if ($oldOnt) {
+                    $oldOnt->update([
+                        'customer_id' => null,
+                        'odp_id' => null,
+                        'port_number' => null,
+                        'odp_port_id' => null,
+                        'status' => 'rusak',
+                        'description' => trim(($oldOnt->description ? $oldOnt->description . ' | ' : '') . 'Diganti dengan SN ' . $preparedOnt->serial_number . ' pada tiket PGK ' . $pgk->ticket_number . ' (' . now()->format('Y-m-d H:i') . ')'),
+                    ]);
+                }
+
+                // Pasangkan ONT baru ke pelanggan
+                $preparedOnt->update([
+                    'customer_id' => $pgk->customer_id,
+                    'area_id' => $customer?->area_id ?? $preparedOnt->area_id,
+                    'odp_id' => $odpId ?? $preparedOnt->odp_id,
+                    'port_number' => $portNum ?? $preparedOnt->port_number,
+                    'odp_port_id' => $odpPortId ?? $preparedOnt->odp_port_id,
+                    'status' => 'Sudah Set',
+                    'description' => trim(($preparedOnt->description ? $preparedOnt->description . ' | ' : '') . 'Menggantikan SN ' . ($oldOnt?->serial_number ?? '-') . ' pada tiket PGK ' . $pgk->ticket_number),
+                ]);
+
+                $pgk->update([
+                    'ont_replacement_status' => 'installed',
+                    'ont_replacement_action' => 'installed',
+                    'old_ont_id' => $oldOnt?->id,
+                    'ont_replacement_notes' => $request->ont_replacement_notes ?? ('ONT berhasil diganti dengan unit baru SN: ' . $preparedOnt->serial_number),
+                ]);
+                $ontSwapped = true;
+            } elseif ($ontAction === 'cancelled') {
+                // Pergantian TIDAK JADI -> Kembalikan unit ONT baru ke Inventory Gudang
+                $preparedOnt->update([
+                    'customer_id' => null,
+                    'status' => 'Sudah Set',
+                ]);
+
+                $pgk->update([
+                    'ont_replacement_status' => 'cancelled',
+                    'ont_replacement_action' => 'cancelled',
+                    'ont_replacement_notes' => $request->ont_replacement_notes ?? 'Pergantian ONT tidak jadi saat penyelesaian, unit baru dikembalikan ke Inventory Gudang.',
+                ]);
+                $ontReturned = true;
+            }
+        }
+
         $pgk->update([
             'status' => 'completed',
             'action_taken' => $validated['action_taken'],
@@ -859,6 +945,11 @@ class PgkController extends Controller
 
         $retCount = PgkMaterial::where('pgk_ticket_id', $pgk->id)->where('quantity_returned', '>', 0)->count();
         $msg = 'Laporan penanganan komplain berhasil disimpan. Status tiket PGK telah selesai.';
+        if ($ontSwapped) {
+            $msg .= ' Unit ONT baru berhasil dipasangkan ke pelanggan.';
+        } elseif ($ontReturned) {
+            $msg .= ' Unit ONT baru telah dikembalikan ke Inventory Gudang.';
+        }
         if ($retCount > 0) {
             $msg .= ' Sebanyak ' . $retCount . ' jenis kelebihan material otomatis dikembalikan ke stok gudang (Transaksi IN-PGK-RET).';
         }
@@ -1072,4 +1163,113 @@ class PgkController extends Controller
 
         return redirect()->back()->with('success', 'Tiket PGK ' . $num . ' berhasil dihapus.');
     }
+
+    /**
+     * Teknisi Lapangan mengajukan permintaan pergantian ONT ke Kepala Teknisi
+     */
+    public function requestOnt(Request $request, PgkTicket $pgk)
+    {
+        $validated = $request->validate([
+            'requested_ont_notes' => 'required|string|max:1000',
+        ]);
+
+        $oldOntId = $pgk->customer?->ont?->id;
+
+        $pgk->update([
+            'ont_replacement_status' => 'requested',
+            'requested_ont_notes' => $validated['requested_ont_notes'],
+            'requested_ont_at' => now(),
+            'requested_by' => auth()->id(),
+            'old_ont_id' => $oldOntId,
+        ]);
+
+        AuditLog::createLog(
+            'Request Pergantian ONT PGK',
+            $pgk,
+            'none',
+            'requested',
+            'Teknisi mengajukan pergantian unit ONT komplain: ' . $validated['requested_ont_notes']
+        );
+
+        return redirect()->back()->with('success', 'Permintaan pergantian ONT berhasil diajukan ke Kepala Teknisi.');
+    }
+
+    /**
+     * Kepala Teknisi menerima permintaan & menyiapkan ONT baru dari inventory gudang
+     */
+    public function prepareOnt(Request $request, PgkTicket $pgk)
+    {
+        $user = $request->user();
+        if ($user && !$user->can(['pgk_manage', 'pgk_btn_assign']) && !$user->hasRole(['admin', 'kepala teknisi'])) {
+            abort(403, 'Hanya Kepala Teknisi atau Admin yang dapat menyiapkan ONT baru.');
+        }
+
+        $validated = $request->validate([
+            'prepared_ont_id' => 'required|exists:onts,id',
+        ]);
+
+        $ont = Ont::findOrFail($validated['prepared_ont_id']);
+        if (!empty($ont->customer_id)) {
+            return redirect()->back()->with('error', 'ONT tersebut sudah terpasang pada pelanggan lain!');
+        }
+
+        // Tandai status ONT di inventory
+        $ont->update([
+            'status' => 'Disiapkan Teknisi',
+        ]);
+
+        $pgk->update([
+            'ont_replacement_status' => 'prepared',
+            'prepared_ont_id' => $ont->id,
+            'prepared_ont_at' => now(),
+            'prepared_by' => auth()->id(),
+        ]);
+
+        AuditLog::createLog(
+            'Kepala Teknisi Menyiapkan ONT Baru PGK',
+            $pgk,
+            'requested',
+            'prepared',
+            'Kepala Teknisi menyiapkan unit ONT baru SN: ' . $ont->serial_number . ' (' . ($ont->brand ?? 'ONT') . ')'
+        );
+
+        return redirect()->back()->with('success', 'ONT baru berhasil disiapkan dari Inventory Gudang untuk teknisi lapangan.');
+    }
+
+    /**
+     * Batalkan permintaan atau kembalikan ONT baru yang disiapkan ke inventory gudang
+     */
+    public function cancelOnt(Request $request, PgkTicket $pgk)
+    {
+        $notes = $request->input('notes', 'Pergantian ONT tidak jadi, unit dikembalikan ke Inventory Gudang.');
+
+        if ($pgk->prepared_ont_id) {
+            $preparedOnt = Ont::find($pgk->prepared_ont_id);
+            if ($preparedOnt) {
+                // Kembalikan ke persediaan gudang
+                $preparedOnt->update([
+                    'customer_id' => null,
+                    'status' => 'Sudah Set',
+                ]);
+            }
+        }
+
+        $oldStatus = $pgk->ont_replacement_status;
+        $pgk->update([
+            'ont_replacement_status' => 'cancelled',
+            'ont_replacement_action' => 'cancelled',
+            'ont_replacement_notes' => $notes,
+        ]);
+
+        AuditLog::createLog(
+            'Pergantian ONT PGK Dibatalkan & Retur Gudang',
+            $pgk,
+            $oldStatus,
+            'cancelled',
+            $notes
+        );
+
+        return redirect()->back()->with('success', 'Pergantian ONT dibatalkan. Unit ONT telah dikembalikan ke Inventory Gudang.');
+    }
 }
+
