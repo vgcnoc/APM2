@@ -235,13 +235,18 @@ class MaterialHandoverService
                     }
 
                     $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
-                    $stockAfter = $stockBefore + $newQty;
+                    
+                    // Cek kelayakan barang: Hanya barang Layak Pakai yang menambah stok aktif inventory
+                    $isLayak = (trim($newCondition) === 'Layak Pakai');
+                    $stockAfter = $isLayak ? ($stockBefore + $newQty) : $stockBefore;
 
-                    // TAMBAH STOK FISIK KE GUDANG & AREA
-                    if ($matStock) {
-                        $matStock->increment('stock', $newQty);
+                    // TAMBAH STOK FISIK AKTIF KE GUDANG & AREA HANYA JIKA LAYAK PAKAI
+                    if ($isLayak) {
+                        if ($matStock) {
+                            $matStock->increment('stock', $newQty);
+                        }
+                        $material->increment('stock', $newQty);
                     }
-                    $material->increment('stock', $newQty);
 
                     $ppu = (float) $trxItem->price_per_unit;
                     $itemTotal = $ppu * $newQty;
@@ -254,6 +259,47 @@ class MaterialHandoverService
                         'stock_before' => $stockBefore,
                         'stock_after' => $stockAfter,
                     ]);
+
+                    // Jika ada ONT yang terhubung langsung dengan item transaksi ini
+                    if ($trxItem->onts()->exists()) {
+                        foreach ($trxItem->onts as $ont) {
+                            $ont->update([
+                                'customer_id' => null,
+                                'odp_id' => null,
+                                'port_number' => null,
+                                'odp_port_id' => null,
+                                'status' => $isLayak ? 'Sudah Set' : 'rusak',
+                                'description' => trim(($ont->description ? $ont->description . ' | ' : '') . ($isLayak ? 'Diterima Gudang (Layak Pakai)' : 'Diterima Gudang (Rusak/Afkir)') . ' via ' . $transaction->transaction_number),
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            // Jika ada ONT yang dikembalikan pada transaksi ini (misal old_ont_id dari tiket)
+            if ($transaction->old_ont_id) {
+                $oldOnt = Ont::find($transaction->old_ont_id);
+                if ($oldOnt) {
+                    $hasDamaged = collect($verifiedItems)->contains(fn($i) => in_array($i['condition'] ?? '', ['Rusak', 'Tidak Layak']));
+                    if (!$hasDamaged) {
+                        $oldOnt->update([
+                            'customer_id' => null,
+                            'odp_id' => null,
+                            'port_number' => null,
+                            'odp_port_id' => null,
+                            'status' => 'Sudah Set', // Siap digunakan kembali di PSB/PGS/PGK
+                            'description' => trim(($oldOnt->description ? $oldOnt->description . ' | ' : '') . 'Diterima kembali di Gudang (Layak Pakai) via ' . $transaction->transaction_number),
+                        ]);
+                    } else {
+                        $oldOnt->update([
+                            'customer_id' => null,
+                            'odp_id' => null,
+                            'port_number' => null,
+                            'odp_port_id' => null,
+                            'status' => 'rusak',
+                            'description' => trim(($oldOnt->description ? $oldOnt->description . ' | ' : '') . 'Diterima di Gudang (Kondisi Rusak/Afkir) via ' . $transaction->transaction_number),
+                        ]);
+                    }
                 }
             }
 
