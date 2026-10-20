@@ -53,9 +53,9 @@
                     :class="currentTab === 'history' ? 'border-emerald-300 ring-2 ring-emerald-200 bg-emerald-50/20' : 'border-gray-100 hover:border-gray-200'">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-xs font-bold text-emerald-700 uppercase tracking-wider">Selesai Diterima Hari Ini</p>
-                            <h3 class="text-3xl font-black text-emerald-600 mt-1">{{ summary.received_today }}</h3>
-                            <p class="text-xs text-emerald-600 font-medium mt-0.5">Stok otomatis sinkron ke Inventory Gudang</p>
+                            <p class="text-xs font-bold text-emerald-700 uppercase tracking-wider">Total Riwayat Selesai</p>
+                            <h3 class="text-3xl font-black text-emerald-600 mt-1">{{ summary.total_received }}</h3>
+                            <p class="text-xs text-emerald-600 font-medium mt-0.5">{{ summary.received_today }} barang diterima hari ini</p>
                         </div>
                         <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xl shadow-sm">
                             ✅
@@ -92,6 +92,10 @@
                         class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap"
                         :class="currentTab === 'history' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'">
                         <span>📜</span> Riwayat Selesai
+                        <span v-if="summary.total_received > 0" class="px-2 py-0.5 rounded-full text-[11px] font-black"
+                            :class="currentTab === 'history' ? 'bg-white text-emerald-700' : 'bg-emerald-100 text-emerald-800'">
+                            {{ summary.total_received }}
+                        </span>
                     </button>
                 </div>
 

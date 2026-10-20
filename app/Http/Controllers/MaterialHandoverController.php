@@ -26,16 +26,50 @@ class MaterialHandoverController extends Controller
         $condition = $request->query('condition', '');
 
         // Summary Counters
-        $pendingReturnsCount = MaterialTransaction::where('request_type', 'return_handover')
-            ->where('handover_status', 'pending_handover')
+        $pendingReturnsCount = MaterialTransaction::where(function ($q) {
+                $q->where('request_type', 'return_handover')
+                  ->orWhere('transaction_number', 'like', 'RTR-%')
+                  ->orWhere('transaction_number', 'like', 'IN-%-RET-%')
+                  ->orWhere('purpose', 'like', 'Pengembalian%');
+            })
+            ->where(function ($q) {
+                $q->where('handover_status', 'pending_handover')
+                  ->orWhere(function ($sq) {
+                      $sq->where('status', 'pending')
+                         ->where(function ($ssq) {
+                             $ssq->whereNull('handover_status')->orWhere('handover_status', 'none');
+                         });
+                  });
+            })
             ->count();
 
         $pendingRequestsCount = MaterialTransaction::whereIn('request_type', ['additional_material', 'ont_replacement'])
             ->where('status', 'pending')
             ->count();
 
-        $receivedTodayCount = MaterialTransaction::where('handover_status', 'received')
-            ->whereDate('received_at', today())
+        $totalReceivedCount = MaterialTransaction::where('handover_status', 'received')
+            ->orWhere(function ($sq) {
+                $sq->where('status', 'approved')
+                   ->where(function ($ssq) {
+                       $ssq->where('request_type', 'return_handover')
+                           ->orWhere('transaction_number', 'like', 'RTR-%')
+                           ->orWhere('transaction_number', 'like', 'IN-%-RET-%')
+                           ->orWhere('purpose', 'like', 'Pengembalian%')
+                           ->orWhereIn('request_type', ['additional_material', 'ont_replacement']);
+                   });
+            })
+            ->count();
+
+        $receivedTodayCount = MaterialTransaction::where(function ($q) {
+                $q->where('handover_status', 'received')
+                  ->orWhere('status', 'approved');
+            })
+            ->where(function ($q) {
+                $q->whereDate('received_at', today())
+                  ->orWhere(function ($sq) {
+                      $sq->whereNull('received_at')->whereDate('created_at', today());
+                  });
+            })
             ->count();
 
         // Base Query
@@ -50,12 +84,26 @@ class MaterialHandoverController extends Controller
         ])->latest('id');
 
         if ($tab === 'returns') {
-            $query->where('request_type', 'return_handover');
+            $query->where(function ($q) {
+                $q->where('request_type', 'return_handover')
+                  ->orWhere('transaction_number', 'like', 'RTR-%')
+                  ->orWhere('transaction_number', 'like', 'IN-%-RET-%')
+                  ->orWhere('purpose', 'like', 'Pengembalian%');
+            });
+
             if ($status) {
                 $query->where('handover_status', $status);
             } else {
                 // Default: tampilkan yang pending di atas
-                $query->whereIn('handover_status', ['pending_handover', 'rejected']);
+                $query->where(function ($q) {
+                    $q->whereIn('handover_status', ['pending_handover', 'rejected'])
+                      ->orWhere(function ($sq) {
+                          $sq->where('status', 'pending')
+                             ->where(function ($ssq) {
+                                 $ssq->whereNull('handover_status')->orWhere('handover_status', 'none');
+                             });
+                      });
+                });
             }
         } elseif ($tab === 'requests') {
             $query->whereIn('request_type', ['additional_material', 'ont_replacement']);
@@ -70,6 +118,15 @@ class MaterialHandoverController extends Controller
                   ->orWhere(function ($sq) {
                       $sq->whereIn('request_type', ['additional_material', 'ont_replacement'])
                          ->where('status', 'approved');
+                  })
+                  ->orWhere(function ($sq) {
+                      $sq->where('status', 'approved')
+                         ->where(function ($ssq) {
+                             $ssq->where('request_type', 'return_handover')
+                                 ->orWhere('transaction_number', 'like', 'RTR-%')
+                                 ->orWhere('transaction_number', 'like', 'IN-%-RET-%')
+                                 ->orWhere('purpose', 'like', 'Pengembalian%');
+                         });
                   });
             });
         }
@@ -128,6 +185,7 @@ class MaterialHandoverController extends Controller
                 'pending_returns' => $pendingReturnsCount,
                 'pending_requests' => $pendingRequestsCount,
                 'received_today' => $receivedTodayCount,
+                'total_received' => $totalReceivedCount,
             ],
         ]);
     }
