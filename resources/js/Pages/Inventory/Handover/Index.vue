@@ -98,16 +98,6 @@
                         </span>
                     </button>
                 </div>
-
-                <!-- Quick Action Buttons -->
-                <div class="flex items-center gap-2 shrink-0 flex-wrap">
-                    <button @click="openReturnModal()" class="px-4 py-2.5 rounded-xl text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 shadow-sm transition-all flex items-center gap-1.5">
-                        <span>📥</span> + Ajukan Pengembalian Sisa
-                    </button>
-                    <button @click="openRequestModal()" class="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all flex items-center gap-1.5">
-                        <span>⚡</span> + Request Material / Ganti ONT
-                    </button>
-                </div>
             </div>
 
             <!-- ── 3. FILTERS BAR ─────────────────────────────────────── -->
@@ -733,72 +723,6 @@ const approveRequest = (trx) => {
             preserveScroll: true,
         });
     }
-};
-
-// Return Modal
-const showReturnModal = ref(false);
-const returnForm = useForm({
-    source_type: 'installation',
-    source_reference: '',
-    technician_name: '',
-    area_id: '',
-    notes: '',
-    items: [
-        { material_id: '', quantity: 1, unit: 'pcs', condition: 'Layak Pakai' }
-    ]
-});
-
-const openReturnModal = () => {
-    returnForm.reset();
-    returnForm.items = [{ material_id: '', quantity: 1, unit: 'pcs', condition: 'Layak Pakai' }];
-    showReturnModal.value = true;
-};
-
-const addReturnItem = () => {
-    returnForm.items.push({ material_id: '', quantity: 1, unit: 'pcs', condition: 'Layak Pakai' });
-};
-
-const submitReturnForm = () => {
-    returnForm.post('/material-handovers/return', {
-        preserveScroll: true,
-        onSuccess: () => {
-            showReturnModal.value = false;
-        }
-    });
-};
-
-// Request Modal
-const showRequestModal = ref(false);
-const requestForm = useForm({
-    request_type: 'additional_material',
-    source_type: 'installation',
-    source_reference: '',
-    area_id: '',
-    old_ont_id: '',
-    replacement_ont_id: '',
-    notes: '',
-    items: [
-        { material_id: '', quantity: 1, unit: 'pcs' }
-    ]
-});
-
-const openRequestModal = () => {
-    requestForm.reset();
-    requestForm.items = [{ material_id: '', quantity: 1, unit: 'pcs' }];
-    showRequestModal.value = true;
-};
-
-const addRequestItem = () => {
-    requestForm.items.push({ material_id: '', quantity: 1, unit: 'pcs' });
-};
-
-const submitRequestForm = () => {
-    requestForm.post('/material-handovers/request', {
-        preserveScroll: true,
-        onSuccess: () => {
-            showRequestModal.value = false;
-        }
-    });
 };
 
 // Helpers
