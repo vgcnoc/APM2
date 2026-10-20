@@ -20,6 +20,19 @@
                                 Pantau distribusi persediaan barang di setiap area / gudang secara detail.
                             </p>
                         </div>
+
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <Link href="/stok-in-out?action=retur" class="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:shadow transition-all">
+                                <span>🟢</span> + Catat Retur Sisa (Layak)
+                            </Link>
+                            <Link href="/stok-in-out?action=rusak" class="inline-flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:shadow transition-all">
+                                <span>🔴</span> + Catat Barang Rusak
+                            </Link>
+                            <Link href="/material-mutations" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                                Rekap Kondisi
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -21,19 +21,18 @@
                             </p>
                         </div>
 
-                        <div class="flex items-center gap-3">
-                            <button @click="openModal('out')" class="group relative inline-flex items-center justify-center px-6 py-3 text-sm font-bold text-white transition-all duration-200 bg-gradient-to-r from-rose-600 to-orange-500 border border-transparent rounded-xl shadow-md hover:shadow-lg hover:from-rose-500 hover:to-orange-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 overflow-hidden">
-                                <span class="absolute inset-0 w-full h-full -mt-1 rounded-lg opacity-30 bg-gradient-to-b from-transparent via-transparent to-black"></span>
-                                <svg class="w-5 h-5 mr-2 -ml-1 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                                Stok Keluar (Distribusi)
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <button @click="openModal('in', 'Layak Pakai')" class="group inline-flex items-center justify-center px-4 py-2.5 text-xs sm:text-sm font-bold text-white transition-all duration-200 bg-emerald-600 hover:bg-emerald-700 border border-transparent rounded-xl shadow-sm hover:shadow">
+                                <span class="mr-1.5 text-base">🟢</span>
+                                + Catat Retur Sisa (Layak)
                             </button>
-                            <button @click="openModal('in')" class="group relative inline-flex items-center justify-center px-6 py-3 text-sm font-bold text-gray-700 transition-all duration-200 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 overflow-hidden">
-                                <svg class="w-5 h-5 mr-2 -ml-1 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                                </svg>
-                                Stok Masuk (Retur)
+                            <button @click="openModal('in', 'Rusak')" class="group inline-flex items-center justify-center px-4 py-2.5 text-xs sm:text-sm font-bold text-white transition-all duration-200 bg-rose-600 hover:bg-rose-700 border border-transparent rounded-xl shadow-sm hover:shadow">
+                                <span class="mr-1.5 text-base">🔴</span>
+                                + Catat Barang Rusak
+                            </button>
+                            <button @click="openModal('out', 'Layak Pakai')" class="group inline-flex items-center justify-center px-4 py-2.5 text-xs sm:text-sm font-bold text-gray-700 transition-all duration-200 bg-white border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50">
+                                <svg class="w-4 h-4 mr-1.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                                - Stok Keluar
                             </button>
                         </div>
                     </div>
@@ -537,7 +536,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useForm, Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue';
@@ -712,22 +711,32 @@ const getTransactionTotals = (trx) => {
     return Object.values(grouped);
 };
 
-const openModal = (type) => {
+const openModal = (type, defaultCondition = 'Layak Pakai') => {
     form.type = type;
     form.date = new Date().toISOString().split('T')[0];
     form.technician_name = '';
     form.notes = '';
-    form.items = [{ material_id: '', quantity: null, condition: 'Layak Pakai' }];
+    form.items = [{ material_id: '', quantity: null, condition: defaultCondition }];
     form.clearErrors();
     
-    // Set default purposes based on type
+    // Set default purposes based on type & condition
     if (type === 'out') {
-        form.purpose = 'Bekal Teknisi';
+        form.purpose = defaultCondition === 'Rusak' ? 'Afkir / Buang Rusak' : 'Bekal Teknisi';
     } else {
-        form.purpose = 'Retur Sisa Pasang';
+        form.purpose = defaultCondition === 'Rusak' ? 'Barang Rusak Lapangan' : 'Retur Sisa Pasang';
     }
     isModalOpen.value = true;
 };
+
+onMounted(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const action = urlParams.get('action');
+    if (action === 'retur') {
+        openModal('in', 'Layak Pakai');
+    } else if (action === 'rusak') {
+        openModal('in', 'Rusak');
+    }
+});
 
 const closeModal = () => {
     isModalOpen.value = false;
