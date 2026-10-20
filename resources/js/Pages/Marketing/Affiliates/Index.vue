@@ -1164,7 +1164,7 @@
                                             <button
                                                 type="button"
                                                 @click="openUplineModal(a)"
-                                                class="text-[10px] text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-1.5 py-0.5 rounded transition-colors"
+                                                class="text-[10px] text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-1.5 py-0.5 rounded transition-colors focus:outline-none"
                                                 title="Ubah Upline Sponsor"
                                             >
                                                 ✏️
@@ -1185,7 +1185,7 @@
                                             <button
                                                 type="button"
                                                 @click="openUplineModal(a)"
-                                                class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 flex items-center gap-1 shadow-2xs"
+                                                class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 flex items-center gap-1 shadow-2xs focus:outline-none"
                                                 title="Atur siapa Upline Sponsor dari agen ini"
                                             >
                                                 <span>🔗</span>
@@ -1614,8 +1614,10 @@
                     </button>
                 </div>
             </div>
+        </div>
 
-            <!-- ════ MODAL: DAFTARKAN AGEN / DOWNLINE BARU ════ -->
+        <!-- ════ MODAL: DAFTARKAN AGEN / DOWNLINE BARU ════ -->
+        <Teleport to="body">
             <div v-if="showCreateAffiliateModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="showCreateAffiliateModal = false">
                 <div class="bg-white rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-100 p-6 sm:p-7 max-h-[90vh] flex flex-col">
                     <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 shrink-0">
@@ -1898,8 +1900,10 @@
                     </form>
                 </div>
             </div>
+        </Teleport>
 
-            <!-- ════ MODAL: ATUR / EDIT UPLINE SPONSOR ════ -->
+        <!-- ════ MODAL: ATUR / EDIT UPLINE SPONSOR ════ -->
+        <Teleport to="body">
             <div v-if="showUplineModal && selectedAffiliateForUpline" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="showUplineModal = false">
                 <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 p-6 sm:p-7">
                     <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
@@ -1951,7 +1955,7 @@
                     </form>
                 </div>
             </div>
-        </div>
+        </Teleport>
     </AppLayout>
 </template>
 
@@ -1959,6 +1963,7 @@
 import { ref, computed } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     tab: String,
@@ -2239,6 +2244,15 @@ const submitCreateAffiliate = () => {
         onSuccess: () => {
             showCreateAffiliateModal.value = false;
             createForm.reset();
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: 'Agen afiliasi baru berhasil didaftarkan.',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+            });
         },
     });
 };
@@ -2253,6 +2267,7 @@ const uplineForm = useForm({
 const openUplineModal = (affiliate) => {
     selectedAffiliateForUpline.value = affiliate;
     uplineForm.upline_id = affiliate.upline_id || '';
+    uplineForm.clearErrors();
     showUplineModal.value = true;
 };
 
@@ -2263,6 +2278,15 @@ const submitUpline = () => {
         onSuccess: () => {
             showUplineModal.value = false;
             uplineForm.reset();
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: 'Upline sponsor berhasil diperbarui.',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+            });
         },
     });
 };
