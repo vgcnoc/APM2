@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Area;
 use App\Models\InfrastructureWorkOrder;
 use App\Models\Material;
+use App\Models\MaterialTransaction;
+use App\Models\MaterialStock;
 use App\Models\Odc;
 use App\Models\Olt;
 use App\Models\User;
@@ -97,12 +99,26 @@ class InfrastructureWorkOrderController extends Controller
      */
     public function create(): Response
     {
+        $materials = Material::where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->with('stocks')
+            ->orderBy('name')
+            ->get(['id', 'name', 'unit', 'stock', 'price_per_unit', 'category']);
+
+        $materialTransactions = MaterialTransaction::where('type', 'in')
+            ->with(['items.material.stocks', 'areaModel'])
+            ->latest('id')
+            ->limit(200)
+            ->get();
+
         return Inertia::render('Infrastructure/WorkOrders/Create', [
             'areas' => Area::orderBy('name')->get(['id', 'name']),
             'olts' => Olt::where('status', 'active')->get(['id', 'name', 'area_id', 'total_pon_ports']),
             'odcs' => Odc::where('status', 'active')->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
             'technicians' => User::whereIn('role', ['teknisi', 'admin', 'noc'])->orderBy('name')->get(['id', 'name']),
-            'materials' => Material::orderBy('name')->get(['id', 'name', 'unit', 'stock', 'price_per_unit']),
+            'materials' => $materials,
+            'materialTransactions' => $materialTransactions,
         ]);
     }
 
@@ -159,8 +175,12 @@ class InfrastructureWorkOrderController extends Controller
             'notes' => 'nullable|string|max:1000',
             'materials' => 'required|array|min:1',
             'materials.*.material_id' => 'required|exists:materials,id',
+            'materials.*.material_transaction_item_id' => 'nullable|integer',
+            'materials.*.trx_number' => 'nullable|string|max:100',
             'materials.*.quantity' => 'required|numeric|min:0.01',
             'materials.*.unit' => 'nullable|string|max:20',
+            'materials.*.note' => 'nullable|string|max:255',
+            'materials.*.notes' => 'nullable|string|max:255',
         ]);
 
         $workOrder = InfrastructureWorkOrderService::createWorkOrder(

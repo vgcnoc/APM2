@@ -145,6 +145,7 @@
                                     <td class="py-2.5 px-3 text-center font-bold text-gray-600">{{ idx + 1 }}</td>
                                     <td class="py-2.5 px-3">
                                         <p class="font-bold text-gray-900">{{ item.material?.name || 'Material Tidak Diketahui' }}</p>
+                                        <p v-if="item.trx_number" class="text-[10px] font-mono text-gray-500 font-semibold">Ref Order: {{ item.trx_number }}</p>
                                     </td>
                                     <td class="py-2.5 px-3 text-gray-600">
                                         <span>{{ item.material?.category || '-' }}</span>

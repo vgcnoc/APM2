@@ -443,7 +443,13 @@ const formatDate = (dateStr) => {
                             </thead>
                             <tbody class="divide-y divide-slate-100">
                                 <tr v-for="mat in workOrder.materials" :key="mat.id" class="hover:bg-slate-50/60">
-                                    <td class="px-4 py-3 font-bold text-slate-900">{{ mat.material?.name || '-' }}</td>
+                                    <td class="px-4 py-3 font-bold text-slate-900">
+                                        <div>{{ mat.material?.name || '-' }}</div>
+                                        <div v-if="mat.trx_number" class="text-[10px] font-mono text-amber-700 font-semibold mt-0.5 flex items-center gap-1">
+                                            <span>🛒 Order:</span>
+                                            <span>{{ mat.trx_number }}</span>
+                                        </div>
+                                    </td>
                                     <td class="px-4 py-3 text-center font-bold text-indigo-700">{{ mat.requested_qty }}</td>
                                     <td class="px-4 py-3 text-center font-semibold text-slate-800">{{ mat.used_qty ?? '-' }}</td>
                                     <td class="px-4 py-3 text-center font-bold text-emerald-600">{{ mat.returned_qty ?? 0 }}</td>

@@ -13,12 +13,20 @@ class InfrastructureWorkOrderMaterial extends Model
     protected $fillable = [
         'work_order_id',
         'material_id',
+        'material_transaction_item_id',
+        'trx_number',
         'requested_qty',
         'used_qty',
         'returned_qty',
         'unit',
         'status',
+        'notes',
     ];
+
+    public function materialTransactionItem(): BelongsTo
+    {
+        return $this->belongsTo(MaterialTransactionItem::class, 'material_transaction_item_id');
+    }
 
     protected $casts = [
         'requested_qty' => 'decimal:2',

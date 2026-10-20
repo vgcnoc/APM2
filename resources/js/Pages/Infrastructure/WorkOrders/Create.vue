@@ -10,6 +10,10 @@ const props = defineProps({
     odcs: Array,
     technicians: Array,
     materials: Array,
+    materialTransactions: {
+        type: Array,
+        default: () => []
+    },
 });
 
 const currentStep = ref(1);
@@ -206,6 +210,90 @@ watch(() => form.capacity, (newCap) => {
     }
 });
 
+// Info Wilayah / Area Terpilih
+const selectedArea = computed(() => {
+    return props.areas?.find(a => a.id == form.area_id) || null;
+});
+
+const selectedAreaName = computed(() => {
+    return selectedArea.value?.name || 'Area Terpilih';
+});
+
+// Helper untuk mengambil stok suatu material di Area yang sedang dipilih
+const getAreaStock = (materialId) => {
+    const mat = props.materials?.find(m => m.id == materialId);
+    if (!mat) return 0;
+    if (form.area_id && mat.stocks && Array.isArray(mat.stocks)) {
+        const s = mat.stocks.find(st => st.area_id == form.area_id);
+        if (s) return parseFloat(s.stock) || 0;
+    }
+    return parseFloat(mat.stock) || 0;
+};
+
+// Filter transaksi Order Toko berdasarkan Area yang dipilih
+const filteredMaterialTransactions = computed(() => {
+    const allTrx = props.materialTransactions || [];
+    const areaId = form.area_id;
+    const areaName = selectedArea.value?.name?.toLowerCase().trim();
+    if (!areaId) return allTrx;
+    
+    const matched = allTrx.filter(trx => {
+        if (trx.area_id && trx.area_id == areaId) return true;
+        if (trx.area && areaName && trx.area.toLowerCase().trim() === areaName) return true;
+        if (trx.technician_name && areaName && trx.technician_name.toLowerCase().trim() === areaName) return true;
+        return false;
+    });
+
+    return matched.length > 0 ? matched : allTrx;
+});
+
+// Daftar Item Material dari Order Toko (Restock) Area ini
+const availableRestockMaterials = computed(() => {
+    const items = [];
+    const trxs = filteredMaterialTransactions.value || [];
+
+    trxs.forEach(trx => {
+        if (trx.items && trx.items.length > 0) {
+            trx.items.forEach(item => {
+                if (!item.material) return;
+                const name = (item.material.name || '').toLowerCase();
+                const category = (item.material.category || '').toLowerCase();
+                const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
+
+                // Kecualikan ONT / Modem untuk kebutuhan rollout kabel/tiang ODC/ODP
+                if (!isRegistered && !name.includes('modem') && !category.includes('modem')) {
+                    let areaStock = getAreaStock(item.material_id);
+                    if (areaStock <= 0 && item.quantity) {
+                        areaStock = parseFloat(item.quantity) || 0;
+                    }
+
+                    items.push({
+                        id: item.id,
+                        material_id: item.material_id,
+                        trx_number: trx.transaction_number,
+                        trx_date: trx.date,
+                        purpose: trx.purpose,
+                        area_name: trx.area_model?.name || trx.area || selectedAreaName.value,
+                        name: item.material.name,
+                        category: item.material.category,
+                        area_stock: areaStock,
+                        unit: item.unit || item.material.unit || 'pcs',
+                        material: item.material,
+                    });
+                }
+            });
+        }
+    });
+
+    return items;
+});
+
+// Master material yang belum tercantum di daftar restock untuk optgroup alternatif
+const nonRestockMaterials = computed(() => {
+    const restockMatIds = new Set(availableRestockMaterials.value.map(i => i.material_id));
+    return (props.materials || []).filter(m => !restockMatIds.has(m.id));
+});
+
 // Auto-BOM Fetcher
 const fetchAutoBOM = async () => {
     isLoadingBOM.value = true;
@@ -224,6 +312,8 @@ const fetchAutoBOM = async () => {
         if (Array.isArray(response.data) && response.data.length > 0) {
             form.materials = response.data.map(item => ({
                 material_id: item.material_id,
+                material_transaction_item_id: item.material_transaction_item_id || null,
+                trx_number: item.trx_number || '',
                 name: item.name,
                 quantity: item.quantity,
                 unit: item.unit,
@@ -256,15 +346,75 @@ const prevStep = () => {
     currentStep.value--;
 };
 
-const addMaterialRow = () => {
+const onMaterialChange = (row) => {
+    if (!row.material_id) return;
+    
+    // Prioritaskan temukan item dari Order Toko area
+    const restockItem = availableRestockMaterials.value.find(i => i.material_id == row.material_id);
+    const masterMat = props.materials?.find(m => m.id == row.material_id);
+
+    if (restockItem) {
+        row.name = restockItem.name;
+        row.unit = restockItem.unit;
+        row.available_stock = restockItem.area_stock;
+        row.trx_number = restockItem.trx_number;
+        row.material_transaction_item_id = restockItem.id;
+        if (!row.note || row.note === 'Material tambahan' || row.note === '-') {
+            row.note = `Diambil dari Order Toko (${restockItem.trx_number})`;
+        }
+    } else if (masterMat) {
+        row.name = masterMat.name;
+        row.unit = masterMat.unit || 'pcs';
+        row.available_stock = getAreaStock(masterMat.id);
+        row.trx_number = '';
+        row.material_transaction_item_id = null;
+    }
+
+    row.is_sufficient = (parseFloat(row.available_stock) || 0) >= (parseFloat(row.quantity) || 0);
+};
+
+const onQuantityChange = (row) => {
+    row.is_sufficient = (parseFloat(row.available_stock) || 0) >= (parseFloat(row.quantity) || 0);
+};
+
+const addMaterialRow = (fromRestock = false) => {
+    let pickedMatId = '';
+    let pickedTrxNumber = '';
+    let pickedTrxItemId = null;
+    let pickedName = '';
+    let pickedUnit = 'pcs';
+    let pickedStock = 0;
+    let pickedNote = 'Material tambahan';
+
+    if (fromRestock && availableRestockMaterials.value.length > 0) {
+        const currentMatIds = new Set(form.materials.map(m => m.material_id));
+        const candidate = availableRestockMaterials.value.find(i => !currentMatIds.has(i.material_id)) || availableRestockMaterials.value[0];
+        
+        pickedMatId = candidate.material_id;
+        pickedTrxNumber = candidate.trx_number;
+        pickedTrxItemId = candidate.id;
+        pickedName = candidate.name;
+        pickedUnit = candidate.unit;
+        pickedStock = candidate.area_stock;
+        pickedNote = `Diambil dari Order Toko (${candidate.trx_number})`;
+    } else if (props.materials && props.materials.length > 0) {
+        const mat = props.materials[0];
+        pickedMatId = mat.id;
+        pickedName = mat.name;
+        pickedUnit = mat.unit || 'pcs';
+        pickedStock = getAreaStock(mat.id);
+    }
+
     form.materials.push({
-        material_id: props.materials[0]?.id || '',
-        name: props.materials[0]?.name || '',
+        material_id: pickedMatId,
+        material_transaction_item_id: pickedTrxItemId,
+        trx_number: pickedTrxNumber,
+        name: pickedName,
         quantity: 1,
-        unit: 'pcs',
-        available_stock: 0,
-        is_sufficient: true,
-        note: 'Material tambahan',
+        unit: pickedUnit,
+        available_stock: pickedStock,
+        is_sufficient: (parseFloat(pickedStock) || 0) >= 1,
+        note: pickedNote,
     });
 };
 
@@ -707,6 +857,31 @@ const submit = () => {
                         </div>
                     </div>
 
+                    <!-- Info Bar: Sumber Order Toko (Restock) Area -->
+                    <div class="p-3.5 bg-gradient-to-r from-amber-50/70 via-indigo-50/40 to-emerald-50/40 rounded-2xl border border-amber-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-200 text-amber-700 flex items-center justify-center text-sm font-bold shadow-2xs">
+                                🛒
+                            </div>
+                            <div>
+                                <p class="font-bold text-slate-900 flex items-center gap-1.5">
+                                    <span>Material diambil dari:</span>
+                                    <span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded-md font-bold text-[11px] border border-amber-200">Order Toko (Restock Area)</span>
+                                    <span class="text-indigo-700 font-extrabold">&bull; Area {{ selectedAreaName }}</span>
+                                </p>
+                                <p class="text-[11px] text-slate-500">
+                                    Stok gudang dihitung otomatis berdasarkan material yang direstock ke area ini melalui Purchase Order Toko / Supplier.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <span class="px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-slate-700 text-[11px] font-semibold shadow-2xs">
+                                Restock Terdeteksi: <b class="text-amber-800">{{ availableRestockMaterials.length }} Item</b>
+                            </span>
+                        </div>
+                    </div>
+
                     <!-- Material Table -->
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-100 text-xs">
@@ -725,29 +900,53 @@ const submit = () => {
                                     <td class="px-4 py-2.5">
                                         <select
                                             v-model="m.material_id"
-                                            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs"
+                                            @change="onMaterialChange(m)"
+                                            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium focus:ring-indigo-500 focus:border-indigo-500"
                                         >
-                                            <option v-for="opt in materials" :key="opt.id" :value="opt.id">{{ opt.name }}</option>
+                                            <!-- Grup 1: Material dari Order Toko Area -->
+                                            <optgroup v-if="availableRestockMaterials.length > 0" :label="`🛒 Order Toko (Restock Area ${selectedAreaName})`">
+                                                <option v-for="ord in availableRestockMaterials" :key="'ord-' + ord.id" :value="ord.material_id">
+                                                    {{ ord.name }} (PO: {{ ord.trx_number }}) — Stok: {{ ord.area_stock }} {{ ord.unit }}
+                                                </option>
+                                            </optgroup>
+                                            <!-- Grup 2: Master Data Produk Lainnya -->
+                                            <optgroup label="📦 Master Data Produk Lainnya">
+                                                <option v-for="opt in nonRestockMaterials" :key="'mat-' + opt.id" :value="opt.id">
+                                                    {{ opt.name }} — Stok Area: {{ getAreaStock(opt.id) }} {{ opt.unit }}
+                                                </option>
+                                            </optgroup>
                                         </select>
                                     </td>
                                     <td class="px-3 py-2.5">
                                         <input
                                             v-model.number="m.quantity"
+                                            @input="onQuantityChange(m)"
                                             type="number"
                                             step="any"
+                                            min="0.01"
                                             class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs text-center font-bold"
                                         />
                                     </td>
                                     <td class="px-3 py-2.5 font-semibold text-slate-600">{{ m.unit }}</td>
                                     <td class="px-3 py-2.5 text-center">
                                         <span
-                                            class="px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                                            class="px-2 py-0.5 rounded-full text-[10px] font-bold border inline-flex items-center gap-1 shadow-2xs"
                                             :class="m.is_sufficient ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'"
+                                            :title="m.is_sufficient ? 'Stok area mencukupi' : 'Stok di area tidak mencukupi! Kurang dari kebutuhan penugasan'"
                                         >
-                                            {{ m.available_stock }} {{ m.unit }}
+                                            <span>{{ m.is_sufficient ? '✓' : '⚠️' }}</span>
+                                            <span>{{ m.available_stock }} {{ m.unit }}</span>
                                         </span>
                                     </td>
-                                    <td class="px-3 py-2.5 text-slate-500 text-[11px]">{{ m.note }}</td>
+                                    <td class="px-3 py-2.5 text-slate-500 text-[11px]">
+                                        <div class="space-y-1">
+                                            <div>{{ m.note }}</div>
+                                            <div v-if="m.trx_number" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                                <span>🛒 Restock:</span>
+                                                <span>{{ m.trx_number }}</span>
+                                            </div>
+                                        </div>
+                                    </td>
                                     <td class="px-2 py-2.5 text-center">
                                         <button
                                             type="button"
@@ -762,14 +961,26 @@ const submit = () => {
                         </table>
                     </div>
 
-                    <div class="flex items-center justify-between pt-2">
-                        <button
-                            type="button"
-                            @click="addMaterialRow"
-                            class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors flex items-center gap-1"
-                        >
-                            <span>➕ Tambah Item Material</span>
-                        </button>
+                    <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
+                        <div class="flex items-center gap-2">
+                            <button
+                                v-if="availableRestockMaterials.length > 0"
+                                type="button"
+                                @click="addMaterialRow(true)"
+                                class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 border border-amber-300 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                                title="Tambah item material langsung dari Order Toko / Restock area ini"
+                            >
+                                <span>🛒 + Ambil dari Order Toko</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                @click="addMaterialRow(false)"
+                                class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                                <span>➕ Tambah Item Manual</span>
+                            </button>
+                        </div>
 
                         <button
                             type="button"

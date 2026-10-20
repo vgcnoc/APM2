@@ -146,20 +146,42 @@ class InfrastructureWorkOrderService
             ];
         }
 
-        // Cek stok real-time per area
+        // Cek stok real-time per area dan referensi order toko (restock)
         foreach ($suggestions as &$sug) {
             $stock = 0;
+            $trxNumber = null;
+            $trxItemId = null;
+
             if ($areaId) {
                 $matStock = MaterialStock::where('material_id', $sug['material_id'])
                     ->where('area_id', $areaId)
                     ->first();
                 $stock = $matStock ? (float) $matStock->stock : 0;
+
+                // Ambil referensi transaksi Order Toko terakhir untuk area ini
+                $latestTrxItem = \App\Models\MaterialTransactionItem::where('material_id', $sug['material_id'])
+                    ->whereHas('materialTransaction', function ($q) use ($areaId) {
+                        $q->where(function ($sq) use ($areaId) {
+                            $sq->where('area_id', $areaId)
+                               ->orWhere('type', 'in');
+                        });
+                    })
+                    ->latest('id')
+                    ->first();
+
+                if ($latestTrxItem) {
+                    $trxItemId = $latestTrxItem->id;
+                    $trxNumber = $latestTrxItem->materialTransaction?->transaction_number;
+                }
             } else {
                 $mat = Material::find($sug['material_id']);
                 $stock = $mat ? (float) $mat->stock : 0;
             }
+
             $sug['available_stock'] = $stock;
             $sug['is_sufficient'] = $stock >= $sug['quantity'];
+            $sug['trx_number'] = $trxNumber;
+            $sug['material_transaction_item_id'] = $trxItemId;
         }
 
         return $suggestions;
@@ -219,9 +241,12 @@ class InfrastructureWorkOrderService
                     InfrastructureWorkOrderMaterial::create([
                         'work_order_id' => $workOrder->id,
                         'material_id' => $mat['material_id'],
+                        'material_transaction_item_id' => $mat['material_transaction_item_id'] ?? null,
+                        'trx_number' => $mat['trx_number'] ?? null,
                         'requested_qty' => (float) $mat['quantity'],
                         'unit' => $mat['unit'] ?? 'pcs',
                         'status' => 'allocated',
+                        'notes' => $mat['notes'] ?? ($mat['note'] ?? null),
                     ]);
                 }
             }
