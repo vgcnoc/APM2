@@ -88,6 +88,15 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         Hapus ({{ selectedItems.length }})
                     </button>
+                    <button 
+                        type="button" 
+                        @click="openQuickStatusModal()" 
+                        class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-bold text-sm shadow-sm transition-all"
+                        title="Catat Status Material (Layak Pakai / Rusak / Retur)"
+                    >
+                        <span class="text-amber-600 font-black">⚡</span>
+                        Buat Status Material
+                    </button>
                     <button v-can="'materials_create'" @click="openModal()" class="btn-primary w-full md:w-auto flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -135,7 +144,17 @@
                                     <input type="checkbox" v-model="selectedItems" :value="item.id" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 transition-all">
                                 </td>
                                 <td class="py-4 px-6">
-                                    <p class="text-sm font-semibold text-gray-900">{{ item.name }}</p>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <p class="text-sm font-semibold text-gray-900">{{ item.name }}</p>
+                                        <button 
+                                            type="button" 
+                                            @click="openStatusModalFor(item)" 
+                                            class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-all shadow-sm shrink-0" 
+                                            title="Klik untuk Buat/Ubah Status Kondisi (Layak Pakai, Tidak Layak, Rusak)"
+                                        >
+                                            <span>⚡</span> Buat Status
+                                        </button>
+                                    </div>
                                     <p v-if="item.supplier" class="text-xs text-blue-600 mt-0.5">Supplier: {{ item.supplier }}</p>
                                 </td>
 
@@ -183,6 +202,14 @@
                                 </td>
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex items-center justify-end gap-2">
+                                        <button 
+                                            type="button" 
+                                            @click="openStatusModalFor(item)" 
+                                            title="Buat Status Material (Layak Pakai, Tidak Layak, Rusak)" 
+                                            class="p-1.5 text-amber-600 hover:text-amber-800 rounded-lg hover:bg-amber-50 transition-colors inline-flex items-center justify-center font-bold"
+                                        >
+                                            <span class="text-xs">⚡</span>
+                                        </button>
                                         <button v-can="'materials_add_stock'" @click="openAddStockModal(item)" title="Tambah Stok Masuk" class="p-1.5 text-emerald-500 hover:text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -624,6 +651,126 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal Buat Status Material -->
+        <div v-if="isStatusModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" @click="isStatusModalOpen = false"></div>
+            <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-y-auto max-h-[90vh] animate-fade-in-up">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                    <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <span class="p-1.5 rounded-lg bg-amber-100 text-amber-700 text-sm">⚡</span>
+                        Buat Status Material
+                    </h3>
+                    <button @click="isStatusModalOpen = false" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitStatusForm" class="p-6 space-y-4">
+                    <!-- Pilihan Material / Info Material -->
+                    <div v-if="statusTargetMaterial" class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase">Material Terpilih</label>
+                                <p class="text-base font-bold text-gray-900 mt-0.5">{{ statusTargetMaterial.name }}</p>
+                                <p class="text-xs text-blue-600 font-semibold mt-0.5">
+                                    Sisa Total Stok: {{ formatNumber(statusTargetMaterial.stock) }} {{ statusTargetMaterial.unit }}
+                                </p>
+                            </div>
+                            <button type="button" @click="statusTargetMaterial = null" class="text-xs text-blue-600 hover:underline">
+                                Ganti Barang
+                            </button>
+                        </div>
+                    </div>
+                    <div v-else>
+                        <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Pilih Material / Barang <span class="text-red-500">*</span></label>
+                        <select v-model="selectedMaterialId" @change="onSelectMaterialChange" class="w-full text-sm px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500" required>
+                            <option value="" disabled>-- Pilih Barang --</option>
+                            <option v-for="mat in materials.data" :key="mat.id" :value="mat.id">
+                                {{ mat.name }} (Stok: {{ formatNumber(mat.stock) }} {{ mat.unit }})
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Pilihan Status Kondisi Material -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-2 uppercase">Status Kondisi <span class="text-red-500">*</span></label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" @click="statusForm.condition = 'Layak Pakai'; if (!statusForm.purpose || statusForm.purpose.includes('Rusak') || statusForm.purpose.includes('Bekas')) statusForm.purpose = 'Retur Sisa Pasang (Layak)'" 
+                                class="p-2.5 rounded-xl border text-xs font-bold text-center transition-all flex flex-col items-center gap-1"
+                                :class="statusForm.condition === 'Layak Pakai' ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm ring-2 ring-emerald-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'">
+                                <span class="text-base">🟢</span>
+                                Layak Pakai
+                            </button>
+                            <button type="button" @click="statusForm.condition = 'Tidak Layak'; if (!statusForm.purpose || statusForm.purpose.includes('Sisa') || statusForm.purpose.includes('Rusak')) statusForm.purpose = 'Barang Bekas Tidak Layak'" 
+                                class="p-2.5 rounded-xl border text-xs font-bold text-center transition-all flex flex-col items-center gap-1"
+                                :class="statusForm.condition === 'Tidak Layak' ? 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-200' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'">
+                                <span class="text-base">🟡</span>
+                                Tidak Layak
+                            </button>
+                            <button type="button" @click="statusForm.condition = 'Rusak'; if (!statusForm.purpose || statusForm.purpose.includes('Sisa') || statusForm.purpose.includes('Bekas')) statusForm.purpose = 'Barang Rusak Lapangan'" 
+                                class="p-2.5 rounded-xl border text-xs font-bold text-center transition-all flex flex-col items-center gap-1"
+                                :class="statusForm.condition === 'Rusak' ? 'bg-rose-600 text-white border-rose-600 shadow-sm ring-2 ring-rose-200' : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'">
+                                <span class="text-base">🔴</span>
+                                Rusak
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tipe Pergerakan: Masuk (Retur) atau Keluar (Afkir / Pemusnahan) -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase">Tipe Mutasi Stok <span class="text-red-500">*</span></label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all"
+                                :class="statusForm.type === 'in' ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-bold' : 'bg-white border-gray-200 text-gray-600'">
+                                <input type="radio" value="in" v-model="statusForm.type" class="text-emerald-600 focus:ring-emerald-500">
+                                <span class="text-xs">📥 Masuk (Retur ke Gudang)</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all"
+                                :class="statusForm.type === 'out' ? 'bg-rose-50 border-rose-300 text-rose-800 font-bold' : 'bg-white border-gray-200 text-gray-600'">
+                                <input type="radio" value="out" v-model="statusForm.type" class="text-rose-600 focus:ring-rose-500">
+                                <span class="text-xs">📤 Keluar (Afkir / Dikeluarkan)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Jumlah & Petugas -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Jumlah (Qty) <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <input type="number" step="0.01" min="0.01" v-model="statusForm.quantity" required class="w-full text-sm pl-3 pr-14 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 font-medium" placeholder="Qty">
+                                <span class="absolute inset-y-0 right-0 pr-3 flex items-center text-xs font-bold text-gray-400 pointer-events-none">
+                                    {{ statusTargetMaterial?.unit || 'unit' }}
+                                </span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Petugas / Teknisi <span class="text-red-500">*</span></label>
+                            <input type="text" v-model="statusForm.technician_name" required class="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500" placeholder="Nama teknisi / petugas">
+                        </div>
+                    </div>
+
+                    <!-- Catatan / Tujuan -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Keterangan / Keperluan <span class="text-red-500">*</span></label>
+                        <input type="text" v-model="statusForm.purpose" required class="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500" placeholder="Cth: Sisa penarikan kabel / Rusak kena petir">
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="pt-3 border-t border-gray-100 flex justify-end gap-2">
+                        <button type="button" @click="isStatusModalOpen = false" class="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition">
+                            Batal
+                        </button>
+                        <button type="submit" :disabled="statusForm.processing" class="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-sm transition">
+                            Simpan Status Material
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </AppLayout>
 </template>
 
@@ -948,5 +1095,79 @@ const deleteData = (id) => {
     if (confirm('Yakin ingin menghapus data material ini?')) {
         router.post(`/materials/${id}/delete`);
     }
+};
+
+// Modal Buat Status Material
+const isStatusModalOpen = ref(false);
+const statusTargetMaterial = ref(null);
+const selectedMaterialId = ref('');
+
+const statusForm = useForm({
+    type: 'in',
+    date: new Date().toISOString().split('T')[0],
+    technician_name: '',
+    purpose: 'Retur Sisa Pasang (Layak)',
+    notes: '',
+    condition: 'Layak Pakai',
+    quantity: null,
+    items: [],
+});
+
+const openQuickStatusModal = () => {
+    statusTargetMaterial.value = null;
+    selectedMaterialId.value = '';
+    statusForm.date = new Date().toISOString().split('T')[0];
+    statusForm.technician_name = '';
+    statusForm.type = 'in';
+    statusForm.condition = 'Layak Pakai';
+    statusForm.purpose = 'Retur Sisa Pasang (Layak)';
+    statusForm.quantity = null;
+    statusForm.notes = '';
+    isStatusModalOpen.value = true;
+};
+
+const openStatusModalFor = (material) => {
+    statusTargetMaterial.value = material;
+    selectedMaterialId.value = material.id;
+    statusForm.date = new Date().toISOString().split('T')[0];
+    statusForm.technician_name = '';
+    statusForm.type = 'in';
+    statusForm.condition = 'Layak Pakai';
+    statusForm.purpose = 'Retur Sisa Pasang (Layak)';
+    statusForm.quantity = null;
+    statusForm.notes = '';
+    isStatusModalOpen.value = true;
+};
+
+const onSelectMaterialChange = () => {
+    const found = props.materials.data.find(m => m.id === Number(selectedMaterialId.value) || m.id === selectedMaterialId.value);
+    if (found) {
+        statusTargetMaterial.value = found;
+    }
+};
+
+const submitStatusForm = () => {
+    const targetId = statusTargetMaterial.value?.id || selectedMaterialId.value;
+    if (!targetId) {
+        alert('Silakan pilih material terlebih dahulu');
+        return;
+    }
+    if (!statusForm.quantity || Number(statusForm.quantity) <= 0) {
+        alert('Silakan masukkan jumlah (qty) yang valid');
+        return;
+    }
+    statusForm.items = [
+        {
+            material_id: targetId,
+            quantity: statusForm.quantity,
+            condition: statusForm.condition,
+        }
+    ];
+    statusForm.post('/stok-in-out', {
+        preserveScroll: true,
+        onSuccess: () => {
+            isStatusModalOpen.value = false;
+        }
+    });
 };
 </script>

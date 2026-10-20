@@ -15,9 +15,9 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
                             </div>
-                            <h1 class="text-3xl font-black text-gray-900 tracking-tight">Stock Opname Per Area</h1>
+                            <h1 class="text-3xl font-black text-gray-900 tracking-tight">Catat Status & Mutasi Material</h1>
                             <p class="mt-2 text-sm text-gray-500 max-w-xl">
-                                Catat pengeluaran dan penerimaan barang untuk stock opname di masing-masing area.
+                                Catat status kondisi material (Layak Pakai, Tidak Layak, Rusak) serta pengeluaran dan penerimaan barang di masing-masing area.
                             </p>
                         </div>
 
@@ -29,6 +29,10 @@
                             <button @click="openModal('in', 'Rusak')" class="group inline-flex items-center justify-center px-4 py-2.5 text-xs sm:text-sm font-bold text-white transition-all duration-200 bg-rose-600 hover:bg-rose-700 border border-transparent rounded-xl shadow-sm hover:shadow">
                                 <span class="mr-1.5 text-base">🔴</span>
                                 + Catat Barang Rusak
+                            </button>
+                            <button @click="openModal('in', 'Tidak Layak')" class="group inline-flex items-center justify-center px-4 py-2.5 text-xs sm:text-sm font-bold text-amber-800 transition-all duration-200 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-xl shadow-sm">
+                                <span class="mr-1.5 text-base">🟡</span>
+                                + Status Tidak Layak
                             </button>
                             <button @click="openModal('out', 'Layak Pakai')" class="group inline-flex items-center justify-center px-4 py-2.5 text-xs sm:text-sm font-bold text-gray-700 transition-all duration-200 bg-white border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50">
                                 <svg class="w-4 h-4 mr-1.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
