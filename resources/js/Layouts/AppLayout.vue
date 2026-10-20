@@ -100,14 +100,14 @@
                         :href="item.href" 
                         @click="mobileMenuOpen = false" 
                         :class="[
-                            themeLinkClasses[item.theme] || 'sidebar-link', 
+                            'sidebar-link', 
                             { 
                                 active: item.active($page.url), 
-                                'pl-11': item.indent && !item.theme
+                                'pl-11': item.indent
                             }
                         ]"
                     >
-                        <svg v-if="!item.indent" class="w-5 h-5 shrink-0" :class="!item.active($page.url) ? (themeIconColors[item.theme] || '') : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg v-if="!item.indent" class="w-5 h-5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
                         </svg>
                         <svg v-else class="w-3.5 h-3.5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,16 +121,16 @@
                         <button 
                             @click="toggleDropdown(index)" 
                             :class="[
-                                themeLinkClasses[item.theme] || 'sidebar-link', 
+                                'sidebar-link', 
                                 'w-full text-left', 
                                 { active: item.active($page.url) }
                             ]"
                         >
-                            <svg class="w-5 h-5 shrink-0" :class="!item.active($page.url) ? (themeIconColors[item.theme] || '') : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
                             </svg>
                             <span v-if="sidebarOpen" class="truncate flex-1">{{ item.label }}</span>
-                            <svg v-if="sidebarOpen" :class="['w-4 h-4 shrink-0 transition-transform duration-200', openDropdowns.includes(index) ? 'rotate-90' : '', themeChevronColors[item.theme] || '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg v-if="sidebarOpen" :class="['w-4 h-4 shrink-0 transition-transform duration-200 text-gray-400', openDropdowns.includes(index) ? 'rotate-90' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
                         </button>
@@ -138,7 +138,7 @@
                         <!-- Dropdown Items -->
                         <div 
                             v-show="sidebarOpen && openDropdowns.includes(index)" 
-                            :class="themeSubmenuBg[item.theme] || 'mt-1 space-y-1'"
+                            class="mt-1 space-y-0.5"
                         >
                             <template v-for="(child, childIndex) in item.children" :key="childIndex">
                                 <Link 
@@ -146,11 +146,11 @@
                                     :href="child.href" 
                                     @click="mobileMenuOpen = false" 
                                     :class="[
-                                        themeSubClasses[item.theme] || 'sidebar-link pl-11', 
+                                        'sidebar-link pl-11', 
                                         { active: child.active($page.url) }
                                     ]"
                                 >
-                                    <svg class="w-3.5 h-3.5 shrink-0" :class="item.theme ? (child.active($page.url) ? 'text-white' : (themeIconColors[item.theme] || 'opacity-60')) : 'opacity-60'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-3.5 h-3.5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" :d="iconPaths['submenu-dot']"/>
                                     </svg>
                                     <span class="truncate text-[13px] font-medium">{{ child.label }}</span>
@@ -260,66 +260,6 @@ const mobileMenuOpen = ref(false);
 const sidebarNav = ref(null);
 const isRestored = ref(false);
 const openDropdowns = ref([]);
-
-const themeLinkClasses = {
-    purple: 'sidebar-link-purple',
-    rose: 'sidebar-link-rose',
-    blue: 'sidebar-link-blue',
-    green: 'sidebar-link-green',
-    orange: 'sidebar-link-orange',
-    pink: 'sidebar-link-pink',
-    brown: 'sidebar-link-brown',
-    slate: 'sidebar-link-slate',
-    violet: 'sidebar-link-violet',
-};
-
-const themeSubClasses = {
-    purple: 'sidebar-sub-purple',
-    rose: 'sidebar-sub-rose',
-    blue: 'sidebar-sub-blue',
-    green: 'sidebar-sub-green',
-    orange: 'sidebar-sub-orange',
-    pink: 'sidebar-sub-pink',
-    brown: 'sidebar-sub-brown',
-    slate: 'sidebar-sub-slate',
-    violet: 'sidebar-sub-violet',
-};
-
-const themeSubmenuBg = {
-    purple: 'bg-purple-100/60 p-1.5 rounded-xl border border-purple-200/80 my-1 space-y-1 shadow-sm',
-    rose: 'bg-rose-100/60 p-1.5 rounded-xl border border-rose-200/80 my-1 space-y-1 shadow-sm',
-    blue: 'bg-sky-100/60 p-1.5 rounded-xl border border-sky-200/80 my-1 space-y-1 shadow-sm',
-    green: 'bg-emerald-100/60 p-1.5 rounded-xl border border-emerald-200/80 my-1 space-y-1 shadow-sm',
-    orange: 'bg-orange-100/60 p-1.5 rounded-xl border border-orange-200/80 my-1 space-y-1 shadow-sm',
-    pink: 'bg-pink-100/60 p-1.5 rounded-xl border border-pink-200/80 my-1 space-y-1 shadow-sm',
-    brown: 'bg-brown-100/60 p-1.5 rounded-xl border border-brown-200/80 my-1 space-y-1 shadow-sm',
-    slate: 'bg-slate-100/90 p-1.5 rounded-xl border border-slate-300/80 my-1 space-y-1 shadow-sm',
-    violet: 'bg-violet-100/60 p-1.5 rounded-xl border border-violet-200/80 my-1 space-y-1 shadow-sm',
-};
-
-const themeIconColors = {
-    purple: 'text-purple-600',
-    rose: 'text-rose-600',
-    blue: 'text-sky-600',
-    green: 'text-emerald-600',
-    orange: 'text-orange-600',
-    pink: 'text-pink-600',
-    brown: 'text-brown-600',
-    slate: 'text-slate-600',
-    violet: 'text-violet-600',
-};
-
-const themeChevronColors = {
-    purple: 'text-purple-500',
-    rose: 'text-rose-500',
-    blue: 'text-sky-500',
-    green: 'text-emerald-500',
-    orange: 'text-orange-500',
-    pink: 'text-pink-500',
-    brown: 'text-brown-500',
-    slate: 'text-slate-500',
-    violet: 'text-violet-500',
-};
 
 const themeDividers = {
     purple: 'bg-purple-200',
