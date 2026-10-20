@@ -498,21 +498,60 @@ class InfrastructureWorkOrderService
                 $createdOdpId = $odp->id;
             }
 
-            // 3. Kembalikan material retur ke gudang secara otomatis
-            foreach ($workOrder->materials as $woMat) {
-                $returnQty = (float) $woMat->returned_qty;
-                if ($returnQty > 0) {
+            // 3. Kembalikan material retur ke Inventory Gudang secara otomatis
+            $returnedMats = $workOrder->materials->filter(fn($m) => (float) $m->returned_qty > 0);
+            if ($returnedMats->isNotEmpty()) {
+                $returnTrans = MaterialTransaction::create([
+                    'transaction_number' => 'IN-WO-RET-' . date('YmdHis') . rand(10, 99),
+                    'type' => 'in',
+                    'status' => 'approved',
+                    'date' => now(),
+                    'technician_name' => $workOrder->technician?->name ?: auth()->user()->name,
+                    'purpose' => 'Pengembalian Sisa Material Rollout ' . ($workOrder->type === 'odc_deployment' ? 'ODC' : 'ODP') . ' ' . $workOrder->wo_number,
+                    'user_id' => auth()->id(),
+                    'area_id' => $workOrder->area_id,
+                ]);
+
+                $totalCostReturn = 0;
+                foreach ($returnedMats as $woMat) {
+                    $returnQty = (float) $woMat->returned_qty;
                     $material = $woMat->material;
+                    if (!$material) continue;
+
+                    $matStock = null;
                     if ($workOrder->area_id) {
-                        $matStock = MaterialStock::where('material_id', $material->id)
-                            ->where('area_id', $workOrder->area_id)
-                            ->first();
-                        if ($matStock) {
-                            $matStock->increment('stock', $returnQty);
-                        }
+                        $matStock = MaterialStock::firstOrCreate(
+                            ['material_id' => $material->id, 'area_id' => $workOrder->area_id],
+                            ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                        );
+                    }
+
+                    $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
+                    $stockAfter = $stockBefore + $returnQty;
+
+                    if ($matStock) {
+                        $matStock->increment('stock', $returnQty);
                     }
                     $material->increment('stock', $returnQty);
+
+                    $unitPrice = (float) ($material->price_per_unit ?? 0);
+                    $itemCost = $returnQty * $unitPrice;
+                    $totalCostReturn += $itemCost;
+
+                    MaterialTransactionItem::create([
+                        'material_transaction_id' => $returnTrans->id,
+                        'material_id' => $material->id,
+                        'quantity' => $returnQty,
+                        'unit' => $woMat->unit ?? $material->unit ?? 'pcs',
+                        'price_per_unit' => $unitPrice,
+                        'total_price' => $itemCost,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $stockAfter,
+                        'condition' => 'Layak Pakai',
+                    ]);
                 }
+
+                $returnTrans->update(['total_cost' => $totalCostReturn]);
             }
 
             $workOrder->update([

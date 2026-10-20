@@ -1430,27 +1430,27 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <!-- Info Bar: Sumber Order Toko (Restock) Area -->
+                    <!-- Info Bar: Sumber Inventory Gudang Area -->
                     <div class="p-3.5 bg-gradient-to-r from-amber-50/70 via-indigo-50/40 to-emerald-50/40 rounded-2xl border border-amber-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
                         <div class="flex items-center gap-2.5">
                             <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-200 text-amber-700 flex items-center justify-center text-sm font-bold shadow-2xs">
-                                🛒
+                                📦
                             </div>
                             <div>
                                 <p class="font-bold text-slate-900 flex items-center gap-1.5">
                                     <span>Material diambil dari:</span>
-                                    <span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded-md font-bold text-[11px] border border-amber-200">Order Toko (Restock Area)</span>
+                                    <span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded-md font-bold text-[11px] border border-amber-200">Inventory Gudang</span>
                                     <span class="text-indigo-700 font-extrabold">&bull; Area {{ selectedAreaName }}</span>
                                 </p>
                                 <p class="text-[11px] text-slate-500">
-                                    Stok gudang dihitung otomatis berdasarkan material yang direstock ke area ini melalui Purchase Order Toko / Supplier.
+                                    Material diambil langsung dari persediaan Inventory Gudang & area terkait. Sisa material yang berlebih otomatis dikembalikan ke Inventory Gudang saat verifikasi penyelesaian pekerjaan.
                                 </p>
                             </div>
                         </div>
 
                         <div class="flex items-center gap-2">
                             <span class="px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-slate-700 text-[11px] font-semibold shadow-2xs">
-                                Restock Terdeteksi: <b class="text-amber-800">{{ availableRestockMaterials.length }} Item</b>
+                                Persediaan Gudang: <b class="text-emerald-800">{{ (props.materials || []).length }} Item</b>
                             </span>
                         </div>
                     </div>

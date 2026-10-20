@@ -219,7 +219,12 @@ class PgsController extends Controller
             $technicians = User::select('id', 'name', 'phone')->get();
         }
 
-        $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get();
+        $materials = Material::with('stocks')
+            ->where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->orderBy('name')
+            ->get();
         $materialTransactions = RestockStockService::getRestockTransactions();
         $areas = Area::select('id', 'name')->orderBy('name')->get();
 
@@ -504,9 +509,8 @@ class PgsController extends Controller
                         if ($matStock) {
                             $matStock->increment('stock', $prevQty);
                         }
-                    } elseif (!$prevMat->material_transaction_item_id) {
-                        Material::where('id', $prevMat->material_id)->increment('stock', $prevQty);
                     }
+                    Material::where('id', $prevMat->material_id)->increment('stock', $prevQty);
                 }
             }
 
@@ -581,13 +585,11 @@ class PgsController extends Controller
                         'stock_after' => $stockAfter,
                     ]);
 
-                    // Potong stok dari Area (stok order toko/restock)
-                    // Tidak memotong produk master jika bersumber dari restock order
+                    // Potong stok dari Area dan Gudang Inventory
                     if ($matStock) {
                         $matStock->decrement('stock', $qty);
-                    } elseif (!$trxItemId) {
-                        $material->decrement('stock', $qty);
                     }
+                    $material->decrement('stock', $qty);
                 }
             }
         }
@@ -687,9 +689,10 @@ class PgsController extends Controller
 
                             $matStock = null;
                             if ($targetAreaId) {
-                                $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
-                                    ->where('area_id', $targetAreaId)
-                                    ->first();
+                                $matStock = \App\Models\MaterialStock::firstOrCreate(
+                                    ['material_id' => $material->id, 'area_id' => $targetAreaId],
+                                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                                );
                             }
 
                             $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
@@ -725,11 +728,11 @@ class PgsController extends Controller
                                 'stock_after' => $stockAfter,
                             ]);
 
+                            // Kembalikan sisa material ke Inventory Gudang (Stok Area & Stok Master)
                             if ($matStock) {
                                 $matStock->increment('stock', $qtyReturned);
-                            } elseif (!$pgsMat->material_transaction_item_id) {
-                                $material->increment('stock', $qtyReturned);
                             }
+                            $material->increment('stock', $qtyReturned);
                         }
                     }
                 }

@@ -575,18 +575,21 @@
                             <!-- Material Section -->
                             <div class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
                                 <div class="flex items-center justify-between mb-3">
-                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Material (Surat Jalan)</label>
-                                    <button type="button" @click="assignForm.material_items.push({id: '', name: '', qty: 1, unit: '', trx_number: ''})" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-md focus:outline-none transition-colors border border-transparent hover:border-blue-200 text-xs font-medium flex items-center gap-1" title="Tambah Material">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Material dari Inventory Gudang</label>
+                                        <span class="text-[11px] text-gray-500">Ambil material dari persediaan inventory gudang & area pelanggan</span>
+                                    </div>
+                                    <button type="button" @click="assignForm.material_items.push({id: '', name: '', qty: 1, unit: '', trx_number: '', material_id: ''})" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-md focus:outline-none transition-colors border border-transparent hover:border-blue-200 text-xs font-medium flex items-center gap-1" title="Tambah Material dari Gudang">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                        Tambah Material
+                                        + Tambah Material Gudang
                                     </button>
                                 </div>
                                 <div class="space-y-3">
                                     <div v-for="(mItem, index) in assignForm.material_items" :key="'mat-'+index" class="flex gap-2 items-center group">
                                         <select v-model="assignForm.material_items[index].id" @change="updateMaterialItemDetails(index)" class="flex-1 bg-slate-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all hover:bg-white min-w-0">
-                                            <option value="">-- Pilih Material dari Surat Jalan --</option>
-                                            <option v-for="item in availableMaterialItems" :key="item.id" :value="item.id">
-                                                {{ item.material ? item.material.name : 'Unknown' }} (SJ: {{ item.trx_number }}) - Stok Area: {{ item.area_stock }} {{ item.unit }}
+                                            <option value="">-- Pilih Material dari Inventory Gudang --</option>
+                                            <option v-for="item in availableMaterialItems" :key="item.unique_key" :value="item.unique_key">
+                                                {{ item.name }} — Stok Gudang: {{ item.area_stock }} {{ item.unit }} {{ item.trx_number ? '(PO: ' + item.trx_number + ')' : '' }}
                                             </option>
                                         </select>
                                         <div class="flex items-center gap-1.5 shrink-0" v-if="assignForm.material_items[index].id">
@@ -598,7 +601,7 @@
                                         </button>
                                     </div>
                                     <div v-if="assignForm.material_items.length === 0" class="text-xs text-gray-400 italic text-center py-2">
-                                        Belum ada material yang ditambahkan
+                                        Belum ada material yang ditambahkan dari gudang
                                     </div>
                                 </div>
                             </div>
@@ -1221,6 +1224,7 @@ const props = defineProps({
     customers: Object, 
     technicians: Array, 
     availableOnts: { type: Array, default: () => [] }, 
+    materials: { type: Array, default: () => [] },
     materialTransactions: { type: Array, default: () => [] },
     packages: { type: Array, default: () => [] },
     areas: { type: Array, default: () => [] },
@@ -1311,38 +1315,46 @@ const filteredMaterialTransactions = computed(() => {
 
 const availableMaterialItems = computed(() => {
     let items = [];
-    const trxs = filteredMaterialTransactions.value || [];
     const areaId = customerAreaId.value;
+    const handledMaterialIds = new Set();
+
+    // 1. Ambil dari Order Toko / Restock Area jika ada
+    const trxs = filteredMaterialTransactions.value || [];
     if (trxs) {
         trxs.forEach(trx => {
             if (trx.items) {
                 trx.items.forEach(item => {
-                    const name = item.material && item.material.name ? item.material.name.toLowerCase() : '';
-                    const category = item.material && item.material.category ? item.material.category.toLowerCase() : '';
+                    if (!item.material) return;
+                    const name = (item.material.name || '').toLowerCase();
+                    const category = (item.material.category || '').toLowerCase();
                     const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
                     
                     if (!name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem') && !isRegistered) {
                         let areaStock = 0;
-                        if (item.material && item.material.stocks && areaId) {
+                        if (item.material.stocks && areaId) {
                             const stockObj = item.material.stocks.find(s => s.area_id == areaId);
                             if (stockObj) {
                                 areaStock = parseFloat(stockObj.stock) || 0;
                             }
                         }
 
-                        // Fallback ke stok master material jika belum tercatat di area
-                        if (areaStock <= 0 && item.material && parseFloat(item.material.stock) > 0) {
+                        if (areaStock <= 0 && item.material.stock) {
                             areaStock = parseFloat(item.material.stock) || 0;
                         }
 
                         const availableQty = areaStock > 0 ? areaStock : (parseFloat(item.quantity) || 0);
 
                         if (availableQty > 0) {
+                            handledMaterialIds.add(item.material.id);
                             items.push({
-                                ...item,
+                                unique_key: 'ord-' + item.id,
+                                id: item.id,
+                                material_id: item.material_id,
                                 trx_number: trx.transaction_number,
+                                name: item.material.name,
                                 area_stock: availableQty,
-                                unit: item.material ? item.material.unit : item.unit
+                                unit: item.material ? item.material.unit : (item.unit || 'pcs'),
+                                material: item.material
                             });
                         }
                     }
@@ -1350,42 +1362,60 @@ const availableMaterialItems = computed(() => {
             }
         });
     }
+
+    // 2. Sertakan SEMUA Material dari Inventory Gudang yang ada di master/area
+    const allMaterials = props.materials || [];
+    allMaterials.forEach(m => {
+        const name = (m.name || '').toLowerCase();
+        const category = (m.category || '').toLowerCase();
+        if (name.includes('ont') || name.includes('modem') || category.includes('ont') || category.includes('modem')) {
+            return;
+        }
+
+        // Hitung stok di Area
+        let areaStock = 0;
+        if (m.stocks && areaId) {
+            const stockObj = m.stocks.find(s => s.area_id == areaId);
+            if (stockObj) {
+                areaStock = parseFloat(stockObj.stock) || 0;
+            }
+        }
+        if (areaStock <= 0 && m.stock) {
+            areaStock = parseFloat(m.stock) || 0;
+        }
+
+        // Jika belum ada di list (atau untuk opsi langsung dari gudang umum)
+        if (!handledMaterialIds.has(m.id)) {
+            items.push({
+                unique_key: 'mat-' + m.id,
+                id: 'mat-' + m.id,
+                material_id: m.id,
+                trx_number: '',
+                name: m.name,
+                area_stock: areaStock,
+                unit: m.unit || 'pcs',
+                material: m
+            });
+        }
+    });
+
     return items;
 });
 
 function updateMaterialItemDetails(index) {
-    const selectedId = assignForm.material_items[index].id;
-    if (!selectedId) return;
+    const selectedKey = assignForm.material_items[index].id;
+    if (!selectedKey) return;
     
-    const item = availableMaterialItems.value.find(i => i.id === selectedId);
+    const item = availableMaterialItems.value.find(i => i.unique_key === selectedKey || i.id === selectedKey);
     if (item) {
-        let qty = parseFloat(item.quantity) || 0;
+        let qty = 1;
         let unit = item.unit || (item.material ? item.material.unit : 'pcs');
         
-        if (item.material && item.material.category === 'Isolasi') {
-            if (unit === 'pcs' || unit === 'pcs (utuh)') {
-                qty = qty * (parseFloat(item.material.cm_per_pcs) || 50);
-                unit = 'cm';
-            }
-        } else if (item.material && item.material.category === 'Paku Klem') {
-            if (unit === 'bungkus' || unit === 'pack') {
-                qty = qty * (parseFloat(item.material.pcs_per_pack) || 100);
-                unit = 'pcs';
-            }
-        } else if (item.material && (item.material.category === 'Kabel Drop' || item.material.category === 'Kabel Drop / Frecon' || item.material.category === 'Kabel Frecon')) {
-            if (unit === 'roll' || unit === 'pcs') {
-                let mpr = parseFloat(item.material.meter_per_roll);
-                if (mpr && mpr > 0) {
-                    qty = qty * mpr;
-                    unit = 'meter';
-                }
-            }
-        }
-        
-        assignForm.material_items[index].name = item.material ? item.material.name : 'Unknown';
+        assignForm.material_items[index].material_id = item.material_id || item.material?.id;
+        assignForm.material_items[index].name = item.name || (item.material ? item.material.name : 'Unknown');
         assignForm.material_items[index].qty = qty;
         assignForm.material_items[index].unit = unit;
-        assignForm.material_items[index].trx_number = item.trx_number;
+        assignForm.material_items[index].trx_number = item.trx_number || '';
         assignForm.material_items[index].area_stock = item.area_stock;
     }
 }

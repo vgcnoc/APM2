@@ -260,16 +260,16 @@
                         ></textarea>
                     </div>
 
-                    <!-- Penyiapan Material Jalur FO dari Order Toko / Surat Jalan -->
+                    <!-- Penyiapan Material Jalur FO dari Inventory Gudang -->
                     <div class="space-y-2">
                         <div class="flex items-center justify-between">
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase">Material Jalur dari Order / Surat Jalan</label>
-                                <span class="text-[11px] text-gray-500">Pilih material kabel & aksesoris FO dari order/surat jalan yang tersedia</span>
+                                <label class="block text-xs font-bold text-gray-700 uppercase">Material dari Inventory Gudang</label>
+                                <span class="text-[11px] text-gray-500">Pilih material kabel & aksesoris FO dari persediaan Inventory Gudang yang tersedia</span>
                             </div>
                             <button type="button" @click="addMaterialRow" class="text-xs font-bold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg border border-amber-200 flex items-center gap-1 transition-colors">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                <span>+ Tambah dari Order</span>
+                                <span>+ Tambah Material Gudang</span>
                             </button>
                         </div>
 
@@ -278,18 +278,18 @@
                                 <div class="flex items-center gap-2">
                                     <div class="flex-1 min-w-0">
                                         <select 
-                                            v-model="item.material_transaction_item_id" 
+                                            v-model="item.selected_key" 
                                             @change="onMaterialItemChange(item)"
                                             class="w-full rounded-xl border-gray-300 text-xs py-2 bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 truncate" 
                                             required
                                         >
-                                            <option value="">-- Pilih Material dari Order Toko / Surat Jalan --</option>
-                                            <option v-for="ord in availableMaterialItems" :key="ord.id" :value="ord.id">
-                                                {{ ord.name }} (Order: {{ ord.trx_number }}) - Stok: {{ ord.area_stock }} {{ ord.unit }} [{{ ord.area_name }}]
+                                            <option value="">-- Pilih Material dari Inventory Gudang --</option>
+                                            <option v-for="ord in availableMaterialItems" :key="ord.unique_key" :value="ord.unique_key">
+                                                {{ ord.name }} — Stok Gudang: {{ ord.area_stock }} {{ ord.unit }} {{ ord.trx_number ? '(PO: ' + ord.trx_number + ')' : '' }} [{{ ord.area_name }}]
                                             </option>
-                                            <!-- Fallback jika record sebelumnya tidak memiliki order id -->
-                                            <option v-if="!item.material_transaction_item_id && item.material_id" :value="''">
-                                                📦 {{ item.name || 'Material Sebelumnya' }} (Data Produk Lama)
+                                            <!-- Fallback jika record sebelumnya tidak memiliki key baru -->
+                                            <option v-if="!item.selected_key && item.material_id" :value="''">
+                                                📦 {{ item.name || 'Material Sebelumnya' }} (Data Lama)
                                             </option>
                                         </select>
                                     </div>
@@ -316,18 +316,18 @@
                                 </div>
                                 <div v-if="item.trx_number || item.max_stock" class="flex items-center justify-between text-[10px] text-gray-500 px-1">
                                     <span class="truncate">
-                                        <span class="font-medium text-gray-400">Sumber Order/SJ:</span> 
-                                        <b class="font-mono text-amber-800 ml-1">{{ item.trx_number || '-' }}</b>
+                                        <span class="font-medium text-gray-400">Sumber:</span> 
+                                        <b class="font-mono text-amber-800 ml-1">{{ item.trx_number ? 'PO ' + item.trx_number : 'Inventory Gudang' }}</b>
                                     </span>
                                     <span v-if="item.max_stock" class="shrink-0 text-emerald-700 font-medium">
-                                        Maks Stok: {{ item.max_stock }} {{ item.unit }}
+                                        Stok Tersedia: {{ item.max_stock }} {{ item.unit }}
                                     </span>
                                 </div>
                             </div>
-                            <p class="text-[11px] text-gray-400 italic">* Stok diambil dari Order/Surat Jalan dan otomatis dipotong untuk penugasan ini. Sisa kabel/material dapat dikembalikan saat laporan teknisi selesai.</p>
+                            <p class="text-[11px] text-gray-400 italic">* Stok diambil langsung dari persediaan Inventory Gudang dan otomatis dialokasikan untuk penugasan ini. Sisa kabel/material dapat dikembalikan ke Inventory Gudang saat laporan teknisi selesai.</p>
                         </div>
                         <div v-else class="p-3 rounded-xl bg-amber-50/40 border border-dashed border-amber-200 text-center text-xs text-amber-700">
-                            Belum ada material yang ditambahkan dari Order Toko / Surat Jalan. Klik <b>+ Tambah dari Order</b> jika tim membawa material.
+                            Belum ada material yang ditambahkan dari Inventory Gudang. Klik <b>+ Tambah Material Gudang</b> jika tim membawa material.
                         </div>
                     </div>
 
@@ -387,9 +387,11 @@ const filteredMaterialTransactions = computed(() => {
 
 const availableMaterialItems = computed(() => {
     let items = [];
-    const trxs = filteredMaterialTransactions.value || [];
     const areaId = customerAreaId.value;
+    const handledMaterialIds = new Set();
 
+    // 1. Ambil dari Order Toko / Restock Area jika ada
+    const trxs = filteredMaterialTransactions.value || [];
     trxs.forEach(trx => {
         if (trx.items && trx.items.length > 0) {
             trx.items.forEach(item => {
@@ -414,13 +416,15 @@ const availableMaterialItems = computed(() => {
                     const availableQty = areaStock > 0 ? areaStock : (parseFloat(item.quantity) || 0);
 
                     if (availableQty > 0) {
+                        handledMaterialIds.add(item.material_id);
                         items.push({
+                            unique_key: 'ord-' + item.id,
                             id: item.id,
                             material_id: item.material_id,
                             trx_number: trx.transaction_number,
                             trx_date: trx.date,
                             purpose: trx.purpose,
-                            area_name: trx.area_model?.name || trx.area || 'Semua Area',
+                            area_name: trx.area_model?.name || trx.area || 'Order Toko Area',
                             name: item.material.name,
                             category: item.material.category,
                             area_stock: availableQty,
@@ -429,6 +433,42 @@ const availableMaterialItems = computed(() => {
                         });
                     }
                 }
+            });
+        }
+    });
+
+    // 2. Sertakan SEMUA Material dari Inventory Gudang
+    const allMaterials = props.materials || [];
+    allMaterials.forEach(m => {
+        const name = (m.name || '').toLowerCase();
+        const category = (m.category || '').toLowerCase();
+        if (name.includes('modem') || category.includes('modem') || name.includes('ont') || category.includes('ont')) {
+            return;
+        }
+
+        let areaStock = 0;
+        if (m.stocks && areaId) {
+            const stockObj = m.stocks.find(s => s.area_id == areaId);
+            if (stockObj) {
+                areaStock = parseFloat(stockObj.stock) || 0;
+            }
+        }
+        if (areaStock <= 0 && m.stock) {
+            areaStock = parseFloat(m.stock) || 0;
+        }
+
+        if (!handledMaterialIds.has(m.id)) {
+            items.push({
+                unique_key: 'mat-' + m.id,
+                id: 'mat-' + m.id,
+                material_id: m.id,
+                trx_number: '',
+                area_name: 'Inventory Gudang',
+                name: m.name,
+                category: m.category,
+                area_stock: areaStock,
+                unit: m.unit || 'pcs',
+                material: m,
             });
         }
     });
@@ -465,8 +505,10 @@ const openScheduleModal = (ticket) => {
             const matchedOrder = availableMaterialItems.value.find(
                 i => i.id === m.material_transaction_item_id || (i.material_id === m.material_id && (!m.trx_number || i.trx_number === m.trx_number))
             );
+            const selKey = m.material_transaction_item_id ? ('ord-' + m.material_transaction_item_id) : (matchedOrder ? matchedOrder.unique_key : ('mat-' + m.material_id));
             return {
-                material_transaction_item_id: m.material_transaction_item_id || (matchedOrder ? matchedOrder.id : ''),
+                selected_key: selKey,
+                material_transaction_item_id: m.material_transaction_item_id || null,
                 material_id: m.material_id,
                 trx_number: m.trx_number || (matchedOrder ? matchedOrder.trx_number : ''),
                 name: m.material?.name || 'Material FO',
@@ -486,7 +528,8 @@ const openScheduleModal = (ticket) => {
 
 const addMaterialRow = () => {
     scheduleForm.materials.push({
-        material_transaction_item_id: '',
+        selected_key: '',
+        material_transaction_item_id: null,
         material_id: '',
         trx_number: '',
         name: '',
@@ -503,13 +546,15 @@ const removeMaterialRow = (index) => {
 };
 
 const onMaterialItemChange = (item) => {
-    const selectedOrder = availableMaterialItems.value.find(i => i.id === item.material_transaction_item_id);
+    const selectedKey = item.selected_key || item.material_transaction_item_id;
+    const selectedOrder = availableMaterialItems.value.find(i => i.unique_key === selectedKey || i.id === selectedKey || i.material_id === selectedKey);
     if (selectedOrder) {
         item.material_id = selectedOrder.material_id;
-        item.trx_number = selectedOrder.trx_number;
+        item.trx_number = selectedOrder.trx_number || '';
         item.name = selectedOrder.name;
         item.unit = selectedOrder.unit;
         item.max_stock = selectedOrder.area_stock;
+        item.material_transaction_item_id = selectedOrder.unique_key?.startsWith('ord-') ? (selectedOrder.id || null) : null;
         
         if (item.quantity && item.quantity > selectedOrder.area_stock) {
             item.quantity = selectedOrder.area_stock;

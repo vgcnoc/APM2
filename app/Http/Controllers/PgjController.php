@@ -187,7 +187,12 @@ class PgjController extends Controller
             $q->whereIn('name', ['teknisi', 'kepala teknisi']);
         })->orWhere('role', 'teknisi')->orderBy('name')->get();
 
-        $materials = Material::where('is_active', true)->orderBy('name')->get();
+        $materials = Material::with('stocks')
+            ->where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->orderBy('name')
+            ->get();
         $materialTransactions = MaterialTransaction::where('type', 'in')
             ->with(['items.material.stocks', 'areaModel'])
             ->latest('id')
@@ -506,6 +511,23 @@ class PgjController extends Controller
 
         // Kelola alokasi material gudang jalur
         if (!empty($validated['materials'])) {
+            // Kembalikan alokasi material sebelumnya jika ada revisi jadwal
+            $previousMaterials = $pgj->materials()->get();
+            foreach ($previousMaterials as $prevMat) {
+                $prevQty = (float) $prevMat->quantity_prepared;
+                if ($prevQty > 0) {
+                    if ($pgj->area_id) {
+                        $matStock = \App\Models\MaterialStock::where('material_id', $prevMat->material_id)
+                            ->where('area_id', $pgj->area_id)
+                            ->first();
+                        if ($matStock) {
+                            $matStock->increment('stock', $prevQty);
+                        }
+                    }
+                    Material::where('id', $prevMat->material_id)->increment('stock', $prevQty);
+                }
+            }
+
             $pgj->materials()->delete();
 
             $techNames = User::whereIn('id', $techIds)->pluck('name')->join(', ');
@@ -663,13 +685,34 @@ class PgjController extends Controller
 
                         $material = Material::find($pgjMat->material_id);
                         if ($material) {
+                            $matStock = null;
+                            if ($pgj->area_id) {
+                                $matStock = \App\Models\MaterialStock::firstOrCreate(
+                                    ['material_id' => $material->id, 'area_id' => $pgj->area_id],
+                                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                                );
+                            }
+
+                            $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
+                            $stockAfter = $stockBefore + $qtyReturned;
+
+                            if ($matStock) {
+                                $matStock->increment('stock', $qtyReturned);
+                            }
                             $material->increment('stock', $qtyReturned);
+
+                            $ppu = $material->selling_price ?: ($material->price_per_unit ?? 0);
 
                             MaterialTransactionItem::create([
                                 'material_transaction_id' => $returnTransaction->id,
                                 'material_id' => $material->id,
                                 'quantity' => $qtyReturned,
-                                'price' => $material->price ?? 0,
+                                'unit' => $pgjMat->unit ?? $material->unit ?? 'pcs',
+                                'price_per_unit' => $ppu,
+                                'total_price' => $ppu * $qtyReturned,
+                                'stock_before' => $stockBefore,
+                                'stock_after' => $stockAfter,
+                                'condition' => 'Layak Pakai'
                             ]);
                         }
                     }

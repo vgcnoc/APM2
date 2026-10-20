@@ -964,12 +964,20 @@ class CustomerController extends Controller
             ->limit(100)
             ->get();
 
+        $materials = \App\Models\Material::with('stocks')
+            ->where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->orderBy('name')
+            ->get();
+
         $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Customers/Installed', [
             'customers' => $customers,
             'technicians' => $technicians,
             'availableOnts' => $availableOnts,
+            'materials' => $materials,
             'materialTransactions' => $materialTransactions,
             'packages' => \App\Models\InternetPackage::active()->get(),
             'areas' => $areas,
@@ -2239,12 +2247,12 @@ class CustomerController extends Controller
                     $transactionOut->update(['total_cost' => $totalCostOut]);
                 }
 
-                // Proses Pengembalian (Pending - belum menambah gudang atau memotong area)
+                // Proses Pengembalian Sisa ke Inventory Gudang (Status Approved & Menambah Stok Gudang & Area)
                 if (count($returnItems) > 0) {
                     $transactionReturn = \App\Models\MaterialTransaction::create([
                         'transaction_number' => 'RTR-EXCESS-' . date('YmdHis'),
                         'type' => 'in',
-                        'status' => 'pending',
+                        'status' => 'approved',
                         'date' => now(),
                         'technician_name' => auth()->user()->name,
                         'purpose' => 'Pengembalian Sisa Material Instalasi Pelanggan ' . $customer->name,
@@ -2255,6 +2263,8 @@ class CustomerController extends Controller
                     ]);
 
                     $totalCostReturn = 0;
+                    $targetAreaId = $customer->area_id ?: ($customer->areaModel?->id ?? null);
+
                     foreach ($returnItems as $ri) {
                         $ppuReturn = $ri['material']->selling_price ?: ($ri['material']->price_per_unit ?? 0);
                         if (strtolower($ri['material']->category ?? '') === 'kabel' && strtolower($ri['unit'] ?? '') === 'meter') {
@@ -2264,6 +2274,17 @@ class CustomerController extends Controller
                         $totalItemPriceReturn = $ppuReturn * $ri['qty'];
                         $totalCostReturn += $totalItemPriceReturn;
 
+                        $matStock = null;
+                        if ($targetAreaId) {
+                            $matStock = \App\Models\MaterialStock::firstOrCreate(
+                                ['material_id' => $ri['material']->id, 'area_id' => $targetAreaId],
+                                ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                            );
+                        }
+
+                        $stockBefore = $matStock ? (float) $matStock->stock : (float) $ri['material']->stock;
+                        $stockAfter = $stockBefore + $ri['qty'];
+
                         \App\Models\MaterialTransactionItem::create([
                             'material_transaction_id' => $transactionReturn->id,
                             'material_id' => $ri['material']->id,
@@ -2271,8 +2292,16 @@ class CustomerController extends Controller
                             'unit' => $ri['unit'],
                             'price_per_unit' => $ppuReturn,
                             'total_price' => $totalItemPriceReturn,
+                            'stock_before' => $stockBefore,
+                            'stock_after' => $stockAfter,
                             'condition' => 'Layak Pakai'
                         ]);
+
+                        // Kembalikan ke Inventory Gudang (Stok Area & Stok Master)
+                        if ($matStock) {
+                            $matStock->increment('stock', $ri['qty']);
+                        }
+                        $ri['material']->increment('stock', $ri['qty']);
                     }
                     $transactionReturn->update(['total_cost' => $totalCostReturn]);
                 }
