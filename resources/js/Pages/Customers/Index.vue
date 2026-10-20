@@ -501,17 +501,32 @@
                                 <p class="text-[11px] text-amber-800 leading-relaxed">
                                     Pelanggan berhenti sebelum masa minimal komitmen <strong>4 bulan</strong>.
                                 </p>
+                                <!-- Pemotongan Fee Booking Afiliasi Otomatis -->
                                 <div v-if="customerActiveTenure.hasSales" class="p-2.5 rounded-lg bg-white/90 border border-amber-200 text-[11px] space-y-1">
                                     <div class="font-bold flex items-center justify-between text-rose-800">
-                                        <span>✂️ Pemotongan Fee Booking Otomatis:</span>
+                                        <span class="flex items-center gap-1">✂️ Pemotongan Fee Booking Otomatis:</span>
                                         <span class="bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded text-[10px] uppercase font-black">AUTO-POTONG</span>
                                     </div>
                                     <p class="text-slate-600">
-                                        Fee booking yang pernah diterima oleh Sales/Afiliator <strong class="text-slate-900">{{ customerActiveTenure.salesName }}</strong> akan <strong>otomatis dipotong</strong> dari saldo afiliasinya saat data disimpan.
+                                        Fee booking yang pernah diterima oleh Sales/Afiliator <strong class="text-slate-900">{{ customerActiveTenure.salesName }}</strong> akan <strong>otomatis dipotong</strong> (dari slip gaji payroll jika karyawan, atau saldo dompet jika mitra).
                                     </p>
                                 </div>
                                 <div v-else class="text-[10px] text-slate-500 italic">
                                     (Pelanggan mendaftar tanpa sales afiliasi, tidak ada fee booking yang dipotong).
+                                </div>
+
+                                <!-- Pemotongan Fee Survey Teknisi Otomatis -->
+                                <div v-if="customerActiveTenure.hasSurveyor" class="p-2.5 rounded-lg bg-white/90 border border-amber-200 text-[11px] space-y-1">
+                                    <div class="font-bold flex items-center justify-between text-rose-800">
+                                        <span class="flex items-center gap-1">✂️ Pemotongan Fee Survey Otomatis:</span>
+                                        <span class="bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded text-[10px] uppercase font-black">AUTO-POTONG</span>
+                                    </div>
+                                    <p class="text-slate-600">
+                                        Fee survey yang pernah diterima oleh Teknisi Surveyor <strong class="text-slate-900">{{ customerActiveTenure.surveyorName }}</strong> akan <strong>otomatis dipotong</strong> (dari slip gaji payroll jika karyawan, atau saldo dompet jika mitra).
+                                    </p>
+                                </div>
+                                <div v-else class="text-[10px] text-slate-500 italic">
+                                    (Pelanggan tidak memiliki riwayat teknisi survey, tidak ada fee survey yang dipotong).
                                 </div>
                             </div>
 
@@ -766,6 +781,17 @@ const customerActiveTenure = computed(() => {
     const months = Math.floor(diffDays / 30);
     const days = diffDays % 30;
     const isUnder4 = months < 4;
+
+    // Deteksi Surveyor Teknisi
+    const lastSurvey = terminatingCustomer.value.surveys && terminatingCustomer.value.surveys.length 
+        ? terminatingCustomer.value.surveys[terminatingCustomer.value.surveys.length - 1] 
+        : null;
+    const surveySchedule = (terminatingCustomer.value.technician_schedules || terminatingCustomer.value.technicianSchedules || [])
+        .find(s => s.type === 'survey');
+    
+    const surveyorName = lastSurvey?.surveyor?.name || surveySchedule?.technician?.name || null;
+    const hasSurveyor = !!surveyorName;
+
     return {
         diffDays,
         months,
@@ -773,7 +799,9 @@ const customerActiveTenure = computed(() => {
         isUnder4,
         text: months > 0 ? `${months} bulan ${days} hari` : `${diffDays} hari`,
         hasSales: !!terminatingCustomer.value.sales_id,
-        salesName: terminatingCustomer.value.sales?.name || (terminatingCustomer.value.sales_id ? 'Sales #' + terminatingCustomer.value.sales_id : null)
+        salesName: terminatingCustomer.value.sales?.name || (terminatingCustomer.value.sales_id ? 'Sales #' + terminatingCustomer.value.sales_id : null),
+        hasSurveyor,
+        surveyorName,
     };
 });
 

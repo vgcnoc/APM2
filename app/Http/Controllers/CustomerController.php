@@ -69,7 +69,16 @@ class CustomerController extends Controller
 
         // 2. Fetch Data
         $customers = (clone $baseQuery)
-            ->with(['package', 'ont.odp', 'surveys.odp', 'areaModel', 'user', 'sales:id,name'])
+            ->with([
+                'package', 
+                'ont.odp', 
+                'surveys.odp', 
+                'surveys.surveyor:id,name', 
+                'technicianSchedules.technician:id,name', 
+                'areaModel', 
+                'user', 
+                'sales:id,name'
+            ])
             ->search($request->search)
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
             ->when($request->service_status, fn ($q, $ss) => $q->where('service_status', $ss))
