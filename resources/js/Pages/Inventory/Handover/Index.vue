@@ -2,6 +2,20 @@
     <AppLayout title="Serah Terima & Permintaan Material" subtitle="Alur otomatis serah terima pengembalian gudang dan approval permintaan material / ganti ONT">
         <div class="space-y-6 pb-20">
 
+            <!-- ── 0. BREADCRUMB & ALUR CEPAT ─────────────────────────── -->
+            <div class="bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-emerald-500/10 border border-amber-200/60 p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
+                <div class="flex items-start gap-3">
+                    <span class="text-2xl shrink-0 mt-0.5">💡</span>
+                    <div class="text-xs">
+                        <p class="font-extrabold text-gray-900 text-sm">Alur Otomatis Serah Terima & Kondisi Barang</p>
+                        <p class="text-gray-600 mt-0.5 leading-relaxed">
+                            Sisa material dari pelaksanaan <b>Instalasi PSB, PGS, PGK, PGJ, Rollout, dan CBP</b> otomatis masuk ke antrean ini. 
+                            Petugas Gudang / Ka. Teknisi cukup klik tombol <span class="font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">✅ Terima & Cek Kondisi</span> untuk memilih kondisi fisik (<b>🟢 Layak Pakai</b>, <b>🟡 Tidak Layak</b>, atau <b>🔴 Rusak</b>) dan memasukkan stok ke gudang.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <!-- ── 1. STATISTIC CARDS ─────────────────────────────────── -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div @click="switchTab('returns')" 
@@ -93,21 +107,29 @@
             </div>
 
             <!-- ── 3. FILTERS BAR ─────────────────────────────────────── -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
                 <div>
                     <input type="text" v-model="filterSearch" @keyup.enter="applyFilters" placeholder="Cari No Trx, Teknisi, No Tiket..." 
                         class="w-full text-xs py-2 px-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div>
                     <select v-model="filterSource" @change="applyFilters" class="w-full text-xs py-2 px-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-medium">
-                        <option value="">Semua Sumber Operasional</option>
-                        <option value="installation">🏠 Instalasi PSB</option>
-                        <option value="pgs">⚡ PGS (Penanganan Sigap)</option>
-                        <option value="pgk">🛠️ PGK (Komplain Pelanggan)</option>
+                        <option value="">Semua Sumber Tugas</option>
+                        <option value="instalasi">🏠 Instalasi PSB</option>
+                        <option value="pgs">⚡ PGS (Gangguan Saluran)</option>
+                        <option value="pgk">🛠️ PGK (Gangguan Khusus)</option>
                         <option value="pgj">🌐 PGJ (Gangguan Jalur)</option>
-                        <option value="rollout_odc">🏗️ Rollout ODC</option>
-                        <option value="rollout_odp">🏗️ Rollout ODP</option>
-                        <option value="manual">Manual / Lainnya</option>
+                        <option value="rollout_odc_odp">🏗️ Rollout ODC & ODP</option>
+                        <option value="cbp">✂️ Cabut Perangkat (CBP)</option>
+                        <option value="manual">📝 Manual / Lapangan</option>
+                    </select>
+                </div>
+                <div>
+                    <select v-model="filterCondition" @change="applyFilters" class="w-full text-xs py-2 px-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-medium">
+                        <option value="">Semua Kondisi Barang</option>
+                        <option value="Layak Pakai">🟢 Layak Pakai</option>
+                        <option value="Tidak Layak">🟡 Tidak Layak</option>
+                        <option value="Rusak">🔴 Rusak</option>
                     </select>
                 </div>
                 <div>
@@ -118,7 +140,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <button @click="applyFilters" class="flex-1 py-2 text-xs font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-xl transition">
-                        Terapkan Filter
+                        Terapkan
                     </button>
                     <button @click="resetFilters" class="py-2 px-3 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-xl transition">
                         Reset
@@ -252,8 +274,8 @@
                                     <div class="flex items-center justify-end gap-1.5 flex-wrap">
                                         <!-- Aksi Serah Terima (Pending Handover) -->
                                         <template v-if="trx.request_type === 'return_handover' && trx.handover_status === 'pending_handover'">
-                                            <button @click="openReceiveModal(trx)" class="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition active:scale-95 flex items-center gap-1">
-                                                <span>✅</span> Terima Fisik
+                                            <button @click="openReceiveModal(trx)" class="px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition active:scale-95 flex items-center gap-1.5">
+                                                <span>✅</span> Terima & Cek Kondisi
                                             </button>
                                             <button @click="openRejectModal(trx, 'handover')" class="px-2.5 py-1.5 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 transition">
                                                 Tolak
@@ -340,19 +362,31 @@
                                         <span class="font-black text-gray-900">{{ it.material_name }}</span>
                                         <span class="text-gray-500">Satuan: {{ it.unit }}</span>
                                     </div>
-                                    <div class="grid grid-cols-2 gap-3">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <div>
                                             <label class="block text-[11px] font-bold text-gray-600 mb-1">Jumlah Fisik Diterima</label>
                                             <input type="number" step="0.01" min="0.01" v-model="it.quantity" required
-                                                class="w-full text-xs px-3 py-1.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold">
+                                                class="w-full text-xs px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold">
                                         </div>
                                         <div>
-                                            <label class="block text-[11px] font-bold text-gray-600 mb-1">Kondisi Barang</label>
-                                            <select v-model="it.condition" required class="w-full text-xs px-3 py-1.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold">
-                                                <option value="Layak Pakai">🟢 Layak Pakai</option>
-                                                <option value="Tidak Layak">🟡 Tidak Layak</option>
-                                                <option value="Rusak">🔴 Rusak</option>
-                                            </select>
+                                            <label class="block text-[11px] font-bold text-gray-600 mb-1">Pilih Status Kondisi Barang</label>
+                                            <div class="grid grid-cols-3 gap-1">
+                                                <button type="button" @click="it.condition = 'Layak Pakai'"
+                                                    :class="it.condition === 'Layak Pakai' ? 'bg-emerald-600 text-white font-black shadow-sm ring-2 ring-emerald-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                                                    class="py-2 px-1 rounded-xl text-[10px] font-bold text-center transition">
+                                                    🟢 Layak
+                                                </button>
+                                                <button type="button" @click="it.condition = 'Tidak Layak'"
+                                                    :class="it.condition === 'Tidak Layak' ? 'bg-amber-600 text-white font-black shadow-sm ring-2 ring-amber-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                                                    class="py-2 px-1 rounded-xl text-[10px] font-bold text-center transition">
+                                                    🟡 Tdk Layak
+                                                </button>
+                                                <button type="button" @click="it.condition = 'Rusak'"
+                                                    :class="it.condition === 'Rusak' ? 'bg-rose-600 text-white font-black shadow-sm ring-2 ring-rose-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                                                    class="py-2 px-1 rounded-xl text-[10px] font-bold text-center transition">
+                                                    🔴 Rusak
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -597,6 +631,7 @@ const props = defineProps({
 
 const filterSearch = ref(props.filters.search || '');
 const filterSource = ref(props.filters.source_type || '');
+const filterCondition = ref(props.filters.condition || '');
 const filterArea = ref(props.filters.area_id || '');
 
 const switchTab = (tab) => {
@@ -604,6 +639,7 @@ const switchTab = (tab) => {
         tab,
         search: filterSearch.value,
         source_type: filterSource.value,
+        condition: filterCondition.value,
         area_id: filterArea.value,
     }, { preserveState: true, preserveScroll: true });
 };
@@ -613,6 +649,7 @@ const applyFilters = () => {
         tab: props.currentTab,
         search: filterSearch.value,
         source_type: filterSource.value,
+        condition: filterCondition.value,
         area_id: filterArea.value,
     }, { preserveState: true, preserveScroll: true });
 };
@@ -620,6 +657,7 @@ const applyFilters = () => {
 const resetFilters = () => {
     filterSearch.value = '';
     filterSource.value = '';
+    filterCondition.value = '';
     filterArea.value = '';
     switchTab(props.currentTab);
 };

@@ -23,6 +23,7 @@ class MaterialHandoverController extends Controller
         $status = $request->query('status', '');
         $sourceType = $request->query('source_type', '');
         $areaId = $request->query('area_id', '');
+        $condition = $request->query('condition', '');
 
         // Summary Counters
         $pendingReturnsCount = MaterialTransaction::where('request_type', 'return_handover')
@@ -93,6 +94,12 @@ class MaterialHandoverController extends Controller
             $query->where('area_id', $areaId);
         }
 
+        if ($condition) {
+            $query->whereHas('items', function ($iq) use ($condition) {
+                $iq->where('condition', $condition);
+            });
+        }
+
         $transactions = $query->paginate(15)->withQueryString();
 
         // Dropdown Data
@@ -115,6 +122,7 @@ class MaterialHandoverController extends Controller
                 'status' => $status,
                 'source_type' => $sourceType,
                 'area_id' => $areaId,
+                'condition' => $condition,
             ],
             'summary' => [
                 'pending_returns' => $pendingReturnsCount,

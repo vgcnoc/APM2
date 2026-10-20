@@ -643,12 +643,10 @@ const menuItems = [
         active: (url) => (url || '').startsWith('/produk') || (url || '').startsWith('/order-toko') || (url || '').startsWith('/stok-in-out') || (url || '').startsWith('/warehouse-stocks') || (url || '').startsWith('/material-mutations') || (url || '').startsWith('/material-handovers'),
         permission: ['menu_materials', 'menu_inventory', 'menu_material_transactions', 'menu_material_handovers'],
         children: [
-            { href: '/material-handovers', label: '🤝 Serah Terima & Request', active: (url) => (url || '').startsWith('/material-handovers'), permission: 'menu_material_handovers' },
-            { href: '/warehouse-stocks', label: 'Inventory Gudang', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: 'menu_materials' },
-            { href: '/produk', label: 'Data Produk & Material', active: (url) => (url || '').startsWith('/produk'), permission: 'menu_materials' },
-            { href: '/stok-in-out', label: 'Catat Retur & Barang Rusak', active: (url) => (url || '').startsWith('/stok-in-out'), permission: 'menu_materials' },
-            { href: '/material-mutations', label: 'Rekap Kondisi Barang (Audit)', active: (url) => (url || '').startsWith('/material-mutations'), permission: 'menu_materials' },
+            { href: '/warehouse-stocks', label: 'Stok Barang', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: 'menu_materials' },
+            { href: '/material-handovers', label: 'Serah Terima & Retur', active: (url) => (url || '').startsWith('/material-handovers'), permission: 'menu_material_handovers' },
             { href: '/order-toko', label: 'Order Toko (Restock)', active: (url) => (url || '').startsWith('/order-toko'), permission: 'menu_materials' },
+            { href: '/produk', label: 'Data Material', active: (url) => (url || '').startsWith('/produk'), permission: 'menu_materials' },
         ]
     },
 
