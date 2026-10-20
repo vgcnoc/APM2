@@ -88,7 +88,7 @@
                                 type="button" 
                                 @click="filterType = ''; applyFilters()" 
                                 :class="[!filterType ? 'bg-white text-gray-900 shadow-sm font-bold' : 'text-gray-500 hover:text-gray-900 font-medium']"
-                                class="px-4 py-2 rounded-xl text-xs sm:text-sm transition-all"
+                                class="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-all"
                             >
                                 Semua Tipe
                             </button>
@@ -96,7 +96,7 @@
                                 type="button" 
                                 @click="filterType = 'out'; applyFilters()" 
                                 :class="[filterType === 'out' ? 'bg-rose-500 text-white shadow-sm font-bold' : 'text-gray-500 hover:text-rose-600 font-medium']"
-                                class="px-4 py-2 rounded-xl text-xs sm:text-sm transition-all inline-flex items-center gap-1.5"
+                                class="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-all inline-flex items-center gap-1.5"
                             >
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
                                 Stok Keluar
@@ -105,10 +105,40 @@
                                 type="button" 
                                 @click="filterType = 'in'; applyFilters()" 
                                 :class="[filterType === 'in' ? 'bg-emerald-600 text-white shadow-sm font-bold' : 'text-gray-500 hover:text-emerald-600 font-medium']"
-                                class="px-4 py-2 rounded-xl text-xs sm:text-sm transition-all inline-flex items-center gap-1.5"
+                                class="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-all inline-flex items-center gap-1.5"
                             >
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
                                 Stok Masuk
+                            </button>
+                        </div>
+
+                        <!-- Quick Condition Pills (Layak / Rusak) -->
+                        <div class="inline-flex p-1 bg-slate-100 rounded-2xl w-fit">
+                            <button 
+                                type="button" 
+                                @click="filterCondition = ''; applyFilters()" 
+                                :class="[!filterCondition ? 'bg-white text-gray-900 shadow-sm font-bold' : 'text-gray-500 hover:text-gray-900 font-medium']"
+                                class="px-3 py-2 rounded-xl text-xs sm:text-sm transition-all"
+                            >
+                                Semua Kondisi
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="filterCondition = 'Layak Pakai'; applyFilters()" 
+                                :class="[filterCondition === 'Layak Pakai' ? 'bg-emerald-600 text-white shadow-sm font-bold' : 'text-gray-500 hover:text-emerald-600 font-medium']"
+                                class="px-3 py-2 rounded-xl text-xs sm:text-sm transition-all inline-flex items-center gap-1.5"
+                            >
+                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                Layak Pakai
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="filterCondition = 'Rusak'; applyFilters()" 
+                                :class="[filterCondition === 'Rusak' ? 'bg-rose-600 text-white shadow-sm font-bold' : 'text-gray-500 hover:text-rose-600 font-medium']"
+                                class="px-3 py-2 rounded-xl text-xs sm:text-sm transition-all inline-flex items-center gap-1.5"
+                            >
+                                <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+                                Rusak
                             </button>
                         </div>
 
@@ -374,6 +404,43 @@
                     <form @submit.prevent="submitForm" class="flex flex-col flex-1 overflow-hidden">
                         <div class="p-6 overflow-y-auto flex-1">
                             
+                            <!-- 1-Click Quick Preset Buttons -->
+                            <div class="mb-5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                        Pilih Cepat Status & Keperluan (1-Klik):
+                                    </span>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <template v-if="form.type === 'in'">
+                                        <button type="button" @click="setPreset('Retur Sisa Pasang', 'Layak Pakai')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5" :class="form.purpose === 'Retur Sisa Pasang' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50'">
+                                            🟢 Sisa Bagus (Layak Pakai)
+                                        </button>
+                                        <button type="button" @click="setPreset('Barang Rusak Lapangan', 'Rusak')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5" :class="form.purpose === 'Barang Rusak Lapangan' ? 'bg-rose-600 text-white shadow-sm' : 'bg-white text-rose-700 border border-rose-200 hover:bg-rose-50'">
+                                            🔴 Barang Rusak / Cacat
+                                        </button>
+                                        <button type="button" @click="setPreset('Barang Bekas Tidak Layak', 'Tidak Layak')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5" :class="form.purpose === 'Barang Bekas Tidak Layak' ? 'bg-amber-600 text-white shadow-sm' : 'bg-white text-amber-700 border border-amber-200 hover:bg-amber-50'">
+                                            🟡 Bekas (Tidak Layak)
+                                        </button>
+                                        <button type="button" @click="setPreset('Koreksi Fisik Gudang', 'Layak Pakai')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5" :class="form.purpose === 'Koreksi Fisik Gudang' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-blue-700 border border-blue-200 hover:bg-blue-50'">
+                                            📦 Koreksi Stok Fisik
+                                        </button>
+                                    </template>
+                                    <template v-else>
+                                        <button type="button" @click="setPreset('Bekal Pasang Baru', 'Layak Pakai')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5" :class="form.purpose === 'Bekal Pasang Baru' ? 'bg-rose-600 text-white shadow-sm' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'">
+                                            🚚 Bekal Pasang Baru (PSB)
+                                        </button>
+                                        <button type="button" @click="setPreset('Perbaikan Gangguan', 'Layak Pakai')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5" :class="form.purpose === 'Perbaikan Gangguan' ? 'bg-rose-600 text-white shadow-sm' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'">
+                                            🔧 Maintenance / Gangguan
+                                        </button>
+                                        <button type="button" @click="setPreset('Afkir / Buang Rusak', 'Rusak')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5" :class="form.purpose === 'Afkir / Buang Rusak' ? 'bg-rose-600 text-white shadow-sm' : 'bg-white text-rose-700 border border-rose-200 hover:bg-rose-50'">
+                                            🗑️ Buang / Afkir Barang Rusak
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                                 <div>
                                     <label class="block text-sm font-bold text-gray-700 mb-1">Tanggal <span class="text-red-500">*</span></label>
@@ -592,8 +659,16 @@ const getUnit = (materialId) => {
     return mat ? mat.unit : '';
 };
 
+const setPreset = (purpose, condition) => {
+    form.purpose = purpose;
+    form.items.forEach(item => {
+        item.condition = condition;
+    });
+};
+
 const addItem = () => {
-    form.items.push({ material_id: '', quantity: null, condition: 'Layak Pakai' });
+    const lastCondition = form.items.length > 0 ? form.items[form.items.length - 1].condition : 'Layak Pakai';
+    form.items.push({ material_id: '', quantity: null, condition: lastCondition });
 };
 
 const removeItem = (index) => {
