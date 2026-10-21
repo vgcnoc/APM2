@@ -70,7 +70,7 @@ class CustomerAreaController extends Controller
     public function dashboard()
     {
         $user = auth()->user();
-        if ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists()) {
+        if (!$this->isStaffUser($user) && ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists())) {
             return redirect()->route('client-area.dashboard');
         }
 
@@ -113,7 +113,7 @@ class CustomerAreaController extends Controller
     public function billing()
     {
         $user = auth()->user();
-        if ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists()) {
+        if (!$this->isStaffUser($user) && ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists())) {
             return redirect()->route('client-area.billing');
         }
 
@@ -144,12 +144,13 @@ class CustomerAreaController extends Controller
     public function tickets()
     {
         $user = auth()->user();
+        if (!$this->isStaffUser($user) && ($user->reseller || Reseller::where('user_id', $user->id)->exists())) {
+            return redirect()->route('client-area.dashboard');
+        }
+
         $customer = $this->getCustomer();
 
         if (!$customer) {
-            if ($user->reseller || Reseller::where('user_id', $user->id)->exists()) {
-                return redirect()->route('client-area.dashboard');
-            }
             if ($this->isStaffUser($user)) {
                 $customer = Customer::with('package')->first();
             }
