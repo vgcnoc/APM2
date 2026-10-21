@@ -77,5 +77,18 @@ class Invoice extends Model
                 }
             }
         });
+
+        static::deleting(function (Invoice $invoice) {
+            try {
+                foreach ($invoice->payments as $payment) {
+                    if ($payment->proof_image && \Illuminate\Support\Facades\Storage::disk('public')->exists($payment->proof_image)) {
+                        \Illuminate\Support\Facades\Storage::disk('public')->delete($payment->proof_image);
+                    }
+                    $payment->delete();
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[Invoice::deleting] Error deleting payments: ' . $e->getMessage());
+            }
+        });
     }
 }

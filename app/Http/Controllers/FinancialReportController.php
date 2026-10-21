@@ -45,9 +45,13 @@ class FinancialReportController extends Controller
         // Laba Bersih
         $labaBersih = $totalOmzet - $totalPengeluaran;
 
-        // Piutang Keseluruhan (Tunggakan + Kasbon yang belum lunas) - Global, tidak terikat bulan
+        // Piutang Keseluruhan (Tunggakan Aktif + Kasbon yang belum lunas) - Global, tidak terikat bulan
         $piutangCustomer = Invoice::where('is_reseller_balance', false)
             ->whereIn('status', ['unpaid', 'partial'])
+            ->whereHas('customer', function($q) {
+                $q->where('status', '!=', 'terminated')
+                  ->whereNotIn('service_status', ['gratis', 'free_home']);
+            })
             ->get()
             ->sum(function($inv) {
                 $paid = $inv->payments()->where('status', 'verified')->sum('amount');
@@ -56,6 +60,19 @@ class FinancialReportController extends Controller
             
         $piutangReseller = Invoice::where('is_reseller_balance', true)
             ->whereIn('status', ['unpaid', 'partial'])
+            ->get()
+            ->sum(function($inv) {
+                $paid = $inv->payments()->where('status', 'verified')->sum('amount');
+                return max(0, $inv->amount - $paid);
+            });
+
+        // Piutang Pelanggan Stop Permanen (Bad Debt)
+        $piutangTerminated = Invoice::where('is_reseller_balance', false)
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->whereHas('customer', function($q) {
+                $q->where('status', 'terminated')
+                  ->whereNotIn('service_status', ['gratis', 'free_home']);
+            })
             ->get()
             ->sum(function($inv) {
                 $paid = $inv->payments()->where('status', 'verified')->sum('amount');
@@ -197,6 +214,7 @@ class FinancialReportController extends Controller
                 'laba_bersih' => $labaBersih,
                 'piutang_customer' => $piutangCustomer,
                 'piutang_reseller' => $piutangReseller,
+                'piutang_terminated' => $piutangTerminated,
                 'total_piutang' => $totalPiutang,
             ],
             'chartData' => $chartData,

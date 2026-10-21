@@ -76,12 +76,16 @@
                     <h3 class="text-3xl font-black mb-4">Rp {{ formatRupiah(summary.total_piutang) }}</h3>
                     <div class="flex flex-col gap-1 text-xs text-amber-50 font-medium">
                         <div class="flex justify-between border-t border-amber-400/30 pt-2">
-                            <span>Tunggakan Pelanggan:</span>
+                            <span>Tunggakan Pelanggan Aktif:</span>
                             <span>Rp {{ formatRupiah(summary.piutang_customer) }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span>Kasbon Reseller:</span>
                             <span>Rp {{ formatRupiah(summary.piutang_reseller) }}</span>
+                        </div>
+                        <div v-if="summary.piutang_terminated > 0" class="flex justify-between text-rose-200 font-semibold">
+                            <span>Piutang Stop Permanen:</span>
+                            <span>Rp {{ formatRupiah(summary.piutang_terminated) }}</span>
                         </div>
                     </div>
                 </div>

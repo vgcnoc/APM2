@@ -42,7 +42,18 @@ class CustomerController extends Controller
                             });
                     });
                 }
-            });
+            })
+            ->when($request->area_id, function ($q, $areaId) {
+                $q->where(function ($sub) use ($areaId) {
+                    $sub->where('area_id', $areaId);
+                    $areaName = \App\Models\Area::where('id', $areaId)->value('name');
+                    if ($areaName) {
+                        $sub->orWhere('area', $areaName);
+                    }
+                });
+            })
+            ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
+            ->when($request->service_status, fn ($q, $ss) => $q->where('service_status', $ss));
 
         // 1. Calculate Stats
         $now = now();
