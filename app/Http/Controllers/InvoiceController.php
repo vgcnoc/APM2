@@ -266,9 +266,9 @@ class InvoiceController extends Controller
 
             $totalPaid = (int) round($inv->payments()->sum('amount'));
             if ($totalPaid >= (int) round($inv->amount)) {
-                $inv->update(['status' => 'paid', 'total_paid' => $totalPaid, 'remaining' => 0]);
+                $inv->update(['status' => 'paid']);
             } else {
-                $inv->update(['status' => 'partial', 'total_paid' => $totalPaid, 'remaining' => (int) round($inv->amount - $totalPaid)]);
+                $inv->update(['status' => 'partial']);
             }
 
             $remainingPayment -= $payForThis;
@@ -287,7 +287,7 @@ class InvoiceController extends Controller
                 'collected_by' => auth()->id(),
             ]);
             $totalPaid = (int) round($invoice->payments()->sum('amount'));
-            $invoice->update(['status' => 'paid', 'total_paid' => $totalPaid, 'remaining' => 0]);
+            $invoice->update(['status' => 'paid']);
         }
 
         // Update status internet pelanggan jika diminta (Nyalakan / Matikan)
@@ -840,25 +840,23 @@ class InvoiceController extends Controller
                 }
                 
                 $totalPaid = (int) round($invoice->payments()->sum('amount'));
-                $invoice->total_paid = $totalPaid;
-                $invoice->remaining = max(0, $totalProrataAmount - $totalPaid);
+                $invoice->status = $totalPaid >= $totalProrataAmount ? 'paid' : ($totalPaid > 0 ? 'partial' : 'unpaid');
                 $invoice->save();
 
                 // Jika dicentang opsi bayar lunas seketika
-                if ($request->boolean('pay_now') && $invoice->remaining > 0) {
+                $remainingProrata = max(0, $totalProrataAmount - $totalPaid);
+                if ($request->boolean('pay_now') && $remainingProrata > 0) {
                     $payMethod = $request->payment_method ?: 'cash';
                     $invoice->payments()->create([
                         'customer_id' => $customer->id,
                         'payment_date' => now(),
-                        'amount' => $invoice->remaining,
+                        'amount' => $remainingProrata,
                         'payment_method' => $payMethod,
                         'notes' => 'Pembayaran lunas seketika saat ' . $actionLabel . ' paket',
                         'collected_by' => auth()->id(),
                     ]);
                     $invoice->update([
                         'status' => 'paid',
-                        'total_paid' => $totalProrataAmount,
-                        'remaining' => 0,
                     ]);
                 }
             } else {
@@ -893,8 +891,6 @@ class InvoiceController extends Controller
                         ]);
                         $newInv->update([
                             'status' => 'paid',
-                            'total_paid' => $diff,
-                            'remaining' => 0,
                         ]);
                     }
                 } elseif ($diff < 0) {
@@ -928,8 +924,6 @@ class InvoiceController extends Controller
                     ]);
                     $invoice->update([
                         'status' => 'paid',
-                        'total_paid' => $effectiveNewPrice,
-                        'remaining' => 0,
                     ]);
                 }
             }
