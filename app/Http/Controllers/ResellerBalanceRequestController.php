@@ -257,6 +257,141 @@ class ResellerBalanceRequestController extends Controller
         }
     }
 
+    public function update(Request $request, ResellerBalanceRequest $balanceRequest)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:1000',
+            'payment_method' => 'nullable|in:transfer,kasbon,cash',
+            'notes' => 'nullable|string',
+            'reason' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $newAmount = (float)$validated['amount'];
+            $oldAmount = (float)$balanceRequest->amount;
+            $diff = $newAmount - $oldAmount;
+            $reseller = $balanceRequest->reseller;
+
+            if ($balanceRequest->status === 'approved') {
+                if ($diff < 0 && ($reseller->balance + $diff) < 0) {
+                    $kurang = abs($reseller->balance + $diff);
+                    return back()->with('error', 'Tidak dapat mengurangi nominal: Saldo reseller saat ini (Rp ' . number_format($reseller->balance, 0, ',', '.') . ') tidak mencukupi untuk pengurangan (Rp ' . number_format(abs($diff), 0, ',', '.') . '). Kurang Rp ' . number_format($kurang, 0, ',', '.') . '.');
+                }
+
+                $reseller->balance += $diff;
+                $reseller->save();
+
+                $koreksiNote = " [Koreksi dari Rp " . number_format($oldAmount, 0, ',', '.') . " ke Rp " . number_format($newAmount, 0, ',', '.') . ($validated['reason'] ? ": {$validated['reason']}" : "") . "]";
+
+                // Update transaksi mutasi terkait
+                $tx = ResellerTransaction::where('reseller_id', $reseller->id)
+                    ->where(function($q) use ($balanceRequest) {
+                        $q->where('reference_id', 'TOPUP-' . $balanceRequest->id)
+                          ->orWhere('reference_id', 'REQ-' . $balanceRequest->id);
+                    })->first();
+
+                if ($tx) {
+                    $tx->amount = $newAmount;
+                    $cleanDesc = preg_replace('/ \[Koreksi.*?\]/', '', $tx->description);
+                    $tx->description = $cleanDesc . $koreksiNote;
+                    $tx->save();
+                } else {
+                    ResellerTransaction::create([
+                        'reseller_id' => $reseller->id,
+                        'type' => 'credit',
+                        'amount' => $newAmount,
+                        'description' => 'Penambahan Saldo (' . ucfirst($balanceRequest->payment_method) . ') via Admin' . $koreksiNote,
+                        'reference_id' => 'TOPUP-' . $balanceRequest->id,
+                    ]);
+                }
+
+                // Update invoice terkait (jika ada)
+                Invoice::where('is_reseller_balance', true)
+                    ->where(function($q) use ($balanceRequest) {
+                        $q->where('notes', 'like', "%REQ-{$balanceRequest->id}%");
+                    })
+                    ->each(function($inv) use ($newAmount, $validated, $balanceRequest) {
+                        $inv->amount = $newAmount;
+                        if (!empty($validated['payment_method'])) {
+                            $isKasbon = $validated['payment_method'] === 'kasbon';
+                            $inv->status = $isKasbon ? 'unpaid' : 'paid';
+                        }
+                        $inv->save();
+
+                        if ($balanceRequest->payment_method !== 'kasbon') {
+                            $inv->payments()->update(['amount' => $newAmount]);
+                        }
+                    });
+            }
+
+            $updateData = ['amount' => $newAmount];
+            if (!empty($validated['payment_method'])) {
+                $updateData['payment_method'] = $validated['payment_method'];
+            }
+            if (isset($validated['notes'])) {
+                $updateData['notes'] = $validated['notes'];
+            }
+            if (!empty($validated['reason'])) {
+                $updateData['notes'] = trim(($updateData['notes'] ?? $balanceRequest->notes ?? '') . " [Koreksi: {$validated['reason']}]");
+            }
+            $balanceRequest->update($updateData);
+
+            DB::commit();
+            return back()->with('success', 'Nominal saldo berhasil dikoreksi menjadi Rp ' . number_format($newAmount, 0, ',', '.') . '. Saldo reseller telah disesuaikan.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal mengoreksi nominal: ' . $e->getMessage());
+        }
+    }
+
+    public function destroy(ResellerBalanceRequest $balanceRequest)
+    {
+        DB::beginTransaction();
+        try {
+            $reseller = $balanceRequest->reseller;
+
+            if ($balanceRequest->status === 'approved') {
+                if ($reseller->balance < $balanceRequest->amount) {
+                    return back()->with('error', 'Tidak dapat membatalkan: Saldo reseller saat ini (Rp ' . number_format($reseller->balance, 0, ',', '.') . ') lebih kecil dari nominal yang ingin dibatalkan (Rp ' . number_format($balanceRequest->amount, 0, ',', '.') . ').');
+                }
+                $reseller->balance -= $balanceRequest->amount;
+                $reseller->save();
+            }
+
+            // Hapus transaksi mutasi terkait
+            ResellerTransaction::where('reseller_id', $reseller->id)
+                ->where(function($q) use ($balanceRequest) {
+                    $q->where('reference_id', 'TOPUP-' . $balanceRequest->id)
+                      ->orWhere('reference_id', 'REQ-' . $balanceRequest->id);
+                })->delete();
+
+            // Batalkan atau hapus invoice kasbon terkait
+            Invoice::where('is_reseller_balance', true)
+                ->where(function($q) use ($balanceRequest) {
+                    $q->where('notes', 'like', "%REQ-{$balanceRequest->id}%");
+                })
+                ->each(function($inv) {
+                    if ($inv->status === 'unpaid') {
+                        $inv->delete();
+                    } else {
+                        $inv->update(['status' => 'cancelled', 'notes' => trim(($inv->notes ?? '') . ' [Permintaan Dibatalkan]')]);
+                    }
+                });
+
+            $balanceRequest->update([
+                'status' => 'rejected',
+                'notes' => trim(($balanceRequest->notes ?? '') . ' [Dibatalkan Admin]')
+            ]);
+
+            DB::commit();
+            return back()->with('success', 'Pengisian saldo berhasil dibatalkan dan saldo reseller telah dikembalikan.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal membatalkan pengisian saldo: ' . $e->getMessage());
+        }
+    }
+
     public function reject(Request $request, ResellerBalanceRequest $balanceRequest)
     {
         if ($balanceRequest->status !== 'pending') {
@@ -269,6 +404,74 @@ class ResellerBalanceRequestController extends Controller
         ]);
 
         return back()->with('success', 'Permintaan saldo telah ditolak.');
+    }
+
+    public function updateTransaction(Request $request, ResellerTransaction $transaction)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:1000',
+            'reason' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $newAmount = (float)$validated['amount'];
+            $oldAmount = (float)$transaction->amount;
+            $diff = $newAmount - $oldAmount;
+            $reseller = $transaction->reseller;
+
+            if ($transaction->type === 'credit') {
+                if ($diff < 0 && ($reseller->balance + $diff) < 0) {
+                    $kurang = abs($reseller->balance + $diff);
+                    return back()->with('error', 'Tidak dapat mengurangi nominal: Saldo reseller saat ini (Rp ' . number_format($reseller->balance, 0, ',', '.') . ') tidak mencukupi untuk pengurangan (Rp ' . number_format(abs($diff), 0, ',', '.') . '). Kurang Rp ' . number_format($kurang, 0, ',', '.') . '.');
+                }
+                $reseller->balance += $diff;
+            } else {
+                if ($diff > 0 && ($reseller->balance - $diff) < 0) {
+                    $kurang = abs($reseller->balance - $diff);
+                    return back()->with('error', 'Tidak dapat menambah debit: Saldo reseller saat ini (Rp ' . number_format($reseller->balance, 0, ',', '.') . ') tidak mencukupi. Kurang Rp ' . number_format($kurang, 0, ',', '.') . '.');
+                }
+                $reseller->balance -= $diff;
+            }
+            $reseller->save();
+
+            $koreksiNote = " [Koreksi dari Rp " . number_format($oldAmount, 0, ',', '.') . " ke Rp " . number_format($newAmount, 0, ',', '.') . ($validated['reason'] ? ": {$validated['reason']}" : "") . "]";
+            
+            $cleanDesc = preg_replace('/ \[Koreksi.*?\]/', '', $transaction->description);
+            $transaction->amount = $newAmount;
+            $transaction->description = $cleanDesc . $koreksiNote;
+            $transaction->save();
+
+            // Jika ada balance request terkait, sinkronkan juga
+            if (str_starts_with($transaction->reference_id ?? '', 'TOPUP-') || str_starts_with($transaction->reference_id ?? '', 'REQ-')) {
+                $reqId = str_replace(['TOPUP-', 'REQ-'], '', $transaction->reference_id);
+                $balReq = ResellerBalanceRequest::find($reqId);
+                if ($balReq) {
+                    $balReq->update([
+                        'amount' => $newAmount,
+                        'notes' => trim(($balReq->notes ?? '') . $koreksiNote)
+                    ]);
+                }
+
+                // Sinkronkan invoice terkait
+                Invoice::where('is_reseller_balance', true)
+                    ->where(function($q) use ($reqId) {
+                        $q->where('notes', 'like', "%REQ-{$reqId}%");
+                    })
+                    ->each(function($inv) use ($newAmount, $balReq) {
+                        $inv->update(['amount' => $newAmount]);
+                        if ($balReq && $balReq->payment_method !== 'kasbon') {
+                            $inv->payments()->update(['amount' => $newAmount]);
+                        }
+                    });
+            }
+
+            DB::commit();
+            return back()->with('success', 'Transaksi mutasi berhasil dikoreksi menjadi Rp ' . number_format($newAmount, 0, ',', '.') . '. Saldo reseller telah disesuaikan.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal mengoreksi transaksi: ' . $e->getMessage());
+        }
     }
 
     public function destroyTransaction(Request $request, ResellerTransaction $transaction)
@@ -293,6 +496,19 @@ class ResellerBalanceRequestController extends Controller
                 if ($balReq) {
                     $balReq->update(['status' => 'rejected', 'notes' => trim(($balReq->notes ?? '') . ' [Dibatalkan Admin]')]);
                 }
+
+                // Batalkan atau hapus invoice kasbon terkait
+                Invoice::where('is_reseller_balance', true)
+                    ->where(function($q) use ($reqId) {
+                        $q->where('notes', 'like', "%REQ-{$reqId}%");
+                    })
+                    ->each(function($inv) {
+                        if ($inv->status === 'unpaid') {
+                            $inv->delete();
+                        } else {
+                            $inv->update(['status' => 'cancelled', 'notes' => trim(($inv->notes ?? '') . ' [Transaksi Dibatalkan]')]);
+                        }
+                    });
             }
 
             $transaction->delete();

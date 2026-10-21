@@ -410,8 +410,11 @@ Route::middleware(['auth'])->group(function () {
     // ── Reseller Requests (Admin) ───────────────────────────────────────
     Route::get('/reseller-requests', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'index'])->name('reseller-requests.index');
     Route::post('/reseller-requests', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'store'])->name('reseller-requests.store');
+    Route::put('/reseller-requests/{balanceRequest}', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'update'])->name('reseller-requests.update');
+    Route::delete('/reseller-requests/{balanceRequest}', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'destroy'])->name('reseller-requests.destroy');
     Route::post('/reseller-requests/{balanceRequest}/approve', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'approve'])->name('reseller-requests.approve');
     Route::post('/reseller-requests/{balanceRequest}/reject', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'reject'])->name('reseller-requests.reject');
+    Route::put('/reseller-transactions/{transaction}', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'updateTransaction'])->name('reseller-transactions.update');
     Route::delete('/reseller-transactions/{transaction}', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'destroyTransaction'])->name('reseller-transactions.destroy');
 
     // ── Reseller Billing (Penagihan & Pelunasan) ────────────────────────

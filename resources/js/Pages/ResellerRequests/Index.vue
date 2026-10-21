@@ -289,16 +289,27 @@
 
                                     <!-- Aksi -->
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-xs font-medium">
-                                        <button 
-                                            v-if="canRollback(tx)" 
-                                            @click="confirmRollback(tx)" 
-                                            class="inline-flex items-center gap-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 transition font-bold cursor-pointer"
-                                            title="Batalkan mutasi dan sesuaikan saldo reseller"
-                                        >
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                            <span>Batalkan</span>
-                                        </button>
-                                        <span v-else class="text-gray-400 text-[11px]">-</span>
+                                        <div class="flex items-center justify-end gap-1.5">
+                                            <button 
+                                                v-if="canCorrect(tx)" 
+                                                @click="openCorrectionForTx(tx)" 
+                                                class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-200 transition font-bold cursor-pointer"
+                                                title="Koreksi nominal saldo jika salah input"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                <span>Koreksi</span>
+                                            </button>
+                                            <button 
+                                                v-if="canRollback(tx)" 
+                                                @click="confirmRollback(tx)" 
+                                                class="inline-flex items-center gap-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 transition font-bold cursor-pointer"
+                                                title="Batalkan mutasi dan kembalikan saldo reseller"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                <span>Batalkan</span>
+                                            </button>
+                                            <span v-if="!canCorrect(tx) && !canRollback(tx)" class="text-gray-400 text-[11px]">-</span>
+                                        </div>
                                     </td>
                                 </tr>
 
@@ -418,22 +429,58 @@
                                     </td>
 
                                     <!-- Aksi -->
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <div v-if="req.status === 'pending'" class="flex justify-end gap-2">
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-xs font-medium">
+                                        <!-- Status Pending -->
+                                        <div v-if="req.status === 'pending'" class="flex justify-end items-center gap-1.5">
                                             <button 
                                                 @click="confirmApprove(req)" 
-                                                class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl shadow-xs transition-colors text-xs font-bold cursor-pointer"
+                                                class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg shadow-xs transition text-xs font-bold cursor-pointer"
+                                                title="Setujui permohonan saldo"
                                             >
                                                 ✓ Setujui
                                             </button>
                                             <button 
+                                                @click="openCorrectionForReq(req)" 
+                                                class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-200 transition text-xs font-bold cursor-pointer"
+                                                title="Koreksi nominal sebelum disetujui"
+                                            >
+                                                ✏️ Koreksi
+                                            </button>
+                                            <button 
                                                 @click="confirmReject(req)" 
-                                                class="inline-flex items-center gap-1 bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-xl shadow-xs transition-colors text-xs font-bold cursor-pointer"
+                                                class="inline-flex items-center gap-1 bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1.5 rounded-lg shadow-xs transition text-xs font-bold cursor-pointer"
+                                                title="Tolak permohonan saldo"
                                             >
                                                 ✕ Tolak
                                             </button>
                                         </div>
-                                        <span v-else class="text-xs text-gray-400 font-medium">Selesai</span>
+
+                                        <!-- Status Approved (Termasuk Isi Saldo Manual) -->
+                                        <div v-else-if="req.status === 'approved'" class="flex justify-end items-center gap-1.5">
+                                            <button 
+                                                @click="openCorrectionForReq(req)" 
+                                                class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-200 transition text-xs font-bold cursor-pointer"
+                                                title="Koreksi nominal saldo yang sudah masuk"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                <span>Koreksi</span>
+                                            </button>
+                                            <button 
+                                                @click="confirmRollbackReq(req)" 
+                                                class="inline-flex items-center gap-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 transition text-xs font-bold cursor-pointer"
+                                                title="Batalkan pengisian saldo dan tarik kembali saldonya"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                <span>Batalkan</span>
+                                            </button>
+                                        </div>
+
+                                        <!-- Status Lainnya (Rejected / Dibatalkan) -->
+                                        <div v-else class="text-xs text-gray-400 font-medium">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-gray-100 text-gray-500 font-semibold">
+                                                Dibatalkan
+                                            </span>
+                                        </div>
                                     </td>
                                 </tr>
 
@@ -635,11 +682,154 @@
             </div>
         </div>
 
+        <!-- Correction Modal (Koreksi Nominal Saldo) -->
+        <div v-if="showCorrectionModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-correction" role="dialog" aria-modal="true">
+            <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="showCorrectionModal = false"></div>
+                <div class="inline-block align-middle bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-md w-full border border-gray-100">
+                    
+                    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-black tracking-tight" id="modal-correction">Koreksi Nominal Saldo</h3>
+                            <p class="text-xs text-blue-100 mt-0.5">Ubah nominal jika salah input atau salah ketik sebelumnya.</p>
+                        </div>
+                        <button @click="showCorrectionModal = false" class="text-white/80 hover:text-white p-1 rounded-xl hover:bg-white/10 transition">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitCorrection" class="p-6 space-y-4">
+                        <!-- Info Reseller -->
+                        <div class="bg-gray-50 border border-gray-200/80 rounded-2xl p-3.5 space-y-1.5">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-gray-500 font-semibold">Reseller:</span>
+                                <span class="font-bold text-gray-900">{{ correctionTarget?.resellerName }}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-gray-500 font-semibold">Saldo Dompet Saat Ini:</span>
+                                <span class="font-bold font-mono text-indigo-700">Rp {{ formatRupiah(correctionTarget?.currentBalance) }}</span>
+                            </div>
+                            <div v-if="correctionTarget?.referenceId" class="flex justify-between items-center text-xs">
+                                <span class="text-gray-500 font-semibold">Kode Referensi:</span>
+                                <span class="font-mono text-[11px] text-gray-600 font-bold bg-white px-2 py-0.5 rounded border">{{ correctionTarget?.referenceId }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Perbandingan Nominal -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-gray-100 rounded-2xl p-3 border border-gray-200">
+                                <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Nominal Lama</span>
+                                <div class="text-sm font-black font-mono text-gray-700 line-through">
+                                    Rp {{ formatRupiah(correctionTarget?.oldAmount) }}
+                                </div>
+                            </div>
+                            <div class="bg-indigo-50/80 rounded-2xl p-3 border border-indigo-200">
+                                <span class="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block mb-1">Nominal Baru</span>
+                                <div class="text-sm font-black font-mono text-indigo-700">
+                                    Rp {{ formatRupiah(correctionForm.amount) }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Input Nominal Baru -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                                Nominal Seharusnya (Rp) <span class="text-rose-500">*</span>
+                            </label>
+                            <input 
+                                type="number" 
+                                v-model.number="correctionForm.amount" 
+                                class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono font-bold text-gray-900" 
+                                required 
+                                min="1000"
+                                step="1000"
+                                placeholder="Masukkan nominal yang benar..."
+                            />
+
+                            <!-- Quick Amount Preset Chips -->
+                            <div class="flex items-center gap-1.5 flex-wrap mt-2">
+                                <button 
+                                    type="button" 
+                                    v-for="preset in [10000, 20000, 50000, 100000, 200000, 500000, 1000000]" 
+                                    :key="preset"
+                                    @click="correctionForm.amount = preset"
+                                    class="text-[10px] font-bold px-2 py-1 rounded-lg border transition cursor-pointer"
+                                    :class="correctionForm.amount === preset ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'"
+                                >
+                                    {{ formatRupiah(preset) }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Live Adjustment Summary Callout -->
+                        <div 
+                            class="rounded-2xl p-3.5 border transition-all"
+                            :class="correctionDiff >= 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'"
+                        >
+                            <div class="flex items-center justify-between text-xs font-bold mb-1">
+                                <span>Selisih Penyesuaian Saldo:</span>
+                                <span class="font-mono text-sm font-black">
+                                    {{ correctionDiff >= 0 ? '+' : '' }}Rp {{ formatRupiah(correctionDiff) }}
+                                </span>
+                            </div>
+                            <div class="text-[11px] text-gray-600">
+                                Saldo reseller akan otomatis 
+                                <strong :class="correctionDiff >= 0 ? 'text-emerald-700' : 'text-amber-700'">
+                                    {{ correctionDiff >= 0 ? 'bertambah' : 'berkurang' }}
+                                </strong> 
+                                sebesar Rp {{ formatRupiah(Math.abs(correctionDiff)) }}, sehingga saldo akhirnya menjadi 
+                                <strong class="font-mono text-gray-900">Rp {{ formatRupiah(newEstimatedBalance) }}</strong>.
+                            </div>
+                            <div v-if="newEstimatedBalance < 0" class="text-rose-600 font-bold text-[11px] mt-2 flex items-center gap-1">
+                                ⚠️ Saldo akhir tidak boleh minus! Reseller saat ini hanya memiliki saldo Rp {{ formatRupiah(correctionTarget?.currentBalance) }}.
+                            </div>
+                        </div>
+
+                        <!-- Alasan Koreksi -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                                Alasan / Catatan Koreksi
+                            </label>
+                            <input 
+                                type="text" 
+                                v-model="correctionForm.reason" 
+                                class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" 
+                                placeholder="Contoh: Salah ketik kelebihan angka nol"
+                            />
+                        </div>
+
+                        <!-- Footer Actions -->
+                        <div class="pt-4 flex items-center justify-end gap-3 border-t border-gray-100">
+                            <button 
+                                type="button" 
+                                @click="showCorrectionModal = false" 
+                                class="px-5 py-2.5 rounded-xl border border-gray-300 text-sm font-bold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="submit" 
+                                :disabled="correctionForm.processing || newEstimatedBalance < 0 || correctionForm.amount === correctionTarget?.oldAmount" 
+                                class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-md shadow-indigo-200 transition cursor-pointer disabled:opacity-50"
+                            >
+                                <svg v-if="correctionForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Simpan Koreksi</span>
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+
     </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { router, useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
@@ -794,7 +984,7 @@ const submitTopup = () => {
     });
 };
 
-// Approval & Reject Actions
+// Approval & Reject Actions for Requests
 const confirmApprove = (req) => {
     const resellerName = getResellerName(req.reseller);
     Swal.fire({
@@ -844,10 +1034,44 @@ const confirmReject = (req) => {
     });
 };
 
+// Rollback / Batalkan Pengisian Saldo Request
+const confirmRollbackReq = (req) => {
+    const resellerName = getResellerName(req.reseller);
+    Swal.fire({
+        title: 'Batalkan Pengisian Saldo?',
+        html: `Apakah Anda yakin ingin membatalkan pengisian saldo untuk <strong>${resellerName}</strong> sebesar <strong class="text-rose-600">Rp ${formatRupiah(req.amount)}</strong>?<br><br>Saldo dompet reseller akan ditarik kembali dan tagihan/invoice kasbon terkait akan dibatalkan.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Ya, Batalkan Saldo',
+        cancelButtonText: 'Kembali'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(route('reseller-requests.destroy', req.id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire('Dibatalkan!', 'Pengisian saldo berhasil dibatalkan dan saldo telah dikembalikan.', 'success');
+                },
+                onError: (err) => {
+                    Swal.fire('Gagal', err?.error || 'Gagal membatalkan pengisian saldo.', 'error');
+                }
+            });
+        }
+    });
+};
+
 // Rollback / Batalkan Mutasi Transaksi
 const canRollback = (tx) => {
-    // Only manual topup or adjustment transactions can be rolled back safely
-    return (tx.reference_id && (
+    return !!(tx.reference_id && (
+        tx.reference_id.startsWith('TOPUP-') || 
+        tx.reference_id.startsWith('REQ-') ||
+        tx.reference_id.startsWith('ADJ-')
+    ));
+};
+
+const canCorrect = (tx) => {
+    return !!(tx.reference_id && (
         tx.reference_id.startsWith('TOPUP-') || 
         tx.reference_id.startsWith('REQ-') ||
         tx.reference_id.startsWith('ADJ-')
@@ -858,7 +1082,7 @@ const confirmRollback = (tx) => {
     const resellerName = getResellerName(tx.reseller);
     Swal.fire({
         title: 'Batalkan Transaksi Mutasi?',
-        html: `Apakah Anda yakin ingin membatalkan transaksi mutasi untuk <strong>${resellerName}</strong> sebesar <strong class="text-rose-600">Rp ${formatRupiah(tx.amount)}</strong>?<br><br>Saldo dompet reseller akan disesuaikan kembali (dikurangi jika sebelumnya kredit, atau ditambah jika debit).`,
+        html: `Apakah Anda yakin ingin membatalkan transaksi mutasi untuk <strong>${resellerName}</strong> sebesar <strong class="text-rose-600">Rp ${formatRupiah(tx.amount)}</strong>?<br><br>Saldo dompet reseller akan disesuaikan kembali (dikurangi jika sebelumnya kredit, atau ditambah jika debit) dan invoice terkait akan dibatalkan.`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#EF4444',
@@ -878,6 +1102,104 @@ const confirmRollback = (tx) => {
             });
         }
     });
+};
+
+// ==========================================
+// Correction Modal State & Methods
+// ==========================================
+const showCorrectionModal = ref(false);
+const correctionTarget = ref(null);
+
+const correctionForm = useForm({
+    amount: '',
+    reason: 'Koreksi salah ketik nominal'
+});
+
+const correctionDiff = computed(() => {
+    if (!correctionTarget.value || !correctionForm.amount) return 0;
+    return Number(correctionForm.amount) - Number(correctionTarget.value.oldAmount || 0);
+});
+
+const newEstimatedBalance = computed(() => {
+    if (!correctionTarget.value) return 0;
+    return Number(correctionTarget.value.currentBalance || 0) + correctionDiff.value;
+});
+
+const openCorrectionForTx = (tx) => {
+    const res = props.resellers.find(r => r.id === tx.reseller_id) || tx.reseller;
+    correctionTarget.value = {
+        targetType: 'transaction',
+        id: tx.id,
+        resellerName: getResellerName(tx.reseller),
+        currentBalance: Number(res?.balance || tx.reseller?.balance || 0),
+        oldAmount: Number(tx.amount || 0),
+        referenceId: tx.reference_id,
+        item: tx
+    };
+    correctionForm.amount = Number(tx.amount || 0);
+    correctionForm.reason = 'Koreksi salah ketik nominal';
+    showCorrectionModal.value = true;
+};
+
+const openCorrectionForReq = (req) => {
+    const res = props.resellers.find(r => r.id === req.reseller_id) || req.reseller;
+    correctionTarget.value = {
+        targetType: 'request',
+        id: req.id,
+        resellerName: getResellerName(req.reseller),
+        currentBalance: Number(res?.balance || req.reseller?.balance || 0),
+        oldAmount: Number(req.amount || 0),
+        referenceId: `REQ-${req.id}`,
+        status: req.status,
+        item: req
+    };
+    correctionForm.amount = Number(req.amount || 0);
+    correctionForm.reason = 'Koreksi salah ketik nominal';
+    showCorrectionModal.value = true;
+};
+
+const submitCorrection = () => {
+    if (!correctionTarget.value) return;
+    if (newEstimatedBalance.value < 0) {
+        Swal.fire('Perhatian', 'Saldo reseller tidak mencukupi untuk pengurangan nominal ini.', 'warning');
+        return;
+    }
+
+    if (correctionTarget.value.targetType === 'transaction') {
+        correctionForm.put(route('reseller-transactions.update', correctionTarget.value.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                showCorrectionModal.value = false;
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil Dikoreksi!',
+                    text: 'Nominal transaksi dan saldo reseller telah disesuaikan.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            },
+            onError: (err) => {
+                Swal.fire('Gagal Mengoreksi', Object.values(err).flat().join('<br>'), 'error');
+            }
+        });
+    } else {
+        correctionForm.put(route('reseller-requests.update', correctionTarget.value.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                showCorrectionModal.value = false;
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil Dikoreksi!',
+                    text: 'Nominal pengajuan saldo dan data terkait telah disesuaikan.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            },
+            onError: (err) => {
+                Swal.fire('Gagal Mengoreksi', Object.values(err).flat().join('<br>'), 'error');
+            }
+        });
+    }
 };
 
 // Helper Functions
