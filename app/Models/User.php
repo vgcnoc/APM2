@@ -104,16 +104,6 @@ class User extends Authenticatable
         return $this->role ? ucwords(str_replace(['_', '-'], ' ', $this->role)) : 'Karyawan';
     }
 
-    public function customer(): \Illuminate\Database\Eloquent\Relations\HasOne
-    {
-        return $this->hasOne(Customer::class, 'user_id');
-    }
-
-    public function reseller(): \Illuminate\Database\Eloquent\Relations\HasOne
-    {
-        return $this->hasOne(Reseller::class, 'user_id');
-    }
-
     public function assignedTickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'assigned_to');
