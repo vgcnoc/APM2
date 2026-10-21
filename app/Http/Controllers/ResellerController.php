@@ -109,40 +109,75 @@ class ResellerController extends Controller
     public function createAccount(Request $request, Reseller $reseller)
     {
         $validated = $request->validate([
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:8'
+            'email' => 'required|email',
+            'password' => 'required|string|min:6'
         ]);
 
+        $email = trim(strtolower($validated['email']));
+        $password = $validated['password'];
+
         $customer = $reseller->customer;
+        $name = $customer ? $customer->name : 'Reseller ' . $reseller->id;
+        $phone = $customer ? $customer->phone : null;
 
-        if (!$customer) {
-            return redirect()->back()->with('error', 'Data pelanggan tidak ditemukan.');
-        }
+        // Cek apakah email sudah ada di tabel users
+        $existingUser = User::where('email', $email)->first();
 
-        if ($reseller->user_id) {
-            return redirect()->back()->with('error', 'Reseller ini sudah memiliki akun.');
+        // Atau jika customer sudah memiliki user_id
+        if (!$existingUser && $customer && $customer->user_id) {
+            $existingUser = User::find($customer->user_id);
         }
 
         try {
-            DB::transaction(function () use ($customer, $reseller, $validated) {
-                // Ensure reseller role exists
+            DB::transaction(function () use ($customer, $reseller, $existingUser, $email, $password, $name, $phone) {
                 $role = Role::firstOrCreate(['name' => 'reseller']);
 
-                $user = User::create([
-                    'name' => $customer->name,
-                    'email' => $validated['email'],
-                    'password' => Hash::make($validated['password']),
-                    'phone' => $customer->phone,
-                    'role' => 'reseller',
-                    'is_active' => true,
-                ]);
+                if ($existingUser) {
+                    // Cek apakah user sudah terikat dengan RESELLER LAIN
+                    $otherReseller = Reseller::where('user_id', $existingUser->id)
+                        ->where('id', '!=', $reseller->id)
+                        ->first();
 
-                $user->assignRole($role);
+                    if ($otherReseller) {
+                        throw new \Exception('Email ini sudah digunakan oleh akun reseller lain.');
+                    }
 
-                $reseller->update(['user_id' => $user->id]);
+                    if (method_exists($existingUser, 'hasRole') && !$existingUser->hasRole('reseller')) {
+                        $existingUser->assignRole($role);
+                    }
+
+                    $updateUser = ['is_active' => true];
+                    if (!empty($password)) {
+                        $updateUser['password'] = Hash::make($password);
+                    }
+                    $existingUser->update($updateUser);
+
+                    $reseller->update(['user_id' => $existingUser->id]);
+
+                    if ($customer && !$customer->user_id) {
+                        $customer->update(['user_id' => $existingUser->id]);
+                    }
+                } else {
+                    $user = User::create([
+                        'name' => $name,
+                        'email' => $email,
+                        'password' => Hash::make($password),
+                        'phone' => $phone,
+                        'role' => 'reseller',
+                        'is_active' => true,
+                    ]);
+
+                    $user->assignRole($role);
+
+                    $reseller->update(['user_id' => $user->id]);
+
+                    if ($customer && !$customer->user_id) {
+                        $customer->update(['user_id' => $user->id]);
+                    }
+                }
             });
 
-            return redirect()->back()->with('success', 'Akun reseller berhasil dibuat.');
+            return redirect()->back()->with('success', 'Akun login reseller berhasil dibuat/ditautkan.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Gagal membuat akun: ' . $e->getMessage());
         }
@@ -155,7 +190,7 @@ class ResellerController extends Controller
     {
         $validated = $request->validate([
             'email' => 'nullable|email|unique:users,email,' . $reseller->user_id,
-            'password' => 'nullable|string|min:8',
+            'password' => 'nullable|string|min:6',
         ]);
 
         if (!$reseller->user_id || !$reseller->user) {

@@ -1789,29 +1789,67 @@ class CustomerController extends Controller
     public function createAccount(Request $request, Customer $customer): RedirectResponse
     {
         $validated = $request->validate([
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8',
+            'email' => 'required|email',
+            'password' => 'required|string|min:6',
         ]);
 
-        if ($customer->user_id) {
-            return back()->with('error', 'Pelanggan ini sudah memiliki akun.');
+        $email = trim(strtolower($validated['email']));
+        $password = $validated['password'];
+
+        // Cek apakah email sudah terdaftar di tabel users
+        $existingUser = User::where('email', $email)->first();
+
+        if ($existingUser) {
+            // Cek apakah user ini sudah terikat dengan pelanggan LAIN
+            $otherCustomer = Customer::where('user_id', $existingUser->id)
+                ->where('id', '!=', $customer->id)
+                ->first();
+
+            if ($otherCustomer) {
+                return back()->withErrors([
+                    'email' => "Email ini sudah digunakan oleh akun pelanggan lain ({$otherCustomer->name} - {$otherCustomer->customer_code})."
+                ]);
+            }
+
+            // Tautkan akun user yang sudah ada ke pelanggan ini
+            DB::transaction(function () use ($customer, $existingUser, $email, $password) {
+                $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'customer']);
+                if (method_exists($existingUser, 'hasRole') && !$existingUser->hasRole('customer')) {
+                    $existingUser->assignRole($role);
+                }
+
+                $updateData = ['is_active' => true];
+                if (!empty($password)) {
+                    $updateData['password'] = bcrypt($password);
+                }
+                $existingUser->update($updateData);
+
+                $customer->update([
+                    'user_id' => $existingUser->id,
+                    'email' => $email
+                ]);
+            });
+
+            return back()->with('success', 'Akun pengguna yang sudah ada berhasil ditautkan ke pelanggan ini.');
         }
 
-        DB::transaction(function () use ($customer, $validated) {
+        // Jika user belum ada, buat user baru
+        DB::transaction(function () use ($customer, $email, $password) {
             $user = User::create([
                 'name' => $customer->name,
-                'email' => $validated['email'],
-                'password' => bcrypt($validated['password']),
+                'email' => $email,
+                'password' => bcrypt($password),
                 'role' => 'customer',
                 'is_active' => true,
             ]);
 
-            // Assign Spatie role (buat jika belum ada)
             $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'customer']);
             $user->assignRole($role);
 
-            // Update customer dengan user_id yang baru
-            $customer->update(['user_id' => $user->id]);
+            $customer->update([
+                'user_id' => $user->id,
+                'email' => $email
+            ]);
         });
 
         return back()->with('success', 'Akun login pelanggan berhasil dibuat.');
@@ -1824,7 +1862,7 @@ class CustomerController extends Controller
     {
         $validated = $request->validate([
             'email' => 'nullable|email|unique:users,email,' . $customer->user_id,
-            'password' => 'nullable|string|min:8',
+            'password' => 'nullable|string|min:6',
         ]);
 
         if (!$customer->user_id || !$customer->user) {

@@ -565,7 +565,7 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
-                                <input v-model="accountForm.password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" required minlength="8" placeholder="Minimal 8 karakter" />
+                                <input v-model="accountForm.password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" required minlength="6" placeholder="Minimal 6 karakter" />
                                 <div v-if="accountForm.errors.password" class="text-xs text-red-500 mt-1">{{ accountForm.errors.password }}</div>
                             </div>
                         </div>
@@ -608,8 +608,8 @@
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru <span class="text-red-500">*</span></label>
-                                <input v-model="resetPasswordForm.password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all" minlength="8" placeholder="Kosongkan jika tidak ingin mengubah password" />
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>
+                                <input v-model="resetPasswordForm.password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all" minlength="6" placeholder="Kosongkan jika tidak ingin mengubah password (min. 6 karakter)" />
                                 <div v-if="resetPasswordForm.errors.password" class="text-xs text-red-500 mt-1">{{ resetPasswordForm.errors.password }}</div>
                             </div>
                         </div>
@@ -875,8 +875,9 @@ const accountForm = useForm({
 
 function openCreateAccountModal(customer) {
     accountCustomer.value = customer;
-    accountForm.email = customer.email || '';
+    accountForm.email = customer.email || (customer.customer_code ? customer.customer_code.toLowerCase().replace(/[^a-z0-9]/g, '') + '@customer.apm' : '');
     accountForm.password = '';
+    accountForm.clearErrors();
     showCreateAccountModal.value = true;
 }
 
@@ -885,6 +886,16 @@ function submitCreateAccount() {
         preserveScroll: true,
         onSuccess: () => {
             showCreateAccountModal.value = false;
+        },
+        onError: (errors) => {
+            const msg = Object.values(errors).flat().join('<br>');
+            if (typeof window !== 'undefined' && window.Swal) {
+                window.Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Membuat Akun',
+                    html: msg || 'Terjadi kesalahan saat membuat akun.',
+                });
+            }
         }
     });
 }
@@ -901,6 +912,7 @@ function openResetModal(customer) {
     resetCustomer.value = customer;
     resetPasswordForm.email = customer.user ? customer.user.email : '';
     resetPasswordForm.password = '';
+    resetPasswordForm.clearErrors();
     showResetPasswordModal.value = true;
 }
 
@@ -909,6 +921,16 @@ function submitResetPassword() {
         preserveScroll: true,
         onSuccess: () => {
             showResetPasswordModal.value = false;
+        },
+        onError: (errors) => {
+            const msg = Object.values(errors).flat().join('<br>');
+            if (typeof window !== 'undefined' && window.Swal) {
+                window.Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Ubah Password',
+                    html: msg || 'Terjadi kesalahan saat mengubah password.',
+                });
+            }
         }
     });
 }

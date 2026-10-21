@@ -58,8 +58,9 @@ const openEditModal = (reseller) => {
 
 const openCreateAccountModal = (reseller) => {
     accountReseller.value = reseller;
-    createForm.email = reseller.customer?.email || reseller.user?.email || '';
+    createForm.email = reseller.customer?.email || reseller.user?.email || (reseller.customer?.customer_code ? reseller.customer.customer_code.toLowerCase().replace(/[^a-z0-9]/g, '') + '@reseller.apm' : '');
     createForm.password = '';
+    createForm.clearErrors();
     showCreateModal.value = true;
 };
 
@@ -72,8 +73,16 @@ const createAccount = () => {
             closeCreateModal();
             Swal.fire(
                 'Berhasil!',
-                'Akun berhasil dibuat.',
+                'Akun login reseller berhasil dibuat/ditautkan.',
                 'success'
+            );
+        },
+        onError: (errors) => {
+            const msg = Object.values(errors).flat().join('<br>');
+            Swal.fire(
+                'Gagal!',
+                msg || 'Gagal membuat akun reseller.',
+                'error'
             );
         }
     });
@@ -102,6 +111,7 @@ const openResetModal = (reseller) => {
     resetReseller.value = reseller;
     resetForm.email = reseller.user ? reseller.user.email : '';
     resetForm.password = '';
+    resetForm.clearErrors();
     showResetModal.value = true;
 };
 
@@ -122,6 +132,14 @@ const resetPassword = () => {
                 'Berhasil!',
                 'Data akun login berhasil diubah.',
                 'success'
+            );
+        },
+        onError: (errors) => {
+            const msg = Object.values(errors).flat().join('<br>');
+            Swal.fire(
+                'Gagal!',
+                msg || 'Gagal mengubah password reseller.',
+                'error'
             );
         }
     });
@@ -562,7 +580,7 @@ onUnmounted(() => {
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
-                            <input v-model="createForm.password" type="password" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Minimal 8 karakter" required minlength="8" />
+                            <input v-model="createForm.password" type="password" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Minimal 6 karakter" required minlength="6" />
                             <div v-if="createForm.errors.password" class="mt-1 text-sm text-red-600">{{ createForm.errors.password }}</div>
                         </div>
 
@@ -601,8 +619,8 @@ onUnmounted(() => {
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru <span class="text-red-500">*</span></label>
-                            <input v-model="resetForm.password" type="password" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Kosongkan jika tidak ingin mengubah password" minlength="8" />
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>
+                            <input v-model="resetForm.password" type="password" class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm" placeholder="Kosongkan jika tidak ingin mengubah password (min. 6 karakter)" minlength="6" />
                             <div v-if="resetForm.errors.password" class="mt-1 text-sm text-red-600">{{ resetForm.errors.password }}</div>
                         </div>
                         

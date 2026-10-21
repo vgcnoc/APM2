@@ -38,7 +38,7 @@
                             <Link :href="`/customers/${customer.id}/edit`" class="btn-primary w-full justify-center py-2.5 text-sm shadow-md hover:shadow-lg transition-all">
                                 Edit Profil
                             </Link>
-                            <button v-if="!customer.user_id" @click="showAccountModal = true" class="btn-primary w-full justify-center py-2.5 text-sm shadow-md hover:shadow-lg transition-all bg-indigo-600 hover:bg-indigo-700 text-white">
+                            <button v-if="!customer.user_id" @click="openAccountModal" class="btn-primary w-full justify-center py-2.5 text-sm shadow-md hover:shadow-lg transition-all bg-indigo-600 hover:bg-indigo-700 text-white">
                                 + Buat Akun Client Area
                             </button>
                             <div v-else class="flex flex-col gap-2">
@@ -1509,7 +1509,7 @@
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                        <input v-model="accountForm.password" type="password" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" required minlength="8" />
+                        <input v-model="accountForm.password" type="password" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" required minlength="6" placeholder="Minimal 6 karakter" />
                         <div v-if="accountForm.errors.password" class="text-xs text-red-500 mt-1">{{ accountForm.errors.password }}</div>
                     </div>
                 </div>
@@ -1549,8 +1549,8 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru <span class="text-red-500">*</span></label>
-                        <input v-model="resetPasswordForm.password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all" minlength="8" placeholder="Kosongkan jika tidak ingin mengubah password" />
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>
+                        <input v-model="resetPasswordForm.password" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all" minlength="6" placeholder="Kosongkan jika tidak ingin mengubah password (min. 6 karakter)" />
                         <div v-if="resetPasswordForm.errors.password" class="text-xs text-red-500 mt-1">{{ resetPasswordForm.errors.password }}</div>
                     </div>
                 </div>
@@ -3591,9 +3591,16 @@ function submitEditActive() {
 // ── Buat Akun ───────────────────────────────────────────────
 const showAccountModal = ref(false);
 const accountForm = useForm({
-    email: props.customer.email || '',
+    email: '',
     password: ''
 });
+
+function openAccountModal() {
+    accountForm.email = props.customer.email || (props.customer.customer_code ? props.customer.customer_code.toLowerCase().replace(/[^a-z0-9]/g, '') + '@customer.apm' : '');
+    accountForm.password = '';
+    accountForm.clearErrors();
+    showAccountModal.value = true;
+}
 
 function submitAccount() {
     accountForm.post(`/customers/${props.customer.id}/create-account`, {
@@ -3601,6 +3608,16 @@ function submitAccount() {
         onSuccess: () => {
             showAccountModal.value = false;
             accountForm.reset();
+        },
+        onError: (errors) => {
+            const msg = Object.values(errors).flat().join('<br>');
+            if (typeof window !== 'undefined' && window.Swal) {
+                window.Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Membuat Akun',
+                    html: msg || 'Terjadi kesalahan saat membuat akun.',
+                });
+            }
         }
     });
 }
@@ -3618,6 +3635,16 @@ function submitResetPassword() {
         onSuccess: () => {
             showResetPasswordModal.value = false;
             resetPasswordForm.reset();
+        },
+        onError: (errors) => {
+            const msg = Object.values(errors).flat().join('<br>');
+            if (typeof window !== 'undefined' && window.Swal) {
+                window.Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Ubah Password',
+                    html: msg || 'Terjadi kesalahan saat mengubah password.',
+                });
+            }
         }
     });
 }
@@ -3625,6 +3652,7 @@ function submitResetPassword() {
 function openResetPasswordModal() {
     resetPasswordForm.email = props.customer.user ? props.customer.user.email : props.customer.email || '';
     resetPasswordForm.password = '';
+    resetPasswordForm.clearErrors();
     showResetPasswordModal.value = true;
 }
 
