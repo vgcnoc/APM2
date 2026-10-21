@@ -292,25 +292,38 @@
                         v-can="'invoices_pay'"
                         v-if="row.status === 'unpaid'" 
                         type="button"
-                        @click="openPaymentModal(row)" 
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm"
+                        @click="openPaymentModal(row, 'full')" 
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer"
                         title="Proses Pembayaran Lunas"
                     >
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zM7 15h2m1 0h6"/></svg>
                         <span>Bayar Lunas</span>
                     </button>
 
-                    <!-- Tombol Lunasi Sisa (Bayar Sebagian) -->
+                    <!-- Tombol Lunasi Sisa (Untuk Partial) -->
                     <button 
                         v-can="'invoices_pay'"
                         v-else-if="row.status === 'partial'" 
                         type="button"
-                        @click="openPaymentModal(row)" 
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm" 
+                        @click="openPaymentModal(row, 'full')" 
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer" 
                         title="Bayar / Lunasi Sisa Tagihan"
                     >
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <span>Lunasi Sisa</span>
+                    </button>
+
+                    <!-- Tombol Bayar Sebagian (Cicil) untuk Unpaid & Partial -->
+                    <button 
+                        v-can="'invoices_pay'"
+                        v-if="row.status === 'unpaid' || row.status === 'partial'" 
+                        type="button"
+                        @click="openPaymentModal(row, 'partial')" 
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 hover:border-amber-400 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer" 
+                        title="Bayar Sebagian / Cicil Tagihan"
+                    >
+                        <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Bayar Sebagian</span>
                     </button>
 
                     <!-- Tombol Rollback (Paid atau Partial) -->
@@ -319,7 +332,7 @@
                         v-if="row.status === 'paid' || row.status === 'partial'" 
                         type="button"
                         @click="rollbackInvoice(row)" 
-                        class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 hover:border-rose-300 rounded-lg text-xs font-bold transition-all shadow-2xs" 
+                        class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 hover:border-rose-300 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer" 
                         title="Batalkan pembayaran / Rollback status tagihan"
                     >
                         <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
@@ -383,6 +396,40 @@
 
                     <!-- Grup 1: Penagihan & Keuangan -->
                     <div class="py-1">
+                        <!-- Bayar Lunas / Lunasi Sisa -->
+                        <button 
+                            v-can="'invoices_pay'"
+                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial'"
+                            type="button" 
+                            @click="openPaymentModal(activeDropdownRow, 'full'); closeDropdown()"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-emerald-800 hover:bg-emerald-50 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-emerald-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zM7 15h2m1 0h6"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold text-emerald-900">{{ activeDropdownRow.status === 'partial' ? 'Lunasi Sisa Tagihan' : 'Bayar Lunas' }}</span>
+                                <p class="text-[10px] text-emerald-600 font-normal">Bayar penuh seluruh sisa tagihan</p>
+                            </div>
+                        </button>
+
+                        <!-- Bayar Sebagian (Cicil) -->
+                        <button 
+                            v-can="'invoices_pay'"
+                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial'"
+                            type="button" 
+                            @click="openPaymentModal(activeDropdownRow, 'partial'); closeDropdown()"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-amber-800 hover:bg-amber-50 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-amber-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold text-amber-900">Bayar Sebagian (Cicil)</span>
+                                <p class="text-[10px] text-amber-600/80 font-normal">Bayar sebagian / cicilan tagihan</p>
+                            </div>
+                        </button>
+
                         <!-- Janji Bayar -->
                         <button 
                             v-can="'invoices_promise'"
@@ -516,16 +563,22 @@
                 <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-md relative z-10 animate-fade-in-up">
                     <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                         <div>
-                            <h3 class="text-lg font-bold text-gray-900">Pembayaran Tagihan</h3>
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-lg font-bold text-gray-900">Pembayaran Tagihan</h3>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-black tracking-wider uppercase"
+                                    :class="paymentMode === 'full' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'">
+                                    {{ paymentMode === 'full' ? 'Pelunasan' : 'Bayar Sebagian' }}
+                                </span>
+                            </div>
                             <p class="text-[11px] font-medium text-gray-500 mt-0.5">{{ selectedInvoice?.invoice_number }} &bull; {{ selectedInvoice?.customer?.name }}</p>
                         </div>
-                        <button @click="closePaymentModal" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors">
+                        <button @click="closePaymentModal" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors cursor-pointer">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
 
                     <form @submit.prevent="submitPayment">
-                        <div class="p-6 space-y-5">
+                        <div class="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
                             
                             <!-- Info Tunggakan Smart Allocation -->
                             <div v-if="selectedInvoice?.customer?.overdue_count > 0" class="bg-rose-50 border border-rose-200 rounded-xl p-4 flex gap-3">
@@ -547,19 +600,142 @@
                                     <p class="text-[11px] text-amber-700 mt-1">Total seluruh tagihan: <strong>{{ formatCurrency(selectedInvoice?.customer?.total_unpaid) }}</strong>.</p>
                                 </div>
                             </div>
+
+                            <!-- Tab Pilihan: Bayar Lunas vs Bayar Sebagian -->
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tipe Pembayaran</label>
+                                <div class="grid grid-cols-2 p-1 bg-gray-100 rounded-xl gap-1">
+                                    <button 
+                                        type="button" 
+                                        @click="setPaymentMode('full')"
+                                        class="py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                        :class="paymentMode === 'full' ? 'bg-white text-emerald-700 shadow-sm border border-emerald-100' : 'text-gray-500 hover:text-gray-900'"
+                                    >
+                                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span>Bayar Lunas</span>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="setPaymentMode('partial')"
+                                        class="py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                        :class="paymentMode === 'partial' ? 'bg-white text-amber-700 shadow-sm border border-amber-100' : 'text-gray-500 hover:text-gray-900'"
+                                    >
+                                        <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span>Bayar Sebagian (Cicil)</span>
+                                    </button>
+                                </div>
+                            </div>
                             
                             <!-- Nominal Input -->
                             <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Nominal Pembayaran</label>
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                                        {{ paymentMode === 'full' ? 'Nominal Pelunasan' : 'Nominal Cicilan / Sebagian' }}
+                                    </label>
+                                    <span class="text-[11px] font-bold text-gray-500 font-mono">
+                                        Total Sisa: {{ formatCurrency(selectedInvoice?.remaining || 0) }}
+                                    </span>
+                                </div>
                                 <div class="relative">
                                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                         <span class="text-gray-500 font-bold sm:text-sm">Rp</span>
                                     </div>
-                                    <input type="number" v-model="paymentForm.amount" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="0">
+                                    <input 
+                                        type="number" 
+                                        v-model.number="paymentForm.amount" 
+                                        class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" 
+                                        placeholder="0"
+                                        min="1"
+                                    >
                                 </div>
-                                <div class="flex justify-between mt-2">
+
+                                <!-- Preset Cepat untuk Bayar Sebagian -->
+                                <div v-if="paymentMode === 'partial'" class="flex items-center gap-1.5 mt-2">
+                                    <span class="text-[10px] text-gray-400 font-medium">Preset:</span>
+                                    <button 
+                                        type="button" 
+                                        @click="paymentForm.amount = Math.round((selectedInvoice?.remaining || 0) * 0.25)" 
+                                        class="text-[10px] font-bold px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors cursor-pointer"
+                                    >25%</button>
+                                    <button 
+                                        type="button" 
+                                        @click="paymentForm.amount = Math.round((selectedInvoice?.remaining || 0) * 0.5)" 
+                                        class="text-[10px] font-bold px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors cursor-pointer"
+                                    >50%</button>
+                                    <button 
+                                        type="button" 
+                                        @click="paymentForm.amount = Math.round((selectedInvoice?.remaining || 0) * 0.75)" 
+                                        class="text-[10px] font-bold px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors cursor-pointer"
+                                    >75%</button>
+                                    <button 
+                                        type="button" 
+                                        @click="setPaymentMode('full')" 
+                                        class="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md transition-colors ml-auto cursor-pointer"
+                                    >Lunasi Penuh</button>
+                                </div>
+
+                                <!-- Live Kalkulasi Sisa Tagihan -->
+                                <div v-if="paymentMode === 'partial'" class="mt-2.5 p-2.5 bg-amber-50/80 border border-amber-200 rounded-xl flex items-center justify-between text-xs">
+                                    <div class="text-amber-800 font-medium">Sisa tagihan setelah cicilan ini:</div>
+                                    <div class="font-bold font-mono" :class="remainingAfterPay > 0 ? 'text-amber-900' : 'text-emerald-700'">
+                                        {{ formatCurrency(Math.max(0, remainingAfterPay)) }}
+                                        <span v-if="remainingAfterPay <= 0" class="text-[10px] text-emerald-600 block text-right font-sans font-normal">(Akan Lunas)</span>
+                                    </div>
+                                </div>
+
+                                <div v-if="paymentMode === 'full'" class="flex justify-between mt-2">
                                     <span class="text-[10px] text-gray-500">Tagihan saat ini: {{ formatCurrency(selectedInvoice?.remaining || 0) }}</span>
-                                    <button v-if="selectedInvoice?.customer?.unpaid_count > 1" type="button" @click="paymentForm.amount = selectedInvoice?.customer?.total_unpaid" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800">Bayar Semua Tagihan</button>
+                                    <button v-if="selectedInvoice?.customer?.unpaid_count > 1" type="button" @click="paymentForm.amount = selectedInvoice?.customer?.total_unpaid" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer">Bayar Semua Tagihan</button>
+                                </div>
+                            </div>
+
+                            <!-- Opsi Status Koneksi Internet Pelanggan -->
+                            <div class="bg-gray-50/90 rounded-xl p-3.5 border border-gray-200">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="text-[11px] font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+                                        <span>Status Internet Pelanggan</span>
+                                    </label>
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                        :class="selectedInvoice?.customer?.status === 'suspended' ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'"
+                                    >
+                                        <span class="w-1.5 h-1.5 rounded-full" :class="selectedInvoice?.customer?.status === 'suspended' ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'"></span>
+                                        {{ selectedInvoice?.customer?.status === 'suspended' ? 'Saat Ini Terisolir' : 'Saat Ini Aktif' }}
+                                    </span>
+                                </div>
+                                
+                                <p class="text-[11px] text-gray-500 mb-2.5 leading-snug">
+                                    Pilih apakah koneksi internet pelanggan dinyalakan atau dimatikan (sync MikroTik & RADIUS):
+                                </p>
+
+                                <div class="grid grid-cols-2 gap-2.5">
+                                    <!-- Opsi Nyalakan -->
+                                    <label class="cursor-pointer relative">
+                                        <input type="radio" v-model="paymentForm.internet_action" value="on" class="peer sr-only" />
+                                        <div class="h-full rounded-xl border-2 border-gray-200 bg-white p-3 flex flex-col items-center text-center gap-1.5 transition-all hover:border-emerald-300 peer-checked:border-emerald-500 peer-checked:bg-emerald-50/70 peer-checked:ring-1 peer-checked:ring-emerald-500">
+                                            <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs font-bold text-gray-800 peer-checked:text-emerald-800">Nyalakan Internet</div>
+                                                <div class="text-[10px] text-gray-400 peer-checked:text-emerald-600 font-medium leading-tight mt-0.5">Buka isolir (Aktif)</div>
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    <!-- Opsi Matikan -->
+                                    <label class="cursor-pointer relative">
+                                        <input type="radio" v-model="paymentForm.internet_action" value="off" class="peer sr-only" />
+                                        <div class="h-full rounded-xl border-2 border-gray-200 bg-white p-3 flex flex-col items-center text-center gap-1.5 transition-all hover:border-rose-300 peer-checked:border-rose-500 peer-checked:bg-rose-50/70 peer-checked:ring-1 peer-checked:ring-rose-500">
+                                            <div class="w-7 h-7 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs font-bold text-gray-800 peer-checked:text-rose-800">Matikan Internet</div>
+                                                <div class="text-[10px] text-gray-400 peer-checked:text-rose-600 font-medium leading-tight mt-0.5">Tetap isolir (Suspend)</div>
+                                            </div>
+                                        </div>
+                                    </label>
                                 </div>
                             </div>
 
@@ -685,16 +861,16 @@
 
                         <!-- Footer -->
                         <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-end gap-3">
-                            <button type="button" @click="closePaymentModal" class="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-200 bg-gray-100 rounded-xl transition-colors">
+                            <button type="button" @click="closePaymentModal" class="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-200 bg-gray-100 rounded-xl transition-colors cursor-pointer">
                                 Batal
                             </button>
-                            <button type="submit" :disabled="paymentForm.processing" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-indigo-200 flex items-center gap-2">
+                            <button type="submit" :disabled="paymentForm.processing" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-indigo-200 flex items-center gap-2 cursor-pointer">
                                 <svg v-if="paymentForm.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                                 </svg>
                                 <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                {{ paymentForm.processing ? 'Memproses...' : 'Konfirmasi Pembayaran' }}
+                                {{ paymentForm.processing ? 'Memproses...' : (paymentMode === 'partial' ? 'Konfirmasi Bayar Sebagian' : 'Konfirmasi Pembayaran Lunas') }}
                             </button>
                         </div>
                     </form>
@@ -1424,6 +1600,7 @@ const proofFileInput = ref(null);
 const proofPreview = ref(null);
 const proofFileName = ref('');
 const proofFileSize = ref('');
+const paymentMode = ref('full'); // 'full' | 'partial'
 
 const paymentForm = useForm({
     method: 'cash',
@@ -1431,7 +1608,37 @@ const paymentForm = useForm({
     notes: '',
     selected_bank: null,
     proof_image: null,
+    internet_action: 'on', // 'on' | 'off'
 });
+
+const remainingAfterPay = computed(() => {
+    const totalRemaining = Number(selectedInvoice.value?.remaining || selectedInvoice.value?.amount || 0);
+    const paying = Number(paymentForm.amount) || 0;
+    return totalRemaining - paying;
+});
+
+function setPaymentMode(mode) {
+    paymentMode.value = mode;
+    if (!selectedInvoice.value) return;
+
+    const totalRemaining = Number(selectedInvoice.value.remaining || selectedInvoice.value.amount || 0);
+    if (mode === 'full') {
+        paymentForm.amount = totalRemaining;
+        paymentForm.internet_action = 'on';
+    } else {
+        // Mode Bayar Sebagian (Cicil)
+        if (paymentForm.amount >= totalRemaining) {
+            paymentForm.amount = Math.round(totalRemaining / 2);
+        }
+        // Jika pelanggan saat ini suspended, defaultkan 'off' (tetap isolir sampai lunas),
+        // namun admin tetap dapat memilih 'on' secara bebas
+        if (selectedInvoice.value.customer?.status === 'suspended') {
+            paymentForm.internet_action = 'off';
+        } else {
+            paymentForm.internet_action = 'on';
+        }
+    }
+}
 
 function handleProofUpload(e) {
     const file = e.target.files?.[0];
@@ -1462,13 +1669,13 @@ function removeProofFile() {
     }
 }
 
-function openPaymentModal(invoice) {
+function openPaymentModal(invoice, mode = 'full') {
     selectedInvoice.value = invoice;
-    paymentForm.amount = invoice.remaining;
     paymentForm.method = 'cash';
     paymentForm.notes = '';
     paymentForm.selected_bank = null;
     removeProofFile();
+    setPaymentMode(mode);
     showPaymentModal.value = true;
 }
 

@@ -215,13 +215,14 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function pay(Request $request, Invoice $invoice)
+    public function pay(Request $request, Invoice $invoice, \App\Services\RadiusService $radius)
     {
         $request->validate([
             'amount' => 'required|numeric|min:1',
             'method' => 'required|string',
             'notes' => 'nullable|string',
             'proof_image' => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
+            'internet_action' => 'nullable|in:on,off',
         ]);
 
         $proofPath = null;
@@ -289,16 +290,105 @@ class InvoiceController extends Controller
             $invoice->update(['status' => 'paid', 'total_paid' => $totalPaid, 'remaining' => 0]);
         }
 
-        // Aktifkan kembali internet jika pelanggan sedang di-isolir
+        // Update status internet pelanggan jika diminta (Nyalakan / Matikan)
         $customer = $invoice->customer;
-        if ($customer && $customer->status === 'suspended') {
-            // Cek apakah masih ada tunggakan yang jatuh tempo (tanpa janji bayar aktif)
-            // Jika smart allocation sudah melunasi tagihan jatuh tempo, kita aktifkan lagi.
-            // Biar aman, otomatis aktifkan saja setelah ada pembayaran. Jika besoknya masih nunggak, cron job akan isolir lagi.
-            $customer->update(['status' => 'active']);
+        $internetAction = $request->input('internet_action');
+        $internetMessage = '';
+
+        if ($customer) {
+            $oldStatus = $customer->status;
+
+            if ($internetAction === 'on') {
+                $customer->update([
+                    'status' => 'active',
+                    'suspend_start' => null,
+                    'suspend_end' => null,
+                ]);
+
+                try {
+                    $radius->guard(function($r) use ($customer) {
+                        $r->syncCustomer($customer);
+                        $accounts = $r->customerAccounts($customer);
+                        foreach (array_keys($accounts) as $username) {
+                            $r->disconnect($username);
+                        }
+                    });
+                } catch (\Throwable $e) {
+                    \Log::warning('[RADIUS] Sync on payment (Nyalakan) error: ' . $e->getMessage());
+                }
+
+                if ($oldStatus !== 'active') {
+                    \App\Models\AuditLog::createLog(
+                        'Nyalakan Internet (Pembayaran)',
+                        $customer,
+                        $oldStatus,
+                        'active',
+                        "Membuka isolir / mengaktifkan internet pelanggan saat pembayaran tagihan #{$invoice->invoice_number}"
+                    );
+                }
+                $internetMessage = ' Internet pelanggan diaktifkan (buka isolir).';
+            } elseif ($internetAction === 'off') {
+                $customer->update([
+                    'status' => 'suspended',
+                    'suspend_start' => now()->toDateString(),
+                ]);
+
+                try {
+                    $radius->guard(function($r) use ($customer) {
+                        $r->syncCustomer($customer);
+                        $accounts = $r->customerAccounts($customer);
+                        foreach (array_keys($accounts) as $username) {
+                            $r->disconnect($username);
+                        }
+                    });
+                } catch (\Throwable $e) {
+                    \Log::warning('[RADIUS] Sync on payment (Matikan) error: ' . $e->getMessage());
+                }
+
+                if ($oldStatus !== 'suspended') {
+                    \App\Models\AuditLog::createLog(
+                        'Matikan Internet (Pembayaran)',
+                        $customer,
+                        $oldStatus,
+                        'suspended',
+                        "Mematikan / mengisolir internet pelanggan saat pembayaran tagihan #{$invoice->invoice_number}"
+                    );
+                }
+                $internetMessage = ' Internet pelanggan dimatikan (diisolir).';
+            } else {
+                // Fallback default: jika tagihan pelanggan tidak ada lagi yang menunggak dan statusnya suspended, aktifkan
+                if ($customer->status === 'suspended') {
+                    $customer->update([
+                        'status' => 'active',
+                        'suspend_start' => null,
+                        'suspend_end' => null,
+                    ]);
+
+                    try {
+                        $radius->guard(function($r) use ($customer) {
+                            $r->syncCustomer($customer);
+                            $accounts = $r->customerAccounts($customer);
+                            foreach (array_keys($accounts) as $username) {
+                                $r->disconnect($username);
+                            }
+                        });
+                    } catch (\Throwable $e) {
+                        \Log::warning('[RADIUS] Auto-unsuspend sync error: ' . $e->getMessage());
+                    }
+
+                    \App\Models\AuditLog::createLog(
+                        'Buka Isolir Otomatis (Pembayaran)',
+                        $customer,
+                        'suspended',
+                        'active',
+                        "Otomatis membuka isolir saat pembayaran tagihan #{$invoice->invoice_number}"
+                    );
+                    $internetMessage = ' Internet pelanggan diaktifkan.';
+                }
+            }
         }
 
-        return back()->with('success', 'Pembayaran berhasil diproses dengan sistem alokasi cerdas.');
+        return back()->with('success', 'Pembayaran berhasil diproses dengan sistem alokasi cerdas.' . $internetMessage);
     }
 
     public function rollback(Invoice $invoice)
