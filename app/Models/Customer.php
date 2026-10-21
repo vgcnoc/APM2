@@ -138,14 +138,6 @@ class Customer extends Model
     }
 
     /**
-     * Akun User login pelanggan
-     */
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
-
-    /**
      * Sales / Marketing yang mendaftarkan pelanggan
      */
     public function sales(): BelongsTo
