@@ -262,19 +262,28 @@
                     </div>
                 </td>
                 <td>
-                    <button 
-                        v-if="row.promise_date" 
-                        type="button"
-                        @click="openPromiseModal(row)"
-                        class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 w-max transition-colors cursor-pointer shadow-2xs"
-                        title="Klik untuk ubah tanggal janji bayar"
-                    >
-                        <svg class="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        {{ row.promise_date }}
-                    </button>
+                    <div v-if="row.promise_date" class="flex items-center gap-1.5">
+                        <button 
+                            type="button"
+                            @click="openPromiseModal(row)"
+                            class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-md text-[10px] font-bold whitespace-nowrap flex items-center gap-1 w-max transition-colors cursor-pointer shadow-2xs"
+                            title="Klik untuk ubah tanggal janji bayar"
+                        >
+                            <svg class="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            {{ row.promise_date }}
+                        </button>
+                        <a 
+                            :href="'/invoices/' + row.id + '/print-promise'" 
+                            target="_blank"
+                            class="p-1 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded border border-amber-200 transition-colors cursor-pointer"
+                            title="Cetak Surat Komitmen Janji Bayar"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </a>
+                    </div>
                     <button 
                         v-else-if="row.status !== 'paid'" 
-                        type="button"
+                        type="button" 
                         @click="openPromiseModal(row)" 
                         class="text-[10px] font-medium text-gray-400 hover:text-amber-600 hover:bg-amber-50 px-2 py-0.5 rounded-md border border-dashed border-gray-200 hover:border-amber-300 transition-colors flex items-center gap-1 cursor-pointer"
                         title="Atur tanggal janji bayar"
@@ -446,6 +455,23 @@
                                 <p class="text-[10px] text-gray-400 font-normal">Tentukan tanggal komitmen</p>
                             </div>
                         </button>
+
+                        <!-- Cetak Surat Janji Bayar -->
+                        <a 
+                            v-if="activeDropdownRow.promise_date"
+                            :href="'/invoices/' + activeDropdownRow.id + '/print-promise'" 
+                            target="_blank"
+                            @click="closeDropdown"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold text-amber-900">Surat Janji Bayar</span>
+                                <p class="text-[10px] text-amber-600 font-normal">Cetak surat pernyataan komitmen</p>
+                            </div>
+                        </a>
 
                         <!-- Edit Tagihan -->
                         <button 
@@ -999,10 +1025,24 @@
                             <p class="text-[11px] text-gray-500 leading-snug bg-amber-50/50 p-2.5 rounded-xl border border-amber-200/50">
                                 Tagihan ini akan ditandai dengan tanggal komitmen bayar. Jika melewati tanggal tersebut dan belum lunas, sistem otomatis mengisolir kembali.
                             </p>
+
+                            <!-- Checkbox Buat Surat Janji Bayar -->
+                            <div class="flex items-center gap-2.5 p-3 bg-amber-50/80 rounded-xl border border-amber-200 transition-colors">
+                                <input 
+                                    type="checkbox" 
+                                    id="print_promise_checkbox" 
+                                    v-model="printAfterSave" 
+                                    class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500 cursor-pointer"
+                                />
+                                <label for="print_promise_checkbox" class="text-xs font-bold text-amber-950 flex items-center gap-1.5 cursor-pointer select-none">
+                                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    <span>Buat & Buka Surat Janji Bayar setelah disimpan</span>
+                                </label>
+                            </div>
                         </div>
 
                         <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between gap-2">
-                            <div>
+                            <div class="flex items-center gap-2">
                                 <button 
                                     v-if="selectedInvoice?.promise_date"
                                     type="button" 
@@ -1011,6 +1051,15 @@
                                 >
                                     Hapus Janji Bayar
                                 </button>
+                                <a 
+                                    v-if="selectedInvoice?.promise_date"
+                                    :href="'/invoices/' + selectedInvoice?.id + '/print-promise'" 
+                                    target="_blank" 
+                                    class="px-3.5 py-2 text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-xl transition-colors border border-amber-300 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                >
+                                    <svg class="w-3.5 h-3.5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    <span>Cetak Surat</span>
+                                </a>
                             </div>
                             <div class="flex items-center gap-2">
                                 <button type="button" @click="closePromiseModal" class="px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-200 bg-gray-100 rounded-xl transition-colors cursor-pointer">
@@ -1832,6 +1881,7 @@ function rollbackInvoice(row) {
 
 // Promise Modal Logic
 const showPromiseModal = ref(false);
+const printAfterSave = ref(true);
 const promiseForm = useForm({
     promise_date: '',
     internet_action: 'on', // 'on' | 'off'
@@ -1974,10 +2024,15 @@ function removePromiseDate() {
 }
 
 function submitPromise() {
-    promiseForm.post(`/invoices/${selectedInvoice.value.id}/promise`, {
+    const targetInvoice = selectedInvoice.value;
+    const shouldPrint = printAfterSave.value;
+    promiseForm.post(`/invoices/${targetInvoice.id}/promise`, {
         preserveScroll: true,
         onSuccess: () => {
             closePromiseModal();
+            if (shouldPrint && targetInvoice?.id) {
+                window.open(`/invoices/${targetInvoice.id}/print-promise`, '_blank');
+            }
         },
     });
 }

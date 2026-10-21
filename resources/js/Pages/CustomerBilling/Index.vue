@@ -494,6 +494,18 @@
                                             <span>{{ inv.promise_date ? 'Ubah Janji' : 'Janji Bayar' }}</span>
                                         </button>
 
+                                        <!-- Tombol Cetak Surat Janji Bayar -->
+                                        <a 
+                                            v-if="inv.promise_date"
+                                            :href="'/invoices/' + inv.id + '/print-promise'" 
+                                            target="_blank"
+                                            class="inline-flex items-center gap-1 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs"
+                                            title="Cetak Surat Komitmen Janji Bayar"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                            <span>Surat</span>
+                                        </a>
+
                                         <!-- Status Lunas jika Paid -->
                                         <span v-if="inv.status === 'paid'" class="text-green-700 font-bold text-xs bg-green-50 px-2.5 py-1.5 rounded-lg border border-green-200">
                                             ✓ Lunas
@@ -1049,10 +1061,24 @@
                             <p class="text-[11px] text-gray-500 leading-relaxed bg-amber-50/40 p-3 rounded-xl border border-amber-100/60">
                                 ℹ️ Tagihan ini akan ditandai dengan tanggal janji bayar dan otomatis tersinkronisasi ke sistem MikroTik & RADIUS.
                             </p>
+
+                            <!-- Checkbox Buat Surat Janji Bayar -->
+                            <div class="flex items-center gap-2 p-2.5 bg-amber-50/80 rounded-xl border border-amber-200">
+                                <input 
+                                    type="checkbox" 
+                                    id="print_promise_billing" 
+                                    v-model="printPromiseAfterSave" 
+                                    class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500 cursor-pointer"
+                                />
+                                <label for="print_promise_billing" class="text-xs font-bold text-amber-950 flex items-center gap-1.5 cursor-pointer select-none">
+                                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    <span>Buat & Buka Surat Janji Bayar setelah disimpan</span>
+                                </label>
+                            </div>
                         </div>
 
                         <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between gap-2">
-                            <div>
+                            <div class="flex items-center gap-2">
                                 <button 
                                     v-if="promiseInvoice?.promise_date"
                                     type="button" 
@@ -1061,6 +1087,15 @@
                                 >
                                     Hapus Janji
                                 </button>
+                                <a 
+                                    v-if="promiseInvoice?.promise_date"
+                                    :href="'/invoices/' + promiseInvoice?.id + '/print-promise'" 
+                                    target="_blank" 
+                                    class="px-3.5 py-2 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-xl transition-colors border border-amber-300 inline-flex items-center gap-1.5"
+                                >
+                                    <svg class="w-3.5 h-3.5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    <span>Cetak Surat</span>
+                                </a>
                             </div>
                             <div class="flex items-center gap-2">
                                 <button type="button" @click="closePromiseModal" class="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-200 bg-gray-100 rounded-xl transition-colors">
@@ -1282,6 +1317,7 @@ const rollbackInvoice = (inv) => {
 // ── Janji Bayar State & Handlers ──
 const showPromiseModal = ref(false);
 const promiseInvoice = ref(null);
+const printPromiseAfterSave = ref(true);
 const promiseForm = useForm({
     promise_date: '',
     notes: '',
@@ -1304,10 +1340,15 @@ const closePromiseModal = () => {
 
 const submitPromise = () => {
     if (!promiseInvoice.value) return;
-    promiseForm.post(`/invoices/${promiseInvoice.value.id}/promise`, {
+    const targetInvoice = promiseInvoice.value;
+    const shouldPrint = printPromiseAfterSave.value;
+    promiseForm.post(`/invoices/${targetInvoice.id}/promise`, {
         preserveScroll: true,
         onSuccess: () => {
             closePromiseModal();
+            if (shouldPrint && targetInvoice?.id) {
+                window.open(`/invoices/${targetInvoice.id}/print-promise`, '_blank');
+            }
         }
     });
 };

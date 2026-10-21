@@ -369,4 +369,12 @@ class CustomerMonitoringController extends Controller
 
         return back()->with('success', "Janji bayar untuk invoice {$invoice->invoice_number} berhasil disimpan.");
     }
+
+    /**
+     * Cetak Surat Janji Bayar dari Monitoring Pelanggan
+     */
+    public function printPromise(Invoice $invoice)
+    {
+        return redirect()->route('invoices.print-promise', $invoice);
+    }
 }

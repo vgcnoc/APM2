@@ -729,6 +729,25 @@ class InvoiceController extends Controller
     }
 
     /**
+     * Cetak Surat Pernyataan Komitmen Janji Bayar
+     */
+    public function printPromise(Invoice $invoice)
+    {
+        $invoice->load(['customer.package', 'customer.areaModel', 'payments']);
+
+        $company = [
+            'name' => \App\Models\Setting::get('company_name', config('app.name', 'ISP Management')),
+            'address' => \App\Models\Setting::get('company_address', 'Layanan Internet Cepat & Stabil'),
+            'phone' => \App\Models\Setting::get('company_phone', ''),
+            'email' => \App\Models\Setting::get('company_email', ''),
+            'website' => \App\Models\Setting::get('company_website', ''),
+            'logo' => \App\Models\Setting::get('company_logo', null),
+        ];
+
+        return view('print.janji-bayar', compact('invoice', 'company'));
+    }
+
+    /**
      * Aksi Upgrade / Downgrade Paket Pelanggan dari Invoice
      */
     public function changePackage(Request $request, Invoice $invoice, \App\Services\RadiusService $radius)

@@ -491,6 +491,17 @@
                                         Ubah Janji
                                     </button>
 
+                                    <!-- Cetak Surat Janji Bayar -->
+                                    <a
+                                        :href="`/invoices/${inv.id}/print-promise`"
+                                        target="_blank"
+                                        class="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-lg border border-amber-300 text-xs transition-colors inline-flex items-center gap-1 shadow-2xs"
+                                        title="Cetak Surat Komitmen Janji Bayar"
+                                    >
+                                        <svg class="w-3.5 h-3.5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        <span>Surat</span>
+                                    </a>
+
                                     <!-- Tombol Isolir jika ingkar -->
                                     <button
                                         v-if="inv.customer?.status === 'active' && isPromiseOverdue(inv.promise_date)"
@@ -718,21 +729,48 @@
                             </label>
                         </div>
 
-                        <div class="flex items-center justify-end gap-2 pt-4 border-t border-gray-100">
-                            <button
-                                type="button"
-                                @click="closePromiseModal"
-                                class="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-                            >
-                                Batal
-                            </button>
-                            <button
-                                type="submit"
-                                :disabled="promiseForm.processing || !promiseForm.promise_date"
-                                class="px-5 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-sm transition-all disabled:opacity-50"
-                            >
-                                {{ promiseForm.processing ? 'Menyimpan...' : 'Simpan Janji Bayar' }}
-                            </button>
+                        <!-- Checkbox Cetak Surat Janji Bayar -->
+                        <div class="flex items-center gap-2 mt-2 p-2.5 bg-amber-50/80 rounded-xl border border-amber-200">
+                            <input
+                                v-model="printPromiseAfterSave"
+                                id="print_promise_monitoring"
+                                type="checkbox"
+                                class="rounded border-gray-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                            />
+                            <label for="print_promise_monitoring" class="text-xs text-amber-950 font-bold cursor-pointer flex items-center gap-1.5 select-none">
+                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                <span>Buat & Buka Surat Janji Bayar setelah disimpan</span>
+                            </label>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-2 pt-4 border-t border-gray-100">
+                            <div>
+                                <a
+                                    v-if="promiseForm.invoice_id && (customerInvoices[0]?.promise_date || promiseForm.promise_date)"
+                                    :href="`/invoices/${promiseForm.invoice_id}/print-promise`"
+                                    target="_blank"
+                                    class="px-3.5 py-2 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-xl transition-colors border border-amber-300 inline-flex items-center gap-1.5"
+                                >
+                                    <svg class="w-3.5 h-3.5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    <span>Cetak Surat</span>
+                                </a>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    @click="closePromiseModal"
+                                    class="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    :disabled="promiseForm.processing || !promiseForm.promise_date"
+                                    class="px-5 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-sm transition-all disabled:opacity-50"
+                                >
+                                    {{ promiseForm.processing ? 'Menyimpan...' : 'Simpan Janji Bayar' }}
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -808,6 +846,7 @@ const resetFilters = () => {
 const showPromiseModal = ref(false);
 const selectedCustomer = ref(null);
 const customerInvoices = ref([]);
+const printPromiseAfterSave = ref(true);
 
 const promiseForm = useForm({
     invoice_id: null,
@@ -852,10 +891,16 @@ const submitPromise = () => {
         return;
     }
 
-    promiseForm.post(route('monitoring-pelanggan.set-promise', { invoice: promiseForm.invoice_id }), {
+    const targetInvoiceId = promiseForm.invoice_id;
+    const shouldPrint = printPromiseAfterSave.value;
+
+    promiseForm.post(route('monitoring-pelanggan.set-promise', { invoice: targetInvoiceId }), {
         preserveScroll: true,
         onSuccess: () => {
             closePromiseModal();
+            if (shouldPrint && targetInvoiceId) {
+                window.open(`/invoices/${targetInvoiceId}/print-promise`, '_blank');
+            }
             Swal.fire({
                 icon: 'success',
                 title: 'Berhasil',

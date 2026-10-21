@@ -447,6 +447,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('invoices/{invoice}/stop-permanen', [\App\Http\Controllers\InvoiceController::class, 'stopPermanen'])->name('invoices.stop-permanen');
         Route::post('invoices/{invoice}/change-package', [\App\Http\Controllers\InvoiceController::class, 'changePackage'])->name('invoices.change-package');
         Route::get('invoices/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->name('invoices.print');
+        Route::get('invoices/{invoice}/print-promise', [\App\Http\Controllers\InvoiceController::class, 'printPromise'])->name('invoices.print-promise');
         Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
     });
     
@@ -456,6 +457,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/monitoring-pelanggan/{customer}/unsuspend', [\App\Http\Controllers\CustomerMonitoringController::class, 'unsuspend'])->name('monitoring-pelanggan.unsuspend');
         Route::post('/monitoring-pelanggan/{customer}/suspend', [\App\Http\Controllers\CustomerMonitoringController::class, 'suspend'])->name('monitoring-pelanggan.suspend');
         Route::post('/monitoring-pelanggan/{invoice}/set-promise', [\App\Http\Controllers\CustomerMonitoringController::class, 'setPromise'])->name('monitoring-pelanggan.set-promise');
+        Route::get('/monitoring-pelanggan/{invoice}/print-promise', [\App\Http\Controllers\CustomerMonitoringController::class, 'printPromise'])->name('monitoring-pelanggan.print-promise');
     });
 
     // ── Monitoring Kinerja Teknisi (Penanganan Gangguan & Pemasangan Instalasi) ──
@@ -471,6 +473,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/customer-settlements', [\App\Http\Controllers\CustomerBillingController::class, 'settlements'])->name('customer-settlements.index');
         Route::post('/customer-settlements/{payment}/approve', [\App\Http\Controllers\CustomerBillingController::class, 'approve'])->name('customer-settlements.approve');
         Route::post('/customer-settlements/{payment}/cancel', [\App\Http\Controllers\CustomerBillingController::class, 'cancel'])->name('customer-settlements.cancel');
+        Route::get('/customer-billing/{invoice}/print-promise', [\App\Http\Controllers\InvoiceController::class, 'printPromise'])->name('customer-billing.print-promise');
     });
 
     // ── Laporan Keuangan Global & Pajak ───────────────────────────
