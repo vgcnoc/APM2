@@ -22,9 +22,10 @@
             <!-- Auto Refresh & Manual Reload -->
             <div class="flex items-center gap-2 self-start md:self-auto">
                 <button
+                    type="button"
                     @click="toggleAutoRefresh"
                     :class="[
-                        'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 shadow-sm',
+                        'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 shadow-sm focus:outline-none focus:ring-0 select-none',
                         autoRefreshEnabled
                             ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
                             : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -41,9 +42,10 @@
 
                 <button
                     id="btn-refresh-connections"
+                    type="button"
                     @click="refreshData(false)"
                     :disabled="refreshing"
-                    class="btn-secondary bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium text-xs py-1.5 px-3 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    class="btn-secondary bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium text-xs py-1.5 px-3 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50 focus:outline-none focus:ring-0 select-none"
                 >
                     <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': refreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -220,25 +222,27 @@
             <div class="flex items-center gap-1 bg-gray-100/80 p-1 rounded-xl">
                 <button
                     id="tab-status-all"
+                    type="button"
                     @click="filterStatusTab('all')"
                     :class="[
-                        'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5',
+                        'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5 focus:outline-none focus:ring-0 select-none',
                         filterStatus === 'all'
                             ? 'bg-white text-gray-900 shadow-sm'
                             : 'text-gray-500 hover:text-gray-800 hover:bg-white/50'
                     ]"
                 >
                     <span>Semua Sesi</span>
-                    <span :class="['px-1.5 py-0.2 rounded-full text-[10px] font-black', filterStatus === 'all' ? 'bg-slate-100 text-slate-700' : 'bg-gray-200/60 text-gray-600']">
-                        {{ stats.total }}
+                    <span :class="['px-1.5 py-0.5 rounded-full text-[10px] font-black', filterStatus === 'all' ? 'bg-slate-100 text-slate-700' : 'bg-gray-200/60 text-gray-600']">
+                        {{ stats.tab_total ?? stats.total }}
                     </span>
                 </button>
 
                 <button
                     id="tab-status-online"
+                    type="button"
                     @click="filterStatusTab('online')"
                     :class="[
-                        'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5',
+                        'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5 focus:outline-none focus:ring-0 select-none',
                         filterStatus === 'online'
                             ? 'bg-emerald-600 text-white shadow-sm'
                             : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60'
@@ -249,16 +253,17 @@
                         <span :class="['relative inline-flex rounded-full h-2 w-2', filterStatus === 'online' ? 'bg-white' : 'bg-emerald-500']"></span>
                     </span>
                     <span>Online</span>
-                    <span :class="['px-1.5 py-0.2 rounded-full text-[10px] font-black', filterStatus === 'online' ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-100 text-emerald-700']">
-                        {{ stats.online }}
+                    <span :class="['px-1.5 py-0.5 rounded-full text-[10px] font-black', filterStatus === 'online' ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-100 text-emerald-700']">
+                        {{ stats.tab_online ?? stats.online }}
                     </span>
                 </button>
 
                 <button
                     id="tab-status-offline"
+                    type="button"
                     @click="filterStatusTab('offline')"
                     :class="[
-                        'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5',
+                        'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5 focus:outline-none focus:ring-0 select-none',
                         filterStatus === 'offline'
                             ? 'bg-rose-600 text-white shadow-sm'
                             : 'text-gray-600 hover:text-rose-700 hover:bg-rose-50/60'
@@ -266,19 +271,20 @@
                 >
                     <span :class="['inline-block w-2 h-2 rounded-full', filterStatus === 'offline' ? 'bg-white' : 'bg-rose-500']"></span>
                     <span>Offline</span>
-                    <span :class="['px-1.5 py-0.2 rounded-full text-[10px] font-black', filterStatus === 'offline' ? 'bg-rose-700 text-rose-100' : 'bg-rose-100 text-rose-700']">
-                        {{ stats.offline }}
+                    <span :class="['px-1.5 py-0.5 rounded-full text-[10px] font-black', filterStatus === 'offline' ? 'bg-rose-700 text-rose-100' : 'bg-rose-100 text-rose-700']">
+                        {{ stats.tab_offline ?? stats.offline }}
                     </span>
                 </button>
             </div>
 
             <!-- Right: Access Mode Sub-Filter Pills -->
-            <div class="flex items-center gap-1">
+            <div class="flex items-center gap-1 flex-wrap">
                 <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden sm:inline">Mode:</span>
                 <button
+                    type="button"
                     @click="filterModePill('all')"
                     :class="[
-                        'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all',
+                        'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all focus:outline-none focus:ring-0 select-none',
                         filterMode === 'all'
                             ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-xs'
                             : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
@@ -287,28 +293,30 @@
                     Semua Mode
                 </button>
                 <button
+                    type="button"
                     @click="filterModePill('pppoe')"
                     :class="[
-                        'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1',
+                        'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 focus:outline-none focus:ring-0 select-none',
                         filterMode === 'pppoe'
                             ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs'
                             : 'text-gray-500 hover:text-indigo-700 hover:bg-indigo-50/50'
                     ]"
                 >
                     <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                    PPPoE ({{ stats.pppoe_count }})
+                    PPPoE ({{ stats.mode_pppoe_count ?? stats.pppoe_count }})
                 </button>
                 <button
+                    type="button"
                     @click="filterModePill('hotspot')"
                     :class="[
-                        'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1',
+                        'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 focus:outline-none focus:ring-0 select-none',
                         filterMode === 'hotspot'
                             ? 'bg-amber-50 text-amber-700 border border-amber-200 shadow-xs'
                             : 'text-gray-500 hover:text-amber-700 hover:bg-amber-50/50'
                     ]"
                 >
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                    Hotspot ({{ stats.hotspot_count }})
+                    Hotspot ({{ stats.mode_hotspot_count ?? stats.hotspot_count }})
                 </button>
             </div>
         </div>
@@ -358,9 +366,10 @@
 
                 <!-- Reset Active Filter Button -->
                 <button
+                    type="button"
                     v-if="hasActiveFilter"
                     @click="resetAllFilters"
-                    class="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors flex items-center gap-1.5"
+                    class="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-0 select-none"
                     title="Reset semua filter ke kondisi awal"
                 >
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -610,6 +619,11 @@ const props = defineProps({
             health_rate: 0,
             pppoe_count: 0,
             hotspot_count: 0,
+            tab_total: 0,
+            tab_online: 0,
+            tab_offline: 0,
+            mode_pppoe_count: 0,
+            mode_hotspot_count: 0,
         })
     },
     totalOnline: { type: Number, default: 0 },

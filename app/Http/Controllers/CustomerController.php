@@ -258,23 +258,14 @@ class CustomerController extends Controller
             ];
         });
 
-        // 5. Hitung Statistik Keseluruhan
+        // 5. Hitung Statistik Keseluruhan (Global Summary)
         $totalAll = $rows->count();
         $totalOnline = $rows->where('is_online', true)->count();
         $totalOffline = $rows->where('is_online', false)->count();
         $healthRate = $totalAll > 0 ? round(($totalOnline / $totalAll) * 100, 1) : 0;
 
-        $pppoeCount = $rows->filter(fn($r) => str_contains(mb_strtolower($r['access_mode']), 'pppoe'))->count();
-        $hotspotCount = $rows->filter(fn($r) => str_contains(mb_strtolower($r['access_mode']), 'hotspot'))->count();
-
-        $stats = [
-            'total' => $totalAll,
-            'online' => $totalOnline,
-            'offline' => $totalOffline,
-            'health_rate' => $healthRate,
-            'pppoe_count' => $pppoeCount,
-            'hotspot_count' => $hotspotCount,
-        ];
+        $pppoeCount = $rows->filter(fn($r) => str_contains(mb_strtolower($r['access_mode'] ?? ''), 'pppoe'))->count();
+        $hotspotCount = $rows->filter(fn($r) => str_contains(mb_strtolower($r['access_mode'] ?? ''), 'hotspot'))->count();
 
         // 6. Filter Berdasarkan Tab Status: 'all', 'online', 'offline'
         $statusTab = $request->query('status');
@@ -283,6 +274,46 @@ class CustomerController extends Controller
         }
         $statusTab = $statusTab ?: 'all';
 
+        // 7. Filter Berdasarkan Mode Akses: 'pppoe', 'hotspot'
+        $rawMode = $request->query('mode') ?: $request->query('tab');
+        $modeFilter = ($rawMode && $rawMode !== 'all') ? mb_strtolower($rawMode) : 'all';
+
+        // Hitung statistik kontekstual untuk Tab Status (sesuai Mode yang dipilih)
+        $modeRows = $rows;
+        if ($modeFilter !== 'all') {
+            $modeRows = $rows->filter(function ($r) use ($modeFilter) {
+                $m = mb_strtolower($r['access_mode'] ?? '');
+                return $m === $modeFilter || str_contains($m, $modeFilter);
+            });
+        }
+        $tabTotal = $modeRows->count();
+        $tabOnline = $modeRows->where('is_online', true)->count();
+        $tabOffline = $modeRows->where('is_online', false)->count();
+
+        // Hitung statistik kontekstual untuk Mode Pills (sesuai Status yang dipilih)
+        $statusRows = $rows;
+        if ($statusTab === 'online') {
+            $statusRows = $rows->where('is_online', true);
+        } elseif ($statusTab === 'offline') {
+            $statusRows = $rows->where('is_online', false);
+        }
+        $modePppoeCount = $statusRows->filter(fn($r) => str_contains(mb_strtolower($r['access_mode'] ?? ''), 'pppoe'))->count();
+        $modeHotspotCount = $statusRows->filter(fn($r) => str_contains(mb_strtolower($r['access_mode'] ?? ''), 'hotspot'))->count();
+
+        $stats = [
+            'total' => $totalAll,
+            'online' => $totalOnline,
+            'offline' => $totalOffline,
+            'health_rate' => $healthRate,
+            'pppoe_count' => $pppoeCount,
+            'hotspot_count' => $hotspotCount,
+            'tab_total' => $tabTotal,
+            'tab_online' => $tabOnline,
+            'tab_offline' => $tabOffline,
+            'mode_pppoe_count' => $modePppoeCount,
+            'mode_hotspot_count' => $modeHotspotCount,
+        ];
+
         $filtered = $rows;
         if ($statusTab === 'online') {
             $filtered = $filtered->where('is_online', true);
@@ -290,13 +321,10 @@ class CustomerController extends Controller
             $filtered = $filtered->where('is_online', false);
         }
 
-        // 7. Filter Berdasarkan Mode Akses: 'pppoe', 'hotspot'
-        $modeFilter = $request->query('mode') ?: $request->query('tab');
-        if ($modeFilter && $modeFilter !== 'all') {
-            $mLower = mb_strtolower($modeFilter);
-            $filtered = $filtered->filter(function ($r) use ($mLower) {
+        if ($modeFilter !== 'all') {
+            $filtered = $filtered->filter(function ($r) use ($modeFilter) {
                 $m = mb_strtolower($r['access_mode'] ?? '');
-                return $m === $mLower || str_contains($m, $mLower);
+                return $m === $modeFilter || str_contains($m, $modeFilter);
             });
         }
 
