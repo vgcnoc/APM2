@@ -1,22 +1,69 @@
 <template>
-    <AppLayout title="Aktivasi Pelanggan" subtitle="Pelanggan yang menunggu proses aktivasi">
+    <AppLayout title="Aktivasi Pelanggan" :subtitle="currentTab === 'riwayat' ? 'Riwayat pelanggan yang telah berhasil diaktivasi' : 'Pelanggan yang menunggu proses aktivasi layanan'">
         
         <!-- Statistik Cards -->
-        <div v-can="'customers_activation_card_stats'" class="grid grid-cols-1 mb-6">
+        <div v-can="'customers_activation_card_stats'" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <StatCard 
                 title="Menunggu Aktivasi" 
                 :value="stats?.aktivasi || 0" 
                 icon="M13 10V3L4 14h7v7l9-11h-7z" 
                 color="purple" 
+                class="cursor-pointer transition-all hover:scale-[1.01]"
+                @click="switchTab('menunggu')"
             />
+            <StatCard 
+                title="Riwayat Aktivasi" 
+                :value="stats?.riwayat || 0" 
+                icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
+                color="emerald" 
+                class="cursor-pointer transition-all hover:scale-[1.01]"
+                @click="switchTab('riwayat')"
+            />
+        </div>
+
+        <!-- Tabs Status Filter -->
+        <div class="flex space-x-1.5 bg-slate-100/80 p-1.5 rounded-xl mb-6 shadow-inner border border-slate-200/60 overflow-x-auto">
+            <button 
+                type="button"
+                @click="switchTab('menunggu')" 
+                :class="[
+                    'px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 flex items-center justify-center gap-2 cursor-pointer', 
+                    currentTab === 'menunggu' 
+                        ? 'bg-white text-purple-600 shadow-sm ring-1 ring-gray-900/5' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+                ]"
+            >
+                <span class="w-2 h-2 rounded-full" :class="currentTab === 'menunggu' ? 'bg-purple-500 animate-pulse' : 'bg-gray-400'"></span>
+                <span>Menunggu Aktivasi</span>
+                <span :class="['px-2 py-0.5 rounded-full text-xs font-semibold', currentTab === 'menunggu' ? 'bg-purple-100 text-purple-700' : 'bg-gray-200 text-gray-600']">
+                    {{ stats?.aktivasi || 0 }}
+                </span>
+            </button>
+
+            <button 
+                type="button"
+                @click="switchTab('riwayat')" 
+                :class="[
+                    'px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 flex items-center justify-center gap-2 cursor-pointer', 
+                    currentTab === 'riwayat' 
+                        ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-gray-900/5' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+                ]"
+            >
+                <span class="w-2 h-2 rounded-full" :class="currentTab === 'riwayat' ? 'bg-emerald-500' : 'bg-gray-400'"></span>
+                <span>Riwayat Aktivasi</span>
+                <span :class="['px-2 py-0.5 rounded-full text-xs font-semibold', currentTab === 'riwayat' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600']">
+                    {{ stats?.riwayat || 0 }}
+                </span>
+            </button>
         </div>
 
         <DataTable
             :columns="columns"
             :data="customers.data"
             :pagination="customers"
-            searchPlaceholder="Cari pelanggan..."
-            searchRoute="/customers/activation"
+            searchPlaceholder="Cari nama, ID, PPPoE..."
+            :searchRoute="buildSearchRoute()"
             selectable
             v-model:selected="selectedIds"
         >
@@ -26,7 +73,20 @@
                         <option value="">Semua Area</option>
                         <option v-for="area in areas" :key="area" :value="area">{{ area }}</option>
                     </select>
-                    <button v-if="filterArea" @click="resetFilters" class="px-3.5 py-2 bg-gray-50 text-gray-600 hover:bg-gray-100 font-medium text-sm rounded-lg transition-colors border border-gray-200 whitespace-nowrap">
+
+                    <!-- Filter Rentang Tanggal -->
+                    <div class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 shadow-2xs">
+                        <span class="text-gray-400 font-medium">{{ currentTab === 'riwayat' ? 'Tgl Aktif:' : 'Tgl Daftar:' }}</span>
+                        <input v-model="filterDateFrom" type="date" class="border-0 p-0 text-xs text-slate-700 focus:ring-0" />
+                        <span class="text-gray-300">s/d</span>
+                        <input v-model="filterDateTo" type="date" class="border-0 p-0 text-xs text-slate-700 focus:ring-0" />
+                    </div>
+
+                    <button @click="applyFilters" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-lg transition-colors shadow-2xs cursor-pointer">
+                        Filter
+                    </button>
+
+                    <button v-if="filterArea || filterDateFrom || filterDateTo" @click="resetFilters" class="px-3.5 py-2 bg-gray-50 text-gray-600 hover:bg-gray-100 font-medium text-xs rounded-lg transition-colors border border-gray-200 whitespace-nowrap cursor-pointer">
                         Reset
                     </button>
                 </div>
@@ -37,7 +97,7 @@
                     <button v-if="canDelete && selectedIds.length > 0" 
                         v-can="'customers_delete'"
                         @click="bulkDelete" 
-                        class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-medium text-sm rounded-lg transition-colors border border-red-200 flex items-center gap-2">
+                        class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-medium text-sm rounded-lg transition-colors border border-red-200 flex items-center gap-2 cursor-pointer">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         Hapus Terpilih ({{ selectedIds.length }})
                     </button>
@@ -45,64 +105,187 @@
             </template>
             
             <template #row="{ row }">
-                <td>
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-sm font-bold text-gray-900 shrink-0">
-                            {{ row.name.charAt(0) }}
+                <!-- ================= RIWAYAT AKTIVASI ROWS ================= -->
+                <template v-if="currentTab === 'riwayat'">
+                    <!-- Pelanggan -->
+                    <td>
+                        <div class="flex items-center gap-3">
+                            <div :class="['w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-2xs', getAvatarColor(row.name)]">
+                                {{ (row.name || 'P').charAt(0).toUpperCase() }}
+                            </div>
+                            <div>
+                                <Link :href="`/customers/${row.id}`" class="text-gray-900 font-bold hover:text-blue-600 transition-colors block text-sm">
+                                    {{ row.name }}
+                                </Link>
+                                <div class="flex items-center gap-1.5 text-xs text-gray-500 font-mono">
+                                    <span>{{ row.customer_code }}</span>
+                                    <span v-if="row.phone">&bull; {{ row.phone }}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <Link :href="`/customers/${row.id}`" class="text-gray-900 font-medium hover:text-blue-400 transition-colors">
-                                {{ row.name }}
-                            </Link>
-                            <p class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</p>
-                        </div>
-                    </div>
-                </td>
-                <td>
-                    <span class="text-xs text-cyan-400 font-medium">{{ row.package?.name || '-' }}</span>
-                </td>
-                <td><StatusBadge :status="row.status" /></td>
-                <td>
-                    <span v-if="row.ont" class="text-xs font-mono text-gray-600">{{ row.ont.serial_number }}</span>
-                    <span v-else class="text-xs text-gray-600">-</span>
-                </td>
-                <td>
-                    <template v-if="row.ont?.odp">
-                        <div class="text-xs space-y-0.5">
-                            <p v-if="row.ont.odp.odc?.olt" class="text-gray-500">{{ row.ont.odp.odc.olt.name }}</p>
-                            <p class="text-gray-500">
-                                <span v-if="row.ont.odp.odc">→ {{ row.ont.odp.odc.name }}</span>
-                                → {{ row.ont.odp.name }}
+                    </td>
+
+                    <!-- Paket & Tagihan -->
+                    <td>
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span v-if="row.service_status === 'free_home'" class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold whitespace-nowrap">
+                                    <span>🏠</span> Free Home
+                                </span>
+                                <span v-else-if="row.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold whitespace-nowrap">
+                                    <span>🎁</span> Gratis
+                                </span>
+                                <span v-else class="text-xs font-bold text-slate-800">{{ row.package?.name || '-' }}</span>
+
+                                <span :class="['px-1.5 py-0.5 rounded text-[10px] font-semibold border', row.billing_type === 'pascabayar' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200']">
+                                    {{ row.billing_type === 'pascabayar' ? 'Pascabayar' : 'Prabayar' }}
+                                </span>
+                            </div>
+                            <p v-if="row.service_status === 'berbayar' && (row.base_amount || row.package?.price)" class="text-[11px] text-slate-500 font-medium">
+                                {{ formatRupiah(row.base_amount || row.package?.price) }} / bln
                             </p>
                         </div>
-                    </template>
-                    <span v-else class="text-xs text-gray-600">-</span>
-                </td>
-                <td>
-                    <span v-if="row.ont?.rx_power" :class="signalClass(row.ont.rx_power)" class="text-sm font-mono font-bold">
-                        {{ row.ont.rx_power }} dBm
-                    </span>
-                    <span v-else class="text-gray-600">-</span>
-                </td>
+                    </td>
+
+                    <!-- Tanggal Aktivasi -->
+                    <td>
+                        <div>
+                            <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                                <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                <span>{{ formatDateIndo(row.activation_date) }}</span>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-0.5">
+                                Terdaftar: {{ formatDateShort(row.registration_date || row.created_at) }}
+                            </p>
+                        </div>
+                    </td>
+
+                    <!-- Akun / Mode Akses -->
+                    <td>
+                        <div class="space-y-1">
+                            <div v-if="row.ont?.pppoe_user" class="flex items-center gap-1">
+                                <span class="text-[10px] text-slate-400">PPPoE:</span>
+                                <span class="font-mono font-bold text-xs text-indigo-700 bg-indigo-50/80 px-1.5 py-0.5 rounded border border-indigo-100">
+                                    {{ row.ont.pppoe_user }}
+                                </span>
+                            </div>
+                            <div v-else class="text-xs text-slate-400 italic">
+                                Belum diset
+                            </div>
+                            <div class="flex items-center gap-1 text-[10px] text-slate-500">
+                                <span>{{ row.ont?.access_mode || 'PPPoE' }}</span>
+                                <span v-if="row.ont?.vlan_id">&bull; VLAN {{ row.ont.vlan_id }}</span>
+                                <span v-if="row.ont?.free_hotspot" class="text-orange-600 font-bold bg-orange-50 px-1 rounded">&bull; HS</span>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Status -->
+                    <td>
+                        <StatusBadge :status="row.status" />
+                    </td>
+
+                    <!-- Topologi -->
+                    <td>
+                        <template v-if="row.ont?.odp">
+                            <div class="text-xs space-y-0.5">
+                                <p v-if="row.ont.odp.odc?.olt" class="text-gray-500 text-[11px]">{{ row.ont.odp.odc.olt.name }}</p>
+                                <p class="text-gray-700 font-medium text-xs">
+                                    <span v-if="row.ont.odp.odc">{{ row.ont.odp.odc.name }} &rarr; </span>
+                                    <span>{{ row.ont.odp.name }}</span>
+                                    <span v-if="row.ont.port_number" class="text-indigo-600 font-bold ml-1">(Port {{ row.ont.port_number }})</span>
+                                </p>
+                            </div>
+                        </template>
+                        <span v-else class="text-xs text-gray-400">-</span>
+                    </td>
+                </template>
+
+                <!-- ================= MENUNGGU AKTIVASI ROWS ================= -->
+                <template v-else>
+                    <td>
+                        <div class="flex items-center gap-3">
+                            <div :class="['w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-2xs', getAvatarColor(row.name)]">
+                                {{ (row.name || 'P').charAt(0).toUpperCase() }}
+                            </div>
+                            <div>
+                                <Link :href="`/customers/${row.id}`" class="text-gray-900 font-medium hover:text-blue-400 transition-colors block">
+                                    {{ row.name }}
+                                </Link>
+                                <p class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="text-xs text-cyan-600 font-medium">{{ row.package?.name || '-' }}</span>
+                    </td>
+                    <td><StatusBadge :status="row.status" /></td>
+                    <td>
+                        <span v-if="row.ont" class="text-xs font-mono text-gray-700 font-semibold">{{ row.ont.serial_number }}</span>
+                        <span v-else class="text-xs text-gray-400">-</span>
+                    </td>
+                    <td>
+                        <template v-if="row.ont?.odp">
+                            <div class="text-xs space-y-0.5">
+                                <p v-if="row.ont.odp.odc?.olt" class="text-gray-500">{{ row.ont.odp.odc.olt.name }}</p>
+                                <p class="text-gray-500">
+                                    <span v-if="row.ont.odp.odc">→ {{ row.ont.odp.odc.name }}</span>
+                                    → {{ row.ont.odp.name }}
+                                </p>
+                            </div>
+                        </template>
+                        <span v-else class="text-xs text-gray-600">-</span>
+                    </td>
+                    <td>
+                        <span v-if="row.ont?.rx_power" :class="signalClass(row.ont.rx_power)" class="text-sm font-mono font-bold">
+                            {{ row.ont.rx_power }} dBm
+                        </span>
+                        <span v-else class="text-gray-600">-</span>
+                    </td>
+                </template>
             </template>
 
             <template #rowActions="{ row }">
-                <div class="flex items-center justify-end gap-1.5">
-                    
-                    <!-- 3.5. Sudah Audit, Menunggu Aktivasi -->
-                    <div v-if="row.status === 'installing' && row.ont && row.is_audited" class="flex gap-1.5">
-                        <button v-can="'customers_activation_activate'" @click="openActivationModal(row)" 
-                            class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Proses Aktivasi Pelanggan">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                            Aktivasi
+                <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                    <!-- Tab Menunggu: Tombol Aktivasi -->
+                    <template v-if="currentTab === 'menunggu'">
+                        <button v-if="row.status === 'installing' && row.ont && row.is_audited" 
+                            v-can="'customers_activation_activate'" 
+                            @click="openActivationModal(row)" 
+                            class="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer" 
+                            title="Proses Aktivasi Pelanggan">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            <span>Aktivasi</span>
                         </button>
-                    </div>
 
-                    <Link :href="`/customers/${row.id}`" class="p-1.5 rounded-lg text-gray-400 hover:bg-white hover:text-blue-500 border border-transparent hover:border-gray-200 transition-all shadow-sm hover:shadow" title="Detail Lengkap">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                    </Link>
+                        <Link :href="`/customers/${row.id}`" class="p-1.5 rounded-lg text-gray-400 hover:bg-white hover:text-blue-500 border border-transparent hover:border-gray-200 transition-all shadow-sm hover:shadow" title="Detail Lengkap">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </Link>
+                    </template>
+
+                    <!-- Tab Riwayat: Tombol Edit Data Aktivasi & Profil -->
+                    <template v-else>
+                        <button 
+                            type="button"
+                            @click="openEditActivationModal(row)"
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+                            title="Edit Data & Konfigurasi Aktivasi"
+                        >
+                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            <span>Edit Konfigurasi</span>
+                        </button>
+
+                        <Link 
+                            :href="`/customers/${row.id}`" 
+                            class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+                            title="Buka Profil Pelanggan"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <span>Profil</span>
+                        </Link>
+                    </template>
                 </div>
             </template>
         </DataTable>
@@ -509,6 +692,111 @@
                 </form>
             </div>
         </div>
+
+        <!-- Modal Edit Data & Konfigurasi Aktivasi -->
+        <Teleport to="body">
+            <div v-if="showEditModal && editCustomer" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-hidden animate-fade-in-up">
+                    <div class="p-5 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-slate-800">Edit Konfigurasi Aktivasi</h3>
+                                <p class="text-xs text-slate-500">{{ editCustomer.name }} ({{ editCustomer.customer_code }})</p>
+                            </div>
+                        </div>
+                        <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 p-1.5 rounded-lg transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitEditActivation">
+                        <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                            <!-- Tanggal Aktivasi -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Tanggal Aktivasi</label>
+                                <input v-model="editForm.activation_date" type="date" class="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm" required />
+                            </div>
+
+                            <!-- Paket Internet -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Paket Berlangganan</label>
+                                <select v-model="editForm.package_id" class="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm">
+                                    <option value="">-- Tetap Pakai Paket Saat Ini --</option>
+                                    <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
+                                        {{ pkg.name }} ({{ formatRupiah(pkg.price) }})
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <!-- Status Layanan -->
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Status Layanan</label>
+                                    <select v-model="editForm.service_status" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm">
+                                        <option value="berbayar">Berbayar</option>
+                                        <option value="gratis">Gratis (Rp 0)</option>
+                                        <option value="free_home">Free Home</option>
+                                    </select>
+                                </div>
+
+                                <!-- Tipe Penagihan -->
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Tipe Penagihan</label>
+                                    <select v-model="editForm.billing_type" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm">
+                                        <option value="prabayar">Prabayar</option>
+                                        <option value="pascabayar">Pascabayar</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Konfigurasi PPPoE & ONT -->
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 004 11a7.978 7.978 0 001.077 3.993"/></svg>
+                                    Akun Jaringan & PPPoE
+                                </h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">User PPPoE</label>
+                                        <input v-model="editForm.pppoe_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-blue-500 shadow-2xs" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Password PPPoE</label>
+                                        <input v-model="editForm.pppoe_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-blue-500 shadow-2xs" />
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">VLAN Layanan</label>
+                                        <input v-model="editForm.vlan_id" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 shadow-2xs" placeholder="Contoh: 100" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Mode Akses</label>
+                                        <select v-model="editForm.access_mode" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 shadow-2xs">
+                                            <option value="PPPOE">PPPoE</option>
+                                            <option value="STATIC">Static IP</option>
+                                            <option value="DHCP">DHCP</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-slate-50 border-t border-gray-200 flex justify-end gap-2.5 rounded-b-2xl">
+                            <button type="button" @click="showEditModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-100 transition-colors shadow-2xs cursor-pointer">Batal</button>
+                            <button type="submit" :disabled="editForm.processing" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer">
+                                <svg v-if="editForm.processing" class="animate-spin w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>{{ editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
         <!-- Modal Konfirmasi Hapus -->
         <Teleport to="body">
             <div v-if="showDeleteModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -549,24 +837,62 @@ import StatCard from '@/Components/StatCard.vue';
 
 const props = defineProps({
     customers: Object,
+    packages: { type: Array, default: () => [] },
     areas: { type: Array, default: () => [] },
     stats: Object,
-    filters: Object
+    filters: Object,
+    taxSettings: Object,
+    billingSettings: Object,
 });
 
+const currentTab = ref(props.filters?.tab || 'menunggu');
 const filterArea = ref(props.filters?.area || '');
+const filterDateFrom = ref(props.filters?.date_from || '');
+const filterDateTo = ref(props.filters?.date_to || '');
+
+watch(() => props.filters?.tab, (newTab) => {
+    if (newTab) currentTab.value = newTab;
+});
+
+function switchTab(tab) {
+    currentTab.value = tab;
+    router.get('/customers/activation', {
+        tab: tab,
+        area: filterArea.value || undefined,
+        search: props.filters?.search || undefined,
+        date_from: filterDateFrom.value || undefined,
+        date_to: filterDateTo.value || undefined,
+    }, { preserveState: false, preserveScroll: true });
+}
 
 function applyFilters() {
     router.get('/customers/activation', {
+        tab: currentTab.value,
         search: props.filters?.search || undefined,
         area: filterArea.value || undefined,
+        date_from: filterDateFrom.value || undefined,
+        date_to: filterDateTo.value || undefined,
     }, { preserveState: true, replace: true });
 }
 
 function resetFilters() {
     filterArea.value = '';
-    router.get('/customers/activation', {}, { preserveState: true, replace: true });
+    filterDateFrom.value = '';
+    filterDateTo.value = '';
+    router.get('/customers/activation', {
+        tab: currentTab.value
+    }, { preserveState: true, replace: true });
 }
+
+const buildSearchRoute = () => {
+    let route = '/customers/activation';
+    let query = [];
+    if (currentTab.value) query.push('tab=' + currentTab.value);
+    if (filterArea.value) query.push('area=' + encodeURIComponent(filterArea.value));
+    if (filterDateFrom.value) query.push('date_from=' + filterDateFrom.value);
+    if (filterDateTo.value) query.push('date_to=' + filterDateTo.value);
+    return query.length > 0 ? `${route}?${query.join('&')}` : route;
+};
 
 const page = usePage();
 const selectedIds = ref([]);
@@ -606,14 +932,102 @@ function bulkDelete() {
     }
 }
 
-const columns = [
-    { key: 'name', label: 'Pelanggan' },
-    { key: 'package', label: 'Paket' },
-    { key: 'status', label: 'Status' },
-    { key: 'ont', label: 'ONT S/N' },
-    { key: 'topology', label: 'Topologi' },
-    { key: 'signal', label: 'Redaman' },
-];
+const columns = computed(() => {
+    if (currentTab.value === 'riwayat') {
+        return [
+            { key: 'name', label: 'Pelanggan' },
+            { key: 'package', label: 'Paket & Tagihan' },
+            { key: 'activation_date', label: 'Tgl Aktivasi' },
+            { key: 'account', label: 'Akun / Mode' },
+            { key: 'status', label: 'Status' },
+            { key: 'topology', label: 'Topologi' },
+        ];
+    }
+    return [
+        { key: 'name', label: 'Pelanggan' },
+        { key: 'package', label: 'Paket' },
+        { key: 'status', label: 'Status' },
+        { key: 'ont', label: 'ONT S/N' },
+        { key: 'topology', label: 'Topologi' },
+        { key: 'signal', label: 'Redaman' },
+    ];
+});
+
+function getAvatarColor(name) {
+    if (!name) return 'bg-indigo-500';
+    const colors = ['bg-indigo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-pink-500', 'bg-orange-500'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+}
+
+function formatDateIndo(dateStr) {
+    if (!dateStr) return '-';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+// Edit Activation Modal State
+const showEditModal = ref(false);
+const editCustomer = ref(null);
+const editForm = useForm({
+    activation_date: '',
+    service_status: 'berbayar',
+    billing_type: 'prabayar',
+    package_id: '',
+    pppoe_user: '',
+    pppoe_password: '',
+    vlan_mode: '',
+    vlan_id: '',
+    access_mode: 'PPPOE',
+    ip_login: '192.168.1.1',
+    login_user: 'admin',
+    login_password: 'admin',
+    free_hotspot: false,
+    hotspot_user: '',
+    hotspot_password: '',
+    hotspot_vlan_id: '',
+});
+
+function openEditActivationModal(customer) {
+    editCustomer.value = customer;
+    editForm.activation_date = customer.activation_date || new Date().toISOString().split('T')[0];
+    editForm.service_status = customer.service_status || 'berbayar';
+    editForm.billing_type = customer.billing_type || 'prabayar';
+    editForm.package_id = customer.package_id || '';
+    editForm.pppoe_user = customer.ont?.pppoe_user || '';
+    editForm.pppoe_password = customer.ont?.pppoe_password || '';
+    editForm.vlan_mode = customer.ont?.vlan_mode || '';
+    editForm.vlan_id = customer.ont?.vlan_id || '';
+    editForm.access_mode = customer.ont?.access_mode || 'PPPOE';
+    editForm.ip_login = customer.ont?.ip_login || '192.168.1.1';
+    editForm.login_user = customer.ont?.login_user || 'admin';
+    editForm.login_password = customer.ont?.login_password || 'admin';
+    editForm.free_hotspot = !!customer.ont?.free_hotspot;
+    editForm.hotspot_user = customer.ont?.hotspot_user || '';
+    editForm.hotspot_password = customer.ont?.hotspot_password || '';
+    editForm.hotspot_vlan_id = customer.ont?.hotspot_vlan_id || '';
+    showEditModal.value = true;
+}
+
+function submitEditActivation() {
+    if (!editCustomer.value) return;
+    editForm.post(`/customers/${editCustomer.value.id}/update-activation`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showEditModal.value = false;
+        }
+    });
+}
 
 const defaultBillingType = computed(() => {
     const t = page.props.billingSettings?.billing_type;

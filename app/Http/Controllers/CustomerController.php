@@ -1029,26 +1029,45 @@ class CustomerController extends Controller
      */
     public function activation(Request $request): Response
     {
-        $baseQuery = Customer::installed()->where('status', 'installing')->where('is_audited', true);
-        
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_activation_view_all')) {
-            if (auth()->user()->can('customers_activation_view_area')) {
-                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-            } else {
-                $baseQuery->where(function($q) {
-                    $q->where('sales_id', auth()->id())
-                      ->orWhereHas('technicianSchedules', function ($sq) {
-                          $sq->where('technician_id', auth()->id())->where('type', 'installation');
-                      });
-                });
+        $applyAreaScope = function ($query) {
+            if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_activation_view_all')) {
+                if (auth()->user()->can('customers_activation_view_area')) {
+                    $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                } else {
+                    $query->where(function($q) {
+                        $q->where('sales_id', auth()->id())
+                          ->orWhereHas('technicianSchedules', function ($sq) {
+                              $sq->where('technician_id', auth()->id())->where('type', 'installation');
+                          });
+                    });
+                }
             }
-        }
-        
+        };
+
+        // 1. Antrean Menunggu Aktivasi (status installing & sudah diaudit)
+        $waitingQuery = Customer::query()->where('status', 'installing')->where('is_audited', true);
+        $applyAreaScope($waitingQuery);
+
+        // 2. Riwayat Aktivasi (pelanggan yang sudah diaktivasi)
+        $historyQuery = Customer::query()->where(function($q) {
+            $q->whereNotNull('activation_date')
+              ->orWhere('status', 'active');
+        })->where('status', '!=', 'installing');
+        $applyAreaScope($historyQuery);
+
         $stats = [
-            'aktivasi' => (clone $baseQuery)->count(),
+            'aktivasi' => (clone $waitingQuery)->count(),
+            'riwayat' => (clone $historyQuery)->count(),
         ];
 
-        $customers = (clone $baseQuery)
+        $currentTab = $request->input('tab', 'menunggu');
+        if (!in_array($currentTab, ['menunggu', 'riwayat'])) {
+            $currentTab = 'menunggu';
+        }
+
+        $activeQuery = ($currentTab === 'riwayat') ? clone $historyQuery : clone $waitingQuery;
+
+        $customers = $activeQuery
             ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'installation')->with('technician');
             }])
@@ -1064,20 +1083,45 @@ class CustomerController extends Controller
                     }
                 });
             })
+            ->when($request->date_from, function ($q, $dateFrom) use ($currentTab) {
+                if ($currentTab === 'riwayat') {
+                    $q->whereDate('activation_date', '>=', $dateFrom);
+                } else {
+                    $q->whereDate('registration_date', '>=', $dateFrom);
+                }
+            })
+            ->when($request->date_to, function ($q, $dateTo) use ($currentTab) {
+                if ($currentTab === 'riwayat') {
+                    $q->whereDate('activation_date', '<=', $dateTo);
+                } else {
+                    $q->whereDate('registration_date', '<=', $dateTo);
+                }
+            })
             ->search($request->search)
-            ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
+            ->when($currentTab === 'riwayat', function ($q) {
+                $q->orderByRaw('COALESCE(activation_date, updated_at) DESC, id DESC');
+            }, function ($q) {
+                $q->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC');
+            })
             ->paginate(15)
             ->withQueryString();
 
         return Inertia::render('Customers/Activation', [
             'customers' => $customers,
             'stats' => $stats,
+            'packages' => \App\Models\InternetPackage::orderBy('price')->get(['id', 'name', 'price']),
             'areas' => \App\Models\Area::orderBy('name')->pluck('name')->toArray(),
-            'filters' => $request->only(['search', 'tab', 'date', 'area']),
+            'filters' => array_merge(['tab' => $currentTab], $request->only(['search', 'tab', 'date', 'area', 'date_from', 'date_to'])),
             'taxSettings' => [
                 'tax_ppn' => \App\Models\Setting::get('tax_ppn', '0'),
                 'tax_bhp' => \App\Models\Setting::get('tax_bhp', '0'),
                 'tax_uso' => \App\Models\Setting::get('tax_uso', '0'),
+            ],
+            'billingSettings' => [
+                'billing_type' => \App\Models\Setting::get('billing_type', 'prabayar'),
+                'invoice_issue_date' => \App\Models\Setting::get('invoice_issue_date', '1'),
+                'isolate_days' => \App\Models\Setting::get('isolate_days', '3'),
+                'prorata_formula' => \App\Models\Setting::get('prorata_formula', 'exact_days'),
             ],
         ]);
     }
