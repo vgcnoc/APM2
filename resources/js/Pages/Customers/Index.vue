@@ -315,43 +315,195 @@
 
             <!-- Row Actions -->
             <template #rowActions="{ row }">
-                <div class="flex items-center justify-end gap-1">
-                    <button v-if="row.status === 'active' && row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" @click="kickSession(row.ont.pppoe_user)" class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold text-red-500 bg-red-50 hover:bg-red-500 hover:text-white transition-colors" title="Kick Sesi Online">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                    <!-- Tombol Cepat KICK jika Online -->
+                    <button 
+                        v-if="row.status === 'active' && row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" 
+                        @click="kickSession(row.ont.pppoe_user)" 
+                        class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-all shadow-2xs hover:shadow-xs focus:outline-none" 
+                        title="Kick Sesi Online"
+                    >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                         KICK
                     </button>
-                    <Link :href="`/customers/${row.id}`" class="p-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-blue-500 transition-colors shadow-sm bg-white" title="Lihat">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                        </svg>
-                    </Link>
-                    <Link v-can="'customers_all_edit'" :href="`/customers/${row.id}/edit`" class="p-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors shadow-sm bg-white" title="Edit">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                        </svg>
-                    </Link>
-                    <button v-can="'customers_all_edit'" v-if="!row.user_id" @click="openCreateAccountModal(row)" class="p-1.5 rounded-md border border-gray-200 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 transition-colors shadow-sm bg-white" title="Buat Akun Login">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                    </button>
-                    <button v-can="'customers_all_edit'" v-if="row.user_id" @click="openResetModal(row)" class="p-1.5 rounded-md border border-gray-200 text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-colors shadow-sm bg-white" title="Ubah Password Akun">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
-                    </button>
-                    <button v-can="'customers_active_terminate'" @click="openTerminateModal(row)" class="p-1.5 rounded-md border border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors shadow-sm bg-white ml-1" title="Stop Permanen">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
-                        </svg>
-                    </button>
-                    <button v-can="'customers_delete'" @click="confirmDelete(row)" class="p-1.5 rounded-md border border-gray-200 text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors shadow-sm bg-white ml-1" title="Hapus">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                    </button>
 
+                    <!-- Tombol Dropdown Menu Aksi -->
+                    <button 
+                        type="button" 
+                        @click.stop="toggleDropdown($event, row)" 
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-lg transition-all shadow-2xs hover:shadow-xs cursor-pointer text-xs font-semibold focus:outline-none"
+                        :class="{ 'ring-2 ring-blue-500 bg-blue-50 text-blue-600 border-blue-300': activeDropdownRow?.id === row.id }"
+                        title="Pilihan Aksi"
+                    >
+                        <span>Aksi</span>
+                        <svg class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180 text-blue-600': activeDropdownRow?.id === row.id }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
                 </div>
             </template>
         </DataTable>
+
+        <!-- Action Dropdown Menu Floating -->
+        <Teleport to="body">
+            <div v-if="activeDropdownRow" class="fixed inset-0 z-[120]" @click="closeDropdown" @contextmenu.prevent="closeDropdown">
+                <div 
+                    :style="{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px` }"
+                    class="fixed w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/80 py-1.5 z-[121] text-xs divide-y divide-slate-100 animate-fade-in-up"
+                    @click.stop
+                >
+                    <!-- Header Info Pelanggan -->
+                    <div class="px-3.5 py-2.5 bg-slate-50/90 -mt-1.5 rounded-t-2xl border-b border-slate-100 mb-1">
+                        <div class="flex items-center gap-2.5">
+                            <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-2xs', getAvatarColor(activeDropdownRow.name)]">
+                                {{ activeDropdownRow.name.charAt(0).toUpperCase() }}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="font-bold text-slate-900 truncate text-xs">{{ activeDropdownRow.name }}</div>
+                                <div class="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono mt-0.5">
+                                    <span class="font-semibold text-slate-600">{{ activeDropdownRow.customer_code }}</span>
+                                    <span>&bull;</span>
+                                    <span class="truncate text-blue-600 font-medium">{{ activeDropdownRow.package?.name || (activeDropdownRow.service_status === 'gratis' ? 'Gratis' : (activeDropdownRow.service_status === 'free_home' ? 'Free Home' : '-')) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Grup 1: Informasi & Manajemen Data -->
+                    <div class="py-1">
+                        <!-- Lihat Detail -->
+                        <Link 
+                            :href="`/customers/${activeDropdownRow.id}`" 
+                            @click="closeDropdown"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-blue-50/80 hover:text-blue-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-blue-50 group-hover:bg-blue-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-blue-700">Lihat Detail</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-blue-500 font-normal leading-tight">Informasi lengkap & riwayat</p>
+                            </div>
+                        </Link>
+
+                        <!-- Edit Data Pelanggan -->
+                        <Link 
+                            v-can="'customers_all_edit'"
+                            :href="`/customers/${activeDropdownRow.id}/edit`" 
+                            @click="closeDropdown"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-indigo-50/80 hover:text-indigo-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-indigo-50 group-hover:bg-indigo-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-indigo-700">Edit Pelanggan</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-indigo-500 font-normal leading-tight">Ubah paket, ODP, atau kontak</p>
+                            </div>
+                        </Link>
+                    </div>
+
+                    <!-- Grup 2: Akun Portal & Sesi Jaringan -->
+                    <div class="py-1">
+                        <!-- Buat Akun Login -->
+                        <button 
+                            v-can="'customers_all_edit'"
+                            v-if="!activeDropdownRow.user_id" 
+                            type="button"
+                            @click="openCreateAccountModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-emerald-50/80 hover:text-emerald-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-emerald-50 group-hover:bg-emerald-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-emerald-700">Buat Akun Portal</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-emerald-500 font-normal leading-tight">Akses login Client Area</p>
+                            </div>
+                        </button>
+
+                        <!-- Ubah Password Akun -->
+                        <button 
+                            v-can="'customers_all_edit'"
+                            v-if="activeDropdownRow.user_id" 
+                            type="button"
+                            @click="openResetModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-amber-50/80 hover:text-amber-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-amber-50 group-hover:bg-amber-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-amber-700">Ubah Password Akun</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-amber-500 font-normal leading-tight">Reset password login portal</p>
+                            </div>
+                        </button>
+
+                        <!-- Kick Sesi Online -->
+                        <button 
+                            v-if="activeDropdownRow.status === 'active' && activeDropdownRow.ont?.pppoe_user && onlineUsernames?.includes(activeDropdownRow.ont.pppoe_user)"
+                            type="button"
+                            @click="kickSession(activeDropdownRow.ont.pppoe_user); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-orange-50/80 hover:text-orange-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-orange-50 group-hover:bg-orange-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-orange-600 group-hover:text-orange-700">Kick Sesi Online</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-orange-500 font-normal leading-tight">Putus koneksi sesi PPPoE</p>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Grup 3: Penonaktifan & Hapus (Danger Zone) -->
+                    <div class="py-1">
+                        <!-- Stop Permanen -->
+                        <button 
+                            v-can="'customers_active_terminate'"
+                            v-if="activeDropdownRow.status !== 'terminated'"
+                            type="button"
+                            @click="openTerminateModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-rose-700 hover:bg-rose-50/80 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-rose-50 group-hover:bg-rose-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-rose-700">Stop Permanen</span>
+                                <p class="text-[10px] text-rose-400 font-normal leading-tight">Isolir & nonaktifkan sistem</p>
+                            </div>
+                        </button>
+
+                        <!-- Hapus Pelanggan -->
+                        <button 
+                            v-can="'customers_delete'"
+                            type="button"
+                            @click="confirmDelete(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-red-600 hover:bg-red-50/80 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-red-50 group-hover:bg-red-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-red-600">Hapus Pelanggan</span>
+                                <p class="text-[10px] text-red-400 font-normal leading-tight">Hapus data beserta ONT</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
 
         <!-- Delete Confirmation Modal -->
         <Teleport to="body">
@@ -565,7 +717,7 @@
 </template>
 
 <script setup>
-import { ref , computed} from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Link, router , usePage, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
@@ -822,4 +974,55 @@ function submitTerminate() {
         }
     });
 }
+
+// ── Floating Action Dropdown Logic ─────────────────────────
+const activeDropdownRow = ref(null);
+const dropdownPos = ref({ top: 0, left: 0 });
+
+function toggleDropdown(event, row) {
+    if (activeDropdownRow.value && activeDropdownRow.value.id === row.id) {
+        activeDropdownRow.value = null;
+        return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const dropdownHeight = 310;
+    const dropdownWidth = 256; // w-64 = 256px
+
+    let top = rect.bottom + 6;
+    if (top + dropdownHeight > window.innerHeight) {
+        if (rect.top > dropdownHeight) {
+            top = Math.max(10, rect.top - dropdownHeight - 6);
+        } else {
+            top = Math.max(10, window.innerHeight - dropdownHeight - 10);
+        }
+    }
+
+    let left = rect.right - dropdownWidth;
+    if (left < 10) {
+        left = 10;
+    }
+
+    dropdownPos.value = { top, left };
+    activeDropdownRow.value = row;
+}
+
+function closeDropdown() {
+    activeDropdownRow.value = null;
+}
+
+function handleWindowChange() {
+    if (activeDropdownRow.value) {
+        activeDropdownRow.value = null;
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('scroll', handleWindowChange, { passive: true });
+    window.addEventListener('resize', handleWindowChange);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', handleWindowChange);
+    window.removeEventListener('resize', handleWindowChange);
+});
 </script>
