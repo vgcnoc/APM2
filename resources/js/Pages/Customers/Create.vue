@@ -53,8 +53,10 @@
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Email (Opsional)</label>
-                                    <input v-model="form.email" type="email" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: budi@gmail.com" />
-                                    <p v-if="form.errors.email" class="text-red-400 text-xs mt-1">{{ form.errors.email }}</p>
+                                    <input v-model="form.email" type="email" :class="['w-full px-4 py-2.5 bg-gray-50 border rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none transition-all', form.errors.email ? 'border-red-400 bg-red-50/20 ring-2 ring-red-100' : 'border-gray-200 focus:ring-2 focus:ring-indigo-500']" placeholder="Contoh: budi@gmail.com" />
+                                    <p v-if="form.errors.email" class="text-red-500 font-medium text-xs mt-1.5 flex items-center gap-1">
+                                        <span>⚠️</span> {{ form.errors.email }}
+                                    </p>
                                 </div>
                                 <div class="md:col-span-2">
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Foto KTP (Opsional)</label>
@@ -326,6 +328,7 @@
 import { Link, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { watch, ref, onMounted, computed } from 'vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     packages: Array,
@@ -542,6 +545,15 @@ function submit() {
     })).post('/customers', {
         onSuccess: () => {
             // Sukses diarahkan oleh controller
+        },
+        onError: (errors) => {
+            if (errors.email) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Email Sudah Terdaftar',
+                    text: errors.email,
+                });
+            }
         }
     });
 }

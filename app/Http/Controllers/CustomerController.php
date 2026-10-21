@@ -1560,7 +1560,17 @@ class CustomerController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
+            'email' => [
+                'nullable',
+                'email',
+                'max:255',
+                'unique:customers,email',
+                function ($attribute, $value, $fail) {
+                    if (\App\Models\User::where('email', $value)->exists()) {
+                        $fail('Email ini sudah digunakan oleh akun login sistem lain.');
+                    }
+                }
+            ],
             'phone' => 'required|string|max:20',
             'address' => 'required|string',
             'area' => 'nullable|string',
@@ -1577,6 +1587,9 @@ class CustomerController extends Controller
             'billing_type' => 'nullable|in:prabayar,pascabayar',
             'is_reseller' => 'boolean',
             'service_status' => 'nullable|in:berbayar,gratis,free_home',
+        ], [
+            'email.unique' => 'Email ini sudah terdaftar pada pelanggan lain. Silakan gunakan email berbeda.',
+            'email.email' => 'Format penulisan email tidak valid.',
         ]);
 
         if (empty($validated['sales_id'])) {
@@ -1800,14 +1813,13 @@ class CustomerController extends Controller
                 'nullable',
                 'email',
                 'max:255',
+                Rule::unique('customers', 'email')->ignore($customer->id),
                 function ($attribute, $value, $fail) use ($customer) {
-                    if ($customer->user_id) {
-                        $exists = \App\Models\User::where('email', $value)
-                            ->where('id', '!=', $customer->user_id)
-                            ->exists();
-                        if ($exists) {
-                            $fail('Email ini sudah digunakan oleh akun login lain.');
-                        }
+                    $userExists = \App\Models\User::where('email', $value)
+                        ->when($customer->user_id, fn($q) => $q->where('id', '!=', $customer->user_id))
+                        ->exists();
+                    if ($userExists) {
+                        $fail('Email ini sudah digunakan oleh akun login sistem lain.');
                     }
                 }
             ],
@@ -1831,6 +1843,9 @@ class CustomerController extends Controller
             'tax_ppn' => 'nullable|numeric|min:0|max:100',
             'tax_bhp' => 'nullable|numeric|min:0|max:100',
             'tax_uso' => 'nullable|numeric|min:0|max:100',
+        ], [
+            'email.unique' => 'Email ini sudah terdaftar pada pelanggan lain. Silakan gunakan email berbeda.',
+            'email.email' => 'Format penulisan email tidak valid.',
         ]);
 
         if ($request->has('enable_tax') && !$request->boolean('enable_tax')) {
@@ -2741,7 +2756,20 @@ class CustomerController extends Controller
     {
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:255',
+            'email' => [
+                'nullable',
+                'email',
+                'max:255',
+                Rule::unique('customers', 'email')->ignore($customer->id),
+                function ($attribute, $value, $fail) use ($customer) {
+                    $userExists = \App\Models\User::where('email', $value)
+                        ->when($customer->user_id, fn($q) => $q->where('id', '!=', $customer->user_id))
+                        ->exists();
+                    if ($userExists) {
+                        $fail('Email ini sudah digunakan oleh akun login sistem lain.');
+                    }
+                }
+            ],
             'latitude' => 'nullable|string|max:50',
             'longitude' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
@@ -2751,6 +2779,9 @@ class CustomerController extends Controller
             'area_id' => 'nullable|exists:areas,id',
             'address' => 'nullable|string',
             'phone' => 'nullable|string',
+        ], [
+            'email.unique' => 'Email ini sudah terdaftar pada pelanggan lain. Silakan gunakan email berbeda.',
+            'email.email' => 'Format penulisan email tidak valid.',
         ]);
 
         if (!empty($validated['area_id'])) {

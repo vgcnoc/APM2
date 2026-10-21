@@ -1711,7 +1711,10 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Email Pelanggan (Opsional)</label>
-                                    <input v-model="bookingForm.email" type="email" placeholder="budi@example.com" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                    <input v-model="bookingForm.email" type="email" placeholder="budi@example.com" :class="['w-full text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500', bookingForm.errors.email ? 'border-red-400 bg-red-50/20 ring-1 ring-red-300' : 'border-gray-300']" />
+                                    <p v-if="bookingForm.errors.email" class="text-xs text-red-500 mt-1 font-medium flex items-center gap-1">
+                                        <span>⚠️</span> {{ bookingForm.errors.email }}
+                                    </p>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Tanggal Booking / Registrasi</label>
@@ -3719,6 +3722,21 @@ function submitEditBooking() {
         preserveScroll: true,
         onSuccess: () => {
             showEditBookingModal.value = false;
+            Swal.fire({
+                icon: 'success',
+                title: 'Data Booking Diperbarui!',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        },
+        onError: (errors) => {
+            if (errors.email) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Email Sudah Terdaftar',
+                    text: errors.email,
+                });
+            }
         }
     });
 }
