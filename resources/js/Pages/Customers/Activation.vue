@@ -639,6 +639,17 @@ const formatDateShort = (d) => {
     }
 };
 
+function signalClass(rx) {
+    if (!rx) return 'text-gray-400';
+    const num = parseFloat(rx);
+    if (isNaN(num)) return 'text-gray-400';
+    if (num >= -20) return 'text-emerald-500 font-bold';
+    if (num >= -25) return 'text-green-500 font-bold';
+    if (num >= -28) return 'text-amber-500 font-bold';
+    return 'text-rose-500 font-bold';
+}
+
+const activeCustomer = ref(null);
 const showActivationModal = ref(false);
 const activationForm = useForm({
     activation_date: '',

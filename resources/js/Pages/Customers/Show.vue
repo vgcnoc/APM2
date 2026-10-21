@@ -455,7 +455,7 @@
                             <button v-if="!customer.is_audited && hasPermission('customers_installed_audit')" @click="showAuditModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 border-0 text-white">
                                 Selesaikan Audit
                             </button>
-                            <button v-else-if="customer.is_audited && source !== 'instalasi' && hasPermission('customers_activation_activate')" @click="showActivationModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 border-0 text-white">
+                            <button v-else-if="customer.is_audited && hasPermission('customers_activation_activate')" @click="showActivationModal = true" class="btn-primary w-full md:w-auto text-lg py-3 shadow-lg hover:shadow-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 border-0 text-white">
                                 Aktivasi Pelanggan
                             </button>
                         </div>

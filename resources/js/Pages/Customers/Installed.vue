@@ -184,6 +184,15 @@
                         </Link>
                     </div>
 
+                    <!-- 3.5. Sudah Audit, Menunggu Aktivasi -->
+                    <div v-if="getCustomerProgressStatus(row) === 'menunggu_aktivasi'" class="flex gap-1.5">
+                        <Link href="/customers/activation" 
+                            class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Buka Menu Aktivasi Layanan">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            Aktivasi Layanan
+                        </Link>
+                    </div>
+
                     <!-- WhatsApp Notifikasi Teknisi (Muncul jika teknisi telah dijadwalkan) -->
                     <button 
                         v-if="row.technician_schedules?.length > 0"
