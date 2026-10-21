@@ -412,6 +412,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/reseller-requests', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'store'])->name('reseller-requests.store');
     Route::post('/reseller-requests/{balanceRequest}/approve', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'approve'])->name('reseller-requests.approve');
     Route::post('/reseller-requests/{balanceRequest}/reject', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'reject'])->name('reseller-requests.reject');
+    Route::delete('/reseller-transactions/{transaction}', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'destroyTransaction'])->name('reseller-transactions.destroy');
 
     // ── Reseller Billing (Penagihan & Pelunasan) ────────────────────────
     Route::get('/reseller-billing', [\App\Http\Controllers\ResellerBillingController::class, 'index'])->name('reseller-billing.index');

@@ -26,4 +26,14 @@ class Reseller extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function transactions()
+    {
+        return $this->hasMany(ResellerTransaction::class);
+    }
+
+    public function balanceRequests()
+    {
+        return $this->hasMany(ResellerBalanceRequest::class);
+    }
 }

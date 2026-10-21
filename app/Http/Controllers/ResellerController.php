@@ -68,7 +68,21 @@ class ResellerController extends Controller
             'is_active' => 'boolean',
         ]);
 
+        $oldBalance = (float)$reseller->balance;
+        $newBalance = (float)$validated['balance'];
+        $diff = $newBalance - $oldBalance;
+
         $reseller->update($validated);
+
+        if (abs($diff) > 0) {
+            \App\Models\ResellerTransaction::create([
+                'reseller_id' => $reseller->id,
+                'type' => $diff > 0 ? 'credit' : 'debit',
+                'amount' => abs($diff),
+                'description' => 'Penyesuaian Saldo via Admin (' . ($diff > 0 ? '+' : '-') . 'Rp ' . number_format(abs($diff), 0, ',', '.') . ')',
+                'reference_id' => 'ADJ-' . time(),
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Data dompet Reseller berhasil diperbarui.');
     }
