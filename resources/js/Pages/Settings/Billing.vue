@@ -21,9 +21,55 @@
                                 </div>
                                 <h3 class="text-lg font-bold text-gray-900">Siklus Penagihan Default</h3>
                             </div>
-                            <p class="text-xs text-gray-500 mb-2 ml-10">Tentukan standar jenis siklus penagihan sistem. Pilihan ini akan menjadi nilai default saat melakukan Aktivasi Pelanggan (dapat disesuaikan secara fleksibel per pelanggan).</p>
+                            <p class="text-xs text-gray-500 mb-4 ml-10">Tentukan standar jenis siklus dan metode penagihan sistem. Nilai ini menjadi acuan default saat aktivasi pelanggan baru dan dapat disesuaikan per pelanggan.</p>
                             
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Pilihan Mode Siklus Tanggal Tagihan (Anniversary vs Calendar) -->
+                            <div class="space-y-3 p-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-800">1. Mode Penentuan Tanggal Tagihan (Billing Cycle Mode):</label>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">Pilih bagaimana sistem menentukan tanggal terbit invoice rutin bulanan untuk pelanggan.</p>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <label class="relative flex cursor-pointer rounded-xl border p-4 shadow-sm focus:outline-none transition-all duration-200 hover:border-indigo-400 hover:shadow-md" :class="form.billing_cycle === 'anniversary' ? 'border-indigo-600 bg-white ring-2 ring-indigo-500' : 'border-gray-200 bg-white/70'">
+                                        <input type="radio" name="billing_cycle" value="anniversary" v-model="form.billing_cycle" class="sr-only">
+                                        <span class="flex flex-1">
+                                            <span class="flex flex-col">
+                                                <span class="flex items-center gap-2">
+                                                    <span class="block text-sm font-bold" :class="form.billing_cycle === 'anniversary' ? 'text-indigo-900' : 'text-gray-900'">Sesuai Tanggal Aktivasi</span>
+                                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Disarankan</span>
+                                                </span>
+                                                <span class="mt-1 text-xs leading-relaxed" :class="form.billing_cycle === 'anniversary' ? 'text-indigo-700' : 'text-gray-500'">Anniversary Billing — Tagihan terbit mengikuti tanggal aktivasi tiap pelanggan (misal aktif tgl 12 &rarr; ditagih tiap tgl 12). Tagihan merata tiap hari tanpa prorata.</span>
+                                            </span>
+                                        </span>
+                                        <div class="flex items-center ml-2">
+                                            <div class="w-5 h-5 rounded-full border flex items-center justify-center transition-colors" :class="form.billing_cycle === 'anniversary' ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'">
+                                                <svg v-if="form.billing_cycle === 'anniversary'" class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    <label class="relative flex cursor-pointer rounded-xl border p-4 shadow-sm focus:outline-none transition-all duration-200 hover:border-indigo-400 hover:shadow-md" :class="form.billing_cycle === 'calendar' ? 'border-indigo-600 bg-white ring-2 ring-indigo-500' : 'border-gray-200 bg-white/70'">
+                                        <input type="radio" name="billing_cycle" value="calendar" v-model="form.billing_cycle" class="sr-only">
+                                        <span class="flex flex-1">
+                                            <span class="flex flex-col">
+                                                <span class="block text-sm font-bold" :class="form.billing_cycle === 'calendar' ? 'text-indigo-900' : 'text-gray-900'">Tanggal Serentak (Kalender)</span>
+                                                <span class="mt-1 text-xs leading-relaxed" :class="form.billing_cycle === 'calendar' ? 'text-indigo-700' : 'text-gray-500'">Fixed Calendar — Semua tagihan diterbitkan serentak pada satu tanggal tertentu (misal tgl 1). Pelanggan baru di tengah bulan dapat dikenakan prorata.</span>
+                                            </span>
+                                        </span>
+                                        <div class="flex items-center ml-2">
+                                            <div class="w-5 h-5 rounded-full border flex items-center justify-center transition-colors" :class="form.billing_cycle === 'calendar' ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'">
+                                                <svg v-if="form.billing_cycle === 'calendar'" class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div v-if="form.errors.billing_cycle" class="mt-1 text-sm text-red-600">{{ form.errors.billing_cycle }}</div>
+                            </div>
+
+                            <!-- Pilihan Metode Pembayaran (Prabayar vs Pascabayar) -->
+                            <div class="space-y-3 pt-2">
+                                <label class="block text-xs font-bold text-slate-800">2. Metode Pembayaran Tagihan Default:</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <label class="relative flex cursor-pointer rounded-xl border p-4 shadow-sm focus:outline-none transition-all duration-200 hover:border-indigo-300 hover:shadow-md" :class="form.billing_type === 'prabayar' ? 'border-indigo-600 bg-indigo-50/30 ring-1 ring-indigo-600' : 'border-gray-200 bg-white'">
                                     <input type="radio" name="billing_type" value="prabayar" v-model="form.billing_type" class="sr-only">
                                     <span class="flex flex-1">
@@ -53,6 +99,7 @@
                                         </div>
                                     </div>
                                 </label>
+                            </div>
                             </div>
                             <div v-if="form.errors.billing_type" class="mt-1 text-sm text-red-600">{{ form.errors.billing_type }}</div>
 
@@ -139,6 +186,17 @@
                             </div>
                             
                             <div class="grid grid-cols-1 gap-y-6">
+                                <!-- Info Anniversary Billing -->
+                                <div v-if="form.billing_cycle === 'anniversary'" class="p-4 bg-indigo-50/80 border border-indigo-200 rounded-xl flex items-start gap-3">
+                                    <span class="text-xl">📅</span>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-indigo-900">Siklus Tanggal Aktivasi Aktif (Anniversary Billing)</h4>
+                                        <p class="text-xs text-indigo-700 mt-0.5 leading-relaxed">
+                                            Sistem otomatis memeriksa setiap hari dan menerbitkan invoice pada tanggal aktivasi masing-masing pelanggan (contoh: aktif tanggal 12 &rarr; terbit tagihan tanggal 12 setiap bulan). Tanggal terbit di bawah ini menjadi nilai acuan jika tanggal aktivasi pelanggan belum terdaftar atau pelanggan memilih siklus kalender khusus.
+                                        </p>
+                                    </div>
+                                </div>
+
                                 <!-- Tanggal Terbit -->
                                 <div class="bg-gray-50/50 p-5 rounded-xl border border-gray-100 flex flex-col md:flex-row md:items-start gap-4">
                                     <div class="flex-1">
@@ -862,6 +920,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
 
 const props = defineProps({
+    billing_cycle: String,
     billing_type: String,
     prorata_formula: String,
     prorata_first_month: Boolean,
@@ -882,6 +941,7 @@ const props = defineProps({
 });
 
 const form = useForm({
+    billing_cycle: props.billing_cycle || 'anniversary',
     billing_type: props.billing_type || 'prabayar',
     prorata_formula: props.prorata_formula || 'exact_days',
     prorata_first_month: props.prorata_first_month !== undefined ? props.prorata_first_month : true,
@@ -902,6 +962,7 @@ const form = useForm({
 });
 
 // Sync watchers when props change (e.g. after save redirect)
+watch(() => props.billing_cycle, (val) => { if (val) form.billing_cycle = val; });
 watch(() => props.billing_type, (val) => { if (val) form.billing_type = val; });
 watch(() => props.prorata_formula, (val) => { if (val) form.prorata_formula = val; });
 watch(() => props.prorata_first_month, (val) => { form.prorata_first_month = val !== undefined ? val : true; });

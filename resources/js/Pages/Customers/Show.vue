@@ -2505,6 +2505,21 @@
                                         </label>
                                     </div>
                                 </div>
+
+                                <div class="col-span-full pt-1">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Siklus Tanggal Tagihan</label>
+                                    <select v-model="editActivationForm.billing_cycle" class="w-full text-xs border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                                        <option value="default">Ikuti Default Sistem ({{ $page.props.billingSettings?.billing_cycle === 'anniversary' ? 'Sesuai Tgl Aktivasi' : 'Kalender Serentak' }})</option>
+                                        <option value="anniversary">Sesuai Tanggal Aktivasi (Anniversary)</option>
+                                        <option value="calendar">Siklus Kalender (Tanggal Serentak)</option>
+                                        <option value="custom_date">Pilih Tanggal Khusus Sendiri</option>
+                                    </select>
+                                    <div v-if="editActivationForm.billing_cycle === 'custom_date'" class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-200">
+                                        <span class="text-xs text-gray-600 font-medium">Tanggal Tagihan Rutin:</span>
+                                        <input type="number" v-model="editActivationForm.billing_day" min="1" max="28" class="w-20 px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-purple-500 font-bold text-purple-800 bg-white" placeholder="1-28" />
+                                        <span class="text-xs text-gray-500">tiap bulan</span>
+                                    </div>
+                                </div>
                             </div>
 
                             <div>
@@ -4251,6 +4266,8 @@ const editActivationForm = useForm({
     activation_date: '',
     service_status: 'berbayar',
     billing_type: 'prabayar',
+    billing_cycle: 'default',
+    billing_day: null,
     package_id: '',
     pppoe_user: '',
     pppoe_password: '',
@@ -4272,6 +4289,8 @@ function openEditActivationModal() {
     editActivationForm.activation_date = cust.activation_date ? cust.activation_date.split('T')[0] : (cust.registration_date ? cust.registration_date.split('T')[0] : new Date().toISOString().split('T')[0]);
     editActivationForm.service_status = cust.service_status || 'berbayar';
     editActivationForm.billing_type = cust.billing_type || 'prabayar';
+    editActivationForm.billing_cycle = cust.billing_cycle || 'default';
+    editActivationForm.billing_day = cust.billing_day || null;
     editActivationForm.package_id = cust.package_id || '';
     editActivationForm.pppoe_user = ont?.pppoe_user || '';
     editActivationForm.pppoe_password = ont?.pppoe_password || '';

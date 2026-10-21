@@ -77,6 +77,7 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
             ],
             'billingSettings' => fn () => [
+                'billing_cycle' => \App\Models\Setting::get('billing_cycle', 'anniversary'),
                 'billing_type' => \App\Models\Setting::get('billing_type', 'prabayar'),
                 'prorata_formula' => \App\Models\Setting::get('prorata_formula', 'exact_days'),
                 'prorata_first_month' => \App\Models\Setting::get('prorata_first_month', '1') === '1',

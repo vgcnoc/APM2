@@ -48,6 +48,8 @@ class Customer extends Model
         'longitude',
         'package_id',
         'billing_type',
+        'billing_cycle',
+        'billing_day',
         'is_reseller',
         'status',
         'service_status',

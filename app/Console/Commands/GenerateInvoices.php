@@ -22,25 +22,53 @@ class GenerateInvoices extends Command
      *
      * @var string
      */
-    protected $description = 'Generate periodic invoices based on settings';
+    protected $description = 'Generate periodic invoices based on configured billing cycle (anniversary/calendar/custom)';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $issueDateSetting = Setting::get('invoice_issue_date', '1');
         $today = now();
-
-        if (!$this->option('force') && $today->day != (int)$issueDateSetting) {
-            $this->info("Today ({$today->day}) is not the configured invoice issue date ({$issueDateSetting}). Skipping.");
-            return;
-        }
+        $globalCycle = Setting::get('billing_cycle', 'anniversary');
+        $calendarIssueDay = (int) Setting::get('invoice_issue_date', '1');
+        $force = (bool) $this->option('force');
 
         $customers = Customer::whereIn('status', ['active', 'suspended'])->with('package')->get();
         $count = 0;
 
         foreach ($customers as $customer) {
+            // Evaluasi siklus penagihan pelanggan: custom per pelanggan atau ikut default sistem
+            $customerCycle = $customer->billing_cycle ?: 'default';
+            $effectiveCycle = ($customerCycle === 'default') ? $globalCycle : $customerCycle;
+
+            // Tentukan apakah hari ini adalah hari penerbitan tagihan untuk pelanggan ini
+            if (!$force) {
+                $isDueToday = false;
+
+                if ($effectiveCycle === 'anniversary') {
+                    // Mengikuti tanggal aktivasi
+                    $actDate = $customer->activation_date ? Carbon::parse($customer->activation_date) : ($customer->registration_date ? Carbon::parse($customer->registration_date) : null);
+                    $targetDay = $actDate ? $actDate->day : $calendarIssueDay;
+                    // Antisipasi bulan dengan jumlah hari lebih sedikit (mis. Feb 28/29, April 30)
+                    $targetDay = min($targetDay, $today->daysInMonth);
+                    $isDueToday = ($today->day == $targetDay);
+                } elseif ($effectiveCycle === 'custom_date') {
+                    // Berdasarkan tanggal khusus yang dipilih pelanggan (1-28)
+                    $customDay = (int) ($customer->billing_day ?: 1);
+                    $targetDay = min($customDay, $today->daysInMonth);
+                    $isDueToday = ($today->day == $targetDay);
+                } else {
+                    // Siklus Kalender / Serentak
+                    $targetDay = min($calendarIssueDay, $today->daysInMonth);
+                    $isDueToday = ($today->day == $targetDay);
+                }
+
+                if (!$isDueToday) {
+                    continue;
+                }
+            }
+
             // Jika pelanggan sudah memiliki 2 tagihan yang belum dibayar, jangan buat tagihan baru
             $unpaidCount = Invoice::where('customer_id', $customer->id)
                 ->where('status', 'unpaid')
@@ -96,6 +124,7 @@ class GenerateInvoices extends Command
                 Invoice::create([
                     'customer_id' => $customer->id,
                     'billing_type' => $customer->billing_type ?? Setting::get('billing_type', 'prabayar'),
+                    'billing_cycle' => $effectiveCycle,
                     'period_month' => $today->month,
                     'period_year' => $today->year,
                     'amount' => $amount,
@@ -107,6 +136,6 @@ class GenerateInvoices extends Command
             }
         }
 
-        $this->info("Generated $count invoices for period {$today->format('M Y')}.");
+        $this->info("Generated $count invoices for period {$today->format('M Y')} (Default Cycle: {$globalCycle}).");
     }
 }

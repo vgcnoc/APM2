@@ -324,6 +324,28 @@
                                         </label>
                                     </div>
                                 </div>
+
+                                <!-- Siklus Tanggal Tagihan (Billing Cycle) -->
+                                <div class="col-span-full pt-1">
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">
+                                        Siklus Tanggal Tagihan
+                                    </label>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <select v-model="form.billing_cycle" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                                                <option value="default">Ikuti Default Sistem ({{ page.props.billingSettings?.billing_cycle === 'anniversary' ? 'Sesuai Tgl Aktivasi' : 'Kalender Serentak' }})</option>
+                                                <option value="anniversary">Sesuai Tanggal Aktivasi (Anniversary)</option>
+                                                <option value="calendar">Siklus Kalender (Tanggal Serentak)</option>
+                                                <option value="custom_date">Pilih Tanggal Khusus Sendiri</option>
+                                            </select>
+                                        </div>
+                                        <div v-if="form.billing_cycle === 'custom_date'" class="flex items-center gap-2">
+                                            <span class="text-xs text-gray-600 font-medium">Tanggal Tagihan Rutin:</span>
+                                            <input type="number" v-model="form.billing_day" min="1" max="28" class="w-20 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-yellow-800" placeholder="1-28" />
+                                            <span class="text-xs text-gray-500">tiap bulan</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -561,6 +583,8 @@ const form = useForm({
     tax_bhp: props.customer.tax_bhp,
     tax_uso: props.customer.tax_uso,
     billing_type: (props.customer.billing_type === 'pascabayar' || (!props.customer.billing_type && page.props.billingSettings?.billing_type === 'pascabayar')) ? 'pascabayar' : 'prabayar',
+    billing_cycle: props.customer.billing_cycle || 'default',
+    billing_day: props.customer.billing_day || null,
 });
 
 const registration_type = ref('customer');

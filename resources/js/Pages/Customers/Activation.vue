@@ -420,6 +420,29 @@
                                 </label>
                             </div>
 
+                            <!-- Pilihan Siklus Tanggal Tagihan (Billing Cycle) -->
+                            <div class="space-y-1.5 pt-1">
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                        Siklus Tanggal Tagihan
+                                    </label>
+                                    <span class="text-[10px] text-purple-700 bg-purple-100/70 px-2 py-0.5 rounded-md font-semibold">
+                                        Default: {{ defaultBillingCycle === 'anniversary' ? 'Sesuai Tgl Aktivasi' : 'Kalender Serentak' }}
+                                    </span>
+                                </div>
+                                <select v-model="activationForm.billing_cycle" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:ring-2 focus:ring-purple-500 shadow-sm">
+                                    <option value="default">Ikuti Default Sistem ({{ defaultBillingCycle === 'anniversary' ? 'Sesuai Tgl Aktivasi' : 'Kalender Serentak' }})</option>
+                                    <option value="anniversary">Sesuai Tanggal Aktivasi (Anniversary)</option>
+                                    <option value="calendar">Siklus Kalender (Tanggal Serentak)</option>
+                                    <option value="custom_date">Pilih Tanggal Khusus Sendiri</option>
+                                </select>
+                                <div v-if="activationForm.billing_cycle === 'custom_date'" class="flex items-center gap-2 mt-2 p-2.5 bg-purple-50/50 border border-purple-200 rounded-xl">
+                                    <span class="text-xs text-purple-900 font-medium">Tanggal Tagihan Rutin:</span>
+                                    <input type="number" v-model="activationForm.billing_day" min="1" max="28" class="w-20 px-2.5 py-1 text-xs border border-purple-300 rounded-lg focus:ring-purple-500 font-bold text-purple-800 bg-white" placeholder="1-28" />
+                                    <span class="text-xs text-purple-700">tiap bulan</span>
+                                </div>
+                            </div>
+
                             <!-- Pilihan Prorata saat Pascabayar -->
                             <div v-if="activationForm.billing_type === 'pascabayar'" class="p-3.5 bg-purple-50/70 border border-purple-200 rounded-xl space-y-2 animate-fade-in">
                                 <div class="flex items-center justify-between">
@@ -752,6 +775,22 @@
                                 </div>
                             </div>
 
+                            <!-- Siklus Tanggal Tagihan (Billing Cycle) -->
+                            <div class="space-y-1.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">Siklus Tanggal Tagihan</label>
+                                <select v-model="editForm.billing_cycle" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm">
+                                    <option value="default">Ikuti Default Sistem ({{ defaultBillingCycle === 'anniversary' ? 'Sesuai Tgl Aktivasi' : 'Kalender Serentak' }})</option>
+                                    <option value="anniversary">Sesuai Tanggal Aktivasi (Anniversary)</option>
+                                    <option value="calendar">Siklus Kalender (Tanggal Serentak)</option>
+                                    <option value="custom_date">Pilih Tanggal Khusus Sendiri</option>
+                                </select>
+                                <div v-if="editForm.billing_cycle === 'custom_date'" class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-200">
+                                    <span class="text-xs text-slate-700 font-medium">Tanggal Tagihan Rutin:</span>
+                                    <input type="number" v-model="editForm.billing_day" min="1" max="28" class="w-20 px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-blue-500 font-bold text-slate-800 bg-white" placeholder="1-28" />
+                                    <span class="text-xs text-slate-500">tiap bulan</span>
+                                </div>
+                            </div>
+
                             <!-- Konfigurasi PPPoE & ONT -->
                             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
                                 <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
@@ -983,6 +1022,8 @@ const editForm = useForm({
     activation_date: '',
     service_status: 'berbayar',
     billing_type: 'prabayar',
+    billing_cycle: 'default',
+    billing_day: null,
     package_id: '',
     pppoe_user: '',
     pppoe_password: '',
@@ -1003,6 +1044,8 @@ function openEditActivationModal(customer) {
     editForm.activation_date = customer.activation_date || new Date().toISOString().split('T')[0];
     editForm.service_status = customer.service_status || 'berbayar';
     editForm.billing_type = customer.billing_type || 'prabayar';
+    editForm.billing_cycle = customer.billing_cycle || 'default';
+    editForm.billing_day = customer.billing_day || null;
     editForm.package_id = customer.package_id || '';
     editForm.pppoe_user = customer.ont?.pppoe_user || '';
     editForm.pppoe_password = customer.ont?.pppoe_password || '';
@@ -1018,6 +1061,10 @@ function openEditActivationModal(customer) {
     editForm.hotspot_vlan_id = customer.ont?.hotspot_vlan_id || '';
     showEditModal.value = true;
 }
+
+const defaultBillingCycle = computed(() => {
+    return page.props.billingSettings?.billing_cycle || 'anniversary';
+});
 
 function submitEditActivation() {
     if (!editCustomer.value) return;
@@ -1068,6 +1115,8 @@ const showActivationModal = ref(false);
 const activationForm = useForm({
     activation_date: '',
     billing_type: 'prabayar',
+    billing_cycle: 'default',
+    billing_day: null,
     is_prorata: true,
     service_status: 'berbayar',
     enable_tax: true,

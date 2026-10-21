@@ -13,7 +13,7 @@ class Invoice extends Model
 
     protected $fillable = [
         'customer_id', 'invoice_number', 'period_month', 'period_year',
-        'amount', 'due_date', 'issued_date', 'status', 'is_prorata', 'billing_type', 'promise_date',
+        'amount', 'due_date', 'issued_date', 'status', 'is_prorata', 'billing_type', 'billing_cycle', 'promise_date',
         'is_reseller_balance', 'notes',
         'payment_ref', 'payment_url', 'payment_channel', 'payment_gateway_payload'
     ];

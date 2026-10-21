@@ -1129,6 +1129,7 @@ class CustomerController extends Controller
                 'tax_uso' => \App\Models\Setting::get('tax_uso', '0'),
             ],
             'billingSettings' => [
+                'billing_cycle' => \App\Models\Setting::get('billing_cycle', 'anniversary'),
                 'billing_type' => \App\Models\Setting::get('billing_type', 'prabayar'),
                 'invoice_issue_date' => \App\Models\Setting::get('invoice_issue_date', '1'),
                 'isolate_days' => \App\Models\Setting::get('isolate_days', '3'),
@@ -1668,6 +1669,8 @@ class CustomerController extends Controller
             'sales_id' => 'nullable|exists:users,id',
             'referral_code' => 'nullable|string|max:50',
             'billing_type' => 'nullable|in:prabayar,pascabayar',
+            'billing_cycle' => 'nullable|in:default,anniversary,calendar,custom_date',
+            'billing_day' => 'nullable|integer|min:1|max:28',
             'is_reseller' => 'boolean',
             'service_status' => 'nullable|in:berbayar,gratis,free_home',
         ], [
@@ -1711,6 +1714,9 @@ class CustomerController extends Controller
 
         if (empty($validated['billing_type'])) {
             $validated['billing_type'] = \App\Models\Setting::get('billing_type', 'prabayar');
+        }
+        if (empty($validated['billing_cycle'])) {
+            $validated['billing_cycle'] = 'default';
         }
 
         DB::transaction(function () use ($validated, &$customer) {
@@ -1920,6 +1926,8 @@ class CustomerController extends Controller
             'sales_id' => 'nullable|exists:users,id',
             'referral_code' => 'nullable|string|max:50',
             'billing_type' => 'nullable|in:prabayar,pascabayar',
+            'billing_cycle' => 'nullable|in:default,anniversary,calendar,custom_date',
+            'billing_day' => 'nullable|integer|min:1|max:28',
             'is_reseller' => 'boolean',
             'service_status' => 'nullable|in:berbayar,gratis,free_home',
             'enable_tax' => 'nullable|boolean',
@@ -2581,6 +2589,8 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'activation_date' => 'required|date',
             'billing_type' => 'nullable|in:prabayar,pascabayar',
+            'billing_cycle' => 'nullable|in:default,anniversary,calendar,custom_date',
+            'billing_day' => 'nullable|integer|min:1|max:28',
             'is_prorata' => 'nullable|boolean',
             'service_status' => 'nullable|in:berbayar,gratis,free_home',
             'pppoe_user' => 'nullable|string',
@@ -2609,6 +2619,9 @@ class CustomerController extends Controller
                     $billingType = 'pascabayar';
                 }
 
+                $billingCycle = $validated['billing_cycle'] ?? $customer->billing_cycle ?? 'default';
+                $billingDay = $validated['billing_day'] ?? $customer->billing_day ?? null;
+
                 $serviceStatus = $validated['service_status'] ?? $customer->service_status ?? 'berbayar';
 
                 $isTaxEnabled = $request->has('enable_tax') ? $request->boolean('enable_tax') : true;
@@ -2627,6 +2640,8 @@ class CustomerController extends Controller
                     'status' => 'active',
                     'activation_date' => $validated['activation_date'],
                     'billing_type' => $billingType,
+                    'billing_cycle' => $billingCycle,
+                    'billing_day' => $billingDay,
                     'service_status' => $serviceStatus,
                     'notes' => $validated['notes'] ? $customer->notes . "\n[Aktivasi]: " . $validated['notes'] : $customer->notes,
                     'tax_ppn' => $taxPpn,
@@ -2733,6 +2748,7 @@ class CustomerController extends Controller
                         'status' => 'unpaid',
                         'is_prorata' => $isProrata,
                         'billing_type' => $invoiceBillingType,
+                        'billing_cycle' => $billingCycle === 'default' ? \App\Models\Setting::get('billing_cycle', 'anniversary') : $billingCycle,
                         'notes' => $invoiceNotes,
                     ]);
                 }
@@ -3197,6 +3213,8 @@ class CustomerController extends Controller
             'activation_date' => 'required|date',
             'service_status' => 'required|in:berbayar,gratis,free_home',
             'billing_type' => 'required|in:prabayar,pascabayar',
+            'billing_cycle' => 'nullable|in:default,anniversary,calendar,custom_date',
+            'billing_day' => 'nullable|integer|min:1|max:28',
             'package_id' => 'nullable|exists:internet_packages,id',
             'pppoe_user' => 'nullable|string',
             'pppoe_password' => 'nullable|string',
@@ -3216,6 +3234,8 @@ class CustomerController extends Controller
             'activation_date' => $validated['activation_date'],
             'service_status' => $validated['service_status'],
             'billing_type' => $validated['billing_type'],
+            'billing_cycle' => $validated['billing_cycle'] ?? 'default',
+            'billing_day' => $validated['billing_day'] ?? null,
         ];
         if (!empty($validated['package_id'])) {
             $custUpdates['package_id'] = $validated['package_id'];

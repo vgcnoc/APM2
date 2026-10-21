@@ -30,6 +30,7 @@ class SettingController extends Controller
     public function billing()
     {
         return Inertia::render('Settings/Billing', [
+            'billing_cycle' => Setting::get('billing_cycle', 'anniversary'),
             'billing_type' => Setting::get('billing_type', 'prabayar'),
             'prorata_formula' => Setting::get('prorata_formula', 'exact_days'),
             'prorata_first_month' => Setting::get('prorata_first_month', '1') === '1',
@@ -386,6 +387,7 @@ class SettingController extends Controller
         }
 
         $request->validate([
+            'billing_cycle' => 'sometimes|required|in:anniversary,calendar',
             'billing_type' => 'sometimes|required|in:prabayar,pascabayar',
             'prorata_formula' => 'nullable|in:exact_days,fixed_30,mid_month',
             'prorata_first_month' => 'nullable|boolean',
@@ -408,6 +410,9 @@ class SettingController extends Controller
             'invoice_template' => 'nullable|string|in:modern,classic,thermal,minimalist',
         ]);
 
+        if ($request->has('billing_cycle')) {
+            Setting::set('billing_cycle', $request->billing_cycle);
+        }
         if ($request->has('billing_type')) {
             Setting::set('billing_type', $request->billing_type);
         }

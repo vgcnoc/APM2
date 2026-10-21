@@ -472,6 +472,8 @@ const form = useForm({
     sales_id: '',
     is_reseller: false,
     billing_type: (page.props.billingSettings?.billing_type === 'pascabayar') ? 'pascabayar' : 'prabayar',
+    billing_cycle: 'default',
+    billing_day: null,
 });
 
 watch(() => form.service_status, (newStatus) => {
