@@ -151,300 +151,478 @@
             </template>
 
             <template #rowActions="{ row }">
-                <div class="flex items-center justify-end gap-1.5">
-                    
-                    <!-- 1. Belum Dijadwalkan -->
+                <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                    <!-- Quick Action: Jadwal Pasang -->
                     <button v-if="getCustomerProgressStatus(row) === 'jadwal_pasang' && hasPermission('customers_installed_assign')" 
+                        type="button"
                         @click="openAssignModal(row)" 
-                        class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Jadwalkan Teknisi">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        Jadwal Pasang
+                        class="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-2xs hover:shadow-xs focus:outline-none" 
+                        title="Jadwalkan Teknisi">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <span>Jadwal Pasang</span>
                     </button>
-                    <!-- 2. Menunggu Laporan Teknisi -->
-                    <template v-if="getCustomerProgressStatus(row) === 'laporan_pasang'">
+
+                    <!-- Quick Action: Input Laporan -->
+                    <template v-else-if="getCustomerProgressStatus(row) === 'laporan_pasang'">
                         <Link v-if="hasPermission('customers_installed_report')" 
                             :href="`/customers/${row.id}?source=instalasi`" 
-                            class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Input Laporan Instalasi">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                            Input Laporan
+                            class="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-2xs hover:shadow-xs focus:outline-none" 
+                            title="Input Laporan Instalasi">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                            <span>Input Laporan</span>
                         </Link>
-                        <span v-else class="px-3 py-1.5 bg-blue-50 text-blue-500 border border-blue-200 rounded-lg text-xs font-medium flex items-center gap-1 cursor-default" title="Menunggu teknisi mengisi laporan pemasangan">
+                        <span v-else class="px-2.5 py-1.5 bg-blue-50 text-blue-500 border border-blue-200 rounded-lg text-xs font-medium flex items-center gap-1 cursor-default" title="Menunggu teknisi mengisi laporan pemasangan">
                             <svg class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                            Menunggu Pemasangan
+                            <span>Menunggu Pasang</span>
                         </span>
                     </template>
 
+                    <!-- Quick Action: Audit -->
+                    <Link v-else-if="getCustomerProgressStatus(row) === 'audit' && hasPermission('customers_installed_audit')" 
+                        :href="`/customers/${row.id}?source=instalasi`" 
+                        class="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-2xs hover:shadow-xs focus:outline-none" 
+                        title="Review Hasil Pemasangan">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        <span>Audit</span>
+                    </Link>
 
-                    <!-- 3. Selesai Pasang, Menunggu Audit Admin -->
-                    <div v-if="getCustomerProgressStatus(row) === 'audit' && hasPermission('customers_installed_audit')" class="flex gap-1.5">
-                        <Link :href="`/customers/${row.id}?source=instalasi`" 
-                            class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Review Hasil Pemasangan">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                            Audit
-                        </Link>
-                    </div>
+                    <!-- Quick Action: Aktivasi Layanan -->
+                    <Link v-else-if="getCustomerProgressStatus(row) === 'menunggu_aktivasi'" 
+                        href="/customers/activation" 
+                        class="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-2xs hover:shadow-xs focus:outline-none" 
+                        title="Buka Menu Aktivasi Layanan">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <span>Aktivasi Layanan</span>
+                    </Link>
 
-                    <!-- 3.5. Sudah Audit, Menunggu Aktivasi -->
-                    <div v-if="getCustomerProgressStatus(row) === 'menunggu_aktivasi'" class="flex gap-1.5">
-                        <Link href="/customers/activation" 
-                            class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-sm" title="Buka Menu Aktivasi Layanan">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                            Aktivasi Layanan
-                        </Link>
-                    </div>
-
-                    <!-- WhatsApp Notifikasi Teknisi (Muncul jika teknisi telah dijadwalkan) -->
+                    <!-- WhatsApp Notifikasi Teknisi (HANYA KETIKA JADWAL PASANG) -->
                     <button 
-                        v-if="row.technician_schedules?.length > 0"
-                        v-can="['customers_installed_whatsapp', 'customers_installed_assign', 'customers_btn_whatsapp']"
+                        v-if="['jadwal_pasang', 'laporan_pasang'].includes(getCustomerProgressStatus(row)) && row.technician_schedules?.length > 0 && hasPermission('customers_installed_whatsapp', 'customers_installed_assign', 'customers_btn_whatsapp')"
+                        type="button"
                         @click="openTechnicianWaModal(row)" 
-                        class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-bold transition-all shadow-sm"
+                        class="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-bold transition-all shadow-2xs hover:shadow-xs focus:outline-none cursor-pointer"
                         title="Kirim / Lihat Pemberitahuan WhatsApp ke Teknisi"
                     >
-                        <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.89 9.885m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.712 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.415z"/></svg>
+                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.89 9.885m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.712 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.415z"/></svg>
                         <span>WA Teknisi</span>
                     </button>
 
-                    <button @click="openDetailModal(row)" class="p-1.5 rounded-lg text-gray-400 hover:bg-white hover:text-blue-500 border border-transparent hover:border-gray-200 transition-all shadow-sm hover:shadow" title="Detail Lengkap">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    <!-- Tombol Dropdown Menu Aksi -->
+                    <button 
+                        type="button" 
+                        @click.stop="toggleDropdown($event, row)" 
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-lg transition-all shadow-2xs hover:shadow-xs cursor-pointer text-xs font-semibold focus:outline-none"
+                        :class="{ 'ring-2 ring-blue-500 bg-blue-50 text-blue-600 border-blue-300': activeDropdownRow?.id === row.id }"
+                        title="Pilihan Aksi"
+                    >
+                        <span>Aksi</span>
+                        <svg class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180 text-blue-600': activeDropdownRow?.id === row.id }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                         </svg>
-                    </button>
-
-                    <button v-if="canDelete" @click="openCancelModal(row)" class="p-1.5 rounded-lg text-rose-400 hover:bg-rose-50 hover:text-rose-600 border border-transparent hover:border-rose-200 transition-all shadow-sm hover:shadow" title="Batalkan Pemasangan">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </button>
-                    <!-- Modal Detail Pelanggan (Instalasi) -->
-                    <Teleport to="body">
-                        <div v-if="showDetailModal && detailCustomer" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-                            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer" @click="closeDetailModal"></div>
-                            <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in-up">
-                                <div class="sticky top-0 bg-white/90 backdrop-blur-xl border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-                                    <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                        <span class="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-500">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                        </span>
-                                        Detail Instalasi Pelanggan
-                                    </h3>
-                                    <button @click="closeDetailModal" class="text-gray-500 hover:text-gray-900 transition-colors bg-gray-50 hover:bg-white p-2 rounded-xl">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                    </button>
-                                </div>
-                                
-                                <div class="p-6 space-y-6">
-                                    <!-- Info Utama -->
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div class="space-y-1">
-                                            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Nama Lengkap</p>
-                                            <p class="text-sm text-gray-900 font-medium">{{ detailCustomer.name }}</p>
-                                        </div>
-                                        <div class="space-y-1">
-                                            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Telepon / WhatsApp</p>
-                                            <p class="text-sm text-gray-900">{{ detailCustomer.phone }}</p>
-                                        </div>
-                                        <div class="space-y-1">
-                                            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Area / Wilayah</p>
-                                            <p class="text-sm text-gray-900 font-medium">
-                                                <span class="inline-flex px-2 py-1 bg-blue-500/20 text-blue-500 rounded-md border border-blue-500/30">
-                                                    {{ detailCustomer.area || '-' }}
-                                                </span>
-                                            </p>
-                                        </div>
-                                        <div class="space-y-1">
-                                            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Paket / Layanan</p>
-                                            <p class="text-sm text-gray-900 font-medium">
-                                                <span v-if="detailCustomer.service_status === 'free_home'" class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/20 text-amber-700 rounded-md border border-amber-500/30 font-bold">
-                                                    <span>🏠</span> Free Home
-                                                </span>
-                                                <span v-else-if="detailCustomer.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500/20 text-emerald-700 rounded-md border border-emerald-500/30 font-bold">
-                                                    <span>🎁</span> Gratis
-                                                </span>
-                                                <span v-else class="inline-flex px-2 py-1 bg-purple-500/20 text-purple-500 rounded-md border border-purple-500/30">
-                                                    {{ detailCustomer.package?.name || 'Belum dipilih' }}
-                                                </span>
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <!-- Alamat -->
-                                    <div class="space-y-1">
-                                        <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Alamat Lengkap</p>
-                                        <p class="text-sm text-gray-600 leading-relaxed">{{ detailCustomer.address }}</p>
-                                        <div v-if="detailCustomer.latitude || detailCustomer.longitude" class="mt-2 flex flex-col gap-1.5">
-                                            <div class="flex flex-wrap items-center gap-1.5 font-mono text-xs">
-                                                <span class="bg-gray-100 text-gray-800 px-2 py-0.5 rounded border border-gray-200">Lat: {{ detailCustomer.latitude || '-' }}</span>
-                                                <span class="bg-gray-100 text-gray-800 px-2 py-0.5 rounded border border-gray-200">Long: {{ detailCustomer.longitude || '-' }}</span>
-                                            </div>
-                                            <a v-if="detailCustomer.latitude && detailCustomer.longitude" :href="`https://www.google.com/maps?q=${detailCustomer.latitude},${detailCustomer.longitude}`" target="_blank" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-900 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5 self-start">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                                                Buka Lokasi di Maps
-                                            </a>
-                                        </div>
-                                    </div>
-
-                                    <hr class="border-gray-100">
-
-                                    <!-- Data Instalasi -->
-                                    <div class="space-y-4">
-                                        <h4 class="text-sm font-bold text-gray-900 flex items-center gap-2">
-                                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                                            Data Instalasi & Jaringan
-                                        </h4>
-                                        <div v-if="detailCustomer.ont" class="space-y-6">
-                                            <!-- Info Penugasan Pasang -->
-                                            <div class="bg-indigo-50/70 p-4 rounded-xl border border-indigo-100">
-                                                <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
-                                                <div class="flex justify-between items-center py-2 border-b border-indigo-100/50 last:border-0">
-                                                    <span class="text-sm text-gray-500 font-medium">Teknisi</span>
-                                                    <span class="text-sm font-semibold text-gray-900 text-right">{{ getAssignedTechnicians(detailCustomer, 'installation') }}</span>
-                                                </div>
-                                                <div class="flex justify-between items-center py-2 border-b border-indigo-100/50 last:border-0">
-                                                    <span class="text-sm text-gray-500 font-medium">Tanggal Pasang</span>
-                                                    <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.technician_schedules?.find(s => s.type === 'installation')?.scheduled_date || '-' }}</span>
-                                                </div>
-                                            </div>
-                                            
-                                            <!-- Catatan Tambahan Penugasan -->
-                                            <div v-if="installationNotes" class="bg-blue-50/70 p-3.5 rounded-xl border border-blue-100 flex items-start gap-2.5">
-                                                <svg class="w-4 h-4 text-blue-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                                <div>
-                                                    <p class="text-xs font-bold text-blue-900 mb-0.5">Catatan Tambahan Penugasan</p>
-                                                    <p class="text-xs text-blue-800 whitespace-pre-line">{{ installationNotes }}</p>
-                                                </div>
-                                            </div>
-                                            
-                                            <!-- Kebutuhan Material -->
-                                            <div v-if="hardwareItems.length > 0" class="bg-amber-50/70 p-4 rounded-xl border border-amber-100">
-                                                <p class="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-3">Kebutuhan Material (Telah Dipasang)</p>
-                                                <div class="space-y-2">
-                                                    <div v-for="item in hardwareItems" :key="item.id" class="text-sm text-gray-700 bg-white p-3 rounded-lg border border-amber-200 shadow-sm flex items-center justify-between">
-                                                        <div>
-                                                            <span class="text-xs text-gray-500 font-medium block mb-1">{{ item.type }}</span>
-                                                            <span class="font-bold text-gray-900">{{ item.name }}</span>
-                                                        </div>
-                                                        <div class="text-emerald-600 font-bold flex items-center gap-1 text-sm">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                                            Dipasang
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div class="space-y-2">
-                                                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                                                        <span class="text-sm text-gray-500 font-medium">Waktu Mulai</span>
-                                                        <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.ont?.start_time || '-' }}</span>
-                                                    </div>
-                                                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                                                        <span class="text-sm text-gray-500 font-medium">Waktu Selesai</span>
-                                                        <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.ont?.end_time || '-' }}</span>
-                                                    </div>
-                                                </div>
-                                                <div class="space-y-2">
-                                                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                                                        <span class="text-sm text-gray-500 font-medium">Port ODP</span>
-                                                        <span class="text-sm font-semibold text-gray-900 text-right">Port {{ detailCustomer.ont?.port_number || '-' }}</span>
-                                                    </div>
-                                                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                                                        <span class="text-sm text-gray-500 font-medium">VLAN Layanan</span>
-                                                        <span class="text-sm font-bold text-indigo-700 text-right">
-                                                            {{ detailCustomer.ont?.vlan_id ? 'VLAN ' + detailCustomer.ont.vlan_id : (detailCustomer.ont?.hotspot_vlan_id ? 'HS ' + detailCustomer.ont.hotspot_vlan_id : '-') }}
-                                                        </span>
-                                                    </div>
-                                                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                                                        <span class="text-sm text-gray-500 font-medium">Serial Number (Auto)</span>
-                                                        <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.ont?.serial_number || '-' }}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="pt-4 border-t border-gray-200">
-                                                <p class="text-xs text-gray-500 mb-3 uppercase font-semibold">Hasil Dokumentasi Lapangan:</p>
-                                                <div class="flex gap-4 overflow-x-auto pb-2">
-                                                    <div v-if="detailCustomer.ont?.photo_odp" class="shrink-0 group relative">
-                                                        <img :src="`/storage/${detailCustomer.ont.photo_odp}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
-                                                        <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto ODP</div>
-                                                    </div>
-                                                    <div v-if="detailCustomer.ont?.photo_installation" class="shrink-0 group relative">
-                                                        <img :src="`/storage/${detailCustomer.ont.photo_installation}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
-                                                        <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Instalasi</div>
-                                                    </div>
-                                                    <div v-if="detailCustomer.ont?.photo_ont" class="shrink-0 group relative">
-                                                        <img :src="`/storage/${detailCustomer.ont.photo_ont}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
-                                                        <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto ONT</div>
-                                                    </div>
-                                                    <div v-if="detailCustomer.ont?.photo_customer" class="shrink-0 group relative">
-                                                        <img :src="`/storage/${detailCustomer.ont.photo_customer}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
-                                                        <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Selfie</div>
-                                                    </div>
-                                                    <div v-if="detailCustomer.ont?.photo_redaman" class="shrink-0 group relative">
-                                                        <img :src="`/storage/${detailCustomer.ont.photo_redaman}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
-                                                        <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Redaman</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Dokumentasi Foto Instalasi (Legacy) -->
-                                            <div v-if="detailCustomer.ont.photos && detailCustomer.ont.photos.length > 0 && !detailCustomer.ont.photo_odp" class="pt-4 border-t border-gray-200">
-                                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Dokumentasi Laporan (Lama)</p>
-                                                <div class="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-3 gap-3">
-                                                    <div v-for="(photo, idx) in detailCustomer.ont.photos" :key="idx" class="relative group rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-gray-100 aspect-square">
-                                                        <img :src="`/storage/${photo.path}`" :alt="photo.label" class="w-full h-full object-cover" />
-                                                        
-                                                        <!-- Overlay -->
-                                                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
-                                                            <p class="text-xs text-white font-medium truncate drop-shadow-md">{{ photo.label }}</p>
-                                                            <div class="flex gap-2">
-                                                                <a :href="`/storage/${photo.path}`" target="_blank" class="flex-1 bg-white/20 hover:bg-white/40 text-white rounded p-1.5 flex justify-center items-center backdrop-blur-sm transition-colors" title="Lihat Penuh">
-                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                                                </a>
-                                                                <a :href="`/storage/${photo.path}`" download class="flex-1 bg-blue-600/80 hover:bg-blue-600 text-white rounded p-1.5 flex justify-center items-center backdrop-blur-sm transition-colors" title="Download">
-                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                                                                </a>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div v-else-if="detailCustomer.technician_schedules?.length" class="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
-                                            <div class="flex gap-3 items-start">
-                                                <div class="p-2 bg-blue-100 text-blue-600 rounded-lg shrink-0">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                                </div>
-                                                <div>
-                                                    <h5 class="text-sm font-semibold text-gray-900 mb-1">Telah Dijadwalkan (Belum Ada Laporan)</h5>
-                                                    <p class="text-sm text-gray-600">Teknisi: <strong class="text-gray-900">{{ detailCustomer.technician_schedules[0].technician?.name || '-' }}</strong></p>
-                                                    <p class="text-sm text-gray-600">Waktu: <strong class="text-gray-900">{{ detailCustomer.technician_schedules[0].scheduled_date }} {{ detailCustomer.technician_schedules[0].scheduled_time }}</strong></p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div v-else class="text-sm text-gray-500 italic p-4 bg-gray-50 border border-gray-200 rounded-xl text-center">
-                                            Belum ada data instalasi.
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="sticky bottom-0 bg-white/90 backdrop-blur-xl border-t border-gray-200 px-6 py-4 flex justify-end items-center">
-                                    <button @click="closeDetailModal" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl text-sm font-medium transition-colors">
-                                        Tutup
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </Teleport>
-                    <button @click="confirmDelete(row)" class="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 border border-transparent hover:border-red-200 transition-all shadow-sm hover:shadow" title="Hapus Pelanggan">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
                 </div>
             </template>
         </DataTable>
+
+        <!-- Action Dropdown Menu Floating -->
+        <Teleport to="body">
+            <div v-if="activeDropdownRow" class="fixed inset-0 z-[120]" @click="closeDropdown" @contextmenu.prevent="closeDropdown">
+                <div 
+                    :style="{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px` }"
+                    class="fixed w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/80 py-1.5 z-[121] text-xs divide-y divide-slate-100 animate-fade-in-up"
+                    @click.stop
+                >
+                    <!-- Header Info Pelanggan -->
+                    <div class="px-3.5 py-2.5 bg-slate-50/90 -mt-1.5 rounded-t-2xl border-b border-slate-100 mb-1">
+                        <div class="flex items-center gap-2.5">
+                            <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-2xs', getAvatarColor(activeDropdownRow.name)]">
+                                {{ (activeDropdownRow.name || 'P').charAt(0).toUpperCase() }}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="font-bold text-slate-900 truncate text-xs">{{ activeDropdownRow.name }}</div>
+                                <div class="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono mt-0.5">
+                                    <span class="font-semibold text-slate-600">{{ activeDropdownRow.customer_code }}</span>
+                                    <span>&bull;</span>
+                                    <span class="truncate text-blue-600 font-medium">{{ activeDropdownRow.package?.name || (activeDropdownRow.service_status === 'gratis' ? 'Gratis' : (activeDropdownRow.service_status === 'free_home' ? 'Free Home' : '-')) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Grup 1: Alur Kerja & Tindakan Instalasi -->
+                    <div class="py-1">
+                        <!-- Jadwal Pasang (Belum dijadwalkan) -->
+                        <button 
+                            v-if="getCustomerProgressStatus(activeDropdownRow) === 'jadwal_pasang' && hasPermission('customers_installed_assign')"
+                            type="button"
+                            @click="openAssignModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-blue-50/80 hover:text-blue-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-blue-50 group-hover:bg-blue-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-blue-700">Jadwal Pasang</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-blue-500 font-normal leading-tight">Pilih teknisi & jadwal instalasi</p>
+                            </div>
+                        </button>
+
+                        <!-- Input Laporan (Menunggu Laporan) -->
+                        <Link 
+                            v-if="getCustomerProgressStatus(activeDropdownRow) === 'laporan_pasang' && hasPermission('customers_installed_report')"
+                            :href="`/customers/${activeDropdownRow.id}?source=instalasi`"
+                            @click="closeDropdown"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-amber-50/80 hover:text-amber-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-amber-50 group-hover:bg-amber-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-amber-700">Input Laporan Pasang</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-amber-500 font-normal leading-tight">Input redaman & foto bukti instalasi</p>
+                            </div>
+                        </Link>
+
+                        <!-- Review Audit (Selesai Pasang, Menunggu Audit) -->
+                        <Link 
+                            v-if="getCustomerProgressStatus(activeDropdownRow) === 'audit' && hasPermission('customers_installed_audit')"
+                            :href="`/customers/${activeDropdownRow.id}?source=instalasi`"
+                            @click="closeDropdown"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-blue-50/80 hover:text-blue-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-blue-50 group-hover:bg-blue-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-blue-700">Audit Hasil Pemasangan</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-blue-500 font-normal leading-tight">Review redaman & foto instalasi</p>
+                            </div>
+                        </Link>
+
+                        <!-- Aktivasi Layanan (Sudah Audit) -->
+                        <Link 
+                            v-if="getCustomerProgressStatus(activeDropdownRow) === 'menunggu_aktivasi'"
+                            href="/customers/activation"
+                            @click="closeDropdown"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-amber-50/80 hover:text-amber-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-amber-50 group-hover:bg-amber-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-amber-700">Aktivasi Layanan</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-amber-500 font-normal leading-tight">Buka menu aktivasi koneksi</p>
+                            </div>
+                        </Link>
+
+                        <!-- WhatsApp Teknisi (HANYA KETIKA JADWAL PASANG) -->
+                        <button 
+                            v-if="['jadwal_pasang', 'laporan_pasang'].includes(getCustomerProgressStatus(activeDropdownRow)) && activeDropdownRow.technician_schedules?.length > 0 && hasPermission('customers_installed_whatsapp', 'customers_installed_assign', 'customers_btn_whatsapp')"
+                            type="button"
+                            @click="openTechnicianWaModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-emerald-50/80 hover:text-emerald-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-emerald-50 group-hover:bg-emerald-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.89 9.885m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.712 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.415z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-emerald-700">Kirim WA Teknisi</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-emerald-500 font-normal leading-tight">Kirim info jadwal & alamat ke WA teknisi</p>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Grup 2: Informasi Pelanggan -->
+                    <div class="py-1">
+                        <!-- Detail Instalasi -->
+                        <button 
+                            type="button"
+                            @click="openDetailModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-slate-100 group-hover:bg-slate-200/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-slate-900">Detail Lengkap Instalasi</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-slate-500 font-normal leading-tight">Lihat foto ODP, ONT, redaman & teknisi</p>
+                            </div>
+                        </button>
+
+                        <!-- Profil Pelanggan -->
+                        <Link 
+                            :href="`/customers/${activeDropdownRow.id}`"
+                            @click="closeDropdown"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-slate-100 group-hover:bg-slate-200/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-slate-900">Buka Profil Pelanggan</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-slate-500 font-normal leading-tight">Ke halaman utama data pelanggan</p>
+                            </div>
+                        </Link>
+                    </div>
+
+                    <!-- Grup 3: Pembatalan & Hapus -->
+                    <div v-if="canDelete" class="py-1">
+                        <!-- Batalkan Pemasangan -->
+                        <button 
+                            type="button"
+                            @click="openCancelModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-rose-600 hover:bg-rose-50/80 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-rose-50 group-hover:bg-rose-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-rose-700">Batalkan Pemasangan</span>
+                                <p class="text-[10px] text-rose-400 group-hover:text-rose-500 font-normal leading-tight">Keluarkan dari antrean instalasi</p>
+                            </div>
+                        </button>
+
+                        <!-- Hapus Pelanggan -->
+                        <button 
+                            type="button"
+                            @click="confirmDelete(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-red-600 hover:bg-red-50/80 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-red-50 group-hover:bg-red-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-red-700">Hapus Pelanggan</span>
+                                <p class="text-[10px] text-red-400 group-hover:text-red-500 font-normal leading-tight">Hapus permanen dari sistem</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Modal Detail Pelanggan (Instalasi) -->
+        <Teleport to="body">
+            <div v-if="showDetailModal && detailCustomer" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer" @click="closeDetailModal"></div>
+                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in-up">
+                    <div class="sticky top-0 bg-white/90 backdrop-blur-xl border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+                        <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <span class="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-500">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            </span>
+                            Detail Instalasi Pelanggan
+                        </h3>
+                        <button @click="closeDetailModal" class="text-gray-500 hover:text-gray-900 transition-colors bg-gray-50 hover:bg-white p-2 rounded-xl">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    
+                    <div class="p-6 space-y-6">
+                        <!-- Info Utama -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-1">
+                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Nama Lengkap</p>
+                                <p class="text-sm text-gray-900 font-medium">{{ detailCustomer.name }}</p>
+                            </div>
+                            <div class="space-y-1">
+                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Telepon / WhatsApp</p>
+                                <p class="text-sm text-gray-900">{{ detailCustomer.phone }}</p>
+                            </div>
+                            <div class="space-y-1">
+                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Area / Wilayah</p>
+                                <p class="text-sm text-gray-900 font-medium">
+                                    <span class="inline-flex px-2 py-1 bg-blue-500/20 text-blue-500 rounded-md border border-blue-500/30">
+                                        {{ detailCustomer.area || '-' }}
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="space-y-1">
+                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Paket / Layanan</p>
+                                <p class="text-sm text-gray-900 font-medium">
+                                    <span v-if="detailCustomer.service_status === 'free_home'" class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/20 text-amber-700 rounded-md border border-amber-500/30 font-bold">
+                                        <span>🏠</span> Free Home
+                                    </span>
+                                    <span v-else-if="detailCustomer.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500/20 text-emerald-700 rounded-md border border-emerald-500/30 font-bold">
+                                        <span>🎁</span> Gratis
+                                    </span>
+                                    <span v-else class="inline-flex px-2 py-1 bg-purple-500/20 text-purple-500 rounded-md border border-purple-500/30">
+                                        {{ detailCustomer.package?.name || 'Belum dipilih' }}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Alamat -->
+                        <div class="space-y-1">
+                            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Alamat Lengkap</p>
+                            <p class="text-sm text-gray-600 leading-relaxed">{{ detailCustomer.address }}</p>
+                            <div v-if="detailCustomer.latitude || detailCustomer.longitude" class="mt-2 flex flex-col gap-1.5">
+                                <div class="flex flex-wrap items-center gap-1.5 font-mono text-xs">
+                                    <span class="bg-gray-100 text-gray-800 px-2 py-0.5 rounded border border-gray-200">Lat: {{ detailCustomer.latitude || '-' }}</span>
+                                    <span class="bg-gray-100 text-gray-800 px-2 py-0.5 rounded border border-gray-200">Long: {{ detailCustomer.longitude || '-' }}</span>
+                                </div>
+                                <a v-if="detailCustomer.latitude && detailCustomer.longitude" :href="`https://www.google.com/maps?q=${detailCustomer.latitude},${detailCustomer.longitude}`" target="_blank" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-900 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5 self-start">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                    Buka Lokasi di Maps
+                                </a>
+                            </div>
+                        </div>
+
+                        <hr class="border-gray-100">
+
+                        <!-- Data Instalasi -->
+                        <div class="space-y-4">
+                            <h4 class="text-sm font-bold text-gray-900 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                Data Instalasi & Jaringan
+                            </h4>
+                            <div v-if="detailCustomer.ont" class="space-y-6">
+                                <!-- Info Penugasan Pasang -->
+                                <div class="bg-indigo-50/70 p-4 rounded-xl border border-indigo-100">
+                                    <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
+                                    <div class="flex justify-between items-center py-2 border-b border-indigo-100/50 last:border-0">
+                                        <span class="text-sm text-gray-500 font-medium">Teknisi</span>
+                                        <span class="text-sm font-semibold text-gray-900 text-right">{{ getAssignedTechnicians(detailCustomer, 'installation') }}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-2 border-b border-indigo-100/50 last:border-0">
+                                        <span class="text-sm text-gray-500 font-medium">Tanggal Pasang</span>
+                                        <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.technician_schedules?.find(s => s.type === 'installation')?.scheduled_date || '-' }}</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Catatan Tambahan Penugasan -->
+                                <div v-if="installationNotes" class="bg-blue-50/70 p-3.5 rounded-xl border border-blue-100 flex items-start gap-2.5">
+                                    <svg class="w-4 h-4 text-blue-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <div>
+                                        <p class="text-xs font-bold text-blue-900 mb-0.5">Catatan Tambahan Penugasan</p>
+                                        <p class="text-xs text-blue-800 whitespace-pre-line">{{ installationNotes }}</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Kebutuhan Material -->
+                                <div v-if="hardwareItems.length > 0" class="bg-amber-50/70 p-4 rounded-xl border border-amber-100">
+                                    <p class="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-3">Kebutuhan Material (Telah Dipasang)</p>
+                                    <div class="space-y-2">
+                                        <div v-for="item in hardwareItems" :key="item.id" class="text-sm text-gray-700 bg-white p-3 rounded-lg border border-amber-200 shadow-sm flex items-center justify-between">
+                                            <div>
+                                                <span class="text-xs text-gray-500 font-medium block mb-1">{{ item.type }}</span>
+                                                <span class="font-bold text-gray-900">{{ item.name }}</span>
+                                            </div>
+                                            <div class="text-emerald-600 font-bold flex items-center gap-1 text-sm">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                Dipasang
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                            <span class="text-sm text-gray-500 font-medium">Waktu Mulai</span>
+                                            <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.ont?.start_time || '-' }}</span>
+                                        </div>
+                                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                            <span class="text-sm text-gray-500 font-medium">Waktu Selesai</span>
+                                            <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.ont?.end_time || '-' }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                            <span class="text-sm text-gray-500 font-medium">Port ODP</span>
+                                            <span class="text-sm font-semibold text-gray-900 text-right">Port {{ detailCustomer.ont?.port_number || '-' }}</span>
+                                        </div>
+                                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                            <span class="text-sm text-gray-500 font-medium">VLAN Layanan</span>
+                                            <span class="text-sm font-bold text-indigo-700 text-right">
+                                                {{ detailCustomer.ont?.vlan_id ? 'VLAN ' + detailCustomer.ont.vlan_id : (detailCustomer.ont?.hotspot_vlan_id ? 'HS ' + detailCustomer.ont.hotspot_vlan_id : '-') }}
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                            <span class="text-sm text-gray-500 font-medium">Serial Number (Auto)</span>
+                                            <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.ont?.serial_number || '-' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="pt-4 border-t border-gray-200">
+                                    <p class="text-xs text-gray-500 mb-3 uppercase font-semibold">Hasil Dokumentasi Lapangan:</p>
+                                    <div class="flex gap-4 overflow-x-auto pb-2">
+                                        <div v-if="detailCustomer.ont?.photo_odp" class="shrink-0 group relative">
+                                            <img :src="`/storage/${detailCustomer.ont.photo_odp}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
+                                            <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto ODP</div>
+                                        </div>
+                                        <div v-if="detailCustomer.ont?.photo_installation" class="shrink-0 group relative">
+                                            <img :src="`/storage/${detailCustomer.ont.photo_installation}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
+                                            <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Instalasi</div>
+                                        </div>
+                                        <div v-if="detailCustomer.ont?.photo_ont" class="shrink-0 group relative">
+                                            <img :src="`/storage/${detailCustomer.ont.photo_ont}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
+                                            <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto ONT</div>
+                                        </div>
+                                        <div v-if="detailCustomer.ont?.photo_customer" class="shrink-0 group relative">
+                                            <img :src="`/storage/${detailCustomer.ont.photo_customer}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
+                                            <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Selfie</div>
+                                        </div>
+                                        <div v-if="detailCustomer.ont?.photo_redaman" class="shrink-0 group relative">
+                                            <img :src="`/storage/${detailCustomer.ont.photo_redaman}`" class="h-28 w-28 object-cover rounded-lg border border-gray-200" />
+                                            <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Redaman</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Dokumentasi Foto Instalasi (Legacy) -->
+                                <div v-if="detailCustomer.ont.photos && detailCustomer.ont.photos.length > 0 && !detailCustomer.ont.photo_odp" class="pt-4 border-t border-gray-200">
+                                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Dokumentasi Laporan (Lama)</p>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-3 gap-3">
+                                        <div v-for="(photo, idx) in detailCustomer.ont.photos" :key="idx" class="relative group rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-gray-100 aspect-square">
+                                            <img :src="`/storage/${photo.path}`" :alt="photo.label" class="w-full h-full object-cover" />
+                                            
+                                            <!-- Overlay -->
+                                            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
+                                                <p class="text-xs text-white font-medium truncate drop-shadow-md">{{ photo.label }}</p>
+                                                <div class="flex gap-2">
+                                                    <a :href="`/storage/${photo.path}`" target="_blank" class="flex-1 bg-white/20 hover:bg-white/40 text-white rounded p-1.5 flex justify-center items-center backdrop-blur-sm transition-colors" title="Lihat Penuh">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                                    </a>
+                                                    <a :href="`/storage/${photo.path}`" download class="flex-1 bg-blue-600/80 hover:bg-blue-600 text-white rounded p-1.5 flex justify-center items-center backdrop-blur-sm transition-colors" title="Download">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-else-if="detailCustomer.technician_schedules?.length" class="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
+                                <div class="flex gap-3 items-start">
+                                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg shrink-0">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    </div>
+                                    <div>
+                                        <h5 class="text-sm font-semibold text-gray-900 mb-1">Telah Dijadwalkan (Belum Ada Laporan)</h5>
+                                        <p class="text-sm text-gray-600">Teknisi: <strong class="text-gray-900">{{ detailCustomer.technician_schedules[0].technician?.name || '-' }}</strong></p>
+                                        <p class="text-sm text-gray-600">Waktu: <strong class="text-gray-900">{{ detailCustomer.technician_schedules[0].scheduled_date }} {{ detailCustomer.technician_schedules[0].scheduled_time }}</strong></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-else class="text-sm text-gray-500 italic p-4 bg-gray-50 border border-gray-200 rounded-xl text-center">
+                                Belum ada data instalasi.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="sticky bottom-0 bg-white/90 backdrop-blur-xl border-t border-gray-200 px-6 py-4 flex justify-end items-center">
+                        <button @click="closeDetailModal" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl text-sm font-medium transition-colors">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
 
         <!-- Modal Assign Jadwal Pasang -->
         <div v-if="showAssignModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -1177,7 +1355,7 @@
 </style>
 
 <script setup>
-import { ref, computed, watch, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { Link, router, useForm , usePage} from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -1200,7 +1378,7 @@ const isTeknisi = computed(() => {
         return false;
     }
 });
-const hasPermission = (permission) => {
+const hasPermission = (...permissions) => {
     try {
         const user = page.props.auth?.user;
         if (!user) return false;
@@ -1212,12 +1390,65 @@ const hasPermission = (permission) => {
         let perms = [];
         if (Array.isArray(user.permissions)) perms = user.permissions;
         else if (user.permissions) perms = Object.values(user.permissions);
-        if (perms.includes(permission)) return true;
-        return false;
+        return permissions.some(p => perms.includes(p));
     } catch (e) {
         return false;
     }
 };
+
+function getAvatarColor(name) {
+    if (!name) return 'bg-indigo-500';
+    const colors = ['bg-indigo-500', 'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-pink-500', 'bg-orange-500'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+}
+
+// ── Floating Action Dropdown Logic ─────────────────────────
+const activeDropdownRow = ref(null);
+const dropdownPos = ref({ top: 0, left: 0 });
+
+function toggleDropdown(event, row) {
+    if (activeDropdownRow.value && activeDropdownRow.value.id === row.id) {
+        activeDropdownRow.value = null;
+        return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const dropdownHeight = 320;
+    const dropdownWidth = 260; // w-64 = 256px + margin
+
+    let top = rect.bottom + 6;
+    if (top + dropdownHeight > window.innerHeight) {
+        if (rect.top > dropdownHeight) {
+            top = Math.max(10, rect.top - dropdownHeight - 6);
+        } else {
+            top = Math.max(10, window.innerHeight - dropdownHeight - 10);
+        }
+    }
+
+    let left = rect.right - dropdownWidth;
+    if (left < 10) {
+        left = 10;
+    }
+
+    dropdownPos.value = { top, left };
+    activeDropdownRow.value = row;
+}
+
+function closeDropdown() {
+    activeDropdownRow.value = null;
+}
+
+function handleWindowChange() {
+    if (activeDropdownRow.value) {
+        activeDropdownRow.value = null;
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('scroll', handleWindowChange, { passive: true });
+    window.addEventListener('resize', handleWindowChange);
+});
 
 const showTechDropdown = ref(false);
 
@@ -1703,6 +1934,8 @@ watch(isPrintModalOpen, (isOpen) => {
 
 onUnmounted(() => {
     document.body.classList.remove('is-printing-customer-card');
+    window.removeEventListener('scroll', handleWindowChange);
+    window.removeEventListener('resize', handleWindowChange);
 });
 
 function getSelectedCustomerData() {
