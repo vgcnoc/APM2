@@ -37,10 +37,14 @@ class DashboardController extends Controller
             return redirect()->route('affiliate.dashboard');
         }
 
-        if (auth()->check() && (auth()->user()->role === 'reseller' || auth()->user()->role === 'customer')) {
+        if (auth()->check() && (
+            auth()->user()->role === 'reseller' || 
+            auth()->user()->role === 'customer' || 
+            (method_exists(auth()->user(), 'hasRole') && (auth()->user()->hasRole('customer') || auth()->user()->hasRole('reseller')))
+        )) {
             $user = auth()->user();
-            $customer = $user->customer;
-            $reseller = $user->reseller;
+            $customer = $user->customer ?: \App\Models\Customer::where('user_id', $user->id)->first();
+            $reseller = $user->reseller ?: \App\Models\Reseller::where('user_id', $user->id)->first();
             
             if ($customer && $customer->package_id) {
                 return redirect()->route('customer-area.dashboard');
@@ -55,10 +59,10 @@ class DashboardController extends Controller
             }
 
             // Fallback to role-based routing if no record found
-            if ($user->role === 'reseller') {
+            if ($user->role === 'reseller' || (method_exists($user, 'hasRole') && $user->hasRole('reseller'))) {
                 return redirect()->route('client-area.dashboard');
             }
-            if ($user->role === 'customer') {
+            if ($user->role === 'customer' || (method_exists($user, 'hasRole') && $user->hasRole('customer'))) {
                 return redirect()->route('customer-area.dashboard');
             }
         }

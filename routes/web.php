@@ -45,6 +45,7 @@ Route::get('/public/check-bill', function (\Illuminate\Http\Request $request) {
         ->map(function ($inv) {
             $verifiedPaid = $inv->payments->where('status', 'verified')->sum('amount');
             return [
+                'id' => $inv->id,
                 'invoice_number' => $inv->invoice_number,
                 'period_label' => $inv->period_label,
                 'due_date' => $inv->due_date ? \Carbon\Carbon::parse($inv->due_date)->translatedFormat('d M Y') : '-',
@@ -93,10 +94,11 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Customer Area (Pelanggan)
-    Route::middleware(['role:customer|reseller'])->prefix('my')->name('customer-area.')->group(function () {
+    Route::middleware(['role:customer|reseller|admin|super admin|superadmin|dispatcher|auditor|management'])->prefix('my')->name('customer-area.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\CustomerAreaController::class, 'dashboard'])->name('dashboard');
         Route::get('/billing', [\App\Http\Controllers\CustomerAreaController::class, 'billing'])->name('billing');
         Route::get('/tickets', [\App\Http\Controllers\CustomerAreaController::class, 'tickets'])->name('tickets');
+        Route::post('/tickets', [\App\Http\Controllers\CustomerAreaController::class, 'storeTicket'])->name('tickets.store');
     });
 
     // Payment Gateway (Pelanggan & Reseller)

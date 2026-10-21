@@ -744,8 +744,16 @@ const handleCheckBill = async () => {
                                             Periode: <span class="font-medium text-slate-200">{{ inv.period_label || '-' }}</span> &bull; Jatuh Tempo: <span class="font-medium text-rose-300">{{ inv.due_date }}</span>
                                         </div>
                                     </div>
-                                    <div class="text-right">
+                                    <div class="text-right flex flex-col items-end gap-1.5">
                                         <span class="block text-xs font-bold text-white font-mono">{{ formatRupiah(inv.remaining) }}</span>
+                                        <a
+                                            v-if="inv.id"
+                                            :href="'/payment-gateway/pay/' + inv.id"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold shadow-xs transition-all hover:scale-105"
+                                        >
+                                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                                            Bayar QRIS
+                                        </a>
                                     </div>
                                 </div>
                             </div>
