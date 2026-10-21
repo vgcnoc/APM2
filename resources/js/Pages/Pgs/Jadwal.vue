@@ -529,22 +529,23 @@
                     </div>
 
                     <!-- Daftar Permintaan Material -->
-                    <div class="space-y-3">
+                    <div class="space-y-4">
                         <div 
                             v-for="mr in reviewTicket?.material_requests" 
                             :key="'rev-' + mr.id"
-                            class="p-4 rounded-2xl border transition-all text-xs space-y-2.5"
+                            class="p-4 rounded-2xl border transition-all text-xs space-y-3"
                             :class="{
                                 'bg-amber-50/70 border-amber-300 shadow-sm': mr.status === 'pending',
                                 'bg-emerald-50/70 border-emerald-300': mr.status === 'approved',
                                 'bg-rose-50/70 border-rose-300': mr.status === 'rejected'
                             }"
                         >
+                            <!-- Header Info Permintaan Teknisi -->
                             <div class="flex items-start justify-between gap-2 flex-wrap">
                                 <div>
                                     <div class="font-bold text-gray-900 text-sm flex items-center gap-2">
-                                        <span>📦 {{ mr.material?.name || 'Material' }}</span>
-                                        <span class="px-2 py-0.5 rounded-lg bg-white border font-mono font-black text-amber-700">
+                                        <span>📦 Kebutuhan: {{ mr.item_name || mr.material?.name || 'Material Tambahan' }}</span>
+                                        <span class="px-2.5 py-0.5 rounded-lg bg-white border font-mono font-black text-amber-700">
                                             {{ parseFloat(mr.quantity) }} {{ mr.unit || mr.material?.unit }}
                                         </span>
                                     </div>
@@ -567,29 +568,75 @@
                                 </div>
                             </div>
 
-                            <!-- Alasan Teknisi -->
+                            <!-- Alasan Kebutuhan Teknisi di Lapangan -->
                             <div class="bg-white/90 p-3 rounded-xl border border-gray-200 text-xs">
-                                <div class="font-bold text-gray-500 text-[10px] uppercase mb-0.5">Keterangan / Alasan Kebutuhan di Lapangan:</div>
+                                <div class="font-bold text-gray-500 text-[10px] uppercase mb-0.5">Keterangan / Kondisi Lapangan dari Teknisi:</div>
                                 <div class="text-gray-800 font-medium">"{{ mr.notes }}"</div>
                             </div>
 
-                            <!-- Status Stok Gudang Saat Ini -->
-                            <div class="flex items-center justify-between text-xs text-gray-600 bg-gray-50/80 px-3 py-2 rounded-xl border border-gray-100 flex-wrap gap-2">
-                                <div class="flex items-center gap-1">
-                                    <span>Sisa Stok di Gudang:</span>
-                                    <b class="text-gray-900 font-mono">{{ parseFloat(mr.material?.stock || 0) }} {{ mr.unit }}</b>
+                            <!-- Form Alokasi Material Gudang oleh Ka. Teknisi jika Status PENDING -->
+                            <div v-if="mr.status === 'pending'" class="p-3.5 rounded-xl bg-white border border-amber-300 space-y-3">
+                                <div class="flex items-center justify-between text-xs font-bold text-amber-950">
+                                    <span class="flex items-center gap-1.5">
+                                        <span>⚙️</span> Tentukan Material Gudang untuk Dialokasikan:
+                                    </span>
+                                    <span v-if="allocationForms[mr.id]?.material_id" class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                        ✓ Material Terpilih
+                                    </span>
                                 </div>
-                                <div v-if="parseFloat(mr.material?.stock || 0) < parseFloat(mr.quantity)" class="text-red-600 font-bold text-[11px]">
-                                    ⚠️ Stok gudang kurang dari jumlah yang diminta!
+
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                                    <!-- Dropdown Material Gudang -->
+                                    <div class="sm:col-span-8">
+                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Pilih Material dari Gudang *</label>
+                                        <select 
+                                            v-model="allocationForms[mr.id].material_id" 
+                                            class="w-full rounded-xl border-gray-300 text-xs py-1.5 focus:border-emerald-500 bg-white font-medium"
+                                        >
+                                            <option value="">-- Pilih Material Gudang yang Sesuai --</option>
+                                            <option v-for="mat in materials" :key="mat.id" :value="mat.id">
+                                                {{ mat.name }} (Stok Gudang: {{ parseFloat(mat.stock) }} {{ mat.unit }})
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Approved Qty -->
+                                    <div class="sm:col-span-4">
+                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">
+                                            Jumlah Alokasi ({{ getSelectedMaterial(allocationForms[mr.id]?.material_id)?.unit || mr.unit }}) *
+                                        </label>
+                                        <input 
+                                            type="number" 
+                                            step="0.01" 
+                                            min="0.01" 
+                                            v-model="allocationForms[mr.id].quantity" 
+                                            class="w-full rounded-xl border-gray-300 text-xs py-1.5 text-center font-black focus:border-emerald-500 bg-white"
+                                            placeholder="Jumlah"
+                                        />
+                                    </div>
+                                </div>
+
+                                <!-- Status Ketersediaan Stok Gudang -->
+                                <div v-if="allocationForms[mr.id]?.material_id" class="flex items-center justify-between text-xs px-3 py-2 rounded-xl border" :class="isStockSufficient(mr) ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-red-50 border-red-200 text-red-900'">
+                                    <div class="flex items-center gap-1.5">
+                                        <span>📦 Stok Gudang:</span>
+                                        <b class="font-mono text-sm">{{ parseFloat(getSelectedMaterial(allocationForms[mr.id].material_id)?.stock || 0) }} {{ getSelectedMaterial(allocationForms[mr.id].material_id)?.unit }}</b>
+                                    </div>
+                                    <div v-if="!isStockSufficient(mr)" class="text-[11px] font-bold text-red-700 animate-pulse">
+                                        ⚠️ Stok gudang kurang untuk jumlah alokasi ini!
+                                    </div>
+                                    <div v-else class="text-[11px] font-semibold text-emerald-700">
+                                        ✓ Stok mencukupi
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Reviewer info if resolved -->
-                            <div v-if="mr.status === 'approved'" class="text-emerald-800 text-[11px] font-semibold flex items-center gap-1">
-                                ✓ Telah disetujui oleh <b>{{ mr.reviewer?.name || 'Ka. Teknisi' }}</b> pada {{ formatDate(mr.reviewed_at) }}. Transaksi pengeluaran barang telah dicatat dan stok gudang otomatis terpotong.
+                            <div v-if="mr.status === 'approved'" class="text-emerald-800 text-[11px] font-semibold flex items-center gap-1 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                                <span>🏷️ Dialokasikan dari gudang sebagai <b>{{ mr.material?.name }}</b> ({{ parseFloat(mr.quantity) }} {{ mr.unit }}) oleh <b>{{ mr.reviewer?.name || 'Ka. Teknisi' }}</b> pada {{ formatDate(mr.reviewed_at) }}. Stok gudang otomatis terpotong & dialokasikan ke bekal tiket.</span>
                             </div>
-                            <div v-else-if="mr.status === 'rejected'" class="text-rose-800 text-[11px] font-semibold flex items-center gap-1">
-                                ✗ Telah ditolak oleh <b>{{ mr.reviewer?.name || 'Ka. Teknisi' }}</b>: "{{ mr.rejection_reason || '-' }}"
+                            <div v-else-if="mr.status === 'rejected'" class="text-rose-800 text-[11px] font-semibold flex items-center gap-1 bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+                                <span>✗ Ditolak oleh <b>{{ mr.reviewer?.name || 'Ka. Teknisi' }}</b>: "{{ mr.rejection_reason || '-' }}"</span>
                             </div>
 
                             <!-- Tombol Aksi Persetujuan jika Status PENDING -->
@@ -597,14 +644,15 @@
                                 <button 
                                     type="button" 
                                     @click="rejectRequest(reviewTicket, mr)" 
-                                    class="px-3 py-1.5 rounded-xl border border-rose-300 bg-white hover:bg-rose-50 text-rose-700 text-xs font-bold transition-all shadow-sm"
+                                    class="px-3.5 py-1.5 rounded-xl border border-rose-300 bg-white hover:bg-rose-50 text-rose-700 text-xs font-bold transition-all shadow-sm"
                                 >
                                     ✗ Tolak Permintaan
                                 </button>
                                 <button 
                                     type="button" 
                                     @click="approveRequest(reviewTicket, mr)" 
-                                    class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5"
+                                    :disabled="!allocationForms[mr.id]?.material_id || !isStockSufficient(mr)"
+                                    class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5"
                                 >
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                     <span>✓ Setujui & Keluarkan Stok Gudang</span>
@@ -1104,16 +1152,89 @@ const submitSchedule = () => {
 };
 
 // ── Review & Approval Permintaan Material Lapangan ───────────
+const allocationForms = ref({});
+
+const initAllocationForm = (mr) => {
+    if (!allocationForms.value[mr.id]) {
+        // Smart keyword matcher
+        let matchedMaterialId = mr.material_id || '';
+        if (!matchedMaterialId && (mr.item_name || mr.material?.name) && props.materials?.length > 0) {
+            const searchStr = (mr.item_name || mr.material?.name || '').toLowerCase();
+            const found = props.materials.find(m => {
+                const mName = m.name.toLowerCase();
+                if (mName.includes(searchStr) || searchStr.includes(mName)) return true;
+                const keywords = ['dropcore', 'precon', 'kabel', 'fast connector', 'patchcord', 'clamp', 'klem', 'sleeve', 'roset', 'adapter', 'isolasi'];
+                for (const kw of keywords) {
+                    if (searchStr.includes(kw) && mName.includes(kw)) return true;
+                }
+                return false;
+            });
+            if (found) {
+                matchedMaterialId = found.id;
+            }
+        }
+
+        allocationForms.value[mr.id] = {
+            material_id: matchedMaterialId,
+            quantity: parseFloat(mr.quantity) || 1,
+            notes: '',
+        };
+    }
+    return allocationForms.value[mr.id];
+};
+
+const getSelectedMaterial = (materialId) => {
+    if (!materialId || !props.materials) return null;
+    return props.materials.find(m => m.id == materialId) || null;
+};
+
+const isStockSufficient = (mr) => {
+    const form = allocationForms.value[mr.id];
+    if (!form || !form.material_id) return true;
+    const mat = getSelectedMaterial(form.material_id);
+    if (!mat) return true;
+    return parseFloat(mat.stock || 0) >= (parseFloat(form.quantity) || 0);
+};
+
 const openMaterialReviewModal = (ticket) => {
     reviewTicket.value = ticket;
+    if (ticket.material_requests) {
+        ticket.material_requests.forEach(mr => {
+            initAllocationForm(mr);
+        });
+    }
     showMaterialReviewModal.value = true;
 };
 
 const approveRequest = (ticket, req) => {
-    if (!confirm(`Setujui penambahan material ${parseFloat(req.quantity)} ${req.unit} ${req.material?.name}?\n\nStok gudang akan otomatis dipotong dan dialokasikan ke tiket ini.`)) {
+    const form = allocationForms.value[req.id];
+    if (!form || !form.material_id) {
+        alert('Silakan pilih material gudang yang akan dialokasikan untuk permintaan ini.');
         return;
     }
-    router.post(`/pgs/${ticket.id}/material-requests/${req.id}/approve`, {}, {
+    if (!form.quantity || form.quantity <= 0) {
+        alert('Jumlah material yang disetujui harus lebih dari 0.');
+        return;
+    }
+
+    const selectedMat = getSelectedMaterial(form.material_id);
+    const matName = selectedMat ? selectedMat.name : 'Material Gudang';
+    const matStock = selectedMat ? parseFloat(selectedMat.stock || 0) : 0;
+
+    if (matStock < form.quantity) {
+        alert(`Perhatian: Stok gudang untuk '${matName}' hanya tersisa ${matStock} ${selectedMat?.unit}, tidak mencukupi untuk alokasi ${form.quantity} ${selectedMat?.unit}!`);
+        return;
+    }
+
+    if (!confirm(`Setujui alokasi ${form.quantity} ${selectedMat?.unit || 'satuan'} '${matName}' untuk kebutuhan lapangan (${req.item_name || req.material?.name || 'Material'})?\n\nStok gudang akan otomatis dipotong dan dialokasikan ke bekal tiket ini.`)) {
+        return;
+    }
+
+    router.post(`/pgs/${ticket.id}/material-requests/${req.id}/approve`, {
+        material_id: form.material_id,
+        quantity: form.quantity,
+        notes: form.notes || '',
+    }, {
         preserveScroll: true,
         onSuccess: () => {
             const updated = props.tickets.data.find(t => t.id === ticket.id);

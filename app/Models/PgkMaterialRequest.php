@@ -12,6 +12,7 @@ class PgkMaterialRequest extends Model
 
     protected $fillable = [
         'pgk_ticket_id',
+        'item_name',
         'material_id',
         'requested_by',
         'quantity',

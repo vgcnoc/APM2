@@ -505,70 +505,110 @@
                             </div>
 
                             <!-- Form Ajukan Material ke Ka. Teknisi -->
-                            <div v-if="isRequestFormOpen" class="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200 shadow-sm space-y-3 transition-all animate-fade-in-up">
-                                <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                                    <span>📝</span> Form Permintaan Material Baru ke Ka. Teknisi
-                                </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-                                    <!-- Pilih Material -->
-                                    <div class="sm:col-span-6">
-                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Pilih Material Gudang *</label>
-                                        <select 
-                                            v-model="materialRequestForm.material_id" 
-                                            @change="onReqMaterialChange"
-                                            class="w-full rounded-xl border-gray-300 text-xs py-1.5 focus:border-amber-500 bg-white"
-                                        >
-                                            <option value="">-- Pilih Material dari Gudang --</option>
-                                            <option v-for="mat in materials" :key="mat.id" :value="mat.id">
-                                                {{ mat.name }} (Stok: {{ parseFloat(mat.stock) }} {{ mat.unit }})
-                                            </option>
-                                        </select>
+                            <div v-if="isRequestFormOpen" class="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 shadow-sm space-y-3 transition-all animate-fade-in-up">
+                                <div>
+                                    <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                                        <span>📝</span> Form Pengajuan Kebutuhan Tambahan ke Ka. Teknisi
                                     </div>
-                                    <!-- Qty -->
-                                    <div class="sm:col-span-3">
-                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Jumlah ({{ materialRequestForm.unit || 'Satuan' }}) *</label>
+                                    <p class="text-[11px] text-amber-800 mt-0.5">
+                                        Tuliskan kebutuhan barang di lapangan. Kepala Teknisi akan memverifikasi dan mengalokasikan stok barang dari gudang.
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                    <!-- Input Nama / Kebutuhan Material -->
+                                    <div class="sm:col-span-7">
+                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Nama / Deskripsi Kebutuhan Material *</label>
+                                        <input 
+                                            type="text" 
+                                            v-model="materialRequestForm.item_name" 
+                                            placeholder="Contoh: Kabel Dropcore 1 Core, Fast Connector SC..."
+                                            class="w-full rounded-xl border-gray-300 text-xs py-2 px-3 focus:border-amber-500 bg-white font-medium shadow-2xs"
+                                            required
+                                        />
+                                        <!-- Quick Suggestion Chips Lapangan -->
+                                        <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                                            <span class="text-[9px] font-bold text-gray-500 uppercase tracking-wide">Pilihan Cepat:</span>
+                                            <button 
+                                                type="button" 
+                                                v-for="chip in quickMaterialChips" 
+                                                :key="chip.name"
+                                                @click="applyQuickMaterialChip(chip)"
+                                                class="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 transition-colors shadow-2xs"
+                                            >
+                                                + {{ chip.name }}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Estimasi Jumlah -->
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Estimasi Jml *</label>
                                         <input 
                                             type="number" 
                                             step="0.01" 
                                             min="0.01" 
                                             v-model="materialRequestForm.quantity" 
-                                            class="w-full rounded-xl border-gray-300 text-xs py-1.5 text-center font-bold focus:border-amber-500 bg-white"
+                                            class="w-full rounded-xl border-gray-300 text-xs py-2 text-center font-bold focus:border-amber-500 bg-white shadow-2xs"
                                             placeholder="1"
+                                            required
                                         />
                                     </div>
-                                    <!-- Satuan Readonly -->
+
+                                    <!-- Pilihan Satuan -->
                                     <div class="sm:col-span-3">
-                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Satuan</label>
-                                        <input 
-                                            type="text" 
-                                            readonly 
-                                            :value="materialRequestForm.unit || '-'" 
-                                            class="w-full rounded-xl border-gray-200 bg-gray-100 text-xs py-1.5 text-center font-semibold text-gray-600"
-                                        />
+                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Satuan *</label>
+                                        <select 
+                                            v-model="materialRequestForm.unit" 
+                                            class="w-full rounded-xl border-gray-300 text-xs py-2 focus:border-amber-500 bg-white font-medium shadow-2xs"
+                                        >
+                                            <option value="meter">meter</option>
+                                            <option value="pcs">pcs</option>
+                                            <option value="rol">rol</option>
+                                            <option value="set">set</option>
+                                            <option value="pack">pack</option>
+                                            <option value="buah">buah</option>
+                                        </select>
                                     </div>
-                                    <!-- Alasan Permintaan -->
+
+                                    <!-- Alasan Kebutuhan di Lapangan -->
                                     <div class="sm:col-span-12">
-                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Alasan Kebutuhan di Lapangan *</label>
+                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Alasan / Kondisi di Lapangan *</label>
                                         <input 
                                             type="text" 
                                             v-model="materialRequestForm.notes" 
-                                            placeholder="Contoh: Kabel dropcore 40 meter putus tertimpa pohon, butuh penarikan baru..." 
-                                            class="w-full rounded-xl border-gray-300 text-xs py-1.5 focus:border-amber-500 bg-white"
+                                            placeholder="Contoh: Kabel dropcore terputus tertimpa dahan pohon, butuh penarikan baru 30 meter..." 
+                                            class="w-full rounded-xl border-gray-300 text-xs py-2 px-3 focus:border-amber-500 bg-white shadow-2xs"
+                                            required
                                         />
+                                        <!-- Template Alasan -->
+                                        <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                                            <span class="text-[9px] font-bold text-gray-500 uppercase tracking-wide">Template Alasan:</span>
+                                            <button 
+                                                type="button" 
+                                                v-for="reason in quickReasonChips" 
+                                                :key="reason"
+                                                @click="applyQuickReasonChip(reason)"
+                                                class="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-amber-100/70 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-colors shadow-2xs"
+                                            >
+                                                {{ reason }}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="flex justify-end gap-2 pt-1">
+
+                                <div class="flex justify-end gap-2 pt-2 border-t border-amber-200/60">
                                     <button 
                                         type="button" 
                                         @click="isRequestFormOpen = false" 
-                                        class="px-3 py-1.5 rounded-xl border border-gray-300 bg-white text-gray-600 text-xs font-semibold hover:bg-gray-50"
+                                        class="px-3.5 py-1.5 rounded-xl border border-gray-300 bg-white text-gray-600 text-xs font-semibold hover:bg-gray-50"
                                     >
                                         Batal
                                     </button>
                                     <button 
                                         type="button" 
                                         @click="sendMaterialRequest" 
-                                        :disabled="materialRequestForm.processing || !materialRequestForm.material_id || !materialRequestForm.notes"
+                                        :disabled="materialRequestForm.processing || !materialRequestForm.item_name || !materialRequestForm.notes"
                                         class="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5"
                                     >
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
@@ -581,8 +621,8 @@
                             <div class="space-y-2">
                                 <div class="text-[11px] font-bold text-gray-600 uppercase flex items-center justify-between">
                                     <span>Status Permintaan Material ke Ka. Teknisi ({{ selectedTicket?.material_requests?.length || 0 }})</span>
-                                    <span v-if="selectedTicket?.material_requests?.some(r => r.status === 'pending')" class="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300 animate-pulse">
-                                        ⏳ Menunggu Respon Ka. Teknisi
+                                    <span v-if="selectedTicket?.material_requests?.some(r => r.status === 'pending')" class="text-[10px] font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300 animate-pulse">
+                                        ⏳ Menunggu Alokasi Ka. Teknisi
                                     </span>
                                 </div>
 
@@ -594,7 +634,7 @@
                                     <div 
                                         v-for="req in selectedTicket.material_requests" 
                                         :key="req.id"
-                                        class="p-3 rounded-2xl border transition-all text-xs"
+                                        class="p-3.5 rounded-2xl border transition-all text-xs"
                                         :class="{
                                             'bg-amber-50/80 border-amber-300': req.status === 'pending',
                                             'bg-emerald-50/80 border-emerald-300': req.status === 'approved',
@@ -602,19 +642,24 @@
                                         }"
                                     >
                                         <div class="flex items-start justify-between gap-2 flex-wrap">
-                                            <div class="font-bold text-gray-900 flex items-center gap-1.5">
-                                                <span class="text-sm">📦</span>
-                                                <span>{{ req.material?.name || 'Material' }}</span>
-                                                <span class="font-mono text-xs px-2 py-0.5 rounded-lg bg-white border font-bold text-gray-800">
-                                                    {{ parseFloat(req.quantity) }} {{ req.unit || req.material?.unit }}
-                                                </span>
+                                            <div>
+                                                <div class="font-bold text-gray-900 flex items-center gap-1.5">
+                                                    <span class="text-sm">📦</span>
+                                                    <span>{{ req.item_name || req.material?.name || 'Material Tambahan' }}</span>
+                                                    <span class="font-mono text-xs px-2 py-0.5 rounded-lg bg-white border font-bold text-gray-800">
+                                                        {{ parseFloat(req.quantity) }} {{ req.unit || req.material?.unit }}
+                                                    </span>
+                                                </div>
+                                                <div v-if="req.status === 'approved' && req.material" class="text-[11px] text-emerald-800 font-semibold mt-1 flex items-center gap-1">
+                                                    <span>🏷️ Dialokasikan dari Gudang: <b>{{ req.material.name }}</b></span>
+                                                </div>
                                             </div>
 
                                             <!-- Status Pill -->
                                             <div>
                                                 <span v-if="req.status === 'pending'" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300 inline-flex items-center gap-1">
                                                     <span class="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse"></span>
-                                                    <span>Menunggu Ka. Teknisi</span>
+                                                    <span>Menunggu Alokasi Ka. Teknisi</span>
                                                 </span>
                                                 <span v-else-if="req.status === 'approved'" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-900 border border-emerald-300 inline-flex items-center gap-1">
                                                     <span>✅ Disetujui (Masuk Bekal)</span>
@@ -625,14 +670,14 @@
                                             </div>
                                         </div>
 
-                                        <div class="mt-1.5 text-gray-700 bg-white/80 p-2 rounded-xl border border-gray-100">
+                                        <div class="mt-2 text-gray-700 bg-white/80 p-2.5 rounded-xl border border-gray-100">
                                             <span class="font-semibold text-gray-500">Alasan Kebutuhan:</span> "{{ req.notes }}"
                                         </div>
 
                                         <!-- Detail info persetujuan/penolakan -->
                                         <div v-if="req.status === 'approved'" class="mt-1.5 text-[11px] text-emerald-800 font-medium flex items-center gap-1">
                                             <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                            <span>Disetujui oleh <b>{{ req.reviewer?.name || 'Kepala Teknisi' }}</b>. Stok gudang telah dipotong & otomatis ditambahkan ke daftar Bagian A di atas.</span>
+                                            <span>Disetujui oleh <b>{{ req.reviewer?.name || 'Kepala Teknisi' }}</b>. Stok gudang otomatis terpotong & ditambahkan ke daftar Bagian A di atas.</span>
                                         </div>
                                         <div v-else-if="req.status === 'rejected'" class="mt-1.5 text-[11px] text-rose-800 font-medium flex items-center gap-1">
                                             <svg class="w-3.5 h-3.5 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -995,11 +1040,45 @@ const additionalMaterials = ref([]);
 // Permintaan Tambahan Material ke Ka. Teknisi State
 const isRequestFormOpen = ref(false);
 const materialRequestForm = useForm({
-    material_id: '',
+    item_name: '',
     quantity: 1,
-    unit: '',
+    unit: 'meter',
     notes: '',
 });
+
+// Quick suggestion chips pintar untuk teknisi lapangan
+const quickMaterialChips = [
+    { name: 'Kabel Dropcore 1 Core', unit: 'meter', defaultQty: 30 },
+    { name: 'Fast Connector SC-UPC', unit: 'pcs', defaultQty: 2 },
+    { name: 'Patchcord SC-UPC 3m', unit: 'pcs', defaultQty: 1 },
+    { name: 'Klem Buaya / S-Clamp', unit: 'pcs', defaultQty: 4 },
+    { name: 'Protection Sleeve', unit: 'pcs', defaultQty: 2 },
+    { name: 'Roset Optik 1 Core', unit: 'pcs', defaultQty: 1 },
+    { name: 'Adapter SC-UPC', unit: 'pcs', defaultQty: 1 },
+    { name: 'Isolasi Listrik Hitam', unit: 'pcs', defaultQty: 1 },
+];
+
+const quickReasonChips = [
+    'Dropcore putus tertimpa dahan pohon',
+    'Redaman dropcore tinggi / tekukan kabel parah',
+    'Kurang panjang tarikan dropcore dari tiang ODP',
+    'Konektor patah / pecah di lokasi pelanggan',
+    'Aksesoris clamp tiang lepas / rusak',
+];
+
+const applyQuickMaterialChip = (chip) => {
+    materialRequestForm.item_name = chip.name;
+    materialRequestForm.unit = chip.unit;
+    materialRequestForm.quantity = chip.defaultQty;
+};
+
+const applyQuickReasonChip = (reason) => {
+    if (materialRequestForm.notes) {
+        materialRequestForm.notes = materialRequestForm.notes + ' - ' + reason;
+    } else {
+        materialRequestForm.notes = reason;
+    }
+};
 
 // Permintaan Pergantian ONT ke Ka. Teknisi State
 const isOntRequestFormOpen = ref(false);
@@ -1323,22 +1402,19 @@ const onAdditionalMaterialSelected = (item) => {
     saveDraft();
 };
 
-// ── Pengajuan Material Tambahan ke Ka. Teknisi ─────────────────
-const onReqMaterialChange = () => {
-    const mat = (props.materials || []).find(m => m.id == materialRequestForm.material_id);
-    if (mat) {
-        materialRequestForm.unit = mat.unit || 'pcs';
-    }
-};
-
+// ── Pengajuan Kebutuhan Tambahan ke Ka. Teknisi ─────────────────
 const sendMaterialRequest = () => {
     if (!selectedTicket.value) return;
-    if (!materialRequestForm.material_id) {
-        alert('Silakan pilih material yang dibutuhkan.');
+    if (!materialRequestForm.item_name || !materialRequestForm.item_name.trim()) {
+        alert('Silakan tuliskan nama / kebutuhan material yang dibutuhkan.');
         return;
     }
-    if (!materialRequestForm.notes) {
-        alert('Mohon tulis alasan kebutuhan material di lapangan.');
+    if (!materialRequestForm.quantity || materialRequestForm.quantity <= 0) {
+        alert('Jumlah kebutuhan material harus lebih dari 0.');
+        return;
+    }
+    if (!materialRequestForm.notes || !materialRequestForm.notes.trim()) {
+        alert('Mohon tulis alasan atau kondisi kebutuhan di lapangan.');
         return;
     }
 
@@ -1346,6 +1422,10 @@ const sendMaterialRequest = () => {
         preserveScroll: true,
         onSuccess: () => {
             materialRequestForm.reset();
+            materialRequestForm.item_name = '';
+            materialRequestForm.quantity = 1;
+            materialRequestForm.unit = 'meter';
+            materialRequestForm.notes = '';
             isRequestFormOpen.value = false;
             // Sinkronkan selectedTicket dengan data terbaru di props
             const fresh = props.tickets?.data?.find(t => t.id === selectedTicket.value?.id);

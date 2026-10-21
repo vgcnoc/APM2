@@ -935,20 +935,28 @@ class PgkController extends Controller
     public function requestMaterial(Request $request, PgkTicket $pgk)
     {
         $validated = $request->validate([
-            'material_id' => 'required|exists:materials,id',
+            'item_name' => 'required_without:material_id|nullable|string|max:255',
+            'material_id' => 'nullable|exists:materials,id',
             'quantity' => 'required|numeric|min:0.01',
-            'unit' => 'nullable|string',
-            'notes' => 'required|string', // Alasan kebutuhan darurat di lapangan
+            'unit' => 'required|string|max:50',
+            'notes' => 'required|string|max:500', // Alasan kebutuhan darurat di lapangan
         ]);
 
-        $material = Material::findOrFail($validated['material_id']);
+        $materialId = $validated['material_id'] ?? null;
+        $itemName = $validated['item_name'] ?? null;
+        
+        if ($materialId && !$itemName) {
+            $mat = Material::find($materialId);
+            $itemName = $mat?->name;
+        }
 
         PgkMaterialRequest::create([
             'pgk_ticket_id' => $pgk->id,
-            'material_id' => $material->id,
+            'item_name' => trim($itemName ?: 'Material Tambahan'),
+            'material_id' => $materialId,
             'requested_by' => auth()->id(),
             'quantity' => $validated['quantity'],
-            'unit' => $validated['unit'] ?? $material->unit,
+            'unit' => $validated['unit'],
             'notes' => $validated['notes'],
             'status' => 'pending',
         ]);
@@ -958,10 +966,10 @@ class PgkController extends Controller
             $pgk,
             'pending',
             'pending',
-            'Teknisi ' . auth()->user()->name . ' meminta tambahan ' . $validated['quantity'] . ' ' . ($validated['unit'] ?? $material->unit) . ' ' . $material->name . '. Alasan: ' . $validated['notes']
+            'Teknisi ' . auth()->user()->name . ' mengajukan permintaan tambahan: ' . $validated['quantity'] . ' ' . $validated['unit'] . ' (' . ($itemName ?: 'Material') . '). Alasan: ' . $validated['notes']
         );
 
-        return redirect()->back()->with('success', 'Permintaan tambahan material berhasil diajukan ke Kepala Teknisi.');
+        return redirect()->back()->with('success', 'Permintaan material berhasil diajukan ke Kepala Teknisi.');
     }
 
     /**
@@ -973,8 +981,15 @@ class PgkController extends Controller
             return redirect()->back()->with('error', 'Permintaan material ini sudah diproses sebelumnya.');
         }
 
-        $material = Material::findOrFail($materialRequest->material_id);
-        $qty = (float) $materialRequest->quantity;
+        // Ka. Teknisi menentukan item material dari stok gudang
+        $validated = $request->validate([
+            'material_id' => 'required|exists:materials,id',
+            'quantity' => 'nullable|numeric|min:0.01',
+            'notes' => 'nullable|string',
+        ]);
+
+        $material = Material::findOrFail($validated['material_id']);
+        $qty = !empty($validated['quantity']) ? (float) $validated['quantity'] : (float) $materialRequest->quantity;
         $areaId = $pgk->area_id ?? $pgk->customer?->area_id;
 
         $matStock = null;
@@ -985,6 +1000,11 @@ class PgkController extends Controller
         }
 
         $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
+
+        if ($stockBefore < $qty) {
+            return redirect()->back()->with('error', "Stok gudang tidak mencukupi untuk '{$material->name}' (Tersisa: {$stockBefore} {$material->unit}, Dialokasikan: {$qty} {$material->unit}).");
+        }
+
         $stockAfter = max(0, $stockBefore - $qty);
 
         // Catat transaksi pengeluaran barang
@@ -998,10 +1018,10 @@ class PgkController extends Controller
             'user_id' => auth()->id(),
             'customer_id' => $pgk->customer_id,
             'area_id' => $areaId,
-            'notes' => 'Disetujui Ka. Teknisi. Alasan teknisi: ' . ($materialRequest->notes ?? '-'),
+            'notes' => 'Disetujui Ka. Teknisi: ' . $material->name . ' (' . $qty . ' ' . $material->unit . '). Kebutuhan teknisi: ' . ($materialRequest->item_name ?? '-') . ' - ' . ($materialRequest->notes ?? '-'),
         ]);
 
-        $unit = $materialRequest->unit ?? $material->unit;
+        $unit = $material->unit;
         $ppu = $material->selling_price ?: ($material->price_per_unit ?? 0);
         if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
             $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
@@ -1045,11 +1065,14 @@ class PgkController extends Controller
                 'quantity_used' => $qty,
                 'quantity_returned' => 0,
                 'unit' => $unit,
-                'notes' => 'Tambahan Lapangan disetujui Ka. Teknisi: ' . ($materialRequest->notes ?? '-'),
+                'notes' => 'Tambahan disetujui Ka. Teknisi (Kebutuhan: ' . ($materialRequest->item_name ?: $material->name) . '): ' . ($materialRequest->notes ?? '-'),
             ]);
         }
 
         $materialRequest->update([
+            'material_id' => $material->id,
+            'quantity' => $qty,
+            'unit' => $unit,
             'status' => 'approved',
             'reviewed_by' => auth()->id(),
             'reviewed_at' => now(),
