@@ -883,33 +883,147 @@
             <div v-if="showPromiseModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
                 <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closePromiseModal"></div>
 
-                <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-sm relative z-10 animate-fade-in-up">
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-yellow-50/50">
+                <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-md relative z-10 animate-fade-in-up">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-amber-50/60">
                         <div>
-                            <h3 class="text-lg font-bold text-gray-900">Atur Janji Bayar</h3>
-                            <p class="text-[11px] font-medium text-gray-500 mt-0.5">{{ selectedInvoice?.customer?.name }}</p>
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-lg font-bold text-gray-900">Atur Janji Bayar</h3>
+                                <span v-if="selectedInvoice?.promise_date" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900">
+                                    Aktif
+                                </span>
+                            </div>
+                            <p class="text-[11px] font-medium text-gray-500 mt-0.5">{{ selectedInvoice?.invoice_number }} &bull; {{ selectedInvoice?.customer?.name }}</p>
                         </div>
-                        <button @click="closePromiseModal" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors">
+                        <button @click="closePromiseModal" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors cursor-pointer">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
 
                     <form @submit.prevent="submitPromise">
-                        <div class="p-6 space-y-4">
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tanggal Janji Bayar</label>
-                                <input type="date" v-model="promiseForm.promise_date" required :min="new Date().toISOString().split('T')[0]" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all">
+                        <div class="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
+                            <!-- Info Sisa Tagihan -->
+                            <div class="p-3 bg-amber-50/70 border border-amber-200/70 rounded-xl flex items-center justify-between">
+                                <span class="text-xs font-bold text-gray-600">Total Sisa Tagihan:</span>
+                                <span class="text-sm font-black font-mono text-amber-900">{{ formatCurrency(selectedInvoice?.remaining || 0) }}</span>
                             </div>
-                            <p class="text-[10px] text-gray-500 leading-snug">Tagihan ini akan ditandai dengan tanggal janji bayar. Jika melewati tanggal tersebut, tagihan akan segera ditindaklanjuti.</p>
+
+                            <!-- Input Tanggal Janji Bayar -->
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">
+                                    Tanggal Janji Bayar <span class="text-rose-500">*</span>
+                                </label>
+                                <input 
+                                    type="date" 
+                                    v-model="promiseForm.promise_date" 
+                                    required 
+                                    :min="new Date().toISOString().split('T')[0]" 
+                                    class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                                >
+                                
+                                <!-- Preset Cepat Tanggal -->
+                                <div class="flex items-center gap-1.5 mt-2">
+                                    <span class="text-[10px] text-gray-400 font-medium">Preset:</span>
+                                    <button 
+                                        type="button" 
+                                        @click="setPromisePreset(1)" 
+                                        class="text-[10px] font-bold px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors cursor-pointer"
+                                    >+1 Hari</button>
+                                    <button 
+                                        type="button" 
+                                        @click="setPromisePreset(3)" 
+                                        class="text-[10px] font-bold px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors cursor-pointer"
+                                    >+3 Hari</button>
+                                    <button 
+                                        type="button" 
+                                        @click="setPromisePreset(7)" 
+                                        class="text-[10px] font-bold px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors cursor-pointer"
+                                    >+7 Hari</button>
+                                    <button 
+                                        type="button" 
+                                        @click="setPromiseEndOfMonth" 
+                                        class="text-[10px] font-bold px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-md transition-colors ml-auto cursor-pointer"
+                                    >Akhir Bulan</button>
+                                </div>
+                            </div>
+
+                            <!-- Opsi Status Koneksi Internet Pelanggan -->
+                            <div class="bg-gray-50/90 rounded-xl p-3.5 border border-gray-200">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="text-[11px] font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+                                        <span>Status Internet Pelanggan</span>
+                                    </label>
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                        :class="selectedInvoice?.customer?.status === 'suspended' ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'"
+                                    >
+                                        <span class="w-1.5 h-1.5 rounded-full" :class="selectedInvoice?.customer?.status === 'suspended' ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'"></span>
+                                        {{ selectedInvoice?.customer?.status === 'suspended' ? 'Saat Ini Terisolir' : 'Saat Ini Aktif' }}
+                                    </span>
+                                </div>
+                                
+                                <p class="text-[11px] text-gray-500 mb-2.5 leading-snug">
+                                    Pilih apakah koneksi internet dinyalakan atau dimatikan (sync MikroTik & RADIUS) selama periode janji bayar:
+                                </p>
+
+                                <div class="grid grid-cols-2 gap-2.5">
+                                    <!-- Opsi Nyalakan -->
+                                    <label class="cursor-pointer relative">
+                                        <input type="radio" v-model="promiseForm.internet_action" value="on" class="peer sr-only" />
+                                        <div class="h-full rounded-xl border-2 border-gray-200 bg-white p-3 flex flex-col items-center text-center gap-1.5 transition-all hover:border-emerald-300 peer-checked:border-emerald-500 peer-checked:bg-emerald-50/70 peer-checked:ring-1 peer-checked:ring-emerald-500">
+                                            <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs font-bold text-gray-800 peer-checked:text-emerald-800">Nyalakan Internet</div>
+                                                <div class="text-[10px] text-gray-400 peer-checked:text-emerald-600 font-medium leading-tight mt-0.5">Buka isolir (Kompensasi)</div>
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    <!-- Opsi Matikan -->
+                                    <label class="cursor-pointer relative">
+                                        <input type="radio" v-model="promiseForm.internet_action" value="off" class="peer sr-only" />
+                                        <div class="h-full rounded-xl border-2 border-gray-200 bg-white p-3 flex flex-col items-center text-center gap-1.5 transition-all hover:border-rose-300 peer-checked:border-rose-500 peer-checked:bg-rose-50/70 peer-checked:ring-1 peer-checked:ring-rose-500">
+                                            <div class="w-7 h-7 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs font-bold text-gray-800 peer-checked:text-rose-800">Matikan Internet</div>
+                                                <div class="text-[10px] text-gray-400 peer-checked:text-rose-600 font-medium leading-tight mt-0.5">Tetap isolir (Suspend)</div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <p class="text-[11px] text-gray-500 leading-snug bg-amber-50/50 p-2.5 rounded-xl border border-amber-200/50">
+                                Tagihan ini akan ditandai dengan tanggal komitmen bayar. Jika melewati tanggal tersebut dan belum lunas, sistem otomatis mengisolir kembali.
+                            </p>
                         </div>
 
-                        <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-end gap-3">
-                            <button type="button" @click="closePromiseModal" class="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-200 bg-gray-100 rounded-xl transition-colors">
-                                Batal
-                            </button>
-                            <button type="submit" :disabled="promiseForm.processing" class="px-6 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-yellow-200 flex items-center gap-2">
-                                {{ promiseForm.processing ? 'Menyimpan...' : 'Simpan Janji Bayar' }}
-                            </button>
+                        <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between gap-2">
+                            <div>
+                                <button 
+                                    v-if="selectedInvoice?.promise_date"
+                                    type="button" 
+                                    @click="removePromiseDate" 
+                                    class="px-3.5 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors border border-rose-200 cursor-pointer"
+                                >
+                                    Hapus Janji Bayar
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" @click="closePromiseModal" class="px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-200 bg-gray-100 rounded-xl transition-colors cursor-pointer">
+                                    Batal
+                                </button>
+                                <button type="submit" :disabled="promiseForm.processing" class="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-amber-200 flex items-center gap-2 cursor-pointer">
+                                    <svg v-if="promiseForm.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                    </svg>
+                                    {{ promiseForm.processing ? 'Menyimpan...' : 'Simpan Janji Bayar' }}
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -1720,7 +1834,20 @@ function rollbackInvoice(row) {
 const showPromiseModal = ref(false);
 const promiseForm = useForm({
     promise_date: '',
+    internet_action: 'on', // 'on' | 'off'
 });
+
+function setPromisePreset(days) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    promiseForm.promise_date = d.toISOString().split('T')[0];
+}
+
+function setPromiseEndOfMonth() {
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    promiseForm.promise_date = lastDay.toISOString().split('T')[0];
+}
 
 // Stop Sementara Modal Logic
 const showStopSementaraModal = ref(false);
@@ -1819,6 +1946,8 @@ function sendWhatsAppToLead() {
 function openPromiseModal(invoice) {
     selectedInvoice.value = invoice;
     promiseForm.promise_date = invoice.promise_date || '';
+    // Defaultkan 'on' untuk memberikan akses internet / kompensasi selama masa janji bayar
+    promiseForm.internet_action = 'on';
     showPromiseModal.value = true;
 }
 
@@ -1828,6 +1957,20 @@ function closePromiseModal() {
         if (!showPaymentModal.value) selectedInvoice.value = null;
         promiseForm.reset();
     }, 200);
+}
+
+function removePromiseDate() {
+    if (!selectedInvoice.value) return;
+    if (confirm(`Hapus status janji bayar untuk invoice #${selectedInvoice.value.invoice_number}?`)) {
+        router.post(`/invoices/${selectedInvoice.value.id}/promise`, {
+            promise_date: null,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                closePromiseModal();
+            }
+        });
+    }
 }
 
 function submitPromise() {

@@ -996,8 +996,58 @@
                                 ></textarea>
                             </div>
 
+                            <!-- Opsi Status Koneksi Internet Pelanggan -->
+                            <div class="bg-gray-50/90 rounded-xl p-3 border border-gray-200">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="text-[11px] font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+                                        <span>Status Internet Pelanggan</span>
+                                    </label>
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                        :class="(promiseInvoice?.customer?.status === 'suspended' || promiseInvoice?.customer_details?.status === 'suspended') ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'"
+                                    >
+                                        <span class="w-1.5 h-1.5 rounded-full" :class="(promiseInvoice?.customer?.status === 'suspended' || promiseInvoice?.customer_details?.status === 'suspended') ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'"></span>
+                                        {{ (promiseInvoice?.customer?.status === 'suspended' || promiseInvoice?.customer_details?.status === 'suspended') ? 'Saat Ini Terisolir' : 'Saat Ini Aktif' }}
+                                    </span>
+                                </div>
+                                
+                                <p class="text-[10px] text-gray-500 mb-2 leading-snug">
+                                    Pilih apakah koneksi internet dinyalakan atau dimatikan (sync MikroTik & RADIUS) selama periode janji bayar:
+                                </p>
+
+                                <div class="grid grid-cols-2 gap-2">
+                                    <!-- Opsi Nyalakan -->
+                                    <label class="cursor-pointer relative">
+                                        <input type="radio" v-model="promiseForm.internet_action" value="on" class="peer sr-only" />
+                                        <div class="h-full rounded-xl border-2 border-gray-200 bg-white p-2.5 flex flex-col items-center text-center gap-1 transition-all hover:border-emerald-300 peer-checked:border-emerald-500 peer-checked:bg-emerald-50/70 peer-checked:ring-1 peer-checked:ring-emerald-500 cursor-pointer">
+                                            <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            </div>
+                                            <div>
+                                                <div class="text-[11px] font-bold text-gray-800 peer-checked:text-emerald-800">Nyalakan Internet</div>
+                                                <div class="text-[9px] text-gray-400 peer-checked:text-emerald-600 font-medium leading-tight">Buka isolir (Kompensasi)</div>
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    <!-- Opsi Matikan -->
+                                    <label class="cursor-pointer relative">
+                                        <input type="radio" v-model="promiseForm.internet_action" value="off" class="peer sr-only" />
+                                        <div class="h-full rounded-xl border-2 border-gray-200 bg-white p-2.5 flex flex-col items-center text-center gap-1 transition-all hover:border-rose-300 peer-checked:border-rose-500 peer-checked:bg-rose-50/70 peer-checked:ring-1 peer-checked:ring-rose-500 cursor-pointer">
+                                            <div class="w-6 h-6 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                            </div>
+                                            <div>
+                                                <div class="text-[11px] font-bold text-gray-800 peer-checked:text-rose-800">Matikan Internet</div>
+                                                <div class="text-[9px] text-gray-400 peer-checked:text-rose-600 font-medium leading-tight">Tetap isolir (Suspend)</div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
                             <p class="text-[11px] text-gray-500 leading-relaxed bg-amber-50/40 p-3 rounded-xl border border-amber-100/60">
-                                ℹ️ Tagihan ini akan ditandai dengan tanggal janji bayar dan otomatis tersinkronisasi ke daftar Invoice Pelanggan. Jika pelanggan sedang di-isolir, isolir akan dibuka sementara.
+                                ℹ️ Tagihan ini akan ditandai dengan tanggal janji bayar dan otomatis tersinkronisasi ke sistem MikroTik & RADIUS.
                             </p>
                         </div>
 
@@ -1235,12 +1285,14 @@ const promiseInvoice = ref(null);
 const promiseForm = useForm({
     promise_date: '',
     notes: '',
+    internet_action: 'on', // 'on' | 'off'
 });
 
 const openPromiseModal = (inv) => {
     promiseInvoice.value = inv;
     promiseForm.promise_date = inv.promise_date ? String(inv.promise_date).split('T')[0] : '';
     promiseForm.notes = inv.notes || '';
+    promiseForm.internet_action = 'on';
     showPromiseModal.value = true;
 };
 

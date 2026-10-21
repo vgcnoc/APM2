@@ -418,11 +418,12 @@ class InvoiceController extends Controller
         }
     }
 
-    public function promise(Request $request, Invoice $invoice)
+    public function promise(Request $request, Invoice $invoice, \App\Services\RadiusService $radius)
     {
         $request->validate([
             'promise_date' => 'nullable|date',
             'notes' => 'nullable|string|max:500',
+            'internet_action' => 'nullable|in:on,off',
         ]);
 
         $updateData = [
@@ -434,13 +435,105 @@ class InvoiceController extends Controller
 
         $invoice->update($updateData);
 
+        $customer = $invoice->customer;
+        $internetAction = $request->input('internet_action');
+        $internetMessage = '';
+
         if (!empty($request->promise_date)) {
-            // Aktifkan kembali internet jika pelanggan sedang di-isolir
-            $customer = $invoice->customer;
-            if ($customer && in_array($customer->status, ['isolir', 'suspended'])) {
-                $customer->update(['status' => 'active']);
+            if ($customer) {
+                $oldStatus = $customer->status;
+
+                if ($internetAction === 'on') {
+                    $customer->update([
+                        'status' => 'active',
+                        'suspend_start' => null,
+                        'suspend_end' => null,
+                    ]);
+
+                    try {
+                        $radius->guard(function($r) use ($customer) {
+                            $r->syncCustomer($customer);
+                            $accounts = $r->customerAccounts($customer);
+                            foreach (array_keys($accounts) as $username) {
+                                $r->disconnect($username);
+                            }
+                        });
+                    } catch (\Throwable $e) {
+                        \Log::warning('[RADIUS] Sync on promise (Nyalakan) error: ' . $e->getMessage());
+                    }
+
+                    if ($oldStatus !== 'active') {
+                        \App\Models\AuditLog::createLog(
+                            'Nyalakan Internet (Janji Bayar)',
+                            $customer,
+                            $oldStatus,
+                            'active',
+                            "Membuka isolir / mengaktifkan internet pelanggan saat mengatur janji bayar hingga {$request->promise_date} (Tagihan #{$invoice->invoice_number})"
+                        );
+                    }
+                    $internetMessage = ' Layanan internet pelanggan telah diaktifkan (buka isolir).';
+                } elseif ($internetAction === 'off') {
+                    $customer->update([
+                        'status' => 'suspended',
+                        'suspend_start' => now()->toDateString(),
+                    ]);
+
+                    try {
+                        $radius->guard(function($r) use ($customer) {
+                            $r->syncCustomer($customer);
+                            $accounts = $r->customerAccounts($customer);
+                            foreach (array_keys($accounts) as $username) {
+                                $r->disconnect($username);
+                            }
+                        });
+                    } catch (\Throwable $e) {
+                        \Log::warning('[RADIUS] Sync on promise (Matikan) error: ' . $e->getMessage());
+                    }
+
+                    if ($oldStatus !== 'suspended') {
+                        \App\Models\AuditLog::createLog(
+                            'Matikan Internet (Janji Bayar)',
+                            $customer,
+                            $oldStatus,
+                            'suspended',
+                            "Mematikan / mengisolir internet pelanggan saat mengatur janji bayar hingga {$request->promise_date} (Tagihan #{$invoice->invoice_number})"
+                        );
+                    }
+                    $internetMessage = ' Layanan internet pelanggan tetap dimatikan (diisolir).';
+                } else {
+                    // Fallback default: jika pelanggan sedang isolir/suspended, aktifkan
+                    if (in_array($customer->status, ['isolir', 'suspended'])) {
+                        $customer->update([
+                            'status' => 'active',
+                            'suspend_start' => null,
+                            'suspend_end' => null,
+                        ]);
+
+                        try {
+                            $radius->guard(function($r) use ($customer) {
+                                $r->syncCustomer($customer);
+                                $accounts = $r->customerAccounts($customer);
+                                foreach (array_keys($accounts) as $username) {
+                                    $r->disconnect($username);
+                                }
+                            });
+                        } catch (\Throwable $e) {
+                            \Log::warning('[RADIUS] Sync on promise fallback error: ' . $e->getMessage());
+                        }
+
+                        \App\Models\AuditLog::createLog(
+                            'Buka Isolir (Janji Bayar)',
+                            $customer,
+                            'suspended',
+                            'active',
+                            "Otomatis membuka isolir saat mengatur janji bayar hingga {$request->promise_date} (Tagihan #{$invoice->invoice_number})"
+                        );
+                        $internetMessage = ' Layanan internet pelanggan telah diaktifkan kembali.';
+                    }
+                }
             }
-            return back()->with('success', 'Janji bayar berhasil disimpan. Layanan internet pelanggan telah diaktifkan kembali.');
+
+            return back()->with('success', 'Janji bayar berhasil disimpan.' . $internetMessage);
         }
 
         return back()->with('success', 'Janji bayar berhasil dihapus.');
