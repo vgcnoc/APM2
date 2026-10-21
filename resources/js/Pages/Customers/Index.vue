@@ -107,13 +107,13 @@
             <!-- Filter Slot -->
             <template #filters>
                 <!-- Status -->
-                <div v-can="'customers_filter_status'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
+                <div v-can="'customers_filter_status'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[160px]">
                     <div class="shrink-0 mr-2 text-gray-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                     </div>
-                    <div class="flex flex-col flex-1">
+                    <div class="flex flex-col flex-1 min-w-0">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Status</span>
-                        <select v-model="filterStatus" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                        <select v-model="filterStatus" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
                             <option value="">Semua Status</option>
                             <option v-for="(label, key) in statusOptions" :key="key" :value="key">{{ label }}</option>
                         </select>
@@ -121,13 +121,13 @@
                 </div>
 
                 <!-- Layanan (Berbayar / Gratis) -->
-                <div v-can="'customers_filter_status'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
+                <div v-can="'customers_filter_status'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[165px]">
                     <div class="shrink-0 mr-2 text-gray-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
-                    <div class="flex flex-col flex-1">
+                    <div class="flex flex-col flex-1 min-w-0">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Layanan</span>
-                        <select v-model="filterServiceStatus" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                        <select v-model="filterServiceStatus" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
                             <option value="">Semua Layanan</option>
                             <option value="berbayar">💳 Berbayar</option>
                             <option value="gratis">🎁 Gratis</option>
@@ -136,13 +136,13 @@
                 </div>
 
                 <!-- Paket -->
-                <div v-can="'customers_filter_package'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
+                <div v-can="'customers_filter_package'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[170px]">
                     <div class="shrink-0 mr-2 text-gray-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     </div>
-                    <div class="flex flex-col flex-1">
+                    <div class="flex flex-col flex-1 min-w-0">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Paket</span>
-                        <select v-model="filterPackage" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                        <select v-model="filterPackage" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
                             <option value="">Semua Paket</option>
                             <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">{{ pkg.name }}</option>
                         </select>
@@ -150,13 +150,13 @@
                 </div>
 
                 <!-- Area -->
-                <div v-can="'customers_filter_area'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
+                <div v-can="'customers_filter_area'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[155px]">
                     <div class="shrink-0 mr-2 text-gray-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     </div>
-                    <div class="flex flex-col flex-1">
+                    <div class="flex flex-col flex-1 min-w-0">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Area</span>
-                        <select v-model="filterArea" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                        <select v-model="filterArea" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
                             <option value="">Semua Area</option>
                             <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
                         </select>
@@ -164,13 +164,13 @@
                 </div>
 
                 <!-- ODP -->
-                <div v-can="'customers_filter_area'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
+                <div v-can="'customers_filter_area'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[155px]">
                     <div class="shrink-0 mr-2 text-gray-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                     </div>
-                    <div class="flex flex-col flex-1">
+                    <div class="flex flex-col flex-1 min-w-0">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">ODP</span>
-                        <select v-model="filterOdp" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                        <select v-model="filterOdp" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
                             <option value="">Semua ODP</option>
                             <option v-for="odp in odps" :key="odp.id" :value="odp.id">{{ odp.name }}</option>
                         </select>
@@ -178,13 +178,13 @@
                 </div>
 
                 <!-- Urutkan -->
-                <div class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[150px]">
+                <div class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[210px]">
                     <div class="shrink-0 mr-2 text-gray-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
                     </div>
-                    <div class="flex flex-col flex-1">
+                    <div class="flex flex-col flex-1 min-w-0">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Urutkan</span>
-                        <select v-model="filterSort" @change="applyFilters" class="form-select border-0 p-0 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full pb-1">
+                        <select v-model="filterSort" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
                             <option value="">Terbaru (Tgl Daftar)</option>
                             <option value="terlama">Terlama (Tgl Daftar)</option>
                             <option value="nama_asc">Nama (A-Z)</option>

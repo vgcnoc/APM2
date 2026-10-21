@@ -331,9 +331,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
                     </div>
-                    <div class="flex flex-col flex-1">
+                    <div class="flex flex-col flex-1 min-w-0">
                         <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5">Area</span>
-                        <select v-model="filterArea" @change="applyFilters" class="form-select border-0 p-0 h-auto text-xs bg-transparent focus:ring-0 text-gray-700 font-semibold w-full pb-0.5">
+                        <select v-model="filterArea" @change="applyFilters" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-7 h-auto text-xs bg-transparent focus:ring-0 text-gray-700 font-semibold w-full cursor-pointer truncate">
                             <option value="">Semua Area</option>
                             <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
                         </select>
@@ -347,9 +347,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                         </svg>
                     </div>
-                    <div class="flex flex-col flex-1">
+                    <div class="flex flex-col flex-1 min-w-0">
                         <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5">Paket</span>
-                        <select v-model="filterPackage" @change="applyFilters" class="form-select border-0 p-0 h-auto text-xs bg-transparent focus:ring-0 text-gray-700 font-semibold w-full pb-0.5">
+                        <select v-model="filterPackage" @change="applyFilters" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-7 h-auto text-xs bg-transparent focus:ring-0 text-gray-700 font-semibold w-full cursor-pointer truncate">
                             <option value="">Semua Paket</option>
                             <option v-for="p in packages" :key="p.id" :value="p.id">{{ p.name }}</option>
                         </select>
