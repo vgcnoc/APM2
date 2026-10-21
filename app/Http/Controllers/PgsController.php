@@ -915,6 +915,54 @@ class PgsController extends Controller
      */
     public function requestMaterial(Request $request, PgsTicket $pgs)
     {
+        // Mendukung multiple items dalam satu pengajuan pengadaan teknisi
+        if ($request->has('items') && is_array($request->items)) {
+            $validated = $request->validate([
+                'items' => 'required|array|min:1',
+                'items.*.item_name' => 'required|string|max:255',
+                'items.*.material_id' => 'nullable|exists:materials,id',
+                'items.*.quantity' => 'required|numeric|min:0.01',
+                'items.*.unit' => 'required|string|max:50',
+                'notes' => 'required|string|max:500', // Alasan kebutuhan darurat di lapangan
+            ]);
+
+            $createdNames = [];
+            foreach ($validated['items'] as $item) {
+                $itemName = trim($item['item_name'] ?? '');
+                $materialId = $item['material_id'] ?? null;
+                if ($materialId && !$itemName) {
+                    $mat = Material::find($materialId);
+                    $itemName = $mat?->name;
+                }
+                if (!$itemName) continue;
+
+                PgsMaterialRequest::create([
+                    'pgs_ticket_id' => $pgs->id,
+                    'item_name' => $itemName,
+                    'material_id' => $materialId,
+                    'requested_by' => auth()->id(),
+                    'quantity' => $item['quantity'],
+                    'unit' => $item['unit'],
+                    'notes' => $validated['notes'],
+                    'status' => 'pending',
+                ]);
+
+                $createdNames[] = $item['quantity'] . ' ' . $item['unit'] . ' (' . $itemName . ')';
+            }
+
+            if (count($createdNames) > 0) {
+                AuditLog::createLog(
+                    'Permintaan Tambahan Material PGS',
+                    $pgs,
+                    'pending',
+                    'pending',
+                    'Teknisi ' . auth()->user()->name . ' mengajukan ' . count($createdNames) . ' item material: ' . implode(', ', $createdNames) . '. Alasan: ' . $validated['notes']
+                );
+            }
+
+            return redirect()->back()->with('success', count($createdNames) . ' item permintaan material berhasil diajukan ke Kepala Teknisi.');
+        }
+
         $validated = $request->validate([
             'item_name' => 'required_without:material_id|nullable|string|max:255',
             'material_id' => 'nullable|exists:materials,id',

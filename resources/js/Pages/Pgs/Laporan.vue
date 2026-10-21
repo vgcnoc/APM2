@@ -503,94 +503,140 @@
 
                             <!-- Form Ajukan Material ke Ka. Teknisi -->
                             <div v-if="isRequestFormOpen" class="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 shadow-sm space-y-3 transition-all animate-fade-in-up">
-                                <div>
-                                    <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                                        <span>📝</span> Form Pengajuan Kebutuhan Tambahan ke Ka. Teknisi
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                                            <span>📝</span> Form Pengajuan Kebutuhan Tambahan ke Ka. Teknisi
+                                        </div>
+                                        <p class="text-[11px] text-amber-800 mt-0.5">
+                                            Tuliskan daftar kebutuhan barang di lapangan (bisa lebih dari 1 material). Kepala Teknisi akan memverifikasi dan mengalokasikan stok barang dari gudang.
+                                        </p>
                                     </div>
-                                    <p class="text-[11px] text-amber-800 mt-0.5">
-                                        Tuliskan kebutuhan barang di lapangan. Kepala Teknisi akan memverifikasi dan mengalokasikan stok barang dari gudang.
-                                    </p>
+                                    <span class="text-[10px] font-bold text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-lg border border-amber-300 shrink-0">
+                                        {{ materialRequestForm.items.length }} Material
+                                    </span>
                                 </div>
 
-                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                                    <!-- Input Nama / Kebutuhan Material -->
-                                    <div class="sm:col-span-7">
-                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Nama / Deskripsi Kebutuhan Material *</label>
-                                        <input 
-                                            type="text" 
-                                            v-model="materialRequestForm.item_name" 
-                                            placeholder="Contoh: Kabel Dropcore 1 Core, Fast Connector SC..."
-                                            class="w-full rounded-xl border-gray-300 text-xs py-2 px-3 focus:border-amber-500 bg-white font-medium shadow-2xs"
-                                            required
-                                        />
-                                        <!-- Quick Suggestion Chips Lapangan -->
-                                        <div class="flex flex-wrap items-center gap-1.5 mt-2">
-                                            <span class="text-[9px] font-bold text-gray-500 uppercase tracking-wide">Pilihan Cepat:</span>
-                                            <button 
-                                                type="button" 
-                                                v-for="chip in quickMaterialChips" 
-                                                :key="chip.name"
-                                                @click="applyQuickMaterialChip(chip)"
-                                                class="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 transition-colors shadow-2xs"
-                                            >
-                                                + {{ chip.name }}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Estimasi Jumlah -->
-                                    <div class="sm:col-span-2">
-                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Estimasi Jml *</label>
-                                        <input 
-                                            type="number" 
-                                            step="0.01" 
-                                            min="0.01" 
-                                            v-model="materialRequestForm.quantity" 
-                                            class="w-full rounded-xl border-gray-300 text-xs py-2 text-center font-bold focus:border-amber-500 bg-white shadow-2xs"
-                                            placeholder="1"
-                                            required
-                                        />
-                                    </div>
-
-                                    <!-- Pilihan Satuan -->
-                                    <div class="sm:col-span-3">
-                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Satuan *</label>
-                                        <select 
-                                            v-model="materialRequestForm.unit" 
-                                            class="w-full rounded-xl border-gray-300 text-xs py-2 focus:border-amber-500 bg-white font-medium shadow-2xs"
+                                <!-- Quick Suggestion Chips Lapangan -->
+                                <div class="p-2.5 rounded-xl bg-amber-100/60 border border-amber-200">
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        <span class="text-[9px] font-bold text-amber-900 uppercase tracking-wide">Pilihan Cepat (Klik untuk tambah):</span>
+                                        <button 
+                                            type="button" 
+                                            v-for="chip in quickMaterialChips" 
+                                            :key="chip.name"
+                                            @click="applyQuickMaterialChip(chip)"
+                                            class="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-white hover:bg-amber-200 text-amber-900 border border-amber-300 transition-colors shadow-2xs cursor-pointer"
                                         >
-                                            <option value="meter">meter</option>
-                                            <option value="pcs">pcs</option>
-                                            <option value="rol">rol</option>
-                                            <option value="set">set</option>
-                                            <option value="pack">pack</option>
-                                            <option value="buah">buah</option>
-                                        </select>
+                                            + {{ chip.name }}
+                                        </button>
                                     </div>
+                                </div>
 
-                                    <!-- Alasan Kebutuhan di Lapangan -->
-                                    <div class="sm:col-span-12">
-                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Alasan / Kondisi di Lapangan *</label>
-                                        <input 
-                                            type="text" 
-                                            v-model="materialRequestForm.notes" 
-                                            placeholder="Contoh: Kabel dropcore terputus tertimpa dahan pohon, butuh penarikan baru 30 meter..." 
-                                            class="w-full rounded-xl border-gray-300 text-xs py-2 px-3 focus:border-amber-500 bg-white shadow-2xs"
-                                            required
-                                        />
-                                        <!-- Template Alasan -->
-                                        <div class="flex flex-wrap items-center gap-1.5 mt-2">
-                                            <span class="text-[9px] font-bold text-gray-500 uppercase tracking-wide">Template Alasan:</span>
+                                <!-- Daftar Baris Material -->
+                                <div class="space-y-2.5">
+                                    <div 
+                                        v-for="(item, idx) in materialRequestForm.items" 
+                                        :key="idx" 
+                                        class="p-3 bg-white rounded-xl border border-amber-200 shadow-2xs relative"
+                                    >
+                                        <div class="flex items-center justify-between mb-1.5">
+                                            <span class="text-[10px] font-bold text-amber-800 uppercase flex items-center gap-1">
+                                                <span class="w-4 h-4 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center text-[9px] font-bold">{{ idx + 1 }}</span>
+                                                Material #{{ idx + 1 }}
+                                            </span>
                                             <button 
+                                                v-if="materialRequestForm.items.length > 1"
                                                 type="button" 
-                                                v-for="reason in quickReasonChips" 
-                                                :key="reason"
-                                                @click="applyQuickReasonChip(reason)"
-                                                class="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-amber-100/70 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-colors shadow-2xs"
+                                                @click="removeRequestItem(idx)"
+                                                class="text-rose-500 hover:text-rose-700 text-[10px] font-bold flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                                                title="Hapus Baris Ini"
                                             >
-                                                {{ reason }}
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                <span>Hapus</span>
                                             </button>
                                         </div>
+
+                                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                                            <!-- Input Nama / Kebutuhan Material -->
+                                            <div class="sm:col-span-7">
+                                                <label class="block text-[9px] font-bold text-gray-600 uppercase mb-0.5">Nama / Deskripsi Material *</label>
+                                                <input 
+                                                    type="text" 
+                                                    v-model="item.item_name" 
+                                                    placeholder="Contoh: Kabel Dropcore 1 Core, Fast Connector SC..."
+                                                    class="w-full rounded-xl border-gray-300 text-xs py-1.5 px-3 focus:border-amber-500 bg-white font-medium shadow-2xs"
+                                                    required
+                                                />
+                                            </div>
+
+                                            <!-- Estimasi Jumlah -->
+                                            <div class="sm:col-span-2">
+                                                <label class="block text-[9px] font-bold text-gray-600 uppercase mb-0.5">Estimasi Jml *</label>
+                                                <input 
+                                                    type="number" 
+                                                    step="0.01" 
+                                                    min="0.01" 
+                                                    v-model="item.quantity" 
+                                                    class="w-full rounded-xl border-gray-300 text-xs py-1.5 text-center font-bold focus:border-amber-500 bg-white shadow-2xs"
+                                                    placeholder="1"
+                                                    required
+                                                />
+                                            </div>
+
+                                            <!-- Pilihan Satuan -->
+                                            <div class="sm:col-span-3">
+                                                <label class="block text-[9px] font-bold text-gray-600 uppercase mb-0.5">Satuan *</label>
+                                                <select 
+                                                    v-model="item.unit" 
+                                                    class="w-full rounded-xl border-gray-300 text-xs py-1.5 focus:border-amber-500 bg-white font-medium shadow-2xs"
+                                                >
+                                                    <option value="meter">meter</option>
+                                                    <option value="pcs">pcs</option>
+                                                    <option value="rol">rol</option>
+                                                    <option value="set">set</option>
+                                                    <option value="pack">pack</option>
+                                                    <option value="buah">buah</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Tombol Tambah Baris Material Lainnya -->
+                                <div>
+                                    <button 
+                                        type="button" 
+                                        @click="addRequestItem('', 1, 'pcs')"
+                                        class="w-full py-2 border-2 border-dashed border-amber-300 hover:border-amber-400 bg-white hover:bg-amber-100/50 text-amber-900 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                        <span>+ Tambah Baris Material Lainnya</span>
+                                    </button>
+                                </div>
+
+                                <!-- Alasan Kebutuhan di Lapangan -->
+                                <div class="pt-1">
+                                    <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Alasan / Kondisi di Lapangan (Untuk Seluruh Material Di Atas) *</label>
+                                    <input 
+                                        type="text" 
+                                        v-model="materialRequestForm.notes" 
+                                        placeholder="Contoh: Kabel dropcore terputus tertimpa dahan pohon dan konektor pecah..." 
+                                        class="w-full rounded-xl border-gray-300 text-xs py-2 px-3 focus:border-amber-500 bg-white shadow-2xs"
+                                        required
+                                    />
+                                    <!-- Template Alasan -->
+                                    <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                                        <span class="text-[9px] font-bold text-gray-500 uppercase tracking-wide">Template Alasan:</span>
+                                        <button 
+                                            type="button" 
+                                            v-for="reason in quickReasonChips" 
+                                            :key="reason"
+                                            @click="applyQuickReasonChip(reason)"
+                                            class="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-amber-100/70 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-colors shadow-2xs cursor-pointer"
+                                        >
+                                            {{ reason }}
+                                        </button>
                                     </div>
                                 </div>
 
@@ -598,18 +644,18 @@
                                     <button 
                                         type="button" 
                                         @click="isRequestFormOpen = false" 
-                                        class="px-3.5 py-1.5 rounded-xl border border-gray-300 bg-white text-gray-600 text-xs font-semibold hover:bg-gray-50"
+                                        class="px-3.5 py-1.5 rounded-xl border border-gray-300 bg-white text-gray-600 text-xs font-semibold hover:bg-gray-50 cursor-pointer"
                                     >
                                         Batal
                                     </button>
                                     <button 
                                         type="button" 
                                         @click="sendMaterialRequest" 
-                                        :disabled="materialRequestForm.processing || !materialRequestForm.item_name || !materialRequestForm.notes"
-                                        class="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5"
+                                        :disabled="materialRequestForm.processing || validRequestItemsCount === 0 || !materialRequestForm.notes"
+                                        class="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
                                     >
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                                        <span>{{ materialRequestForm.processing ? 'Mengirim...' : 'Kirim Permintaan ke Ka. Teknisi' }}</span>
+                                        <span>{{ materialRequestForm.processing ? 'Mengirim...' : `Kirim Permintaan (${validRequestItemsCount} Material) ke Ka. Teknisi` }}</span>
                                     </button>
                                 </div>
                             </div>
@@ -1037,10 +1083,32 @@ const additionalMaterials = ref([]);
 // Permintaan Tambahan Material ke Ka. Teknisi State
 const isRequestFormOpen = ref(false);
 const materialRequestForm = useForm({
-    item_name: '',
-    quantity: 1,
-    unit: 'meter',
+    items: [
+        { item_name: '', quantity: 1, unit: 'meter' }
+    ],
     notes: '',
+});
+
+const addRequestItem = (name = '', quantity = 1, unit = 'pcs') => {
+    materialRequestForm.items.push({
+        item_name: name,
+        quantity: quantity,
+        unit: unit,
+    });
+};
+
+const removeRequestItem = (index) => {
+    if (materialRequestForm.items.length > 1) {
+        materialRequestForm.items.splice(index, 1);
+    } else {
+        materialRequestForm.items[0].item_name = '';
+        materialRequestForm.items[0].quantity = 1;
+        materialRequestForm.items[0].unit = 'meter';
+    }
+};
+
+const validRequestItemsCount = computed(() => {
+    return materialRequestForm.items.filter(i => i.item_name && i.item_name.trim() && parseFloat(i.quantity) > 0).length;
 });
 
 // Quick suggestion chips pintar untuk teknisi lapangan
@@ -1064,9 +1132,14 @@ const quickReasonChips = [
 ];
 
 const applyQuickMaterialChip = (chip) => {
-    materialRequestForm.item_name = chip.name;
-    materialRequestForm.unit = chip.unit;
-    materialRequestForm.quantity = chip.defaultQty;
+    const emptyItem = materialRequestForm.items.find(i => !i.item_name || !i.item_name.trim());
+    if (emptyItem) {
+        emptyItem.item_name = chip.name;
+        emptyItem.unit = chip.unit;
+        emptyItem.quantity = chip.defaultQty;
+    } else {
+        addRequestItem(chip.name, chip.defaultQty, chip.unit);
+    }
 };
 
 const applyQuickReasonChip = (reason) => {
@@ -1402,26 +1475,36 @@ const onAdditionalMaterialSelected = (item) => {
 // ── Pengajuan Kebutuhan Tambahan ke Ka. Teknisi ─────────────────
 const sendMaterialRequest = () => {
     if (!selectedTicket.value) return;
-    if (!materialRequestForm.item_name || !materialRequestForm.item_name.trim()) {
-        alert('Silakan tuliskan nama / kebutuhan material yang dibutuhkan.');
+
+    const validItems = materialRequestForm.items.filter(i => i.item_name && i.item_name.trim());
+    if (validItems.length === 0) {
+        alert('Silakan tuliskan setidaknya 1 nama / kebutuhan material yang dibutuhkan.');
         return;
     }
-    if (!materialRequestForm.quantity || materialRequestForm.quantity <= 0) {
-        alert('Jumlah kebutuhan material harus lebih dari 0.');
-        return;
+
+    for (const item of validItems) {
+        if (!item.quantity || parseFloat(item.quantity) <= 0) {
+            alert(`Jumlah kebutuhan untuk material '${item.item_name}' harus lebih dari 0.`);
+            return;
+        }
     }
+
     if (!materialRequestForm.notes || !materialRequestForm.notes.trim()) {
         alert('Mohon tulis alasan atau kondisi kebutuhan di lapangan.');
         return;
     }
 
+    materialRequestForm.items = validItems.map(i => ({
+        item_name: i.item_name.trim(),
+        quantity: parseFloat(i.quantity),
+        unit: i.unit || 'pcs',
+    }));
+
     materialRequestForm.post(`/pgs/${selectedTicket.value.id}/request-material`, {
         preserveScroll: true,
         onSuccess: () => {
             materialRequestForm.reset();
-            materialRequestForm.item_name = '';
-            materialRequestForm.quantity = 1;
-            materialRequestForm.unit = 'meter';
+            materialRequestForm.items = [{ item_name: '', quantity: 1, unit: 'meter' }];
             materialRequestForm.notes = '';
             isRequestFormOpen.value = false;
             // Sinkronkan selectedTicket dengan data terbaru di props
