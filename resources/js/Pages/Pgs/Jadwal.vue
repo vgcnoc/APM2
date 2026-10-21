@@ -644,18 +644,20 @@
                                 <button 
                                     type="button" 
                                     @click="rejectRequest(reviewTicket, mr)" 
-                                    class="px-3.5 py-1.5 rounded-xl border border-rose-300 bg-white hover:bg-rose-50 text-rose-700 text-xs font-bold transition-all shadow-sm"
+                                    :disabled="processingRequest[mr.id]"
+                                    class="px-3.5 py-1.5 rounded-xl border border-rose-300 bg-white hover:bg-rose-50 text-rose-700 text-xs font-bold transition-all shadow-sm disabled:opacity-50 cursor-pointer"
                                 >
                                     ✗ Tolak Permintaan
                                 </button>
                                 <button 
                                     type="button" 
                                     @click="approveRequest(reviewTicket, mr)" 
-                                    :disabled="!allocationForms[mr.id]?.material_id || !isStockSufficient(mr)"
-                                    class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5"
+                                    :disabled="processingRequest[mr.id] || !allocationForms[mr.id]?.material_id"
+                                    class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer"
                                 >
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                    <span>✓ Setujui & Keluarkan Stok Gudang</span>
+                                    <svg v-if="processingRequest[mr.id]" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span>{{ processingRequest[mr.id] ? 'Memproses...' : '✓ Setujui & Keluarkan Stok Gudang' }}</span>
                                 </button>
                             </div>
                         </div>
@@ -1153,6 +1155,7 @@ const submitSchedule = () => {
 
 // ── Review & Approval Permintaan Material Lapangan ───────────
 const allocationForms = ref({});
+const processingRequest = ref({});
 
 const initAllocationForm = (mr) => {
     if (!allocationForms.value[mr.id]) {
@@ -1219,16 +1222,12 @@ const approveRequest = (ticket, req) => {
 
     const selectedMat = getSelectedMaterial(form.material_id);
     const matName = selectedMat ? selectedMat.name : 'Material Gudang';
-    const matStock = selectedMat ? parseFloat(selectedMat.stock || 0) : 0;
-
-    if (matStock < form.quantity) {
-        alert(`Perhatian: Stok gudang untuk '${matName}' hanya tersisa ${matStock} ${selectedMat?.unit}, tidak mencukupi untuk alokasi ${form.quantity} ${selectedMat?.unit}!`);
-        return;
-    }
 
     if (!confirm(`Setujui alokasi ${form.quantity} ${selectedMat?.unit || 'satuan'} '${matName}' untuk kebutuhan lapangan (${req.item_name || req.material?.name || 'Material'})?\n\nStok gudang akan otomatis dipotong dan dialokasikan ke bekal tiket ini.`)) {
         return;
     }
+
+    processingRequest.value[req.id] = true;
 
     router.post(`/pgs/${ticket.id}/material-requests/${req.id}/approve`, {
         material_id: form.material_id,
@@ -1236,10 +1235,23 @@ const approveRequest = (ticket, req) => {
         notes: form.notes || '',
     }, {
         preserveScroll: true,
-        onSuccess: () => {
-            const updated = props.tickets.data.find(t => t.id === ticket.id);
+        onSuccess: (page) => {
+            if (page.props.flash?.error) {
+                alert('Peringatan: ' + page.props.flash.error);
+                return;
+            }
+            if (page.props.flash?.success) {
+                alert(page.props.flash.success);
+            }
+            const freshTickets = page.props.tickets?.data || props.tickets?.data || [];
+            const updated = freshTickets.find(t => t.id === ticket.id);
             if (updated) {
                 reviewTicket.value = updated;
+                if (updated.material_requests) {
+                    updated.material_requests.forEach(mr => {
+                        initAllocationForm(mr);
+                    });
+                }
                 if (selectedTicket.value?.id === ticket.id) {
                     selectedTicket.value = updated;
                     if (updated.materials) {
@@ -1252,6 +1264,13 @@ const approveRequest = (ticket, req) => {
                     }
                 }
             }
+        },
+        onError: (errors) => {
+            const msg = Object.values(errors).flat().join('\n');
+            alert('Gagal menyetujui permintaan: ' + msg);
+        },
+        onFinish: () => {
+            processingRequest.value[req.id] = false;
         }
     });
 };
@@ -1263,18 +1282,41 @@ const rejectRequest = (ticket, req) => {
         alert('Mohon tulis alasan penolakan.');
         return;
     }
+
+    processingRequest.value[req.id] = true;
+
     router.post(`/pgs/${ticket.id}/material-requests/${req.id}/reject`, {
         rejection_reason: reason.trim()
     }, {
         preserveScroll: true,
-        onSuccess: () => {
-            const updated = props.tickets.data.find(t => t.id === ticket.id);
+        onSuccess: (page) => {
+            if (page.props.flash?.error) {
+                alert('Peringatan: ' + page.props.flash.error);
+                return;
+            }
+            if (page.props.flash?.success) {
+                alert(page.props.flash.success);
+            }
+            const freshTickets = page.props.tickets?.data || props.tickets?.data || [];
+            const updated = freshTickets.find(t => t.id === ticket.id);
             if (updated) {
                 reviewTicket.value = updated;
+                if (updated.material_requests) {
+                    updated.material_requests.forEach(mr => {
+                        initAllocationForm(mr);
+                    });
+                }
                 if (selectedTicket.value?.id === ticket.id) {
                     selectedTicket.value = updated;
                 }
             }
+        },
+        onError: (errors) => {
+            const msg = Object.values(errors).flat().join('\n');
+            alert('Gagal menolak permintaan: ' + msg);
+        },
+        onFinish: () => {
+            processingRequest.value[req.id] = false;
         }
     });
 };

@@ -1029,11 +1029,6 @@ class PgsController extends Controller
         }
 
         $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
-
-        if ($stockBefore < $qty) {
-            return redirect()->back()->with('error', "Stok gudang tidak mencukupi untuk '{$material->name}' (Tersisa: {$stockBefore} {$material->unit}, Dialokasikan: {$qty} {$material->unit}).");
-        }
-
         $stockAfter = max(0, $stockBefore - $qty);
 
         // Catat transaksi pengeluaran barang
@@ -1068,11 +1063,15 @@ class PgsController extends Controller
             'stock_after' => $stockAfter,
         ]);
 
+        // Potong stok dari Area dan Gudang Inventory (konsisten dengan schedule())
         if ($matStock) {
             $matStock->decrement('stock', $qty);
-        } else {
-            $material->decrement('stock', $qty);
+            if ($material->meter_per_roll > 0) {
+                $matStock->total_rolls = $matStock->stock / $material->meter_per_roll;
+            }
+            $matStock->save();
         }
+        $material->decrement('stock', $qty);
 
         // Tambahkan ke pgs_materials (jika sudah ada, tambahkan quantity_prepared, jika belum buat baru)
         $existingPgsMat = PgsMaterial::where('pgs_ticket_id', $pgs->id)
