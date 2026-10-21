@@ -205,7 +205,7 @@
                                                     'bg-rose-50 text-rose-800 border-rose-200': mr.status === 'rejected',
                                                 }"
                                             >
-                                                <span>{{ mr.material?.name }}: {{ parseFloat(mr.quantity) }} {{ mr.unit }}</span>
+                                                <span>{{ mr.item_name || mr.material?.name || 'Material' }}: {{ parseFloat(mr.quantity) }} {{ mr.unit }}</span>
                                                 <span v-if="mr.status === 'pending'">⏳</span>
                                                 <span v-else-if="mr.status === 'approved'">✓</span>
                                                 <span v-else-if="mr.status === 'rejected'">✗</span>
