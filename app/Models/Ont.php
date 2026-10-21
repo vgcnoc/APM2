@@ -58,6 +58,33 @@ class Ont extends Model
         ];
     }
 
+    public function setRxPowerAttribute($value): void
+    {
+        if ($value === null || $value === '' || $value === 'null') {
+            $this->attributes['rx_power'] = null;
+            return;
+        }
+
+        $parsed = \App\Services\DataMigrationService::parseRxPower($value);
+        $this->attributes['rx_power'] = number_format($parsed, 2, '.', '');
+    }
+
+    public function setTxPowerAttribute($value): void
+    {
+        if ($value === null || $value === '' || $value === 'null') {
+            $this->attributes['tx_power'] = null;
+            return;
+        }
+
+        $str = trim(str_replace(['dBm', 'dbm', ' '], '', (string)$value));
+        $str = str_replace(',', '.', $str);
+        if (is_numeric($str)) {
+            $this->attributes['tx_power'] = number_format((float)$str, 2, '.', '');
+        } else {
+            $this->attributes['tx_power'] = null;
+        }
+    }
+
     protected static function boot()
     {
         parent::boot();

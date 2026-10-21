@@ -1988,6 +1988,10 @@ class CustomerController extends Controller
         if ($request->has('end_time') && strlen($request->end_time) > 5) {
             $request->merge(['end_time' => substr($request->end_time, 0, 5)]);
         }
+        if ($request->has('rx_power') && filled($request->rx_power)) {
+            $parsedRx = \App\Services\DataMigrationService::parseRxPower($request->rx_power);
+            $request->merge(['rx_power' => number_format($parsedRx, 2, '.', '')]);
+        }
 
         $rules = [
             'odp_id' => 'required|exists:odps,id',
@@ -2005,6 +2009,7 @@ class CustomerController extends Controller
         $rules['photo_redaman'] = 'nullable|image|max:5120';
 
         $validated = $request->validate($rules);
+        $validated['rx_power'] = number_format(\App\Services\DataMigrationService::parseRxPower($validated['rx_power'] ?? null), 2, '.', '');
 
         if ($request->hasFile('photo_odp')) $validated['photo_odp'] = $request->file('photo_odp')->store('installations', 'public');
         if ($request->hasFile('photo_installation')) $validated['photo_installation'] = $request->file('photo_installation')->store('installations', 'public');
@@ -2021,7 +2026,9 @@ class CustomerController extends Controller
             return back()->withErrors(['end_time' => 'Jam selesai tidak boleh lebih awal dari jam mulai.']);
         }
 
-        $usageDetails = []; DB::transaction(function () use ($validated, $customer, $odp, $request, $ont, &$usageDetails) {
+        $usageDetails = [];
+        try {
+            DB::transaction(function () use ($validated, $customer, $odp, $request, $ont, &$usageDetails) {
             $isNewAssignment = false;
             
             // Update existing linked ONT or Create new
@@ -2362,6 +2369,10 @@ class CustomerController extends Controller
                 ]);
             }
         });
+    } catch (\Throwable $e) {
+        \Log::error('Error assign-ont: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        return back()->withErrors(['error' => 'Gagal menyimpan laporan instalasi: ' . $e->getMessage()]);
+    }
 
         $ont = Ont::where('customer_id', $customer->id)->first();
         $usageStr = count($usageDetails) > 0 ? " | Material: " . implode(', ', $usageDetails) : "";

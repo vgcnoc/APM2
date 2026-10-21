@@ -2616,6 +2616,7 @@ import { ref, h, computed, watch, onMounted } from 'vue';
 import { Link, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
+import Swal from 'sweetalert2';
 
 const page = usePage();
 const formatDate = (dateString) => {
@@ -3223,6 +3224,16 @@ function submitOnt() {
             actual_qty: i.used_qty
         }));
         
+        // Sanitasi rx_power sebelum dikirim ke backend
+    if (ontForm.rx_power) {
+        let clean = ontForm.rx_power.toString().replace(/dBm|dbm|\s/g, '').replace(',', '.');
+        const num = parseFloat(clean);
+        if (!isNaN(num)) {
+            const finalVal = (num > 0 && num <= 40) ? -num : num;
+            ontForm.rx_power = finalVal.toFixed(2);
+        }
+    }
+
     ontForm.post(`/customers/${props.customer.id}/assign-ont`, {
         preserveScroll: true,
         onSuccess: () => {
@@ -3240,6 +3251,22 @@ function submitOnt() {
             
             isEditingInstallation.value = false;
             activeTab.value = 'audit';
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Laporan Berhasil Disimpan!',
+                text: 'Data instalasi telah tersimpan. Silakan lanjutkan dengan proses Audit.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        },
+        onError: (errors) => {
+            const errorMsg = Object.values(errors).flat().join('<br>');
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menyimpan Laporan',
+                html: errorMsg || 'Terjadi kesalahan saat memproses laporan instalasi. Silakan periksa kembali kelengkapan data Anda.',
+            });
         }
     });
 }
@@ -4168,10 +4195,34 @@ function setInstallReportNow(field) {
 }
 
 function submitEditInstallationReport() {
+    if (installReportForm.rx_power) {
+        let clean = installReportForm.rx_power.toString().replace(/dBm|dbm|\s/g, '').replace(',', '.');
+        const num = parseFloat(clean);
+        if (!isNaN(num)) {
+            const finalVal = (num > 0 && num <= 40) ? -num : num;
+            installReportForm.rx_power = finalVal.toFixed(2);
+        }
+    }
+
     installReportForm.post(`/customers/${props.customer.id}/update-installation-report`, {
         preserveScroll: true,
         onSuccess: () => {
             showEditInstallationReportModal.value = false;
+            Swal.fire({
+                icon: 'success',
+                title: 'Laporan Diperbarui!',
+                text: 'Laporan instalasi berhasil diperbarui.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        },
+        onError: (errors) => {
+            const errorMsg = Object.values(errors).flat().join('<br>');
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Memperbarui Laporan',
+                html: errorMsg || 'Terjadi kesalahan saat memperbarui laporan instalasi.',
+            });
         }
     });
 }
