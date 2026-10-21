@@ -45,6 +45,71 @@ class Odp extends Model
 
     protected $appends = ['available_ports'];
 
+    protected static function booted(): void
+    {
+        static::saved(function (Odp $odp) {
+            // 1. Pastikan OdpPort 1..total_ports tersedia
+            if ($odp->total_ports > 0) {
+                for ($p = 1; $p <= $odp->total_ports; $p++) {
+                    \App\Models\OdpPort::firstOrCreate(
+                        ['odp_id' => $odp->id, 'port_number' => $p],
+                        ['status' => 'available']
+                    );
+                }
+            }
+
+            // 2. Sinkronkan total used_ports & status ODP
+            $usedCount = \App\Models\Ont::where('odp_id', $odp->id)
+                ->whereNotIn('status', ['in_stock', 'damaged', 'maintenance', 'returned'])
+                ->count();
+            $newStatus = ($odp->total_ports > 0 && $usedCount >= $odp->total_ports) 
+                ? 'full' 
+                : ($odp->status === 'full' ? 'active' : $odp->status);
+
+            if ($odp->used_ports !== $usedCount || $odp->status !== $newStatus) {
+                $odp->newQuery()->where('id', $odp->id)->update([
+                    'used_ports' => $usedCount,
+                    'status' => $newStatus,
+                ]);
+            }
+
+            // 3. Jika Area ODP berubah, update area seluruh ONT di bawahnya
+            if ($odp->wasChanged('area_id') && $odp->area_id) {
+                \App\Models\Ont::where('odp_id', $odp->id)->update(['area_id' => $odp->area_id]);
+            }
+        });
+
+        static::deleting(function (Odp $odp) {
+            // 1. Lepas semua ONT yang terhubung
+            foreach ($odp->onts as $ont) {
+                $ont->update([
+                    'odp_id' => null,
+                    'odp_port_id' => null,
+                    'status' => 'Belum Set/Baru Input',
+                    'port_number' => null,
+                ]);
+            }
+
+            // 2. Putuskan relasi dari survey
+            \App\Models\Survey::where('odp_id', $odp->id)->update([
+                'odp_id' => null,
+                'odp_port_id' => null,
+                'port_number' => null,
+            ]);
+
+            // 3. Reset parent_odp_id pada ODP anak (jika split)
+            static::where('parent_odp_id', $odp->id)->update(['parent_odp_id' => null]);
+
+            // 4. Hapus port ODP
+            $odp->ports()->delete();
+
+            // 5. Hapus file foto dari storage
+            if ($odp->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($odp->photo)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($odp->photo);
+            }
+        });
+    }
+
     // ── Relationships ──────────────────────────────────────────
 
     /**

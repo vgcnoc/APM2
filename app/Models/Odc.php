@@ -42,6 +42,33 @@ class Odc extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::updated(function (Odc $odc) {
+            // Jika Area ODC berubah, update area ODP downstream dan ONT di bawahnya
+            if ($odc->wasChanged('area_id') && $odc->area_id) {
+                \App\Models\Odp::where('odc_id', $odc->id)->update(['area_id' => $odc->area_id]);
+                $odpIds = \App\Models\Odp::where('odc_id', $odc->id)->pluck('id');
+                if ($odpIds->isNotEmpty()) {
+                    \App\Models\Ont::whereIn('odp_id', $odpIds)->update(['area_id' => $odc->area_id]);
+                }
+            }
+        });
+
+        static::deleting(function (Odc $odc) {
+            // 1. Unlink ODP downstream
+            \App\Models\Odp::where('odc_id', $odc->id)->update(['odc_id' => null]);
+
+            // 2. Unlink split children
+            static::where('parent_odc_id', $odc->id)->update(['parent_odc_id' => null]);
+
+            // 3. Hapus foto dari storage
+            if ($odc->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($odc->photo)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($odc->photo);
+            }
+        });
+    }
+
     // ── Relationships ──────────────────────────────────────────
 
     /**

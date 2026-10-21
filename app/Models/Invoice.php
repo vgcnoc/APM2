@@ -68,6 +68,19 @@ class Invoice extends Model
             }
         });
 
+        static::saving(function (Invoice $invoice) {
+            if ($invoice->exists && $invoice->isDirty('amount') && $invoice->amount > 0) {
+                $totalPaid = (int) round($invoice->payments()->where('status', 'verified')->sum('amount'));
+                if ($totalPaid >= $invoice->amount) {
+                    $invoice->status = 'paid';
+                } elseif ($totalPaid > 0) {
+                    $invoice->status = 'partial';
+                } else {
+                    $invoice->status = 'unpaid';
+                }
+            }
+        });
+
         static::updated(function (Invoice $invoice) {
             if ($invoice->wasChanged('status') && $invoice->status === 'paid' && !$invoice->is_reseller_balance) {
                 try {

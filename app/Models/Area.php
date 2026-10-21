@@ -8,6 +8,16 @@ class Area extends Model
 {
     protected $fillable = ['name', 'description', 'address', 'latitude', 'longitude', 'radius_meters'];
 
+    protected static function booted(): void
+    {
+        static::updated(function (Area $area) {
+            if ($area->wasChanged('name')) {
+                Customer::where('area_id', $area->id)->update(['area' => $area->name]);
+                MaterialTransaction::where('area_id', $area->id)->update(['area' => $area->name]);
+            }
+        });
+    }
+
     public function stocks()
     {
         return $this->hasMany(MaterialStock::class);

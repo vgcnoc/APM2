@@ -20,6 +20,20 @@ class MaterialTransactionItem extends Model
         'condition',
     ];
 
+    protected static function booted(): void
+    {
+        static::deleting(function (MaterialTransactionItem $item) {
+            $onts = Ont::where('material_transaction_item_id', $item->id)->get();
+            foreach ($onts as $ont) {
+                if (!$ont->customer_id && !$ont->odp_id) {
+                    $ont->delete();
+                } else {
+                    $ont->update(['material_transaction_item_id' => null]);
+                }
+            }
+        });
+    }
+
     public function transaction(): BelongsTo
     {
         return $this->belongsTo(MaterialTransaction::class, 'material_transaction_id');

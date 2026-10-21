@@ -104,6 +104,94 @@ class Ont extends Model
                 }
             }
         });
+
+        static::saved(function ($ont) {
+            $oldOdpId = $ont->getOriginal('odp_id');
+            $oldPort = $ont->getOriginal('port_number');
+            $newOdpId = $ont->odp_id;
+            $newPort = $ont->port_number;
+
+            // Release old port if changed or if ONT is in stock/damaged
+            if ($oldOdpId && $oldPort && ($oldOdpId != $newOdpId || $oldPort != $newPort || in_array($ont->status, ['in_stock', 'damaged', 'maintenance', 'returned']))) {
+                \App\Models\OdpPort::where('odp_id', $oldOdpId)
+                    ->where('port_number', $oldPort)
+                    ->update(['status' => 'available', 'description' => null]);
+
+                $oldOdp = \App\Models\Odp::find($oldOdpId);
+                if ($oldOdp) {
+                    $used = static::where('odp_id', $oldOdpId)->where('id', '!=', $ont->id)->count();
+                    $oldOdp->update([
+                        'used_ports' => $used,
+                        'status' => ($used >= $oldOdp->total_ports) ? 'full' : 'active',
+                    ]);
+                }
+            }
+
+            // Mark new port as used if assigned and active
+            if ($newOdpId && $newPort && !in_array($ont->status, ['in_stock', 'damaged', 'maintenance', 'returned'])) {
+                \App\Models\OdpPort::where('odp_id', $newOdpId)
+                    ->where('port_number', $newPort)
+                    ->update(['status' => 'used']);
+
+                $newOdp = \App\Models\Odp::find($newOdpId);
+                if ($newOdp) {
+                    $used = static::where('odp_id', $newOdpId)->count();
+                    $newOdp->update([
+                        'used_ports' => $used,
+                        'status' => ($used >= $newOdp->total_ports) ? 'full' : 'active',
+                    ]);
+                }
+            }
+        });
+
+        static::deleting(function ($ont) {
+            // 1. Release ODP Port & sinkronisasi counter ODP
+            if ($ont->odp_id && $ont->port_number) {
+                \App\Models\OdpPort::where('odp_id', $ont->odp_id)
+                    ->where('port_number', $ont->port_number)
+                    ->update(['status' => 'available', 'description' => null]);
+
+                $odp = \App\Models\Odp::find($ont->odp_id);
+                if ($odp) {
+                    $used = static::where('odp_id', $ont->odp_id)->where('id', '!=', $ont->id)->count();
+                    $odp->update([
+                        'used_ports' => $used,
+                        'status' => ($used >= $odp->total_ports) ? 'full' : 'active',
+                    ]);
+                }
+            }
+
+            // 2. Putuskan hubungan dari Pelanggan jika terpasang
+            if ($ont->customer_id) {
+                $customer = \App\Models\Customer::find($ont->customer_id);
+                if ($customer && $customer->ont_id == $ont->id) {
+                    $customer->update(['ont_id' => null]);
+                }
+            }
+
+            // 3. Update MaterialTransactionItem jika terdaftar dari transaksi material
+            if ($ont->material_transaction_item_id) {
+                $remaining = static::where('material_transaction_item_id', $ont->material_transaction_item_id)
+                    ->where('id', '!=', $ont->id)
+                    ->count();
+                if ($remaining === 0) {
+                    \App\Models\MaterialTransactionItem::where('id', $ont->material_transaction_item_id)
+                        ->update(['is_registered_to_ont' => false]);
+                }
+            }
+
+            // 4. Hapus file foto terkait dari storage
+            $photos = ['photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman'];
+            foreach ($photos as $p) {
+                try {
+                    if ($ont->{$p} && \Illuminate\Support\Facades\Storage::disk('public')->exists($ont->{$p})) {
+                        \Illuminate\Support\Facades\Storage::disk('public')->delete($ont->{$p});
+                    }
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+            }
+        });
     }
 
     // ── Relationships ──────────────────────────────────────────

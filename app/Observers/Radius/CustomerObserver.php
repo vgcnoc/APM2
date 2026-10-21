@@ -11,7 +11,7 @@ class CustomerObserver
 
     public function saved(Customer $customer): void
     {
-        if (!$customer->wasRecentlyCreated && !$customer->wasChanged(['status', 'package_id'])) {
+        if (!$customer->wasRecentlyCreated && !$customer->wasChanged(['status', 'service_status', 'package_id'])) {
             return;
         }
 

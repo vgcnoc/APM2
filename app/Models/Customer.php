@@ -428,11 +428,61 @@ class Customer extends Model
         });
 
         static::updated(function (Customer $customer) {
+            // 1. Sinkronisasi Affiliate Booking Commission jika sales_id berubah
             if ($customer->wasChanged('sales_id') && $customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
                 try {
                     \App\Services\AffiliateService::recordBookingCommission($customer);
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::warning('[Affiliate] Booking commission error: ' . $e->getMessage());
+                }
+            }
+
+            // 2. Sinkronisasi Area ke ONT & Survey yang terhubung
+            if ($customer->wasChanged('area_id')) {
+                if ($customer->area_id) {
+                    $areaName = \App\Models\Area::where('id', $customer->area_id)->value('name');
+                    if ($areaName && $customer->area !== $areaName) {
+                        $customer->newQuery()->where('id', $customer->id)->update(['area' => $areaName]);
+                    }
+                }
+                \App\Models\Ont::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
+                \App\Models\Survey::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
+            }
+
+            // 3. Otomatis buat tiket Cabut Perangkat (CBP) jika status menjadi terminated / berhenti
+            if (($customer->wasChanged('status') && $customer->status === 'terminated') ||
+                ($customer->wasChanged('service_status') && $customer->service_status === 'berhenti')) {
+                $hasCbp = \App\Models\CbpRequest::where('customer_id', $customer->id)
+                    ->whereIn('status', ['pending', 'assigned'])
+                    ->exists();
+                if (!$hasCbp) {
+                    try {
+                        \App\Models\CbpRequest::create([
+                            'customer_id' => $customer->id,
+                            'status' => 'pending',
+                            'notes' => 'Otomatis dibuat saat status pelanggan diubah menjadi Terminated / Berhenti.',
+                            'created_by' => auth()->id() ?? 1,
+                        ]);
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning('[CbpRequest] Auto-create CBP error: ' . $e->getMessage());
+                    }
+                }
+            }
+
+            // 4. Sinkronisasi RADIUS jika paket atau status layanan berubah
+            if ($customer->wasChanged(['package_id', 'service_status', 'status'])) {
+                try {
+                    if (class_exists(\App\Services\RadiusService::class)) {
+                        $radius = app(\App\Services\RadiusService::class);
+                        if ($radius && $radius->enabled()) {
+                            $radius->syncCustomer($customer);
+                            foreach (array_keys($radius->customerAccounts($customer)) as $username) {
+                                $radius->disconnect($username);
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[Customer::updated] Radius sync error: ' . $e->getMessage());
                 }
             }
         });

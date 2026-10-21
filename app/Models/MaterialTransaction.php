@@ -40,6 +40,15 @@ class MaterialTransaction extends Model
         'date' => 'date',
     ];
 
+    protected static function booted(): void
+    {
+        static::deleting(function (MaterialTransaction $transaction) {
+            foreach ($transaction->items as $item) {
+                $item->delete();
+            }
+        });
+    }
+
     public function expense(): BelongsTo
     {
         return $this->belongsTo(Expense::class);

@@ -33,6 +33,13 @@ class Material extends Model
         return $this->hasMany(MaterialStock::class);
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (Material $material) {
+            $material->recalcUnitTotals();
+        });
+    }
+
     /**
      * Sinkronkan total_rolls / total_packs / total_pieces berdasarkan stok (base unit).
      * Dipakai oleh Data Produk & Order Toko agar angka konversi selalu konsisten.

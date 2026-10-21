@@ -222,8 +222,8 @@ class RadiusService
         // 1. Sinkronkan akun PPPoE / Primary Connection
         if ($ont && $ont->pppoe_user && $ont->pppoe_password) {
             $pppoeGroup = match (true) {
-                $customer->status === 'suspended' => $this->isolirGroup(),
-                $customer->status === 'active' && $customer->package_id => $this->packageGroup($customer->package_id),
+                $customer->status === 'suspended' || $customer->service_status === 'isolir' => $this->isolirGroup(),
+                $customer->status === 'active' && $customer->service_status !== 'isolir' && $customer->package_id => $this->packageGroup($customer->package_id),
                 default => null,
             };
 
