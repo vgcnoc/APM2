@@ -437,8 +437,11 @@
         </div>
 
         <!-- ════════════ MODAL INPUT LAPORAN PENANGANAN PGK ════════════ -->
-        <div v-if="showReportModal" class="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-            <div class="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-gray-100 flex flex-col max-h-[92vh] overflow-hidden my-auto animate-fade-in-up">
+        <div v-if="showReportModal" class="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center overflow-y-auto transition-all" :class="isReportModalMaximized ? 'p-0' : 'p-3 sm:p-4'">
+            <div 
+                class="bg-white shadow-2xl border border-gray-100 flex flex-col overflow-hidden transition-all duration-200"
+                :class="isReportModalMaximized ? 'w-full h-full max-w-none max-h-none rounded-none' : 'rounded-3xl max-w-3xl w-full max-h-[92vh] my-auto animate-fade-in-up'"
+            >
                 <!-- Modal Header -->
                 <div class="px-5 py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex justify-between items-center shrink-0">
                     <div>
@@ -448,12 +451,29 @@
                         </div>
                         <p class="text-[11px] text-emerald-100 mt-0.5">Alur simpel 3 langkah: Tindakan & Tikor → Material & Bekal → Foto & Selesai</p>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1.5">
                         <span v-if="hasSavedDraft" class="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200 border border-amber-300/30 text-[10px] font-medium">
                             <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
                             Draft Tersimpan
                         </span>
-                        <button @click="closeReportModal" class="text-white/80 hover:text-white text-2xl font-bold leading-none p-1 rounded-lg hover:bg-white/10 transition-colors">&times;</button>
+                        <!-- Tombol Perbesar / Perkecil Form -->
+                        <button 
+                            type="button" 
+                            @click="isReportModalMaximized = !isReportModalMaximized" 
+                            class="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center"
+                            :title="isReportModalMaximized ? 'Perkecil Ukuran Form (Kembali Normal)' : 'Perbesar Form (Layar Penuh)'"
+                        >
+                            <!-- Icon Perkecil (Restore) -->
+                            <svg v-if="isReportModalMaximized" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h6m0 0v6m0-6L3 21m17-7h-6m0 0v6m0-6l7 7m-7-17v6m0 0h6m-6 0L21 3M10 3v6m0 0H4m0 0L3 3" />
+                            </svg>
+                            <!-- Icon Perbesar (Maximize) -->
+                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
+                        </button>
+                        <!-- Tombol Tutup -->
+                        <button @click="closeReportModal" class="text-white/80 hover:text-white text-2xl font-bold leading-none p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer">&times;</button>
                     </div>
                 </div>
 
@@ -1139,8 +1159,11 @@
         </div>
 
         <!-- ════════════ MODAL VIEW DETAIL LAPORAN PENANGANAN PGK (READ-ONLY) ════════════ -->
-        <div v-if="showDetailModal" class="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-            <div class="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-gray-100 flex flex-col max-h-[92vh] overflow-hidden my-auto animate-fade-in-up">
+        <div v-if="showDetailModal" class="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center overflow-y-auto transition-all" :class="isDetailModalMaximized ? 'p-0' : 'p-3 sm:p-4'">
+            <div 
+                class="bg-white shadow-2xl border border-gray-100 flex flex-col overflow-hidden transition-all duration-200"
+                :class="isDetailModalMaximized ? 'w-full h-full max-w-none max-h-none rounded-none' : 'rounded-3xl max-w-4xl w-full max-h-[92vh] my-auto animate-fade-in-up'"
+            >
                 <!-- Modal Header -->
                 <div class="px-6 py-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex justify-between items-center shrink-0">
                     <div>
@@ -1157,9 +1180,25 @@
                         </div>
                         <h3 class="font-black text-lg text-white mt-1">Detail Laporan Penanganan Komplain Lapangan</h3>
                     </div>
-                    <button @click="closeDetailModal" class="p-2 text-gray-400 hover:text-white rounded-xl hover:bg-white/10 transition-colors cursor-pointer">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                    </button>
+                    <div class="flex items-center gap-1.5">
+                        <!-- Tombol Perbesar / Perkecil Modal Detail -->
+                        <button 
+                            type="button" 
+                            @click="isDetailModalMaximized = !isDetailModalMaximized" 
+                            class="p-2 text-gray-400 hover:text-white rounded-xl hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center"
+                            :title="isDetailModalMaximized ? 'Perkecil Ukuran Modal' : 'Perbesar Layar Penuh'"
+                        >
+                            <svg v-if="isDetailModalMaximized" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h6m0 0v6m0-6L3 21m17-7h-6m0 0v6m0-6l7 7m-7-17v6m0 0h6m-6 0L21 3M10 3v6m0 0H4m0 0L3 3" />
+                            </svg>
+                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
+                        </button>
+                        <button @click="closeDetailModal" class="p-2 text-gray-400 hover:text-white rounded-xl hover:bg-white/10 transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Modal Body (Scrollable) -->
@@ -1525,20 +1564,24 @@ const clearSelection = () => {
 
 // View Detail Modal State
 const showDetailModal = ref(false);
+const isDetailModalMaximized = ref(false);
 const detailTicket = ref(null);
 const zoomPhotoUrl = ref(null);
 
 const openDetailModal = (ticket) => {
     detailTicket.value = ticket;
+    isDetailModalMaximized.value = false;
     showDetailModal.value = true;
 };
 
 const closeDetailModal = () => {
     showDetailModal.value = false;
+    isDetailModalMaximized.value = false;
     detailTicket.value = null;
 };
 
 const showReportModal = ref(false);
+const isReportModalMaximized = ref(false);
 const selectedTicket = ref(null);
 const hasSavedDraft = ref(false);
 const activeReportTab = ref('tindakan');
@@ -2241,6 +2284,7 @@ const openReportModal = (ticket, ignoreDraft = false) => {
 const closeReportModal = () => {
     stopLiveTimer();
     showReportModal.value = false;
+    isReportModalMaximized.value = false;
     selectedTicket.value = null;
 };
 
