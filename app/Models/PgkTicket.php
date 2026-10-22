@@ -51,6 +51,7 @@ class PgkTicket extends Model
         'old_ont_id',
         'ont_replacement_action',
         'ont_replacement_notes',
+        'incident_coordinates',
     ];
 
     protected $attributes = [
@@ -67,6 +68,7 @@ class PgkTicket extends Model
             'resolved_at' => 'datetime',
             'requested_ont_at' => 'datetime',
             'prepared_ont_at' => 'datetime',
+            'incident_coordinates' => 'array',
         ];
     }
 
@@ -128,6 +130,11 @@ class PgkTicket extends Model
     public function preparedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'prepared_by');
+    }
+
+    public function dismantledMaterials(): HasMany
+    {
+        return $this->hasMany(CustomerMaterialDismantle::class, 'ticket_id')->where('ticket_type', 'pgk');
     }
 
     protected static function booted(): void

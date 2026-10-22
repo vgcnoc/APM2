@@ -251,6 +251,21 @@ class Customer extends Model
         return $this->hasMany(PgkTicket::class);
     }
 
+    public function installedMaterials(): HasMany
+    {
+        return $this->hasMany(CustomerInstalledMaterial::class);
+    }
+
+    public function activeInstalledMaterials(): HasMany
+    {
+        return $this->hasMany(CustomerInstalledMaterial::class)->whereIn('status', ['installed', 'partially_replaced']);
+    }
+
+    public function materialDismantles(): HasMany
+    {
+        return $this->hasMany(CustomerMaterialDismantle::class);
+    }
+
     public function vouchers(): HasMany
     {
         return $this->hasMany(Voucher::class);

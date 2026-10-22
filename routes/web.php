@@ -378,6 +378,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('material-handovers/request', [\App\Http\Controllers\MaterialHandoverController::class, 'storeRequest'])->name('material-handovers.store-request');
     Route::post('material-handovers/{transaction}/approve-request', [\App\Http\Controllers\MaterialHandoverController::class, 'approveRequest'])->name('material-handovers.approve-request');
     Route::post('material-handovers/{transaction}/reject-request', [\App\Http\Controllers\MaterialHandoverController::class, 'rejectRequest'])->name('material-handovers.reject-request');
+    Route::post('material-handovers/dismantles/{dismantle}/receive', [\App\Http\Controllers\MaterialHandoverController::class, 'receiveDismantle'])->name('material-handovers.receive-dismantle');
 
 
     // ── Data Jaringan (Dashboard Topology) ─────────────────────
@@ -505,6 +506,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('pgs/{pgs}/request-ont', [\App\Http\Controllers\PgsController::class, 'requestOnt'])->name('pgs.request-ont');
     Route::post('pgs/{pgs}/prepare-ont', [\App\Http\Controllers\PgsController::class, 'prepareOnt'])->name('pgs.prepare-ont');
     Route::post('pgs/{pgs}/cancel-ont', [\App\Http\Controllers\PgsController::class, 'cancelOnt'])->name('pgs.cancel-ont');
+    Route::post('pgs/{pgs}/installed-materials', [\App\Http\Controllers\PgsController::class, 'storeInstalledMaterial'])->name('pgs.installed-materials.store');
+    Route::post('pgs/{pgs}/dismantles/{dismantle}/handover', [\App\Http\Controllers\PgsController::class, 'confirmDismantleHandover'])->name('pgs.dismantles.handover');
     Route::delete('pgs/{pgs}', [\App\Http\Controllers\PgsController::class, 'destroy'])->name('pgs.destroy');
 
     // ── Penanganan Gangguan Komplain (PGK) ───────────────────────
@@ -523,6 +526,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('pgk/{pgk}/request-ont', [\App\Http\Controllers\PgkController::class, 'requestOnt'])->name('pgk.request-ont');
     Route::post('pgk/{pgk}/prepare-ont', [\App\Http\Controllers\PgkController::class, 'prepareOnt'])->name('pgk.prepare-ont');
     Route::post('pgk/{pgk}/cancel-ont', [\App\Http\Controllers\PgkController::class, 'cancelOnt'])->name('pgk.cancel-ont');
+    Route::post('pgk/{pgk}/installed-materials', [\App\Http\Controllers\PgkController::class, 'storeInstalledMaterial'])->name('pgk.installed-materials.store');
+    Route::post('pgk/{pgk}/dismantles/{dismantle}/handover', [\App\Http\Controllers\PgkController::class, 'confirmDismantleHandover'])->name('pgk.dismantles.handover');
     Route::delete('pgk/{pgk}', [\App\Http\Controllers\PgkController::class, 'destroy'])->name('pgk.destroy');
 
     // ── Penanganan Gangguan Jalur (PGJ) ──────────────────────────

@@ -210,7 +210,51 @@ class MaterialHandoverController extends Controller
             $validated['notes'] ?? null
         );
 
+        // Sinkronisasi tabel customer_material_dismantles jika transaksi ini berasal dari bongkaran
+        $dismantles = \App\Models\CustomerMaterialDismantle::where('material_transaction_id', $transaction->id)->get();
+        foreach ($dismantles as $d) {
+            $hasLayak = collect($validated['items'])->contains(fn($i) => ($i['condition'] ?? '') === 'Layak Pakai');
+            $disp = $hasLayak ? 'restocked' : 'scrap';
+            $d->update([
+                'handover_status' => 'received_warehouse',
+                'received_by' => auth()->id(),
+                'received_at' => now(),
+                'received_notes' => $validated['notes'] ?? null,
+                'disposition' => $disp,
+            ]);
+        }
+
         return back()->with('success', "Serah terima material [{$transaction->transaction_number}] berhasil diverifikasi dan stok masuk ke Inventory Gudang.");
+    }
+
+    /**
+     * Konfirmasi penerimaan serah terima material bongkaran pelanggan oleh Gudang / Ka. Teknisi
+     */
+    public function receiveDismantle(Request $request, \App\Models\CustomerMaterialDismantle $dismantle)
+    {
+        $validated = $request->validate([
+            'disposition' => 'required|in:scrap,restocked,reconditioned',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $user = $request->user();
+        $isLead = $user->hasRole('kepala teknisi');
+
+        \App\Services\CustomerMaterialService::confirmHandover(
+            dismantle: $dismantle,
+            receiver: $user,
+            disposition: $validated['disposition'],
+            notes: $validated['notes'] ?? null,
+            isLeadTechnician: $isLead
+        );
+
+        $msg = match ($validated['disposition']) {
+            'restocked' => 'Material bongkaran layak pakai telah disetujui & otomatis masuk kembali ke stok aktif gudang!',
+            'scrap' => 'Material bongkaran rusak/scrap telah diterima dan dialokasikan ke gudang afkir.',
+            default => 'Material bongkaran telah diterima untuk pengecekan/servis.',
+        };
+
+        return back()->with('success', "Serah terima material bongkaran {$dismantle->item_name} berhasil diverifikasi. {$msg}");
     }
 
     /**

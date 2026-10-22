@@ -77,6 +77,16 @@
                                         ODP: {{ ticket.customer?.ont?.odp?.name || '-' }} · Area: {{ ticket.area?.name || ticket.customer?.area_model?.name || '-' }}
                                     </div>
 
+                                    <!-- Multi Titik Koordinat (Tikor) -->
+                                    <div v-if="ticket.incident_coordinates && ticket.incident_coordinates.length > 0" class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                        <span class="text-[10px] font-bold text-sky-800 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200 flex items-center gap-1">
+                                            <span>📍</span> {{ ticket.incident_coordinates.length }} Tikor Insiden
+                                        </span>
+                                        <a :href="`https://www.google.com/maps?q=${ticket.incident_coordinates[0].latitude},${ticket.incident_coordinates[0].longitude}`" target="_blank" class="text-[10px] text-sky-700 hover:text-sky-900 underline font-semibold">
+                                            Buka Maps ↗
+                                        </a>
+                                    </div>
+
                                     <!-- Alert Permintaan Pergantian ONT dari Teknisi Lapangan -->
                                     <div v-if="ticket.ont_replacement_status === 'requested'" class="mt-2 p-2 rounded-xl bg-indigo-100 border border-indigo-300 text-indigo-950 text-xs flex items-center justify-between gap-2 shadow-sm animate-pulse">
                                         <div class="flex items-center gap-1.5 font-bold">
@@ -210,6 +220,28 @@
                                                 <span v-else-if="mr.status === 'approved'">✓</span>
                                                 <span v-else-if="mr.status === 'rejected'">✗</span>
                                             </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Status Material Bongkaran / Diganti Lapangan -->
+                                    <div v-if="ticket.dismantled_materials && ticket.dismantled_materials.length > 0" class="mt-2 pt-2 border-t border-gray-100">
+                                        <div class="text-[10px] text-amber-800 font-bold uppercase flex items-center justify-between">
+                                            <span>🔄 Material Bongkaran:</span>
+                                            <span v-if="ticket.dismantled_materials.some(d => d.handover_status === 'pending_handover')" class="text-amber-600 font-black animate-pulse">● Perlu Serah Terima</span>
+                                        </div>
+                                        <div class="space-y-1 mt-1">
+                                            <div v-for="d in ticket.dismantled_materials" :key="'dm-' + d.id" class="text-[11px] px-2 py-0.5 rounded border flex justify-between items-center"
+                                                :class="d.handover_status === 'pending_handover' ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-gray-50 border-gray-200 text-gray-700'">
+                                                <div class="truncate">
+                                                    <span class="font-bold">{{ d.material?.name || d.item_name }}</span>
+                                                    <span class="text-[10px] text-gray-500 ml-1">({{ d.replacement_type === 'full' ? 'Total' : 'Sebagian' }})</span>
+                                                </div>
+                                                <div class="shrink-0 flex items-center gap-1 font-mono font-bold">
+                                                    <span>{{ parseFloat(d.quantity) }} {{ d.unit }}</span>
+                                                    <span v-if="d.handover_status === 'pending_handover'" class="text-amber-600" title="Menunggu Diterima Gudang/Ka.Teknisi">⏳</span>
+                                                    <span v-else class="text-emerald-600" title="Sudah Diterima">✓</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </td>

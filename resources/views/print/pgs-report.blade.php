@@ -196,6 +196,73 @@
             </tr>
         </table>
 
+        <!-- Titik Koordinat (Tikor) Insiden -->
+        @if(!empty($ticket->incident_coordinates) && count($ticket->incident_coordinates) > 0)
+        <div class="section-title">Titik Koordinat Insiden / Penanganan (Multi-Tikor)</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width:30px;">No</th>
+                    <th style="width:160px;">Label Titik</th>
+                    <th style="width:180px;">Koordinat (Lat, Lng)</th>
+                    <th>Keterangan Lokasi</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($ticket->incident_coordinates as $tIdx => $tikor)
+                <tr>
+                    <td style="text-align:center;">{{ $tIdx + 1 }}</td>
+                    <td><strong>{{ $tikor['label'] ?? ('Titik #' . ($tIdx + 1)) }}</strong></td>
+                    <td style="font-family:monospace; font-size:11px;">{{ $tikor['latitude'] ?? '-' }}, {{ $tikor['longitude'] ?? '-' }}</td>
+                    <td>{{ $tikor['description'] ?? '-' }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+        @endif
+
+        <!-- Material Lama Dicabut / Diganti (Dismantled) -->
+        @if($ticket->dismantledMaterials && $ticket->dismantledMaterials->count() > 0)
+        <div class="section-title">Material Pelanggan Dicabut / Diganti (Serah Terima Gudang)</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width:30px;">No</th>
+                    <th>Nama Material</th>
+                    <th style="width:90px; text-align:center;">Jenis Ganti</th>
+                    <th style="width:80px; text-align:center;">Jumlah</th>
+                    <th style="width:100px; text-align:center;">Kondisi Fisik</th>
+                    <th>Alasan Kerusakan / Status Gudang</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($ticket->dismantledMaterials as $dIdx => $dm)
+                <tr>
+                    <td style="text-align:center;">{{ $dIdx + 1 }}</td>
+                    <td><strong>{{ $dm->material?->name ?: $dm->item_name }}</strong></td>
+                    <td style="text-align:center;">
+                        <span class="badge {{ $dm->replacement_type === 'full' ? 'badge-high' : 'badge-medium' }}">
+                            {{ $dm->replacement_type === 'full' ? 'Total (100%)' : 'Sebagian' }}
+                        </span>
+                    </td>
+                    <td style="text-align:center;">{{ (float) $dm->quantity }} {{ $dm->unit }}</td>
+                    <td style="text-align:center;">
+                        <span class="badge {{ $dm->condition === 'rusak_scrap' ? 'badge-critical' : 'badge-low' }}">
+                            {{ $dm->condition === 'rusak_scrap' ? 'Rusak / Afkir' : ($dm->condition === 'normal_reusable' ? 'Layak Pakai' : 'Perlu Cek') }}
+                        </span>
+                    </td>
+                    <td>
+                        {{ $dm->damage_reason ?: '-' }}
+                        <div style="font-size:10px; color:#555; margin-top:2px;">
+                            Serah Terima: <strong>{{ $dm->handover_status === 'received' ? 'Diterima Gudang (' . ucfirst($dm->disposition) . ')' : 'Menunggu Serah Terima' }}</strong>
+                        </div>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+        @endif
+
         <!-- Tanda Tangan -->
         <div class="sign-area">
             <div class="sign-box">

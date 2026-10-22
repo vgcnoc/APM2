@@ -606,6 +606,61 @@
                         </div>
                     </div>
 
+                    <!-- Multi Titik Koordinat (Tikor) Insiden -->
+                    <div v-if="detailTicket?.incident_coordinates && detailTicket.incident_coordinates.length > 0" class="p-3.5 rounded-2xl bg-sky-50/50 border border-sky-100 space-y-2">
+                        <div class="text-[10px] font-bold uppercase text-sky-800 flex items-center gap-1.5">
+                            <span>📍</span>
+                            <span>Titik Koordinat Insiden / Penanganan ({{ detailTicket.incident_coordinates.length }} Tikor):</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div v-for="(tikor, tIdx) in detailTicket.incident_coordinates" :key="'tikor-' + tIdx" class="bg-white p-2.5 rounded-xl border border-sky-200 text-xs flex items-center justify-between gap-2 shadow-2xs">
+                                <div class="truncate">
+                                    <span class="font-bold text-gray-800 block truncate">{{ tikor.label || ('Titik #' + (tIdx + 1)) }}</span>
+                                    <span class="font-mono text-gray-500 text-[10px]">{{ tikor.latitude }}, {{ tikor.longitude }}</span>
+                                    <span v-if="tikor.description" class="text-gray-600 block text-[10px] italic truncate">{{ tikor.description }}</span>
+                                </div>
+                                <a :href="`https://www.google.com/maps?q=${tikor.latitude},${tikor.longitude}`" target="_blank" class="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg font-bold text-[10px] shrink-0 inline-flex items-center gap-1 shadow-xs">
+                                    <span>Maps</span> ↗
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Material Pelanggan Dicabut / Diganti (Dismantled) -->
+                    <div v-if="detailTicket?.dismantled_materials && detailTicket.dismantled_materials.length > 0" class="p-3.5 rounded-2xl bg-amber-50/50 border border-amber-200 space-y-2">
+                        <div class="text-[10px] font-bold uppercase text-amber-900 flex items-center gap-1.5">
+                            <span>🔄</span>
+                            <span>Material Pelanggan Diganti / Dicabut ({{ detailTicket.dismantled_materials.length }} Item):</span>
+                        </div>
+                        <div class="space-y-1.5">
+                            <div v-for="dismantle in detailTicket.dismantled_materials" :key="'dismantle-' + dismantle.id" class="bg-white p-2.5 rounded-xl border border-amber-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+                                <div>
+                                    <div class="font-bold text-gray-900 flex items-center gap-2">
+                                        <span>{{ dismantle.material?.name || dismantle.item_name }}</span>
+                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-black uppercase" :class="dismantle.replacement_type === 'full' ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-blue-100 text-blue-800 border border-blue-200'">
+                                            {{ dismantle.replacement_type === 'full' ? 'Ganti Total (100%)' : 'Ganti Sebagian' }}
+                                        </span>
+                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="dismantle.condition === 'rusak_scrap' ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'">
+                                            {{ dismantle.condition === 'rusak_scrap' ? '🔴 Rusak / Scrap' : (dismantle.condition === 'normal_reusable' ? '🟢 Layak Pakai' : '🟡 Perlu Cek') }}
+                                        </span>
+                                    </div>
+                                    <div class="text-[11px] text-gray-600 mt-0.5">
+                                        Jumlah: <strong class="text-gray-900 font-mono">{{ parseFloat(dismantle.quantity) }} {{ dismantle.unit }}</strong>
+                                        <span v-if="dismantle.damage_reason" class="text-gray-500"> · Alasan: "{{ dismantle.damage_reason }}"</span>
+                                    </div>
+                                </div>
+                                <div class="shrink-0 flex items-center gap-1.5 text-[11px]">
+                                    <span v-if="dismantle.handover_status === 'pending_handover'" class="px-2 py-1 rounded bg-amber-50 text-amber-800 border border-amber-300 font-bold flex items-center gap-1">
+                                        ⏳ Menunggu Gudang/Ka.Teknisi
+                                    </span>
+                                    <span v-else class="px-2 py-1 rounded bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold flex items-center gap-1">
+                                        ✓ Diterima Gudang ({{ dismantle.disposition === 'restocked' ? 'Restock Gudang' : 'Scrap/Afkir' }})
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Aksi Cetak -->
                     <div class="pt-3 border-t flex justify-end gap-2">
                         <a :href="`/pgk/${detailTicket?.id}/print`" target="_blank" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm">

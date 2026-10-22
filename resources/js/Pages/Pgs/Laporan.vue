@@ -74,6 +74,21 @@
                                     <div class="text-[10px] text-emerald-700 font-semibold mt-0.5">
                                         ODP: {{ ticket.customer?.ont?.odp?.name || '-' }} · Area: {{ ticket.area?.name || ticket.customer?.area_model?.name || '-' }}
                                     </div>
+                                    <!-- Badge Multi-Tikor -->
+                                    <div v-if="ticket.incident_coordinates && ticket.incident_coordinates.length > 0" class="mt-1 flex items-center gap-1.5 flex-wrap">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
+                                            <span>📍</span> {{ ticket.incident_coordinates.length }} Tikor Insiden
+                                        </span>
+                                        <a 
+                                            v-if="ticket.incident_coordinates[0]?.latitude && ticket.incident_coordinates[0]?.longitude"
+                                            :href="`https://www.google.com/maps?q=${ticket.incident_coordinates[0].latitude},${ticket.incident_coordinates[0].longitude}`"
+                                            target="_blank"
+                                            class="text-[10px] text-purple-600 hover:text-purple-800 font-semibold underline flex items-center gap-0.5"
+                                            title="Buka titik koordinat pertama di Google Maps"
+                                        >
+                                            <span>🗺️ Peta</span>
+                                        </a>
+                                    </div>
                                     <!-- Badge Status Pergantian ONT -->
                                     <div v-if="ticket.ont_replacement_status && ticket.ont_replacement_status !== 'none'" class="mt-1.5 flex items-center gap-1.5 flex-wrap">
                                         <span v-if="ticket.ont_replacement_status === 'requested'" class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
@@ -144,6 +159,11 @@
                                         <div v-if="ticket.materials && ticket.materials.some(m => parseFloat(m.quantity_returned) > 0)" class="mt-1.5 p-1.5 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-900 flex items-center gap-1">
                                             <span class="font-bold">↩️ Sisa Dikembalikan:</span>
                                             <span>{{ ticket.materials.filter(m => parseFloat(m.quantity_returned) > 0).map(m => '+' + parseFloat(m.quantity_returned) + ' ' + (m.unit || m.material?.unit) + ' ' + m.material?.name).join(', ') }}</span>
+                                        </div>
+                                        <!-- Badge Material Bekas Bongkaran -->
+                                        <div v-if="ticket.dismantled_materials && ticket.dismantled_materials.length > 0" class="mt-1.5 p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-center gap-1">
+                                            <span class="font-bold">📦 Serah Terima Bekas:</span>
+                                            <span>{{ ticket.dismantled_materials.map(d => d.item_name + ' (' + parseFloat(d.quantity) + ' ' + d.unit + ' - ' + (d.handover_status === 'pending_handover' ? '⏳ Antre Gudang' : '✅ Diterima') + ')').join(', ') }}</span>
                                         </div>
                                     </div>
                                     <div v-else class="text-xs text-gray-400 italic">
@@ -319,6 +339,157 @@
                         ></textarea>
                     </div>
 
+                    <!-- ════════ SECTION 2B: TITIK KOORDINAT INSIDEN (MULTI-TIKOR) ════════ -->
+                    <div class="p-4 rounded-2xl bg-purple-50/60 border border-purple-200/80 space-y-3">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                                <label class="block text-xs font-black text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>📍</span> Titik Koordinat Insiden / Gangguan (Multi-Tikor)
+                                </label>
+                                <p class="text-[11px] text-purple-800">
+                                    Catat titik lokasi penting saat penanganan (bisa lebih dari 1 titik: Titik Kabel Putus, ODP, Tiang, Sambungan FO, Rumah Pelanggan).
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-2 self-start sm:self-auto">
+                                <button 
+                                    type="button" 
+                                    @click="getCurrentGpsLocation()" 
+                                    :disabled="isFetchingGps"
+                                    class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                >
+                                    <span v-if="isFetchingGps" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                                    <span v-else>📡</span>
+                                    <span>{{ isFetchingGps ? 'Mencari GPS...' : '📍 Ambil GPS Saya Sekarang' }}</span>
+                                </button>
+                                <button 
+                                    type="button" 
+                                    @click="addIncidentCoordinate('Titik Insiden Baru', 'incident_point')" 
+                                    class="px-3 py-1.5 bg-white hover:bg-purple-100 text-purple-800 border border-purple-300 rounded-xl text-xs font-bold shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
+                                >
+                                    <span>+ Tambah Tikor</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- GPS Status notification -->
+                        <div v-if="gpsStatusMessage" class="p-2 rounded-xl bg-purple-100/80 text-[11px] text-purple-900 font-medium flex items-center justify-between">
+                            <span>{{ gpsStatusMessage }}</span>
+                            <button type="button" @click="gpsStatusMessage = ''" class="text-purple-700 hover:text-purple-900 font-bold ml-2">✕</button>
+                        </div>
+
+                        <!-- Quick preset chips -->
+                        <div class="p-2.5 rounded-xl bg-white border border-purple-200">
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <span class="text-[9px] font-bold text-purple-900 uppercase tracking-wide">Preset Label Cepat:</span>
+                                <button 
+                                    type="button" 
+                                    v-for="chip in quickTikorChips" 
+                                    :key="chip.label"
+                                    @click="addIncidentCoordinate(chip.label, chip.category)"
+                                    class="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-purple-50 hover:bg-purple-200 text-purple-900 border border-purple-300 transition-colors shadow-2xs cursor-pointer"
+                                >
+                                    + {{ chip.label }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div v-if="incidentCoordinates.length === 0" class="p-3 rounded-xl bg-white/70 border border-dashed border-purple-200 text-center text-xs text-purple-700 italic">
+                            Belum ada titik koordinat insiden yang dicatat. Klik <b>"📍 Ambil GPS Saya Sekarang"</b> atau tombol preset di atas.
+                        </div>
+
+                        <!-- List of Incident Coordinates -->
+                        <div v-else class="space-y-2.5">
+                            <div 
+                                v-for="(coord, cIdx) in incidentCoordinates" 
+                                :key="coord.id || cIdx"
+                                class="p-3 bg-white rounded-xl border border-purple-200 shadow-2xs space-y-2"
+                            >
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2 flex-1">
+                                        <span class="w-5 h-5 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                            {{ cIdx + 1 }}
+                                        </span>
+                                        <input 
+                                            type="text" 
+                                            v-model="coord.label" 
+                                            placeholder="Label titik (cth: Titik Kabel Putus, ODP V-CTG 01...)"
+                                            class="text-xs font-bold text-gray-900 border-0 border-b border-gray-200 focus:border-purple-500 focus:ring-0 p-1 flex-1 bg-transparent"
+                                        />
+                                    </div>
+                                    <div class="flex items-center gap-1.5 shrink-0">
+                                        <button 
+                                            type="button" 
+                                            @click="getCurrentGpsLocation(coord)" 
+                                            title="Perbarui titik ini dengan GPS saat ini"
+                                            class="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg text-xs font-bold flex items-center gap-1 border border-purple-200 cursor-pointer"
+                                        >
+                                            <span>📡 GPS</span>
+                                        </button>
+                                        <a 
+                                            v-if="coord.latitude && coord.longitude" 
+                                            :href="`https://www.google.com/maps?q=${coord.latitude},${coord.longitude}`" 
+                                            target="_blank"
+                                            class="p-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-bold flex items-center gap-1 border border-emerald-200"
+                                            title="Buka titik ini di Google Maps"
+                                        >
+                                            <span>🗺️ Maps</span>
+                                        </a>
+                                        <button 
+                                            type="button" 
+                                            @click="removeIncidentCoordinate(cIdx)" 
+                                            class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg text-xs font-bold cursor-pointer"
+                                            title="Hapus Titik"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
+                                    <div class="sm:col-span-3">
+                                        <label class="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Latitude *</label>
+                                        <input 
+                                            type="number" 
+                                            step="any" 
+                                            v-model="coord.latitude" 
+                                            placeholder="-6.9123456" 
+                                            class="w-full text-xs rounded-lg border-gray-300 font-mono py-1 px-2.5 focus:border-purple-500"
+                                        />
+                                    </div>
+                                    <div class="sm:col-span-3">
+                                        <label class="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Longitude *</label>
+                                        <input 
+                                            type="number" 
+                                            step="any" 
+                                            v-model="coord.longitude" 
+                                            placeholder="106.8234567" 
+                                            class="w-full text-xs rounded-lg border-gray-300 font-mono py-1 px-2.5 focus:border-purple-500"
+                                        />
+                                    </div>
+                                    <div class="sm:col-span-3">
+                                        <label class="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Patokan Lokasi</label>
+                                        <input 
+                                            type="text" 
+                                            v-model="coord.address_reference" 
+                                            placeholder="Depan Gang Material / Tiang PLN" 
+                                            class="w-full text-xs rounded-lg border-gray-300 py-1 px-2.5 focus:border-purple-500"
+                                        />
+                                    </div>
+                                    <div class="sm:col-span-3">
+                                        <label class="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Catatan Teknis</label>
+                                        <input 
+                                            type="text" 
+                                            v-model="coord.notes" 
+                                            placeholder="Kabel putus terlindas truk..." 
+                                            class="w-full text-xs rounded-lg border-gray-300 py-1 px-2.5 focus:border-purple-500"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- ════════ SECTION 3: REDAMAN OPTIK ════════ -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -338,6 +509,257 @@
                                 placeholder="Contoh: -18.40 dBm"
                                 class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm" 
                             />
+                        </div>
+                    </div>
+
+                    <!-- ════════ SECTION 3B: MATERIAL SEBELUMNYA DI PELANGGAN & PERGANTIAN MATERIAL ════════ -->
+                    <div class="p-4 rounded-2xl bg-teal-50/60 border border-teal-200/80 space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                                <label class="block text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>🔄</span> Material Terpasang Sebelumnya di Pelanggan & Pergantian Bekas
+                                </label>
+                                <p class="text-[11px] text-teal-800">
+                                    Pilih material terpasang yang diganti (bisa <b>Ganti Seluruhnya</b> atau <b>Ganti Sebagian</b>). Material bekas wajib dibawa ke Gudang dan diserahterimakan dengan Gudang / Ka. Teknisi.
+                                </p>
+                            </div>
+                            <button 
+                                type="button" 
+                                @click="isAddInstalledMatModalOpen = !isAddInstalledMatModalOpen" 
+                                class="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+                            >
+                                <span>+ Tambah Item Terpasang Baru</span>
+                            </button>
+                        </div>
+
+                        <!-- Quick form tambah item terpasang baru jika ada hardware custom di rumah pelanggan -->
+                        <div v-if="isAddInstalledMatModalOpen" class="p-3.5 rounded-xl bg-white border border-teal-300 shadow-sm space-y-2 animate-fade-in-up">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-teal-900">📝 Daftarkan Item Terpasang di Pelanggan:</span>
+                                <button type="button" @click="isAddInstalledMatModalOpen = false" class="text-xs text-gray-400 hover:text-gray-600 font-bold cursor-pointer">✕ Tutup</button>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
+                                <div class="sm:col-span-5">
+                                    <input type="text" v-model="newInstalledMatForm.item_name" placeholder="Nama item (cth: S-Clamp 2 Pcs, Router Tambahan...)" class="w-full text-xs rounded-lg border-gray-300 py-1.5 px-2.5" />
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <input type="number" step="0.01" min="0.01" v-model="newInstalledMatForm.quantity" placeholder="Qty" class="w-full text-xs rounded-lg border-gray-300 py-1.5 text-center font-bold" />
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <select v-model="newInstalledMatForm.unit" class="w-full text-xs rounded-lg border-gray-300 py-1.5 px-2">
+                                        <option value="pcs">pcs</option>
+                                        <option value="meter">meter</option>
+                                        <option value="unit">unit</option>
+                                        <option value="set">set</option>
+                                    </select>
+                                </div>
+                                <div class="sm:col-span-3 flex gap-1">
+                                    <button type="button" @click="saveNewInstalledMaterial" :disabled="!newInstalledMatForm.item_name" class="flex-1 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg text-xs disabled:opacity-50 cursor-pointer">
+                                        Simpan Item
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Daftar Material Terpasang Aktif di Pelanggan -->
+                        <div class="space-y-2">
+                            <div class="text-[11px] font-bold text-teal-900 uppercase flex items-center justify-between">
+                                <span>Daftar Material Terpasang Saat Ini</span>
+                                <span class="text-gray-500 font-normal">({{ selectedTicket?.customer?.active_installed_materials?.length || 0 }} item)</span>
+                            </div>
+
+                            <div v-if="!selectedTicket?.customer?.active_installed_materials || selectedTicket.customer.active_installed_materials.length === 0" class="p-3 rounded-xl bg-white border border-teal-200 text-xs text-gray-400 italic text-center">
+                                Belum ada catatan material terpasang. Klik "+ Tambah Item Terpasang Baru" di atas.
+                            </div>
+
+                            <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <div 
+                                    v-for="inst in selectedTicket.customer.active_installed_materials" 
+                                    :key="inst.id"
+                                    class="p-3 rounded-xl bg-white border border-teal-100 shadow-2xs flex flex-col justify-between gap-2 transition-all hover:border-teal-300"
+                                >
+                                    <div>
+                                        <div class="flex items-center justify-between gap-1">
+                                            <span class="font-bold text-gray-900 text-xs truncate" :title="inst.item_name">{{ inst.item_name }}</span>
+                                            <span class="font-mono font-bold text-xs text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 shrink-0">
+                                                {{ parseFloat(inst.quantity) }} {{ inst.unit }}
+                                            </span>
+                                        </div>
+                                        <div v-if="inst.serial_number" class="text-[10px] font-mono text-gray-500 mt-0.5">
+                                            SN: {{ inst.serial_number }}
+                                        </div>
+                                        <div v-if="inst.notes" class="text-[10px] text-gray-400 italic truncate mt-0.5">
+                                            {{ inst.notes }}
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-between pt-1.5 border-t border-gray-100">
+                                        <span class="px-2 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider" :class="inst.status === 'partially_replaced' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'">
+                                            {{ inst.status === 'partially_replaced' ? 'Diganti Sebagian' : '✓ Terpasang' }}
+                                        </span>
+                                        <button 
+                                            type="button" 
+                                            @click="initReplacementForInstalledMaterial(inst)"
+                                            :class="materialReplacements.some(r => r.installed_material_id === inst.id) ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-teal-50 text-teal-700 hover:bg-teal-100 border-teal-200'"
+                                            class="px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                        >
+                                            <span>🔄</span>
+                                            <span>{{ materialReplacements.some(r => r.installed_material_id === inst.id) ? 'Sedang Diganti' : 'Ganti Material' }}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Antrean Pergantian Material (Form Detail Pergantian) -->
+                        <div v-if="materialReplacements.length > 0" class="pt-3 border-t border-teal-200/80 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-black text-amber-950 uppercase tracking-wide flex items-center gap-1.5">
+                                    <span>⚠️</span> Rincian Material yang Diganti & Dibawa ke Gudang ({{ materialReplacements.length }} Item)
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
+                                    Wajib Serah Terima Gudang / Ka. Teknisi
+                                </span>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div 
+                                    v-for="(rep, rIdx) in materialReplacements" 
+                                    :key="rIdx"
+                                    class="p-4 rounded-2xl bg-white border-2 border-amber-300 shadow-sm space-y-3"
+                                >
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div>
+                                            <div class="font-black text-gray-900 text-sm flex items-center gap-2">
+                                                <span>📦</span>
+                                                <span>{{ rep.item_name }}</span>
+                                                <span class="text-xs font-normal text-gray-500">(Total Terpasang: {{ rep.total_installed_qty }} {{ rep.unit }})</span>
+                                            </div>
+                                            <p class="text-[11px] text-amber-800 mt-0.5">
+                                                Pilih apakah material diganti seluruhnya (100%) atau sebagian (pemotongan/sambungan).
+                                            </p>
+                                        </div>
+                                        <button 
+                                            type="button" 
+                                            @click="removeReplacement(rIdx)" 
+                                            class="text-rose-500 hover:text-rose-700 text-xs font-bold p-1 rounded-lg hover:bg-rose-50 cursor-pointer"
+                                            title="Batalkan Pergantian Item Ini"
+                                        >
+                                            ✕ Batalkan
+                                        </button>
+                                    </div>
+
+                                    <!-- Pilihan Mode: Ganti Seluruhnya vs Ganti Sebagian -->
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        <label 
+                                            class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all"
+                                            :class="rep.replacement_type === 'full' ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-200 text-amber-950 font-bold' : 'border-gray-200 text-gray-700'"
+                                        >
+                                            <input 
+                                                type="radio" 
+                                                v-model="rep.replacement_type" 
+                                                value="full" 
+                                                @change="rep.quantity = rep.total_installed_qty; rep.replacement_quantity = rep.total_installed_qty"
+                                                class="text-amber-600 focus:ring-amber-500" 
+                                            />
+                                            <div>
+                                                <div class="text-xs">🔄 Ganti Seluruhnya (100%)</div>
+                                                <div class="text-[10px] text-gray-500 font-normal">Seluruh {{ rep.total_installed_qty }} {{ rep.unit }} ditarik/diganti unit baru</div>
+                                            </div>
+                                        </label>
+
+                                        <label 
+                                            class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all"
+                                            :class="rep.replacement_type === 'partial' ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-200 text-amber-950 font-bold' : 'border-gray-200 text-gray-700'"
+                                        >
+                                            <input 
+                                                type="radio" 
+                                                v-model="rep.replacement_type" 
+                                                value="partial" 
+                                                class="text-amber-600 focus:ring-amber-500" 
+                                            />
+                                            <div>
+                                                <div class="text-xs">✂️ Ganti Sebagian (Potong / Sambung)</div>
+                                                <div class="text-[10px] text-gray-500 font-normal">Hanya sebagian yang diganti, sisa tetap terpasang</div>
+                                            </div>
+                                        </label>
+                                    </div>
+
+                                    <!-- Input Qty, Kondisi Bekas, dan Alasan Kerusakan -->
+                                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs pt-1">
+                                        <div class="sm:col-span-3">
+                                            <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">
+                                                Jumlah Dibongkar *
+                                            </label>
+                                            <div class="flex items-center gap-1">
+                                                <input 
+                                                    type="number" 
+                                                    step="0.01" 
+                                                    min="0.01" 
+                                                    :max="rep.total_installed_qty"
+                                                    v-model="rep.quantity" 
+                                                    class="w-full text-xs rounded-xl border-gray-300 font-black text-center py-1.5 focus:border-amber-500"
+                                                    required 
+                                                />
+                                                <span class="text-gray-500 font-bold text-xs">{{ rep.unit }}</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="sm:col-span-4">
+                                            <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">
+                                                Kondisi Fisik Barang Bekas *
+                                            </label>
+                                            <select 
+                                                v-model="rep.condition" 
+                                                class="w-full text-xs rounded-xl border-gray-300 font-semibold py-1.5 px-2 focus:border-amber-500"
+                                                required
+                                            >
+                                                <option value="rusak_scrap">🔴 Rusak / Scrap (Afkir)</option>
+                                                <option value="normal_reusable">🟢 Layak Pakai (Bisa Dipakai Kembali)</option>
+                                                <option value="perlu_cek">🟡 Perlu Pengecekan / Servis Lab</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="sm:col-span-5">
+                                            <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">
+                                                Alasan Kerusakan / Penggantian *
+                                            </label>
+                                            <input 
+                                                type="text" 
+                                                v-model="rep.damage_reason" 
+                                                placeholder="Kabel putus terlindas / loss tinggi..." 
+                                                class="w-full text-xs rounded-xl border-gray-300 py-1.5 px-2.5 focus:border-amber-500"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <!-- Preset Chips Alasan Kerusakan -->
+                                    <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                                        <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wide">Pilihan Cepat Alasan:</span>
+                                        <button 
+                                            type="button" 
+                                            v-for="reason in quickDamageChips" 
+                                            :key="reason"
+                                            @click="rep.damage_reason = reason"
+                                            class="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-gray-100 hover:bg-amber-100 text-gray-700 hover:text-amber-900 border border-gray-200 transition-colors shadow-2xs cursor-pointer"
+                                        >
+                                            {{ reason }}
+                                        </button>
+                                    </div>
+
+                                    <!-- Info Serah Terima Notice -->
+                                    <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-center justify-between flex-wrap gap-2">
+                                        <div class="flex items-center gap-1.5">
+                                            <span>📦</span>
+                                            <span>Barang bekas (<b>{{ rep.quantity }} {{ rep.unit }}</b>) otomatis berstatus <b>Menunggu Serah Terima</b> ke Gudang / Ka. Teknisi.</span>
+                                        </div>
+                                        <span class="font-bold text-amber-800 text-[10px] bg-white px-2 py-0.5 rounded border border-amber-200">
+                                            Disposisi: {{ rep.condition === 'normal_reusable' ? '🟢 Restock Gudang' : '🔴 Scrap / Afkir' }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1156,6 +1578,132 @@ const ontRequestForm = useForm({
     requested_ont_notes: '',
 });
 
+// ── Multi-Tikor State & Logika ─────────────────────────────────
+const incidentCoordinates = ref([]);
+const isFetchingGps = ref(false);
+const gpsStatusMessage = ref('');
+
+const quickTikorChips = [
+    { label: 'Titik Kabel Putus / Terjepit', category: 'incident_point' },
+    { label: 'Titik ODP', category: 'odp_point' },
+    { label: 'Tiang Distribusi / Pole', category: 'pole_point' },
+    { label: 'Rumah Pelanggan', category: 'customer_point' },
+    { label: 'Titik Joint Closure / Splicing', category: 'closure_point' },
+];
+
+const addIncidentCoordinate = (label = 'Titik Insiden Baru', category = 'incident_point', lat = '', lng = '', notes = '') => {
+    incidentCoordinates.value.push({
+        id: Date.now() + Math.random(),
+        label,
+        category,
+        latitude: lat,
+        longitude: lng,
+        address_reference: '',
+        notes
+    });
+    saveDraft();
+};
+
+const removeIncidentCoordinate = (index) => {
+    incidentCoordinates.value.splice(index, 1);
+    saveDraft();
+};
+
+const getCurrentGpsLocation = (targetCoord = null) => {
+    if (!navigator.geolocation) {
+        alert('Perangkat Anda tidak mendukung fitur GPS Geolocation.');
+        return;
+    }
+    isFetchingGps.value = true;
+    gpsStatusMessage.value = 'Mendeteksi titik koordinat satelit GPS...';
+    
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            const lat = parseFloat(pos.coords.latitude.toFixed(7));
+            const lng = parseFloat(pos.coords.longitude.toFixed(7));
+            const acc = Math.round(pos.coords.accuracy);
+            isFetchingGps.value = false;
+            gpsStatusMessage.value = `✓ GPS Berhasil: ${lat}, ${lng} (Akurasi ±${acc}m)`;
+            
+            if (targetCoord) {
+                targetCoord.latitude = lat;
+                targetCoord.longitude = lng;
+                if (!targetCoord.notes) targetCoord.notes = `Akurasi GPS: ±${acc}m`;
+            } else {
+                addIncidentCoordinate('Titik Insiden Lapangan', 'incident_point', lat, lng, `Akurasi GPS: ±${acc}m`);
+            }
+            saveDraft();
+        },
+        (err) => {
+            isFetchingGps.value = false;
+            gpsStatusMessage.value = 'Gagal mengambil GPS: ' + err.message;
+            alert('Gagal mengambil titik koordinat GPS: ' + err.message);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+};
+
+// ── Material Terpasang & Pergantian Bekas State & Logika ────────
+const materialReplacements = ref([]);
+const isAddInstalledMatModalOpen = ref(false);
+const newInstalledMatForm = useForm({
+    item_name: '',
+    quantity: 1,
+    unit: 'pcs',
+    serial_number: '',
+    notes: ''
+});
+
+const quickDamageChips = [
+    'Kabel Putus / Terlindas Truk',
+    'Redaman Drop / Klosur Banjir',
+    'Konektor Pecah / Loss Tinggi',
+    'ONT Mati Total / Terkena Petir',
+    'Tergigit Hama Tikus / Terjepit',
+    'Penggantian Jalur / Sambung Ulang'
+];
+
+const initReplacementForInstalledMaterial = (installedItem) => {
+    const existing = materialReplacements.value.find(r => r.installed_material_id === installedItem.id);
+    if (existing) return;
+
+    materialReplacements.value.push({
+        installed_material_id: installedItem.id,
+        item_name: installedItem.item_name,
+        material_id: installedItem.material_id || null,
+        replacement_type: 'full',
+        total_installed_qty: parseFloat(installedItem.quantity),
+        quantity: parseFloat(installedItem.quantity),
+        unit: installedItem.unit || 'pcs',
+        condition: 'rusak_scrap',
+        damage_reason: 'Kabel / material putus atau rusak di lapangan',
+        replacement_material_id: installedItem.material_id || null,
+        replacement_quantity: parseFloat(installedItem.quantity),
+    });
+    saveDraft();
+};
+
+const removeReplacement = (index) => {
+    materialReplacements.value.splice(index, 1);
+    saveDraft();
+};
+
+const saveNewInstalledMaterial = () => {
+    if (!selectedTicket.value || !newInstalledMatForm.item_name) return;
+
+    newInstalledMatForm.post(`/pgs/${selectedTicket.value.id}/installed-materials`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            newInstalledMatForm.reset();
+            isAddInstalledMatModalOpen.value = false;
+            const fresh = props.tickets?.data?.find(t => t.id === selectedTicket.value?.id);
+            if (fresh) {
+                selectedTicket.value = fresh;
+            }
+        }
+    });
+};
+
 // Photo Previews
 const photoBeforePreview = ref(null);
 const photoAfterPreview = ref(null);
@@ -1297,6 +1845,8 @@ const saveDraft = () => {
                 unit: am.unit,
                 notes: am.notes,
             })),
+            incident_coordinates: incidentCoordinates.value,
+            material_replacements: materialReplacements.value,
             saved_at: new Date().toISOString(),
         };
         localStorage.setItem(getDraftKey(selectedTicket.value.id), JSON.stringify(draft));
@@ -1351,6 +1901,16 @@ const openReportModal = (ticket, ignoreDraft = false) => {
                 additionalMaterials.value = draft.additional_materials;
             }
 
+            if (Array.isArray(draft.incident_coordinates)) {
+                incidentCoordinates.value = draft.incident_coordinates;
+            } else if (Array.isArray(ticket.incident_coordinates)) {
+                incidentCoordinates.value = JSON.parse(JSON.stringify(ticket.incident_coordinates));
+            }
+
+            if (Array.isArray(draft.material_replacements)) {
+                materialReplacements.value = draft.material_replacements;
+            }
+
             if (draft.started_at && !draft.end_time) {
                 startedAt.value = draft.started_at;
                 isWorking.value = true;
@@ -1380,6 +1940,13 @@ const openReportModal = (ticket, ignoreDraft = false) => {
         reportForm.ont_replacement_notes = ticket.ont_replacement_notes || '';
 
         initPreparedMaterials(ticket);
+
+        if (Array.isArray(ticket.incident_coordinates) && ticket.incident_coordinates.length > 0) {
+            incidentCoordinates.value = JSON.parse(JSON.stringify(ticket.incident_coordinates));
+        } else {
+            incidentCoordinates.value = [];
+        }
+        materialReplacements.value = [];
 
         if (ticket.start_time && !ticket.end_time) {
             isWorking.value = true;
@@ -1585,6 +2152,8 @@ const submitReport = () => {
     reportForm.transform((data) => ({
         ...data,
         additional_materials: additionalMaterials.value.filter(am => am.material_id && parseFloat(am.quantity) > 0),
+        incident_coordinates: incidentCoordinates.value.filter(c => c.latitude && c.longitude),
+        material_replacements: materialReplacements.value.filter(r => r.item_name && parseFloat(r.quantity) > 0),
     })).post(`/pgs/${selectedTicket.value.id}/report`, {
         forceFormData: true,
         onSuccess: () => {

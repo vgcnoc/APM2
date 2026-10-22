@@ -56,7 +56,10 @@ class PgsController extends Controller
             'leadTechnician',
             'technicians',
             'materials.material',
-            'resolvedByUser'
+            'resolvedByUser',
+            'dismantledMaterials.material',
+            'dismantledMaterials.receiver',
+            'dismantledMaterials.technician'
         ]);
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
@@ -188,6 +191,9 @@ class PgsController extends Controller
             'oldOnt',
             'requestedByUser',
             'preparedByUser',
+            'dismantledMaterials.receiver',
+            'dismantledMaterials.technician',
+            'dismantledMaterials.material',
         ])->whereIn('status', ['escalated_to_lead', 'scheduled', 'in_progress']);
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
@@ -282,6 +288,11 @@ class PgsController extends Controller
             'oldOnt',
             'requestedByUser',
             'preparedByUser',
+            'customer.activeInstalledMaterials.material',
+            'customer.installedMaterials.material',
+            'dismantledMaterials.receiver',
+            'dismantledMaterials.technician',
+            'dismantledMaterials.material',
         ])->whereIn('status', ['scheduled', 'in_progress', 'completed']);
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
@@ -312,6 +323,14 @@ class PgsController extends Controller
         }
 
         $tickets = $query->latest('id')->paginate($request->per_page ?? 15)->withQueryString();
+
+        // Pastikan material terpasang di pelanggan telah terisi secara cerdas
+        foreach ($tickets as $t) {
+            if ($t->customer) {
+                \App\Services\CustomerMaterialService::getOrSeedInstalledMaterials($t->customer);
+                $t->customer->load('activeInstalledMaterials.material');
+            }
+        }
 
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->get();
         $materialTransactions = RestockStockService::getRestockTransactions();
@@ -666,6 +685,22 @@ class PgsController extends Controller
             'materials.*.material_id' => 'nullable|exists:materials,id',
             'materials.*.quantity_used' => 'nullable|numeric|min:0',
             'materials.*.quantity_returned' => 'nullable|numeric|min:0',
+            'incident_coordinates' => 'nullable|array',
+            'incident_coordinates.*.label' => 'nullable|string|max:100',
+            'incident_coordinates.*.latitude' => 'nullable|numeric',
+            'incident_coordinates.*.longitude' => 'nullable|numeric',
+            'incident_coordinates.*.address_reference' => 'nullable|string',
+            'incident_coordinates.*.notes' => 'nullable|string',
+            'material_replacements' => 'nullable|array',
+            'material_replacements.*.installed_material_id' => 'nullable|integer',
+            'material_replacements.*.item_name' => 'required|string|max:255',
+            'material_replacements.*.replacement_type' => 'required|in:full,partial',
+            'material_replacements.*.quantity' => 'required|numeric|min:0.01',
+            'material_replacements.*.unit' => 'nullable|string|max:50',
+            'material_replacements.*.condition' => 'required|in:rusak_scrap,normal_reusable,perlu_cek',
+            'material_replacements.*.damage_reason' => 'nullable|string|max:255',
+            'material_replacements.*.replacement_material_id' => 'nullable|integer',
+            'material_replacements.*.replacement_quantity' => 'nullable|numeric|min:0',
             'additional_materials' => 'nullable|array',
             'additional_materials.*.material_id' => 'required|exists:materials,id',
             'additional_materials.*.quantity' => 'required|numeric|min:0.01',
@@ -874,6 +909,24 @@ class PgsController extends Controller
             }
         }
 
+        // 4. Handle Pergantian Material Terpasang di Pelanggan (Seluruhnya vs Sebagian)
+        $replacementCount = 0;
+        if (!empty($request->material_replacements) && is_array($request->material_replacements)) {
+            foreach ($request->material_replacements as $rep) {
+                if (!empty($rep['item_name']) && (float) ($rep['quantity'] ?? 0) > 0) {
+                    \App\Services\CustomerMaterialService::processMaterialReplacement(
+                        ticketType: 'pgs',
+                        ticketId: $pgs->id,
+                        ticketNumber: $pgs->ticket_number,
+                        customer: $pgs->customer,
+                        technician: auth()->user(),
+                        replacementData: $rep
+                    );
+                    $replacementCount++;
+                }
+            }
+        }
+
         $pgs->update([
             'status' => 'completed',
             'action_taken' => $validated['action_taken'],
@@ -884,6 +937,7 @@ class PgsController extends Controller
             'photo_before' => $photoBeforePath,
             'photo_after' => $photoAfterPath,
             'resolution_notes' => $validated['resolution_notes'] ?? null,
+            'incident_coordinates' => $validated['incident_coordinates'] ?? $pgs->incident_coordinates,
             'resolved_by' => auth()->id(),
             'resolved_at' => now(),
         ]);
@@ -905,6 +959,9 @@ class PgsController extends Controller
         }
         if ($retCount > 0) {
             $msg .= ' Sebanyak ' . $retCount . ' jenis kelebihan material otomatis dikembalikan ke stok gudang (Transaksi IN-PGS-RET).';
+        }
+        if ($replacementCount > 0) {
+            $msg .= ' Sebanyak ' . $replacementCount . ' jenis material bekas bongkaran telah dicatat dan masuk antrean serah terima ke Gudang / Ka. Teknisi.';
         }
 
         return redirect()->back()->with('success', $msg);
@@ -1158,7 +1215,8 @@ class PgsController extends Controller
             'leadTechnician',
             'technicians',
             'materials.material',
-            'resolvedByUser'
+            'resolvedByUser',
+            'dismantledMaterials.material'
         ]);
 
         return view('print.pgs-report', [
@@ -1291,6 +1349,66 @@ class PgsController extends Controller
         );
 
         return redirect()->back()->with('success', 'Pergantian ONT dibatalkan. Unit ONT telah dikembalikan ke Inventory Gudang.');
+    }
+
+    /**
+     * Tambah material terpasang baru di pelanggan
+     */
+    public function storeInstalledMaterial(Request $request, PgsTicket $pgs)
+    {
+        $validated = $request->validate([
+            'item_name' => 'required|string|max:255',
+            'material_id' => 'nullable|exists:materials,id',
+            'quantity' => 'required|numeric|min:0.01',
+            'unit' => 'required|string|max:50',
+            'serial_number' => 'nullable|string|max:100',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $item = \App\Models\CustomerInstalledMaterial::create([
+            'customer_id' => $pgs->customer_id,
+            'material_id' => $validated['material_id'] ?? null,
+            'item_name' => $validated['item_name'],
+            'quantity' => $validated['quantity'],
+            'unit' => $validated['unit'],
+            'serial_number' => $validated['serial_number'] ?? null,
+            'installed_at' => now(),
+            'installation_source' => 'pgs_maintenance',
+            'status' => 'installed',
+            'notes' => $validated['notes'] ?? ('Ditambahkan saat penanganan PGS #' . $pgs->ticket_number),
+        ]);
+
+        return redirect()->back()->with('success', "Material terpasang {$item->item_name} berhasil didaftarkan di pelanggan.");
+    }
+
+    /**
+     * Konfirmasi serah terima material bongkaran oleh Ka. Teknisi atau Orang Gudang
+     */
+    public function confirmDismantleHandover(Request $request, PgsTicket $pgs, \App\Models\CustomerMaterialDismantle $dismantle)
+    {
+        $user = $request->user();
+        $isLead = $user->hasRole('kepala teknisi') || $user->can('pgs_manage');
+        
+        $validated = $request->validate([
+            'disposition' => 'required|in:scrap,restocked,reconditioned',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        \App\Services\CustomerMaterialService::confirmHandover(
+            dismantle: $dismantle,
+            receiver: $user,
+            disposition: $validated['disposition'],
+            notes: $validated['notes'] ?? null,
+            isLeadTechnician: $isLead
+        );
+
+        $dispMsg = match ($validated['disposition']) {
+            'restocked' => 'Material layak pakai telah diterima dan otomatis ditambahkan kembali ke stok gudang!',
+            'scrap' => 'Material rusak/afkir telah diterima dan dicatat sebagai scrap.',
+            default => 'Material telah diterima untuk proses servis/rekondisi.',
+        };
+
+        return redirect()->back()->with('success', "Serah terima material bongkaran {$dismantle->item_name} berhasil diverifikasi. {$dispMsg}");
     }
 }
 
