@@ -18,6 +18,7 @@ use App\Services\RestockStockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 
@@ -1060,13 +1061,20 @@ class PgsController extends Controller
                 if ($targetOnt) {
                     $ontUpdate = [
                         'rx_power' => $parsedRx,
-                        'last_rx_updated_at' => now(),
-                        'last_rx_ticket_ref' => $pgs->ticket_number,
-                        'last_rx_notes' => 'Diperbarui pasca penanganan tiket ' . $pgs->ticket_number . ' (' . ($validated['action_taken'] ?? 'Selesai') . ')',
                     ];
 
+                    if (Schema::hasColumn('onts', 'last_rx_updated_at')) {
+                        $ontUpdate['last_rx_updated_at'] = now();
+                    }
+                    if (Schema::hasColumn('onts', 'last_rx_ticket_ref')) {
+                        $ontUpdate['last_rx_ticket_ref'] = $pgs->ticket_number;
+                    }
+                    if (Schema::hasColumn('onts', 'last_rx_notes')) {
+                        $ontUpdate['last_rx_notes'] = 'Diperbarui pasca penanganan tiket ' . $pgs->ticket_number . ' (' . ($validated['action_taken'] ?? 'Selesai') . ')';
+                    }
+
                     // Pertahankan data acuan awal saat instalasi jika belum pernah terisi
-                    if (empty($targetOnt->initial_rx_power) && !empty($targetOnt->rx_power)) {
+                    if (Schema::hasColumn('onts', 'initial_rx_power') && empty($targetOnt->initial_rx_power) && !empty($targetOnt->rx_power)) {
                         $ontUpdate['initial_rx_power'] = $targetOnt->rx_power;
                     }
 
