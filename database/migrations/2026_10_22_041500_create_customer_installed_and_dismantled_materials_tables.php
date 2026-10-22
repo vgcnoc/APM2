@@ -40,7 +40,11 @@ return new class extends Migration
                 $table->unsignedBigInteger('ticket_id')->nullable();
                 $table->string('ticket_number', 50)->nullable();
                 $table->foreignId('customer_id')->constrained('customers')->cascadeOnDelete();
-                $table->foreignId('customer_installed_material_id')->nullable()->constrained('customer_installed_materials')->nullOnDelete();
+                $table->unsignedBigInteger('customer_installed_material_id')->nullable();
+                $table->foreign('customer_installed_material_id', 'fk_cmd_inst_mat')
+                      ->references('id')
+                      ->on('customer_installed_materials')
+                      ->nullOnDelete();
                 $table->foreignId('material_id')->nullable()->constrained('materials')->nullOnDelete();
                 $table->string('item_name', 255);
                 $table->string('replacement_type', 30)->default('full'); // full (seluruhnya), partial (sebagian), dismantle_only
@@ -67,7 +71,11 @@ return new class extends Migration
                 // reconditioned: dalam proses perbaikan/servis lab
                 $table->string('disposition', 50)->nullable(); 
 
-                $table->foreignId('material_transaction_id')->nullable()->constrained('material_transactions')->nullOnDelete();
+                $table->unsignedBigInteger('material_transaction_id')->nullable();
+                $table->foreign('material_transaction_id', 'fk_cmd_trx')
+                      ->references('id')
+                      ->on('material_transactions')
+                      ->nullOnDelete();
                 $table->timestamps();
 
                 $table->index('customer_id');
