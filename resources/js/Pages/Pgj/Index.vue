@@ -111,7 +111,7 @@
                             <tr class="bg-gray-50/70 border-b border-gray-100 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 <th class="p-4">No. Tiket & Segmen</th>
                                 <th class="p-4">Titik Infrastruktur & Dampak</th>
-                                <th class="p-4">Kerusakan & Indikasi OTDR</th>
+                                <th class="p-4">Kerusakan & Indikasi Masalah</th>
                                 <th class="p-4">Status & Alur Penanganan</th>
                                 <th class="p-4 text-center">Aksi Admin</th>
                             </tr>
@@ -182,9 +182,6 @@
                                     <p class="text-xs text-red-600 font-medium mt-1 line-clamp-2" :title="ticket.reported_issue">
                                         "{{ ticket.reported_issue }}"
                                     </p>
-                                    <div v-if="ticket.otdr_distance" class="mt-1.5 text-[11px] font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 inline-block">
-                                        📍 Jarak OTDR: {{ ticket.otdr_distance }}
-                                    </div>
                                     <div v-if="ticket.admin_notes" class="mt-1 text-[11px] text-gray-600 bg-gray-50 p-1.5 rounded border border-gray-100">
                                         <span class="font-bold text-gray-700">Tindakan NOC:</span> {{ ticket.admin_notes }}
                                     </div>
@@ -447,28 +444,16 @@
                         </div>
                     </div>
 
-                    <!-- Titik Lokasi & Jarak Putus OTDR -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Titik Lokasi / Alamat Kerusakan <span class="text-red-500">*</span></label>
-                            <input 
-                                type="text" 
-                                v-model="createForm.location_name" 
-                                placeholder="Contoh: Jl. Raya Bantargebang Km 7, Depan Tiang No. 12"
-                                class="w-full rounded-xl border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-sm" 
-                                required
-                            />
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Estimasi Jarak OTDR / Titik Putus</label>
-                            <input 
-                                type="text" 
-                                v-model="createForm.otdr_distance" 
-                                placeholder="Contoh: 1.45 km dari OLT / Span tiang 8-9"
-                                class="w-full rounded-xl border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-sm" 
-                            />
-                        </div>
+                    <!-- Titik Lokasi / Alamat Kerusakan -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Titik Lokasi / Alamat Kerusakan <span class="text-red-500">*</span></label>
+                        <input 
+                            type="text" 
+                            v-model="createForm.location_name" 
+                            placeholder="Contoh: Jl. Raya Bantargebang Km 7, Depan Tiang No. 12"
+                            class="w-full rounded-xl border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-sm" 
+                            required
+                        />
                     </div>
 
                     <!-- Kategori, Sumber Laporan & Prioritas -->
@@ -705,7 +690,6 @@
                         
                         <div v-if="detailTicket?.odc && detailTicket?.segment_type !== 'backbone'" class="text-xs text-gray-700">ODC Terkait: <strong>{{ detailTicket.odc.name }}</strong> ({{ detailTicket.odc.location || '-' }})</div>
                         <div v-if="detailTicket?.odp && detailTicket?.segment_type !== 'backbone'" class="text-xs text-gray-700">ODP Terkait: <strong>{{ detailTicket.odp.name }}</strong> ({{ detailTicket.odp.address || '-' }})</div>
-                        <div v-if="detailTicket?.otdr_distance" class="text-xs font-mono text-indigo-700">Jarak OTDR: {{ detailTicket.otdr_distance }}</div>
                     </div>
 
                     <!-- Kerusakan & Penanganan -->
