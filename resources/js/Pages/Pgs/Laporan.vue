@@ -223,1307 +223,676 @@
 
         <!-- ════════════ MODAL INPUT LAPORAN PENANGANAN PGS ════════════ -->
         <div v-if="showReportModal" class="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-            <div class="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-gray-100 overflow-hidden animate-fade-in-up my-auto flex flex-col max-h-[92vh]">
+            <div class="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-gray-100 flex flex-col max-h-[92vh] overflow-hidden my-auto animate-fade-in-up">
                 <!-- Modal Header -->
-                <div class="px-6 py-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex justify-between items-center shrink-0">
+                <div class="px-5 py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex justify-between items-center shrink-0">
                     <div>
                         <div class="flex items-center gap-2">
-                            <h3 class="font-black text-lg">Laporan Penanganan Lapangan PGS</h3>
+                            <h3 class="font-black text-base sm:text-lg">Laporan Penanganan Lapangan PGS</h3>
                             <span class="px-2 py-0.5 rounded-md bg-white/20 text-white font-mono text-xs font-bold">#{{ selectedTicket?.ticket_number }}</span>
                         </div>
-                        <p class="text-xs text-emerald-100 mt-0.5">Catat tindakan perbaikan, redaman optik, rekonsiliasi material & dokumentasi</p>
+                        <p class="text-[11px] text-emerald-100 mt-0.5">Alur simpel 3 langkah: Tindakan & Tikor → Material & Bekal → Foto & Selesai</p>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <span v-if="hasSavedDraft" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-400/20 text-amber-200 border border-amber-300/30 text-[11px] font-medium" title="Data tersimpan otomatis di browser ini">
-                            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                            Draft Otomatis Tersimpan
+                    <div class="flex items-center gap-2">
+                        <span v-if="hasSavedDraft" class="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200 border border-amber-300/30 text-[10px] font-medium">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                            Draft Tersimpan
                         </span>
                         <button @click="closeReportModal" class="text-white/80 hover:text-white text-2xl font-bold leading-none p-1 rounded-lg hover:bg-white/10 transition-colors">&times;</button>
                     </div>
                 </div>
 
-                <form @submit.prevent="submitReport" class="p-6 space-y-6 overflow-y-auto flex-1">
-                    <!-- Alert Draft Restored -->
-                    <div v-if="hasSavedDraft" class="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center justify-between text-xs">
-                        <div class="flex items-center gap-2">
-                            <span class="text-base">💾</span>
-                            <span><strong>Draft Terdeteksi:</strong> Formulir dan timer pengerjaan telah dimuat otomatis dari sesi sebelumnya.</span>
+                <!-- Alert Draft Restored (Compact) -->
+                <div v-if="hasSavedDraft" class="px-5 py-2 bg-amber-50 border-b border-amber-200 text-amber-900 flex items-center justify-between text-xs shrink-0">
+                    <span class="flex items-center gap-1.5 font-medium">
+                        <span>💾</span> <b>Draft Aktif:</b> Data dan timer otomatis dimuat dari sesi sebelumnya.
+                    </span>
+                    <button type="button" @click="clearDraft" class="text-rose-600 hover:text-rose-800 font-bold hover:underline text-[11px] cursor-pointer">
+                        ✕ Buang Draft
+                    </button>
+                </div>
+
+                <!-- Ringkasan Pelanggan (Compact Header Bar) -->
+                <div class="px-5 py-2.5 bg-emerald-50/60 border-b border-emerald-100/80 text-xs shrink-0">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 truncate">
+                            <span class="font-black text-gray-900 text-sm truncate">{{ selectedTicket?.customer?.name }}</span>
+                            <span class="px-1.5 py-0.5 rounded bg-white text-gray-700 border text-[10px] font-mono shrink-0">{{ selectedTicket?.customer?.customer_code }}</span>
+                            <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold shrink-0">Area: {{ selectedTicket?.area?.name || selectedTicket?.customer?.area_model?.name || '-' }}</span>
                         </div>
-                        <button type="button" @click="clearDraft" class="text-rose-600 hover:text-rose-800 font-bold hover:underline shrink-0 text-xs">
-                            Buang Draft
+                        <button type="button" @click="showCustomerDetail = !showCustomerDetail" class="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-0.5 shrink-0 cursor-pointer">
+                            <span>{{ showCustomerDetail ? 'Tutup Detail ▴' : 'Detail Pelanggan ▾' }}</span>
                         </button>
                     </div>
-
-                    <!-- Ringkasan Keluhan & Pelanggan -->
-                    <div class="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100 text-xs text-emerald-950 space-y-2">
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <div class="font-bold text-sm text-gray-900 flex items-center gap-2">
-                                <span>{{ selectedTicket?.customer?.name }}</span>
-                                <span class="px-2 py-0.5 rounded bg-white text-gray-700 border text-xs font-mono font-normal">{{ selectedTicket?.customer?.customer_code }}</span>
-                            </div>
-                            <span class="px-2.5 py-1 rounded-lg bg-emerald-100/80 font-bold text-emerald-800 text-[11px]">
-                                Area: {{ selectedTicket?.area?.name || selectedTicket?.customer?.area_model?.name || '-' }}
-                            </span>
-                        </div>
-                        <div class="text-gray-700">
-                            <strong>Temuan Gangguan:</strong> <span class="text-red-700 font-medium">"{{ selectedTicket?.reported_issue }}"</span>
-                        </div>
-                        <div v-if="selectedTicket?.customer?.ont?.odp?.name" class="text-gray-600">
-                            <strong>ODP:</strong> {{ selectedTicket.customer.ont.odp.name }} · <strong>Alamat:</strong> {{ selectedTicket.customer?.address || '-' }}
-                        </div>
-                        <div v-if="selectedTicket?.lead_notes" class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-medium">
-                            <span class="font-bold text-amber-800">Instruksi Ka. Teknisi:</span> "{{ selectedTicket?.lead_notes }}"
-                        </div>
-
-                        <!-- Quick Workflow Status Badges -->
-                        <div class="pt-2 border-t border-emerald-200/60 flex flex-wrap items-center gap-2">
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white text-purple-900 border border-purple-200 shadow-2xs">
-                                <span>📍</span> {{ incidentCoordinates.length }} Titik Koordinat Insiden
-                            </span>
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white text-teal-900 border border-teal-200 shadow-2xs">
-                                <span>📦</span> {{ activeCustomerMaterials.length }} Material Terpasang di Pelanggan
-                            </span>
-                            <span v-if="materialReplacements.length > 0" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse shadow-2xs">
-                                <span>🔄</span> {{ materialReplacements.length }} Item Akan Diganti & Diserahterimakan ke Gudang
-                            </span>
-                        </div>
+                    <!-- Detail Pelanggan Expandable -->
+                    <div v-if="showCustomerDetail" class="mt-2 pt-2 border-t border-emerald-200/60 text-gray-700 space-y-1 animate-fade-in-up">
+                        <div><strong>Temuan Gangguan:</strong> <span class="text-red-700 font-medium">"{{ selectedTicket?.reported_issue }}"</span></div>
+                        <div v-if="selectedTicket?.customer?.ont?.odp?.name"><strong>ODP:</strong> {{ selectedTicket.customer.ont.odp.name }} · <strong>Alamat:</strong> {{ selectedTicket.customer?.address || '-' }}</div>
+                        <div v-if="selectedTicket?.lead_notes" class="text-amber-900 font-medium"><strong>Instruksi Ka. Teknisi:</strong> "{{ selectedTicket?.lead_notes }}"</div>
                     </div>
-
-                    <!-- ════════ SECTION 1: JAM MULAI PENGERJAAN & LIVE STOPWATCH ════════ -->
-                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider">
-                                    ⏱️ 1. Jam Mulai Pengerjaan Lapangan
-                                </label>
-                                <p class="text-[11px] text-gray-500">Tekan tombol mulai saat Anda tiba di lokasi pelanggan. Waktu akan terus berjalan meski keluar aplikasi.</p>
-                            </div>
-                            <!-- Live Running Stopwatch Indicator -->
-                            <div v-if="isWorking" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 self-start sm:self-auto">
-                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-ping"></span>
-                                <span class="text-xs font-bold uppercase tracking-wider">Sedang Berjalan:</span>
-                                <span class="font-mono text-sm font-black text-emerald-950">{{ formatSecondsToClock(elapsedSeconds) }}</span>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center pt-1">
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <input 
-                                        type="time" 
-                                        v-model="reportForm.start_time" 
-                                        :readonly="isWorking"
-                                        class="flex-1 rounded-xl border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm font-semibold text-gray-800 bg-white" 
-                                        required
-                                    />
-                                    <button 
-                                        type="button" 
-                                        @click="startWork" 
-                                        :class="isWorking ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-emerald-600 hover:bg-emerald-700'"
-                                        class="px-4 py-2 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 shrink-0"
-                                    >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        <span>{{ reportForm.start_time ? 'Reset Jam Mulai' : 'Mulai Pengerjaan' }}</span>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="text-[11px] text-gray-500 italic">
-                                <span v-if="reportForm.start_time" class="text-emerald-700 font-semibold">
-                                    ✓ Dimulai pukul <strong>{{ reportForm.start_time }} WIB</strong>. Data isian otomatis tersimpan aman di perangkat Anda.
-                                </span>
-                                <span v-else class="text-amber-700">
-                                    * Klik tombol "Mulai Pengerjaan" saat penanganan dimulai.
-                                </span>
-                            </div>
-                        </div>
+                    <!-- Quick Badges Row -->
+                    <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span class="px-2 py-0.5 rounded-md bg-white text-purple-900 border border-purple-200 text-[10px] font-bold shadow-2xs">
+                            📍 {{ incidentCoordinates.length }} Tikor
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-white text-teal-900 border border-teal-200 text-[10px] font-bold shadow-2xs">
+                            📦 {{ activeCustomerMaterials.length }} Terpasang
+                        </span>
+                        <span v-if="materialReplacements.length > 0" class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold animate-pulse shadow-2xs">
+                            🔄 {{ materialReplacements.length }} Diganti
+                        </span>
+                        <span v-if="countReturnedMaterials > 0" class="px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 border border-blue-300 text-[10px] font-bold shadow-2xs">
+                            ↩️ {{ countReturnedMaterials }} Retur
+                        </span>
                     </div>
+                </div>
 
-                    <!-- ════════ SECTION 2: TINDAKAN PERBAIKAN ════════ -->
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">
-                            Tindakan Perbaikan Lapangan <span class="text-red-500">*</span>
-                        </label>
-                        <textarea 
-                            v-model="reportForm.action_taken" 
-                            rows="2" 
-                            placeholder="Contoh: Pemotongan kabel dropcore yang tertekuk di tiang ODP, splicing ulang core 1 ODP-BTR-04, dan penggantian adapter SC-UPC."
-                            class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm" 
-                            required
-                        ></textarea>
+                <!-- ════════ 3-STEP TAB NAVIGATION BAR ════════ -->
+                <div class="px-5 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-1.5 shrink-0">
+                    <div class="grid grid-cols-3 gap-1.5 w-full">
+                        <button 
+                            type="button" 
+                            @click="activeReportTab = 'tindakan'"
+                            :class="activeReportTab === 'tindakan' ? 'bg-emerald-600 text-white shadow-sm font-bold' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 font-medium'"
+                            class="py-2 px-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center truncate"
+                        >
+                            <span>🛠️</span>
+                            <span class="truncate">1. Tindakan & Tikor</span>
+                        </button>
+
+                        <button 
+                            type="button" 
+                            @click="activeReportTab = 'material'"
+                            :class="activeReportTab === 'material' ? 'bg-emerald-600 text-white shadow-sm font-bold' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 font-medium'"
+                            class="py-2 px-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center truncate relative"
+                        >
+                            <span>📦</span>
+                            <span class="truncate">2. Material & Bekal</span>
+                            <span v-if="materialReplacements.length > 0" class="w-2 h-2 rounded-full bg-amber-400 absolute top-1 right-1"></span>
+                        </button>
+
+                        <button 
+                            type="button" 
+                            @click="activeReportTab = 'selesai'"
+                            :class="activeReportTab === 'selesai' ? 'bg-emerald-600 text-white shadow-sm font-bold' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 font-medium'"
+                            class="py-2 px-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center truncate"
+                        >
+                            <span>📸</span>
+                            <span class="truncate">3. Foto & Selesai</span>
+                        </button>
                     </div>
+                </div>
 
-                    <!-- ════════ SECTION 2B: TITIK KOORDINAT INSIDEN (MULTI-TIKOR) ════════ -->
-                    <div class="p-4 rounded-2xl bg-purple-50/60 border border-purple-200/80 space-y-3">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div>
-                                <label class="block text-xs font-black text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
-                                    <span>📍</span> Titik Koordinat Insiden / Gangguan (Multi-Tikor)
-                                </label>
-                                <p class="text-[11px] text-purple-800">
-                                    Catat titik lokasi penting saat penanganan (bisa lebih dari 1 titik: Titik Kabel Putus, ODP, Tiang, Sambungan FO, Rumah Pelanggan).
-                                </p>
-                            </div>
-                            <div class="flex items-center gap-2 self-start sm:self-auto">
-                                <button 
-                                    type="button" 
-                                    @click="getCurrentGpsLocation()" 
-                                    :disabled="isFetchingGps"
-                                    class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                                >
-                                    <span v-if="isFetchingGps" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                                    <span v-else>📡</span>
-                                    <span>{{ isFetchingGps ? 'Mencari GPS...' : '📍 Ambil GPS Saya Sekarang' }}</span>
-                                </button>
-                                <button 
-                                    type="button" 
-                                    @click="addIncidentCoordinate('Titik Insiden Baru', 'incident_point')" 
-                                    class="px-3 py-1.5 bg-white hover:bg-purple-100 text-purple-800 border border-purple-300 rounded-xl text-xs font-bold shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
-                                >
-                                    <span>+ Tambah Tikor</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- GPS Status notification -->
-                        <div v-if="gpsStatusMessage" class="p-2 rounded-xl bg-purple-100/80 text-[11px] text-purple-900 font-medium flex items-center justify-between">
-                            <span>{{ gpsStatusMessage }}</span>
-                            <button type="button" @click="gpsStatusMessage = ''" class="text-purple-700 hover:text-purple-900 font-bold ml-2">✕</button>
-                        </div>
-
-                        <!-- Quick preset chips -->
-                        <div class="p-2.5 rounded-xl bg-white border border-purple-200">
-                            <div class="flex flex-wrap items-center gap-1.5">
-                                <span class="text-[9px] font-bold text-purple-900 uppercase tracking-wide">Preset Label Cepat:</span>
-                                <button 
-                                    type="button" 
-                                    v-for="chip in quickTikorChips" 
-                                    :key="chip.label"
-                                    @click="addIncidentCoordinate(chip.label, chip.category)"
-                                    class="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-purple-50 hover:bg-purple-200 text-purple-900 border border-purple-300 transition-colors shadow-2xs cursor-pointer"
-                                >
-                                    + {{ chip.label }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Empty State -->
-                        <div v-if="incidentCoordinates.length === 0" class="p-3 rounded-xl bg-white/70 border border-dashed border-purple-200 text-center text-xs text-purple-700 italic">
-                            Belum ada titik koordinat insiden yang dicatat. Klik <b>"📍 Ambil GPS Saya Sekarang"</b> atau tombol preset di atas.
-                        </div>
-
-                        <!-- List of Incident Coordinates -->
-                        <div v-else class="space-y-2.5">
-                            <div 
-                                v-for="(coord, cIdx) in incidentCoordinates" 
-                                :key="coord.id || cIdx"
-                                class="p-3 bg-white rounded-xl border border-purple-200 shadow-2xs space-y-2"
-                            >
-                                <div class="flex items-center justify-between gap-2">
-                                    <div class="flex items-center gap-2 flex-1">
-                                        <span class="w-5 h-5 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px] flex items-center justify-center shrink-0">
-                                            {{ cIdx + 1 }}
-                                        </span>
-                                        <input 
-                                            type="text" 
-                                            v-model="coord.label" 
-                                            placeholder="Label titik (cth: Titik Kabel Putus, ODP V-CTG 01...)"
-                                            class="text-xs font-bold text-gray-900 border-0 border-b border-gray-200 focus:border-purple-500 focus:ring-0 p-1 flex-1 bg-transparent"
-                                        />
-                                    </div>
-                                    <div class="flex items-center gap-1.5 shrink-0">
-                                        <button 
-                                            type="button" 
-                                            @click="getCurrentGpsLocation(coord)" 
-                                            title="Perbarui titik ini dengan GPS saat ini"
-                                            class="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg text-xs font-bold flex items-center gap-1 border border-purple-200 cursor-pointer"
-                                        >
-                                            <span>📡 GPS</span>
-                                        </button>
-                                        <a 
-                                            v-if="coord.latitude && coord.longitude" 
-                                            :href="`https://www.google.com/maps?q=${coord.latitude},${coord.longitude}`" 
-                                            target="_blank"
-                                            class="p-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-bold flex items-center gap-1 border border-emerald-200"
-                                            title="Buka titik ini di Google Maps"
-                                        >
-                                            <span>🗺️ Maps</span>
-                                        </a>
-                                        <button 
-                                            type="button" 
-                                            @click="removeIncidentCoordinate(cIdx)" 
-                                            class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg text-xs font-bold cursor-pointer"
-                                            title="Hapus Titik"
-                                        >
-                                            ✕
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
-                                    <div class="sm:col-span-3">
-                                        <label class="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Latitude *</label>
-                                        <input 
-                                            type="number" 
-                                            step="any" 
-                                            v-model="coord.latitude" 
-                                            placeholder="-6.9123456" 
-                                            class="w-full text-xs rounded-lg border-gray-300 font-mono py-1 px-2.5 focus:border-purple-500"
-                                        />
-                                    </div>
-                                    <div class="sm:col-span-3">
-                                        <label class="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Longitude *</label>
-                                        <input 
-                                            type="number" 
-                                            step="any" 
-                                            v-model="coord.longitude" 
-                                            placeholder="106.8234567" 
-                                            class="w-full text-xs rounded-lg border-gray-300 font-mono py-1 px-2.5 focus:border-purple-500"
-                                        />
-                                    </div>
-                                    <div class="sm:col-span-3">
-                                        <label class="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Patokan Lokasi</label>
-                                        <input 
-                                            type="text" 
-                                            v-model="coord.address_reference" 
-                                            placeholder="Depan Gang Material / Tiang PLN" 
-                                            class="w-full text-xs rounded-lg border-gray-300 py-1 px-2.5 focus:border-purple-500"
-                                        />
-                                    </div>
-                                    <div class="sm:col-span-3">
-                                        <label class="block text-[9px] font-bold text-gray-500 uppercase mb-0.5">Catatan Teknis</label>
-                                        <input 
-                                            type="text" 
-                                            v-model="coord.notes" 
-                                            placeholder="Kabel putus terlindas truk..." 
-                                            class="w-full text-xs rounded-lg border-gray-300 py-1 px-2.5 focus:border-purple-500"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ════════ SECTION 3: REDAMAN OPTIK ════════ -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Redaman Optik Sebelum (dBm)</label>
-                            <input 
-                                type="text" 
-                                v-model="reportForm.optical_power_before" 
-                                placeholder="Contoh: -31.50 dBm / LOS"
-                                class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm" 
-                            />
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Redaman Optik Sesudah (dBm)</label>
-                            <input 
-                                type="text" 
-                                v-model="reportForm.optical_power_after" 
-                                placeholder="Contoh: -18.40 dBm"
-                                class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm" 
-                            />
-                        </div>
-                    </div>
-
-                    <!-- ════════ SECTION 3B: MATERIAL SEBELUMNYA DI PELANGGAN & PERGANTIAN MATERIAL ════════ -->
-                    <div class="p-4 rounded-2xl bg-teal-50/60 border border-teal-200/80 space-y-4">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div>
-                                <label class="block text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-1.5">
-                                    <span>🔄</span> Material Terpasang Sebelumnya di Pelanggan & Pergantian Bekas
-                                </label>
-                                <p class="text-[11px] text-teal-800">
-                                    Pilih material terpasang yang diganti (bisa <b>Ganti Seluruhnya</b> atau <b>Ganti Sebagian</b>). Material bekas wajib dibawa ke Gudang dan diserahterimakan dengan Gudang / Ka. Teknisi.
-                                </p>
-                            </div>
-                            <button 
-                                type="button" 
-                                @click="isAddInstalledMatModalOpen = !isAddInstalledMatModalOpen" 
-                                class="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1 shrink-0 cursor-pointer"
-                            >
-                                <span>+ Tambah Item Terpasang Baru</span>
-                            </button>
-                        </div>
-
-                        <!-- Quick form tambah item terpasang baru jika ada hardware custom di rumah pelanggan -->
-                        <div v-if="isAddInstalledMatModalOpen" class="p-3.5 rounded-xl bg-white border border-teal-300 shadow-sm space-y-2 animate-fade-in-up">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold text-teal-900">📝 Daftarkan Item Terpasang di Pelanggan:</span>
-                                <button type="button" @click="isAddInstalledMatModalOpen = false" class="text-xs text-gray-400 hover:text-gray-600 font-bold cursor-pointer">✕ Tutup</button>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
-                                <div class="sm:col-span-5">
-                                    <input type="text" v-model="newInstalledMatForm.item_name" placeholder="Nama item (cth: S-Clamp 2 Pcs, Router Tambahan...)" class="w-full text-xs rounded-lg border-gray-300 py-1.5 px-2.5" />
-                                </div>
-                                <div class="sm:col-span-2">
-                                    <input type="number" step="0.01" min="0.01" v-model="newInstalledMatForm.quantity" placeholder="Qty" class="w-full text-xs rounded-lg border-gray-300 py-1.5 text-center font-bold" />
-                                </div>
-                                <div class="sm:col-span-2">
-                                    <select v-model="newInstalledMatForm.unit" class="w-full text-xs rounded-lg border-gray-300 py-1.5 px-2">
-                                        <option value="pcs">pcs</option>
-                                        <option value="meter">meter</option>
-                                        <option value="unit">unit</option>
-                                        <option value="set">set</option>
-                                    </select>
-                                </div>
-                                <div class="sm:col-span-3 flex gap-1">
-                                    <button type="button" @click="saveNewInstalledMaterial" :disabled="!newInstalledMatForm.item_name" class="flex-1 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg text-xs disabled:opacity-50 cursor-pointer">
-                                        Simpan Item
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Daftar Material Terpasang Aktif di Pelanggan -->
-                        <div class="space-y-2">
-                            <div class="text-[11px] font-bold text-teal-900 uppercase flex items-center justify-between">
-                                <span>Daftar Material Terpasang Saat Ini</span>
-                                <span class="text-teal-700 font-bold bg-teal-100/70 px-2 py-0.5 rounded-full text-[10px]">
-                                    {{ activeCustomerMaterials.length }} item terpasang
-                                </span>
-                            </div>
-
-                            <div v-if="activeCustomerMaterials.length === 0" class="p-3 rounded-xl bg-white border border-teal-200 text-xs text-gray-400 italic text-center">
-                                Belum ada catatan material terpasang. Klik "+ Tambah Item Terpasang Baru" di atas.
-                            </div>
-
-                            <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                <div 
-                                    v-for="inst in activeCustomerMaterials" 
-                                    :key="inst.id"
-                                    class="p-3 rounded-xl bg-white border border-teal-100 shadow-2xs flex flex-col justify-between gap-2 transition-all hover:border-teal-300"
-                                >
-                                    <div>
-                                        <div class="flex items-center justify-between gap-1">
-                                            <span class="font-bold text-gray-900 text-xs truncate" :title="inst.item_name">{{ inst.item_name }}</span>
-                                            <span class="font-mono font-bold text-xs text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 shrink-0">
-                                                {{ parseFloat(inst.quantity) }} {{ inst.unit }}
-                                            </span>
-                                        </div>
-                                        <div v-if="inst.serial_number" class="text-[10px] font-mono text-gray-500 mt-0.5">
-                                            SN: {{ inst.serial_number }}
-                                        </div>
-                                        <div v-if="inst.notes" class="text-[10px] text-gray-400 italic truncate mt-0.5">
-                                            {{ inst.notes }}
-                                        </div>
-                                    </div>
-
-                                    <div class="flex items-center justify-between pt-1.5 border-t border-gray-100">
-                                        <span class="px-2 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider" :class="inst.status === 'partially_replaced' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'">
-                                            {{ inst.status === 'partially_replaced' ? 'Diganti Sebagian' : '✓ Terpasang' }}
-                                        </span>
-                                        <button 
-                                            type="button" 
-                                            @click="initReplacementForInstalledMaterial(inst)"
-                                            :class="materialReplacements.some(r => r.installed_material_id === inst.id) ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-teal-50 text-teal-700 hover:bg-teal-100 border-teal-200'"
-                                            class="px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer"
-                                        >
-                                            <span>🔄</span>
-                                            <span>{{ materialReplacements.some(r => r.installed_material_id === inst.id) ? 'Sedang Diganti' : 'Ganti Material' }}</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Antrean Pergantian Material (Form Detail Pergantian) -->
-                        <div v-if="materialReplacements.length > 0" class="pt-3 border-t border-teal-200/80 space-y-3">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-black text-amber-950 uppercase tracking-wide flex items-center gap-1.5">
-                                    <span>⚠️</span> Rincian Material yang Diganti & Dibawa ke Gudang ({{ materialReplacements.length }} Item)
-                                </span>
-                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
-                                    Wajib Serah Terima Gudang / Ka. Teknisi
-                                </span>
-                            </div>
-
-                            <div class="space-y-3">
-                                <div 
-                                    v-for="(rep, rIdx) in materialReplacements" 
-                                    :key="rIdx"
-                                    class="p-4 rounded-2xl bg-white border-2 border-amber-300 shadow-sm space-y-3"
-                                >
-                                    <div class="flex items-start justify-between gap-2">
-                                        <div>
-                                            <div class="font-black text-gray-900 text-sm flex items-center gap-2">
-                                                <span>📦</span>
-                                                <span>{{ rep.item_name }}</span>
-                                                <span class="text-xs font-normal text-gray-500">(Total Terpasang: {{ rep.total_installed_qty }} {{ rep.unit }})</span>
-                                            </div>
-                                            <p class="text-[11px] text-amber-800 mt-0.5">
-                                                Pilih apakah material diganti seluruhnya (100%) atau sebagian (pemotongan/sambungan).
-                                            </p>
-                                        </div>
-                                        <button 
-                                            type="button" 
-                                            @click="removeReplacement(rIdx)" 
-                                            class="text-rose-500 hover:text-rose-700 text-xs font-bold p-1 rounded-lg hover:bg-rose-50 cursor-pointer"
-                                            title="Batalkan Pergantian Item Ini"
-                                        >
-                                            ✕ Batalkan
-                                        </button>
-                                    </div>
-
-                                    <!-- Pilihan Mode: Ganti Seluruhnya vs Ganti Sebagian -->
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        <label 
-                                            class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all"
-                                            :class="rep.replacement_type === 'full' ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-200 text-amber-950 font-bold' : 'border-gray-200 text-gray-700'"
-                                        >
-                                            <input 
-                                                type="radio" 
-                                                v-model="rep.replacement_type" 
-                                                value="full" 
-                                                @change="rep.quantity = rep.total_installed_qty; rep.replacement_quantity = rep.total_installed_qty"
-                                                class="text-amber-600 focus:ring-amber-500" 
-                                            />
-                                            <div>
-                                                <div class="text-xs">🔄 Ganti Seluruhnya (100%)</div>
-                                                <div class="text-[10px] text-gray-500 font-normal">Seluruh {{ rep.total_installed_qty }} {{ rep.unit }} ditarik/diganti unit baru</div>
-                                            </div>
-                                        </label>
-
-                                        <label 
-                                            class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all"
-                                            :class="rep.replacement_type === 'partial' ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-200 text-amber-950 font-bold' : 'border-gray-200 text-gray-700'"
-                                        >
-                                            <input 
-                                                type="radio" 
-                                                v-model="rep.replacement_type" 
-                                                value="partial" 
-                                                class="text-amber-600 focus:ring-amber-500" 
-                                            />
-                                            <div>
-                                                <div class="text-xs">✂️ Ganti Sebagian (Potong / Sambung)</div>
-                                                <div class="text-[10px] text-gray-500 font-normal">Hanya sebagian yang diganti, sisa tetap terpasang</div>
-                                            </div>
-                                        </label>
-                                    </div>
-
-                                    <!-- Input Qty, Kondisi Bekas, dan Alasan Kerusakan -->
-                                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs pt-1">
-                                        <div class="sm:col-span-3">
-                                            <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">
-                                                Jumlah Dibongkar *
-                                            </label>
-                                            <div class="flex items-center gap-1">
-                                                <input 
-                                                    type="number" 
-                                                    step="0.01" 
-                                                    min="0.01" 
-                                                    :max="rep.total_installed_qty"
-                                                    v-model="rep.quantity" 
-                                                    class="w-full text-xs rounded-xl border-gray-300 font-black text-center py-1.5 focus:border-amber-500"
-                                                    required 
-                                                />
-                                                <span class="text-gray-500 font-bold text-xs">{{ rep.unit }}</span>
-                                            </div>
-                                        </div>
-
-                                        <div class="sm:col-span-4">
-                                            <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">
-                                                Kondisi Fisik Barang Bekas *
-                                            </label>
-                                            <select 
-                                                v-model="rep.condition" 
-                                                class="w-full text-xs rounded-xl border-gray-300 font-semibold py-1.5 px-2 focus:border-amber-500"
-                                                required
-                                            >
-                                                <option value="rusak_scrap">🔴 Rusak / Scrap (Afkir)</option>
-                                                <option value="normal_reusable">🟢 Layak Pakai (Bisa Dipakai Kembali)</option>
-                                                <option value="perlu_cek">🟡 Perlu Pengecekan / Servis Lab</option>
-                                            </select>
-                                        </div>
-
-                                        <div class="sm:col-span-5">
-                                            <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">
-                                                Alasan Kerusakan / Penggantian *
-                                            </label>
-                                            <input 
-                                                type="text" 
-                                                v-model="rep.damage_reason" 
-                                                placeholder="Kabel putus terlindas / loss tinggi..." 
-                                                class="w-full text-xs rounded-xl border-gray-300 py-1.5 px-2.5 focus:border-amber-500"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <!-- Preset Chips Alasan Kerusakan -->
-                                    <div class="flex flex-wrap items-center gap-1.5 pt-1">
-                                        <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wide">Pilihan Cepat Alasan:</span>
-                                        <button 
-                                            type="button" 
-                                            v-for="reason in quickDamageChips" 
-                                            :key="reason"
-                                            @click="rep.damage_reason = reason"
-                                            class="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-gray-100 hover:bg-amber-100 text-gray-700 hover:text-amber-900 border border-gray-200 transition-colors shadow-2xs cursor-pointer"
-                                        >
-                                            {{ reason }}
-                                        </button>
-                                    </div>
-
-                                    <!-- Sumber Unit Pengganti Baru (Bekal Ka. Teknisi vs Permintaan Dadakan) -->
-                                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/90 space-y-2 text-xs">
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-[10px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                                                <span>⚡</span> Sumber Unit Baru Pengganti:
-                                            </span>
-                                            <span class="text-[10px] text-gray-500 font-medium">
-                                                Unit yang dipasangkan menggantikan barang bekas
-                                            </span>
-                                        </div>
-
-                                        <!-- Opsi 1: Jika cocok dengan bekal Ka. Teknisi -->
-                                        <div v-if="findMatchingPreparedMaterial(rep)" class="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-                                            <div>
-                                                <div class="font-bold flex items-center gap-1.5 text-xs text-emerald-900">
-                                                    <span>✓</span> Tersedia di Bekal Ka. Teknisi:
-                                                    <span class="underline">{{ findMatchingPreparedMaterial(rep).name }}</span>
-                                                </div>
-                                                <div class="text-[11px] text-emerald-700 mt-0.5">
-                                                    Bawa dari Kantor: <b>{{ findMatchingPreparedMaterial(rep).quantity_prepared }} {{ findMatchingPreparedMaterial(rep).unit }}</b> 
-                                                    (Tercatat terpakai: <b>{{ findMatchingPreparedMaterial(rep).quantity_used }} {{ findMatchingPreparedMaterial(rep).unit }}</b>)
-                                                </div>
-                                            </div>
-                                            <button 
-                                                type="button" 
-                                                @click="syncReplacementToPrepared(rep, findMatchingPreparedMaterial(rep))" 
-                                                class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] shadow-sm flex items-center gap-1 shrink-0 self-start sm:self-auto cursor-pointer transition-all"
-                                                title="Klik untuk otomatis sinkronkan kuantitas terpakai pada Bagian 4A"
-                                            >
-                                                <span>⚡ Pakai Bekal Ini (Sync Bagian 4A)</span>
-                                            </button>
-                                        </div>
-
-                                        <!-- Opsi 2: Jika belum ada di bekal -> Tombol Ajukan Dadakan -->
-                                        <div v-else class="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-                                            <div>
-                                                <div class="font-bold text-xs text-amber-900 flex items-center gap-1.5">
-                                                    <span>⚠️</span> Belum Ada di Bekal Ka. Teknisi
-                                                </div>
-                                                <div class="text-[11px] text-amber-800 mt-0.5">
-                                                    Tidak ada bekal yang cocok untuk item ini. Butuh pasokan dadakan dari kantor/gudang?
-                                                </div>
-                                            </div>
-                                            <button 
-                                                type="button" 
-                                                @click="openEmergencyRequestForReplacement(rep)" 
-                                                class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-[10px] shadow-sm flex items-center gap-1 shrink-0 self-start sm:self-auto cursor-pointer transition-all"
-                                                title="Buka form pengajuan dadakan ke Ka. Teknisi dengan item ini terisi otomatis"
-                                            >
-                                                <span>📢 + Ajukan Permintaan Dadakan</span>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Info Serah Terima Notice -->
-                                    <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-center justify-between flex-wrap gap-2">
-                                        <div class="flex items-center gap-1.5">
-                                            <span>📦</span>
-                                            <span>Barang bekas (<b>{{ rep.quantity }} {{ rep.unit }}</b>) otomatis berstatus <b>Menunggu Serah Terima</b> ke Gudang / Ka. Teknisi.</span>
-                                        </div>
-                                        <span class="font-bold text-amber-800 text-[10px] bg-white px-2 py-0.5 rounded border border-amber-200">
-                                            Disposisi: {{ rep.condition === 'normal_reusable' ? '🟢 Restock Gudang' : '🔴 Scrap / Afkir' }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ════════ SECTION 4: REKONSILIASI MATERIAL TERPAKAI CANGGIH ════════ -->
-                    <div class="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <label class="block text-xs font-black text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
-                                    <span>📦</span> Rekonsiliasi Material Terpakai & Pengembalian
-                                </label>
-                                <p class="text-[11px] text-amber-800">
-                                    Catat jumlah material terpakai dan material tambahan lapangan. Sisa otomatis dikembalikan ke stok gudang.
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- 4A. Material Bekal Awal dari Ka. Teknisi / Jadwal -->
-                        <div class="space-y-2">
-                            <div class="text-[11px] font-bold text-gray-600 uppercase flex items-center justify-between">
-                                <span>A. Material Disiapkan Gudang / Jadwal</span>
-                                <span class="text-gray-400 font-normal">({{ reportForm.materials.length }} jenis)</span>
-                            </div>
-
-                            <div v-if="reportForm.materials.length === 0" class="p-3 rounded-xl bg-white border border-gray-200 text-xs text-gray-400 italic text-center">
-                                Tidak ada material yang disiapkan di jadwal penanganan ini.
-                            </div>
-
-                            <div v-else class="space-y-2">
-                                <div 
-                                    v-for="(m, idx) in reportForm.materials" 
-                                    :key="idx" 
-                                    class="p-3 rounded-2xl bg-white border transition-all shadow-sm"
-                                    :class="m.quantity_used == m.quantity_prepared ? 'border-emerald-300 bg-emerald-50/20' : (m.quantity_used == 0 ? 'border-amber-300 bg-amber-50/20' : 'border-blue-300 bg-blue-50/20')"
-                                >
-                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                        <div class="flex-1 min-w-0">
-                                            <div class="flex items-center gap-2">
-                                                <h4 class="font-bold text-gray-900 text-sm truncate">{{ m.name }}</h4>
-                                                <span 
-                                                    class="px-2 py-0.2 rounded-full text-[10px] font-bold uppercase"
-                                                    :class="m.quantity_used == m.quantity_prepared ? 'bg-emerald-100 text-emerald-800' : (m.quantity_used == 0 ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800')"
-                                                >
-                                                    {{ m.quantity_used == m.quantity_prepared ? '✓ Habis Terpakai' : (m.quantity_used == 0 ? '↩️ Retur Penuh' : '↩️ Sebagian Sisa') }}
-                                                </span>
-                                            </div>
-                                            <div class="text-xs text-gray-500 mt-0.5">
-                                                Disiapkan: <strong class="text-gray-800">{{ m.quantity_prepared }} {{ m.unit }}</strong>
-                                            </div>
-                                        </div>
-
-                                        <div class="flex items-center gap-3 shrink-0">
-                                            <!-- Control Terpakai Stepper -->
-                                            <div class="flex flex-col items-center">
-                                                <span class="text-[10px] font-bold text-gray-500 uppercase mb-0.5">Terpakai:</span>
-                                                <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm">
-                                                    <button 
-                                                        type="button" 
-                                                        @click="stepPreparedMaterial(m, -1)" 
-                                                        class="px-2.5 py-1 text-gray-600 hover:bg-gray-100 font-bold text-sm select-none"
-                                                    >
-                                                        -
-                                                    </button>
-                                                    <input 
-                                                        type="number" 
-                                                        step="0.01" 
-                                                        min="0" 
-                                                        :max="m.quantity_prepared"
-                                                        v-model="m.quantity_used" 
-                                                        @input="calculateReturned(m)"
-                                                        class="w-16 border-0 text-xs py-1 text-center font-black text-emerald-700 focus:ring-0 p-0" 
-                                                        required
-                                                    />
-                                                    <button 
-                                                        type="button" 
-                                                        @click="stepPreparedMaterial(m, 1)" 
-                                                        class="px-2.5 py-1 text-gray-600 hover:bg-gray-100 font-bold text-sm select-none"
-                                                    >
-                                                        +
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <!-- Tombol Cepat (All vs 0) -->
-                                            <div class="flex flex-col gap-1">
-                                                <button 
-                                                    type="button" 
-                                                    @click="setPreparedMaterialQty(m, m.quantity_prepared)"
-                                                    class="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors"
-                                                    title="Set terpakai semua"
-                                                >
-                                                    Semua
-                                                </button>
-                                                <button 
-                                                    type="button" 
-                                                    @click="setPreparedMaterialQty(m, 0)"
-                                                    class="px-2 py-0.5 text-[10px] font-bold rounded bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 transition-colors"
-                                                    title="Set tidak terpakai (retur semua)"
-                                                >
-                                                    Nol
-                                                </button>
-                                            </div>
-
-                                            <!-- Sisa Gudang (Dikembalikan) -->
-                                            <div class="flex flex-col items-center">
-                                                <span class="text-[10px] font-bold text-blue-700 uppercase mb-0.5">Sisa Kembali:</span>
-                                                <div class="w-20 py-1 text-center font-black text-xs text-blue-800 bg-blue-50/90 rounded-xl border border-blue-200">
-                                                    {{ m.quantity_returned }} {{ m.unit }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Banner Rincian Pengembalian Kelebihan Material (Retur Gudang) -->
-                        <div v-if="returnedMaterialsList.length > 0" class="p-3.5 rounded-2xl bg-blue-50/90 border border-blue-200 text-xs text-blue-950 space-y-2">
-                            <div class="flex items-center justify-between">
-                                <div class="font-bold flex items-center gap-1.5 text-blue-900">
-                                    <span class="text-base">↩️</span>
-                                    <span>Alur Pengembalian Kelebihan Material (Retur ke Gudang)</span>
-                                </div>
-                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-200 text-blue-900 border border-blue-300">
-                                    {{ returnedMaterialsList.length }} Item Harus Dikembalikan
-                                </span>
-                            </div>
-                            <p class="text-[11px] text-blue-800 leading-relaxed">
-                                Sisa material yang tidak habis terpakai wajib diserahkan kembali ke kantor/gudang. Saat laporan disimpan, sistem otomatis membuat transaksi retur masuk (<b>IN-PGS-RET-...</b>) dan <b>menambah kembali stok gudang</b>:
-                            </p>
-                            <div class="space-y-1.5">
-                                <div v-for="ret in returnedMaterialsList" :key="'ret-' + ret.material_id" class="p-2.5 rounded-xl bg-white border border-blue-200 flex items-center justify-between shadow-sm">
+                <!-- ════════ FORM WRAPPER WITH BODY AND FOOTER ════════ -->
+                <form @submit.prevent="submitReport" class="flex flex-col flex-1 overflow-hidden min-h-0">
+                    <div class="p-5 space-y-4 overflow-y-auto flex-1">
+                        <!-- ═════════════════════════════════════════════════════ -->
+                        <!-- TAB 1: TINDAKAN, REDAMAN, & MULTI-TIKOR               -->
+                        <!-- ═════════════════════════════════════════════════════ -->
+                        <div v-show="activeReportTab === 'tindakan'" class="space-y-4">
+                            <!-- 1. Jam Mulai & Live Stopwatch (Compact Card) -->
+                            <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                                        ⏱️ Jam Mulai Pengerjaan Lapangan <span class="text-red-500">*</span>
+                                    </label>
                                     <div class="flex items-center gap-2">
-                                        <span class="font-bold text-gray-900">{{ ret.name }}</span>
-                                        <span class="text-[11px] text-gray-500">(Bawa: {{ ret.quantity_prepared }} {{ ret.unit }} | Terpakai: {{ ret.quantity_used }} {{ ret.unit }})</span>
-                                    </div>
-                                    <span class="font-mono font-black text-xs text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
-                                        ↩️ Sisa Kembali: {{ ret.quantity_returned }} {{ ret.unit }}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 4B. Permintaan Tambahan Material Lapangan ke Ka. Teknisi -->
-                        <div class="pt-3 border-t border-amber-200/60 space-y-3">
-                            <div class="flex items-center justify-between flex-wrap gap-2">
-                                <div>
-                                    <div class="text-[11px] font-bold text-gray-800 uppercase flex items-center gap-1.5">
-                                        <span class="text-amber-500">📢</span> B. Permintaan Tambahan Material ke Kepala Teknisi
-                                    </div>
-                                    <p class="text-[10px] text-gray-500">
-                                        Kekurangan material di lapangan? Ajukan ke Kepala Teknisi untuk disetujui di tab <b>Jadwal & Material</b>.
-                                    </p>
-                                </div>
-                                <button 
-                                    type="button" 
-                                    @click="isRequestFormOpen = !isRequestFormOpen" 
-                                    class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1 shrink-0"
-                                >
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                    <span>{{ isRequestFormOpen ? 'Tutup Form Pengajuan' : '+ Ajukan Tambahan Material' }}</span>
-                                </button>
-                            </div>
-
-                            <!-- Form Ajukan Material ke Ka. Teknisi -->
-                            <div v-if="isRequestFormOpen" class="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 shadow-sm space-y-3 transition-all animate-fade-in-up">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                                            <span>📝</span> Form Pengajuan Kebutuhan Tambahan ke Ka. Teknisi
-                                        </div>
-                                        <p class="text-[11px] text-amber-800 mt-0.5">
-                                            Tuliskan daftar kebutuhan barang di lapangan (bisa lebih dari 1 material). Kepala Teknisi akan memverifikasi dan mengalokasikan stok barang dari gudang.
-                                        </p>
-                                    </div>
-                                    <span class="text-[10px] font-bold text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-lg border border-amber-300 shrink-0">
-                                        {{ materialRequestForm.items.length }} Material
-                                    </span>
-                                </div>
-
-                                <!-- Quick Suggestion Chips Lapangan -->
-                                <div class="p-2.5 rounded-xl bg-amber-100/60 border border-amber-200">
-                                    <div class="flex flex-wrap items-center gap-1.5">
-                                        <span class="text-[9px] font-bold text-amber-900 uppercase tracking-wide">Pilihan Cepat (Klik untuk tambah):</span>
+                                        <input 
+                                            type="time" 
+                                            v-model="reportForm.start_time" 
+                                            :readonly="isWorking"
+                                            class="rounded-xl border-gray-300 py-1.5 px-3 text-xs font-bold text-gray-800 bg-white focus:border-emerald-500" 
+                                            required
+                                        />
                                         <button 
                                             type="button" 
-                                            v-for="chip in quickMaterialChips" 
-                                            :key="chip.name"
-                                            @click="applyQuickMaterialChip(chip)"
-                                            class="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-white hover:bg-amber-200 text-amber-900 border border-amber-300 transition-colors shadow-2xs cursor-pointer"
+                                            @click="startWork" 
+                                            :class="isWorking ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-emerald-600 hover:bg-emerald-700'"
+                                            class="px-3 py-1.5 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
                                         >
-                                            + {{ chip.name }}
+                                            <span>{{ reportForm.start_time ? 'Reset' : '▶ Mulai Pengerjaan' }}</span>
                                         </button>
                                     </div>
                                 </div>
-
-                                <!-- Daftar Baris Material -->
-                                <div class="space-y-2.5">
-                                    <div 
-                                        v-for="(item, idx) in materialRequestForm.items" 
-                                        :key="idx" 
-                                        class="p-3 bg-white rounded-xl border border-amber-200 shadow-2xs relative"
-                                    >
-                                        <div class="flex items-center justify-between mb-1.5">
-                                            <span class="text-[10px] font-bold text-amber-800 uppercase flex items-center gap-1">
-                                                <span class="w-4 h-4 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center text-[9px] font-bold">{{ idx + 1 }}</span>
-                                                Material #{{ idx + 1 }}
-                                            </span>
-                                            <button 
-                                                v-if="materialRequestForm.items.length > 1"
-                                                type="button" 
-                                                @click="removeRequestItem(idx)"
-                                                class="text-rose-500 hover:text-rose-700 text-[10px] font-bold flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-rose-50 transition-colors cursor-pointer"
-                                                title="Hapus Baris Ini"
-                                            >
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                                <span>Hapus</span>
-                                            </button>
-                                        </div>
-
-                                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                                            <!-- Input Nama / Kebutuhan Material -->
-                                            <div class="sm:col-span-7">
-                                                <label class="block text-[9px] font-bold text-gray-600 uppercase mb-0.5">Nama / Deskripsi Material *</label>
-                                                <input 
-                                                    type="text" 
-                                                    v-model="item.item_name" 
-                                                    placeholder="Contoh: Kabel Dropcore 1 Core, Fast Connector SC..."
-                                                    class="w-full rounded-xl border-gray-300 text-xs py-1.5 px-3 focus:border-amber-500 bg-white font-medium shadow-2xs"
-                                                    required
-                                                />
-                                            </div>
-
-                                            <!-- Estimasi Jumlah -->
-                                            <div class="sm:col-span-2">
-                                                <label class="block text-[9px] font-bold text-gray-600 uppercase mb-0.5">Estimasi Jml *</label>
-                                                <input 
-                                                    type="number" 
-                                                    step="0.01" 
-                                                    min="0.01" 
-                                                    v-model="item.quantity" 
-                                                    class="w-full rounded-xl border-gray-300 text-xs py-1.5 text-center font-bold focus:border-amber-500 bg-white shadow-2xs"
-                                                    placeholder="1"
-                                                    required
-                                                />
-                                            </div>
-
-                                            <!-- Pilihan Satuan -->
-                                            <div class="sm:col-span-3">
-                                                <label class="block text-[9px] font-bold text-gray-600 uppercase mb-0.5">Satuan *</label>
-                                                <select 
-                                                    v-model="item.unit" 
-                                                    class="w-full rounded-xl border-gray-300 text-xs py-1.5 focus:border-amber-500 bg-white font-medium shadow-2xs"
-                                                >
-                                                    <option value="meter">meter</option>
-                                                    <option value="pcs">pcs</option>
-                                                    <option value="rol">rol</option>
-                                                    <option value="set">set</option>
-                                                    <option value="pack">pack</option>
-                                                    <option value="buah">buah</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <!-- Live Running Stopwatch -->
+                                <div v-if="isWorking" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 self-start sm:self-auto">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span>
+                                    <span class="text-[10px] font-bold uppercase">Berjalan:</span>
+                                    <span class="font-mono text-xs font-black text-emerald-950">{{ formatSecondsToClock(elapsedSeconds) }}</span>
                                 </div>
+                            </div>
 
-                                <!-- Tombol Tambah Baris Material Lainnya -->
+                            <!-- 2. Tindakan Perbaikan Lapangan -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">
+                                    Tindakan Perbaikan Lapangan <span class="text-red-500">*</span>
+                                </label>
+                                <textarea 
+                                    v-model="reportForm.action_taken" 
+                                    rows="3" 
+                                    placeholder="Contoh: Pemotongan kabel dropcore tertekuk di tiang ODP, splicing ulang core 1 ODP-BTR-04, dan penggantian adapter SC-UPC."
+                                    class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs" 
+                                    required
+                                ></textarea>
+                            </div>
+
+                            <!-- 3. Redaman Optik (dBm) -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <button 
-                                        type="button" 
-                                        @click="addRequestItem('', 1, 'pcs')"
-                                        class="w-full py-2 border-2 border-dashed border-amber-300 hover:border-amber-400 bg-white hover:bg-amber-100/50 text-amber-900 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-                                    >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                        <span>+ Tambah Baris Material Lainnya</span>
-                                    </button>
-                                </div>
-
-                                <!-- Alasan Kebutuhan di Lapangan -->
-                                <div class="pt-1">
-                                    <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Alasan / Kondisi di Lapangan (Untuk Seluruh Material Di Atas) *</label>
+                                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Redaman Sebelum (dBm)</label>
                                     <input 
                                         type="text" 
-                                        v-model="materialRequestForm.notes" 
-                                        placeholder="Contoh: Kabel dropcore terputus tertimpa dahan pohon dan konektor pecah..." 
-                                        class="w-full rounded-xl border-gray-300 text-xs py-2 px-3 focus:border-amber-500 bg-white shadow-2xs"
-                                        required
+                                        v-model="reportForm.optical_power_before" 
+                                        placeholder="Contoh: -31.50 dBm / LOS"
+                                        class="w-full rounded-xl border-gray-200 focus:border-emerald-500 py-1.5 text-xs" 
                                     />
-                                    <!-- Template Alasan -->
-                                    <div class="flex flex-wrap items-center gap-1.5 mt-2">
-                                        <span class="text-[9px] font-bold text-gray-500 uppercase tracking-wide">Template Alasan:</span>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Redaman Sesudah (dBm)</label>
+                                    <input 
+                                        type="text" 
+                                        v-model="reportForm.optical_power_after" 
+                                        placeholder="Contoh: -18.40 dBm"
+                                        class="w-full rounded-xl border-gray-200 focus:border-emerald-500 py-1.5 text-xs font-bold text-emerald-700" 
+                                    />
+                                </div>
+                            </div>
+
+                            <!-- 4. Titik Koordinat Insiden (Multi-Tikor) -->
+                            <div class="p-3.5 rounded-2xl bg-purple-50/60 border border-purple-200/80 space-y-2.5">
+                                <div class="flex items-center justify-between flex-wrap gap-2">
+                                    <label class="text-xs font-bold text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span>📍</span> Titik Koordinat Insiden Lapangan (Tikor)
+                                    </label>
+                                    <div class="flex items-center gap-1.5">
                                         <button 
                                             type="button" 
-                                            v-for="reason in quickReasonChips" 
-                                            :key="reason"
-                                            @click="applyQuickReasonChip(reason)"
-                                            class="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-amber-100/70 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-colors shadow-2xs cursor-pointer"
+                                            @click="getCurrentGpsLocation()" 
+                                            :disabled="isFetchingGps"
+                                            class="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
                                         >
-                                            {{ reason }}
+                                            <span v-if="isFetchingGps" class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                                            <span v-else>📡</span>
+                                            <span>{{ isFetchingGps ? 'Mencari...' : 'Ambil GPS Sekarang' }}</span>
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            @click="addIncidentCoordinate('Titik Insiden Baru', 'incident_point')" 
+                                            class="px-2 py-1 bg-white hover:bg-purple-100 text-purple-800 border border-purple-300 rounded-lg text-xs font-semibold cursor-pointer"
+                                        >
+                                            + Tambah
                                         </button>
                                     </div>
                                 </div>
 
-                                <div class="flex justify-end gap-2 pt-2 border-t border-amber-200/60">
+                                <!-- GPS Status notification -->
+                                <div v-if="gpsStatusMessage" class="p-2 rounded-lg bg-purple-100/90 text-[11px] text-purple-900 font-medium flex items-center justify-between">
+                                    <span>{{ gpsStatusMessage }}</span>
+                                    <button type="button" @click="gpsStatusMessage = ''" class="text-purple-700 font-bold ml-2">✕</button>
+                                </div>
+
+                                <!-- Quick preset chips -->
+                                <div class="flex flex-wrap items-center gap-1">
+                                    <span class="text-[9px] font-bold text-purple-900 uppercase">Preset:</span>
                                     <button 
                                         type="button" 
-                                        @click="isRequestFormOpen = false" 
-                                        class="px-3.5 py-1.5 rounded-xl border border-gray-300 bg-white text-gray-600 text-xs font-semibold hover:bg-gray-50 cursor-pointer"
+                                        v-for="chip in quickTikorChips" 
+                                        :key="chip.label"
+                                        @click="addIncidentCoordinate(chip.label, chip.category)"
+                                        class="px-2 py-0.5 rounded text-[10px] bg-white hover:bg-purple-100 text-purple-900 border border-purple-200 shadow-2xs cursor-pointer"
                                     >
-                                        Batal
+                                        + {{ chip.label }}
                                     </button>
-                                    <button 
-                                        type="button" 
-                                        @click="sendMaterialRequest" 
-                                        :disabled="materialRequestForm.processing || validRequestItemsCount === 0 || !materialRequestForm.notes"
-                                        class="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                                </div>
+
+                                <!-- Empty State -->
+                                <div v-if="incidentCoordinates.length === 0" class="p-2.5 rounded-xl bg-white border border-dashed border-purple-200 text-center text-xs text-purple-600 italic">
+                                    Belum ada koordinat dicatat. Klik <b>"Ambil GPS Sekarang"</b> saat berada di titik insiden.
+                                </div>
+
+                                <!-- Coordinates List -->
+                                <div v-else class="space-y-2">
+                                    <div 
+                                        v-for="(coord, cIdx) in incidentCoordinates" 
+                                        :key="coord.id || cIdx"
+                                        class="p-2.5 bg-white rounded-xl border border-purple-200 shadow-2xs space-y-1.5"
                                     >
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                                        <span>{{ materialRequestForm.processing ? 'Mengirim...' : `Kirim Permintaan (${validRequestItemsCount} Material) ke Ka. Teknisi` }}</span>
-                                    </button>
+                                        <div class="flex items-center justify-between gap-1.5">
+                                            <input 
+                                                type="text" 
+                                                v-model="coord.label" 
+                                                placeholder="Label titik (cth: Kabel Putus Tiang 04...)"
+                                                class="text-xs font-bold text-gray-900 border-0 border-b border-gray-200 focus:border-purple-500 focus:ring-0 p-0.5 flex-1 bg-transparent"
+                                            />
+                                            <div class="flex items-center gap-1 shrink-0">
+                                                <button type="button" @click="getCurrentGpsLocation(coord)" title="Perbarui titik ini dengan GPS saat ini" class="p-1 text-purple-600 hover:bg-purple-50 rounded text-xs font-bold border border-purple-200 cursor-pointer">📡 GPS</button>
+                                                <a v-if="coord.latitude && coord.longitude" :href="`https://www.google.com/maps?q=${coord.latitude},${coord.longitude}`" target="_blank" class="p-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-xs font-bold border border-emerald-200">🗺️</a>
+                                                <button type="button" @click="removeIncidentCoordinate(cIdx)" class="p-1 text-rose-500 hover:bg-rose-50 rounded text-xs font-bold cursor-pointer">✕</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
+                                            <input type="number" step="any" v-model="coord.latitude" placeholder="Lat (-6.xxx)" class="text-xs rounded-lg border-gray-300 font-mono py-1 px-2" />
+                                            <input type="number" step="any" v-model="coord.longitude" placeholder="Lng (106.xxx)" class="text-xs rounded-lg border-gray-300 font-mono py-1 px-2" />
+                                            <input type="text" v-model="coord.address_reference" placeholder="Patokan Tiang/Lokasi" class="text-xs rounded-lg border-gray-300 py-1 px-2" />
+                                            <input type="text" v-model="coord.notes" placeholder="Catatan teknis" class="text-xs rounded-lg border-gray-300 py-1 px-2" />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Daftar Riwayat Permintaan Material Tiket Ini -->
-                            <div class="space-y-2">
-                                <div class="text-[11px] font-bold text-gray-600 uppercase flex items-center justify-between">
-                                    <span>Status Permintaan Material ke Ka. Teknisi ({{ selectedTicket?.material_requests?.length || 0 }})</span>
-                                    <span v-if="selectedTicket?.material_requests?.some(r => r.status === 'pending')" class="text-[10px] font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300 animate-pulse">
-                                        ⏳ Menunggu Alokasi Ka. Teknisi
-                                    </span>
+                        <!-- ═════════════════════════════════════════════════════ -->
+                        <!-- TAB 2: REKONSILIASI MATERIAL, BEKAL & PERGANTIAN      -->
+                        <!-- ═════════════════════════════════════════════════════ -->
+                        <div v-show="activeReportTab === 'material'" class="space-y-4">
+                            <!-- 2A. Material Bekal Ka. Teknisi (Stok Gudang yang Dibawa) -->
+                            <div class="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-3 shadow-2xs">
+                                <div class="flex items-center justify-between flex-wrap gap-2">
+                                    <div>
+                                        <div class="text-xs font-black text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                                            <span>🎒</span> A. Bekal Material dari Ka. Teknisi ({{ reportForm.materials.length }} Jenis)
+                                        </div>
+                                        <p class="text-[11px] text-amber-800">
+                                            Sesuaikan kuantitas terpakai. Sisa material otomatis dibuatkan transaksi retur kembali ke stok gudang.
+                                        </p>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        @click="isRequestFormOpen = !isRequestFormOpen" 
+                                        class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shadow-sm transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+                                    >
+                                        <span>{{ isRequestFormOpen ? '✕ Tutup Form' : '📢 + Butuh Tambahan Dadakan?' }}</span>
+                                    </button>
                                 </div>
 
-                                <div v-if="!selectedTicket?.material_requests || selectedTicket.material_requests.length === 0" class="p-3 rounded-xl bg-white/70 border border-dashed border-gray-300 text-xs text-gray-400 italic text-center">
-                                    Belum ada pengajuan permintaan tambahan material ke Ka. Teknisi untuk tiket ini.
+                                <!-- Form Permintaan Tambahan Dadakan ke Ka. Teknisi jika dibuka -->
+                                <div v-if="isRequestFormOpen" class="p-3.5 rounded-xl bg-white border border-amber-300 space-y-2.5 animate-fade-in-up">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-bold text-amber-900">📝 Form Kebutuhan Dadakan ke Ka. Teknisi:</span>
+                                        <span class="text-[10px] text-gray-500">Ka. Teknisi akan approve & alokasikan stok gudang</span>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div v-for="(item, idx) in materialRequestForm.items" :key="'req-item-' + idx" class="grid grid-cols-12 gap-1.5">
+                                            <input type="text" v-model="item.item_name" placeholder="Nama material (cth: Dropcore 50m...)" class="col-span-6 text-xs rounded-lg border-gray-300 py-1 px-2" />
+                                            <input type="number" step="0.01" min="0.01" v-model="item.quantity" placeholder="Qty" class="col-span-3 text-xs rounded-lg border-gray-300 py-1 text-center font-bold" />
+                                            <select v-model="item.unit" class="col-span-3 text-xs rounded-lg border-gray-300 py-1 px-1">
+                                                <option value="meter">meter</option>
+                                                <option value="pcs">pcs</option>
+                                                <option value="rol">rol</option>
+                                                <option value="set">set</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-1.5 items-center">
+                                        <input type="text" v-model="materialRequestForm.notes" placeholder="Alasan kebutuhan di lapangan..." class="flex-1 text-xs rounded-lg border-gray-300 py-1 px-2" />
+                                        <button type="button" @click="sendMaterialRequest" :disabled="materialRequestForm.processing || validRequestItemsCount === 0 || !materialRequestForm.notes" class="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-xs disabled:opacity-50 cursor-pointer shrink-0">
+                                            Kirim Permintaan
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- List Bekal Material Disiapkan -->
+                                <div v-if="reportForm.materials.length === 0" class="p-3 rounded-xl bg-white border border-amber-200 text-xs text-gray-400 italic text-center">
+                                    Tidak ada bekal material yang disiapkan pada tiket ini.
                                 </div>
 
                                 <div v-else class="space-y-2">
                                     <div 
-                                        v-for="req in selectedTicket.material_requests" 
-                                        :key="req.id"
-                                        class="p-3.5 rounded-2xl border transition-all text-xs"
-                                        :class="{
-                                            'bg-amber-50/80 border-amber-300': req.status === 'pending',
-                                            'bg-emerald-50/80 border-emerald-300': req.status === 'approved',
-                                            'bg-rose-50/80 border-rose-300': req.status === 'rejected'
-                                        }"
+                                        v-for="(m, idx) in reportForm.materials" 
+                                        :key="'prep-' + idx" 
+                                        class="p-2.5 rounded-xl bg-white border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs"
+                                        :class="m.quantity_used == m.quantity_prepared ? 'border-emerald-300' : (m.quantity_used == 0 ? 'border-amber-300' : 'border-blue-300')"
                                     >
-                                        <div class="flex items-start justify-between gap-2 flex-wrap">
-                                            <div>
-                                                <div class="font-bold text-gray-900 flex items-center gap-1.5">
-                                                    <span class="text-sm">📦</span>
-                                                    <span>{{ req.item_name || req.material?.name || 'Material Tambahan' }}</span>
-                                                    <span class="font-mono text-xs px-2 py-0.5 rounded-lg bg-white border font-bold text-gray-800">
-                                                        {{ parseFloat(req.quantity) }} {{ req.unit || req.material?.unit }}
-                                                    </span>
-                                                </div>
-                                                <div v-if="req.status === 'approved' && req.material" class="text-[11px] text-emerald-800 font-semibold mt-1 flex items-center gap-1">
-                                                    <span>🏷️ Dialokasikan dari Gudang: <b>{{ req.material.name }}</b></span>
-                                                </div>
-                                            </div>
-
-                                            <!-- Status Pill -->
-                                            <div>
-                                                <span v-if="req.status === 'pending'" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300 inline-flex items-center gap-1">
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse"></span>
-                                                    <span>Menunggu Alokasi Ka. Teknisi</span>
-                                                </span>
-                                                <span v-else-if="req.status === 'approved'" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-900 border border-emerald-300 inline-flex items-center gap-1">
-                                                    <span>✅ Disetujui (Masuk Bekal)</span>
-                                                </span>
-                                                <span v-else-if="req.status === 'rejected'" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-200 text-rose-900 border border-rose-300 inline-flex items-center gap-1">
-                                                    <span>❌ Ditolak</span>
-                                                </span>
+                                        <div class="min-w-0">
+                                            <div class="flex items-center gap-1.5 truncate">
+                                                <span class="font-bold text-gray-900 text-xs truncate">{{ m.name }}</span>
+                                                <span class="text-[10px] text-gray-500">(Bawa: <b>{{ m.quantity_prepared }} {{ m.unit }}</b>)</span>
                                             </div>
                                         </div>
 
-                                        <div class="mt-2 text-gray-700 bg-white/80 p-2.5 rounded-xl border border-gray-100">
-                                            <span class="font-semibold text-gray-500">Alasan Kebutuhan:</span> "{{ req.notes }}"
-                                        </div>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            <!-- Stepper Terpakai -->
+                                            <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-white">
+                                                <button type="button" @click="stepPreparedMaterial(m, -1)" class="px-2 py-0.5 text-gray-600 hover:bg-gray-100 font-bold text-xs select-none cursor-pointer">-</button>
+                                                <input type="number" step="0.01" min="0" :max="m.quantity_prepared" v-model="m.quantity_used" @input="calculateReturned(m)" class="w-14 border-0 text-xs py-0.5 text-center font-black text-emerald-700 focus:ring-0 p-0" />
+                                                <button type="button" @click="stepPreparedMaterial(m, 1)" class="px-2 py-0.5 text-gray-600 hover:bg-gray-100 font-bold text-xs select-none cursor-pointer">+</button>
+                                            </div>
 
-                                        <!-- Detail info persetujuan/penolakan -->
-                                        <div v-if="req.status === 'approved'" class="mt-1.5 text-[11px] text-emerald-800 font-medium flex items-center gap-1">
-                                            <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                            <span>Disetujui oleh <b>{{ req.reviewer?.name || 'Kepala Teknisi' }}</b>. Stok gudang otomatis terpotong & ditambahkan ke daftar Bagian A di atas.</span>
-                                        </div>
-                                        <div v-else-if="req.status === 'rejected'" class="mt-1.5 text-[11px] text-rose-800 font-medium flex items-center gap-1">
-                                            <svg class="w-3.5 h-3.5 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                            <span>Ditolak oleh <b>{{ req.reviewer?.name || 'Kepala Teknisi' }}</b>: "{{ req.rejection_reason || '-' }}"</span>
-                                        </div>
-                                        <div v-else class="mt-1.5 text-[10px] text-amber-800 italic">
-                                            ⏳ Permintaan ini sedang menunggu persetujuan Kepala Teknisi di tab <b>Jadwal & Material</b>.
+                                            <!-- Tombol Cepat All vs 0 -->
+                                            <div class="flex gap-1">
+                                                <button type="button" @click="setPreparedMaterialQty(m, m.quantity_prepared)" class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-pointer" title="Pakai semua">All</button>
+                                                <button type="button" @click="setPreparedMaterialQty(m, 0)" class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-gray-50 text-gray-600 border border-gray-200 cursor-pointer" title="Retur semua">0</button>
+                                            </div>
+
+                                            <!-- Sisa Kembali -->
+                                            <div class="px-2 py-0.5 text-center font-mono font-bold text-xs text-blue-800 bg-blue-50 rounded-lg border border-blue-200">
+                                                ↩️ Sisa: {{ m.quantity_returned }} {{ m.unit }}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- 4C. Catatan Otomatis Gudang -->
-                        <div class="p-2.5 rounded-xl bg-white border border-gray-200 text-[11px] text-gray-500 flex items-center justify-between flex-wrap gap-2">
-                            <span>* Sisa material disiapkan akan otomatis dikembalikan ke stok gudang saat laporan disimpan.</span>
-                            <div class="flex items-center gap-2 font-bold text-gray-700">
-                                <span>Terpakai: {{ countUsedMaterials }} item</span> · 
-                                <span class="text-blue-700">Kembali: {{ countReturnedMaterials }} item</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ════════ SECTION 5: PERGANTIAN PERANGKAT ONT PELANGGAN ════════ -->
-                    <div class="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-3">
-                        <div class="flex items-center justify-between flex-wrap gap-2">
-                            <div>
-                                <label class="block text-xs font-black text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
-                                    <span>🔄</span> 5. Pergantian Unit ONT Pelanggan
-                                </label>
-                                <p class="text-[11px] text-indigo-800">
-                                    Alur pergantian ONT: Teknisi mengajukan permintaan ke Ka. Teknisi. Jika tidak jadi dipasang, unit ONT baru otomatis dikembalikan ke Inventory Gudang.
-                                </p>
-                            </div>
-                            <!-- Status Badge -->
-                            <span v-if="selectedTicket?.ont_replacement_status === 'requested'" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
-                                ⏳ Menunggu Ka. Teknisi Siapkan ONT
-                            </span>
-                            <span v-else-if="selectedTicket?.ont_replacement_status === 'prepared'" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
-                                📦 ONT Baru Telah Disiapkan
-                            </span>
-                            <span v-else-if="selectedTicket?.ont_replacement_status === 'installed'" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                ✅ ONT Telah Sukses Diganti
-                            </span>
-                            <span v-else-if="selectedTicket?.ont_replacement_status === 'cancelled'" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-100 text-gray-700 border border-gray-300">
-                                ↩️ Dibatalkan / Retur Gudang
-                            </span>
-                        </div>
-
-                        <!-- Info ONT Lama Pelanggan -->
-                        <div class="p-3 rounded-xl bg-white border border-indigo-100 flex items-center justify-between text-xs">
-                            <div class="flex items-center gap-2">
-                                <span class="text-gray-400">ONT Terpasang Saat Ini:</span>
-                                <span class="font-mono font-bold text-gray-900">{{ selectedTicket?.customer?.ont?.serial_number || 'Tidak terdeteksi / Belum ada' }}</span>
-                                <span v-if="selectedTicket?.customer?.ont?.brand" class="text-gray-500">({{ selectedTicket.customer.ont.brand }} {{ selectedTicket.customer.ont.model }})</span>
-                            </div>
-                            <span v-if="selectedTicket?.customer?.ont?.status" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-gray-100 text-gray-700">
-                                Status: {{ selectedTicket.customer.ont.status }}
-                            </span>
-                        </div>
-
-                        <!-- KONDISI 1: Belum ada request atau Dibatalkan -> Tombol Ajukan Request -->
-                        <div v-if="!selectedTicket?.ont_replacement_status || selectedTicket?.ont_replacement_status === 'none' || selectedTicket?.ont_replacement_status === 'cancelled'" class="space-y-3">
-                            <div v-if="!isOntRequestFormOpen" class="flex justify-end">
-                                <button 
-                                    type="button" 
-                                    @click="isOntRequestFormOpen = true" 
-                                    class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5"
-                                >
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                    <span>+ Ajukan Permintaan Pergantian ONT ke Ka. Teknisi</span>
-                                </button>
-                            </div>
-
-                            <!-- Form Request Pergantian ONT -->
-                            <div v-if="isOntRequestFormOpen" class="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-300 space-y-3 animate-fade-in-up">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-xs font-bold text-amber-950">📝 Formulir Pengajuan Pergantian ONT</span>
-                                    <button type="button" @click="isOntRequestFormOpen = false" class="text-xs text-amber-700 hover:text-amber-900 font-bold">✕ Tutup</button>
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-bold text-amber-900 mb-1">Alasan Pergantian ONT *</label>
-                                    <textarea 
-                                        v-model="ontRequestForm.requested_ont_notes" 
-                                        rows="2" 
-                                        placeholder="Contoh: ONT mati total tersambar petir / port LAN rusak terbakar / redaman LOS tinggi mesin rusak..." 
-                                        class="w-full text-xs rounded-xl border-amber-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 bg-white"
-                                    ></textarea>
-                                </div>
-                                <div class="flex justify-end gap-2">
-                                    <button type="button" @click="isOntRequestFormOpen = false" class="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-semibold bg-white text-gray-700">Batal</button>
+                            <!-- 2B. Material Terpasang di Pelanggan & Pergantian Bekas -->
+                            <div class="p-4 rounded-2xl bg-teal-50/60 border border-teal-200/80 space-y-3 shadow-2xs">
+                                <div class="flex items-center justify-between flex-wrap gap-2">
+                                    <div>
+                                        <div class="text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-1.5">
+                                            <span>🔄</span> B. Material Terpasang di Pelanggan & Pergantian Bekas
+                                        </div>
+                                        <p class="text-[11px] text-teal-800">
+                                            Pilih material yang rusak/diganti. Unit pengganti baru otomatis disinkronkan dengan bekal di atas.
+                                        </p>
+                                    </div>
                                     <button 
                                         type="button" 
-                                        @click="sendOntRequest" 
-                                        :disabled="ontRequestForm.processing || !ontRequestForm.requested_ont_notes" 
-                                        class="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold disabled:opacity-50 transition-all flex items-center gap-1"
+                                        @click="isAddInstalledMatModalOpen = !isAddInstalledMatModalOpen" 
+                                        class="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold shadow-sm cursor-pointer"
                                     >
-                                        <span>{{ ontRequestForm.processing ? 'Mengirim...' : 'Kirim Request ke Ka. Teknisi' }}</span>
+                                        + Tambah Item Terpasang
                                     </button>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- KONDISI 2: Request Sedang Menunggu Ka. Teknisi -->
-                        <div v-else-if="selectedTicket?.ont_replacement_status === 'requested'" class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-2">
-                            <div class="flex items-center justify-between">
-                                <div class="font-bold flex items-center gap-1.5 text-amber-900">
-                                    <span>⏳</span>
-                                    <span>Permintaan Pergantian ONT Sedang Ditinjau Ka. Teknisi</span>
-                                </div>
-                                <button type="button" @click="cancelPreparedOnt(selectedTicket)" class="text-rose-600 hover:text-rose-800 text-[11px] font-bold underline">
-                                    Batalkan Permintaan
-                                </button>
-                            </div>
-                            <div class="text-[11px] text-amber-800 bg-white/80 p-2 rounded-xl border border-amber-200">
-                                <strong>Catatan Permintaan:</strong> "{{ selectedTicket.requested_ont_notes }}"
-                                <span class="block text-[10px] text-amber-600 mt-0.5">Diajukan: {{ formatDate(selectedTicket.requested_ont_at) }}</span>
-                            </div>
-                            <p class="text-[10px] text-amber-700 italic">
-                                Kepala Teknisi akan menyiapkan unit ONT pengganti dari persediaan Gudang melalui menu Jadwal.
-                            </p>
-                        </div>
-
-                        <!-- KONDISI 3: Ka. Teknisi Telah Menyiapkan ONT Baru dari Gudang -->
-                        <div v-else-if="selectedTicket?.ont_replacement_status === 'prepared'" class="p-4 rounded-2xl bg-emerald-50/90 border-2 border-emerald-300 text-xs text-emerald-950 space-y-3">
-                            <div class="flex items-center justify-between flex-wrap gap-2">
-                                <div class="font-bold flex items-center gap-1.5 text-emerald-950 text-sm">
-                                    <span>📦</span>
-                                    <span>Unit ONT Baru Telah Disiapkan dari Gudang!</span>
-                                </div>
-                                <button 
-                                    type="button" 
-                                    @click="cancelPreparedOnt(selectedTicket)" 
-                                    class="px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 text-[11px] font-bold transition-all shadow-sm"
-                                    title="Jika tidak jadi ganti ONT, klik untuk mengembalikan langsung ke inventory gudang"
-                                >
-                                    ↩️ Ganti Tidak Jadi & Retur ke Gudang Sekarang
-                                </button>
-                            </div>
-
-                            <div class="p-3 rounded-xl bg-white border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
-                                <div>
-                                    <div class="text-[10px] font-bold text-gray-400 uppercase">Unit ONT Baru yang Dibawa:</div>
-                                    <div class="font-mono font-black text-sm text-emerald-700">
-                                        SN: {{ selectedTicket.prepared_ont?.serial_number || '-' }}
-                                    </div>
-                                    <div class="text-[11px] text-gray-600">
-                                        Merk/Model: {{ selectedTicket.prepared_ont?.brand || 'ONT' }} {{ selectedTicket.prepared_ont?.model || '' }}
+                                <!-- Form Tambah Item Terpasang Custom jika dibutuhkan -->
+                                <div v-if="isAddInstalledMatModalOpen" class="p-3 bg-white rounded-xl border border-teal-300 space-y-2 animate-fade-in-up">
+                                    <div class="grid grid-cols-12 gap-1.5 text-xs">
+                                        <input type="text" v-model="newInstalledMatForm.item_name" placeholder="Nama item terpasang..." class="col-span-6 rounded-lg border-gray-300 py-1 px-2" />
+                                        <input type="number" step="0.01" min="0.01" v-model="newInstalledMatForm.quantity" placeholder="Qty" class="col-span-2 rounded-lg border-gray-300 py-1 text-center font-bold" />
+                                        <select v-model="newInstalledMatForm.unit" class="col-span-2 rounded-lg border-gray-300 py-1 px-1">
+                                            <option value="pcs">pcs</option>
+                                            <option value="meter">meter</option>
+                                            <option value="unit">unit</option>
+                                        </select>
+                                        <button type="button" @click="saveNewInstalledMaterial" :disabled="!newInstalledMatForm.item_name" class="col-span-2 bg-teal-600 text-white rounded-lg font-bold text-xs disabled:opacity-50 cursor-pointer">Simpan</button>
                                     </div>
                                 </div>
-                                <div class="text-[11px] text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 self-start sm:self-auto">
-                                    Disiapkan oleh: <b>{{ selectedTicket.prepared_by_user?.name || 'Kepala Teknisi' }}</b>
-                                </div>
-                            </div>
 
-                            <!-- Pilihan Aksi di Laporan: Jadi vs Tidak Jadi -->
-                            <div class="space-y-2 pt-2 border-t border-emerald-200">
-                                <label class="block text-[11px] font-bold text-emerald-950 uppercase tracking-wider">
-                                    Keputusan Pergantian Saat Penyelesaian:
-                                </label>
+                                <!-- Grid Material Terpasang Aktif -->
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    <label 
-                                        class="p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all"
-                                        :class="reportForm.ont_replacement_action === 'installed' ? 'bg-white border-emerald-500 ring-2 ring-emerald-200 text-emerald-950 font-bold shadow-sm' : 'bg-emerald-50/50 border-emerald-200 text-gray-700'"
+                                    <div 
+                                        v-for="inst in activeCustomerMaterials" 
+                                        :key="'inst-' + inst.id"
+                                        class="p-2.5 rounded-xl bg-white border border-teal-100 shadow-2xs flex items-center justify-between gap-2"
                                     >
-                                        <input type="radio" v-model="reportForm.ont_replacement_action" value="installed" class="text-emerald-600 focus:ring-emerald-500">
-                                        <div>
-                                            <div class="text-xs">🟢 Pergantian Berhasil Dipasang</div>
-                                            <div class="text-[10px] text-gray-500 font-normal">ONT baru dipasangkan ke pelanggan, ONT lama ditarik/rusak.</div>
+                                        <div class="min-w-0">
+                                            <div class="font-bold text-gray-900 text-xs truncate" :title="inst.item_name">{{ inst.item_name }}</div>
+                                            <div class="text-[10px] text-gray-500 font-mono">
+                                                {{ parseFloat(inst.quantity) }} {{ inst.unit }}
+                                                <span v-if="inst.serial_number">· SN: {{ inst.serial_number }}</span>
+                                            </div>
                                         </div>
-                                    </label>
 
-                                    <label 
-                                        class="p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all"
-                                        :class="reportForm.ont_replacement_action === 'cancelled' ? 'bg-white border-rose-500 ring-2 ring-rose-200 text-rose-950 font-bold shadow-sm' : 'bg-emerald-50/50 border-emerald-200 text-gray-700'"
-                                    >
-                                        <input type="radio" v-model="reportForm.ont_replacement_action" value="cancelled" class="text-rose-600 focus:ring-rose-500">
-                                        <div>
-                                            <div class="text-xs">🔴 Tidak Jadi Ganti (Retur Gudang)</div>
-                                            <div class="text-[10px] text-gray-500 font-normal">ONT baru otomatis dikembalikan ke Inventory Gudang.</div>
-                                        </div>
-                                    </label>
+                                        <button 
+                                            type="button" 
+                                            @click="initReplacementForInstalledMaterial(inst)"
+                                            :class="materialReplacements.some(r => r.installed_material_id === inst.id) ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-teal-50 text-teal-700 hover:bg-teal-100 border-teal-200'"
+                                            class="px-2 py-1 rounded-lg border text-[11px] font-bold transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+                                        >
+                                            <span>🔄</span>
+                                            <span>{{ materialReplacements.some(r => r.installed_material_id === inst.id) ? 'Sedang Diganti' : 'Ganti' }}</span>
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div v-if="reportForm.ont_replacement_action === 'cancelled'" class="mt-2 animate-fade-in-up">
-                                    <label class="block text-[10px] font-bold text-rose-800 uppercase mb-0.5">Alasan Tidak Jadi / Retur Gudang:</label>
-                                    <input 
-                                        type="text" 
-                                        v-model="reportForm.ont_replacement_notes" 
-                                        placeholder="Contoh: Kabel putus sudah disambung, ONT lama ternyata masih normal..." 
-                                        class="w-full text-xs rounded-xl border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 bg-white"
-                                    />
+                                <!-- Detail Form Pergantian (Jika ada item yang dipilih untuk diganti) -->
+                                <div v-if="materialReplacements.length > 0" class="space-y-3 pt-2 border-t border-teal-200/80">
+                                    <div class="text-xs font-bold text-amber-950 uppercase flex items-center gap-1">
+                                        <span>⚠️</span> Rincian Material yang Diganti & Dibawa ke Gudang ({{ materialReplacements.length }} Item):
+                                    </div>
+
+                                    <div 
+                                        v-for="(rep, rIdx) in materialReplacements" 
+                                        :key="'rep-' + rIdx"
+                                        class="p-3.5 rounded-2xl bg-white border-2 border-amber-300 shadow-sm space-y-2.5"
+                                    >
+                                        <div class="flex items-start justify-between gap-2">
+                                            <div>
+                                                <span class="font-black text-gray-900 text-xs">📦 {{ rep.item_name }}</span>
+                                                <span class="text-[11px] text-gray-500 ml-1">(Total Terpasang: {{ rep.total_installed_qty }} {{ rep.unit }})</span>
+                                            </div>
+                                            <button type="button" @click="removeReplacement(rIdx)" class="text-rose-500 hover:text-rose-700 text-xs font-bold cursor-pointer">✕ Batalkan</button>
+                                        </div>
+
+                                        <!-- Pilihan Mode: Ganti Seluruhnya vs Sebagian -->
+                                        <div class="grid grid-cols-2 gap-2 text-xs">
+                                            <label class="p-2 rounded-xl border flex items-center gap-1.5 cursor-pointer" :class="rep.replacement_type === 'full' ? 'bg-amber-50 border-amber-500 font-bold text-amber-950' : 'border-gray-200 text-gray-600'">
+                                                <input type="radio" v-model="rep.replacement_type" value="full" @change="rep.quantity = rep.total_installed_qty; rep.replacement_quantity = rep.total_installed_qty" class="text-amber-600">
+                                                <span>🔄 Ganti 100% Seluruhnya</span>
+                                            </label>
+                                            <label class="p-2 rounded-xl border flex items-center gap-1.5 cursor-pointer" :class="rep.replacement_type === 'partial' ? 'bg-amber-50 border-amber-500 font-bold text-amber-950' : 'border-gray-200 text-gray-600'">
+                                                <input type="radio" v-model="rep.replacement_type" value="partial" class="text-amber-600">
+                                                <span>✂️ Ganti Sebagian (Potong)</span>
+                                            </label>
+                                        </div>
+
+                                        <!-- Qty Dibongkar & Kondisi Fisik -->
+                                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
+                                            <div class="sm:col-span-3">
+                                                <label class="block text-[9px] font-bold text-gray-600 uppercase mb-0.5">Jumlah Dibongkar *</label>
+                                                <div class="flex items-center gap-1">
+                                                    <input type="number" step="0.01" min="0.01" :max="rep.total_installed_qty" v-model="rep.quantity" class="w-full text-xs rounded-lg border-gray-300 font-black text-center py-1" required />
+                                                    <span class="text-gray-500 font-bold text-xs">{{ rep.unit }}</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="sm:col-span-4">
+                                                <label class="block text-[9px] font-bold text-gray-600 uppercase mb-0.5">Kondisi Fisik Bekas *</label>
+                                                <select v-model="rep.condition" class="w-full text-xs rounded-lg border-gray-300 font-semibold py-1 px-1.5" required>
+                                                    <option value="rusak_scrap">🔴 Rusak / Scrap (Afkir)</option>
+                                                    <option value="normal_reusable">🟢 Layak Pakai (Bisa Dipakai)</option>
+                                                    <option value="perlu_cek">🟡 Perlu Cek Lab / Servis</option>
+                                                </select>
+                                            </div>
+
+                                            <div class="sm:col-span-5">
+                                                <label class="block text-[9px] font-bold text-gray-600 uppercase mb-0.5">Alasan Kerusakan *</label>
+                                                <input type="text" v-model="rep.damage_reason" placeholder="Putus / redaman drop / pecah..." class="w-full text-xs rounded-lg border-gray-300 py-1 px-2" required />
+                                            </div>
+                                        </div>
+
+                                        <!-- Sumber Unit Baru Pengganti (Smart Bridge) -->
+                                        <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/90 text-xs">
+                                            <!-- Opsi 1: Jika cocok dengan bekal Ka. Teknisi -->
+                                            <div v-if="findMatchingPreparedMaterial(rep)" class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                <div class="text-[11px] text-emerald-800">
+                                                    <span>✓ Tersedia di Bekal Ka. Teknisi: <b>{{ findMatchingPreparedMaterial(rep).name }}</b> (Tercatat terpakai: {{ findMatchingPreparedMaterial(rep).quantity_used }} {{ findMatchingPreparedMaterial(rep).unit }})</span>
+                                                </div>
+                                                <button type="button" @click="syncReplacementToPrepared(rep, findMatchingPreparedMaterial(rep))" class="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-[10px] shadow-sm flex items-center gap-1 cursor-pointer shrink-0">
+                                                    <span>⚡ Sinkron Terpakai Bekal (Sync Bagian A)</span>
+                                                </button>
+                                            </div>
+                                            <!-- Opsi 2: Jika belum ada di bekal -> Tombol Ajukan Dadakan -->
+                                            <div v-else class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                <span class="text-[11px] text-amber-800">⚠️ Belum ada bekal yang cocok untuk item ini.</span>
+                                                <button type="button" @click="openEmergencyRequestForReplacement(rep)" class="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded text-[10px] shadow-sm flex items-center gap-1 cursor-pointer shrink-0">
+                                                    <span>📢 + Ajukan Dadakan ke Ka. Teknisi</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div class="text-[10px] text-amber-800 bg-amber-50/80 p-2 rounded-lg flex items-center justify-between">
+                                            <span>📦 Barang bekas (<b>{{ rep.quantity }} {{ rep.unit }}</b>) otomatis berstatus <b>Menunggu Serah Terima</b> ke Gudang / Ka. Teknisi.</span>
+                                            <span class="font-bold text-[9px] uppercase px-1.5 py-0.2 bg-white rounded border border-amber-200">{{ rep.condition === 'normal_reusable' ? '🟢 Restock Gudang' : '🔴 Scrap / Afkir' }}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- KONDISI 4: Sudah Selesai Diganti -->
-                        <div v-else-if="selectedTicket?.ont_replacement_status === 'installed'" class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <span class="text-base">✅</span>
-                                <span>ONT Pelanggan telah berhasil diganti dengan unit <b>SN: {{ selectedTicket.prepared_ont?.serial_number || '-' }}</b>.</span>
-                            </div>
-                        </div>
-                    </div>
+                            <!-- 2C. Pergantian Unit ONT (Jika Ada) -->
+                            <div class="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-xs space-y-2">
+                                <div class="flex items-center justify-between flex-wrap gap-1.5">
+                                    <span class="font-bold text-indigo-950 flex items-center gap-1">
+                                        <span>📶</span> C. Pergantian Unit ONT Pelanggan
+                                    </span>
+                                    <span v-if="selectedTicket?.ont_replacement_status === 'prepared'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                                        📦 ONT Baru Disiapkan: {{ selectedTicket.prepared_ont?.serial_number }}
+                                    </span>
+                                </div>
 
-                    <!-- ════════ SECTION 6: UPLOAD FOTO BUKTI LAPANGAN ════════ -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="space-y-1">
-                            <label class="block text-xs font-bold text-gray-700 uppercase">Foto Bukti Sebelum Perbaikan</label>
-                            <input 
-                                type="file" 
-                                accept="image/*"
-                                @change="onPhotoBeforeChange"
-                                class="w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" 
-                            />
-                            <div v-if="photoBeforePreview" class="mt-1">
-                                <img :src="photoBeforePreview" class="h-20 w-auto rounded-lg border border-gray-200 object-cover" />
-                            </div>
-                        </div>
-                        <div class="space-y-1">
-                            <label class="block text-xs font-bold text-gray-700 uppercase">Foto Bukti Sesudah Perbaikan</label>
-                            <input 
-                                type="file" 
-                                accept="image/*"
-                                @change="onPhotoAfterChange"
-                                class="w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" 
-                            />
-                            <div v-if="photoAfterPreview" class="mt-1">
-                                <img :src="photoAfterPreview" class="h-20 w-auto rounded-lg border border-gray-200 object-cover" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ════════ SECTION 6: CATATAN AKHIR PENANGANAN ════════ -->
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan Akhir Penanganan</label>
-                        <textarea 
-                            v-model="reportForm.resolution_notes" 
-                            rows="2" 
-                            placeholder="Contoh: Koneksi internet pelanggan telah diuji coba streaming dan speedtest normal. Pelanggan telah konfirmasi puas."
-                            class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm" 
-                        ></textarea>
-                    </div>
-
-                    <!-- ════════ SECTION 7: JAM SELESAI PENGERJAAN DI BAWAH ════════ -->
-                    <div class="p-4 rounded-2xl bg-gradient-to-r from-blue-50/70 via-indigo-50/60 to-blue-50/70 border border-blue-200 space-y-3">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div>
-                                <label class="block text-xs font-black text-blue-950 uppercase tracking-wider">
-                                    🏁 2. Jam Selesai Pengerjaan Lapangan
-                                </label>
-                                <p class="text-[11px] text-blue-800">Tekan tombol di bawah saat pengerjaan lapangan telah selesai tuntas.</p>
-                            </div>
-                            <div v-if="reportForm.end_time" class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto">
-                                <span>✓ Selesai: {{ reportForm.end_time }} WIB</span>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-1">
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <input 
-                                        type="time" 
-                                        v-model="reportForm.end_time" 
-                                        class="flex-1 rounded-xl border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm font-semibold text-gray-800 bg-white" 
-                                        required
-                                    />
-                                    <button 
-                                        type="button" 
-                                        @click="finishWork" 
-                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 shrink-0"
-                                    >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                        <span>{{ reportForm.end_time ? 'Update Jam Selesai' : 'Selesai Sekarang' }}</span>
+                                <div v-if="selectedTicket?.ont_replacement_status === 'prepared'" class="space-y-1.5 pt-1">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <label class="p-2 rounded-xl border flex items-center gap-1.5 cursor-pointer" :class="reportForm.ont_replacement_action === 'installed' ? 'bg-white border-emerald-500 font-bold text-emerald-900 shadow-2xs' : 'border-gray-200 text-gray-600'">
+                                            <input type="radio" v-model="reportForm.ont_replacement_action" value="installed" class="text-emerald-600">
+                                            <span>🟢 Berhasil Dipasang</span>
+                                        </label>
+                                        <label class="p-2 rounded-xl border flex items-center gap-1.5 cursor-pointer" :class="reportForm.ont_replacement_action === 'cancelled' ? 'bg-white border-rose-500 font-bold text-rose-900 shadow-2xs' : 'border-gray-200 text-gray-600'">
+                                            <input type="radio" v-model="reportForm.ont_replacement_action" value="cancelled" class="text-rose-600">
+                                            <span>🔴 Retur Gudang (Tidak Jadi)</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div v-else class="text-[11px] text-gray-500 flex items-center justify-between">
+                                    <span>ONT terpasang: {{ selectedTicket?.customer?.ont?.serial_number || '-' }}</span>
+                                    <button v-if="!selectedTicket?.ont_replacement_status || selectedTicket?.ont_replacement_status === 'none'" type="button" @click="isOntRequestFormOpen = !isOntRequestFormOpen" class="text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer">
+                                        + Ajukan Ganti ONT
                                     </button>
                                 </div>
+                                <!-- Form Request Ganti ONT jika dibuka -->
+                                <div v-if="isOntRequestFormOpen" class="pt-2 border-t border-indigo-200 flex gap-1.5">
+                                    <input type="text" v-model="ontRequestForm.requested_ont_notes" placeholder="Alasan ganti ONT (cth: mati tersambar petir)..." class="flex-1 text-xs rounded-lg border-indigo-300 py-1 px-2" />
+                                    <button type="button" @click="sendOntRequest" :disabled="ontRequestForm.processing || !ontRequestForm.requested_ont_notes" class="px-3 py-1 bg-indigo-600 text-white rounded-lg font-bold text-xs cursor-pointer disabled:opacity-50">Kirim</button>
+                                </div>
                             </div>
-                            <!-- Durasi Text Display -->
-                            <div class="p-2.5 rounded-xl bg-white border border-blue-100 shadow-sm flex items-center justify-between">
-                                <span class="text-xs text-gray-500 font-medium">Total Waktu Pengerjaan:</span>
-                                <span class="text-sm font-black text-blue-900">{{ calculatedDurationText }}</span>
+                        </div>
+
+                        <!-- ═════════════════════════════════════════════════════ -->
+                        <!-- TAB 3: FOTO, CATATAN SELESAI, & SUBMIT               -->
+                        <!-- ═════════════════════════════════════════════════════ -->
+                        <div v-show="activeReportTab === 'selesai'" class="space-y-4">
+                            <!-- 1. Upload Foto Bukti Lapangan -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="p-3 rounded-2xl bg-gray-50 border border-gray-200 space-y-1.5">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase">📷 Foto Sebelum Perbaikan</label>
+                                    <input 
+                                        type="file" 
+                                        accept="image/*"
+                                        @change="onPhotoBeforeChange"
+                                        class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" 
+                                    />
+                                    <div v-if="photoBeforePreview" class="mt-1">
+                                        <img :src="photoBeforePreview" class="h-20 w-auto rounded-lg border border-gray-200 object-cover" />
+                                    </div>
+                                </div>
+
+                                <div class="p-3 rounded-2xl bg-gray-50 border border-gray-200 space-y-1.5">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase">📷 Foto Sesudah Perbaikan</label>
+                                    <input 
+                                        type="file" 
+                                        accept="image/*"
+                                        @change="onPhotoAfterChange"
+                                        class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" 
+                                    />
+                                    <div v-if="photoAfterPreview" class="mt-1">
+                                        <img :src="photoAfterPreview" class="h-20 w-auto rounded-lg border border-gray-200 object-cover" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. Jam Selesai & Durasi Pengerjaan -->
+                            <div class="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50/70 via-indigo-50/60 to-blue-50/70 border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                                <div>
+                                    <label class="block text-[11px] font-black text-blue-950 uppercase tracking-wider mb-1">
+                                        🏁 Jam Selesai Pengerjaan Lapangan <span class="text-red-500">*</span>
+                                    </label>
+                                    <div class="flex items-center gap-2">
+                                        <input 
+                                            type="time" 
+                                            v-model="reportForm.end_time" 
+                                            class="rounded-xl border-gray-300 py-1.5 px-3 text-xs font-bold text-gray-800 bg-white focus:border-blue-500" 
+                                            required
+                                        />
+                                        <button 
+                                            type="button" 
+                                            @click="finishWork" 
+                                            class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+                                        >
+                                            <span>{{ reportForm.end_time ? 'Update Jam' : '✓ Selesai Sekarang' }}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="px-3 py-1.5 rounded-xl bg-white border border-blue-100 shadow-2xs flex items-center gap-2 self-start sm:self-auto">
+                                    <span class="text-[11px] text-gray-500">Total Durasi:</span>
+                                    <span class="text-xs font-black text-blue-900">{{ calculatedDurationText }}</span>
+                                </div>
+                            </div>
+
+                            <!-- 3. Catatan Akhir Penanganan -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan Akhir Penanganan</label>
+                                <textarea 
+                                    v-model="reportForm.resolution_notes" 
+                                    rows="2" 
+                                    placeholder="Contoh: Koneksi internet pelanggan telah diuji coba streaming dan speedtest normal. Pelanggan telah konfirmasi puas."
+                                    class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs" 
+                                ></textarea>
+                            </div>
+
+                            <!-- 4. Ringkasan Rekonsiliasi Otomatis Sebelum Submit -->
+                            <div class="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs text-emerald-950 space-y-1.5">
+                                <div class="font-bold flex items-center gap-1.5 text-emerald-900">
+                                    <span>⚡</span> Ringkasan Otomatis Saat Disimpan:
+                                </div>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] pt-1">
+                                    <div class="p-2 rounded-xl bg-white border border-emerald-100">
+                                        <span class="text-gray-400 block text-[9px] uppercase font-bold">Waktu Mulai - Selesai</span>
+                                        <span class="font-bold text-gray-800">{{ reportForm.start_time || '-' }} &rarr; {{ reportForm.end_time || '-' }}</span>
+                                    </div>
+                                    <div class="p-2 rounded-xl bg-white border border-emerald-100">
+                                        <span class="text-gray-400 block text-[9px] uppercase font-bold">Bekal Terpakai</span>
+                                        <span class="font-bold text-emerald-700">{{ countUsedMaterials }} jenis material</span>
+                                    </div>
+                                    <div class="p-2 rounded-xl bg-white border border-emerald-100">
+                                        <span class="text-gray-400 block text-[9px] uppercase font-bold">Retur Gudang (IN-PGS)</span>
+                                        <span class="font-bold text-blue-700">{{ countReturnedMaterials }} jenis sisa</span>
+                                    </div>
+                                    <div class="p-2 rounded-xl bg-white border border-emerald-100">
+                                        <span class="text-gray-400 block text-[9px] uppercase font-bold">Serah Terima Bekas</span>
+                                        <span class="font-bold text-amber-800">{{ materialReplacements.length }} item</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Footer Action Buttons -->
-                    <div class="pt-4 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <!-- ════════ FIXED FOOTER (ALWAYS VISIBLE AT BOTTOM) ════════ -->
+                    <div class="px-5 py-3 bg-white border-t border-gray-200 flex items-center justify-between gap-3 shrink-0">
                         <div>
                             <button 
-                                v-if="hasSavedDraft" 
+                                v-if="activeReportTab !== 'tindakan'" 
                                 type="button" 
-                                @click="clearDraft" 
-                                class="text-xs text-gray-400 hover:text-rose-600 transition-colors font-medium underline"
+                                @click="goToPrevTab" 
+                                class="px-3.5 py-2 border border-gray-300 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
                             >
-                                🗑️ Hapus Draft & Muat Ulang
+                                <span>⬅ Sebelumnya</span>
                             </button>
-                        </div>
-                        <div class="flex items-center justify-end gap-2">
                             <button 
+                                v-else 
                                 type="button" 
                                 @click="closeReportModal" 
-                                class="px-5 py-2.5 border border-gray-200 rounded-xl text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors"
+                                class="px-3.5 py-2 border border-gray-200 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-50 cursor-pointer"
                             >
                                 Batal
                             </button>
+                        </div>
+
+                        <div class="flex items-center gap-2">
                             <button 
+                                v-if="activeReportTab !== 'selesai'" 
+                                type="button" 
+                                @click="goToNextTab" 
+                                class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer transition-all"
+                            >
+                                <span>{{ activeReportTab === 'tindakan' ? 'Lanjut ke Material ➔' : 'Lanjut ke Foto & Selesai ➔' }}</span>
+                            </button>
+                            <button 
+                                v-else 
                                 type="submit" 
                                 :disabled="reportForm.processing || !reportForm.action_taken" 
-                                class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-black shadow-lg shadow-emerald-600/20 disabled:opacity-50 transition-all flex items-center gap-2"
+                                class="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 disabled:opacity-50 flex items-center gap-2 cursor-pointer transition-all"
                             >
                                 <svg v-if="reportForm.processing" class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                <span>{{ reportForm.processing ? 'Menyimpan...' : 'Simpan Laporan & Selesaikan PGS' }}</span>
+                                <span>{{ reportForm.processing ? 'Menyimpan...' : '💾 Simpan Laporan & Selesaikan PGS' }}</span>
                             </button>
                         </div>
                     </div>
@@ -1561,6 +930,28 @@ const filterArea = ref(props.filters?.area_id || '');
 const showReportModal = ref(false);
 const selectedTicket = ref(null);
 const hasSavedDraft = ref(false);
+const activeReportTab = ref('tindakan');
+const showCustomerDetail = ref(false);
+
+const goToNextTab = () => {
+    if (activeReportTab.value === 'tindakan') {
+        if (!reportForm.action_taken || !reportForm.action_taken.trim()) {
+            alert('Mohon isi Tindakan Perbaikan Lapangan terlebih dahulu!');
+            return;
+        }
+        activeReportTab.value = 'material';
+    } else if (activeReportTab.value === 'material') {
+        activeReportTab.value = 'selesai';
+    }
+};
+
+const goToPrevTab = () => {
+    if (activeReportTab.value === 'selesai') {
+        activeReportTab.value = 'material';
+    } else if (activeReportTab.value === 'material') {
+        activeReportTab.value = 'tindakan';
+    }
+};
 
 // Timer & Stopwatch State
 const startedAt = ref(null);
@@ -2023,6 +1414,7 @@ const saveDraft = () => {
             })),
             incident_coordinates: incidentCoordinates.value,
             material_replacements: materialReplacements.value,
+            active_tab: activeReportTab.value,
             saved_at: new Date().toISOString(),
         };
         localStorage.setItem(getDraftKey(selectedTicket.value.id), JSON.stringify(draft));
@@ -2048,6 +1440,8 @@ const openReportModal = (ticket, ignoreDraft = false) => {
     reportForm.reset();
     additionalMaterials.value = [];
     hasSavedDraft.value = false;
+    activeReportTab.value = 'tindakan';
+    showCustomerDetail.value = false;
     photoBeforePreview.value = ticket.photo_before ? `/storage/${ticket.photo_before}` : null;
     photoAfterPreview.value = ticket.photo_after ? `/storage/${ticket.photo_after}` : null;
 
@@ -2066,6 +1460,7 @@ const openReportModal = (ticket, ignoreDraft = false) => {
             reportForm.resolution_notes = draft.resolution_notes || '';
             reportForm.ont_replacement_action = draft.ont_replacement_action || 'installed';
             reportForm.ont_replacement_notes = draft.ont_replacement_notes || '';
+            activeReportTab.value = draft.active_tab || 'tindakan';
 
             if (Array.isArray(draft.materials) && draft.materials.length > 0) {
                 reportForm.materials = draft.materials;
@@ -2324,6 +1719,12 @@ const onPhotoAfterChange = (e) => {
 // ── Submit Report ──────────────────────────────────────────────
 const submitReport = () => {
     if (!selectedTicket.value) return;
+
+    if (!reportForm.action_taken || !reportForm.action_taken.trim()) {
+        activeReportTab.value = 'tindakan';
+        alert('Mohon isi Tindakan Perbaikan Lapangan terlebih dahulu!');
+        return;
+    }
 
     reportForm.transform((data) => ({
         ...data,
