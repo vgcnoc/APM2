@@ -765,6 +765,60 @@
                                         </button>
                                     </div>
 
+                                    <!-- Sumber Unit Pengganti Baru (Bekal Ka. Teknisi vs Permintaan Dadakan) -->
+                                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/90 space-y-2 text-xs">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[10px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                                <span>⚡</span> Sumber Unit Baru Pengganti:
+                                            </span>
+                                            <span class="text-[10px] text-gray-500 font-medium">
+                                                Unit yang dipasangkan menggantikan barang bekas
+                                            </span>
+                                        </div>
+
+                                        <!-- Opsi 1: Jika cocok dengan bekal Ka. Teknisi -->
+                                        <div v-if="findMatchingPreparedMaterial(rep)" class="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+                                            <div>
+                                                <div class="font-bold flex items-center gap-1.5 text-xs text-emerald-900">
+                                                    <span>✓</span> Tersedia di Bekal Ka. Teknisi:
+                                                    <span class="underline">{{ findMatchingPreparedMaterial(rep).name }}</span>
+                                                </div>
+                                                <div class="text-[11px] text-emerald-700 mt-0.5">
+                                                    Bawa dari Kantor: <b>{{ findMatchingPreparedMaterial(rep).quantity_prepared }} {{ findMatchingPreparedMaterial(rep).unit }}</b> 
+                                                    (Tercatat terpakai: <b>{{ findMatchingPreparedMaterial(rep).quantity_used }} {{ findMatchingPreparedMaterial(rep).unit }}</b>)
+                                                </div>
+                                            </div>
+                                            <button 
+                                                type="button" 
+                                                @click="syncReplacementToPrepared(rep, findMatchingPreparedMaterial(rep))" 
+                                                class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] shadow-sm flex items-center gap-1 shrink-0 self-start sm:self-auto cursor-pointer transition-all"
+                                                title="Klik untuk otomatis sinkronkan kuantitas terpakai pada Bagian 4A"
+                                            >
+                                                <span>⚡ Pakai Bekal Ini (Sync Bagian 4A)</span>
+                                            </button>
+                                        </div>
+
+                                        <!-- Opsi 2: Jika belum ada di bekal -> Tombol Ajukan Dadakan -->
+                                        <div v-else class="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+                                            <div>
+                                                <div class="font-bold text-xs text-amber-900 flex items-center gap-1.5">
+                                                    <span>⚠️</span> Belum Ada di Bekal Ka. Teknisi
+                                                </div>
+                                                <div class="text-[11px] text-amber-800 mt-0.5">
+                                                    Tidak ada bekal yang cocok untuk item ini. Butuh pasokan dadakan dari kantor/gudang?
+                                                </div>
+                                            </div>
+                                            <button 
+                                                type="button" 
+                                                @click="openEmergencyRequestForReplacement(rep)" 
+                                                class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-[10px] shadow-sm flex items-center gap-1 shrink-0 self-start sm:self-auto cursor-pointer transition-all"
+                                                title="Buka form pengajuan dadakan ke Ka. Teknisi dengan item ini terisi otomatis"
+                                            >
+                                                <span>📢 + Ajukan Permintaan Dadakan</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     <!-- Info Serah Terima Notice -->
                                     <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-center justify-between flex-wrap gap-2">
                                         <div class="flex items-center gap-1.5">
@@ -1755,6 +1809,61 @@ const initReplacementForInstalledMaterial = (installedItem) => {
 
 const removeReplacement = (index) => {
     materialReplacements.value.splice(index, 1);
+    saveDraft();
+};
+
+const findMatchingPreparedMaterial = (rep) => {
+    if (!rep || !reportForm.materials || reportForm.materials.length === 0) return null;
+    const repNameLower = (rep.item_name || '').toLowerCase();
+    
+    // 1. Direct match by material_id
+    if (rep.material_id) {
+        const found = reportForm.materials.find(m => m.material_id == rep.material_id);
+        if (found) return found;
+    }
+
+    // 2. Keyword match
+    const keywords = ['dropcore', 'fast connector', 'patchcord', 'roset', 'ont', 'modem', 'adapter', 'klem', 's-clamp', 'protection sleeve'];
+    for (const kw of keywords) {
+        if (repNameLower.includes(kw)) {
+            const found = reportForm.materials.find(m => (m.name || '').toLowerCase().includes(kw));
+            if (found) return found;
+        }
+    }
+
+    // 3. Fallback match by first word
+    const firstWord = repNameLower.split(' ')[0];
+    if (firstWord && firstWord.length >= 3) {
+        const found = reportForm.materials.find(m => (m.name || '').toLowerCase().includes(firstWord.toLowerCase()));
+        if (found) return found;
+    }
+
+    return null;
+};
+
+const syncReplacementToPrepared = (rep, matched) => {
+    if (!matched) return;
+    rep.replacement_material_id = matched.material_id;
+    // Set kuantitas terpakai pada bekal agar sesuai dengan yang dibongkar/diganti
+    const qtyToUse = Math.min(parseFloat(matched.quantity_prepared) || 0, parseFloat(rep.quantity) || 0);
+    matched.quantity_used = qtyToUse;
+    calculateReturned(matched);
+    saveDraft();
+};
+
+const openEmergencyRequestForReplacement = (rep) => {
+    isRequestFormOpen.value = true;
+    const emptyItem = materialRequestForm.items.find(i => !i.item_name || !i.item_name.trim());
+    if (emptyItem) {
+        emptyItem.item_name = rep.item_name;
+        emptyItem.quantity = parseFloat(rep.quantity) || 1;
+        emptyItem.unit = rep.unit || 'pcs';
+    } else {
+        addRequestItem(rep.item_name, parseFloat(rep.quantity) || 1, rep.unit || 'pcs');
+    }
+    if (!materialRequestForm.notes) {
+        materialRequestForm.notes = `Kebutuhan mendesak pergantian material rusak (${rep.item_name}) di lokasi pelanggan`;
+    }
     saveDraft();
 };
 
