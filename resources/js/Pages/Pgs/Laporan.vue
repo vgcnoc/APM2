@@ -607,6 +607,19 @@
                                     class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs" 
                                     required
                                 ></textarea>
+                                <!-- Template Cepat Tindakan (Termasuk Splice Ulang) -->
+                                <div class="mt-1.5 flex flex-wrap items-center gap-1">
+                                    <span class="text-[10px] text-gray-500 font-bold mr-1">⚡ Contoh Cepat:</span>
+                                    <button 
+                                        type="button" 
+                                        v-for="chip in quickActionTemplates" 
+                                        :key="chip"
+                                        @click="appendActionTemplate(chip)"
+                                        class="px-2 py-0.5 rounded-lg text-[10px] bg-white hover:bg-emerald-50 hover:text-emerald-800 text-gray-700 border border-gray-200 hover:border-emerald-300 font-semibold shadow-2xs transition-all cursor-pointer"
+                                    >
+                                        {{ chip }}
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- 3. Redaman Optik (dBm) -->
@@ -1824,6 +1837,23 @@ const activeCustomerMaterials = computed(() => {
         }
     ];
 });
+
+const quickActionTemplates = [
+    'Splicing ulang core putus di tiang / roset',
+    'Rapikan lekukan kabel dropcore & splicing ulang',
+    'Splicing ulang di terminal ODP',
+    'Perbaikan sambungan kabel indoor & roset',
+    'Pembersihan patchcord & konektor adapter optik',
+];
+
+const appendActionTemplate = (text) => {
+    if (!reportForm.action_taken || !reportForm.action_taken.trim()) {
+        reportForm.action_taken = text;
+    } else {
+        reportForm.action_taken += ', ' + text.toLowerCase();
+    }
+    saveDraft();
+};
 
 const quickDamageChips = [
     'Kabel Putus / Terlindas Truk',
