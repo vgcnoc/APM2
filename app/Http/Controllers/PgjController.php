@@ -429,6 +429,11 @@ class PgjController extends Controller
             'location_name' => 'nullable|string|max:255',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
+            'incident_coordinates' => 'nullable|array',
+            'incident_coordinates.*.name' => 'nullable|string|max:255',
+            'incident_coordinates.*.latitude' => 'nullable|numeric',
+            'incident_coordinates.*.longitude' => 'nullable|numeric',
+            'incident_coordinates.*.notes' => 'nullable|string',
             'otdr_distance' => 'nullable|string|max:100',
             'source_report' => 'required|string|max:100',
             'category' => 'required|string|max:150',
@@ -439,6 +444,26 @@ class PgjController extends Controller
 
         if ($validated['segment_type'] === 'backbone') {
             $validated['odp_id'] = null; // Backbone tidak relevan dengan ODP
+        }
+
+        // Filter dan rapikan incident_coordinates
+        $filteredCoords = [];
+        if (!empty($validated['incident_coordinates']) && is_array($validated['incident_coordinates'])) {
+            foreach ($validated['incident_coordinates'] as $coord) {
+                if (!empty($coord['latitude']) || !empty($coord['longitude']) || !empty($coord['name'])) {
+                    $filteredCoords[] = [
+                        'name' => $coord['name'] ?? 'Titik Insiden Lapangan',
+                        'latitude' => isset($coord['latitude']) && $coord['latitude'] !== '' ? (float) $coord['latitude'] : null,
+                        'longitude' => isset($coord['longitude']) && $coord['longitude'] !== '' ? (float) $coord['longitude'] : null,
+                        'notes' => $coord['notes'] ?? null,
+                    ];
+                }
+            }
+        }
+        $incidentCoordsToSave = !empty($filteredCoords) ? $filteredCoords : null;
+        if (empty($validated['latitude']) && !empty($filteredCoords[0]['latitude'])) {
+            $validated['latitude'] = $filteredCoords[0]['latitude'];
+            $validated['longitude'] = $filteredCoords[0]['longitude'];
         }
 
         // Otomatis hitung perkiraan pelanggan terdampak
@@ -483,6 +508,7 @@ class PgjController extends Controller
             'location_name' => $validated['location_name'] ?? 'Titik Jalur Jaringan',
             'latitude' => $validated['latitude'] ?? null,
             'longitude' => $validated['longitude'] ?? null,
+            'incident_coordinates' => $incidentCoordsToSave,
             'otdr_distance' => $validated['otdr_distance'] ?? null,
             'source_report' => $validated['source_report'],
             'category' => $validated['category'],
@@ -764,21 +790,99 @@ class PgjController extends Controller
             'start_time' => 'nullable|string|max:50',
             'end_time' => 'nullable|string|max:50',
             'resolution_notes' => 'nullable|string',
-            'photo_before' => 'nullable|image|max:5120',
-            'photo_after' => 'nullable|image|max:5120',
+            'photo_before' => 'nullable|image|max:10240',
+            'photo_after' => 'nullable|image|max:10240',
+            'handling_photos_files.*' => 'nullable|image|max:10240',
+            'handling_photos_captions' => 'nullable|array',
+            'incident_coordinates' => 'nullable|array',
+            'incident_coordinates.*.name' => 'nullable|string|max:255',
+            'incident_coordinates.*.latitude' => 'nullable|numeric',
+            'incident_coordinates.*.longitude' => 'nullable|numeric',
+            'incident_coordinates.*.notes' => 'nullable|string',
             'materials' => 'nullable|array',
             'materials.*.pgj_material_id' => 'required|exists:pgj_materials,id',
             'materials.*.quantity_used' => 'required|numeric|min:0',
         ]);
 
+        // 1. Tangani incident_coordinates (bisa lebih dari 1)
+        $incidentCoords = [];
+        if ($request->has('incident_coordinates') && is_array($request->incident_coordinates)) {
+            foreach ($request->incident_coordinates as $coord) {
+                if (!empty($coord['latitude']) || !empty($coord['longitude']) || !empty($coord['name'])) {
+                    $incidentCoords[] = [
+                        'name' => $coord['name'] ?? 'Titik Insiden Lapangan',
+                        'latitude' => isset($coord['latitude']) && $coord['latitude'] !== '' ? (float) $coord['latitude'] : null,
+                        'longitude' => isset($coord['longitude']) && $coord['longitude'] !== '' ? (float) $coord['longitude'] : null,
+                        'notes' => $coord['notes'] ?? null,
+                    ];
+                }
+            }
+        }
+        $incidentCoordsToSave = !empty($incidentCoords) ? $incidentCoords : ($pgj->incident_coordinates ?: null);
+        $primaryLat = $pgj->latitude;
+        $primaryLng = $pgj->longitude;
+        if (!empty($incidentCoords[0]['latitude'])) {
+            $primaryLat = $incidentCoords[0]['latitude'];
+            $primaryLng = $incidentCoords[0]['longitude'];
+        }
+
+        // 2. Tangani foto penanganan (handling_photos)
+        $handlingPhotos = [];
+        if ($request->has('existing_handling_photos')) {
+            $existing = is_string($request->existing_handling_photos)
+                ? json_decode($request->existing_handling_photos, true)
+                : $request->existing_handling_photos;
+            if (is_array($existing)) {
+                $handlingPhotos = $existing;
+            }
+        } elseif (is_array($pgj->handling_photos)) {
+            $handlingPhotos = $pgj->handling_photos;
+        }
+
+        // Simpan file-file foto penanganan baru
+        if ($request->hasFile('handling_photos_files')) {
+            $files = $request->file('handling_photos_files');
+            $captions = $request->input('handling_photos_captions', []);
+            if (is_array($files)) {
+                foreach ($files as $idx => $file) {
+                    if ($file && $file->isValid()) {
+                        $storedPath = $file->store('pgj_photos', 'public');
+                        $caption = isset($captions[$idx]) && trim($captions[$idx]) !== '' ? trim($captions[$idx]) : 'Dokumentasi Penanganan Lapangan';
+                        $handlingPhotos[] = [
+                            'path' => $storedPath,
+                            'caption' => $caption,
+                            'uploaded_at' => now()->format('Y-m-d H:i:s'),
+                        ];
+                    }
+                }
+            }
+        }
+
         $photoBeforePath = $pgj->photo_before;
         if ($request->hasFile('photo_before')) {
             $photoBeforePath = $request->file('photo_before')->store('pgj_photos', 'public');
+            $handlingPhotos[] = [
+                'path' => $photoBeforePath,
+                'caption' => 'Foto Kerusakan (Sebelum Restorasi)',
+                'uploaded_at' => now()->format('Y-m-d H:i:s'),
+            ];
         }
 
         $photoAfterPath = $pgj->photo_after;
         if ($request->hasFile('photo_after')) {
             $photoAfterPath = $request->file('photo_after')->store('pgj_photos', 'public');
+            $handlingPhotos[] = [
+                'path' => $photoAfterPath,
+                'caption' => 'Foto Hasil Restorasi / Splicing (Sesudah)',
+                'uploaded_at' => now()->format('Y-m-d H:i:s'),
+            ];
+        }
+
+        if (empty($photoBeforePath) && !empty($handlingPhotos[0]['path'])) {
+            $photoBeforePath = $handlingPhotos[0]['path'];
+        }
+        if (empty($photoAfterPath) && count($handlingPhotos) > 1) {
+            $photoAfterPath = end($handlingPhotos)['path'];
         }
 
         // Rekonsiliasi material terpakai vs sisa dikembalikan ke gudang (Serah Terima Gudang)
@@ -833,6 +937,10 @@ class PgjController extends Controller
             'end_time' => $validated['end_time'] ?? null,
             'photo_before' => $photoBeforePath,
             'photo_after' => $photoAfterPath,
+            'incident_coordinates' => $incidentCoordsToSave,
+            'handling_photos' => !empty($handlingPhotos) ? array_values($handlingPhotos) : null,
+            'latitude' => $primaryLat,
+            'longitude' => $primaryLng,
             'resolution_notes' => $validated['resolution_notes'] ?? null,
             'resolved_by' => auth()->id(),
             'resolved_at' => now(),

@@ -172,6 +172,31 @@
                                         <svg class="w-3.5 h-3.5 text-red-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                                         <span>{{ ticket.segment_type === 'backbone' ? '🚨 GANGGUAN MASSAL: ' : 'Dampak: ' }}{{ ticket.affected_customers_count }} Pelanggan</span>
                                     </div>
+
+                                    <!-- Titik Koordinat GPS Badges -->
+                                    <div v-if="ticket.incident_coordinates && ticket.incident_coordinates.length > 0" class="mt-1.5 flex flex-wrap gap-1">
+                                        <a 
+                                            v-for="(c, cIdx) in ticket.incident_coordinates" 
+                                            :key="cIdx"
+                                            :href="`https://www.google.com/maps?q=${c.latitude},${c.longitude}`" 
+                                            target="_blank" 
+                                            class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                                            :title="`${c.name}: ${c.latitude}, ${c.longitude}`"
+                                        >
+                                            <span>📍 {{ c.name || `Titik ${cIdx + 1}` }}</span>
+                                            <svg class="w-2.5 h-2.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                        </a>
+                                    </div>
+                                    <div v-else-if="ticket.latitude && ticket.longitude" class="mt-1.5">
+                                        <a 
+                                            :href="`https://www.google.com/maps?q=${ticket.latitude},${ticket.longitude}`" 
+                                            target="_blank" 
+                                            class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                                        >
+                                            <span>📍 Buka Google Maps</span>
+                                            <svg class="w-2.5 h-2.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                        </a>
+                                    </div>
                                 </td>
 
                                 <!-- 3. Kerusakan & Indikasi OTDR -->
@@ -184,6 +209,11 @@
                                     </p>
                                     <div v-if="ticket.admin_notes" class="mt-1 text-[11px] text-gray-600 bg-gray-50 p-1.5 rounded border border-gray-100">
                                         <span class="font-bold text-gray-700">Tindakan NOC:</span> {{ ticket.admin_notes }}
+                                    </div>
+                                    <div v-if="(ticket.handling_photos && ticket.handling_photos.length > 0) || ticket.photo_after || ticket.photo_before" class="mt-1.5 flex items-center gap-1.5">
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                            📷 {{ (ticket.handling_photos?.length) || (ticket.photo_after && ticket.photo_before ? 2 : 1) }} Foto
+                                        </span>
                                     </div>
                                 </td>
 
@@ -456,6 +486,96 @@
                         />
                     </div>
 
+                    <!-- Titik Koordinat Insiden (Bisa > 1) -->
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="block text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>📍</span> Titik Koordinat Insiden (Bisa Lebih Dari 1)
+                                </label>
+                                <p class="text-[11px] text-gray-500">
+                                    Opsional: Catat 1 atau lebih titik koordinat GPS insiden (titik putus kabel, tiang tumbang, ODC/ODP).
+                                </p>
+                            </div>
+                            <button 
+                                type="button" 
+                                @click="addCreateCoordinatePoint" 
+                                class="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-white font-bold text-[11px] rounded-lg shadow-xs transition-all flex items-center gap-1"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                <span>+ Tambah Titik</span>
+                            </button>
+                        </div>
+
+                        <div v-if="createForm.incident_coordinates.length === 0" class="p-2.5 bg-white rounded-xl border border-dashed border-gray-300 text-center text-xs text-gray-400">
+                            Belum ada titik koordinat. Klik "+ Tambah Titik" jika sudah diketahui koordinat GPS insiden di peta.
+                        </div>
+
+                        <div v-else class="space-y-2">
+                            <div 
+                                v-for="(coord, idx) in createForm.incident_coordinates" 
+                                :key="idx" 
+                                class="p-3 rounded-xl bg-white border border-gray-200 space-y-2 shadow-xs"
+                            >
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">#{{ idx + 1 }}</span>
+                                    <input 
+                                        type="text" 
+                                        v-model="coord.name" 
+                                        placeholder="Label Titik (Contoh: Tiang 12 Kabel Putus)"
+                                        class="flex-1 rounded-xl border-gray-200 text-xs font-semibold py-1 px-2.5 focus:border-rose-500 focus:ring-1 focus:ring-rose-200"
+                                    />
+                                    <button 
+                                        type="button" 
+                                        @click="removeCreateCoordinatePoint(idx)" 
+                                        class="p-1 text-gray-400 hover:text-rose-600 rounded"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                                    <div class="sm:col-span-4">
+                                        <input 
+                                            type="text" 
+                                            v-model="coord.latitude" 
+                                            placeholder="Latitude (cth: -6.2088)" 
+                                            class="w-full rounded-xl border-gray-200 text-xs font-mono py-1 px-2.5 focus:border-rose-500 focus:ring-1 focus:ring-rose-200"
+                                        />
+                                    </div>
+                                    <div class="sm:col-span-4">
+                                        <input 
+                                            type="text" 
+                                            v-model="coord.longitude" 
+                                            placeholder="Longitude (cth: 106.8456)" 
+                                            class="w-full rounded-xl border-gray-200 text-xs font-mono py-1 px-2.5 focus:border-rose-500 focus:ring-1 focus:ring-rose-200"
+                                        />
+                                    </div>
+                                    <div class="sm:col-span-4 flex items-center gap-1">
+                                        <button 
+                                            type="button" 
+                                            @click="getGpsForCreateCoord(idx)" 
+                                            :disabled="createGpsLoadingIndex === idx"
+                                            class="flex-1 px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold flex items-center justify-center gap-1"
+                                            title="Ambil GPS perangkat saat ini"
+                                        >
+                                            <svg v-if="createGpsLoadingIndex === idx" class="w-3 h-3 animate-spin text-rose-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                            <span v-else>📍 GPS</span>
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            @click="openGoogleMaps(coord.latitude, coord.longitude)" 
+                                            :disabled="!coord.latitude || !coord.longitude"
+                                            class="flex-1 px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold flex items-center justify-center gap-1 disabled:opacity-40"
+                                            title="Buka di Maps"
+                                        >
+                                            🗺️ Maps
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Kategori, Sumber Laporan & Prioritas -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
@@ -692,6 +812,54 @@
                         <div v-if="detailTicket?.odp && detailTicket?.segment_type !== 'backbone'" class="text-xs text-gray-700">ODP Terkait: <strong>{{ detailTicket.odp.name }}</strong> ({{ detailTicket.odp.address || '-' }})</div>
                     </div>
 
+                    <!-- Titik Koordinat Insiden Lapangan (Bisa > 1) -->
+                    <div v-if="detailTicket?.incident_coordinates && detailTicket.incident_coordinates.length > 0" class="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2">
+                        <div class="text-[10px] font-bold uppercase text-emerald-800 flex items-center justify-between">
+                            <span>📍 Titik Koordinat Insiden Lapangan ({{ detailTicket.incident_coordinates.length }} Titik):</span>
+                        </div>
+                        <div class="space-y-2">
+                            <div 
+                                v-for="(coord, cIdx) in detailTicket.incident_coordinates" 
+                                :key="cIdx"
+                                class="p-2.5 rounded-xl bg-white border border-emerald-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs"
+                            >
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">#{{ cIdx + 1 }}</span>
+                                        <strong class="text-xs text-gray-900 truncate">{{ coord.name || `Titik ${cIdx + 1}` }}</strong>
+                                    </div>
+                                    <div class="font-mono text-[11px] text-gray-500 mt-0.5">
+                                        Lat: {{ coord.latitude || '-' }} · Lng: {{ coord.longitude || '-' }}
+                                    </div>
+                                    <div v-if="coord.notes" class="text-[11px] text-gray-600 italic mt-0.5">
+                                        "{{ coord.notes }}"
+                                    </div>
+                                </div>
+                                <a 
+                                    v-if="coord.latitude && coord.longitude"
+                                    :href="`https://www.google.com/maps?q=${coord.latitude},${coord.longitude}`" 
+                                    target="_blank"
+                                    class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0"
+                                >
+                                    <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                    <span>Buka di Google Maps</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else-if="detailTicket?.latitude && detailTicket?.longitude" class="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between">
+                        <div class="text-xs text-emerald-950 font-mono">
+                            <span>📍 Koordinat: {{ detailTicket.latitude }}, {{ detailTicket.longitude }}</span>
+                        </div>
+                        <a 
+                            :href="`https://www.google.com/maps?q=${detailTicket.latitude},${detailTicket.longitude}`" 
+                            target="_blank"
+                            class="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
+                        >
+                            <span>Buka Maps</span>
+                        </a>
+                    </div>
+
                     <!-- Kerusakan & Penanganan -->
                     <div class="space-y-2">
                         <div class="p-3 rounded-xl bg-gray-50 border border-gray-100">
@@ -743,6 +911,48 @@
                         <div v-if="detailTicket?.resolution_notes" class="text-xs text-gray-700">Catatan Akhir: {{ detailTicket?.resolution_notes }}</div>
                     </div>
 
+                    <!-- Galeri Foto Dokumentasi Penanganan (Bisa > 1) -->
+                    <div v-if="(detailTicket?.handling_photos && detailTicket.handling_photos.length > 0) || detailTicket?.photo_before || detailTicket?.photo_after" class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                        <div class="text-[10px] font-bold uppercase text-slate-700 flex items-center justify-between">
+                            <span>📸 Dokumentasi Foto Penanganan Lapangan:</span>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                            <template v-if="detailTicket?.handling_photos && detailTicket.handling_photos.length > 0">
+                                <div 
+                                    v-for="(photo, pIdx) in detailTicket.handling_photos" 
+                                    :key="pIdx"
+                                    class="rounded-xl overflow-hidden bg-white border border-gray-200 shadow-xs flex flex-col group cursor-pointer hover:border-emerald-300 transition-all"
+                                    @click="openPhotoZoom(`/storage/${photo.path}`)"
+                                >
+                                    <div class="aspect-video bg-gray-100 overflow-hidden relative">
+                                        <img :src="`/storage/${photo.path}`" alt="Foto Penanganan" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                                        <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                            <svg class="w-5 h-5 drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+                                        </div>
+                                    </div>
+                                    <div class="p-2 text-[11px]">
+                                        <div class="font-bold text-gray-800 line-clamp-1">{{ photo.caption || 'Foto Penanganan' }}</div>
+                                        <div v-if="photo.uploaded_at" class="text-[9px] text-gray-400 mt-0.5">{{ photo.uploaded_at }}</div>
+                                    </div>
+                                </div>
+                            </template>
+                            <template v-else>
+                                <div v-if="detailTicket?.photo_before" class="rounded-xl overflow-hidden bg-white border border-gray-200 shadow-xs flex flex-col group cursor-pointer" @click="openPhotoZoom(`/storage/${detailTicket.photo_before}`)">
+                                    <div class="aspect-video bg-gray-100 overflow-hidden relative">
+                                        <img :src="`/storage/${detailTicket.photo_before}`" alt="Sebelum" class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                    </div>
+                                    <div class="p-2 text-[11px] font-bold text-gray-800">Foto Kerusakan (Sebelum)</div>
+                                </div>
+                                <div v-if="detailTicket?.photo_after" class="rounded-xl overflow-hidden bg-white border border-gray-200 shadow-xs flex flex-col group cursor-pointer" @click="openPhotoZoom(`/storage/${detailTicket.photo_after}`)">
+                                    <div class="aspect-video bg-gray-100 overflow-hidden relative">
+                                        <img :src="`/storage/${detailTicket.photo_after}`" alt="Sesudah" class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                    </div>
+                                    <div class="p-2 text-[11px] font-bold text-emerald-800">Hasil Restorasi (Sesudah)</div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
                     <div class="pt-3 border-t flex justify-end gap-2">
                         <a :href="`/pgj/${detailTicket?.id}/print`" target="_blank" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
@@ -751,6 +961,21 @@
                         <button type="button" @click="showDetailModal = false" class="px-4 py-2 border rounded-xl text-gray-600 text-xs font-semibold hover:bg-gray-50">Tutup</button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ════════════ LIGHTBOX MODAL (ZOOM FOTO PENANGANAN) ════════════ -->
+        <div v-if="previewModalImage" class="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" @click.self="previewModalImage = null">
+            <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+                <button 
+                    type="button" 
+                    @click="previewModalImage = null" 
+                    class="absolute -top-10 right-0 text-white text-3xl font-bold hover:text-rose-400 transition-colors"
+                    title="Tutup (Esc)"
+                >
+                    &times;
+                </button>
+                <img :src="previewModalImage" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl border border-white/20" />
             </div>
         </div>
     </AppLayout>
@@ -791,6 +1016,8 @@ const showDetailModal = ref(false);
 
 const selectedTicket = ref(null);
 const detailTicket = ref(null);
+const previewModalImage = ref(null);
+const createGpsLoadingIndex = ref(null);
 
 const createForm = useForm({
     segment_type: 'odc',
@@ -804,6 +1031,7 @@ const createForm = useForm({
     location_name: '',
     latitude: '',
     longitude: '',
+    incident_coordinates: [],
     otdr_distance: '',
     source_report: 'Monitoring NMS',
     category: 'Kabel FO Putus Total (Cut Cable)',
@@ -980,7 +1208,52 @@ const openCreateModal = () => {
     createForm.source_report = 'Monitoring NMS';
     createForm.category = 'Kabel FO Putus Total (Cut Cable)';
     createForm.priority = 'critical';
+    createForm.incident_coordinates = [];
     showCreateModal.value = true;
+};
+
+const addCreateCoordinatePoint = () => {
+    createForm.incident_coordinates.push({
+        name: `Titik Gangguan #${createForm.incident_coordinates.length + 1}`,
+        latitude: '',
+        longitude: '',
+        notes: '',
+    });
+};
+
+const removeCreateCoordinatePoint = (index) => {
+    createForm.incident_coordinates.splice(index, 1);
+};
+
+const getGpsForCreateCoord = (index) => {
+    if (!navigator.geolocation) {
+        alert('Fitur Geolocation tidak didukung oleh browser Anda.');
+        return;
+    }
+    createGpsLoadingIndex.value = index;
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            if (createForm.incident_coordinates[index]) {
+                createForm.incident_coordinates[index].latitude = pos.coords.latitude.toFixed(6);
+                createForm.incident_coordinates[index].longitude = pos.coords.longitude.toFixed(6);
+            }
+            createGpsLoadingIndex.value = null;
+        },
+        (err) => {
+            alert('Gagal mendeteksi lokasi GPS: ' + (err.message || 'Izin akses lokasi ditolak'));
+            createGpsLoadingIndex.value = null;
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+};
+
+const openGoogleMaps = (lat, lng) => {
+    if (!lat || !lng) return;
+    window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+};
+
+const openPhotoZoom = (imgSrc) => {
+    previewModalImage.value = imgSrc;
 };
 
 const submitCreate = () => {

@@ -45,6 +45,8 @@ class PgjTicket extends Model
         'end_time',
         'photo_before',
         'photo_after',
+        'incident_coordinates',
+        'handling_photos',
         'resolution_notes',
         'created_by',
         'lead_technician_id',
@@ -58,6 +60,8 @@ class PgjTicket extends Model
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
         'affected_customers_count' => 'integer',
+        'incident_coordinates' => 'array',
+        'handling_photos' => 'array',
     ];
 
     /**

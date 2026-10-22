@@ -104,10 +104,38 @@
                 <td class="label">Titik Lokasi / Alamat</td>
                 <td class="value"><strong>{{ $ticket->location_name ?: '-' }}</strong></td>
             </tr>
+            @if(!empty($ticket->incident_coordinates) && count($ticket->incident_coordinates) > 0)
             <tr>
-                <td class="label">Estimasi Jarak OTDR</td>
-                <td class="value">{{ $ticket->otdr_distance ?: '-' }}</td>
+                <td class="label">Titik Koordinat Insiden</td>
+                <td class="value">
+                    <table style="width:100%; border-collapse:collapse; margin-top:4px; font-size:11px;">
+                        <thead>
+                            <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
+                                <th style="padding:4px 6px; text-align:left;">No</th>
+                                <th style="padding:4px 6px; text-align:left;">Nama Titik / Label</th>
+                                <th style="padding:4px 6px; text-align:left;">Koordinat (Lat, Lng)</th>
+                                <th style="padding:4px 6px; text-align:left;">Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($ticket->incident_coordinates as $cIdx => $coord)
+                            <tr style="border-bottom:1px solid #e2e8f0;">
+                                <td style="padding:4px 6px;">#{{ $cIdx + 1 }}</td>
+                                <td style="padding:4px 6px; font-weight:bold;">{{ $coord['name'] ?? 'Titik ' . ($cIdx + 1) }}</td>
+                                <td style="padding:4px 6px; font-family:monospace;">{{ $coord['latitude'] ?? '-' }}, {{ $coord['longitude'] ?? '-' }}</td>
+                                <td style="padding:4px 6px; color:#555;">{{ $coord['notes'] ?? '-' }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </td>
             </tr>
+            @elseif($ticket->latitude && $ticket->longitude)
+            <tr>
+                <td class="label">Koordinat GPS Insiden</td>
+                <td class="value" style="font-family:monospace;">{{ $ticket->latitude }}, {{ $ticket->longitude }}</td>
+            </tr>
+            @endif
             <tr>
                 <td class="label">Dampak Pelanggan</td>
                 <td class="value">
@@ -219,6 +247,52 @@
                 <td class="value">{{ $ticket->resolution_notes ?: '-' }}</td>
             </tr>
         </table>
+
+        <!-- Dokumentasi Foto Penanganan Lapangan -->
+        @php
+            $photos = $ticket->handling_photos ?? [];
+        @endphp
+        @if(!empty($photos) && count($photos) > 0)
+        <div style="margin-top:15px; page-break-inside: avoid;">
+            <div style="font-size:11px; font-weight:bold; text-transform:uppercase; color:#334155; margin-bottom:8px;">
+                📸 Dokumentasi Foto Penanganan Lapangan ({{ count($photos) }} Foto):
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                @foreach($photos as $p)
+                <div style="width: 31%; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #fff; box-sizing: border-box; font-size: 11px;">
+                    <div style="height: 120px; overflow: hidden; background: #f8fafc; text-align: center;">
+                        <img src="{{ asset('storage/' . $p['path']) }}" alt="Foto" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    <div style="padding: 6px 8px;">
+                        <div style="font-weight: bold; color: #1e293b;">{{ $p['caption'] ?? 'Foto Penanganan' }}</div>
+                        @if(!empty($p['uploaded_at']))
+                        <div style="font-size: 9px; color: #64748b; margin-top: 2px;">{{ $p['uploaded_at'] }}</div>
+                        @endif
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @elseif($ticket->photo_before || $ticket->photo_after)
+        <div style="margin-top:15px; display: flex; gap: 15px; page-break-inside: avoid;">
+            @if($ticket->photo_before)
+            <div style="width: 48%; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #fff;">
+                <div style="height: 140px; overflow: hidden; background: #f8fafc;">
+                    <img src="{{ asset('storage/' . $ticket->photo_before) }}" alt="Sebelum" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <div style="padding: 6px 8px; font-weight: bold; font-size: 11px; color: #b91c1c;">Foto Kerusakan (Sebelum)</div>
+            </div>
+            @endif
+            @if($ticket->photo_after)
+            <div style="width: 48%; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #fff;">
+                <div style="height: 140px; overflow: hidden; background: #f8fafc;">
+                    <img src="{{ asset('storage/' . $ticket->photo_after) }}" alt="Sesudah" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <div style="padding: 6px 8px; font-weight: bold; font-size: 11px; color: #059669;">Hasil Restorasi (Sesudah)</div>
+            </div>
+            @endif
+        </div>
+        @endif
 
         <!-- Tanda Tangan -->
         <div class="sign-area">

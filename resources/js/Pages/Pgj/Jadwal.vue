@@ -125,6 +125,29 @@
                                     <div class="font-bold text-gray-900 mt-1">
                                         {{ ticket.location_name }}
                                     </div>
+                                    <!-- Titik Koordinat Insiden (Bisa > 1) & Foto Status -->
+                                    <div v-if="ticket.incident_coordinates && ticket.incident_coordinates.length > 0" class="mt-1 flex flex-wrap gap-1">
+                                        <a 
+                                            v-for="(coord, cIdx) in ticket.incident_coordinates" 
+                                            :key="cIdx"
+                                            :href="`https://www.google.com/maps?q=${coord.latitude},${coord.longitude}`" 
+                                            target="_blank"
+                                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
+                                            :title="`${coord.name || 'Titik Insiden'}: ${coord.latitude}, ${coord.longitude}`"
+                                        >
+                                            <span>📍</span>
+                                            <span class="max-w-[130px] truncate">{{ coord.name || `Titik #${cIdx + 1}` }}</span>
+                                        </a>
+                                    </div>
+                                    <div v-else-if="ticket.latitude && ticket.longitude" class="mt-1">
+                                        <a 
+                                            :href="`https://www.google.com/maps?q=${ticket.latitude},${ticket.longitude}`" 
+                                            target="_blank"
+                                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
+                                        >
+                                            <span>📍 Buka Maps GPS</span>
+                                        </a>
+                                    </div>
                                     <div class="text-xs text-gray-600 mt-0.5 flex flex-wrap gap-1.5">
                                         <span class="font-extrabold text-[10px] px-2 py-0.5 rounded uppercase border" :class="getSegmentBadgeClass(ticket.segment_type)">
                                             {{ getSegmentLabel(ticket.segment_type) }}
@@ -310,6 +333,41 @@
                         </div>
                         <div class="text-red-700 font-medium">Kerusakan: "{{ selectedTicket?.reported_issue }}"</div>
                         <div class="text-amber-800 font-semibold">Alasan Eskalasi: "{{ selectedTicket?.escalation_reason }}"</div>
+
+                        <!-- Titik Koordinat Insiden Lapangan (Bisa > 1) -->
+                        <div v-if="selectedTicket?.incident_coordinates && selectedTicket.incident_coordinates.length > 0" class="pt-2 border-t border-amber-200/60 space-y-1.5">
+                            <div class="text-[10px] font-bold uppercase text-amber-900 flex items-center justify-between">
+                                <span>📍 Titik Koordinat Insiden Lapangan ({{ selectedTicket.incident_coordinates.length }} Titik):</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                <a 
+                                    v-for="(coord, cIdx) in selectedTicket.incident_coordinates" 
+                                    :key="cIdx"
+                                    :href="`https://www.google.com/maps?q=${coord.latitude},${coord.longitude}`" 
+                                    target="_blank"
+                                    class="p-2 rounded-xl bg-white border border-amber-200/80 hover:border-blue-400 hover:bg-blue-50/50 transition-all flex items-center justify-between gap-2 shadow-xs group"
+                                >
+                                    <div class="min-w-0">
+                                        <div class="font-bold text-[11px] text-gray-800 truncate group-hover:text-blue-700">#{{ cIdx + 1 }} {{ coord.name || 'Titik Insiden' }}</div>
+                                        <div class="font-mono text-[10px] text-gray-500">{{ coord.latitude }}, {{ coord.longitude }}</div>
+                                        <div v-if="coord.notes" class="text-[10px] text-gray-600 italic truncate">{{ coord.notes }}</div>
+                                    </div>
+                                    <span class="px-2 py-1 bg-blue-100 text-blue-700 group-hover:bg-blue-600 group-hover:text-white rounded-lg text-[10px] font-bold shrink-0 transition-colors">
+                                        🗺️ Maps
+                                    </span>
+                                </a>
+                            </div>
+                        </div>
+                        <div v-else-if="selectedTicket?.latitude && selectedTicket?.longitude" class="pt-2 border-t border-amber-200/60 flex items-center justify-between">
+                            <span class="text-[11px] text-gray-600 font-mono">📍 GPS: {{ selectedTicket.latitude }}, {{ selectedTicket.longitude }}</span>
+                            <a 
+                                :href="`https://www.google.com/maps?q=${selectedTicket.latitude},${selectedTicket.longitude}`" 
+                                target="_blank"
+                                class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[11px] font-bold"
+                            >
+                                🗺️ Buka di Google Maps
+                            </a>
+                        </div>
                     </div>
 
                     <!-- Tanggal & Jam Restorasi -->
