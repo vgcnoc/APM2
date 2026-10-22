@@ -8,7 +8,7 @@
                         <input 
                             type="text" 
                             v-model="search" 
-                            placeholder="Cari ID CBP, pelanggan..." 
+                            placeholder="Cari ID CBP, pelanggan, catatan..." 
                             class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 transition-all text-sm"
                             @keyup.enter="performSearch"
                         >
@@ -17,9 +17,11 @@
                         </svg>
                     </div>
                     
-                    <select v-model="filterStatus" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 text-sm bg-gray-50/50">
+                    <select v-model="filterStatus" @change="performSearch" class="w-full sm:w-60 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 text-sm bg-gray-50/50">
                         <option value="">Semua Status</option>
-                        <option value="pending">Menunggu Teknisi (Pending)</option>
+                        <option value="not_sent">Menunggu Disposisi (Belum ke Jadwal)</option>
+                        <option value="sent_to_schedule">Sudah Masuk Jadwal CBP</option>
+                        <option value="pending">Semua Pending</option>
                         <option value="assigned">Dalam Proses (Assigned)</option>
                         <option value="completed">Selesai (Completed)</option>
                         <option value="canceled">Dibatalkan</option>
@@ -41,6 +43,12 @@
                 </svg>
                 <span class="text-sm font-medium">{{ $page.props.flash.success }}</span>
             </div>
+            <div v-if="$page.props.flash?.error" class="mb-4 flex items-center gap-3 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 animate-fade-in-up">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <span class="text-sm font-medium">{{ $page.props.flash.error }}</span>
+            </div>
 
             <!-- Data Table -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -54,7 +62,7 @@
                                 <th class="p-4">Status</th>
                                 <th class="p-4">Teknisi</th>
                                 <th class="p-4">Waktu Selesai</th>
-                                <th class="p-4 w-24 text-center">Aksi</th>
+                                <th class="p-4 w-52 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 text-sm">
@@ -68,23 +76,36 @@
                                 </td>
                                 <td class="p-4">
                                     <div class="text-gray-700 max-w-xs truncate" :title="req.reason">{{ req.reason || '-' }}</div>
+                                    <div v-if="req.dispatch_notes" class="text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-200/60 rounded-md px-2 py-0.5 mt-1 flex items-start gap-1 max-w-xs truncate" :title="'Disposisi: ' + req.dispatch_notes">
+                                        <span class="font-bold shrink-0">Disposisi:</span>
+                                        <span class="truncate">{{ req.dispatch_notes }}</span>
+                                    </div>
                                 </td>
                                 <td class="p-4">
-                                    <span :class="[
-                                        'px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 w-max',
-                                        req.status === 'pending' ? 'bg-orange-50 text-orange-600 border-orange-200' :
-                                        req.status === 'assigned' ? 'bg-blue-50 text-blue-600 border-blue-200' :
-                                        req.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                                        'bg-gray-50 text-gray-600 border-gray-200'
-                                    ]">
-                                        <span :class="[
-                                            'w-1.5 h-1.5 rounded-full',
-                                            req.status === 'pending' ? 'bg-orange-500 animate-pulse' :
-                                            req.status === 'assigned' ? 'bg-blue-500' :
-                                            req.status === 'completed' ? 'bg-emerald-500' :
-                                            'bg-gray-500'
-                                        ]"></span>
-                                        {{ req.status === 'pending' ? 'Pending' : req.status === 'assigned' ? 'Ditugaskan' : req.status === 'completed' ? 'Selesai' : 'Dibatalkan' }}
+                                    <!-- Belum Dikirim ke Jadwal (Draft/Review) -->
+                                    <span v-if="req.status === 'pending' && !req.sent_to_schedule_at" class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 w-max bg-amber-50 text-amber-700 border-amber-200" title="Permintaan CBP belum dikirim ke Jadwal">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                        Menunggu Disposisi
+                                    </span>
+                                    <!-- Sudah Masuk Jadwal tapi belum ditugaskan teknisi -->
+                                    <span v-else-if="req.status === 'pending' && req.sent_to_schedule_at" class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 w-max bg-sky-50 text-sky-700 border-sky-200" title="Sudah berada di Menu 2. Jadwal CBP">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span>
+                                        Masuk Jadwal
+                                    </span>
+                                    <!-- Assigned -->
+                                    <span v-else-if="req.status === 'assigned'" class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 w-max bg-blue-50 text-blue-700 border-blue-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                        Ditugaskan
+                                    </span>
+                                    <!-- Completed -->
+                                    <span v-else-if="req.status === 'completed'" class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 w-max bg-emerald-50 text-emerald-700 border-emerald-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        Selesai
+                                    </span>
+                                    <!-- Canceled -->
+                                    <span v-else class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 w-max bg-rose-50 text-rose-700 border-rose-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                        Dibatalkan
                                     </span>
                                 </td>
                                 <td class="p-4">
@@ -103,13 +124,49 @@
                                     <span v-else class="text-xs text-gray-400">-</span>
                                 </td>
                                 <td class="p-4 text-center">
-                                    <div class="flex items-center justify-center gap-2">
+                                    <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                        <!-- Tombol Canggih: Kirim ke Jadwal CBP -->
+                                        <button 
+                                            v-if="!req.sent_to_schedule_at && req.status === 'pending' && can(['cbp_btn_dispatch', 'cbp_btn_request', 'cbp_manage'])" 
+                                            type="button" 
+                                            @click="openDispatchModal(req)" 
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 whitespace-nowrap group" 
+                                            title="Kirim Tiket ini ke Menu 2. Jadwal CBP"
+                                        >
+                                            <svg class="w-3.5 h-3.5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                            <span>Kirim ke Jadwal</span>
+                                        </button>
+
+                                        <!-- Badge Status Sudah di Jadwal + Opsi Tarik Kembali -->
+                                        <div v-else-if="req.sent_to_schedule_at && req.status === 'pending'" class="inline-flex items-center gap-1">
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg whitespace-nowrap" :title="'Terkirim ke Jadwal pada ' + formatDate(req.sent_to_schedule_at)">
+                                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                Di Jadwal
+                                            </span>
+                                            <button 
+                                                v-if="can(['cbp_btn_dispatch', 'cbp_btn_request', 'cbp_manage'])" 
+                                                type="button" 
+                                                @click="retractCbp(req)" 
+                                                class="p-1.5 text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors" 
+                                                title="Tarik Kembali dari Jadwal CBP"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                                            </button>
+                                        </div>
+
+                                        <!-- WhatsApp Share -->
                                         <button type="button" @click="shareWhatsApp(req)" class="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors" title="Kirim Disposisi ke Kepala Teknisi (WhatsApp)">
                                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
                                         </button>
+
+                                        <!-- Riwayat -->
                                         <button type="button" @click="openHistoryModal(req)" class="p-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors" title="Riwayat CBP">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                         </button>
+
+                                        <!-- Batalkan Request CBP -->
                                         <button v-if="req.status === 'pending' && can('cbp_btn_cancel')" type="button" @click="cancelCbp(req)" class="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors" title="Batalkan CBP">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                         </button>
@@ -269,103 +326,99 @@
             </div>
         </Teleport>
 
-        <!-- Assign Modal -->
+        <!-- Dispatch to Schedule Modal (Canggih & Sempurna) -->
         <Teleport to="body">
-            <div v-if="showAssignModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
-                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closeAssignModal"></div>
-                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm relative z-10 animate-fade-in-up">
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                        <h3 class="text-lg font-bold text-gray-900">Tugaskan Teknisi</h3>
-                        <button @click="closeAssignModal" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors">
+            <div v-if="showDispatchModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
+                <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" @click="closeDispatchModal"></div>
+                <div class="bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.25)] w-full max-w-lg relative z-10 animate-fade-in-up border border-white/60 overflow-hidden flex flex-col">
+                    
+                    <!-- Decorative ambient gradient lights -->
+                    <div class="absolute -top-20 -right-20 w-44 h-44 bg-blue-500/15 rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="absolute -bottom-20 -left-20 w-44 h-44 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+                    <!-- Header -->
+                    <div class="px-7 py-5 flex items-center justify-between bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white relative z-10">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/30 text-white ring-2 ring-white/10 shrink-0">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-black tracking-tight text-white flex items-center gap-2">
+                                    Kirim ke Jadwal CBP
+                                    <span class="text-xs font-mono font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">{{ selectedDispatchCbp?.cbp_number }}</span>
+                                </h3>
+                                <p class="text-xs font-medium text-slate-300 mt-0.5">Disposisi tiket pencabutan ke menu 2. Jadwal CBP</p>
+                            </div>
+                        </div>
+                        <button @click="closeDispatchModal" class="text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-full transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
 
-                    <form @submit.prevent="submitAssign">
-                        <div class="p-6 space-y-4">
+                    <!-- Body -->
+                    <form @submit.prevent="submitDispatch" class="flex flex-col">
+                        <div class="p-7 space-y-5">
+                            <!-- Info Card -->
+                            <div class="bg-gradient-to-br from-slate-50 to-blue-50/30 rounded-2xl p-4 border border-slate-200/70 space-y-2.5">
+                                <div class="flex items-center justify-between text-xs pb-2 border-b border-slate-200/60">
+                                    <span class="text-slate-500 font-medium">Pelanggan:</span>
+                                    <span class="font-bold text-slate-900">{{ selectedDispatchCbp?.customer?.name }} ({{ selectedDispatchCbp?.customer?.customer_code }})</span>
+                                </div>
+                                <div class="flex items-center justify-between text-xs pb-2 border-b border-slate-200/60">
+                                    <span class="text-slate-500 font-medium">No. Telepon / WA:</span>
+                                    <span class="font-semibold text-slate-800 font-mono">{{ selectedDispatchCbp?.customer?.phone || '-' }}</span>
+                                </div>
+                                <div class="flex items-start justify-between text-xs pb-2 border-b border-slate-200/60">
+                                    <span class="text-slate-500 font-medium shrink-0">Alamat:</span>
+                                    <span class="text-slate-700 text-right font-medium max-w-[280px] truncate" :title="selectedDispatchCbp?.customer?.address">{{ selectedDispatchCbp?.customer?.address || '-' }}</span>
+                                </div>
+                                <div class="flex items-start justify-between text-xs">
+                                    <span class="text-slate-500 font-medium shrink-0">Alasan Cabut:</span>
+                                    <span class="font-semibold text-rose-700 text-right">{{ selectedDispatchCbp?.reason || '-' }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Catatan Disposisi -->
                             <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Pilih Teknisi</label>
-                                <select v-model="assignForm.assigned_to" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" required>
-                                    <option value="" disabled>Pilih teknisi yang bertugas...</option>
-                                    <option v-for="tech in technicians" :key="tech.id" :value="tech.id">{{ tech.name }}</option>
-                                </select>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                    Catatan Tambahan untuk Jadwal (Opsional)
+                                </label>
+                                <textarea 
+                                    v-model="dispatchForm.dispatch_notes" 
+                                    rows="3" 
+                                    class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder-slate-400 resize-none custom-scrollbar" 
+                                    placeholder="Contoh: Tolong dikerjakan segera, bawa tangga 6 meter, atau koordinasikan dulu dengan pelanggan..."
+                                    maxlength="500"
+                                ></textarea>
+                                <p class="text-[11px] text-slate-400 mt-1">Catatan ini akan tampil di menu 2. Jadwal CBP dan diteruskan ke WhatsApp Kepala Teknisi.</p>
+                            </div>
+
+                            <div class="bg-blue-50 border border-blue-200/70 rounded-xl p-3 flex items-center gap-3 text-xs text-blue-800">
+                                <svg class="w-5 h-5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span>Setelah dikirim, tiket ini akan langsung muncul di menu <strong>2. Jadwal CBP</strong> dan siap ditugaskan ke Teknisi.</span>
                             </div>
                         </div>
 
-                        <div class="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-3">
-                            <button type="button" @click="closeAssignModal" class="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">Batal</button>
-                            <button type="submit" :disabled="assignForm.processing" class="bg-blue-600 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-sm shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                {{ assignForm.processing ? 'Menyimpan...' : 'Tugaskan' }}
+                        <!-- Footer -->
+                        <div class="px-7 py-4 bg-slate-50/80 backdrop-blur-md border-t border-slate-100 flex justify-end gap-3 rounded-b-3xl">
+                            <button type="button" @click="closeDispatchModal" class="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-200/60 rounded-xl transition-colors">
+                                Batal
                             </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </Teleport>
-
-        <!-- Progress Modal -->
-        <Teleport to="body">
-            <div v-if="showProgressModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
-                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closeProgressModal"></div>
-                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm relative z-10 animate-fade-in-up">
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                        <h3 class="text-lg font-bold text-gray-900">Progress Pencabutan</h3>
-                        <button @click="closeProgressModal" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
-                    </div>
-
-                    <form @submit.prevent="submitProgress">
-                        <div class="p-6 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                            <div>
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Update Status</label>
-                                <select v-model="progressForm.status" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" required>
-                                    <option value="assigned">Masih Dalam Proses</option>
-                                    <option value="completed">Selesai Dicabut</option>
-                                </select>
-                            </div>
-                            
-                            <div v-if="progressForm.status === 'completed'" class="border-t border-gray-100 pt-4 mt-2">
-                                <div class="flex items-center justify-between mb-3">
-                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">Perangkat / Material yang Dikembalikan</label>
-                                    <button type="button" @click="addMaterial" class="text-[10px] font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                        Tambah Material
-                                    </button>
-                                </div>
-                                <div v-if="progressForm.materials.length === 0" class="text-[11px] text-gray-400 italic text-center py-2 bg-gray-50 rounded-xl border border-gray-100 border-dashed">
-                                    Tidak ada material yang dikembalikan (atau kabel terputus/hilang).
-                                </div>
-                                <div class="space-y-3">
-                                    <div v-for="(mat, idx) in progressForm.materials" :key="idx" class="flex items-start gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                        <div class="flex-1 space-y-2">
-                                            <select v-model="mat.material_id" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:border-transparent" required>
-                                                <option value="" disabled>Pilih Material/Perangkat...</option>
-                                                <option v-for="m in materials" :key="m.id" :value="m.id">{{ m.name }} (Stok: {{ m.stock }} {{ m.unit }})</option>
-                                            </select>
-                                            <div class="flex items-center gap-2">
-                                                <input type="number" v-model="mat.quantity" step="0.01" min="0.01" class="w-20 px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:border-transparent" placeholder="Qty" required>
-                                                <span class="text-[10px] text-gray-500 font-medium">Qty (Jumlah yang kembali)</span>
-                                            </div>
-                                        </div>
-                                        <button type="button" @click="removeMaterial(idx)" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                        </button>
-                                    </div>
-                                </div>
-                                <p class="text-[9px] text-gray-400 mt-2">Otomatis masuk ke stok gudang saat proses selesai.</p>
-                            </div>
-
-                            <div class="border-t border-gray-100 pt-4">
-                                <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Catatan Teknisi (Opsional)</label>
-                                <textarea v-model="progressForm.notes" rows="3" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" placeholder="Catatan... misal: ONT terbakar, dsb"></textarea>
-                            </div>
-                        </div>
-
-                        <div class="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-3">
-                            <button type="button" @click="closeProgressModal" class="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">Batal</button>
-                            <button type="submit" :disabled="progressForm.processing" class="bg-emerald-600 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-sm shadow-emerald-500/20 hover:bg-emerald-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                {{ progressForm.processing ? 'Menyimpan...' : 'Simpan Progress' }}
+                            <button 
+                                type="submit" 
+                                :disabled="dispatchForm.processing" 
+                                class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/35 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <svg v-if="dispatchForm.processing" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                                </svg>
+                                <span>{{ dispatchForm.processing ? 'Mengirim...' : 'Kirim ke Jadwal CBP' }}</span>
                             </button>
                         </div>
                     </form>
@@ -399,7 +452,7 @@
                                 <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-4 rounded-xl border border-gray-100 shadow-sm relative">
                                     <div class="flex items-center justify-between mb-1">
                                         <div class="font-bold text-gray-900 text-sm">{{ log.action }}</div>
-                                        <div class="text-[10px] text-gray-500 font-mono">{{ new Date(log.created_at).toLocaleString('id-ID') }}</div>
+                                        <div class="text-[10px] text-gray-500 font-mono">{{ formatDate(log.created_at) }}</div>
                                     </div>
                                     <div class="text-xs text-gray-600 mb-2">{{ log.notes }}</div>
                                     <div class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-50">
@@ -430,11 +483,13 @@ const props = defineProps({
     filters: Object,
 });
 
-const search = ref(props.filters.search || '');
+const search = ref(props.filters?.search || '');
+const filterStatus = ref(props.filters?.status || '');
 
 function performSearch() {
     router.get('/cbp', {
         search: search.value,
+        status: filterStatus.value,
     }, { preserveState: true, preserveScroll: true });
 }
 
@@ -476,6 +531,42 @@ function submitCreate() {
     });
 }
 
+// Dispatch to Schedule Modal
+const showDispatchModal = ref(false);
+const selectedDispatchCbp = ref(null);
+const dispatchForm = useForm({
+    dispatch_notes: '',
+});
+
+function openDispatchModal(cbp) {
+    selectedDispatchCbp.value = cbp;
+    dispatchForm.dispatch_notes = cbp.dispatch_notes || '';
+    showDispatchModal.value = true;
+}
+
+function closeDispatchModal() {
+    showDispatchModal.value = false;
+    selectedDispatchCbp.value = null;
+    dispatchForm.reset();
+}
+
+function submitDispatch() {
+    if (!selectedDispatchCbp.value) return;
+    dispatchForm.post(`/cbp/${selectedDispatchCbp.value.id}/dispatch-schedule`, {
+        preserveScroll: true,
+        onSuccess: () => closeDispatchModal(),
+    });
+}
+
+// Retract from Schedule
+function retractCbp(cbp) {
+    if (confirm(`Tarik kembali tiket ${cbp.cbp_number} dari Jadwal CBP? Tiket tidak akan muncul di menu 2. Jadwal CBP sampai Anda mengirimnya kembali.`)) {
+        router.post(`/cbp/${cbp.id}/retract-schedule`, {}, {
+            preserveScroll: true
+        });
+    }
+}
+
 // History Modal
 const showHistoryModal = ref(false);
 const selectedHistoryCbp = ref(null);
@@ -492,11 +583,23 @@ function closeHistoryModal() {
 
 // Cancel
 function cancelCbp(cbp) {
-    if (confirm('Yakin ingin membatalkan request CBP ini?')) {
+    if (confirm(`Yakin ingin membatalkan request CBP (${cbp.cbp_number}) ini?`)) {
         router.post(`/cbp/${cbp.id}/cancel`, {}, {
             preserveScroll: true
         });
     }
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 }
 
 // WhatsApp Dispatch to Lead Technician
@@ -516,7 +619,8 @@ function shareWhatsApp(req) {
         `📍 *Alamat:* ${cust.address || '-'}\n` +
         ontInfo +
         `⚠️ *Alasan:* ${req.reason || '-'}\n` +
-        (req.notes ? `📝 *Catatan:* ${req.notes}\n` : '') +
+        (req.dispatch_notes ? `📋 *Catatan Disposisi:* ${req.dispatch_notes}\n` : '') +
+        (req.notes ? `📝 *Catatan Lain:* ${req.notes}\n` : '') +
         `--------------------------------------\n` +
         `Kepada: *Kepala Teknisi*\n` +
         `Mohon jadwalkan tim teknisi untuk penarikan/pencabutan perangkat ONT.\n` +

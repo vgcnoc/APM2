@@ -22,18 +22,35 @@ class CbpRequestController extends Controller
             abort(403, 'Akses ke modul CBP tidak diizinkan.');
         }
 
-        $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'auditLogs'])->where('status', 'pending');
+        $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'dispatcher', 'auditLogs']);
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
         DataScopeService::applyCbpScope($query);
 
+        // Filter status
+        if ($request->filled('status') && $request->status !== 'all') {
+            if ($request->status === 'not_sent') {
+                $query->where('status', 'pending')->whereNull('sent_to_schedule_at');
+            } elseif ($request->status === 'sent_to_schedule') {
+                $query->where('status', 'pending')->whereNotNull('sent_to_schedule_at');
+            } else {
+                $query->where('status', $request->status);
+            }
+        }
+
         if ($request->filled('search')) {
             $search = strtolower($request->search);
-            $query->where('cbp_number', 'like', "%{$search}%")
-                ->orWhereHas('customer', function($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('customer_code', 'like', "%{$search}%");
-                });
+            $query->where(function($q) use ($search) {
+                $q->where('cbp_number', 'like', "%{$search}%")
+                  ->orWhere('reason', 'like', "%{$search}%")
+                  ->orWhere('dispatch_notes', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function($cq) use ($search) {
+                      $cq->where('name', 'like', "%{$search}%")
+                        ->orWhere('customer_code', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%");
+                  });
+            });
         }
 
         $cbpRequests = $query->latest('id')
@@ -50,7 +67,7 @@ class CbpRequestController extends Controller
             'requests' => $cbpRequests,
             'areas' => $areas,
             'customers' => $customers,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'status']),
         ]);
     }
 
@@ -67,18 +84,27 @@ class CbpRequestController extends Controller
             abort(403, 'Akses ke jadwal CBP tidak diizinkan.');
         }
 
-        $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'auditLogs'])->whereIn('status', ['pending', 'assigned']);
+        // Tiket yang masuk ke jadwal HANYA yang sudah dikirim ke jadwal (sent_to_schedule_at tidak null)
+        $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'dispatcher', 'auditLogs'])
+            ->whereNotNull('sent_to_schedule_at')
+            ->whereIn('status', ['pending', 'assigned']);
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
         DataScopeService::applyCbpScope($query);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
-            $query->where('cbp_number', 'like', "%{$search}%")
-                ->orWhereHas('customer', function($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('customer_code', 'like', "%{$search}%");
-                });
+            $query->where(function($q) use ($search) {
+                $q->where('cbp_number', 'like', "%{$search}%")
+                  ->orWhere('reason', 'like', "%{$search}%")
+                  ->orWhere('dispatch_notes', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function($cq) use ($search) {
+                      $cq->where('name', 'like', "%{$search}%")
+                        ->orWhere('customer_code', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%");
+                  });
+            });
         }
 
         $cbpRequests = $query->latest('id')
@@ -276,6 +302,69 @@ class CbpRequestController extends Controller
         \App\Models\AuditLog::createLog('Laporan CBP Selesai', $cbp, $oldStatus, 'completed', 'Menyelesaikan laporan cabut perangkat ' . $cbp->cbp_number);
 
         return redirect()->back()->with('success', 'Laporan Pencabutan berhasil disimpan.');
+    }
+
+    public function dispatchToSchedule(Request $request, CbpRequest $cbp)
+    {
+        $user = $request->user();
+        if ($user && !$user->can(['cbp_btn_dispatch', 'cbp_btn_request', 'cbp_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengirim ke Jadwal CBP.');
+        }
+
+        if ($cbp->status === 'canceled') {
+            return redirect()->back()->with('error', 'Tiket CBP yang dibatalkan tidak dapat dikirim ke jadwal.');
+        }
+
+        if ($cbp->status === 'completed') {
+            return redirect()->back()->with('error', 'Tiket CBP sudah selesai.');
+        }
+
+        $validated = $request->validate([
+            'dispatch_notes' => 'nullable|string|max:500',
+        ]);
+
+        $cbp->update([
+            'sent_to_schedule_at' => now(),
+            'sent_to_schedule_by' => auth()->id(),
+            'dispatch_notes' => $validated['dispatch_notes'] ?: $cbp->dispatch_notes,
+        ]);
+
+        \App\Models\AuditLog::createLog(
+            'Kirim ke Jadwal CBP',
+            $cbp,
+            'draft_request',
+            'scheduled_ready',
+            'Tiket CBP diteruskan ke Jadwal CBP untuk penugasan teknisi.' . (!empty($validated['dispatch_notes']) ? ' Catatan Disposisi: ' . $validated['dispatch_notes'] : '')
+        );
+
+        return redirect()->back()->with('success', 'Tiket ' . $cbp->cbp_number . ' berhasil dikirim ke Jadwal CBP!');
+    }
+
+    public function retractFromSchedule(Request $request, CbpRequest $cbp)
+    {
+        $user = $request->user();
+        if ($user && !$user->can(['cbp_btn_dispatch', 'cbp_btn_request', 'cbp_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menarik kembali tiket CBP.');
+        }
+
+        if ($cbp->status === 'assigned' || $cbp->status === 'completed') {
+            return redirect()->back()->with('error', 'Tiket sudah ditugaskan / dieksekusi teknisi dan tidak dapat ditarik kembali.');
+        }
+
+        $cbp->update([
+            'sent_to_schedule_at' => null,
+            'sent_to_schedule_by' => null,
+        ]);
+
+        \App\Models\AuditLog::createLog(
+            'Tarik dari Jadwal CBP',
+            $cbp,
+            'scheduled_ready',
+            'draft_request',
+            'Tiket CBP ditarik kembali dari Jadwal CBP ke antrean request oleh ' . (auth()->user()?->name ?? 'Admin')
+        );
+
+        return redirect()->back()->with('success', 'Tiket ' . $cbp->cbp_number . ' berhasil ditarik kembali dari Jadwal CBP.');
     }
 
     public function cancel(CbpRequest $cbp)

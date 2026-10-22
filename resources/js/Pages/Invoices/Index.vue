@@ -1583,8 +1583,8 @@
                         </button>
 
                         <div class="flex gap-2">
-                            <Link :href="activeDispatchData?.schedule_url || '/cbp/jadwal'" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-3 rounded-xl text-xs transition-colors text-center">
-                                📅 Buka Jadwal CBP
+                            <Link :href="activeDispatchData?.schedule_url || '/cbp'" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-3 rounded-xl text-xs transition-colors text-center">
+                                📋 Buka Tiket CBP
                             </Link>
                             <button type="button" @click="showDispatchSuccessModal = false" class="px-5 bg-white hover:bg-slate-50 text-slate-500 font-semibold py-2.5 rounded-xl text-xs border border-slate-200 transition-colors">
                                 Selesai

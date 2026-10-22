@@ -741,7 +741,7 @@ class InvoiceController extends Controller
                 'customer_code' => $customer->customer_code,
                 'phone' => $targetPhone,
                 'whatsapp_text' => $waText,
-                'schedule_url' => route('cbp.jadwal'),
+                'schedule_url' => route('cbp.index'),
             ]
         ]);
     }

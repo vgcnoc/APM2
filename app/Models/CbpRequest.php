@@ -9,13 +9,15 @@ class CbpRequest extends Model
     protected $fillable = [
         'cbp_number', 'customer_id', 'reason', 'status',
         'assigned_to', 'created_by', 'completed_at', 'notes',
-        'start_time', 'end_time', 'photo'
+        'start_time', 'end_time', 'photo',
+        'sent_to_schedule_at', 'sent_to_schedule_by', 'dispatch_notes'
     ];
 
     protected function casts(): array
     {
         return [
             'completed_at' => 'datetime',
+            'sent_to_schedule_at' => 'datetime',
         ];
     }
 
@@ -32,6 +34,11 @@ class CbpRequest extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function dispatcher()
+    {
+        return $this->belongsTo(User::class, 'sent_to_schedule_by');
     }
 
     public function auditLogs()

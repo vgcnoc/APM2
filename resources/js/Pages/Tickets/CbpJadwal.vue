@@ -52,6 +52,10 @@
                                 </td>
                                 <td class="p-4">
                                     <div class="text-gray-700 max-w-xs truncate" :title="req.reason">{{ req.reason || '-' }}</div>
+                                    <div v-if="req.dispatch_notes" class="text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-200/60 rounded-md px-2 py-0.5 mt-1 flex items-start gap-1 max-w-xs truncate" :title="'Disposisi: ' + req.dispatch_notes">
+                                        <span class="font-bold shrink-0">Disposisi:</span>
+                                        <span class="truncate">{{ req.dispatch_notes }}</span>
+                                    </div>
                                     <div v-if="req.notes" class="text-[10px] text-gray-400 mt-1 border-t border-gray-100 pt-1" :title="req.notes">
                                         Note: <span class="truncate">{{ req.notes }}</span>
                                     </div>
@@ -660,7 +664,8 @@ function shareWhatsApp(req) {
         `📍 *Alamat:* ${cust.address || '-'}\n` +
         ontInfo +
         `⚠️ *Alasan:* ${req.reason || '-'}\n` +
-        (req.notes ? `📝 *Catatan:* ${req.notes}\n` : '') +
+        (req.dispatch_notes ? `📋 *Catatan Disposisi:* ${req.dispatch_notes}\n` : '') +
+        (req.notes ? `📝 *Catatan Lain:* ${req.notes}\n` : '') +
         `--------------------------------------\n` +
         `Kepada: *Kepala Teknisi*\n` +
         `Mohon jadwalkan tim teknisi untuk penarikan/pencabutan perangkat ONT.\n` +
