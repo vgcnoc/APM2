@@ -91,7 +91,13 @@ class CustomerController extends Controller
                 'sales:id,name'
             ])
             ->search($request->search)
-            ->when($request->status, fn ($q, $status) => $q->where('status', $status))
+            ->when($request->status, function ($q, $status) {
+                if ($status === 'pending') {
+                    $q->whereIn('status', ['booking', 'survey', 'installing']);
+                } else {
+                    $q->where('status', $status);
+                }
+            })
             ->when($request->service_status, fn ($q, $ss) => $q->where('service_status', $ss))
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
             ->when($request->area_id, function ($q, $areaId) {
@@ -132,11 +138,12 @@ class CustomerController extends Controller
                 'inactive' => ['value' => $inactiveCustomers, 'percentage' => $inactivePercentage, 'growth' => $inactiveGrowth],
             ],
             'statusOptions' => [
+                'active' => 'Aktif',
+                'suspended' => 'Suspended (Isolir)',
+                'pending' => 'Pending (PSB)',
                 'booking' => 'Booking',
                 'survey' => 'Survey',
                 'installing' => 'Proses Pasang',
-                'active' => 'Aktif',
-                'suspended' => 'Suspended',
             ],
             'onlineUsernames' => (function() {
                 try {
@@ -1141,161 +1148,17 @@ class CustomerController extends Controller
     /**
      * Halaman Pelanggan Aktif
      */
-    public function active(Request $request): Response
+    public function active(Request $request): RedirectResponse
     {
-        // Exclude pure resellers (customers without a monthly package)
-        $baseQuery = Customer::where('status', 'active')->whereNotNull('package_id');
-        
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_active_view_all')) {
-            if (auth()->user()->can('customers_active_view_area')) {
-                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-            } else {
-                $baseQuery->where(function($q) {
-                    $q->where('sales_id', auth()->id())
-                      ->orWhereHas('technicianSchedules', function ($sq) {
-                          $sq->where('technician_id', auth()->id());
-                      });
-                });
-            }
-        }
-
-        $onlineUsernames = (function() {
-            try {
-                return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
-            } catch (\Exception $e) {
-                return [];
-            }
-        })();
-
-        // Calculate statistics based on baseQuery
-        $totalAktif = (clone $baseQuery)->count();
-        $onlineAktif = (clone $baseQuery)->whereHas('ont', fn ($q) => $q->whereIn('pppoe_user', $onlineUsernames)->orWhereIn('hotspot_user', $onlineUsernames))->count();
-        $offlineAktif = (clone $baseQuery)->where(fn ($q) => $q->doesntHave('ont')->orWhereHas('ont', fn ($oq) => $oq->where(function ($sub) use ($onlineUsernames) {
-            $sub->whereNull('pppoe_user')->orWhereNotIn('pppoe_user', $onlineUsernames);
-        })->where(function ($sub) use ($onlineUsernames) {
-            $sub->whereNull('hotspot_user')->orWhereNotIn('hotspot_user', $onlineUsernames);
-        })))->count();
-        $totalOmset = (clone $baseQuery)->with('package')->get()->sum(fn ($c) => $c->base_amount > 0 ? (float)$c->base_amount : (float)($c->package?->price ?? 0));
-
-        $stats = [
-            'total' => $totalAktif,
-            'aktif' => $totalAktif,
-            'online' => $onlineAktif,
-            'offline' => $offlineAktif,
-            'total_omset' => $totalOmset,
-        ];
-
-        $customers = (clone $baseQuery)
-            ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
-                $q->where('type', 'installation')->with('technician');
-            }])
-            ->when($request->area || $request->area_id, function ($q) use ($request) {
-                $val = $request->area_id ?: $request->area;
-                $q->where(function ($sub) use ($val) {
-                    if (is_numeric($val)) {
-                        $sub->where('area_id', $val);
-                        $name = \App\Models\Area::where('id', $val)->value('name');
-                        if ($name) $sub->orWhere('area', $name);
-                    } else {
-                        $sub->where('area', $val)->orWhereHas('areaModel', fn ($aq) => $aq->where('name', $val));
-                    }
-                });
-            })
-            ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
-            ->when($request->connection_status === 'online', fn ($q) => $q->whereHas('ont', fn ($oq) => $oq->whereIn('pppoe_user', $onlineUsernames)->orWhereIn('hotspot_user', $onlineUsernames)))
-            ->when($request->connection_status === 'offline', fn ($q) => $q->where(fn ($sq) => $sq->doesntHave('ont')->orWhereHas('ont', fn ($oq) => $oq->where(function ($sub) use ($onlineUsernames) {
-                $sub->whereNull('pppoe_user')->orWhereNotIn('pppoe_user', $onlineUsernames);
-            })->where(function ($sub) use ($onlineUsernames) {
-                $sub->whereNull('hotspot_user')->orWhereNotIn('hotspot_user', $onlineUsernames);
-            }))))
-            ->search($request->search)
-            ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
-            ->paginate(15)
-            ->withQueryString();
-
-        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
-        $packages = \App\Models\InternetPackage::active()->get(['id', 'name', 'price']);
-
-        return Inertia::render('Customers/Active', [
-            'customers' => $customers,
-            'stats' => $stats,
-            'packages' => $packages,
-            'areas' => $areas,
-            'filters' => $request->only(['search', 'area_id', 'area', 'package_id', 'connection_status']),
-            'onlineUsernames' => $onlineUsernames,
-        ]);
+        return redirect()->route('customers.index', array_merge($request->query(), ['status' => 'active']));
     }
 
     /**
      * Halaman Pelanggan Isolir
      */
-    public function isolir(Request $request): Response
+    public function isolir(Request $request): RedirectResponse
     {
-        // Exclude pure resellers (customers without a monthly package)
-        $baseQuery = Customer::where('status', 'suspended')->whereNotNull('package_id');
-        
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_active_view_all')) {
-            if (auth()->user()->can('customers_active_view_area')) {
-                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-            } else {
-                $baseQuery->where(function($q) {
-                    $q->where('sales_id', auth()->id())
-                      ->orWhereHas('technicianSchedules', function ($sq) {
-                          $sq->where('technician_id', auth()->id());
-                      });
-                });
-            }
-        }
-        
-        $totalIsolir = (clone $baseQuery)->count();
-        $totalTunggakan = (float) Invoice::whereHas('customer', function ($q) {
-            $q->where('status', 'suspended');
-        })->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false)->sum('amount');
-
-        $stats = [
-            'isolir' => $totalIsolir,
-            'total_tunggakan' => $totalTunggakan,
-        ];
-
-        $customers = (clone $baseQuery)
-            ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
-                $q->where('type', 'installation')->with('technician');
-            }])
-            ->when($request->area || $request->area_id, function ($q) use ($request) {
-                $val = $request->area_id ?: $request->area;
-                $q->where(function ($sub) use ($val) {
-                    if (is_numeric($val)) {
-                        $sub->where('area_id', $val);
-                        $name = \App\Models\Area::where('id', $val)->value('name');
-                        if ($name) $sub->orWhere('area', $name);
-                    } else {
-                        $sub->where('area', $val)->orWhereHas('areaModel', fn ($aq) => $aq->where('name', $val));
-                    }
-                });
-            })
-            ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
-            ->search($request->search)
-            ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
-            ->paginate(15)
-            ->withQueryString();
-
-        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
-        $packages = \App\Models\InternetPackage::active()->get(['id', 'name', 'price']);
-
-        return Inertia::render('Customers/Isolir', [
-            'customers' => $customers,
-            'stats' => $stats,
-            'areas' => $areas,
-            'packages' => $packages,
-            'filters' => $request->only(['search', 'area_id', 'area', 'package_id']),
-            'onlineUsernames' => (function() {
-                try {
-                    return \App\Models\Radius\RadAcct::online()->pluck('username')->toArray();
-                } catch (\Exception $e) {
-                    return [];
-                }
-            })(),
-        ]);
+        return redirect()->route('customers.index', array_merge($request->query(), ['status' => 'suspended']));
     }
 
     /**

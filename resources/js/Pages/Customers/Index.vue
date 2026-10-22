@@ -3,9 +3,14 @@
         <!-- STATS SECTION -->
         <div v-if="stats" v-can="'customers_card_summary'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <!-- Total Pelanggan -->
-            <div class="glass-card p-5 flex items-center justify-between">
+            <div 
+                @click="setQuickStatus('')" 
+                class="glass-card p-5 flex items-center justify-between cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group"
+                :class="!filterStatus ? 'ring-2 ring-blue-500/40 border-blue-400 bg-blue-50/20 shadow-sm' : 'hover:border-blue-200'"
+                title="Tampilkan Semua Pelanggan"
+            >
                 <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center">
+                    <div class="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center group-hover:scale-105 transition-transform">
                         <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
@@ -26,9 +31,14 @@
             </div>
 
             <!-- Pelanggan Aktif -->
-            <div class="glass-card p-5 flex items-center justify-between">
+            <div 
+                @click="setQuickStatus('active')" 
+                class="glass-card p-5 flex items-center justify-between cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group"
+                :class="filterStatus === 'active' ? 'ring-2 ring-emerald-500/40 border-emerald-400 bg-emerald-50/20 shadow-sm' : 'hover:border-emerald-200'"
+                title="Filter Pelanggan Aktif"
+            >
                 <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-xl bg-emerald-400 flex items-center justify-center">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                         <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
                         </svg>
@@ -49,9 +59,14 @@
             </div>
 
             <!-- Pelanggan Pending -->
-            <div class="glass-card p-5 flex items-center justify-between">
+            <div 
+                @click="setQuickStatus('pending')" 
+                class="glass-card p-5 flex items-center justify-between cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group"
+                :class="filterStatus === 'pending' ? 'ring-2 ring-yellow-500/40 border-yellow-400 bg-yellow-50/20 shadow-sm' : 'hover:border-yellow-200'"
+                title="Filter Pelanggan Pending (Booking/Survey/Pasang)"
+            >
                 <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-xl bg-yellow-400 flex items-center justify-center">
+                    <div class="w-12 h-12 rounded-xl bg-yellow-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                         <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
@@ -72,9 +87,14 @@
             </div>
 
             <!-- Pelanggan Nonaktif -->
-            <div class="glass-card p-5 flex items-center justify-between">
+            <div 
+                @click="setQuickStatus('suspended')" 
+                class="glass-card p-5 flex items-center justify-between cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group"
+                :class="filterStatus === 'suspended' ? 'ring-2 ring-red-500/40 border-red-400 bg-red-50/20 shadow-sm' : 'hover:border-red-200'"
+                title="Filter Pelanggan Suspended (Isolir)"
+            >
                 <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-xl bg-red-400 flex items-center justify-center">
+                    <div class="w-12 h-12 rounded-xl bg-red-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                         <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/>
                         </svg>
@@ -120,7 +140,7 @@
                     </div>
                 </div>
 
-                <!-- Layanan (Berbayar / Gratis) -->
+                <!-- Layanan (Berbayar / Gratis / Free Home) -->
                 <div v-can="'customers_filter_status'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[165px]">
                     <div class="shrink-0 mr-2 text-gray-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -130,7 +150,8 @@
                         <select v-model="filterServiceStatus" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
                             <option value="">Semua Layanan</option>
                             <option value="berbayar">💳 Berbayar</option>
-                            <option value="gratis">🎁 Gratis</option>
+                            <option value="gratis">🎁 Gratis (CSR)</option>
+                            <option value="free_home">🏠 Free Home (Voucher)</option>
                         </select>
                     </div>
                 </div>
@@ -826,6 +847,15 @@ function applyFilters() {
         odp_id: filterOdp.value || undefined,
         sort_by: filterSort.value || undefined,
     }, { preserveState: true, preserveScroll: true });
+}
+
+function setQuickStatus(status) {
+    if (filterStatus.value === status) {
+        filterStatus.value = '';
+    } else {
+        filterStatus.value = status;
+    }
+    applyFilters();
 }
 
 function resetFilters() {

@@ -193,7 +193,24 @@ class PermissionRegistry
                 ],
             ],
 
-            // ── 5. BILLING & INVOICE ─────────────────────────────────
+            // ── 5. PAKET LAYANAN INTERNET ───────────────────────────
+            [
+                'group' => 'Paket Layanan Internet',
+                'category' => 'pelanggan',
+                'icon' => 'package',
+                'menu_parent' => 'menu_internet_packages',
+                'permissions' => [
+                    ['name' => 'menu_internet_packages', 'type' => 'menu', 'label' => 'Akses Menu Paket Internet'],
+                    ['name' => 'internet_packages_card_stats', 'type' => 'card', 'label' => 'Card Statistik Paket & Pelanggan'],
+                    ['name' => 'internet_packages_filter', 'type' => 'filter', 'label' => 'Filter Cerdas & Mode Akses Paket'],
+                    ['name' => 'internet_packages_view', 'type' => 'feature', 'label' => 'Lihat Detail Paket Internet'],
+                    ['name' => 'internet_packages_create', 'type' => 'button', 'label' => 'Tombol Tambah Paket Internet'],
+                    ['name' => 'internet_packages_edit', 'type' => 'button', 'label' => 'Tombol Edit Paket Internet'],
+                    ['name' => 'internet_packages_delete', 'type' => 'button', 'label' => 'Tombol Hapus Paket Internet'],
+                ],
+            ],
+
+            // ── 6. BILLING & INVOICE ─────────────────────────────────
             [
                 'group' => 'Billing & Invoice Pelanggan',
                 'category' => 'billing',
@@ -850,18 +867,11 @@ class PermissionRegistry
 
             // ── 21. MASTER PENGATURAN & WILAYAH ──────────────────────
             [
-                'group' => 'Master Paket, Area & Pengaturan',
+                'group' => 'Master Area & Pengaturan',
                 'category' => 'setting',
                 'icon' => 'cog',
                 'menu_parent' => 'menu_settings_branding',
                 'permissions' => [
-                    ['name' => 'menu_internet_packages', 'type' => 'menu', 'label' => 'Akses Menu Paket Internet'],
-                    ['name' => 'internet_packages_card_stats', 'type' => 'widget', 'label' => 'Kartu Statistik Paket Internet'],
-                    ['name' => 'internet_packages_filter', 'type' => 'widget', 'label' => 'Filter Cerdas Paket Internet'],
-                    ['name' => 'internet_packages_view', 'type' => 'button', 'label' => 'Tombol Lihat Detail Paket Internet'],
-                    ['name' => 'internet_packages_create', 'type' => 'button', 'label' => 'Tombol Tambah Paket Internet'],
-                    ['name' => 'internet_packages_edit', 'type' => 'button', 'label' => 'Tombol Edit Paket Internet'],
-                    ['name' => 'internet_packages_delete', 'type' => 'button', 'label' => 'Tombol Hapus Paket Internet'],
                     ['name' => 'menu_settings_areas', 'type' => 'menu', 'label' => 'Akses Master Area & Cabang'],
                     ['name' => 'settings_areas_create', 'type' => 'button', 'label' => 'Tombol Tambah Master Area'],
                     ['name' => 'settings_areas_edit', 'type' => 'button', 'label' => 'Tombol Edit Master Area'],
@@ -979,7 +989,7 @@ class PermissionRegistry
                 'menu_customers_activation', 'customers_activation_card_stats', 'customers_activation_filter', 'customers_activation_activate', 'customers_activation_btn_test_onu', 'customers_activation_view_all',
                 'menu_customers_active', 'customers_card_summary', 'customers_card_billing_status', 'customers_active_suspend', 'customers_btn_reset_secret', 'customers_active_view_all',
                 'menu_customers_online',
-                'menu_customers_gratis', 'menu_customers_free_home',
+                'menu_customers_gratis', 'menu_customers_free_home', 'menu_customers_terminated',
                 'menu_customers_all', 'customers_all_view_all',
                 'menu_tickets', 'tickets_card_summary', 'tickets_filter_priority', 'tickets_create', 'tickets_edit', 'tickets_delete', 'tickets_assign', 'tickets_close', 'tickets_btn_whatsapp', 'tickets_view_all',
                 'menu_cbp', 'menu_cbp_jadwal', 'menu_cbp_laporan', 'cbp_card_stats', 'cbp_filter', 'cbp_btn_request', 'cbp_btn_dispatch', 'cbp_btn_assign', 'cbp_btn_report', 'cbp_btn_cancel', 'cbp_btn_delete', 'cbp_btn_delete_all', 'cbp_manage', 'cbp_view_all',
@@ -1096,8 +1106,8 @@ class PermissionRegistry
                 'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_filter', 'network_capacity_view_all',
                 'menu_customers_all', 'customers_card_summary', 'customers_card_billing_status', 'customers_all_create', 'customers_all_edit', 'customers_all_export', 'customers_btn_whatsapp', 'customers_all_view_all',
-                'menu_customers_active', 'customers_active_edit', 'customers_active_suspend', 'customers_active_view_all',
-                'menu_customers_isolir', 'menu_customers_online', 'menu_customers_gratis', 'menu_customers_free_home',
+                'menu_customers_active', 'customers_active_edit', 'customers_active_suspend', 'customers_active_terminate', 'customers_active_view_all',
+                'menu_customers_isolir', 'menu_customers_online', 'menu_customers_gratis', 'menu_customers_free_home', 'menu_customers_terminated',
                 'customers_tab_profile', 'customers_tab_services', 'customers_tab_invoices', 'customers_tab_tickets', 'customers_tab_logs',
                 'customers_filter_search', 'customers_filter_area', 'customers_filter_package', 'customers_filter_status',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_edit', 'customers_booking_delete', 'customers_booking_request_survey', 'customers_booking_whatsapp', 'customers_booking_view_all',
@@ -1124,9 +1134,9 @@ class PermissionRegistry
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_revenue', 'dashboard_filter_area', 'dashboard_btn_quick_action', 'dashboard_btn_refresh',
                 'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_filter', 'network_capacity_view_all',
-                'menu_customers_all', 'customers_card_summary', 'customers_card_billing_status', 'customers_all_create', 'customers_all_edit', 'customers_all_export', 'customers_btn_whatsapp', 'customers_all_view_all',
-                'menu_customers_active', 'customers_active_edit', 'customers_active_suspend', 'customers_active_view_all',
-                'menu_customers_isolir', 'menu_customers_online', 'menu_customers_gratis', 'menu_customers_free_home',
+                'menu_customers_all', 'customers_card_summary', 'customers_card_billing_status', 'customers_all_create', 'customers_all_edit', 'customers_delete', 'customers_all_export', 'customers_btn_whatsapp', 'customers_all_view_all',
+                'menu_customers_active', 'customers_active_edit', 'customers_active_suspend', 'customers_active_terminate', 'customers_active_view_all',
+                'menu_customers_isolir', 'menu_customers_online', 'menu_customers_gratis', 'menu_customers_free_home', 'menu_customers_terminated',
                 'customers_tab_profile', 'customers_tab_services', 'customers_tab_invoices', 'customers_tab_tickets', 'customers_tab_logs',
                 'customers_filter_search', 'customers_filter_area', 'customers_filter_package', 'customers_filter_status',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_edit', 'customers_booking_delete', 'customers_booking_request_survey', 'customers_booking_whatsapp', 'customers_booking_view_all',
@@ -1142,7 +1152,7 @@ class PermissionRegistry
                 'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_card_blast_summary',
                 'whatsapp_tab_device', 'whatsapp_tab_blast', 'whatsapp_tab_history', 'whatsapp_tab_settings',
                 'whatsapp_filter_target', 'whatsapp_btn_scan_qr', 'whatsapp_btn_test_send', 'whatsapp_btn_start_blast', 'whatsapp_btn_pause_blast',
-                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view', 
+                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view', 'internet_packages_create', 'internet_packages_edit',
                 'menu_attendances', 'attendance_tab_reguler', 'attendances_view_own',
                 'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
                 'menu_vouchers', 'menu_vouchers_monitoring', 'voucher_monitoring_card_stats', 'voucher_monitoring_tab_online', 'voucher_monitoring_tab_offline', 'voucher_monitoring_filter', 'voucher_monitoring_btn_kick', 'voucher_monitoring_btn_toggle',
@@ -1182,7 +1192,7 @@ class PermissionRegistry
                 'menu_resellers',
                 'menu_settings_billing', 'menu_settings_payroll',
                 'menu_customers_all', 'customers_card_summary', 'customers_all_view_all', 'customers_tab_invoices',
-                'menu_customers_gratis', 'menu_customers_free_home',
+                'menu_customers_gratis', 'menu_customers_free_home', 'menu_customers_terminated',
                 'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
                 'menu_attendances', 'attendance_tab_reguler', 'attendances_view_own',
@@ -1196,9 +1206,9 @@ class PermissionRegistry
             'manager' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_revenue', 'dashboard_card_infra', 'dashboard_view_stats', 'dashboard_view_charts', 'dashboard_filter_area', 'dashboard_btn_refresh',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_view_all',
-                'menu_customers_all', 'customers_card_summary', 'customers_card_billing_status', 'customers_all_view_all', 'customers_all_export',
-                'menu_customers_active', 'customers_active_view_all',
-                'menu_customers_isolir', 'menu_customers_online', 'menu_customers_gratis', 'menu_customers_free_home',
+                'menu_customers_all', 'customers_card_summary', 'customers_card_billing_status', 'customers_all_view_all', 'customers_all_export', 'customers_delete',
+                'menu_customers_active', 'customers_active_view_all', 'customers_active_terminate',
+                'menu_customers_isolir', 'menu_customers_online', 'menu_customers_gratis', 'menu_customers_free_home', 'menu_customers_terminated',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_create', 'customers_booking_view_all',
                 'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_view_all',
                 'menu_customers_installed', 'customers_installed_card_stats', 'customers_installed_view_all',
@@ -1219,7 +1229,7 @@ class PermissionRegistry
                 'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_card_blast_summary',
                 'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_export', 'monitoring_teknisi_view_all',
-                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
+                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view', 'internet_packages_create', 'internet_packages_edit', 'internet_packages_delete',
             ],
             'hrd' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_filter_area', 'dashboard_btn_refresh',
