@@ -1357,34 +1357,27 @@ class PgkController extends Controller
 
         $num = $pgk->ticket_number;
 
-        // Hapus file foto dari disk storage jika ada
-        if ($pgk->photo_before && Storage::disk('public')->exists($pgk->photo_before)) {
-            Storage::disk('public')->delete($pgk->photo_before);
-        }
-        if ($pgk->photo_after && Storage::disk('public')->exists($pgk->photo_after)) {
-            Storage::disk('public')->delete($pgk->photo_after);
-        }
+        DB::transaction(function () use ($pgk) {
+            // Hapus file foto dari disk storage jika ada
+            if ($pgk->photo_before && Storage::disk('public')->exists($pgk->photo_before)) {
+                Storage::disk('public')->delete($pgk->photo_before);
+            }
+            if ($pgk->photo_after && Storage::disk('public')->exists($pgk->photo_after)) {
+                Storage::disk('public')->delete($pgk->photo_after);
+            }
 
-        // Hapus data serah terima bongkaran terkait tiket ini
-        \App\Models\CustomerMaterialDismantle::where('source_type', 'pgk')
-            ->where('source_id', $pgk->id)
-            ->delete();
-
-        // Detach teknisi & relasi materials
-        $pgk->technicians()->detach();
-        $pgk->materials()->delete();
-        $pgk->materialRequests()->delete();
-        $pgk->delete();
+            $this->cleanupAndRestoreTicketStock($pgk);
+        });
 
         AuditLog::createLog(
             'Hapus Tiket PGK',
             null,
             null,
             null,
-            'Tiket PGK ' . $num . ' dihapus oleh user: ' . (auth()->user()?->name ?? 'System')
+            'Tiket PGK ' . $num . ' dihapus oleh user: ' . (auth()->user()?->name ?? 'System') . ' (Stok material dikembalikan ke gudang)'
         );
 
-        return redirect()->back()->with('success', 'Tiket PGK ' . $num . ' berhasil dihapus.');
+        return redirect()->back()->with('success', 'Tiket PGK ' . $num . ' berhasil dihapus dan seluruh material telah dikembalikan ke stok gudang.');
     }
 
     /**
@@ -1448,14 +1441,7 @@ class PgkController extends Controller
                     Storage::disk('public')->delete($ticket->photo_after);
                 }
 
-                \App\Models\CustomerMaterialDismantle::where('source_type', 'pgk')
-                    ->where('source_id', $ticket->id)
-                    ->delete();
-
-                $ticket->technicians()->detach();
-                $ticket->materials()->delete();
-                $ticket->materialRequests()->delete();
-                $ticket->delete();
+                $this->cleanupAndRestoreTicketStock($ticket);
                 $count++;
             }
         });
@@ -1465,10 +1451,112 @@ class PgkController extends Controller
             null,
             null,
             null,
-            'Sebanyak ' . $count . ' tiket PGK dihapus massal oleh: ' . (auth()->user()?->name ?? 'System')
+            'Sebanyak ' . $count . ' tiket PGK dihapus massal oleh: ' . (auth()->user()?->name ?? 'System') . ' (Stok material dikembalikan ke gudang)'
         );
 
-        return redirect()->back()->with('success', "Sebanyak {$count} data laporan PGK berhasil dihapus permanen.");
+        return redirect()->back()->with('success', "Sebanyak {$count} data laporan PGK berhasil dihapus permanen dan seluruh material terkait dikembalikan ke gudang.");
+    }
+
+    /**
+     * Bersihkan data tiket dan kembalikan stok material ke gudang jika tiket dihapus
+     */
+    protected function cleanupAndRestoreTicketStock(PgkTicket $pgk): void
+    {
+        $areaId = $pgk->area_id ?? $pgk->customer?->area_id;
+
+        // 1. Kembalikan stok dari semua transaksi material keluar (OUT) terkait tiket ini
+        $outTransactions = MaterialTransaction::with('items.material')
+            ->where('source_type', 'pgk')
+            ->where('source_id', $pgk->id)
+            ->where('type', 'out')
+            ->get();
+
+        if ($outTransactions->isNotEmpty()) {
+            foreach ($outTransactions as $trx) {
+                $trxAreaId = $trx->area_id ?: $areaId;
+                foreach ($trx->items as $item) {
+                    $material = $item->material;
+                    if ($material) {
+                        $qty = (float) $item->quantity;
+                        $material->increment('stock', $qty);
+                        if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
+                            $material->total_rolls = $material->stock / $material->meter_per_roll;
+                            $material->save();
+                        }
+
+                        if ($trxAreaId) {
+                            $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
+                                ->where('area_id', $trxAreaId)
+                                ->first();
+                            if ($matStock) {
+                                $matStock->increment('stock', $qty);
+                                if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
+                                    $matStock->total_rolls = $matStock->stock / $material->meter_per_roll;
+                                    $matStock->save();
+                                }
+                            }
+                        }
+                    }
+                }
+                $trx->items()->delete();
+                $trx->delete();
+            }
+        } else {
+            // Fallback: Jika tidak tercatat di MaterialTransaction, kembalikan dari tabel pgk_materials
+            foreach ($pgk->materials as $pgkMat) {
+                $qty = (float) $pgkMat->quantity_prepared;
+                if ($qty > 0 && $pgkMat->material_id) {
+                    $material = Material::find($pgkMat->material_id);
+                    if ($material) {
+                        $material->increment('stock', $qty);
+                        if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
+                            $material->total_rolls = $material->stock / $material->meter_per_roll;
+                            $material->save();
+                        }
+                    }
+                    if ($areaId) {
+                        $matStock = \App\Models\MaterialStock::where('material_id', $pgkMat->material_id)
+                            ->where('area_id', $areaId)
+                            ->first();
+                        if ($matStock) {
+                            $matStock->increment('stock', $qty);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Bersihkan transaksi serah terima sisa / bongkaran (IN) terkait tiket ini
+        $inTransactions = MaterialTransaction::where('source_type', 'pgk')
+            ->where('source_id', $pgk->id)
+            ->where('type', 'in')
+            ->get();
+        foreach ($inTransactions as $inTrx) {
+            $inTrx->items()->delete();
+            $inTrx->delete();
+        }
+
+        // 3. Kembalikan unit ONT yang disiapkan ke status bebas di gudang jika belum dipasang permanen
+        if ($pgk->prepared_ont_id) {
+            $prepOnt = Ont::find($pgk->prepared_ont_id);
+            if ($prepOnt && ($pgk->status !== 'completed' || $prepOnt->customer_id == $pgk->customer_id)) {
+                $prepOnt->update([
+                    'customer_id' => null,
+                    'status' => 'Sudah Set',
+                ]);
+            }
+        }
+
+        // 4. Hapus data serah terima bongkaran
+        \App\Models\CustomerMaterialDismantle::where('source_type', 'pgk')
+            ->where('source_id', $pgk->id)
+            ->delete();
+
+        // 5. Hapus relasi teknisi, material, dan permintaan tambahan
+        $pgk->technicians()->detach();
+        $pgk->materials()->delete();
+        $pgk->materialRequests()->delete();
+        $pgk->delete();
     }
 
     /**
