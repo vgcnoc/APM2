@@ -261,6 +261,8 @@
                                 v-if="link.url" 
                                 :href="link.url" 
                                 v-html="link.label"
+                                preserve-scroll
+                                preserve-state
                                 class="px-3 py-1 text-xs rounded-lg transition-colors border"
                                 :class="link.active ? 'bg-amber-500 text-white border-amber-500 font-bold' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200'"
                             />
@@ -583,7 +585,7 @@ const setStatusFilter = (st) => {
         search: search.value,
         area_id: filterArea.value,
         status: st,
-    }, { preserveState: true, replace: true });
+    }, { preserveState: true, preserveScroll: true, replace: true });
 };
 
 const performSearch = () => {
@@ -591,7 +593,7 @@ const performSearch = () => {
         search: search.value,
         area_id: filterArea.value,
         status: currentStatus.value,
-    }, { preserveState: true, replace: true });
+    }, { preserveState: true, preserveScroll: true, replace: true });
 };
 
 const openScheduleModal = (ticket) => {

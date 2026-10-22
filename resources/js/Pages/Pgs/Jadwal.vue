@@ -595,6 +595,8 @@
                                 v-if="link.url" 
                                 :href="link.url" 
                                 v-html="link.label"
+                                preserve-scroll
+                                preserve-state
                                 class="px-3 py-1 text-xs rounded-lg transition-colors border"
                                 :class="link.active ? 'bg-amber-500 text-white border-amber-500 font-bold' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200'"
                             />
@@ -1402,7 +1404,7 @@ const applyFilters = (overrides = {}) => {
         }
     });
 
-    router.get('/pgs/jadwal', params, { preserveState: true, replace: true });
+    router.get('/pgs/jadwal', params, { preserveState: true, preserveScroll: true, replace: true });
 };
 
 const filterByCard = (cardType) => {
@@ -1442,7 +1444,7 @@ const resetFilters = () => {
     filterEndDate.value = '';
     filterMaterial.value = '';
 
-    router.get('/pgs/jadwal', { status: 'active' }, { preserveState: true, replace: true });
+    router.get('/pgs/jadwal', { status: 'active' }, { preserveState: true, preserveScroll: true, replace: true });
 };
 
 const openScheduleModal = (ticket) => {

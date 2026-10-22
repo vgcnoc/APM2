@@ -20,7 +20,7 @@
             </div>
 
             <!-- Navigation -->
-            <nav ref="sidebarNav" scroll-region class="flex-1 overflow-y-auto px-3 py-4 space-y-1 transition-opacity duration-100" :class="{ 'opacity-0': !isRestored, 'opacity-100': isRestored }" @scroll="saveScrollPosition">
+            <nav ref="sidebarNav" scroll-region class="flex-1 overflow-y-auto px-3 py-4 space-y-1" @scroll="saveScrollPosition">
                 <template v-for="(item, index) in filteredMenuItems" :key="index">
                     <!-- Group Label -->
                     <div v-if="item.type === 'group' && sidebarOpen" class="pt-5 pb-2 px-3">
@@ -119,6 +119,7 @@
                     <!-- Dropdown -->
                     <div v-else-if="item.type === 'dropdown'">
                         <button 
+                            type="button"
                             @click="toggleDropdown(index)" 
                             :class="[
                                 'sidebar-link', 
@@ -164,6 +165,7 @@
             <!-- Sidebar Toggle (Desktop Only) -->
             <div class="hidden lg:block border-t border-gray-200 p-3">
                 <button
+                    type="button"
                     @click="sidebarOpen = !sidebarOpen"
                     class="w-full flex items-center justify-center p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-all"
                 >
@@ -733,23 +735,15 @@ onMounted(() => {
         }
     });
 
-    // 3. Restore sidebar scroll position smoothly
+    // 3. Restore sidebar scroll position smoothly without lag
     const scrollPos = parseInt(localStorage.getItem('sidebarScrollPos'), 10);
-    if (!isNaN(scrollPos)) {
-        let attempts = 0;
-        const interval = setInterval(() => {
-            if (sidebarNav.value) {
-                sidebarNav.value.scrollTop = scrollPos;
-            }
-            attempts++;
-            if (attempts > 15) {
-                clearInterval(interval);
-                isRestored.value = true;
-            }
-        }, 10);
-    } else {
-        isRestored.value = true;
+    if (!isNaN(scrollPos) && sidebarNav.value) {
+        sidebarNav.value.scrollTop = scrollPos;
+        requestAnimationFrame(() => {
+            if (sidebarNav.value) sidebarNav.value.scrollTop = scrollPos;
+        });
     }
+    isRestored.value = true;
 });
 
 const iconPaths = {

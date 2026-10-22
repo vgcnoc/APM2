@@ -249,6 +249,8 @@
                                 v-if="link.url" 
                                 :href="link.url" 
                                 v-html="link.label"
+                                preserve-scroll
+                                preserve-state
                                 class="px-3 py-1 text-xs rounded-lg transition-colors border"
                                 :class="link.active ? 'bg-sky-600 text-white border-sky-600 font-bold' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200'"
                             />
@@ -793,7 +795,7 @@ const performSearch = () => {
         status: activeStatus.value === 'all' ? '' : activeStatus.value,
         priority: filterPriority.value,
         area_id: filterArea.value,
-    }, { preserveState: true, replace: true });
+    }, { preserveState: true, preserveScroll: true, replace: true });
 };
 
 const filterByStatus = (status) => {

@@ -255,7 +255,7 @@
                     <div class="flex items-center gap-1">
                         <template v-for="(link, i) in tickets.links" :key="i">
                             <div v-if="link.url === null" class="px-3 py-1.5 border border-gray-200 rounded-lg text-gray-300" v-html="link.label"></div>
-                            <Link v-else :href="link.url" class="px-3 py-1.5 border rounded-lg transition-colors font-medium" :class="link.active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'" v-html="link.label"></Link>
+                            <Link v-else :href="link.url" preserve-scroll preserve-state class="px-3 py-1.5 border rounded-lg transition-colors font-medium" :class="link.active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'" v-html="link.label"></Link>
                         </template>
                     </div>
                 </div>
@@ -783,7 +783,7 @@ function performSearch() {
         status: activeStatus.value,
         priority: filterPriority.value,
         area_id: filterArea.value,
-    }, { preserveState: true, replace: true });
+    }, { preserveState: true, preserveScroll: true, replace: true });
 }
 
 function filterByStatus(st) {
