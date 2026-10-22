@@ -417,11 +417,14 @@
                             <div class="space-y-2">
                                 <InfoRow label="Waktu Mulai" :value="customer.ont?.start_time || '-'" />
                                 <InfoRow label="Waktu Selesai" :value="customer.ont?.end_time || '-'" />
+                                <InfoRow label="Redaman Saat Ini" :value="customer.ont?.rx_power ? `${customer.ont.rx_power} dBm` : '-'" />
+                                <InfoRow v-if="customer.ont?.initial_rx_power" label="Redaman Awal Instalasi" :value="`${customer.ont.initial_rx_power} dBm`" />
                             </div>
                             <div class="space-y-2">
                                 <InfoRow label="Nama ODP" :value="customer.ont?.odp?.name || '-'" />
                                 <InfoRow label="Port ODP" :value="`Port ${customer.ont?.port_number}`" />
                                 <InfoRow label="Serial Number (Auto)" :value="customer.ont?.serial_number" />
+                                <InfoRow v-if="customer.ont?.last_rx_ticket_ref" label="Pembaruan Pasca Gangguan" :value="`Tiket ${customer.ont.last_rx_ticket_ref}`" />
                             </div>
                         </div>
                         

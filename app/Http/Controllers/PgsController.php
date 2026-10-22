@@ -1052,6 +1052,43 @@ class PgsController extends Controller
             'Teknisi melaporkan penanganan PGS selesai: ' . $validated['action_taken']
         );
 
+        $updatedRxPower = null;
+        if (!empty($validated['optical_power_after'])) {
+            $parsedRx = \App\Services\DataMigrationService::parseRxPower($validated['optical_power_after']);
+            if ($parsedRx !== null) {
+                $targetOnt = $ontSwapped ? $newOnt : ($pgs->customer?->ont ?? Ont::where('customer_id', $pgs->customer_id)->first());
+                if ($targetOnt) {
+                    $ontUpdate = [
+                        'rx_power' => $parsedRx,
+                        'last_rx_updated_at' => now(),
+                        'last_rx_ticket_ref' => $pgs->ticket_number,
+                        'last_rx_notes' => 'Diperbarui pasca penanganan tiket ' . $pgs->ticket_number . ' (' . ($validated['action_taken'] ?? 'Selesai') . ')',
+                    ];
+
+                    // Pertahankan data acuan awal saat instalasi jika belum pernah terisi
+                    if (empty($targetOnt->initial_rx_power) && !empty($targetOnt->rx_power)) {
+                        $ontUpdate['initial_rx_power'] = $targetOnt->rx_power;
+                    }
+
+                    // Sinkronkan juga foto redaman jika ada foto sesudah yang diunggah
+                    if (!empty($photoAfterPath)) {
+                        $ontUpdate['photo_redaman'] = $photoAfterPath;
+                    }
+
+                    $targetOnt->update($ontUpdate);
+                    $updatedRxPower = number_format($parsedRx, 2, '.', '') . ' dBm';
+
+                    AuditLog::createLog(
+                        'Update Redaman Pasca Perbaikan PGS',
+                        $targetOnt,
+                        $validated['optical_power_before'] ?? ($targetOnt->initial_rx_power ? $targetOnt->initial_rx_power . ' dBm' : null),
+                        $updatedRxPower,
+                        'Redaman optik pelanggan diupdate menjadi ' . $updatedRxPower . ' pasca penanganan tiket PGS ' . $pgs->ticket_number
+                    );
+                }
+            }
+        }
+
         $retCount = PgsMaterial::where('pgs_ticket_id', $pgs->id)->where('quantity_returned', '>', 0)->count();
         $msg = 'Laporan penanganan berhasil disimpan. Status tiket PGS telah selesai.';
         if ($ontSwapped) {
@@ -1064,6 +1101,9 @@ class PgsController extends Controller
         }
         if ($replacementCount > 0) {
             $msg .= ' Sebanyak ' . $replacementCount . ' jenis material bekas bongkaran telah dicatat dan masuk antrean serah terima ke Gudang / Ka. Teknisi.';
+        }
+        if ($updatedRxPower) {
+            $msg .= ' Nilai redaman baru (' . $updatedRxPower . ') otomatis tersinkronisasi ke data perangkat & instalasi pelanggan.';
         }
 
         return redirect()->back()->with('success', $msg);

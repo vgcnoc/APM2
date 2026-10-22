@@ -46,6 +46,10 @@ class Ont extends Model
         'photo_ont',
         'photo_customer',
         'photo_redaman',
+        'initial_rx_power',
+        'last_rx_updated_at',
+        'last_rx_ticket_ref',
+        'last_rx_notes',
     ];
 
     protected function casts(): array
@@ -53,9 +57,22 @@ class Ont extends Model
         return [
             'port_number' => 'integer',
             'rx_power' => 'decimal:2',
+            'initial_rx_power' => 'decimal:2',
+            'last_rx_updated_at' => 'datetime',
             'tx_power' => 'decimal:2',
             'input_officers' => 'array',
         ];
+    }
+
+    public function setInitialRxPowerAttribute($value): void
+    {
+        if ($value === null || $value === '' || $value === 'null') {
+            $this->attributes['initial_rx_power'] = null;
+            return;
+        }
+
+        $parsed = \App\Services\DataMigrationService::parseRxPower($value);
+        $this->attributes['initial_rx_power'] = number_format($parsed, 2, '.', '');
     }
 
     public function setRxPowerAttribute($value): void

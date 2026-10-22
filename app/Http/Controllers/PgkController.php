@@ -1071,6 +1071,43 @@ class PgkController extends Controller
             'Teknisi melaporkan penanganan komplain selesai: ' . $validated['action_taken']
         );
 
+        $updatedRxPower = null;
+        if (!empty($validated['optical_power_after'])) {
+            $parsedRx = \App\Services\DataMigrationService::parseRxPower($validated['optical_power_after']);
+            if ($parsedRx !== null) {
+                $targetOnt = $ontSwapped ? $newOnt : ($pgk->customer?->ont ?? Ont::where('customer_id', $pgk->customer_id)->first());
+                if ($targetOnt) {
+                    $ontUpdate = [
+                        'rx_power' => $parsedRx,
+                        'last_rx_updated_at' => now(),
+                        'last_rx_ticket_ref' => $pgk->ticket_number,
+                        'last_rx_notes' => 'Diperbarui pasca penanganan tiket ' . $pgk->ticket_number . ' (' . ($validated['action_taken'] ?? 'Selesai') . ')',
+                    ];
+
+                    // Pertahankan data acuan awal saat instalasi jika belum pernah terisi
+                    if (empty($targetOnt->initial_rx_power) && !empty($targetOnt->rx_power)) {
+                        $ontUpdate['initial_rx_power'] = $targetOnt->rx_power;
+                    }
+
+                    // Sinkronkan juga foto redaman jika ada foto sesudah yang diunggah
+                    if (!empty($photoAfterPath)) {
+                        $ontUpdate['photo_redaman'] = $photoAfterPath;
+                    }
+
+                    $targetOnt->update($ontUpdate);
+                    $updatedRxPower = number_format($parsedRx, 2, '.', '') . ' dBm';
+
+                    AuditLog::createLog(
+                        'Update Redaman Pasca Perbaikan PGK',
+                        $targetOnt,
+                        $validated['optical_power_before'] ?? ($targetOnt->initial_rx_power ? $targetOnt->initial_rx_power . ' dBm' : null),
+                        $updatedRxPower,
+                        'Redaman optik pelanggan diupdate menjadi ' . $updatedRxPower . ' pasca penanganan tiket PGK ' . $pgk->ticket_number
+                    );
+                }
+            }
+        }
+
         $retCount = PgkMaterial::where('pgk_ticket_id', $pgk->id)->where('quantity_returned', '>', 0)->count();
         $msg = 'Laporan penanganan komplain berhasil disimpan. Status tiket PGK telah selesai.';
         if ($ontSwapped) {
@@ -1083,6 +1120,9 @@ class PgkController extends Controller
         }
         if ($replacementCount > 0) {
             $msg .= ' Sebanyak ' . $replacementCount . ' jenis material bekas bongkaran telah dicatat dan masuk antrean serah terima ke Gudang / Ka. Teknisi.';
+        }
+        if ($updatedRxPower) {
+            $msg .= ' Nilai redaman baru (' . $updatedRxPower . ') otomatis tersinkronisasi ke data perangkat & instalasi pelanggan.';
         }
 
         return redirect()->back()->with('success', $msg);

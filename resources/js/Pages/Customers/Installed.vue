@@ -143,9 +143,17 @@
                     <span v-else class="text-xs text-gray-600">-</span>
                 </td>
                 <td>
-                    <span v-if="row.ont?.rx_power" :class="signalClass(row.ont.rx_power)" class="text-sm font-mono font-bold">
-                        {{ row.ont.rx_power }} dBm
-                    </span>
+                    <div v-if="row.ont?.rx_power" class="space-y-0.5">
+                        <span :class="signalClass(row.ont.rx_power)" class="text-sm font-mono font-bold block">
+                            {{ row.ont.rx_power }} dBm
+                        </span>
+                        <div v-if="row.ont?.initial_rx_power && row.ont.initial_rx_power != row.ont.rx_power" class="text-[10px] text-gray-500 font-mono" title="Redaman acuan awal saat instalasi PSB">
+                            Awal: {{ row.ont.initial_rx_power }} dBm
+                        </div>
+                        <div v-if="row.ont?.last_rx_ticket_ref" class="text-[9px] text-emerald-600 font-semibold" :title="'Diperbarui pasca penanganan gangguan tiket ' + row.ont.last_rx_ticket_ref">
+                            ✓ {{ row.ont.last_rx_ticket_ref }}
+                        </div>
+                    </div>
                     <span v-else class="text-gray-600">-</span>
                 </td>
             </template>
@@ -527,6 +535,18 @@
                                             <span class="text-sm text-gray-500 font-medium">Waktu Selesai</span>
                                             <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.ont?.end_time || '-' }}</span>
                                         </div>
+                                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                            <span class="text-sm text-gray-500 font-medium">Redaman Saat Ini</span>
+                                            <span class="text-sm font-bold font-mono text-right" :class="signalClass(detailCustomer.ont?.rx_power)">
+                                                {{ detailCustomer.ont?.rx_power ? `${detailCustomer.ont.rx_power} dBm` : '-' }}
+                                            </span>
+                                        </div>
+                                        <div v-if="detailCustomer.ont?.initial_rx_power" class="flex justify-between items-center py-2 border-b border-gray-100">
+                                            <span class="text-sm text-gray-500 font-medium">Redaman Awal Instalasi</span>
+                                            <span class="text-sm font-mono font-semibold text-blue-700 text-right">
+                                                {{ detailCustomer.ont.initial_rx_power }} dBm
+                                            </span>
+                                        </div>
                                     </div>
                                     <div class="space-y-2">
                                         <div class="flex justify-between items-center py-2 border-b border-gray-100">
@@ -542,6 +562,12 @@
                                         <div class="flex justify-between items-center py-2 border-b border-gray-100">
                                             <span class="text-sm text-gray-500 font-medium">Serial Number (Auto)</span>
                                             <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.ont?.serial_number || '-' }}</span>
+                                        </div>
+                                        <div v-if="detailCustomer.ont?.last_rx_ticket_ref" class="flex justify-between items-center py-2 border-b border-gray-100">
+                                            <span class="text-sm text-gray-500 font-medium">Update Pasca Gangguan</span>
+                                            <span class="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-right">
+                                                Tiket {{ detailCustomer.ont.last_rx_ticket_ref }}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>

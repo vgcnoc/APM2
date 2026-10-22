@@ -340,11 +340,17 @@
                                         <div class="text-xs font-bold text-gray-900">
                                             {{ ticket.action_taken || '-' }}
                                         </div>
-                                        <div class="mt-1 text-xs text-gray-600 flex items-center gap-2">
-                                            <span>Redaman:</span>
+                                        <div class="mt-1 text-xs text-gray-600 flex items-center flex-wrap gap-2">
+                                            <span class="font-semibold text-gray-500">Redaman:</span>
+                                            <span v-if="ticket.customer?.ont?.initial_rx_power" class="text-[10px] font-mono font-semibold px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded" title="Redaman acuan awal saat instalasi PSB">
+                                                Awal: {{ ticket.customer.ont.initial_rx_power }} dBm
+                                            </span>
                                             <span class="font-mono text-gray-500">{{ ticket.optical_power_before || '-' }} dBm</span>
                                             <span>&rarr;</span>
                                             <span class="font-mono font-bold text-emerald-600">{{ ticket.optical_power_after || '-' }} dBm</span>
+                                            <span v-if="ticket.optical_power_after && getRxSignalBadge(ticket.optical_power_after)" :class="getRxSignalBadge(ticket.optical_power_after).class" class="text-[9px] font-bold px-1.5 py-0.2 rounded border">
+                                                {{ getRxSignalBadge(ticket.optical_power_after).text }}
+                                            </span>
                                         </div>
                                         <div v-if="ticket.resolution_notes" class="mt-1 text-[11px] text-gray-500 italic">
                                             "{{ ticket.resolution_notes }}"
@@ -625,24 +631,81 @@
                             </div>
 
                             <!-- 3. Redaman Optik (dBm) -->
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Redaman Sebelum (dBm)</label>
-                                    <input 
-                                        type="text" 
-                                        v-model="reportForm.optical_power_before" 
-                                        placeholder="Contoh: -31.50 dBm / LOS"
-                                        class="w-full rounded-xl border-gray-200 focus:border-emerald-500 py-1.5 text-xs" 
-                                    />
+                            <div class="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/90 space-y-3">
+                                <div class="flex items-center justify-between flex-wrap gap-2">
+                                    <label class="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span>⚡</span> Pengukuran Redaman Optik (OPM)
+                                    </label>
+                                    <div v-if="selectedTicket?.customer?.ont?.rx_power || selectedTicket?.customer?.ont?.initial_rx_power" class="flex items-center gap-1.5">
+                                        <span class="text-[11px] font-semibold text-gray-500">Standar Acuan Pelanggan:</span>
+                                        <span class="px-2 py-0.5 rounded-md font-mono text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                            {{ selectedTicket.customer.ont.initial_rx_power || selectedTicket.customer.ont.rx_power }} dBm
+                                        </span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Redaman Sesudah (dBm)</label>
-                                    <input 
-                                        type="text" 
-                                        v-model="reportForm.optical_power_after" 
-                                        placeholder="Contoh: -18.40 dBm"
-                                        class="w-full rounded-xl border-gray-200 focus:border-emerald-500 py-1.5 text-xs font-bold text-emerald-700" 
-                                    />
+
+                                <!-- Box Keterangan Redaman Awal Instalasi -->
+                                <div class="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200/80 flex items-center justify-between flex-wrap gap-2 text-xs text-blue-950">
+                                    <div class="flex items-start sm:items-center gap-2">
+                                        <span class="text-base shrink-0 mt-0.5 sm:mt-0">📌</span>
+                                        <div>
+                                            <div class="font-bold">
+                                                Redaman Awal Saat Instalasi PSB:
+                                                <span class="font-mono font-bold text-blue-800 ml-1">
+                                                    {{ (selectedTicket?.customer?.ont?.initial_rx_power || selectedTicket?.customer?.ont?.rx_power) ? `${(selectedTicket?.customer?.ont?.initial_rx_power || selectedTicket?.customer?.ont?.rx_power)} dBm` : 'Belum tercatat' }}
+                                                </span>
+                                            </div>
+                                            <div class="text-[11px] text-blue-700">
+                                                Batas Ideal: -13 s/d -23 dBm | Batas Kritis Maksimal: -27 dBm
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        v-if="!reportForm.optical_power_before && (selectedTicket?.customer?.ont?.initial_rx_power || selectedTicket?.customer?.ont?.rx_power)"
+                                        type="button"
+                                        @click="reportForm.optical_power_before = (selectedTicket.customer.ont.initial_rx_power || selectedTicket.customer.ont.rx_power) + ' dBm'"
+                                        class="px-2.5 py-1 bg-white hover:bg-blue-100 text-blue-700 border border-blue-300 rounded-lg text-[11px] font-semibold transition-all shadow-2xs cursor-pointer flex items-center gap-1 shrink-0"
+                                        title="Salin acuan redaman awal instalasi ke input redaman sebelum"
+                                    >
+                                        <span>📋 Salin sbg Acuan</span>
+                                    </button>
+                                </div>
+
+                                <!-- Input Sinyal Sebelum & Sesudah -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="block text-[11px] font-bold text-gray-700 uppercase">Redaman Sebelum (Saat Gangguan)</label>
+                                            <span class="text-[10px] text-gray-400">Contoh: -31.50 dBm / LOS</span>
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            v-model="reportForm.optical_power_before" 
+                                            placeholder="Contoh: -31.50 dBm / LOS (Kabel Putus)"
+                                            class="w-full rounded-xl border-gray-200 focus:border-emerald-500 py-1.5 text-xs font-mono" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="block text-[11px] font-bold text-gray-700 uppercase flex items-center gap-1">
+                                                <span>Redaman Baru Sesudah (Hasil Perbaikan)</span>
+                                                <span class="text-emerald-600 font-bold">*</span>
+                                            </label>
+                                            <span v-if="getRxSignalBadge(reportForm.optical_power_after)" :class="getRxSignalBadge(reportForm.optical_power_after).class" class="text-[10px] font-bold px-1.5 py-0.5 rounded border">
+                                                {{ getRxSignalBadge(reportForm.optical_power_after).text }}
+                                            </span>
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            v-model="reportForm.optical_power_after" 
+                                            placeholder="Contoh: -18.40 dBm"
+                                            class="w-full rounded-xl border-gray-200 focus:border-emerald-500 py-1.5 text-xs font-mono font-bold text-emerald-700" 
+                                        />
+                                        <p class="text-[10px] text-emerald-700 font-medium mt-1 flex items-center gap-1">
+                                            <span>🔄</span>
+                                            <span>Otomatis memperbarui data redaman pada instalasi pelanggan & perangkat ONT di sistem.</span>
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1325,17 +1388,42 @@
                     </div>
 
                     <!-- 4. Redaman Optik (dBm) -->
-                    <div class="p-4 rounded-2xl bg-white border border-gray-200 shadow-2xs">
-                        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Pengukuran Redaman Optik (OPM)</div>
-                        <div class="flex items-center gap-4 text-xs">
-                            <div class="p-3 rounded-xl bg-gray-50 border border-gray-200 flex-1 text-center">
-                                <div class="text-[10px] text-gray-400 uppercase font-bold">Redaman Sebelum (Awal)</div>
-                                <div class="text-lg font-mono font-bold text-gray-700 mt-0.5">{{ detailTicket?.optical_power_before || '-' }} dBm</div>
+                    <div class="p-4 rounded-2xl bg-white border border-gray-200 shadow-2xs space-y-3">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <span>⚡</span> Pengukuran Redaman Optik (OPM)
                             </div>
-                            <div class="text-gray-400 font-black text-xl">➔</div>
-                            <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex-1 text-center">
-                                <div class="text-[10px] text-emerald-600 uppercase font-bold">Redaman Sesudah (Akhir)</div>
-                                <div class="text-lg font-mono font-bold text-emerald-700 mt-0.5">{{ detailTicket?.optical_power_after || '-' }} dBm</div>
+                            <span v-if="detailTicket?.optical_power_after && getRxSignalBadge(detailTicket.optical_power_after)" :class="getRxSignalBadge(detailTicket.optical_power_after).class" class="text-[10px] font-bold px-2 py-0.5 rounded-full border">
+                                {{ getRxSignalBadge(detailTicket.optical_power_after).text }}
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                            <div class="p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 text-center">
+                                <div class="text-[10px] text-blue-600 uppercase font-bold flex items-center justify-center gap-1">
+                                    <span>📌</span> Redaman Awal Instalasi
+                                </div>
+                                <div class="text-lg font-mono font-bold text-blue-900 mt-1">
+                                    {{ (detailTicket?.customer?.ont?.initial_rx_power || detailTicket?.customer?.ont?.rx_power) ? `${(detailTicket?.customer?.ont?.initial_rx_power || detailTicket?.customer?.ont?.rx_power)} dBm` : '-' }}
+                                </div>
+                                <div class="text-[9px] text-blue-600 mt-0.5">Standar Acuan PSB</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-rose-50/60 border border-rose-200 text-center">
+                                <div class="text-[10px] text-rose-600 uppercase font-bold flex items-center justify-center gap-1">
+                                    <span>⚠️</span> Saat Terjadi Gangguan
+                                </div>
+                                <div class="text-lg font-mono font-bold text-rose-800 mt-1">
+                                    {{ detailTicket?.optical_power_before || '-' }} {{ detailTicket?.optical_power_before && !detailTicket.optical_power_before.includes('dBm') ? 'dBm' : '' }}
+                                </div>
+                                <div class="text-[9px] text-rose-500 mt-0.5">Kondisi Drop / Putus</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-center shadow-2xs">
+                                <div class="text-[10px] text-emerald-700 uppercase font-bold flex items-center justify-center gap-1">
+                                    <span>✅</span> Hasil Akhir Penanganan
+                                </div>
+                                <div class="text-lg font-mono font-bold text-emerald-700 mt-1">
+                                    {{ detailTicket?.optical_power_after || '-' }} {{ detailTicket?.optical_power_after && !detailTicket.optical_power_after.includes('dBm') ? 'dBm' : '' }}
+                                </div>
+                                <div class="text-[9px] text-emerald-600 font-semibold mt-0.5">✓ Update ke Data Pelanggan</div>
                             </div>
                         </div>
                     </div>
@@ -2604,6 +2692,29 @@ watch(() => props.tickets, (newVal) => {
         }
     }
 }, { deep: true });
+
+const parseRxNumber = (val) => {
+    if (!val) return null;
+    let clean = String(val).replace(/dBm|dbm|\s/g, '').replace(',', '.');
+    let num = parseFloat(clean);
+    return isNaN(num) ? null : num;
+};
+
+const getRxSignalBadge = (val) => {
+    const num = parseRxNumber(val);
+    if (num === null) return null;
+    const valDbm = num > 0 ? -num : num;
+    if (valDbm >= -23 && valDbm <= -13) {
+        return { text: '✓ Sinyal Sangat Baik & Ideal', class: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
+    } else if (valDbm >= -27 && valDbm < -23) {
+        return { text: '⚠ Sinyal Cukup / Waspada', class: 'bg-amber-100 text-amber-800 border-amber-300' };
+    } else if (valDbm < -27) {
+        return { text: '✕ Redaman Buruk (> -27 dBm)', class: 'bg-rose-100 text-rose-800 border-rose-300' };
+    } else if (valDbm > -13) {
+        return { text: '⚠ Sinyal Terlalu Kuat (< -13 dBm)', class: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
+    }
+    return null;
+};
 
 onUnmounted(() => {
     stopLiveTimer();
