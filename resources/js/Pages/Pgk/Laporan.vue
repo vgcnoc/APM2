@@ -817,7 +817,7 @@
                                             <span>🔄</span> B. Material Terpasang di Pelanggan & Pergantian Bekas
                                         </div>
                                         <p class="text-[11px] text-teal-800">
-                                            Pilih material yang rusak/diganti. Unit pengganti baru otomatis disinkronkan dengan bekal di atas.
+                                            Pilih material pasif (kabel, konektor, roset) yang rusak/diganti. Unit pengganti baru otomatis disinkronkan dengan bekal di atas. <i>(Khusus perangkat Modem ONT dikelola eksklusif pada Bagian C di bawah)</i>.
                                         </p>
                                     </div>
                                     <button 
@@ -957,9 +957,14 @@
                             <!-- 2C. Pergantian Unit ONT (Jika Ada) -->
                             <div class="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-xs space-y-2">
                                 <div class="flex items-center justify-between flex-wrap gap-1.5">
-                                    <span class="font-bold text-indigo-950 flex items-center gap-1">
-                                        <span>📶</span> C. Pergantian Unit ONT Pelanggan
-                                    </span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-indigo-950 flex items-center gap-1">
+                                            <span>📶</span> C. Pergantian Unit ONT Pelanggan
+                                        </span>
+                                        <span class="text-[10px] text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full font-semibold border border-indigo-200">
+                                            Perangkat Hardware Ber-SN
+                                        </span>
+                                    </div>
                                     <span v-if="selectedTicket?.ont_replacement_status === 'prepared'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
                                         📦 ONT Baru Disiapkan: {{ selectedTicket.prepared_ont?.serial_number }}
                                     </span>
@@ -1771,20 +1776,13 @@ const newInstalledMatForm = useForm({
 const activeCustomerMaterials = computed(() => {
     const list = selectedTicket.value?.customer?.active_installed_materials || selectedTicket.value?.customer?.activeInstalledMaterials;
     if (Array.isArray(list) && list.length > 0) {
-        return list;
+        // Filter out hardware ONT / modem so it is never duplicated with Section C
+        return list.filter(item => {
+            const name = (item.item_name || '').toLowerCase();
+            return !name.includes('ont') && !name.includes('modem');
+        });
     }
-    const ont = selectedTicket.value?.customer?.ont;
-    const ontName = ont ? `ONT ${ont.brand || 'Standar'} ${ont.model || ''}` : 'Unit ONT / Modem FTTH Standar';
     return [
-        {
-            id: 'fallback-ont',
-            item_name: ontName,
-            quantity: 1,
-            unit: 'unit',
-            serial_number: ont?.serial_number || null,
-            status: 'installed',
-            notes: ont ? `SN ONT: ${ont.serial_number}` : 'Modem ONT terpasang awal'
-        },
         {
             id: 'fallback-dropcore',
             item_name: 'Kabel Dropcore 1 Core',
@@ -1824,12 +1822,17 @@ const quickDamageChips = [
     'Kabel Putus / Terlindas Truk',
     'Redaman Drop / Klosur Banjir',
     'Konektor Pecah / Loss Tinggi',
-    'ONT Mati Total / Terkena Petir',
     'Tergigit Hama Tikus / Terjepit',
     'Penggantian Jalur / Sambung Ulang'
 ];
 
 const initReplacementForInstalledMaterial = (installedItem) => {
+    // Abaikan jika item berupa ONT/modem karena dikelola eksklusif pada Bagian C
+    const name = (installedItem.item_name || '').toLowerCase();
+    if (installedItem.id === 'fallback-ont' || name.includes('ont') || name.includes('modem')) {
+        return;
+    }
+
     const existing = materialReplacements.value.find(r => r.installed_material_id === installedItem.id);
     if (existing) return;
 
@@ -1911,6 +1914,12 @@ const openEmergencyRequestForReplacement = (rep) => {
 
 const saveNewInstalledMaterial = () => {
     if (!selectedTicket.value || !newInstalledMatForm.item_name) return;
+
+    const nameLower = (newInstalledMatForm.item_name || '').toLowerCase();
+    if (nameLower.includes('ont') || nameLower.includes('modem')) {
+        alert('Perangkat ONT / Modem dikelola secara khusus pada Bagian C (Pergantian Unit ONT Pelanggan). Bagian B ini khusus untuk material pasif seperti kabel, konektor, dan roset.');
+        return;
+    }
 
     newInstalledMatForm.post(`/pgk/${selectedTicket.value.id}/installed-materials`, {
         preserveScroll: true,
@@ -2223,7 +2232,11 @@ const openReportModal = (ticket, ignoreDraft = false) => {
             }
 
             if (Array.isArray(draft.material_replacements)) {
-                materialReplacements.value = draft.material_replacements;
+                // Bersihkan draft jika sempat menyimpan ONT sebagai material pasif
+                materialReplacements.value = draft.material_replacements.filter(rep => {
+                    const name = (rep.item_name || '').toLowerCase();
+                    return rep.installed_material_id !== 'fallback-ont' && !name.includes('ont') && !name.includes('modem');
+                });
             }
 
             if (draft.started_at && !draft.end_time) {
