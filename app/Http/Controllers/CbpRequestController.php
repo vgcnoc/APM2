@@ -481,4 +481,95 @@ class CbpRequestController extends Controller
 
         return redirect()->back()->with('success', 'Permintaan Cabut Perangkat berhasil dibatalkan.');
     }
+
+    public function destroy(CbpRequest $cbp)
+    {
+        $user = request()->user();
+        if ($user && !$user->can(['cbp_btn_delete', 'cbp_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus tiket CBP.');
+        }
+
+        $cbpNumber = $cbp->cbp_number;
+        $customerName = $cbp->customer?->name ?? 'Pelanggan';
+        $oldStatus = $cbp->status;
+
+        // Hapus foto jika ada di disk storage
+        if ($cbp->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($cbp->photo)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($cbp->photo);
+        }
+
+        // Putus relasi teknisi
+        $cbp->technicians()->detach();
+
+        // Bersihkan audit log terkait entitas ini
+        \App\Models\AuditLog::where('entity_type', CbpRequest::class)
+            ->where('entity_id', $cbp->id)
+            ->delete();
+
+        // Hapus record
+        $cbp->delete();
+
+        \App\Models\AuditLog::createLog(
+            'Hapus Tiket CBP',
+            null,
+            $oldStatus,
+            'deleted',
+            "Menghapus tiket CBP {$cbpNumber} ({$customerName})"
+        );
+
+        return redirect()->back()->with('success', "Tiket CBP {$cbpNumber} berhasil dihapus.");
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $user = $request->user();
+        if ($user && !$user->can(['cbp_btn_delete_all', 'cbp_btn_delete', 'cbp_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus massal tiket CBP.');
+        }
+
+        $validated = $request->validate([
+            'type' => 'required|in:selected,all',
+            'ids' => 'nullable|array',
+            'ids.*' => 'integer',
+        ]);
+
+        $query = CbpRequest::query();
+
+        // Terapkan scope agar non-admin tidak menghapus area di luar cakupannya
+        DataScopeService::applyCbpScope($query);
+
+        if ($validated['type'] === 'selected') {
+            if (empty($validated['ids'])) {
+                return redirect()->back()->with('error', 'Tidak ada data tiket CBP yang dipilih.');
+            }
+            $query->whereIn('id', $validated['ids']);
+        }
+
+        $count = $query->count();
+        if ($count === 0) {
+            return redirect()->back()->with('error', 'Tidak ada data tiket CBP yang dapat dihapus.');
+        }
+
+        $records = $query->get();
+        foreach ($records as $record) {
+            if ($record->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($record->photo)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($record->photo);
+            }
+            $record->technicians()->detach();
+            \App\Models\AuditLog::where('entity_type', CbpRequest::class)
+                ->where('entity_id', $record->id)
+                ->delete();
+            $record->delete();
+        }
+
+        \App\Models\AuditLog::createLog(
+            'Hapus Massal Tiket CBP',
+            null,
+            null,
+            'deleted',
+            "Menghapus {$count} tiket CBP secara massal (Tipe: {$validated['type']})"
+        );
+
+        return redirect()->back()->with('success', "Berhasil menghapus {$count} tiket CBP.");
+    }
 }

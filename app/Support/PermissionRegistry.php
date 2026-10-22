@@ -375,6 +375,32 @@ class PermissionRegistry
                 ],
             ],
 
+            // ── 9D. CABUT PERANGKAT (CBP) ───────────────────────────
+            [
+                'group' => 'Cabut Perangkat (CBP)',
+                'category' => 'tiket',
+                'icon' => 'scissors',
+                'menu_parent' => 'menu_cbp',
+                'permissions' => [
+                    ['name' => 'menu_cbp', 'type' => 'menu', 'label' => 'Akses CBP - 1. Request Cabut'],
+                    ['name' => 'menu_cbp_jadwal', 'type' => 'menu', 'label' => 'Akses CBP - 2. Jadwal CBP'],
+                    ['name' => 'menu_cbp_laporan', 'type' => 'menu', 'label' => 'Akses CBP - 3. Laporan CBP'],
+                    ['name' => 'cbp_card_stats', 'type' => 'card', 'label' => 'Card Statistik Ringkasan CBP'],
+                    ['name' => 'cbp_filter', 'type' => 'filter', 'label' => 'Filter Status, Wilayah & Periode CBP'],
+                    ['name' => 'cbp_btn_request', 'type' => 'button', 'label' => 'Tombol Buat Form Request CBP'],
+                    ['name' => 'cbp_btn_dispatch', 'type' => 'button', 'label' => 'Tombol Kirim ke Jadwal CBP'],
+                    ['name' => 'cbp_btn_assign', 'type' => 'button', 'label' => 'Tombol Tugaskan Teknisi CBP'],
+                    ['name' => 'cbp_btn_report', 'type' => 'button', 'label' => 'Tombol Lapor Selesai CBP'],
+                    ['name' => 'cbp_btn_cancel', 'type' => 'button', 'label' => 'Tombol Batalkan CBP'],
+                    ['name' => 'cbp_btn_delete', 'type' => 'button', 'label' => 'Tombol Hapus Tiket CBP (Salah Satu)'],
+                    ['name' => 'cbp_btn_delete_all', 'type' => 'button', 'label' => 'Tombol Hapus Terpilih / Semua Data CBP'],
+                    ['name' => 'cbp_manage', 'type' => 'button', 'label' => 'Tombol Kelola Semua Fitur CBP'],
+                    ['name' => 'cbp_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Tiket CBP (All Area)'],
+                    ['name' => 'cbp_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Tiket CBP Sesuai Area User'],
+                    ['name' => 'cbp_view_own', 'type' => 'feature', 'label' => 'Scope: Hanya Tampilkan Tiket CBP yang Ditugaskan ke Diri Sendiri'],
+                ],
+            ],
+
             // ── 10. TOPOLOGI & RADAR JARINGAN ────────────────────────
             [
                 'group' => 'Peta GIS, Topologi & Radar Jaringan',
@@ -952,7 +978,7 @@ class PermissionRegistry
                 'menu_customers_gratis', 'menu_customers_free_home',
                 'menu_customers_all', 'customers_all_view_all',
                 'menu_tickets', 'tickets_card_summary', 'tickets_filter_priority', 'tickets_create', 'tickets_edit', 'tickets_delete', 'tickets_assign', 'tickets_close', 'tickets_btn_whatsapp', 'tickets_view_all',
-                'menu_cbp', 'menu_cbp_jadwal', 'menu_cbp_laporan', 'cbp_card_stats', 'cbp_filter', 'cbp_btn_request', 'cbp_btn_dispatch', 'cbp_btn_assign', 'cbp_btn_report', 'cbp_btn_cancel', 'cbp_manage', 'cbp_view_all',
+                'menu_cbp', 'menu_cbp_jadwal', 'menu_cbp_laporan', 'cbp_card_stats', 'cbp_filter', 'cbp_btn_request', 'cbp_btn_dispatch', 'cbp_btn_assign', 'cbp_btn_report', 'cbp_btn_cancel', 'cbp_btn_delete', 'cbp_btn_delete_all', 'cbp_manage', 'cbp_view_all',
                 'menu_pgk', 'menu_pgk_jadwal', 'menu_pgk_laporan', 'pgk_card_summary', 'pgk_tab_flow', 'pgk_filter', 'pgk_btn_create', 'pgk_btn_resolve_admin', 'pgk_btn_escalate', 'pgk_btn_assign', 'pgk_btn_request_material', 'pgk_btn_report', 'pgk_btn_audit', 'pgk_manage', 'pgk_view_all',
                 'menu_pgj', 'menu_pgj_jadwal', 'menu_pgj_laporan', 'pgj_card_summary', 'pgj_tab_flow', 'pgj_filter', 'pgj_btn_create', 'pgj_btn_resolve', 'pgj_btn_escalate', 'pgj_btn_assign', 'pgj_btn_report', 'pgj_manage', 'pgj_view_all',
                 'menu_pgs', 'menu_pgs_jadwal', 'menu_pgs_laporan', 'pgs_card_summary', 'pgs_tab_flow', 'pgs_filter', 'pgs_btn_create', 'pgs_btn_resolve', 'pgs_btn_escalate', 'pgs_btn_assign', 'pgs_btn_report', 'pgs_manage', 'pgs_view_all',
@@ -1103,7 +1129,7 @@ class PermissionRegistry
                 'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_filter', 'customers_survey_assign', 'customers_survey_reschedule', 'customers_survey_report', 'customers_survey_mark_ready', 'customers_survey_view_all',
                 'menu_customers_installed', 'customers_installed_card_stats', 'customers_installed_filter', 'customers_installed_assign', 'customers_installed_whatsapp', 'customers_installed_audit', 'customers_installed_report', 'customers_installed_edit', 'customers_installed_view_all',
                 'menu_customers_activation', 'customers_activation_card_stats', 'customers_activation_filter', 'customers_activation_activate', 'customers_activation_view_all',
-                'menu_cbp', 'menu_cbp_jadwal', 'menu_cbp_laporan', 'cbp_card_stats', 'cbp_filter', 'cbp_btn_request', 'cbp_btn_dispatch', 'cbp_view_all',
+                'menu_cbp', 'menu_cbp_jadwal', 'menu_cbp_laporan', 'cbp_card_stats', 'cbp_filter', 'cbp_btn_request', 'cbp_btn_dispatch', 'cbp_btn_cancel', 'cbp_btn_delete', 'cbp_btn_delete_all', 'cbp_manage', 'cbp_view_all',
                 'menu_pgk', 'menu_pgk_jadwal', 'menu_pgk_laporan', 'pgk_card_summary', 'pgk_card_stats', 'pgk_tab_flow', 'pgk_filter', 'pgk_btn_create', 'pgk_btn_resolve_admin', 'pgk_btn_escalate', 'pgk_btn_view', 'pgk_view_all',
                 'menu_pgj', 'menu_pgj_jadwal', 'menu_pgj_laporan', 'pgj_card_summary', 'pgj_tab_flow', 'pgj_filter', 'pgj_btn_create', 'pgj_btn_resolve', 'pgj_btn_escalate', 'pgj_view_all',
                 'menu_pgs', 'menu_pgs_jadwal', 'menu_pgs_laporan', 'pgs_card_summary', 'pgs_card_stats', 'pgs_tab_flow', 'pgs_filter', 'pgs_btn_create', 'pgs_btn_resolve', 'pgs_btn_escalate', 'pgs_btn_view', 'pgs_view_all',

@@ -177,8 +177,32 @@
                         </button>
                     </div>
 
-                    <!-- Right: Create Form Button -->
-                    <div class="flex items-center gap-2 shrink-0">
+                    <!-- Right: Action Buttons -->
+                    <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                        <!-- Tombol Hapus Terpilih -->
+                        <button 
+                            v-if="selectedIds.length > 0 && can(['cbp_btn_delete', 'cbp_btn_delete_all', 'cbp_manage'])"
+                            @click="openDeleteModal('selected')"
+                            type="button"
+                            class="px-3.5 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-xs rounded-xl border border-rose-200 shadow-sm flex items-center gap-1.5 transition-all animate-fade-in"
+                        >
+                            <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            <span>Hapus Terpilih ({{ selectedIds.length }})</span>
+                        </button>
+
+                        <!-- Tombol Hapus Semua -->
+                        <button 
+                            v-if="can(['cbp_btn_delete_all', 'cbp_manage'])"
+                            @click="openDeleteModal('all')"
+                            type="button"
+                            class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 shadow-sm flex items-center gap-1.5 transition-all"
+                            title="Hapus Seluruh Data CBP"
+                        >
+                            <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            <span>Hapus Semua</span>
+                        </button>
+
+                        <!-- Tombol Buat Form CBP -->
                         <button v-if="can('cbp_btn_request')" @click="openModal()" class="bg-gradient-to-r from-red-600 to-rose-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 hover:-translate-y-0.5 transition-all w-full sm:w-auto flex items-center justify-center gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -231,6 +255,15 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50/70 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                <th class="p-4 w-12 text-center">
+                                    <input 
+                                        type="checkbox" 
+                                        :checked="isAllSelected" 
+                                        @change="toggleSelectAll" 
+                                        class="rounded border-gray-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                                        title="Pilih Semua Halaman Ini"
+                                    >
+                                </th>
                                 <th class="p-4 w-40">Nomor CBP</th>
                                 <th class="p-4">Pelanggan</th>
                                 <th class="p-4">Alasan Cabut</th>
@@ -242,6 +275,14 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100 text-sm">
                             <tr v-for="req in requests.data" :key="req.id" class="hover:bg-gray-50/50 transition-colors">
+                                <td class="p-4 text-center">
+                                    <input 
+                                        type="checkbox" 
+                                        :value="req.id" 
+                                        v-model="selectedIds" 
+                                        class="rounded border-gray-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                                    >
+                                </td>
                                 <td class="p-4 font-mono font-medium text-red-600">{{ req.cbp_number }}</td>
                                 <td class="p-4">
                                     <div class="font-bold text-gray-900">{{ req.customer?.name || '-' }}</div>
@@ -352,11 +393,16 @@
                                         <button v-if="req.status === 'pending' && can('cbp_btn_cancel')" type="button" @click="cancelCbp(req)" class="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors" title="Batalkan CBP">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                         </button>
+
+                                        <!-- Hapus Tiket CBP (Salah Satu) -->
+                                        <button v-if="can(['cbp_btn_delete', 'cbp_manage'])" type="button" @click="openDeleteModal('single', req)" class="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors" title="Hapus Tiket CBP">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
                             <tr v-if="!requests.data.length">
-                                <td colspan="7" class="p-12 text-center text-gray-500">
+                                <td colspan="8" class="p-12 text-center text-gray-500">
                                     <div class="flex flex-col items-center justify-center">
                                         <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
                                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -384,6 +430,42 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Floating Selection Banner -->
+            <transition
+                enter-active-class="transition duration-300 ease-out"
+                enter-from-class="transform opacity-0 translate-y-4"
+                enter-to-class="transform opacity-100 translate-y-0"
+                leave-active-class="transition duration-200 ease-in"
+                leave-from-class="transform opacity-100 translate-y-0"
+                leave-to-class="transform opacity-0 translate-y-4"
+            >
+                <div 
+                    v-if="selectedIds.length > 0" 
+                    class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 border border-slate-700 animate-fade-in"
+                >
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-rose-600 text-white text-xs font-black flex items-center justify-center">{{ selectedIds.length }}</span>
+                        <span class="text-sm font-bold">Tiket CBP Terpilih</span>
+                    </div>
+                    <div class="h-4 w-px bg-slate-700"></div>
+                    <button 
+                        @click="openDeleteModal('selected')" 
+                        type="button"
+                        class="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-md shadow-rose-900/40 flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        <span>Hapus Terpilih</span>
+                    </button>
+                    <button 
+                        @click="selectedIds = []" 
+                        type="button"
+                        class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-all"
+                    >
+                        Batal
+                    </button>
+                </div>
+            </transition>
         </div>
 
         <!-- Create Modal (Ultra Modern) -->
@@ -653,6 +735,68 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- Delete Confirmation Modal (Ultra Modern) -->
+        <Teleport to="body">
+            <div v-if="showDeleteModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeDeleteModal"></div>
+                <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md relative z-10 animate-fade-in-up border border-slate-100 overflow-hidden">
+                    <div class="p-6 text-center space-y-4">
+                        <div class="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto border-4 border-rose-100/50 shadow-inner">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-lg font-black text-slate-800">
+                                {{ deleteMode === 'single' 
+                                    ? `Hapus Tiket CBP ${itemToDelete?.cbp_number}?` 
+                                    : (deleteMode === 'selected' ? `Hapus ${selectedIds.length} Tiket CBP Terpilih?` : 'Hapus Seluruh Data Tiket CBP?') }}
+                            </h3>
+                            <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                                {{ deleteMode === 'single'
+                                    ? `Tiket ${itemToDelete?.cbp_number} untuk pelanggan ${itemToDelete?.customer?.name || ''} akan dihapus secara permanen dari sistem.`
+                                    : (deleteMode === 'selected' 
+                                        ? `Tindakan ini akan menghapus ${selectedIds.length} data tiket CBP yang Anda pilih secara permanen.`
+                                        : `Tindakan ini akan menghapus SEMUA data tiket CBP (${counts?.all || requests.total || 0} tiket) yang ada di sistem secara permanen!`)
+                                }}
+                            </p>
+                        </div>
+
+                        <!-- Konfirmasi Text HAPUS untuk Hapus Semua -->
+                        <div v-if="deleteMode === 'all'" class="text-left space-y-1.5 pt-1">
+                            <label class="block text-xs font-bold text-slate-700">
+                                Ketik <span class="text-rose-600 font-mono font-black">HAPUS</span> untuk konfirmasi:
+                            </label>
+                            <input 
+                                v-model="deleteConfirmInput" 
+                                type="text" 
+                                placeholder="Ketik HAPUS" 
+                                class="w-full px-3.5 py-2.5 border-2 border-rose-200 rounded-xl text-sm text-center uppercase tracking-widest font-mono font-black focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 focus:outline-none"
+                            />
+                        </div>
+
+                        <div class="flex items-center gap-3 pt-2">
+                            <button 
+                                type="button" 
+                                @click="closeDeleteModal" 
+                                class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="confirmDelete" 
+                                :disabled="isDeleting || (deleteMode === 'all' && deleteConfirmInput.toUpperCase() !== 'HAPUS')"
+                                class="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-rose-500/30 flex items-center justify-center gap-2"
+                            >
+                                <svg v-if="isDeleting" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>{{ isDeleting ? 'Menghapus...' : (deleteMode === 'all' ? 'Ya, Hapus Semua' : 'Ya, Hapus') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
 
@@ -712,7 +856,86 @@ function resetFilters() {
     filterPeriod.value = '';
     startDate.value = '';
     endDate.value = '';
+    selectedIds.value = [];
     router.get('/cbp', {}, { preserveState: true, preserveScroll: true });
+}
+
+// Bulk & Single Delete State & Methods
+const selectedIds = ref([]);
+const showDeleteModal = ref(false);
+const deleteMode = ref('single'); // 'single', 'selected', 'all'
+const itemToDelete = ref(null);
+const deleteConfirmInput = ref('');
+const isDeleting = ref(false);
+
+const isAllSelected = computed(() => {
+    if (!props.requests.data || props.requests.data.length === 0) return false;
+    return props.requests.data.every(req => selectedIds.value.includes(req.id));
+});
+
+function toggleSelectAll(event) {
+    if (event.target.checked) {
+        const pageIds = props.requests.data.map(req => req.id);
+        selectedIds.value = Array.from(new Set([...selectedIds.value, ...pageIds]));
+    } else {
+        const pageIds = new Set(props.requests.data.map(req => req.id));
+        selectedIds.value = selectedIds.value.filter(id => !pageIds.has(id));
+    }
+}
+
+function openDeleteModal(mode, item = null) {
+    deleteMode.value = mode;
+    itemToDelete.value = item;
+    deleteConfirmInput.value = '';
+    showDeleteModal.value = true;
+}
+
+function closeDeleteModal() {
+    showDeleteModal.value = false;
+    itemToDelete.value = null;
+    deleteConfirmInput.value = '';
+}
+
+function confirmDelete() {
+    if (deleteMode.value === 'single') {
+        if (!itemToDelete.value) return;
+        isDeleting.value = true;
+        router.delete(`/cbp/${itemToDelete.value.id}`, {
+            preserveScroll: true,
+            onFinish: () => {
+                isDeleting.value = false;
+                closeDeleteModal();
+                selectedIds.value = selectedIds.value.filter(id => id !== itemToDelete.value?.id);
+            }
+        });
+    } else if (deleteMode.value === 'selected') {
+        if (selectedIds.value.length === 0) return;
+        isDeleting.value = true;
+        router.post('/cbp/bulk-delete', {
+            type: 'selected',
+            ids: selectedIds.value
+        }, {
+            preserveScroll: true,
+            onFinish: () => {
+                isDeleting.value = false;
+                closeDeleteModal();
+                selectedIds.value = [];
+            }
+        });
+    } else if (deleteMode.value === 'all') {
+        if (deleteConfirmInput.value.toUpperCase() !== 'HAPUS') return;
+        isDeleting.value = true;
+        router.post('/cbp/bulk-delete', {
+            type: 'all'
+        }, {
+            preserveScroll: true,
+            onFinish: () => {
+                isDeleting.value = false;
+                closeDeleteModal();
+                selectedIds.value = [];
+            }
+        });
+    }
 }
 
 // Create Modal

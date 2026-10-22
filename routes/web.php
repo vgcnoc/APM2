@@ -554,6 +554,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('cbp/{cbp}/dispatch-schedule', [\App\Http\Controllers\CbpRequestController::class, 'dispatchToSchedule'])->name('cbp.dispatch-schedule');
     Route::post('cbp/{cbp}/retract-schedule', [\App\Http\Controllers\CbpRequestController::class, 'retractFromSchedule'])->name('cbp.retract-schedule');
     Route::post('cbp/{cbp}/cancel', [\App\Http\Controllers\CbpRequestController::class, 'cancel'])->name('cbp.cancel');
+    Route::delete('cbp/{cbp}', [\App\Http\Controllers\CbpRequestController::class, 'destroy'])->name('cbp.destroy');
+    Route::post('cbp/bulk-delete', [\App\Http\Controllers\CbpRequestController::class, 'bulkDestroy'])->name('cbp.bulk-destroy');
     // Route::resource('schedules', TechnicianScheduleController::class);
 
     // ── Penggajian & Insentif (Payroll) ────────────────────────
