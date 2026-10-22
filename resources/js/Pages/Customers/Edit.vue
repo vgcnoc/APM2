@@ -472,7 +472,8 @@ const canChangeSales = computed(() => {
     if (isAdmin.value) return true;
     
     // External purely affiliate accounts cannot change referrer
-    if (props.isAffiliate || (user.is_affiliate && user.role === 'affiliate')) {
+    const r = String(user.role || '').toLowerCase();
+    if (r === 'affiliate' || r === 'reseller') {
         return false;
     }
     
@@ -480,15 +481,17 @@ const canChangeSales = computed(() => {
 });
 
 const isAffiliateAccount = computed(() => {
-    if (props.isAffiliate) return true;
     const user = page.props.auth?.user;
     if (!user) return false;
-    if (user.is_affiliate && (user.role === 'affiliate' || user.role === 'reseller')) return true;
-    if (user.role === 'affiliate' || user.role === 'reseller') return true;
-    let roles = [];
-    if (Array.isArray(user.roles)) roles = user.roles.map(r => typeof r === 'string' ? r : r.name);
-    else if (user.roles) roles = Object.values(user.roles).map(r => typeof r === 'string' ? r : r.name);
-    if (roles.includes('affiliate') || roles.includes('reseller')) return true;
+    const r = String(user.role || '').toLowerCase();
+    
+    // Internal staff are NEVER restricted affiliate accounts
+    if (['admin', 'super admin', 'superadmin', 'super-admin', 'admin cs', 'cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'maintenance', 'dispatcher', 'finance', 'hrd'].includes(r)) {
+        return false;
+    }
+    
+    if (props.isAffiliate && (r === 'affiliate' || r === 'reseller')) return true;
+    if (r === 'affiliate' || r === 'reseller') return true;
     return false;
 });
 

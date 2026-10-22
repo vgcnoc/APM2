@@ -1482,10 +1482,14 @@ class CustomerController extends Controller
             $areaVillagesMap[$a->name] = $vList->unique()->sort()->values()->all();
         }
 
-        $isAffiliate = auth()->user()->role === 'sales'
-            || auth()->user()->role === 'affiliate'
-            || \App\Models\AffiliateProfile::where('user_id', auth()->id())->exists()
-            || (!auth()->user()->hasRole('admin') && auth()->user()->role !== 'admin' && auth()->user()->role !== 'super-admin');
+        $user = auth()->user();
+        $userRole = strtolower(trim($user?->role ?? ''));
+        $isInternalStaff = in_array($userRole, [
+            'admin', 'super admin', 'superadmin', 'super-admin', 
+            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'maintenance', 'dispatcher', 'finance', 'hrd'
+        ]) || ($user && method_exists($user, 'hasRole') && $user->hasRole('admin'));
+
+        $isAffiliate = !$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller');
 
         return Inertia::render('Customers/Create', [
             'packages' => InternetPackage::active()->get(),
@@ -1555,10 +1559,14 @@ class CustomerController extends Controller
             $validated['area_id'] = $areaModel->id;
         }
 
-        $isAffiliate = auth()->user()->role === 'sales'
-            || auth()->user()->role === 'affiliate'
-            || \App\Models\AffiliateProfile::where('user_id', auth()->id())->exists()
-            || (!auth()->user()->hasRole('admin') && auth()->user()->role !== 'admin' && auth()->user()->role !== 'super-admin');
+        $user = auth()->user();
+        $userRole = strtolower(trim($user?->role ?? ''));
+        $isInternalStaff = in_array($userRole, [
+            'admin', 'super admin', 'superadmin', 'super-admin', 
+            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'maintenance', 'dispatcher', 'finance', 'hrd'
+        ]) || ($user && method_exists($user, 'hasRole') && $user->hasRole('admin'));
+
+        $isAffiliate = !$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller');
 
         // Khusus booking dari akun affiliate, dilarang keras status gratis / free home (wajib berbayar)
         if ($isAffiliate) {
@@ -1776,10 +1784,14 @@ class CustomerController extends Controller
                 ];
             });
 
-        $isAffiliate = auth()->user()->role === 'sales'
-            || auth()->user()->role === 'affiliate'
-            || \App\Models\AffiliateProfile::where('user_id', auth()->id())->exists()
-            || (!auth()->user()->hasRole('admin') && auth()->user()->role !== 'admin' && auth()->user()->role !== 'super-admin');
+        $user = auth()->user();
+        $userRole = strtolower(trim($user?->role ?? ''));
+        $isInternalStaff = in_array($userRole, [
+            'admin', 'super admin', 'superadmin', 'super-admin', 
+            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'maintenance', 'dispatcher', 'finance', 'hrd'
+        ]) || ($user && method_exists($user, 'hasRole') && $user->hasRole('admin'));
+
+        $isAffiliate = !$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller');
 
         return Inertia::render('Customers/Edit', [
             'customer' => $customer,
@@ -1865,10 +1877,14 @@ class CustomerController extends Controller
             $validated['activation_date'] = now()->toDateString();
         }
 
-        $isAffiliate = auth()->user()->role === 'sales'
-            || auth()->user()->role === 'affiliate'
-            || \App\Models\AffiliateProfile::where('user_id', auth()->id())->exists()
-            || (!auth()->user()->hasRole('admin') && auth()->user()->role !== 'admin' && auth()->user()->role !== 'super-admin');
+        $user = auth()->user();
+        $userRole = strtolower(trim($user?->role ?? ''));
+        $isInternalStaff = in_array($userRole, [
+            'admin', 'super admin', 'superadmin', 'super-admin', 
+            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'maintenance', 'dispatcher', 'finance', 'hrd'
+        ]) || ($user && method_exists($user, 'hasRole') && $user->hasRole('admin'));
+
+        $isAffiliate = !$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller');
 
         if ($isAffiliate && isset($validated['service_status'])) {
             $validated['service_status'] = 'berbayar';
