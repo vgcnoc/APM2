@@ -64,13 +64,13 @@
                         </svg>
                     </div>
 
-                    <select v-model="filterSegment" @change="performSearch" class="px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-sm bg-gray-50/50">
+                    <select v-model="filterSegment" @change="performSearch" class="px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-sm bg-gray-50/50 font-medium">
                         <option value="">Semua Segmen Jalur</option>
-                        <option value="backbone">Jalur Utama / Backbone</option>
+                        <option value="backbone">⚡ Jalur Utama Backbone / Sumber Internet</option>
                         <option value="odc">Perangkat & Jalur ODC</option>
                         <option value="odp">Perangkat & Jalur ODP</option>
-                        <option value="distribution">Jalur Distribusi</option>
-                        <option value="other">Infrastruktur Lainnya</option>
+                        <option value="distribution">Jalur Distribusi (ODC ke ODP)</option>
+                        <option value="other">Infrastruktur Tiang / Lainnya</option>
                     </select>
 
                     <select v-model="filterPriority" @change="performSearch" class="px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-sm bg-gray-50/50">
@@ -145,19 +145,32 @@
                                         <span>{{ ticket.location_name || '-' }}</span>
                                     </div>
                                     <div class="text-xs text-gray-600 mt-0.5 flex flex-wrap gap-2">
-                                        <span v-if="ticket.odc" class="font-semibold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">
-                                            ODC: {{ ticket.odc.name }}
-                                        </span>
-                                        <span v-if="ticket.odp" class="font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
-                                            ODP: {{ ticket.odp.name }}
-                                        </span>
-                                        <span class="text-gray-500">Area: {{ ticket.area?.name || '-' }}</span>
+                                        <template v-if="ticket.segment_type === 'backbone'">
+                                            <span v-if="ticket.olt" class="font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
+                                                OLT: {{ ticket.olt.name }}
+                                            </span>
+                                            <span v-if="ticket.provider_name" class="font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                                                Provider: {{ ticket.provider_name }}
+                                            </span>
+                                            <span v-if="ticket.backbone_source" class="font-medium text-gray-700 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-200">
+                                                {{ ticket.backbone_source }}
+                                            </span>
+                                        </template>
+                                        <template v-else>
+                                            <span v-if="ticket.odc" class="font-semibold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">
+                                                ODC: {{ ticket.odc.name }}
+                                            </span>
+                                            <span v-if="ticket.odp" class="font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
+                                                ODP: {{ ticket.odp.name }}
+                                            </span>
+                                        </template>
+                                        <span class="text-gray-500">Area: {{ ticket.area?.name || 'Semua Area / Global' }}</span>
                                     </div>
                                     
                                     <!-- Badge Estimasi Dampak Pelanggan -->
-                                    <div class="mt-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-50 border border-red-200 text-xs font-bold text-red-700">
+                                    <div class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold" :class="ticket.segment_type === 'backbone' ? 'bg-red-100 border border-red-300 text-red-800' : 'bg-red-50 border border-red-200 text-red-700'">
                                         <svg class="w-3.5 h-3.5 text-red-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                        <span>Dampak: {{ ticket.affected_customers_count }} Pelanggan</span>
+                                        <span>{{ ticket.segment_type === 'backbone' ? '🚨 GANGGUAN MASSAL: ' : 'Dampak: ' }}{{ ticket.affected_customers_count }} Pelanggan</span>
                                     </div>
                                 </td>
 
@@ -285,8 +298,8 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Segmen Jalur Jaringan <span class="text-red-500">*</span></label>
-                            <select v-model="createForm.segment_type" @change="onSegmentChange" class="w-full rounded-xl border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-sm" required>
-                                <option value="backbone">Jalur Utama / Backbone (Kabel Feeder OLT)</option>
+                            <select v-model="createForm.segment_type" @change="onSegmentChange" class="w-full rounded-xl border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-sm font-semibold" required>
+                                <option value="backbone">⚡ Jalur Utama Backbone / Sumber Internet</option>
                                 <option value="odc">Perangkat & Jalur ODC</option>
                                 <option value="odp">Perangkat & Jalur ODP</option>
                                 <option value="distribution">Jalur Distribusi (ODC ke ODP)</option>
@@ -297,14 +310,97 @@
                         <div>
                             <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Area / Wilayah <span class="text-red-500">*</span></label>
                             <select v-model="createForm.area_id" @change="onAreaChange" class="w-full rounded-xl border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-sm" required>
-                                <option value="">-- Pilih Area --</option>
-                                <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                                <option value="">{{ createForm.segment_type === 'backbone' ? '-- Seluruh Wilayah / Core Backbone --' : '-- Pilih Area --' }}</option>
+                                <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }} ({{ a.customers_count || 0 }} Pelanggan)</option>
                             </select>
                         </div>
                     </div>
 
-                    <!-- Pemilihan ODC & ODP -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- ════════════════ FITUR CERDAS: JALUR UTAMA BACKBONE / SUMBER INTERNET ════════════════ -->
+                    <div v-if="createForm.segment_type === 'backbone'" class="p-4 rounded-2xl bg-gradient-to-br from-purple-50 via-rose-50 to-amber-50 border border-purple-200 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="p-1.5 rounded-lg bg-purple-600 text-white text-xs">⚡</span>
+                                <div>
+                                    <h4 class="text-xs font-black uppercase text-purple-950 tracking-wider">Identifikasi Jalur Utama & Sumber Internet</h4>
+                                    <p class="text-[11px] text-purple-700">Level backbone tidak menggunakan ODP. Sistem memfokuskan perangkat OLT, provider upstream & link utama.</p>
+                                </div>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-purple-200/80 text-purple-900 border border-purple-300">
+                                Jalur Strategis
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-800 uppercase mb-1">
+                                    Tipe Jalur Backbone / Sumber Internet <span class="text-red-500">*</span>
+                                </label>
+                                <select v-model="createForm.backbone_source" @change="applyBackboneTemplate" class="w-full rounded-xl border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 text-sm bg-white font-medium" required>
+                                    <option value="Kabel Feeder OLT Utama (NOC/POP ke ODC Pusat)">Kabel Feeder OLT (NOC/POP ke ODC Pusat)</option>
+                                    <option value="Link Uplink Provider / Sumber Internet (Transit / Upstream)">Link Uplink Provider / Sumber Internet (Upstream ISP)</option>
+                                    <option value="Link Interkoneksi Antar-POP / Antar-Area (Backbone Metro FO)">Link Interkoneksi Antar-POP / Antar-Area (Metro FO)</option>
+                                    <option value="Kabel Distribusi Ring Backbone Utama">Kabel Distribusi Ring Backbone Utama</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-800 uppercase mb-1">
+                                    Perangkat OLT / POP Terkait
+                                </label>
+                                <select v-model="createForm.olt_id" @change="onOltChange" class="w-full rounded-xl border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 text-sm bg-white">
+                                    <option value="">-- Pilih OLT / POP (Jika Spesifik) --</option>
+                                    <option v-for="l in filteredOlts" :key="l.id" :value="l.id">
+                                        {{ l.name }} [IP: {{ l.ip_address || '-' }}] - {{ l.location || 'POP' }} ({{ oltCustomerCounts[l.id] || 0 }} Plg)
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Jika Sumber Internet Provider Dipilih -->
+                        <div v-if="createForm.backbone_source === 'Link Uplink Provider / Sumber Internet (Transit / Upstream)'" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-purple-200/60">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-800 uppercase mb-1">
+                                    Nama Upstream Provider / Sumber Internet <span class="text-red-500">*</span>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    v-model="createForm.provider_name" 
+                                    @input="applyBackboneTemplate"
+                                    placeholder="Contoh: Telkom Indonesia / Indosat / Moratelindo / IFORTE / FiberStar"
+                                    class="w-full rounded-xl border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 text-sm bg-white"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-800 uppercase mb-1">
+                                    Circuit ID / No. Sirkit Provider (Jika Ada)
+                                </label>
+                                <input 
+                                    type="text" 
+                                    v-model="createForm.circuit_id" 
+                                    placeholder="Contoh: CID-TKM-10G-9981 / L2-MOR-JKT-04"
+                                    class="w-full rounded-xl border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 text-sm bg-white"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- ODC Hub Pusat Distribusi (Opsional jika Feeder) -->
+                        <div v-if="createForm.backbone_source !== 'Link Uplink Provider / Sumber Internet (Transit / Upstream)'" class="pt-2 border-t border-purple-200/60">
+                            <label class="block text-xs font-bold text-gray-800 uppercase mb-1">
+                                ODC Hub / Titik Distribusi Utama (Opsional)
+                            </label>
+                            <select v-model="createForm.odc_id" @change="onOdcChange" class="w-full rounded-xl border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 text-sm bg-white">
+                                <option value="">-- Pilih ODC Hub (Jika Gangguan Menuju ODC Tertentu) --</option>
+                                <option v-for="o in filteredOdcs" :key="o.id" :value="o.id">
+                                    {{ o.name }} ({{ o.location || 'Lokasi ODC' }})
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- ════════════════ PEMILIHAN ODC & ODP STANDAR (NON-BACKBONE) ════════════════ -->
+                    <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-gray-700 uppercase mb-1">ODC Terkait</label>
                             <select v-model="createForm.odc_id" @change="onOdcChange" class="w-full rounded-xl border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-sm">
@@ -326,18 +422,29 @@
                         </div>
                     </div>
 
-                    <!-- Banner Estimasi Dampak Otomatis -->
-                    <div class="p-3.5 rounded-2xl bg-rose-50/80 border border-rose-200 flex items-center justify-between text-xs text-rose-900">
-                        <div class="flex items-center gap-2">
-                            <span class="text-lg">🚨</span>
+                    <!-- Banner Estimasi Dampak Otomatis (Cerdas) -->
+                    <div 
+                        class="p-4 rounded-2xl flex items-center justify-between text-xs transition-all"
+                        :class="createForm.segment_type === 'backbone' ? 'bg-red-500/10 border-2 border-red-500 text-red-950 shadow-md' : 'bg-rose-50/80 border border-rose-200 text-rose-900'"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl" :class="createForm.segment_type === 'backbone' ? 'animate-bounce' : ''">🚨</span>
                             <div>
-                                <span class="font-bold">Estimasi Dampak Pelanggan Otomatis:</span>
-                                <div class="text-[11px] text-rose-700 mt-0.5">Sistem akan menghitung total perangkat ONT di bawah jalur ini</div>
+                                <div class="font-black text-sm flex items-center gap-2">
+                                    <span>{{ createForm.segment_type === 'backbone' ? 'INSIDEN GANGGUAN MASSAL JALUR UTAMA / BACKBONE' : 'Estimasi Dampak Pelanggan Otomatis' }}</span>
+                                    <span v-if="createForm.segment_type === 'backbone'" class="px-2 py-0.5 rounded bg-red-600 text-white font-mono text-[10px] uppercase font-bold animate-pulse">KRITIS</span>
+                                </div>
+                                <div class="text-[11px] mt-0.5" :class="createForm.segment_type === 'backbone' ? 'text-red-700 font-semibold' : 'text-rose-700'">
+                                    {{ createForm.segment_type === 'backbone' ? 'Jalur utama putus berdampak melumpuhkan seluruh perangkat ODC, ODP & ONT pelanggan di bawah segmen ini serentak.' : 'Sistem menghitung perkiraan perangkat ONT pelanggan di bawah jalur yang dipilih.' }}
+                                </div>
                             </div>
                         </div>
-                        <span class="text-base font-black px-3 py-1 rounded-xl bg-white border border-rose-300 text-rose-700">
-                            {{ estimatedImpact }} Pelanggan
-                        </span>
+                        <div class="text-right shrink-0">
+                            <span class="text-lg font-black px-4 py-1.5 rounded-xl border block shadow-xs" :class="createForm.segment_type === 'backbone' ? 'bg-red-600 text-white border-red-700' : 'bg-white border-rose-300 text-rose-700'">
+                                {{ estimatedImpact }} Pelanggan
+                            </span>
+                            <span v-if="createForm.segment_type === 'backbone'" class="text-[10px] text-red-600 font-bold block mt-0.5">Downtime Massal</span>
+                        </div>
                     </div>
 
                     <!-- Titik Lokasi & Jarak Putus OTDR -->
@@ -403,7 +510,17 @@
 
                     <!-- Uraian Indikasi Masalah -->
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Indikasi Masalah / Uraian Kerusakan <span class="text-red-500">*</span></label>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Indikasi Masalah / Uraian Kerusakan <span class="text-red-500">*</span></label>
+                            <button 
+                                v-if="createForm.segment_type === 'backbone'" 
+                                type="button" 
+                                @click="applyBackboneTemplate" 
+                                class="text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-purple-100/70 hover:bg-purple-200/70 px-2.5 py-0.5 rounded-lg border border-purple-200 transition-colors flex items-center gap-1"
+                            >
+                                <span>⚡ Gunakan Template Indikasi Backbone</span>
+                            </button>
+                        </div>
                         <textarea 
                             v-model="createForm.reported_issue" 
                             rows="2" 
@@ -569,12 +686,25 @@
                     <!-- Titik Lokasi & Segmen -->
                     <div class="p-3.5 rounded-2xl bg-rose-50/50 border border-rose-100 space-y-2">
                         <div class="font-bold text-gray-900 flex justify-between">
-                            <span>Segmen: <strong class="uppercase text-rose-700">{{ detailTicket?.segment_type }}</strong></span>
-                            <span>Area: {{ detailTicket?.area?.name || '-' }}</span>
+                            <span>Segmen: <strong class="uppercase text-rose-700">{{ getSegmentLabel(detailTicket?.segment_type) }}</strong></span>
+                            <span>Area: {{ detailTicket?.area?.name || 'Semua Area / Global' }}</span>
                         </div>
                         <div class="text-xs text-gray-700">Titik / Alamat: <strong>{{ detailTicket?.location_name || '-' }}</strong></div>
-                        <div v-if="detailTicket?.odc" class="text-xs text-gray-700">ODC Terkait: <strong>{{ detailTicket.odc.name }}</strong> ({{ detailTicket.odc.location || '-' }})</div>
-                        <div v-if="detailTicket?.odp" class="text-xs text-gray-700">ODP Terkait: <strong>{{ detailTicket.odp.name }}</strong> ({{ detailTicket.odp.address || '-' }})</div>
+                        
+                        <div v-if="detailTicket?.segment_type === 'backbone'" class="space-y-1.5 p-2.5 rounded-xl bg-purple-50/80 border border-purple-200 text-xs">
+                            <div v-if="detailTicket?.olt" class="text-purple-950">
+                                Perangkat OLT / POP: <strong>{{ detailTicket.olt.name }}</strong> (IP: {{ detailTicket.olt.ip_address || '-' }})
+                            </div>
+                            <div v-if="detailTicket?.backbone_source" class="text-purple-900">
+                                Tipe Jalur Backbone: <strong>{{ detailTicket.backbone_source }}</strong>
+                            </div>
+                            <div v-if="detailTicket?.provider_name" class="text-purple-900">
+                                Upstream Provider: <strong>{{ detailTicket.provider_name }}</strong> <span v-if="detailTicket?.circuit_id" class="font-mono text-purple-700 font-bold">(CID: {{ detailTicket.circuit_id }})</span>
+                            </div>
+                        </div>
+                        
+                        <div v-if="detailTicket?.odc && detailTicket?.segment_type !== 'backbone'" class="text-xs text-gray-700">ODC Terkait: <strong>{{ detailTicket.odc.name }}</strong> ({{ detailTicket.odc.location || '-' }})</div>
+                        <div v-if="detailTicket?.odp && detailTicket?.segment_type !== 'backbone'" class="text-xs text-gray-700">ODP Terkait: <strong>{{ detailTicket.odp.name }}</strong> ({{ detailTicket.odp.address || '-' }})</div>
                         <div v-if="detailTicket?.otdr_distance" class="text-xs font-mono text-indigo-700">Jarak OTDR: {{ detailTicket.otdr_distance }}</div>
                     </div>
 
@@ -653,6 +783,9 @@ const { can } = usePermission();
 const props = defineProps({
     tickets: Object,
     areas: Array,
+    olts: Array,
+    oltCustomerCounts: Object,
+    totalActiveCustomers: Number,
     odcs: Array,
     odps: Array,
     technicians: Array,
@@ -677,7 +810,11 @@ const detailTicket = ref(null);
 
 const createForm = useForm({
     segment_type: 'odc',
+    backbone_source: 'Kabel Feeder OLT Utama (NOC/POP ke ODC Pusat)',
+    provider_name: '',
+    circuit_id: '',
     area_id: '',
+    olt_id: '',
     odc_id: '',
     odp_id: '',
     location_name: '',
@@ -701,6 +838,12 @@ const escalateForm = useForm({
     admin_notes: '',
 });
 
+// Filter OLT berdasarkan Area
+const filteredOlts = computed(() => {
+    if (!createForm.area_id) return props.olts || [];
+    return (props.olts || []).filter(o => o.area_id == createForm.area_id || !o.area_id);
+});
+
 // Filter ODC berdasarkan Area
 const filteredOdcs = computed(() => {
     if (!createForm.area_id) return props.odcs || [];
@@ -720,6 +863,29 @@ const filteredOdps = computed(() => {
 
 // Hitung estimasi dampak pelanggan di form secara live
 const estimatedImpact = computed(() => {
+    if (createForm.segment_type === 'backbone') {
+        // 1. Jika OLT dipilih, gunakan hitungan pelanggan di OLT tersebut
+        if (createForm.olt_id && props.oltCustomerCounts && props.oltCustomerCounts[createForm.olt_id] !== undefined) {
+            const count = props.oltCustomerCounts[createForm.olt_id];
+            if (count > 0) return count;
+        }
+        // 2. Jika Area dipilih, gunakan jumlah pelanggan di Area tersebut
+        if (createForm.area_id) {
+            const area = (props.areas || []).find(a => a.id == createForm.area_id);
+            if (area && area.customers_count) {
+                return area.customers_count;
+            }
+        }
+        // 3. Jika ODC dipilih
+        if (createForm.odc_id) {
+            const odc = (props.odcs || []).find(o => o.id == createForm.odc_id);
+            const odpCount = odc?.odps_count || 4;
+            return odpCount * 12;
+        }
+        // 4. Default Backbone / Sumber Internet: Total seluruh pelanggan aktif sistem atau fallback 150
+        return props.totalActiveCustomers || 128;
+    }
+
     if (createForm.odp_id) {
         const odp = (props.odps || []).find(p => p.id == createForm.odp_id);
         return odp?.used_ports || 8; // Estimasi port terpakai di ODP
@@ -730,21 +896,59 @@ const estimatedImpact = computed(() => {
         const odpCount = odc?.odps_count || 4;
         return odpCount * 8;
     }
-    if (createForm.segment_type === 'backbone') {
-        return 64; // Jalur utama estimasi masal
-    }
     return 16;
 });
 
 const onSegmentChange = () => {
     if (createForm.segment_type === 'backbone') {
         createForm.priority = 'critical';
+        createForm.odp_id = ''; // Hilangkan ODP karena tidak relevan di backbone
+        createForm.source_report = 'Monitoring NMS';
+        createForm.category = 'Kabel FO Putus Total (Cut Cable)';
+        if (!createForm.backbone_source) {
+            createForm.backbone_source = 'Kabel Feeder OLT Utama (NOC/POP ke ODC Pusat)';
+        }
+        if (!createForm.reported_issue) {
+            applyBackboneTemplate();
+        }
+    }
+};
+
+const applyBackboneTemplate = () => {
+    const olt = (props.olts || []).find(o => o.id == createForm.olt_id);
+    const area = (props.areas || []).find(a => a.id == createForm.area_id);
+    const areaName = area ? area.name : 'Wilayah Terkait';
+    const oltName = olt ? `OLT ${olt.name}` : 'POP Utama';
+    
+    if (createForm.backbone_source === 'Link Uplink Provider / Sumber Internet (Transit / Upstream)') {
+        const prov = createForm.provider_name || 'Upstream ISP';
+        createForm.reported_issue = `Terdeteksi Link Sumber Internet / Uplink Provider ${prov} mengalami LOS (Kabel Putus / Link Down). Trafik internet drop total, estimasi ${estimatedImpact.value} pelanggan mengalami gangguan akses internet serentak.`;
+        createForm.admin_notes = `Eskalasi darurat ke NOC Provider ${prov} untuk cek tiket gangguan upstream. Siapkan pengalihan routing ke link failover jika ada.`;
+    } else {
+        createForm.reported_issue = `Terdeteksi alarm LOS serentak pada Jalur Utama Backbone ${oltName} (${areaName}). Seluruh ODC dan ODP down serentak. Estimasi ${estimatedImpact.value} pelanggan mati total. Diduga kabel feeder utama putus.`;
+        createForm.admin_notes = `Pengecekan NMS menunjukkan loss total pada port uplink feeder. Tim splicer jalur utama dan OTDR segera diberangkatkan ke lokasi.`;
+    }
+};
+
+const onOltChange = () => {
+    const olt = (props.olts || []).find(o => o.id == createForm.olt_id);
+    if (olt) {
+        if (!createForm.area_id && olt.area_id) {
+            createForm.area_id = olt.area_id;
+        }
+        createForm.location_name = olt.location || `POP / OLT ${olt.name}`;
+        createForm.latitude = olt.latitude || '';
+        createForm.longitude = olt.longitude || '';
+        applyBackboneTemplate();
     }
 };
 
 const onAreaChange = () => {
     createForm.odc_id = '';
     createForm.odp_id = '';
+    if (createForm.segment_type === 'backbone') {
+        applyBackboneTemplate();
+    }
 };
 
 const onOdcChange = () => {
@@ -870,7 +1074,7 @@ const getPriorityBadgeClass = (priority) => {
 
 const getSegmentBadgeClass = (segment) => {
     switch (segment) {
-        case 'backbone': return 'bg-purple-100 text-purple-800 border-purple-200';
+        case 'backbone': return 'bg-gradient-to-r from-purple-100 to-rose-100 text-purple-900 border-purple-300 font-black shadow-xs';
         case 'odc': return 'bg-rose-100 text-rose-800 border-rose-200';
         case 'odp': return 'bg-amber-100 text-amber-800 border-amber-200';
         case 'distribution': return 'bg-cyan-100 text-cyan-800 border-cyan-200';
@@ -880,7 +1084,7 @@ const getSegmentBadgeClass = (segment) => {
 
 const getSegmentLabel = (segment) => {
     switch (segment) {
-        case 'backbone': return 'Backbone / Feeder';
+        case 'backbone': return '⚡ Backbone / Sumber Internet';
         case 'odc': return 'ODC';
         case 'odp': return 'ODP';
         case 'distribution': return 'Distribusi';

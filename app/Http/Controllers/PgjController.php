@@ -7,6 +7,7 @@ use App\Models\PgjMaterial;
 use App\Models\Area;
 use App\Models\Odc;
 use App\Models\Odp;
+use App\Models\Olt;
 use App\Models\Customer;
 use App\Models\User;
 use App\Models\Material;
@@ -47,6 +48,7 @@ class PgjController extends Controller
 
         $query = PgjTicket::with([
             'area',
+            'olt',
             'odc',
             'odp.odc',
             'creator',
@@ -68,6 +70,12 @@ class PgjController extends Controller
                   ->orWhere('category', 'like', "%{$search}%")
                   ->orWhere('reported_issue', 'like', "%{$search}%")
                   ->orWhere('core_details', 'like', "%{$search}%")
+                  ->orWhere('backbone_source', 'like', "%{$search}%")
+                  ->orWhere('provider_name', 'like', "%{$search}%")
+                  ->orWhere('circuit_id', 'like', "%{$search}%")
+                  ->orWhereHas('olt', function($lq) use ($search) {
+                      $lq->where('name', 'like', "%{$search}%");
+                  })
                   ->orWhereHas('odc', function($oq) use ($search) {
                       $oq->where('name', 'like', "%{$search}%");
                   })
@@ -108,9 +116,20 @@ class PgjController extends Controller
             'completed' => PgjTicket::where('status', 'completed')->count(),
         ];
 
-        $areas = Area::orderBy('name')->get();
+        $areas = Area::withCount(['customers' => function($q) {
+            $q->whereIn('service_status', ['active', 'isolir']);
+        }])->orderBy('name')->get();
+        $olts = Olt::select('id', 'name', 'area_id', 'ip_address', 'location', 'total_pon_ports')->withCount('odcs')->orderBy('name')->get();
         $odcs = Odc::withCount('odps')->orderBy('name')->get();
         $odps = Odp::with('odc')->orderBy('name')->get();
+
+        $oltCustomerCounts = [];
+        foreach ($olts as $o) {
+            $oltCustomerCounts[$o->id] = Customer::whereHas('ont.odp.odc', function($q) use ($o) {
+                $q->where('olt_id', $o->id);
+            })->whereIn('service_status', ['active', 'isolir'])->count();
+        }
+        $totalActiveCustomers = Customer::whereIn('service_status', ['active', 'isolir'])->count();
 
         $technicians = User::whereHas('roles', function($q) {
             $q->whereIn('name', ['teknisi', 'kepala teknisi']);
@@ -124,6 +143,9 @@ class PgjController extends Controller
         return Inertia::render('Pgj/Index', [
             'tickets' => $tickets,
             'areas' => $areas,
+            'olts' => $olts,
+            'oltCustomerCounts' => $oltCustomerCounts,
+            'totalActiveCustomers' => $totalActiveCustomers,
             'odcs' => $odcs,
             'odps' => $odps,
             'technicians' => $technicians,
@@ -184,6 +206,7 @@ class PgjController extends Controller
 
         $query = PgjTicket::with([
             'area',
+            'olt',
             'odc',
             'odp.odc',
             'creator',
@@ -215,6 +238,12 @@ class PgjController extends Controller
                   ->orWhere('location_name', 'like', "%{$search}%")
                   ->orWhere('category', 'like', "%{$search}%")
                   ->orWhere('reported_issue', 'like', "%{$search}%")
+                  ->orWhere('backbone_source', 'like', "%{$search}%")
+                  ->orWhere('provider_name', 'like', "%{$search}%")
+                  ->orWhere('circuit_id', 'like', "%{$search}%")
+                  ->orWhereHas('olt', function($lq) use ($search) {
+                      $lq->where('name', 'like', "%{$search}%");
+                  })
                   ->orWhereHas('odc', function($oq) use ($search) {
                       $oq->where('name', 'like', "%{$search}%");
                   })
@@ -280,6 +309,7 @@ class PgjController extends Controller
 
         $query = PgjTicket::with([
             'area',
+            'olt',
             'odc',
             'odp.odc',
             'creator',
@@ -299,6 +329,12 @@ class PgjController extends Controller
                   ->orWhere('location_name', 'like', "%{$search}%")
                   ->orWhere('action_taken', 'like', "%{$search}%")
                   ->orWhere('core_details', 'like', "%{$search}%")
+                  ->orWhere('backbone_source', 'like', "%{$search}%")
+                  ->orWhere('provider_name', 'like', "%{$search}%")
+                  ->orWhere('circuit_id', 'like', "%{$search}%")
+                  ->orWhereHas('olt', function($lq) use ($search) {
+                      $lq->where('name', 'like', "%{$search}%");
+                  })
                   ->orWhereHas('odc', function($oq) use ($search) {
                       $oq->where('name', 'like', "%{$search}%");
                   })
@@ -325,30 +361,47 @@ class PgjController extends Controller
     /**
      * Hitung Estimasi Dampak Pelanggan (Helper)
      */
-    private function calculateImpact(string $segmentType, ?int $odcId, ?int $odpId, ?int $areaId): int
+    private function calculateImpact(string $segmentType, ?int $odcId, ?int $odpId, ?int $areaId, ?int $oltId = null): int
     {
         if ($segmentType === 'odp' && $odpId) {
             // Hitung pelanggan yang ont-nya di odp ini
             return Customer::whereHas('ont', function($q) use ($odpId) {
                 $q->where('odp_id', $odpId);
-            })->count();
+            })->whereIn('service_status', ['active', 'isolir'])->count();
         }
 
         if (($segmentType === 'odc' || $segmentType === 'distribution') && $odcId) {
             // Hitung pelanggan di seluruh odp di bawah odc ini
             return Customer::whereHas('ont.odp', function($q) use ($odcId) {
                 $q->where('odc_id', $odcId);
-            })->count();
+            })->whereIn('service_status', ['active', 'isolir'])->count();
         }
 
         if ($segmentType === 'backbone') {
+            // 1. Jika OLT spesifik dipilih
+            if ($oltId) {
+                $cnt = Customer::whereHas('ont.odp.odc', function($q) use ($oltId) {
+                    $q->where('olt_id', $oltId);
+                })->whereIn('service_status', ['active', 'isolir'])->count();
+                if ($cnt > 0) return $cnt;
+            }
+
+            // 2. Jika ODC dipilih
             if ($odcId) {
                 return Customer::whereHas('ont.odp', function($q) use ($odcId) {
                     $q->where('odc_id', $odcId);
-                })->count();
-            } elseif ($areaId) {
-                return Customer::where('area_id', $areaId)->count();
+                })->whereIn('service_status', ['active', 'isolir'])->count();
             }
+
+            // 3. Jika Area dipilih
+            if ($areaId) {
+                return Customer::where('area_id', $areaId)
+                    ->whereIn('service_status', ['active', 'isolir'])
+                    ->count();
+            }
+
+            // 4. Jika backbone global / sumber internet utama
+            return Customer::whereIn('service_status', ['active', 'isolir'])->count();
         }
 
         return 0;
@@ -366,7 +419,11 @@ class PgjController extends Controller
 
         $validated = $request->validate([
             'segment_type' => 'required|in:backbone,odc,odp,distribution,other',
+            'backbone_source' => 'nullable|string|max:255',
+            'provider_name' => 'nullable|string|max:255',
+            'circuit_id' => 'nullable|string|max:100',
             'area_id' => 'nullable|exists:areas,id',
+            'olt_id' => 'nullable|exists:olts,id',
             'odc_id' => 'nullable|exists:odcs,id',
             'odp_id' => 'nullable|exists:odps,id',
             'location_name' => 'nullable|string|max:255',
@@ -380,17 +437,27 @@ class PgjController extends Controller
             'admin_notes' => 'nullable|string',
         ]);
 
+        if ($validated['segment_type'] === 'backbone') {
+            $validated['odp_id'] = null; // Backbone tidak relevan dengan ODP
+        }
+
         // Otomatis hitung perkiraan pelanggan terdampak
         $impacted = $this->calculateImpact(
             $validated['segment_type'],
             $validated['odc_id'] ?? null,
             $validated['odp_id'] ?? null,
-            $validated['area_id'] ?? null
+            $validated['area_id'] ?? null,
+            $validated['olt_id'] ?? null
         );
 
-        // Jika lokasi/koordinat kosong, ambil dari ODC atau ODP terpilih
+        // Jika lokasi/koordinat kosong, ambil dari OLT, ODC atau ODP terpilih
         if (empty($validated['location_name'])) {
-            if (!empty($validated['odp_id'])) {
+            if (!empty($validated['olt_id'])) {
+                $olt = Olt::find($validated['olt_id']);
+                $validated['location_name'] = $olt?->location ?: 'POP / OLT ' . $olt?->name;
+                $validated['latitude'] = $validated['latitude'] ?? $olt?->latitude;
+                $validated['longitude'] = $validated['longitude'] ?? $olt?->longitude;
+            } elseif (!empty($validated['odp_id'])) {
                 $odp = Odp::find($validated['odp_id']);
                 $validated['location_name'] = $odp?->address ?: 'Lokasi ' . $odp?->name;
                 $validated['latitude'] = $validated['latitude'] ?? $odp?->latitude;
@@ -405,7 +472,11 @@ class PgjController extends Controller
 
         $ticket = PgjTicket::create([
             'segment_type' => $validated['segment_type'],
+            'backbone_source' => $validated['backbone_source'] ?? null,
+            'provider_name' => $validated['provider_name'] ?? null,
+            'circuit_id' => $validated['circuit_id'] ?? null,
             'area_id' => $validated['area_id'] ?? null,
+            'olt_id' => $validated['olt_id'] ?? null,
             'odc_id' => $validated['odc_id'] ?? null,
             'odp_id' => $validated['odp_id'] ?? null,
             'affected_customers_count' => $impacted,

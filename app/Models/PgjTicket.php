@@ -15,7 +15,11 @@ class PgjTicket extends Model
     protected $fillable = [
         'ticket_number',
         'segment_type',
+        'backbone_source',
+        'provider_name',
+        'circuit_id',
         'area_id',
+        'olt_id',
         'odc_id',
         'odp_id',
         'affected_customers_count',
@@ -85,6 +89,11 @@ class PgjTicket extends Model
     public function area(): BelongsTo
     {
         return $this->belongsTo(Area::class);
+    }
+
+    public function olt(): BelongsTo
+    {
+        return $this->belongsTo(Olt::class);
     }
 
     public function odc(): BelongsTo

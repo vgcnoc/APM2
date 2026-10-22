@@ -67,14 +67,21 @@
                                         {{ ticket.location_name }}
                                     </div>
                                     <div class="text-xs text-gray-600 mt-0.5 flex flex-wrap gap-1.5">
-                                        <span class="font-extrabold text-[10px] px-2 py-0.5 rounded uppercase" :class="getSegmentBadgeClass(ticket.segment_type)">
-                                            {{ ticket.segment_type }}
+                                        <span class="font-extrabold text-[10px] px-2 py-0.5 rounded uppercase border" :class="getSegmentBadgeClass(ticket.segment_type)">
+                                            {{ getSegmentLabel(ticket.segment_type) }}
                                         </span>
-                                        <span v-if="ticket.odc" class="text-rose-700 font-semibold">ODC: {{ ticket.odc.name }}</span>
-                                        <span v-if="ticket.odp" class="text-amber-700 font-semibold">ODP: {{ ticket.odp.name }}</span>
+                                        <template v-if="ticket.segment_type === 'backbone'">
+                                            <span v-if="ticket.olt" class="text-purple-700 font-bold bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">OLT: {{ ticket.olt.name }}</span>
+                                            <span v-if="ticket.provider_name" class="text-indigo-700 font-bold bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">ISP: {{ ticket.provider_name }}</span>
+                                            <span v-if="ticket.backbone_source" class="text-gray-700 font-medium bg-gray-50 px-1.5 py-0.5 rounded border border-gray-200">{{ ticket.backbone_source }}</span>
+                                        </template>
+                                        <template v-else>
+                                            <span v-if="ticket.odc" class="text-rose-700 font-semibold">ODC: {{ ticket.odc.name }}</span>
+                                            <span v-if="ticket.odp" class="text-amber-700 font-semibold">ODP: {{ ticket.odp.name }}</span>
+                                        </template>
                                     </div>
-                                    <div class="mt-1 text-xs text-red-600 font-bold">
-                                        🚨 {{ ticket.affected_customers_count }} Pelanggan Terdampak
+                                    <div class="mt-1 text-xs font-bold" :class="ticket.segment_type === 'backbone' ? 'text-red-700' : 'text-red-600'">
+                                        🚨 {{ ticket.segment_type === 'backbone' ? 'Downtime Massal: ' : '' }}{{ ticket.affected_customers_count }} Pelanggan Terdampak
                                     </div>
                                 </td>
 
@@ -221,22 +228,27 @@
                     </div>
 
                     <!-- Ringkasan Gangguan & Dampak -->
-                    <div class="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100 text-xs text-emerald-950 space-y-2">
+                    <div class="p-4 rounded-2xl border text-xs space-y-2" :class="selectedTicket?.segment_type === 'backbone' ? 'bg-gradient-to-r from-purple-50/80 via-emerald-50/50 to-teal-50/80 border-purple-200 text-purple-950' : 'bg-emerald-50/70 border-emerald-100 text-emerald-950'">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <div class="font-bold text-sm text-gray-900 flex items-center gap-2">
                                 <span>Titik: {{ selectedTicket?.location_name }}</span>
                                 <span class="px-2 py-0.5 rounded text-xs font-bold border uppercase" :class="getSegmentBadgeClass(selectedTicket?.segment_type)">
-                                    Segmen: {{ selectedTicket?.segment_type }}
+                                    Segmen: {{ getSegmentLabel(selectedTicket?.segment_type) }}
                                 </span>
                             </div>
                             <span class="px-2.5 py-1 rounded-lg bg-emerald-100/80 font-bold text-emerald-800 text-[11px]">
-                                Area: {{ selectedTicket?.area?.name || '-' }}
+                                Area: {{ selectedTicket?.area?.name || 'Semua Area / Global' }}
                             </span>
+                        </div>
+                        <div v-if="selectedTicket?.segment_type === 'backbone'" class="space-y-0.5 p-2 rounded-xl bg-white/80 border border-purple-200 font-semibold text-xs">
+                            <div v-if="selectedTicket?.olt" class="text-purple-900">Perangkat OLT / POP: <strong>{{ selectedTicket.olt.name }}</strong> (IP: {{ selectedTicket.olt.ip_address || '-' }})</div>
+                            <div v-if="selectedTicket?.provider_name" class="text-indigo-900">Upstream Provider: <strong>{{ selectedTicket.provider_name }}</strong> <span v-if="selectedTicket?.circuit_id">(CID: {{ selectedTicket.circuit_id }})</span></div>
+                            <div v-if="selectedTicket?.backbone_source" class="text-gray-700">Tipe Jalur: {{ selectedTicket.backbone_source }}</div>
                         </div>
                         <div class="text-gray-700">
                             <strong>Temuan Gangguan:</strong> <span class="text-red-700 font-medium">"{{ selectedTicket?.reported_issue }}"</span>
                         </div>
-                        <div v-if="selectedTicket?.odc || selectedTicket?.odp" class="text-gray-600 flex flex-wrap gap-3">
+                        <div v-if="selectedTicket?.segment_type !== 'backbone' && (selectedTicket?.odc || selectedTicket?.odp)" class="text-gray-600 flex flex-wrap gap-3">
                             <span v-if="selectedTicket?.odc"><strong>ODC:</strong> {{ selectedTicket.odc.name }}</span>
                             <span v-if="selectedTicket?.odp"><strong>ODP:</strong> {{ selectedTicket.odp.name }}</span>
                         </div>
@@ -316,7 +328,7 @@
                             <input 
                                 type="text" 
                                 v-model="reportForm.core_details" 
-                                placeholder="Contoh: Core 1-8 tube biru active (ODC-02), Core 9-12 tube orange standby spare"
+                                :placeholder="selectedTicket?.segment_type === 'backbone' ? 'Contoh: Tube Biru Core 1-12 Feeder OLT Utama disambung rapih, Tube Orange Core 13-24 Standby Spare (Loss 0.02 dB/splice)' : 'Contoh: Core 1-8 tube biru active (ODC-02), Core 9-12 tube orange standby spare'"
                                 class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm" 
                             />
                         </div>
@@ -971,11 +983,21 @@ const formatDate = (dateStr) => {
 
 const getSegmentBadgeClass = (segment) => {
     switch (segment) {
-        case 'backbone': return 'bg-purple-100 text-purple-800 border-purple-200';
+        case 'backbone': return 'bg-gradient-to-r from-purple-100 to-rose-100 text-purple-900 border-purple-300 font-black shadow-xs';
         case 'odc': return 'bg-rose-100 text-rose-800 border-rose-200';
         case 'odp': return 'bg-amber-100 text-amber-800 border-amber-200';
         case 'distribution': return 'bg-cyan-100 text-cyan-800 border-cyan-200';
         default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+};
+
+const getSegmentLabel = (segment) => {
+    switch (segment) {
+        case 'backbone': return '⚡ Backbone / Sumber Internet';
+        case 'odc': return 'ODC';
+        case 'odp': return 'ODP';
+        case 'distribution': return 'Distribusi';
+        default: return segment;
     }
 };
 
