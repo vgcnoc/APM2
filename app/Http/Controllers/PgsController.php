@@ -16,6 +16,8 @@ use App\Models\Ont;
 use App\Services\DataScopeService;
 use App\Services\RestockStockService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 
@@ -271,6 +273,28 @@ class PgsController extends Controller
             abort(403, 'Akses ke Laporan PGS tidak diizinkan.');
         }
 
+        // Summary counts for metric cards (scoped to user's permissions)
+        $baseCountQuery = PgsTicket::whereIn('status', ['scheduled', 'in_progress', 'completed']);
+        DataScopeService::applyPgsScope($baseCountQuery);
+        if ($request->filled('area_id') && $request->area_id !== 'all') {
+            $baseCountQuery->where(function($q) use ($request) {
+                $q->where('area_id', $request->area_id)
+                  ->orWhereHas('customer', function($cq) use ($request) {
+                      $cq->where('area_id', $request->area_id);
+                  });
+            });
+        }
+        $counts = [
+            'total' => (clone $baseCountQuery)->count(),
+            'scheduled' => (clone $baseCountQuery)->where('status', 'scheduled')->count(),
+            'in_progress' => (clone $baseCountQuery)->where('status', 'in_progress')->count(),
+            'completed' => (clone $baseCountQuery)->where('status', 'completed')->count(),
+            'with_replacement' => (clone $baseCountQuery)->where(function($q) {
+                $q->where('ont_replacement_status', 'installed')
+                  ->orWhereHas('dismantledMaterials');
+            })->count(),
+        ];
+
         $query = PgsTicket::with([
             'area',
             'customer.areaModel',
@@ -298,19 +322,38 @@ class PgsController extends Controller
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
         DataScopeService::applyPgsScope($query);
 
+        // Filter: Pencarian Pintar
         if ($request->filled('search')) {
-            $search = strtolower($request->search);
+            $search = trim($request->search);
             $query->where(function($q) use ($search) {
                 $q->where('ticket_number', 'like', "%{$search}%")
                   ->orWhere('action_taken', 'like', "%{$search}%")
+                  ->orWhere('reported_issue', 'like', "%{$search}%")
+                  ->orWhere('resolution_notes', 'like', "%{$search}%")
                   ->orWhereHas('customer', function($cq) use ($search) {
                       $cq->where('name', 'like', "%{$search}%")
-                         ->orWhere('customer_code', 'like', "%{$search}%");
+                         ->orWhere('customer_code', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%")
+                         ->orWhere('address', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('customer.ont.odp', function($oq) use ($search) {
+                      $oq->where('name', 'like', "%{$search}%");
                   });
             });
         }
 
-        if ($request->filled('area_id')) {
+        // Filter: Status
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        // Filter: Prioritas
+        if ($request->filled('priority') && $request->priority !== 'all') {
+            $query->where('priority', $request->priority);
+        }
+
+        // Filter: Area / Wilayah
+        if ($request->filled('area_id') && $request->area_id !== 'all') {
             $areaModel = Area::find($request->area_id);
             $areaName = $areaModel?->name;
             $query->where(function($q) use ($request, $areaName) {
@@ -320,6 +363,60 @@ class PgsController extends Controller
                          ->when($areaName, fn($sub) => $sub->orWhere('area', $areaName));
                   });
             });
+        }
+
+        // Filter: Periode Tanggal
+        if ($request->filled('period') && $request->period !== 'all') {
+            if ($request->period === 'today') {
+                $query->where(function($q) {
+                    $q->whereDate('scheduled_date', today())
+                      ->orWhereDate('created_at', today());
+                });
+            } elseif ($request->period === 'this_week') {
+                $query->where(function($q) {
+                    $q->whereBetween('scheduled_date', [now()->startOfWeek(), now()->endOfWeek()])
+                      ->orWhereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+                });
+            } elseif ($request->period === 'this_month') {
+                $query->where(function($q) {
+                    $q->whereBetween('scheduled_date', [now()->startOfMonth(), now()->endOfMonth()])
+                      ->orWhereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()]);
+                });
+            } elseif ($request->period === 'custom') {
+                if ($request->filled('start_date') && $request->filled('end_date')) {
+                    $query->where(function($q) use ($request) {
+                        $q->whereBetween('scheduled_date', [$request->start_date, $request->end_date])
+                          ->orWhereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+                    });
+                } elseif ($request->filled('start_date')) {
+                    $query->where(function($q) use ($request) {
+                        $q->whereDate('scheduled_date', '>=', $request->start_date)
+                          ->orWhereDate('created_at', '>=', $request->start_date);
+                    });
+                } elseif ($request->filled('end_date')) {
+                    $query->where(function($q) use ($request) {
+                        $q->whereDate('scheduled_date', '<=', $request->end_date)
+                          ->orWhereDate('created_at', '<=', $request->end_date);
+                    });
+                }
+            }
+        }
+
+        // Filter: Pergantian Material / ONT
+        if ($request->filled('has_replacement') && $request->has_replacement !== 'all') {
+            if ($request->has_replacement === 'yes') {
+                $query->where(function($q) {
+                    $q->where('ont_replacement_status', 'installed')
+                      ->orWhereHas('dismantledMaterials');
+                });
+            } elseif ($request->has_replacement === 'no') {
+                $query->where(function($q) {
+                    $q->where(function($sub) {
+                        $sub->whereNull('ont_replacement_status')
+                            ->orWhere('ont_replacement_status', '!=', 'installed');
+                    })->whereDoesntHave('dismantledMaterials');
+                });
+            }
         }
 
         $tickets = $query->latest('id')->paginate($request->per_page ?? 15)->withQueryString();
@@ -349,7 +446,10 @@ class PgsController extends Controller
             'materials' => $materials,
             'materialTransactions' => $materialTransactions,
             'availableOnts' => $availableOnts,
-            'filters' => $request->only(['search', 'area_id']),
+            'counts' => $counts,
+            'filters' => $request->only([
+                'search', 'area_id', 'status', 'priority', 'period', 'start_date', 'end_date', 'has_replacement', 'per_page'
+            ]),
         ]);
     }
 
@@ -1227,22 +1327,128 @@ class PgsController extends Controller
     }
 
     /**
-     * Batalkan tiket PGS
+     * Hapus permanen tiket PGS
      */
-    public function destroy(PgsTicket $pgs)
+    public function destroy(Request $request, PgsTicket $pgs)
     {
-        $oldStatus = $pgs->status;
-        $pgs->update(['status' => 'canceled']);
+        $user = $request->user();
+        if ($user && !$user->can('pgs_btn_delete') && !$user->hasRole('admin') && !$user->hasRole('kepala teknisi')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus laporan penanganan PGS.');
+        }
+
+        $num = $pgs->ticket_number;
+
+        // Hapus foto jika ada di disk storage
+        if ($pgs->photo_before && Storage::disk('public')->exists($pgs->photo_before)) {
+            Storage::disk('public')->delete($pgs->photo_before);
+        }
+        if ($pgs->photo_after && Storage::disk('public')->exists($pgs->photo_after)) {
+            Storage::disk('public')->delete($pgs->photo_after);
+        }
+
+        // Hapus data serah terima bongkaran terkait tiket ini
+        \App\Models\CustomerMaterialDismantle::where('source_type', 'pgs')
+            ->where('source_id', $pgs->id)
+            ->delete();
+
+        // Detach teknisi & relasi materials
+        $pgs->technicians()->detach();
+        $pgs->materials()->delete();
+        $pgs->materialRequests()->delete();
+        $pgs->delete();
 
         AuditLog::createLog(
-            'Batalkan Tiket PGS',
-            $pgs,
-            $oldStatus,
-            'canceled',
-            'Tiket Penanganan Sigap dibatalkan.'
+            'Hapus Tiket PGS',
+            null,
+            null,
+            null,
+            'Tiket PGS ' . $num . ' dihapus oleh user: ' . (auth()->user()?->name ?? 'System')
         );
 
-        return redirect()->back()->with('success', 'Tiket Penanganan Sigap berhasil dibatalkan.');
+        return redirect()->back()->with('success', 'Tiket PGS ' . $num . ' berhasil dihapus.');
+    }
+
+    /**
+     * Hapus massal (Bulk Destroy) tiket PGS
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $user = $request->user();
+        if ($user && !$user->can('pgs_btn_delete_all') && !$user->hasRole('admin') && !$user->hasRole('kepala teknisi')) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus massal laporan penanganan PGS.');
+        }
+
+        $query = PgsTicket::query();
+        DataScopeService::applyPgsScope($query);
+
+        if ($request->boolean('delete_all')) {
+            $query->whereIn('status', ['scheduled', 'in_progress', 'completed']);
+
+            if ($request->filled('search')) {
+                $search = trim($request->search);
+                $query->where(function($q) use ($search) {
+                    $q->where('ticket_number', 'like', "%{$search}%")
+                      ->orWhere('action_taken', 'like', "%{$search}%")
+                      ->orWhere('reported_issue', 'like', "%{$search}%")
+                      ->orWhereHas('customer', function($cq) use ($search) {
+                          $cq->where('name', 'like', "%{$search}%")
+                             ->orWhere('customer_code', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            if ($request->filled('status') && $request->status !== 'all') {
+                $query->where('status', $request->status);
+            }
+
+            if ($request->filled('priority') && $request->priority !== 'all') {
+                $query->where('priority', $request->priority);
+            }
+
+            if ($request->filled('area_id') && $request->area_id !== 'all') {
+                $query->where('area_id', $request->area_id);
+            }
+
+            $tickets = $query->get();
+        } else {
+            $request->validate([
+                'ids' => 'required|array|min:1',
+                'ids.*' => 'integer'
+            ]);
+            $tickets = $query->whereIn('id', $request->ids)->get();
+        }
+
+        $count = 0;
+        DB::transaction(function () use ($tickets, &$count) {
+            foreach ($tickets as $ticket) {
+                if ($ticket->photo_before && Storage::disk('public')->exists($ticket->photo_before)) {
+                    Storage::disk('public')->delete($ticket->photo_before);
+                }
+                if ($ticket->photo_after && Storage::disk('public')->exists($ticket->photo_after)) {
+                    Storage::disk('public')->delete($ticket->photo_after);
+                }
+
+                \App\Models\CustomerMaterialDismantle::where('source_type', 'pgs')
+                    ->where('source_id', $ticket->id)
+                    ->delete();
+
+                $ticket->technicians()->detach();
+                $ticket->materials()->delete();
+                $ticket->materialRequests()->delete();
+                $ticket->delete();
+                $count++;
+            }
+        });
+
+        AuditLog::createLog(
+            'Hapus Massal Tiket PGS',
+            null,
+            null,
+            null,
+            'Sebanyak ' . $count . ' tiket PGS dihapus massal oleh: ' . (auth()->user()?->name ?? 'System')
+        );
+
+        return redirect()->back()->with('success', "Sebanyak {$count} data laporan PGS berhasil dihapus permanen.");
     }
 
     /**

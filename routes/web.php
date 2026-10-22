@@ -509,6 +509,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('pgs/{pgs}/installed-materials', [\App\Http\Controllers\PgsController::class, 'storeInstalledMaterial'])->name('pgs.installed-materials.store');
     Route::post('pgs/{pgs}/dismantles/{dismantle}/handover', [\App\Http\Controllers\PgsController::class, 'confirmDismantleHandover'])->name('pgs.dismantles.handover');
     Route::delete('pgs/{pgs}', [\App\Http\Controllers\PgsController::class, 'destroy'])->name('pgs.destroy');
+    Route::post('pgs/bulk-destroy', [\App\Http\Controllers\PgsController::class, 'bulkDestroy'])->name('pgs.bulk-destroy');
 
     // ── Penanganan Gangguan Komplain (PGK) ───────────────────────
     Route::get('pgk', [\App\Http\Controllers\PgkController::class, 'index'])->name('pgk.index');
@@ -529,6 +530,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('pgk/{pgk}/installed-materials', [\App\Http\Controllers\PgkController::class, 'storeInstalledMaterial'])->name('pgk.installed-materials.store');
     Route::post('pgk/{pgk}/dismantles/{dismantle}/handover', [\App\Http\Controllers\PgkController::class, 'confirmDismantleHandover'])->name('pgk.dismantles.handover');
     Route::delete('pgk/{pgk}', [\App\Http\Controllers\PgkController::class, 'destroy'])->name('pgk.destroy');
+    Route::post('pgk/bulk-destroy', [\App\Http\Controllers\PgkController::class, 'bulkDestroy'])->name('pgk.bulk-destroy');
 
     // ── Penanganan Gangguan Jalur (PGJ) ──────────────────────────
     Route::get('pgj', [\App\Http\Controllers\PgjController::class, 'index'])->name('pgj.index');

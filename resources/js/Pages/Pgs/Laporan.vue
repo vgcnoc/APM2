@@ -1,30 +1,202 @@
 <template>
     <AppLayout title="Laporan Penanganan PGS" subtitle="Pelaporan Hasil Pengerjaan Lapangan & Material Terpakai oleh Teknisi">
         <div class="space-y-6">
-            <!-- Toolbar & Filter -->
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                <div v-if="can('pgs_filter')" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
-                    <div class="relative flex-1 sm:w-80">
+            <!-- ════════════ STATS SUMMARY CARDS ════════════ -->
+            <div v-if="can('pgs_card_stats')" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+                <!-- Card 1: Total Laporan -->
+                <div 
+                    @click="filterByCard('all')"
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="(!filterStatus && !filterReplacement) ? 'border-slate-800 ring-2 ring-slate-400/30 bg-slate-50/50' : 'border-gray-200/80 hover:border-slate-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Laporan</span>
+                        <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-sm font-black group-hover:scale-110 transition-transform">
+                            📋
+                        </div>
+                    </div>
+                    <div class="mt-2 text-2xl font-black text-gray-900 tracking-tight">{{ counts.total || 0 }}</div>
+                    <div class="mt-1 text-[11px] text-gray-500 font-medium flex items-center gap-1">
+                        <span>Semua Penanganan Sigap</span>
+                    </div>
+                </div>
+
+                <!-- Card 2: Siap Ditangani -->
+                <div 
+                    @click="filterByCard('scheduled')"
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="filterStatus === 'scheduled' ? 'border-indigo-600 ring-2 ring-indigo-500/30 bg-indigo-50/30' : 'border-gray-200/80 hover:border-indigo-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">Siap Ditangani</span>
+                        <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-sm font-black group-hover:scale-110 transition-transform">
+                            ⏳
+                        </div>
+                    </div>
+                    <div class="mt-2 text-2xl font-black text-indigo-900 tracking-tight">{{ counts.scheduled || 0 }}</div>
+                    <div class="mt-1 text-[11px] text-indigo-600 font-medium flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                        <span>Menunggu Teknisi</span>
+                    </div>
+                </div>
+
+                <!-- Card 3: Sedang Dikerjakan -->
+                <div 
+                    @click="filterByCard('in_progress')"
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="filterStatus === 'in_progress' ? 'border-sky-600 ring-2 ring-sky-500/30 bg-sky-50/30' : 'border-gray-200/80 hover:border-sky-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-sky-700 uppercase tracking-wider">Sedang Proses</span>
+                        <div class="w-8 h-8 rounded-xl bg-sky-50 text-sky-700 flex items-center justify-center text-sm font-black group-hover:scale-110 transition-transform">
+                            ⚙️
+                        </div>
+                    </div>
+                    <div class="mt-2 text-2xl font-black text-sky-900 tracking-tight">{{ counts.in_progress || 0 }}</div>
+                    <div class="mt-1 text-[11px] text-sky-600 font-medium flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
+                        <span>Sedang Ditangani</span>
+                    </div>
+                </div>
+
+                <!-- Card 4: Selesai Dikerjakan -->
+                <div 
+                    @click="filterByCard('completed')"
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="filterStatus === 'completed' ? 'border-emerald-600 ring-2 ring-emerald-500/30 bg-emerald-50/30' : 'border-gray-200/80 hover:border-emerald-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Selesai Dikerjakan</span>
+                        <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-sm font-black group-hover:scale-110 transition-transform">
+                            ✅
+                        </div>
+                    </div>
+                    <div class="mt-2 text-2xl font-black text-emerald-900 tracking-tight">{{ counts.completed || 0 }}</div>
+                    <div class="mt-1 text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <span>Laporan Lengkap</span>
+                    </div>
+                </div>
+
+                <!-- Card 5: Ada Pergantian Material / ONT -->
+                <div 
+                    @click="filterByCard('replacement')"
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 group col-span-2 sm:col-span-1"
+                    :class="filterReplacement === 'yes' ? 'border-amber-600 ring-2 ring-amber-500/30 bg-amber-50/30' : 'border-gray-200/80 hover:border-amber-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Ganti Material / ONT</span>
+                        <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center text-sm font-black group-hover:scale-110 transition-transform">
+                            🔄
+                        </div>
+                    </div>
+                    <div class="mt-2 text-2xl font-black text-amber-900 tracking-tight">{{ counts.with_replacement || 0 }}</div>
+                    <div class="mt-1 text-[11px] text-amber-600 font-medium flex items-center gap-1">
+                        <span>Bongkaran / Ganti Unit</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════════════ SMART FILTER BAR ════════════ -->
+            <div v-if="can('pgs_filter')" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                    <!-- Search input -->
+                    <div class="relative lg:col-span-2">
                         <input 
                             type="text" 
                             v-model="search" 
-                            placeholder="Cari No. PGS, pelanggan, tindakan..." 
-                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm transition-all"
-                            @keyup.enter="performSearch"
+                            placeholder="Cari No. PGS, pelanggan, ODP, tindakan..." 
+                            class="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs transition-all"
+                            @keyup.enter="applyFilters()"
                         >
-                        <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
+                        <button v-if="search" @click="search = ''; applyFilters({ search: '' })" class="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600 text-xs font-bold cursor-pointer">✕</button>
                     </div>
 
-                    <select v-model="filterArea" @change="performSearch" class="px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm bg-gray-50/50">
-                        <option value="">Semua Area / Wilayah</option>
-                        <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
-                    </select>
+                    <!-- Filter Status -->
+                    <div>
+                        <select v-model="filterStatus" @change="applyFilters()" class="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs bg-gray-50/50 cursor-pointer">
+                            <option value="">Semua Status</option>
+                            <option value="scheduled">⏳ Siap Ditangani</option>
+                            <option value="in_progress">⚙️ Sedang Dikerjakan</option>
+                            <option value="completed">✅ Selesai Dikerjakan</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Prioritas -->
+                    <div>
+                        <select v-model="filterPriority" @change="applyFilters()" class="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs bg-gray-50/50 cursor-pointer">
+                            <option value="">Semua Prioritas</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Area -->
+                    <div>
+                        <select v-model="filterArea" @change="applyFilters()" class="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs bg-gray-50/50 cursor-pointer">
+                            <option value="">Semua Area</option>
+                            <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Periode -->
+                    <div>
+                        <select v-model="filterPeriod" @change="applyFilters()" class="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs bg-gray-50/50 cursor-pointer">
+                            <option value="">Semua Waktu</option>
+                            <option value="today">Hari Ini</option>
+                            <option value="this_week">Minggu Ini</option>
+                            <option value="this_month">Bulan Ini</option>
+                            <option value="custom">Pilih Tanggal...</option>
+                        </select>
+                    </div>
                 </div>
-                
-                <div class="text-xs text-gray-500 font-medium">
-                    Halaman ini digunakan teknisi untuk melaporkan hasil tindakan, redaman optik, foto, dan material terpakai.
+
+                <!-- Secondary Filter Row: Custom Dates + Pergantian + Action Buttons -->
+                <div class="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-gray-100">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Custom Date Range -->
+                        <div v-if="filterPeriod === 'custom'" class="flex items-center gap-1.5 bg-gray-50 p-1.5 rounded-xl border border-gray-200">
+                            <input type="date" v-model="filterStartDate" class="text-xs px-2 py-1 border border-gray-300 rounded-lg" />
+                            <span class="text-xs text-gray-500">s/d</span>
+                            <input type="date" v-model="filterEndDate" class="text-xs px-2 py-1 border border-gray-300 rounded-lg" />
+                            <button @click="applyFilters()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer">Cari</button>
+                        </div>
+
+                        <!-- Filter Pergantian Material -->
+                        <select v-model="filterReplacement" @change="applyFilters()" class="px-3 py-1.5 rounded-xl border border-gray-200 focus:border-emerald-500 text-xs bg-gray-50/50 cursor-pointer">
+                            <option value="">Semua Pergantian Material</option>
+                            <option value="yes">🔄 Ada Pergantian (ONT/Material)</option>
+                            <option value="no">➖ Tanpa Pergantian</option>
+                        </select>
+
+                        <!-- Tombol Terapkan Search -->
+                        <button @click="applyFilters()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                            <span>Filter</span>
+                        </button>
+
+                        <!-- Reset Filter -->
+                        <button @click="resetFilters" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1">
+                            <span>↺ Reset</span>
+                        </button>
+                    </div>
+
+                    <!-- Right side: Bulk Delete All Filtered Button -->
+                    <div v-if="can('pgs_btn_delete_all')" class="flex items-center gap-2">
+                        <button 
+                            @click="bulkDeleteAllFiltered"
+                            class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                            title="Hapus SEMUA data sesuai filter yang sedang aktif"
+                        >
+                            <svg class="w-3.5 h-3.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            <span>Hapus Semua Sesuai Filter</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -44,6 +216,15 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50/70 border-b border-gray-100 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                <th class="p-4 w-10 text-center">
+                                    <input 
+                                        type="checkbox" 
+                                        :checked="isAllSelected" 
+                                        @change="toggleSelectAll" 
+                                        class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
+                                        title="Pilih Semua di Halaman Ini"
+                                    />
+                                </th>
                                 <th class="p-4">No. Tiket & Pelanggan</th>
                                 <th class="p-4">Instruksi & Material Disiapkan</th>
                                 <th class="p-4">Status & Waktu Pengerjaan</th>
@@ -53,6 +234,16 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100 text-sm">
                             <tr v-for="ticket in tickets.data" :key="ticket.id" class="hover:bg-emerald-50/20 transition-colors group">
+                                <!-- Checkbox Row -->
+                                <td class="p-4 text-center">
+                                    <input 
+                                        type="checkbox" 
+                                        :checked="selectedIds.includes(ticket.id)" 
+                                        @change="toggleSelectRow(ticket.id)" 
+                                        class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
+                                    />
+                                </td>
+
                                 <!-- 1. No Tiket & Pelanggan -->
                                 <td class="p-4">
                                     <div class="flex items-center gap-2">
@@ -173,27 +364,49 @@
 
                                 <!-- 5. Aksi Teknisi -->
                                 <td class="p-4 text-center">
-                                    <div class="flex items-center justify-center gap-2">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <!-- View Detail Button -->
+                                        <button 
+                                            v-if="can('pgs_btn_view')"
+                                            @click="openDetailModal(ticket)" 
+                                            class="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
+                                            title="Lihat Detail Laporan Lengkap"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                        </button>
+
+                                        <!-- Input / Edit Laporan Button -->
                                         <button 
                                             v-if="can('pgs_btn_report')"
                                             @click="openReportModal(ticket)" 
-                                            class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5"
+                                            class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
                                         >
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                             <span>{{ ticket.status === 'completed' ? 'Edit Laporan' : 'Input Laporan' }}</span>
                                         </button>
 
-                                        <a :href="`/pgs/${ticket.id}/print`" target="_blank" title="Cetak Berita Acara & SPK" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                        <!-- Cetak SPK Button -->
+                                        <a :href="`/pgs/${ticket.id}/print`" target="_blank" title="Cetak Berita Acara & SPK" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                                         </a>
+
+                                        <!-- Delete Button -->
+                                        <button 
+                                            v-if="can('pgs_btn_delete')"
+                                            @click="deleteTicket(ticket)" 
+                                            class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                                            title="Hapus Tiket PGS"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
 
                             <tr v-if="tickets.data.length === 0">
-                                <td colspan="5" class="p-8 text-center text-gray-400">
+                                <td colspan="6" class="p-8 text-center text-gray-400">
                                     <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                    Tidak ada tiket penanganan sigap yang dijadwalkan saat ini.
+                                    Tidak ada tiket penanganan sigap yang sesuai dengan filter.
                                 </td>
                             </tr>
                         </tbody>
@@ -899,6 +1112,343 @@
                 </form>
             </div>
         </div>
+
+        <!-- ════════════ FLOATING BULK ACTION TOOLBAR ════════════ -->
+        <div v-if="selectedIds.length > 0" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-gray-900/95 text-white backdrop-blur-md px-5 py-3 rounded-2xl shadow-2xl border border-gray-700 flex items-center gap-4 animate-bounce-in">
+            <div class="text-xs font-bold flex items-center">
+                <span class="px-2 py-0.5 rounded-full bg-emerald-500 text-white font-mono text-xs mr-2">{{ selectedIds.length }}</span>
+                <span>tiket terpilih</span>
+            </div>
+            <div class="h-4 w-px bg-gray-700"></div>
+            <button 
+                v-if="can('pgs_btn_delete_all')"
+                @click="bulkDeleteSelected"
+                class="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                <span>Hapus Terpilih</span>
+            </button>
+            <button 
+                @click="clearSelection"
+                class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-medium transition-all cursor-pointer"
+            >
+                Batal
+            </button>
+        </div>
+
+        <!-- ════════════ MODAL VIEW DETAIL LAPORAN PENANGANAN PGS (READ-ONLY) ════════════ -->
+        <div v-if="showDetailModal" class="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div class="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-gray-100 flex flex-col max-h-[92vh] overflow-hidden my-auto animate-fade-in-up">
+                <!-- Modal Header -->
+                <div class="px-6 py-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex justify-between items-center shrink-0">
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="px-2.5 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 font-mono text-xs font-bold border border-emerald-500/30">
+                                #{{ detailTicket?.ticket_number }}
+                            </span>
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider" :class="detailTicket?.priority === 'critical' ? 'bg-red-500 text-white' : 'bg-slate-700 text-gray-200'">
+                                {{ detailTicket?.priority }}
+                            </span>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold" :class="detailTicket?.status === 'completed' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'">
+                                {{ detailTicket?.status === 'completed' ? '✅ SELESAI DIKERJAKAN' : '⏳ SIAP DITANGANI' }}
+                            </span>
+                        </div>
+                        <h3 class="font-black text-lg text-white mt-1">Detail Laporan Penanganan Lapangan</h3>
+                    </div>
+                    <button @click="closeDetailModal" class="p-2 text-gray-400 hover:text-white rounded-xl hover:bg-white/10 transition-colors cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <!-- Modal Body (Scrollable) -->
+                <div class="p-6 overflow-y-auto space-y-6">
+                    <!-- 1. Customer & Network Info Card -->
+                    <div class="p-4 rounded-2xl bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-200/80 shadow-2xs">
+                        <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Informasi Pelanggan & Jaringan</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                            <div>
+                                <span class="text-gray-500">Nama Pelanggan:</span>
+                                <div class="font-bold text-gray-900 text-sm mt-0.5">{{ detailTicket?.customer?.name || '-' }}</div>
+                                <div class="text-[11px] font-mono text-gray-500">{{ detailTicket?.customer?.customer_code }}</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">No. WhatsApp / HP:</span>
+                                <div class="font-bold text-gray-900 mt-0.5 flex items-center gap-1.5">
+                                    <span>{{ detailTicket?.customer?.phone || '-' }}</span>
+                                    <a 
+                                        v-if="detailTicket?.customer?.phone"
+                                        :href="`https://wa.me/${detailTicket.customer.phone.replace(/^0/, '62').replace(/[^0-9]/g, '')}`" 
+                                        target="_blank" 
+                                        class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold hover:bg-emerald-200 transition-colors"
+                                    >
+                                        Chat WA ↗
+                                    </a>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">ODP & Wilayah / Cabang:</span>
+                                <div class="font-bold text-emerald-700 mt-0.5">
+                                    {{ detailTicket?.customer?.ont?.odp?.name || '-' }} · {{ detailTicket?.area?.name || detailTicket?.customer?.area_model?.name || '-' }}
+                                </div>
+                            </div>
+                            <div class="sm:col-span-2 md:col-span-3">
+                                <span class="text-gray-500">Alamat Lengkap:</span>
+                                <div class="font-medium text-gray-800 mt-0.5">{{ detailTicket?.customer?.address || '-' }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Waktu, Jadwal & Tim Teknisi -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100">
+                            <div class="text-[11px] font-bold text-indigo-900 uppercase tracking-wider mb-2">Jadwal & Waktu Kerja</div>
+                            <div class="space-y-1.5 text-xs">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Tanggal Jadwal:</span>
+                                    <span class="font-bold text-gray-900">{{ formatDate(detailTicket?.scheduled_date) }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Jam Jadwal:</span>
+                                    <span class="font-bold text-gray-900">{{ detailTicket?.scheduled_time || 'Fleksibel' }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Waktu Pengerjaan:</span>
+                                    <span class="font-bold text-emerald-700">{{ detailTicket?.start_time || '-' }} s/d {{ detailTicket?.end_time || '-' }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-slate-50 border border-gray-200">
+                            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tim Teknisi yang Bertugas</div>
+                            <div class="space-y-1 text-xs">
+                                <div v-if="detailTicket?.lead_technician" class="text-gray-700">
+                                    <span class="text-gray-500">Ka. Teknisi:</span> <b>{{ detailTicket.lead_technician.name }}</b>
+                                </div>
+                                <div class="text-gray-700">
+                                    <span class="text-gray-500">Teknisi Lapangan:</span>
+                                    <div v-if="detailTicket?.technicians && detailTicket.technicians.length > 0" class="flex flex-wrap gap-1 mt-1">
+                                        <span v-for="tech in detailTicket.technicians" :key="tech.id" class="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-gray-800 font-medium text-[11px]">
+                                            👤 {{ tech.name }}
+                                        </span>
+                                    </div>
+                                    <span v-else class="text-gray-400 italic">Belum ada teknisi di-assign</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Masalah, Instruksi & Tindakan Perbaikan -->
+                    <div class="space-y-3">
+                        <div class="p-4 rounded-2xl bg-amber-50/60 border border-amber-200">
+                            <div class="text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">Temuan Masalah & Instruksi</div>
+                            <div class="text-xs text-amber-950 font-semibold">"{{ detailTicket?.reported_issue }}"</div>
+                            <div v-if="detailTicket?.lead_notes" class="mt-2 text-xs text-amber-800 bg-white/70 p-2 rounded-xl border border-amber-200">
+                                <span class="font-bold">Instruksi Ka. Teknisi:</span> {{ detailTicket.lead_notes }}
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200">
+                            <div class="text-[11px] font-bold text-emerald-900 uppercase tracking-wider mb-1">Hasil Tindakan Perbaikan Lapangan</div>
+                            <div class="text-xs text-emerald-950 font-bold whitespace-pre-line">{{ detailTicket?.action_taken || 'Belum dilaporkan' }}</div>
+                            <div v-if="detailTicket?.resolution_notes" class="mt-2 text-xs text-emerald-800 bg-white/70 p-2 rounded-xl border border-emerald-200">
+                                <span class="font-bold">Catatan Solusi:</span> {{ detailTicket.resolution_notes }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Redaman Optik (dBm) -->
+                    <div class="p-4 rounded-2xl bg-white border border-gray-200 shadow-2xs">
+                        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Pengukuran Redaman Optik (OPM)</div>
+                        <div class="flex items-center gap-4 text-xs">
+                            <div class="p-3 rounded-xl bg-gray-50 border border-gray-200 flex-1 text-center">
+                                <div class="text-[10px] text-gray-400 uppercase font-bold">Redaman Sebelum (Awal)</div>
+                                <div class="text-lg font-mono font-bold text-gray-700 mt-0.5">{{ detailTicket?.optical_power_before || '-' }} dBm</div>
+                            </div>
+                            <div class="text-gray-400 font-black text-xl">➔</div>
+                            <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex-1 text-center">
+                                <div class="text-[10px] text-emerald-600 uppercase font-bold">Redaman Sesudah (Akhir)</div>
+                                <div class="text-lg font-mono font-bold text-emerald-700 mt-0.5">{{ detailTicket?.optical_power_after || '-' }} dBm</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Titik Koordinat Insiden (Tikor GPS Multi) -->
+                    <div v-if="detailTicket?.incident_coordinates && detailTicket.incident_coordinates.length > 0" class="p-4 rounded-2xl bg-purple-50/50 border border-purple-200">
+                        <div class="text-[11px] font-bold text-purple-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <span>📍</span> Titik Koordinat Insiden / Lokasi Perbaikan ({{ detailTicket.incident_coordinates.length }} Titik)
+                        </div>
+                        <div class="space-y-2">
+                            <div v-for="(tikor, tIdx) in detailTicket.incident_coordinates" :key="'tikor-' + tIdx" class="p-2.5 rounded-xl bg-white border border-purple-100 flex items-center justify-between gap-2 text-xs">
+                                <div>
+                                    <div class="font-bold text-purple-950">{{ tikor.label || ('Titik #' + (tIdx + 1)) }}</div>
+                                    <div class="font-mono text-[11px] text-gray-600">{{ tikor.latitude }}, {{ tikor.longitude }}</div>
+                                    <div v-if="tikor.notes" class="text-[10px] text-gray-500 italic mt-0.5">"{{ tikor.notes }}"</div>
+                                </div>
+                                <a 
+                                    :href="`https://www.google.com/maps?q=${tikor.latitude},${tikor.longitude}`" 
+                                    target="_blank" 
+                                    class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-colors shrink-0 flex items-center gap-1"
+                                >
+                                    <span>🗺️ Buka Maps</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. Bukti Foto Sebelum & Sesudah -->
+                    <div class="p-4 rounded-2xl bg-gray-50 border border-gray-200">
+                        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Foto Dokumentasi Perbaikan</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <div class="text-[11px] font-bold text-gray-600 mb-1.5 flex items-center gap-1">
+                                    <span>📸 Foto Sebelum Pengerjaan</span>
+                                </div>
+                                <div v-if="detailTicket?.photo_before" class="relative group rounded-xl overflow-hidden border border-gray-300 aspect-video bg-gray-900 cursor-pointer" @click="zoomPhotoUrl = `/storage/${detailTicket.photo_before}`">
+                                    <img :src="`/storage/${detailTicket.photo_before}`" alt="Foto Sebelum" class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">
+                                        🔍 Klik untuk perbesar
+                                    </div>
+                                </div>
+                                <div v-else class="h-28 rounded-xl border border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs italic bg-white">
+                                    Tidak ada foto sebelum
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="text-[11px] font-bold text-emerald-700 mb-1.5 flex items-center gap-1">
+                                    <span>📸 Foto Sesudah Pengerjaan</span>
+                                </div>
+                                <div v-if="detailTicket?.photo_after" class="relative group rounded-xl overflow-hidden border border-emerald-300 aspect-video bg-gray-900 cursor-pointer" @click="zoomPhotoUrl = `/storage/${detailTicket.photo_after}`">
+                                    <img :src="`/storage/${detailTicket.photo_after}`" alt="Foto Sesudah" class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">
+                                        🔍 Klik untuk perbesar
+                                    </div>
+                                </div>
+                                <div v-else class="h-28 rounded-xl border border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs italic bg-white">
+                                    Tidak ada foto sesudah
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 7. Rekonsiliasi Bekal Material -->
+                    <div v-if="detailTicket?.materials && detailTicket.materials.length > 0" class="p-4 rounded-2xl bg-white border border-gray-200 shadow-2xs">
+                        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Rincian Bekal Material Diberikan vs Terpakai vs Sisa</div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-gray-50 border-b text-[10px] uppercase text-gray-500 font-bold">
+                                    <tr>
+                                        <th class="p-2">Material</th>
+                                        <th class="p-2 text-center">Bawa</th>
+                                        <th class="p-2 text-center">Terpakai</th>
+                                        <th class="p-2 text-center">Sisa (Retur)</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <tr v-for="m in detailTicket.materials" :key="m.id">
+                                        <td class="p-2 font-medium text-gray-900">{{ m.material?.name || '-' }}</td>
+                                        <td class="p-2 text-center font-bold text-gray-700">{{ parseFloat(m.quantity_prepared) }} {{ m.unit || m.material?.unit }}</td>
+                                        <td class="p-2 text-center font-bold text-emerald-600">{{ parseFloat(m.quantity_used || 0) }} {{ m.unit || m.material?.unit }}</td>
+                                        <td class="p-2 text-center font-bold text-blue-700 font-mono">
+                                            {{ parseFloat(m.quantity_returned || 0) > 0 ? ('+' + parseFloat(m.quantity_returned) + ' ' + (m.unit || m.material?.unit)) : '-' }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 8. Material Bekas Bongkaran (Dismantle) -->
+                    <div v-if="detailTicket?.dismantled_materials && detailTicket.dismantled_materials.length > 0" class="p-4 rounded-2xl bg-amber-50/50 border border-amber-200">
+                        <div class="text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <span>📦</span> Material Bekas / Copotan yang Diserahterimakan ({{ detailTicket.dismantled_materials.length }} Item)
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-amber-100/60 border-b border-amber-200 text-[10px] uppercase text-amber-900 font-bold">
+                                    <tr>
+                                        <th class="p-2">Nama Material Bekas</th>
+                                        <th class="p-2 text-center">Qty</th>
+                                        <th class="p-2">Kondisi</th>
+                                        <th class="p-2 text-center">Status Serah Terima</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-amber-100">
+                                    <tr v-for="d in detailTicket.dismantled_materials" :key="d.id">
+                                        <td class="p-2 font-bold text-amber-950">{{ d.item_name }}</td>
+                                        <td class="p-2 text-center font-bold">{{ parseFloat(d.quantity) }} {{ d.unit }}</td>
+                                        <td class="p-2">
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold" :class="d.condition === 'rusak_scrap' ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'">
+                                                {{ d.condition }}
+                                            </span>
+                                        </td>
+                                        <td class="p-2 text-center">
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold" :class="d.handover_status === 'received' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'">
+                                                {{ d.handover_status === 'received' ? '✅ Diterima Gudang' : '⏳ Menunggu Serah Terima' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 9. Info Pergantian ONT -->
+                    <div v-if="detailTicket?.ont_replacement_status && detailTicket.ont_replacement_status !== 'none'" class="p-4 rounded-2xl bg-teal-50 border border-teal-200">
+                        <div class="text-[11px] font-bold text-teal-900 uppercase tracking-wider mb-2">Informasi Pergantian Modem ONT</div>
+                        <div class="text-xs space-y-1">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Status Penggantian:</span>
+                                <span class="font-bold text-teal-900 uppercase">{{ detailTicket.ont_replacement_status }}</span>
+                            </div>
+                            <div v-if="detailTicket.old_ont" class="flex justify-between">
+                                <span class="text-gray-600">ONT Lama:</span>
+                                <span class="font-mono text-gray-700">{{ detailTicket.old_ont.serial_number }} ({{ detailTicket.old_ont.brand }} {{ detailTicket.old_ont.model }})</span>
+                            </div>
+                            <div v-if="detailTicket.prepared_ont" class="flex justify-between">
+                                <span class="text-gray-600">ONT Baru:</span>
+                                <span class="font-mono font-bold text-emerald-700">{{ detailTicket.prepared_ont.serial_number }} ({{ detailTicket.prepared_ont.brand }} {{ detailTicket.prepared_ont.model }})</span>
+                            </div>
+                            <div v-if="detailTicket.ont_replacement_notes" class="mt-1 text-[11px] text-teal-800 italic">
+                                "{{ detailTicket.ont_replacement_notes }}"
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="px-6 py-3.5 bg-gray-50 border-t border-gray-200 flex items-center justify-between shrink-0">
+                    <a :href="`/pgs/${detailTicket?.id}/print`" target="_blank" class="px-4 py-2 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        <span>Cetak SPK / Berita Acara</span>
+                    </a>
+
+                    <div class="flex items-center gap-2">
+                        <button 
+                            v-if="can('pgs_btn_report')"
+                            @click="closeDetailModal(); openReportModal(detailTicket)"
+                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            <span>{{ detailTicket?.status === 'completed' ? 'Edit Laporan' : 'Input Laporan' }}</span>
+                        </button>
+                        <button @click="closeDetailModal" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-xs font-bold cursor-pointer">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lightbox Zoom Image Modal -->
+        <div v-if="zoomPhotoUrl" class="fixed inset-0 z-60 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer" @click="zoomPhotoUrl = null">
+            <div class="relative max-w-4xl max-h-[90vh]">
+                <img :src="zoomPhotoUrl" alt="Zoom Foto" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl" />
+                <button @click.stop="zoomPhotoUrl = null" class="absolute -top-10 right-0 text-white text-sm font-bold bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full cursor-pointer">
+                    ✕ Tutup
+                </button>
+            </div>
+        </div>
     </AppLayout>
 </template>
 
@@ -921,11 +1471,70 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    counts: {
+        type: Object,
+        default: () => ({
+            total: 0,
+            scheduled: 0,
+            in_progress: 0,
+            completed: 0,
+            with_replacement: 0,
+        })
+    },
     filters: Object,
 });
 
 const search = ref(props.filters?.search || '');
 const filterArea = ref(props.filters?.area_id || '');
+const filterStatus = ref(props.filters?.status || '');
+const filterPriority = ref(props.filters?.priority || '');
+const filterPeriod = ref(props.filters?.period || '');
+const filterStartDate = ref(props.filters?.start_date || '');
+const filterEndDate = ref(props.filters?.end_date || '');
+const filterReplacement = ref(props.filters?.has_replacement || '');
+
+// Selection & Bulk Action State
+const selectedIds = ref([]);
+const isAllSelected = computed(() => {
+    if (!props.tickets?.data?.length) return false;
+    return props.tickets.data.every(t => selectedIds.value.includes(t.id));
+});
+
+const toggleSelectAll = () => {
+    if (isAllSelected.value) {
+        selectedIds.value = [];
+    } else {
+        selectedIds.value = props.tickets.data.map(t => t.id);
+    }
+};
+
+const toggleSelectRow = (id) => {
+    const idx = selectedIds.value.indexOf(id);
+    if (idx > -1) {
+        selectedIds.value.splice(idx, 1);
+    } else {
+        selectedIds.value.push(id);
+    }
+};
+
+const clearSelection = () => {
+    selectedIds.value = [];
+};
+
+// View Detail Modal State
+const showDetailModal = ref(false);
+const detailTicket = ref(null);
+const zoomPhotoUrl = ref(null);
+
+const openDetailModal = (ticket) => {
+    detailTicket.value = ticket;
+    showDetailModal.value = true;
+};
+
+const closeDetailModal = () => {
+    showDetailModal.value = false;
+    detailTicket.value = null;
+};
 
 const showReportModal = ref(false);
 const selectedTicket = ref(null);
@@ -1289,11 +1898,104 @@ const reportForm = useForm({
     materials: [],
 });
 
-const performSearch = () => {
-    router.get('/pgs/laporan', {
+const applyFilters = (overrides = {}) => {
+    const params = {
+        search: overrides.search !== undefined ? overrides.search : search.value,
+        area_id: overrides.area_id !== undefined ? overrides.area_id : filterArea.value,
+        status: overrides.status !== undefined ? overrides.status : filterStatus.value,
+        priority: overrides.priority !== undefined ? overrides.priority : filterPriority.value,
+        period: overrides.period !== undefined ? overrides.period : filterPeriod.value,
+        start_date: overrides.start_date !== undefined ? overrides.start_date : filterStartDate.value,
+        end_date: overrides.end_date !== undefined ? overrides.end_date : filterEndDate.value,
+        has_replacement: overrides.has_replacement !== undefined ? overrides.has_replacement : filterReplacement.value,
+    };
+    Object.keys(params).forEach(key => {
+        if (!params[key] || params[key] === 'all') delete params[key];
+    });
+    router.get('/pgs/laporan', params, { preserveState: true, replace: true });
+};
+
+const resetFilters = () => {
+    search.value = '';
+    filterArea.value = '';
+    filterStatus.value = '';
+    filterPriority.value = '';
+    filterPeriod.value = '';
+    filterStartDate.value = '';
+    filterEndDate.value = '';
+    filterReplacement.value = '';
+    router.get('/pgs/laporan', {}, { preserveState: true, replace: true });
+};
+
+const filterByCard = (type) => {
+    if (type === 'all') {
+        filterStatus.value = '';
+        filterReplacement.value = '';
+        applyFilters({ status: '', has_replacement: '' });
+    } else if (type === 'scheduled') {
+        filterStatus.value = 'scheduled';
+        applyFilters({ status: 'scheduled' });
+    } else if (type === 'in_progress') {
+        filterStatus.value = 'in_progress';
+        applyFilters({ status: 'in_progress' });
+    } else if (type === 'completed') {
+        filterStatus.value = 'completed';
+        applyFilters({ status: 'completed' });
+    } else if (type === 'replacement') {
+        filterReplacement.value = 'yes';
+        applyFilters({ has_replacement: 'yes' });
+    }
+};
+
+const deleteTicket = (ticket) => {
+    if (!confirm(`Hapus permanen tiket PGS #${ticket.ticket_number} (${ticket.customer?.name || 'Pelanggan'})? Tindakan ini tidak dapat dibatalkan.`)) {
+        return;
+    }
+    router.delete(`/pgs/${ticket.id}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            selectedIds.value = selectedIds.value.filter(id => id !== ticket.id);
+        }
+    });
+};
+
+const bulkDeleteSelected = () => {
+    if (selectedIds.value.length === 0) return;
+    if (!confirm(`Hapus permanen ${selectedIds.value.length} tiket PGS yang dipilih? Seluruh foto dan riwayat tindakan akan ikut terhapus.`)) {
+        return;
+    }
+    router.post('/pgs/bulk-destroy', {
+        ids: selectedIds.value
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            selectedIds.value = [];
+        }
+    });
+};
+
+const bulkDeleteAllFiltered = () => {
+    const totalCount = props.counts?.total || 0;
+    if (!confirm(`PERINGATAN PENGHAPUSAN MASSAL!\n\nAnda akan menghapus SEMUA tiket PGS yang sesuai dengan filter aktif saat ini (${totalCount} data) secara permanen.\n\nApakah Anda benar-benar yakin ingin melanjutkan?`)) {
+        return;
+    }
+    const secondConfirm = prompt('Ketik "HAPUS SEMUA" untuk konfirmasi penghapusan:');
+    if (secondConfirm !== 'HAPUS SEMUA') {
+        alert('Penghapusan massal dibatalkan.');
+        return;
+    }
+    router.post('/pgs/bulk-destroy', {
+        delete_all: true,
         search: search.value,
         area_id: filterArea.value,
-    }, { preserveState: true, replace: true });
+        status: filterStatus.value,
+        priority: filterPriority.value,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            selectedIds.value = [];
+        }
+    });
 };
 
 // ── Live Timer Logic ───────────────────────────────────────────
