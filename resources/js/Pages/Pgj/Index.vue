@@ -3,94 +3,234 @@
         <div class="space-y-6">
 
 
-            <!-- Stats Overview Cards -->
-            <div v-if="can('pgj_card_summary')" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <div @click="filterByStatus('all')" class="bg-white p-4 rounded-2xl border transition-all cursor-pointer hover:shadow-md" :class="activeStatus === 'all' ? 'border-rose-500 ring-2 ring-rose-100 shadow-sm' : 'border-gray-100'">
-                    <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Kasus Jalur</div>
-                    <div class="text-2xl font-black text-gray-900 mt-1">{{ counts.all || 0 }}</div>
-                    <div class="text-[11px] text-gray-400 mt-1">Seluruh gangguan fisik jalur</div>
+            <!-- Stats Overview Cards (Canggih & Interaktif) -->
+            <div v-if="can('pgj_card_summary')" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                <!-- Card 1: Total Kasus PGJ -->
+                <div 
+                    @click="filterByStatus('all')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none"
+                    :class="(!activeStatus || activeStatus === 'all') ? 'border-slate-800 ring-2 ring-slate-200/80 shadow-sm bg-gradient-to-br from-white to-slate-50' : 'border-gray-100 hover:border-slate-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-slate-500 uppercase tracking-wider">Total Kasus Jalur</span>
+                        <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-slate-900 mt-2 tracking-tight">{{ counts.all || 0 }}</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5 truncate">Seluruh gangguan fisik jalur</div>
                 </div>
 
-                <div @click="filterByStatus('admin_handling')" class="bg-white p-4 rounded-2xl border transition-all cursor-pointer hover:shadow-md" :class="activeStatus === 'admin_handling' ? 'border-rose-500 ring-2 ring-rose-100 shadow-sm' : 'border-gray-100'">
-                    <div class="text-[11px] font-bold text-rose-600 uppercase tracking-wider flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-                        Ditangani Admin
+                <!-- Card 2: Ditangani Admin -->
+                <div 
+                    @click="filterByStatus('admin_handling')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none"
+                    :class="activeStatus === 'admin_handling' ? 'border-rose-500 ring-2 ring-rose-100 shadow-sm bg-gradient-to-br from-white to-rose-50/30' : 'border-gray-100 hover:border-rose-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-rose-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                            Ditangani Admin
+                        </span>
+                        <div class="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        </div>
                     </div>
-                    <div class="text-2xl font-black text-rose-700 mt-1">{{ counts.admin_handling || 0 }}</div>
-                    <div class="text-[11px] text-gray-400 mt-1">Identifikasi & NOC remote</div>
+                    <div class="text-2xl font-black text-rose-700 mt-2 tracking-tight">{{ counts.admin_handling || 0 }}</div>
+                    <div class="text-[10px] text-rose-600/70 mt-0.5 truncate">Identifikasi & NOC remote</div>
                 </div>
 
-                <div @click="filterByStatus('escalated_to_lead')" class="bg-white p-4 rounded-2xl border transition-all cursor-pointer hover:shadow-md" :class="activeStatus === 'escalated_to_lead' ? 'border-amber-500 ring-2 ring-amber-100 shadow-sm' : 'border-gray-100'">
-                    <div class="text-[11px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-                        Eskalasi Ka. Teknisi
+                <!-- Card 3: Eskalasi Ka. Teknisi -->
+                <div 
+                    @click="filterByStatus('escalated_to_lead')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none"
+                    :class="activeStatus === 'escalated_to_lead' ? 'border-amber-500 ring-2 ring-amber-100 shadow-sm bg-gradient-to-br from-white to-amber-50/30' : 'border-gray-100 hover:border-amber-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                            Eskalasi Ka. Teknisi
+                        </span>
+                        <div class="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        </div>
                     </div>
-                    <div class="text-2xl font-black text-amber-700 mt-1">{{ counts.escalated_to_lead || 0 }}</div>
-                    <div class="text-[11px] text-gray-400 mt-1">Perlu tim & material FO</div>
+                    <div class="text-2xl font-black text-amber-700 mt-2 tracking-tight">{{ counts.escalated_to_lead || 0 }}</div>
+                    <div class="text-[10px] text-amber-600/70 mt-0.5 truncate">Perlu tim & material FO</div>
                 </div>
 
-                <div @click="filterByStatus('scheduled')" class="bg-white p-4 rounded-2xl border transition-all cursor-pointer hover:shadow-md" :class="activeStatus === 'scheduled' ? 'border-indigo-500 ring-2 ring-indigo-100 shadow-sm' : 'border-gray-100'">
-                    <div class="text-[11px] font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-                        Dijadwalkan
+                <!-- Card 4: Dijadwalkan Lapangan -->
+                <div 
+                    @click="filterByStatus('scheduled')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none"
+                    :class="activeStatus === 'scheduled' ? 'border-indigo-500 ring-2 ring-indigo-100 shadow-sm bg-gradient-to-br from-white to-indigo-50/30' : 'border-gray-100 hover:border-indigo-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-indigo-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                            Dijadwalkan
+                        </span>
+                        <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        </div>
                     </div>
-                    <div class="text-2xl font-black text-indigo-700 mt-1">{{ counts.scheduled || 0 }}</div>
-                    <div class="text-[11px] text-gray-400 mt-1">Tim lapangan bertugas</div>
+                    <div class="text-2xl font-black text-indigo-700 mt-2 tracking-tight">{{ counts.scheduled || 0 }}</div>
+                    <div class="text-[10px] text-indigo-600/70 mt-0.5 truncate">Tim lapangan bertugas</div>
                 </div>
 
-                <div @click="filterByStatus('completed')" class="bg-white p-4 rounded-2xl border transition-all cursor-pointer hover:shadow-md col-span-2 sm:col-span-1" :class="activeStatus === 'completed' ? 'border-emerald-500 ring-2 ring-emerald-100 shadow-sm' : 'border-gray-100'">
-                    <div class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        Restorasi Selesai
+                <!-- Card 5: Restorasi Selesai -->
+                <div 
+                    @click="filterByStatus('completed')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md col-span-2 sm:col-span-1 relative overflow-hidden group select-none"
+                    :class="activeStatus === 'completed' ? 'border-emerald-500 ring-2 ring-emerald-100 shadow-sm bg-gradient-to-br from-white to-emerald-50/30' : 'border-gray-100 hover:border-emerald-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Restorasi Selesai
+                        </span>
+                        <div class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
                     </div>
-                    <div class="text-2xl font-black text-emerald-700 mt-1">{{ counts.completed || 0 }}</div>
-                    <div class="text-[11px] text-gray-400 mt-1">Jalur kembali normal</div>
+                    <div class="text-2xl font-black text-emerald-700 mt-2 tracking-tight">{{ counts.completed || 0 }}</div>
+                    <div class="text-[10px] text-emerald-600/70 mt-0.5 truncate">Jalur kembali normal</div>
                 </div>
             </div>
 
-            <!-- Toolbar & Filter -->
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                <div v-if="can('pgj_filter')" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 flex-wrap">
-                    <div class="relative flex-1 sm:w-64">
-                        <input 
-                            type="text" 
-                            v-model="search" 
-                            placeholder="Cari No. PGJ, ODC, ODP, lokasi, core..." 
-                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-sm transition-all"
-                            @keyup.enter="performSearch"
+            <!-- Toolbar & Filter Canggih -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+                <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
+                    <!-- Left: Search & Filter Controls -->
+                    <div v-if="can('pgj_filter')" class="flex flex-wrap items-center gap-2.5 flex-1">
+                        <!-- Search Box with Clear Button -->
+                        <div class="relative flex-1 min-w-[220px] sm:max-w-xs">
+                            <input 
+                                type="text" 
+                                v-model="search" 
+                                placeholder="Cari No. PGJ, ODC, ODP, lokasi, core..." 
+                                class="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-xs transition-all placeholder:text-gray-400 font-medium"
+                                @keyup.enter="performSearch"
+                            >
+                            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            <button v-if="search" @click="search = ''; performSearch()" class="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Status Filter Dropdown -->
+                        <select v-model="activeStatus" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                            <option value="all">Semua Status</option>
+                            <option value="admin_handling">🚨 Ditangani Admin (NOC Remote)</option>
+                            <option value="escalated_to_lead">⚠️ Eskalasi Ka. Teknisi</option>
+                            <option value="scheduled">📅 Dijadwalkan Lapangan</option>
+                            <option value="completed">🟢 Restorasi Selesai (Pulih)</option>
+                        </select>
+
+                        <!-- Segmen Filter Dropdown -->
+                        <select v-model="filterSegment" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                            <option value="">Semua Segmen Jalur</option>
+                            <option value="backbone">⚡ Backbone / Sumber Internet</option>
+                            <option value="odc">Perangkat & Jalur ODC</option>
+                            <option value="odp">Perangkat & Jalur ODP</option>
+                            <option value="distribution">Jalur Distribusi (ODC ke ODP)</option>
+                            <option value="other">Infrastruktur Tiang / Lainnya</option>
+                        </select>
+
+                        <!-- Prioritas Filter Dropdown -->
+                        <select v-model="filterPriority" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                            <option value="">Semua Prioritas</option>
+                            <option value="critical">🔴 Kritis (Critical)</option>
+                            <option value="high">🟠 Tinggi (High)</option>
+                            <option value="medium">🔵 Sedang (Medium)</option>
+                            <option value="low">⚪ Rendah (Low)</option>
+                        </select>
+
+                        <!-- Area Filter Dropdown -->
+                        <select v-model="filterArea" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                            <option value="">Semua Wilayah / Area</option>
+                            <option v-for="a in areas" :key="a.id" :value="a.id">📍 {{ a.name }}</option>
+                        </select>
+
+                        <!-- Periode Filter Dropdown -->
+                        <select v-model="filterPeriod" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                            <option value="">Semua Periode</option>
+                            <option value="today">Hari Ini</option>
+                            <option value="this_week">Minggu Ini</option>
+                            <option value="this_month">Bulan Ini</option>
+                            <option value="last_month">Bulan Lalu</option>
+                            <option value="custom">Rentang Tanggal (Custom)...</option>
+                        </select>
+
+                        <!-- Reset Filter Button -->
+                        <button 
+                            v-if="hasActiveFilters" 
+                            @click="resetFilters" 
+                            type="button" 
+                            class="px-3 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors flex items-center gap-1.5"
+                            title="Reset Semua Filter"
                         >
-                        <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>Reset Filter</span>
+                        </button>
                     </div>
 
-                    <select v-model="filterSegment" @change="performSearch" class="px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-sm bg-gray-50/50 font-medium">
-                        <option value="">Semua Segmen Jalur</option>
-                        <option value="backbone">⚡ Jalur Utama Backbone / Sumber Internet</option>
-                        <option value="odc">Perangkat & Jalur ODC</option>
-                        <option value="odp">Perangkat & Jalur ODP</option>
-                        <option value="distribution">Jalur Distribusi (ODC ke ODP)</option>
-                        <option value="other">Infrastruktur Tiang / Lainnya</option>
-                    </select>
+                    <!-- Right: Action Buttons -->
+                    <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                        <!-- Tombol Hapus Terpilih -->
+                        <button 
+                            v-if="selectedIds.length > 0 && can(['pgj_btn_delete', 'pgj_btn_delete_all', 'pgj_manage'])"
+                            @click="openDeleteModal('selected')"
+                            type="button"
+                            class="px-3.5 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-xs rounded-xl border border-rose-200 shadow-sm flex items-center gap-1.5 transition-all animate-fade-in"
+                        >
+                            <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            <span>Hapus Terpilih ({{ selectedIds.length }})</span>
+                        </button>
 
-                    <select v-model="filterPriority" @change="performSearch" class="px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-sm bg-gray-50/50">
-                        <option value="">Semua Prioritas</option>
-                        <option value="critical">Kritis (Critical)</option>
-                        <option value="high">Tinggi (High)</option>
-                        <option value="medium">Sedang (Medium)</option>
-                        <option value="low">Rendah (Low)</option>
-                    </select>
+                        <!-- Tombol Hapus Semua -->
+                        <button 
+                            v-if="can(['pgj_btn_delete_all', 'pgj_manage'])"
+                            @click="openDeleteModal('all')"
+                            type="button"
+                            class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 shadow-sm flex items-center gap-1.5 transition-all"
+                            title="Hapus Seluruh Data PGJ"
+                        >
+                            <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            <span>Hapus Semua</span>
+                        </button>
 
-                    <select v-model="filterArea" @change="performSearch" class="px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-100 text-sm bg-gray-50/50">
-                        <option value="">Semua Area</option>
-                        <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
-                    </select>
+                        <!-- Tombol Catat Gangguan Jalur -->
+                        <button v-if="can('pgj_btn_create')" @click="openCreateModal" class="bg-gradient-to-r from-rose-600 to-red-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-md shadow-rose-500/20 hover:shadow-lg hover:shadow-rose-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>+ Catat Gangguan Jalur</span>
+                        </button>
+                    </div>
                 </div>
 
-                <button v-if="can('pgj_btn_create')" @click="openCreateModal" class="bg-gradient-to-r from-rose-600 to-red-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-rose-500/20 hover:shadow-lg hover:shadow-rose-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    <span>+ Catat Gangguan Jalur</span>
-                </button>
+                <!-- Custom Date Range Bar (Expanded if filterPeriod === 'custom') -->
+                <transition
+                    enter-active-class="transition duration-200 ease-out"
+                    enter-from-class="transform opacity-0 -translate-y-2"
+                    enter-to-class="transform opacity-100 translate-y-0"
+                    leave-active-class="transition duration-150 ease-in"
+                    leave-from-class="transform opacity-100 translate-y-0"
+                    leave-to-class="transform opacity-0 -translate-y-2"
+                >
+                    <div v-if="filterPeriod === 'custom'" class="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-3 text-xs bg-slate-50/70 p-3 rounded-xl border border-slate-200/60">
+                        <span class="font-bold text-slate-700">Pilih Rentang Tanggal:</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-500 font-medium">Dari:</span>
+                            <input type="date" v-model="startDate" @change="performSearch" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs bg-white font-medium focus:border-rose-500 focus:ring-1 focus:ring-rose-200">
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-500 font-medium">Sampai:</span>
+                            <input type="date" v-model="endDate" @change="performSearch" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs bg-white font-medium focus:border-rose-500 focus:ring-1 focus:ring-rose-200">
+                        </div>
+                    </div>
+                </transition>
             </div>
 
             <!-- Flash Alert -->
@@ -109,6 +249,15 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50/70 border-b border-gray-100 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                <th v-if="can(['pgj_btn_delete', 'pgj_btn_delete_all', 'pgj_manage'])" class="p-4 w-12 text-center">
+                                    <input 
+                                        type="checkbox" 
+                                        :checked="isAllSelected" 
+                                        @change="toggleSelectAll" 
+                                        class="rounded border-gray-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                                        title="Pilih Semua di Halaman Ini"
+                                    />
+                                </th>
                                 <th class="p-4">No. Tiket & Segmen</th>
                                 <th class="p-4">Titik Infrastruktur & Dampak</th>
                                 <th class="p-4">Kerusakan & Indikasi Masalah</th>
@@ -117,7 +266,15 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 text-sm">
-                            <tr v-for="ticket in tickets.data" :key="ticket.id" class="hover:bg-rose-50/20 transition-colors group">
+                            <tr v-for="ticket in tickets.data" :key="ticket.id" class="hover:bg-rose-50/20 transition-colors group" :class="{ 'bg-rose-50/40': selectedIds.includes(ticket.id) }">
+                                <td v-if="can(['pgj_btn_delete', 'pgj_btn_delete_all', 'pgj_manage'])" class="p-4 text-center">
+                                    <input 
+                                        type="checkbox" 
+                                        :value="ticket.id" 
+                                        v-model="selectedIds" 
+                                        class="rounded border-gray-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                                    />
+                                </td>
                                 <!-- 1. No Tiket & Segmen -->
                                 <td class="p-4">
                                     <div class="flex items-center gap-2">
@@ -271,7 +428,12 @@
                                         </a>
 
                                         <!-- Hapus Tiket -->
-                                        <button @click="deleteTicket(ticket)" title="Hapus Tiket" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                        <button 
+                                            v-if="can(['pgj_btn_delete', 'pgj_manage'])"
+                                            @click="openDeleteModal('single', ticket)" 
+                                            title="Hapus Tiket" 
+                                            class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                         </button>
                                     </div>
@@ -279,7 +441,7 @@
                             </tr>
 
                             <tr v-if="tickets.data.length === 0">
-                                <td colspan="5" class="p-8 text-center text-gray-400">
+                                <td :colspan="can(['pgj_btn_delete', 'pgj_btn_delete_all', 'pgj_manage']) ? 6 : 5" class="p-8 text-center text-gray-400">
                                     <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                     Tidak ada tiket gangguan jalur yang ditemukan.
                                 </td>
@@ -978,6 +1140,68 @@
                 <img :src="previewModalImage" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl border border-white/20" />
             </div>
         </div>
+
+        <!-- ════════════ MODAL KONFIRMASI HAPUS (SATUAN / MASSAL / SEMUA) ════════════ -->
+        <Teleport to="body">
+            <div v-if="showDeleteModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeDeleteModal"></div>
+                <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md relative z-10 animate-fade-in-up border border-slate-100 overflow-hidden">
+                    <div class="p-6 text-center space-y-4">
+                        <div class="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto border-4 border-rose-100/50 shadow-inner">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-lg font-black text-slate-800">
+                                {{ deleteMode === 'single' 
+                                    ? `Hapus Tiket PGJ #${itemToDelete?.ticket_number}?` 
+                                    : (deleteMode === 'selected' ? `Hapus ${selectedIds.length} Tiket PGJ Terpilih?` : 'Hapus Seluruh Data Tiket PGJ?') }}
+                            </h3>
+                            <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                                {{ deleteMode === 'single'
+                                    ? `Tiket #${itemToDelete?.ticket_number} (${itemToDelete?.location_name || itemToDelete?.category}) beserta foto penanganan dan histori material akan dihapus secara permanen.`
+                                    : (deleteMode === 'selected' 
+                                        ? `Tindakan ini akan menghapus ${selectedIds.length} data tiket PGJ yang Anda pilih beserta file foto terkait secara permanen.`
+                                        : `Tindakan ini akan menghapus SEMUA data tiket gangguan jalur (${counts?.all || tickets.total || 0} tiket) yang ada di sistem secara permanen!`)
+                                }}
+                            </p>
+                        </div>
+
+                        <!-- Konfirmasi Text HAPUS untuk Hapus Semua -->
+                        <div v-if="deleteMode === 'all'" class="text-left space-y-1.5 pt-1">
+                            <label class="block text-xs font-bold text-slate-700">
+                                Ketik <span class="text-rose-600 font-mono font-black">HAPUS</span> untuk konfirmasi:
+                            </label>
+                            <input 
+                                v-model="deleteConfirmInput" 
+                                type="text" 
+                                placeholder="Ketik HAPUS" 
+                                class="w-full px-3.5 py-2.5 border-2 border-rose-200 rounded-xl text-sm text-center uppercase tracking-widest font-mono font-black focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 focus:outline-none"
+                            />
+                        </div>
+
+                        <div class="flex items-center gap-3 pt-2">
+                            <button 
+                                type="button" 
+                                @click="closeDeleteModal" 
+                                class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="confirmDelete" 
+                                :disabled="isDeleting || (deleteMode === 'all' && deleteConfirmInput.toUpperCase() !== 'HAPUS')"
+                                class="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-rose-500/30 flex items-center justify-center gap-2"
+                            >
+                                <svg v-if="isDeleting" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>{{ isDeleting ? 'Menghapus...' : (deleteMode === 'all' ? 'Ya, Hapus Semua' : 'Ya, Hapus') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
 
@@ -1008,6 +1232,57 @@ const activeStatus = ref(props.filters?.status || 'all');
 const filterSegment = ref(props.filters?.segment_type || '');
 const filterPriority = ref(props.filters?.priority || '');
 const filterArea = ref(props.filters?.area_id || '');
+const filterPeriod = ref(props.filters?.period || '');
+const startDate = ref(props.filters?.start_date || '');
+const endDate = ref(props.filters?.end_date || '');
+
+// Selection & Delete State
+const selectedIds = ref([]);
+const showDeleteModal = ref(false);
+const deleteMode = ref('single'); // 'single' | 'selected' | 'all'
+const itemToDelete = ref(null);
+const deleteConfirmInput = ref('');
+const isDeleting = ref(false);
+
+const hasActiveFilters = computed(() => {
+    return !!(
+        search.value ||
+        (activeStatus.value && activeStatus.value !== 'all') ||
+        filterSegment.value ||
+        filterPriority.value ||
+        filterArea.value ||
+        filterPeriod.value ||
+        startDate.value ||
+        endDate.value
+    );
+});
+
+const isAllSelected = computed(() => {
+    if (!props.tickets.data || props.tickets.data.length === 0) return false;
+    return props.tickets.data.every(ticket => selectedIds.value.includes(ticket.id));
+});
+
+const toggleSelectAll = (event) => {
+    if (event.target.checked) {
+        const pageIds = props.tickets.data.map(ticket => ticket.id);
+        selectedIds.value = Array.from(new Set([...selectedIds.value, ...pageIds]));
+    } else {
+        const pageIds = new Set(props.tickets.data.map(ticket => ticket.id));
+        selectedIds.value = selectedIds.value.filter(id => !pageIds.has(id));
+    }
+};
+
+const resetFilters = () => {
+    search.value = '';
+    activeStatus.value = 'all';
+    filterSegment.value = '';
+    filterPriority.value = '';
+    filterArea.value = '';
+    filterPeriod.value = '';
+    startDate.value = '';
+    endDate.value = '';
+    performSearch();
+};
 
 const showCreateModal = ref(false);
 const showResolveAdminModal = ref(false);
@@ -1194,6 +1469,9 @@ const performSearch = () => {
         segment_type: filterSegment.value,
         priority: filterPriority.value,
         area_id: filterArea.value,
+        period: filterPeriod.value,
+        start_date: startDate.value,
+        end_date: endDate.value,
     }, { preserveState: true, replace: true });
 };
 
@@ -1303,10 +1581,63 @@ const openDetailModal = (ticket) => {
     showDetailModal.value = true;
 };
 
-const deleteTicket = (ticket) => {
-    if (confirm(`Hapus tiket gangguan jalur #${ticket.ticket_number}?`)) {
-        router.delete(`/pgj/${ticket.id}`);
+const openDeleteModal = (mode, item = null) => {
+    deleteMode.value = mode;
+    itemToDelete.value = item;
+    deleteConfirmInput.value = '';
+    showDeleteModal.value = true;
+};
+
+const closeDeleteModal = () => {
+    showDeleteModal.value = false;
+    itemToDelete.value = null;
+    deleteConfirmInput.value = '';
+};
+
+const confirmDelete = () => {
+    if (deleteMode.value === 'single') {
+        if (!itemToDelete.value) return;
+        isDeleting.value = true;
+        router.delete(`/pgj/${itemToDelete.value.id}`, {
+            preserveScroll: true,
+            onFinish: () => {
+                isDeleting.value = false;
+                closeDeleteModal();
+                selectedIds.value = selectedIds.value.filter(id => id !== itemToDelete.value?.id);
+            }
+        });
+    } else if (deleteMode.value === 'selected') {
+        if (selectedIds.value.length === 0) return;
+        isDeleting.value = true;
+        router.post('/pgj/bulk-delete', {
+            type: 'selected',
+            ids: selectedIds.value
+        }, {
+            preserveScroll: true,
+            onFinish: () => {
+                isDeleting.value = false;
+                closeDeleteModal();
+                selectedIds.value = [];
+            }
+        });
+    } else if (deleteMode.value === 'all') {
+        if (deleteConfirmInput.value.toUpperCase() !== 'HAPUS') return;
+        isDeleting.value = true;
+        router.post('/pgj/bulk-delete', {
+            type: 'all'
+        }, {
+            preserveScroll: true,
+            onFinish: () => {
+                isDeleting.value = false;
+                closeDeleteModal();
+                selectedIds.value = [];
+            }
+        });
     }
+};
+
+const deleteTicket = (ticket) => {
+    openDeleteModal('single', ticket);
 };
 
 const formatDate = (dateStr) => {

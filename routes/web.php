@@ -542,6 +542,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('pgj/{pgj}/escalate', [\App\Http\Controllers\PgjController::class, 'escalateToLead'])->name('pgj.escalate');
     Route::post('pgj/{pgj}/schedule', [\App\Http\Controllers\PgjController::class, 'schedule'])->name('pgj.schedule');
     Route::post('pgj/{pgj}/report', [\App\Http\Controllers\PgjController::class, 'submitReport'])->name('pgj.report');
+    Route::post('pgj/bulk-delete', [\App\Http\Controllers\PgjController::class, 'bulkDestroy'])->name('pgj.bulk-delete');
     Route::delete('pgj/{pgj}', [\App\Http\Controllers\PgjController::class, 'destroy'])->name('pgj.destroy');
     
     // CBP / Cabut Perangkat

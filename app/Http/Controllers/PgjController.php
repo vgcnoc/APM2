@@ -105,15 +105,46 @@ class PgjController extends Controller
             $query->where('area_id', $request->area_id);
         }
 
+        // Filter periode tanggal
+        if ($request->filled('period')) {
+            switch ($request->period) {
+                case 'today':
+                    $query->whereDate('created_at', today());
+                    break;
+                case 'this_week':
+                    $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+                    break;
+                case 'this_month':
+                    $query->whereMonth('created_at', now()->month)
+                          ->whereYear('created_at', now()->year);
+                    break;
+                case 'last_month':
+                    $query->whereMonth('created_at', now()->subMonth()->month)
+                          ->whereYear('created_at', now()->subMonth()->year);
+                    break;
+                case 'custom':
+                    if ($request->filled('start_date')) {
+                        $query->whereDate('created_at', '>=', $request->start_date);
+                    }
+                    if ($request->filled('end_date')) {
+                        $query->whereDate('created_at', '<=', $request->end_date);
+                    }
+                    break;
+            }
+        }
+
         $tickets = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
-        // Hitung statistik kasus jalur
+        // Hitung statistik kasus jalur dengan menghormati data scope user
+        $baseCountQuery = PgjTicket::query();
+        DataScopeService::applyPgjScope($baseCountQuery);
+
         $counts = [
-            'all' => PgjTicket::count(),
-            'admin_handling' => PgjTicket::where('status', 'admin_handling')->count(),
-            'escalated_to_lead' => PgjTicket::where('status', 'escalated_to_lead')->count(),
-            'scheduled' => PgjTicket::where('status', 'scheduled')->count(),
-            'completed' => PgjTicket::where('status', 'completed')->count(),
+            'all' => (clone $baseCountQuery)->count(),
+            'admin_handling' => (clone $baseCountQuery)->where('status', 'admin_handling')->count(),
+            'escalated_to_lead' => (clone $baseCountQuery)->where('status', 'escalated_to_lead')->count(),
+            'scheduled' => (clone $baseCountQuery)->where('status', 'scheduled')->count(),
+            'completed' => (clone $baseCountQuery)->where('status', 'completed')->count(),
         ];
 
         $areas = Area::withCount(['customers' => function($q) {
@@ -151,7 +182,7 @@ class PgjController extends Controller
             'technicians' => $technicians,
             'leadTechnicians' => $leadTechnicians,
             'counts' => $counts,
-            'filters' => $request->only(['search', 'status', 'priority', 'segment_type', 'area_id']),
+            'filters' => $request->only(['search', 'status', 'priority', 'segment_type', 'area_id', 'period', 'start_date', 'end_date']),
         ]);
     }
 
@@ -979,23 +1010,112 @@ class PgjController extends Controller
     }
 
     /**
-     * Hapus Tiket PGJ
+     * Hapus Tiket PGJ (Salah Satu)
      */
-    public function destroy(PgjTicket $pgj)
+    public function destroy(Request $request, PgjTicket $pgj)
     {
+        $user = $request->user();
+        if ($user && !$user->can(['pgj_btn_delete', 'pgj_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus tiket PGJ.');
+        }
+
         $num = $pgj->ticket_number;
+        $loc = $pgj->location_name;
+        $oldStatus = $pgj->status;
+
+        // Hapus file foto penanganan jika ada di storage
+        if (!empty($pgj->handling_photos) && is_array($pgj->handling_photos)) {
+            foreach ($pgj->handling_photos as $p) {
+                if (!empty($p['path']) && \Illuminate\Support\Facades\Storage::disk('public')->exists($p['path'])) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($p['path']);
+                }
+            }
+        }
+        if ($pgj->photo_before && \Illuminate\Support\Facades\Storage::disk('public')->exists($pgj->photo_before)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($pgj->photo_before);
+        }
+        if ($pgj->photo_after && \Illuminate\Support\Facades\Storage::disk('public')->exists($pgj->photo_after)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($pgj->photo_after);
+        }
+
         $pgj->technicians()->detach();
         $pgj->materials()->delete();
+        AuditLog::where('entity_type', PgjTicket::class)->where('entity_id', $pgj->id)->delete();
         $pgj->delete();
 
         AuditLog::createLog(
             'Hapus Tiket PGJ',
             null,
-            null,
-            null,
-            "Menghapus tiket PGJ {$num}"
+            $oldStatus,
+            'deleted',
+            "Menghapus tiket PGJ #{$num} ({$loc})"
         );
 
         return redirect()->back()->with('success', "Tiket PGJ #{$num} berhasil dihapus.");
+    }
+
+    /**
+     * Hapus Massal Tiket PGJ (Terpilih atau Semua)
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $user = $request->user();
+        if ($user && !$user->can(['pgj_btn_delete_all', 'pgj_btn_delete', 'pgj_manage']) && !$user->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus massal tiket PGJ.');
+        }
+
+        $validated = $request->validate([
+            'type' => 'required|in:selected,all',
+            'ids' => 'nullable|array',
+            'ids.*' => 'integer',
+        ]);
+
+        $query = PgjTicket::query();
+        DataScopeService::applyPgjScope($query);
+
+        if ($validated['type'] === 'selected') {
+            if (empty($validated['ids'])) {
+                return redirect()->back()->with('error', 'Tidak ada data tiket PGJ yang dipilih untuk dihapus.');
+            }
+            $query->whereIn('id', $validated['ids']);
+        }
+
+        $count = $query->count();
+        if ($count === 0) {
+            return redirect()->back()->with('error', 'Tidak ada data tiket PGJ yang dapat dihapus.');
+        }
+
+        $records = $query->get();
+        foreach ($records as $record) {
+            // Hapus file foto
+            if (!empty($record->handling_photos) && is_array($record->handling_photos)) {
+                foreach ($record->handling_photos as $p) {
+                    if (!empty($p['path']) && \Illuminate\Support\Facades\Storage::disk('public')->exists($p['path'])) {
+                        \Illuminate\Support\Facades\Storage::disk('public')->delete($p['path']);
+                    }
+                }
+            }
+            if ($record->photo_before && \Illuminate\Support\Facades\Storage::disk('public')->exists($record->photo_before)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($record->photo_before);
+            }
+            if ($record->photo_after && \Illuminate\Support\Facades\Storage::disk('public')->exists($record->photo_after)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($record->photo_after);
+            }
+
+            $record->technicians()->detach();
+            $record->materials()->delete();
+            AuditLog::where('entity_type', PgjTicket::class)->where('entity_id', $record->id)->delete();
+            $record->delete();
+        }
+
+        AuditLog::createLog(
+            'Hapus Massal Tiket PGJ',
+            null,
+            null,
+            'deleted',
+            "Menghapus {$count} tiket gangguan jalur PGJ secara massal (Tipe: {$validated['type']})"
+        );
+
+        return redirect()->back()->with('success', "Berhasil menghapus {$count} tiket gangguan jalur PGJ.");
     }
 }
