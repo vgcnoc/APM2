@@ -328,7 +328,9 @@ class PgsController extends Controller
         foreach ($tickets as $t) {
             if ($t->customer) {
                 \App\Services\CustomerMaterialService::getOrSeedInstalledMaterials($t->customer);
-                $t->customer->load('activeInstalledMaterials.material');
+                $t->customer->unsetRelation('activeInstalledMaterials');
+                $t->customer->unsetRelation('installedMaterials');
+                $t->customer->load('activeInstalledMaterials.material', 'installedMaterials.material');
             }
         }
 

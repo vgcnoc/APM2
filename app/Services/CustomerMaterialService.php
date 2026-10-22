@@ -61,6 +61,21 @@ class CustomerMaterialService
                     'notes' => 'Unit ONT aktif pelanggan (SN: ' . $customer->ont->serial_number . ')',
                 ]);
                 $created->push($ontRecord);
+            } else {
+                $matOnt = Material::where('category', 'like', '%ont%')->orWhere('category', 'like', '%modem%')->first();
+                $ontRecord = CustomerInstalledMaterial::create([
+                    'customer_id' => $customer->id,
+                    'material_id' => $matOnt?->id,
+                    'item_name' => 'Unit ONT Modem FTTH Standar',
+                    'quantity' => 1,
+                    'unit' => 'unit',
+                    'serial_number' => null,
+                    'installed_at' => $customer->activation_date ?: $customer->registration_date ?: now(),
+                    'installation_source' => 'psb_installation',
+                    'status' => 'installed',
+                    'notes' => 'Modem ONT terpasang pada instalasi awal pelanggan.',
+                ]);
+                $created->push($ontRecord);
             }
 
             // 2. Standard FTTH accessories
@@ -115,7 +130,16 @@ class CustomerMaterialService
             $replacementData
         ) {
             $installedMatId = $replacementData['installed_material_id'] ?? null;
-            $installedMat = $installedMatId ? CustomerInstalledMaterial::find($installedMatId) : null;
+            $installedMat = is_numeric($installedMatId) ? CustomerInstalledMaterial::find($installedMatId) : null;
+            if (!$installedMat && !empty($replacementData['item_name'])) {
+                $installedMat = CustomerInstalledMaterial::where('customer_id', $customer->id)
+                    ->where(function ($q) use ($replacementData) {
+                        $q->where('item_name', $replacementData['item_name'])
+                          ->orWhere('item_name', 'like', '%' . explode(' ', $replacementData['item_name'])[0] . '%');
+                    })
+                    ->whereIn('status', ['installed', 'partially_replaced'])
+                    ->first();
+            }
 
             $itemName = $replacementData['item_name'] ?? $installedMat?->item_name ?? 'Material Bekas';
             $materialId = $replacementData['material_id'] ?? $installedMat?->material_id;

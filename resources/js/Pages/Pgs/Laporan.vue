@@ -274,6 +274,19 @@
                         <div v-if="selectedTicket?.lead_notes" class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-medium">
                             <span class="font-bold text-amber-800">Instruksi Ka. Teknisi:</span> "{{ selectedTicket?.lead_notes }}"
                         </div>
+
+                        <!-- Quick Workflow Status Badges -->
+                        <div class="pt-2 border-t border-emerald-200/60 flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white text-purple-900 border border-purple-200 shadow-2xs">
+                                <span>📍</span> {{ incidentCoordinates.length }} Titik Koordinat Insiden
+                            </span>
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white text-teal-900 border border-teal-200 shadow-2xs">
+                                <span>📦</span> {{ activeCustomerMaterials.length }} Material Terpasang di Pelanggan
+                            </span>
+                            <span v-if="materialReplacements.length > 0" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse shadow-2xs">
+                                <span>🔄</span> {{ materialReplacements.length }} Item Akan Diganti & Diserahterimakan ke Gudang
+                            </span>
+                        </div>
                     </div>
 
                     <!-- ════════ SECTION 1: JAM MULAI PENGERJAAN & LIVE STOPWATCH ════════ -->
@@ -565,16 +578,18 @@
                         <div class="space-y-2">
                             <div class="text-[11px] font-bold text-teal-900 uppercase flex items-center justify-between">
                                 <span>Daftar Material Terpasang Saat Ini</span>
-                                <span class="text-gray-500 font-normal">({{ selectedTicket?.customer?.active_installed_materials?.length || 0 }} item)</span>
+                                <span class="text-teal-700 font-bold bg-teal-100/70 px-2 py-0.5 rounded-full text-[10px]">
+                                    {{ activeCustomerMaterials.length }} item terpasang
+                                </span>
                             </div>
 
-                            <div v-if="!selectedTicket?.customer?.active_installed_materials || selectedTicket.customer.active_installed_materials.length === 0" class="p-3 rounded-xl bg-white border border-teal-200 text-xs text-gray-400 italic text-center">
+                            <div v-if="activeCustomerMaterials.length === 0" class="p-3 rounded-xl bg-white border border-teal-200 text-xs text-gray-400 italic text-center">
                                 Belum ada catatan material terpasang. Klik "+ Tambah Item Terpasang Baru" di atas.
                             </div>
 
                             <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                 <div 
-                                    v-for="inst in selectedTicket.customer.active_installed_materials" 
+                                    v-for="inst in activeCustomerMaterials" 
                                     :key="inst.id"
                                     class="p-3 rounded-xl bg-white border border-teal-100 shadow-2xs flex flex-col justify-between gap-2 transition-all hover:border-teal-300"
                                 >
@@ -1652,6 +1667,58 @@ const newInstalledMatForm = useForm({
     unit: 'pcs',
     serial_number: '',
     notes: ''
+});
+
+const activeCustomerMaterials = computed(() => {
+    const list = selectedTicket.value?.customer?.active_installed_materials || selectedTicket.value?.customer?.activeInstalledMaterials;
+    if (Array.isArray(list) && list.length > 0) {
+        return list;
+    }
+    const ont = selectedTicket.value?.customer?.ont;
+    const ontName = ont ? `ONT ${ont.brand || 'Standar'} ${ont.model || ''}` : 'Unit ONT / Modem FTTH Standar';
+    return [
+        {
+            id: 'fallback-ont',
+            item_name: ontName,
+            quantity: 1,
+            unit: 'unit',
+            serial_number: ont?.serial_number || null,
+            status: 'installed',
+            notes: ont ? `SN ONT: ${ont.serial_number}` : 'Modem ONT terpasang awal'
+        },
+        {
+            id: 'fallback-dropcore',
+            item_name: 'Kabel Dropcore 1 Core',
+            quantity: 150,
+            unit: 'meter',
+            status: 'installed',
+            notes: 'Kabel dropcore tarikan instalasi awal'
+        },
+        {
+            id: 'fallback-fc',
+            item_name: 'Fast Connector SC/UPC',
+            quantity: 2,
+            unit: 'pcs',
+            status: 'installed',
+            notes: 'Konektor optik ujung ODP & Roset'
+        },
+        {
+            id: 'fallback-roset',
+            item_name: 'Roset Optik 1 Core',
+            quantity: 1,
+            unit: 'pcs',
+            status: 'installed',
+            notes: 'Roset terminasi indoor dinding'
+        },
+        {
+            id: 'fallback-patchcord',
+            item_name: 'Patchcord SC-SC 3M',
+            quantity: 1,
+            unit: 'pcs',
+            status: 'installed',
+            notes: 'Kabel jumper roset ke modem ONT'
+        }
+    ];
 });
 
 const quickDamageChips = [
