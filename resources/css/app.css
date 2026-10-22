@@ -12,6 +12,8 @@
 html {
     @apply bg-gray-50;
     transition: background-color 0.2s ease, color 0.2s ease;
+    /* Cegah konten bergeser horizontal saat scrollbar muncul/hilang antar halaman */
+    scrollbar-gutter: stable;
 }
 
 html.dark {
@@ -388,6 +390,58 @@ html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5, html.dark 
 .sidebar-sub-violet.active {
     @apply bg-violet-600 text-white font-bold shadow-sm;
 }
+
+/* ── Sidebar Group Label Badge (Light & Dark aware) ─────────── */
+.group-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --gb-text: #475569; --gb-bg: #f1f5f9; --gb-border: #e2e8f0; --gb-dot: #64748b;
+    color: var(--gb-text);
+    background-color: var(--gb-bg);
+    border-color: var(--gb-border);
+}
+.group-badge__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background-color: var(--gb-dot);
+    box-shadow: 0 0 6px var(--gb-dot);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Light mode palette */
+.group-badge--purple { --gb-text: #6b21a8; --gb-bg: #f3e8ff; --gb-border: #e9d5ff; --gb-dot: #9333ea; }
+.group-badge--rose   { --gb-text: #9f1239; --gb-bg: #ffe4e6; --gb-border: #fecdd3; --gb-dot: #e11d48; }
+.group-badge--blue   { --gb-text: #075985; --gb-bg: #e0f2fe; --gb-border: #bae6fd; --gb-dot: #0284c7; }
+.group-badge--green  { --gb-text: #065f46; --gb-bg: #d1fae5; --gb-border: #a7f3d0; --gb-dot: #059669; }
+.group-badge--orange { --gb-text: #9a3412; --gb-bg: #ffedd5; --gb-border: #fed7aa; --gb-dot: #ea580c; }
+.group-badge--pink   { --gb-text: #9d174d; --gb-bg: #fce7f3; --gb-border: #fbcfe8; --gb-dot: #db2777; }
+.group-badge--brown  { --gb-text: #4f2a17; --gb-bg: #f5e9e2; --gb-border: #e8d2c4; --gb-dot: #7c4a2d; }
+.group-badge--slate  { --gb-text: #1e293b; --gb-bg: #e2e8f0; --gb-border: #cbd5e1; --gb-dot: #475569; }
+.group-badge--violet { --gb-text: #5b21b6; --gb-bg: #ede9fe; --gb-border: #ddd6fe; --gb-dot: #7c3aed; }
+
+/* Dark mode palette: tinted translucent background + bright readable text */
+html.dark .group-badge          { --gb-text: #cbd5e1; --gb-bg: rgba(148, 163, 184, 0.12); --gb-border: rgba(148, 163, 184, 0.3); --gb-dot: #94a3b8; box-shadow: none; }
+html.dark .group-badge--purple  { --gb-text: #e9d5ff; --gb-bg: rgba(168, 85, 247, 0.16); --gb-border: rgba(168, 85, 247, 0.4); --gb-dot: #c084fc; }
+html.dark .group-badge--rose    { --gb-text: #fecdd3; --gb-bg: rgba(244, 63, 94, 0.16);  --gb-border: rgba(244, 63, 94, 0.4);  --gb-dot: #fb7185; }
+html.dark .group-badge--blue    { --gb-text: #bae6fd; --gb-bg: rgba(14, 165, 233, 0.16); --gb-border: rgba(14, 165, 233, 0.4); --gb-dot: #38bdf8; }
+html.dark .group-badge--green   { --gb-text: #a7f3d0; --gb-bg: rgba(16, 185, 129, 0.16); --gb-border: rgba(16, 185, 129, 0.4); --gb-dot: #34d399; }
+html.dark .group-badge--orange  { --gb-text: #fed7aa; --gb-bg: rgba(249, 115, 22, 0.16); --gb-border: rgba(249, 115, 22, 0.4); --gb-dot: #fb923c; }
+html.dark .group-badge--pink    { --gb-text: #fbcfe8; --gb-bg: rgba(236, 72, 153, 0.16); --gb-border: rgba(236, 72, 153, 0.4); --gb-dot: #f472b6; }
+html.dark .group-badge--brown   { --gb-text: #f5e9e2; --gb-bg: rgba(186, 141, 114, 0.18); --gb-border: rgba(186, 141, 114, 0.45); --gb-dot: #d4b29d; }
+html.dark .group-badge--slate   { --gb-text: #e2e8f0; --gb-bg: rgba(148, 163, 184, 0.16); --gb-border: rgba(148, 163, 184, 0.4); --gb-dot: #cbd5e1; }
+html.dark .group-badge--violet  { --gb-text: #ddd6fe; --gb-bg: rgba(139, 92, 246, 0.16); --gb-border: rgba(139, 92, 246, 0.4); --gb-dot: #a78bfa; }
 
 /* ── Animations ─────────────────────────────────────────────── */
 @keyframes fadeInUp {

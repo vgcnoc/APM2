@@ -20,75 +20,16 @@
             </div>
 
             <!-- Navigation -->
-            <nav ref="sidebarNav" scroll-region class="flex-1 overflow-y-auto px-3 py-4 space-y-1" @scroll="saveScrollPosition">
+            <!-- Catatan: sengaja TIDAK memakai atribut `scroll-region`, karena Inertia akan me-reset scroll-nya ke 0 di setiap kunjungan halaman (penyebab sidebar loncat). Posisi scroll dikelola sendiri oleh useSidebarState. -->
+            <nav ref="sidebarNav" class="flex-1 overflow-y-auto overscroll-contain px-3 py-4 space-y-1" @scroll.passive="saveScrollPosition">
                 <template v-for="(item, index) in filteredMenuItems" :key="index">
                     <!-- Group Label -->
                     <div v-if="item.type === 'group' && sidebarOpen" class="pt-5 pb-2 px-3">
                         <div class="flex items-center gap-2">
-                            <span 
-                                v-if="item.theme === 'purple'"
-                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800 border border-purple-200/90 shadow-sm flex items-center gap-1.5"
-                            >
-                                <span class="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse"></span>
+                            <span :class="['group-badge', `group-badge--${item.theme || 'default'}`]">
+                                <span class="group-badge__dot"></span>
                                 {{ item.label }}
                             </span>
-                            <span 
-                                v-else-if="item.theme === 'rose'"
-                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 border border-rose-200/90 shadow-sm flex items-center gap-1.5"
-                            >
-                                <span class="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
-                                {{ item.label }}
-                            </span>
-                            <span 
-                                v-else-if="item.theme === 'blue'"
-                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-sky-100 text-sky-800 border border-sky-200/90 shadow-sm flex items-center gap-1.5"
-                            >
-                                <span class="w-1.5 h-1.5 rounded-full bg-sky-600 animate-pulse"></span>
-                                {{ item.label }}
-                            </span>
-                            <span 
-                                v-else-if="item.theme === 'green'"
-                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200/90 shadow-sm flex items-center gap-1.5"
-                            >
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-                                {{ item.label }}
-                            </span>
-                            <span 
-                                v-else-if="item.theme === 'orange'"
-                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-orange-100 text-orange-800 border border-orange-200/90 shadow-sm flex items-center gap-1.5"
-                            >
-                                <span class="w-1.5 h-1.5 rounded-full bg-orange-600 animate-pulse"></span>
-                                {{ item.label }}
-                            </span>
-                            <span 
-                                v-else-if="item.theme === 'pink'"
-                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-pink-100 text-pink-800 border border-pink-200/90 shadow-sm flex items-center gap-1.5"
-                            >
-                                <span class="w-1.5 h-1.5 rounded-full bg-pink-600 animate-pulse"></span>
-                                {{ item.label }}
-                            </span>
-                            <span 
-                                v-else-if="item.theme === 'brown'"
-                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-brown-100 text-brown-800 border border-brown-200/90 shadow-sm flex items-center gap-1.5"
-                            >
-                                <span class="w-1.5 h-1.5 rounded-full bg-brown-600 animate-pulse"></span>
-                                {{ item.label }}
-                            </span>
-                            <span 
-                                v-else-if="item.theme === 'slate'"
-                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-slate-200 text-slate-800 border border-slate-300/90 shadow-sm flex items-center gap-1.5"
-                            >
-                                <span class="w-1.5 h-1.5 rounded-full bg-slate-600 animate-pulse"></span>
-                                {{ item.label }}
-                            </span>
-                            <span 
-                                v-else-if="item.theme === 'violet'"
-                                class="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-lg bg-violet-100 text-violet-800 border border-violet-200/90 shadow-sm flex items-center gap-1.5"
-                            >
-                                <span class="w-1.5 h-1.5 rounded-full bg-violet-600 animate-pulse"></span>
-                                {{ item.label }}
-                            </span>
-                            <span v-else class="text-[10px] font-bold text-gray-400 tracking-wider uppercase">{{ item.label }}</span>
                             <div class="h-px flex-1" :class="themeDividers[item.theme] || 'bg-gray-200/60'"></div>
                         </div>
                     </div>
@@ -166,7 +107,7 @@
             <div class="hidden lg:block border-t border-gray-200 dark:border-gray-800 p-3">
                 <button
                     type="button"
-                    @click="sidebarOpen = !sidebarOpen"
+                    @click="setSidebarOpen(!sidebarOpen)"
                     class="w-full flex items-center justify-center p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 transition-all"
                 >
                     <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': !sidebarOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -265,10 +206,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import AppLogo from '@/Components/AppLogo.vue';
 import { usePermission } from '@/Composables/usePermission';
+import { useSidebarState } from '@/Composables/useSidebarState';
 
 defineProps({
     title: { type: String, default: 'Dashboard' },
@@ -277,12 +219,20 @@ defineProps({
 
 const page = usePage();
 const { can, hasRole } = usePermission();
-const sidebarOpen = ref(true);
+// State sidebar disimpan di level modul (bertahan antar perpindahan halaman)
+const {
+    sidebarOpen,
+    openDropdowns,
+    scrollTop: sidebarScrollTop,
+    setSidebarOpen,
+    toggleDropdown,
+    ensureDropdownOpen,
+    saveScrollTop,
+} = useSidebarState();
 const mobileMenuOpen = ref(false);
 const sidebarNav = ref(null);
-const isRestored = ref(false);
-const openDropdowns = ref([]);
-const isDarkMode = ref(false);
+// Baca tema langsung dari <html> agar ikon tidak berkedip saat render pertama
+const isDarkMode = ref(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
 
 const toggleTheme = () => {
     isDarkMode.value = !isDarkMode.value;
@@ -310,32 +260,32 @@ const initTheme = () => {
 };
 
 const themeDividers = {
-    purple: 'bg-purple-200',
-    rose: 'bg-rose-200',
-    blue: 'bg-sky-200',
-    green: 'bg-emerald-200',
-    orange: 'bg-orange-200',
-    pink: 'bg-pink-200',
-    brown: 'bg-brown-200',
-    slate: 'bg-slate-300',
-    violet: 'bg-violet-200',
+    purple: 'bg-purple-200 dark:bg-purple-500/25',
+    rose: 'bg-rose-200 dark:bg-rose-500/25',
+    blue: 'bg-sky-200 dark:bg-sky-500/25',
+    green: 'bg-emerald-200 dark:bg-emerald-500/25',
+    orange: 'bg-orange-200 dark:bg-orange-500/25',
+    pink: 'bg-pink-200 dark:bg-pink-500/25',
+    brown: 'bg-brown-200 dark:bg-brown-400/25',
+    slate: 'bg-slate-300 dark:bg-slate-500/25',
+    violet: 'bg-violet-200 dark:bg-violet-500/25',
 };
 
 const themeCollapsedDividers = {
-    purple: 'border-purple-300',
-    rose: 'border-rose-300',
-    blue: 'border-sky-300',
-    green: 'border-emerald-300',
-    orange: 'border-orange-300',
-    pink: 'border-pink-300',
-    brown: 'border-brown-300',
-    slate: 'border-slate-300',
-    violet: 'border-violet-300',
+    purple: 'border-purple-300 dark:border-purple-500/30',
+    rose: 'border-rose-300 dark:border-rose-500/30',
+    blue: 'border-sky-300 dark:border-sky-500/30',
+    green: 'border-emerald-300 dark:border-emerald-500/30',
+    orange: 'border-orange-300 dark:border-orange-500/30',
+    pink: 'border-pink-300 dark:border-pink-500/30',
+    brown: 'border-brown-300 dark:border-brown-400/30',
+    slate: 'border-slate-300 dark:border-slate-500/30',
+    violet: 'border-violet-300 dark:border-violet-500/30',
 };
 
 const saveScrollPosition = () => {
     if (sidebarNav.value) {
-        localStorage.setItem('sidebarScrollPos', sidebarNav.value.scrollTop);
+        saveScrollTop(sidebarNav.value.scrollTop);
     }
 };
 
@@ -745,54 +695,35 @@ const filteredMenuItems = computed(() => {
     }
 });
 
-const toggleDropdown = (index) => {
-    if (openDropdowns.value.includes(index)) {
-        openDropdowns.value = openDropdowns.value.filter(i => i !== index);
-    } else {
-        openDropdowns.value.push(index);
+// Buka dropdown yang sesuai URL aktif SEBELUM render pertama,
+// sehingga tinggi sidebar sudah final saat posisi scroll dipulihkan.
+filteredMenuItems.value.forEach((item, index) => {
+    if (item.type === 'dropdown' && item.active(page.url)) {
+        ensureDropdownOpen(index);
     }
-    localStorage.setItem('sidebarOpenDropdowns', JSON.stringify(openDropdowns.value));
+});
+
+const restoreSidebarScroll = () => {
+    const nav = sidebarNav.value;
+    if (!nav) return;
+    const target = sidebarScrollTop.value || 0;
+    if (nav.scrollTop !== target) {
+        nav.scrollTop = target;
+    }
 };
 
 onMounted(() => {
-    // 0. Set default application scale to 80%
-    if (typeof document !== 'undefined') {
-        document.body.classList.remove('auth-device-scale');
-        document.body.style.zoom = '80%';
-    }
+    // onMounted berjalan sinkron setelah DOM dibuat namun SEBELUM browser melukis frame,
+    // jadi pemulihan scroll di sini tidak menimbulkan lompatan yang terlihat.
+    restoreSidebarScroll();
 
-    // Initialize Theme (Dark / Light)
+    // Pastikan tema tersinkron (mis. jika diubah di tab lain)
     initTheme();
+});
 
-    // 1. Restore open dropdowns state from storage
-    const savedDropdowns = localStorage.getItem('sidebarOpenDropdowns');
-    if (savedDropdowns) {
-        try {
-            openDropdowns.value = JSON.parse(savedDropdowns);
-        } catch (e) {
-            openDropdowns.value = [];
-        }
-    }
-
-    // 2. Automatically expand the dropdown that matches the current URL
-    const currentUrl = page.url;
-    filteredMenuItems.value.forEach((item, index) => {
-        if (item.type === 'dropdown' && item.active(currentUrl)) {
-            if (!openDropdowns.value.includes(index)) {
-                openDropdowns.value.push(index);
-            }
-        }
-    });
-
-    // 3. Restore sidebar scroll position smoothly without lag
-    const scrollPos = parseInt(localStorage.getItem('sidebarScrollPos'), 10);
-    if (!isNaN(scrollPos) && sidebarNav.value) {
-        sidebarNav.value.scrollTop = scrollPos;
-        requestAnimationFrame(() => {
-            if (sidebarNav.value) sidebarNav.value.scrollTop = scrollPos;
-        });
-    }
-    isRestored.value = true;
+onBeforeUnmount(() => {
+    // Simpan posisi terakhir tepat sebelum layout diganti halaman berikutnya
+    saveScrollPosition();
 });
 
 const iconPaths = {
