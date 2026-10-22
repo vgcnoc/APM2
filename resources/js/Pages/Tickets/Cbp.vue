@@ -1,49 +1,224 @@
 <template>
     <AppLayout title="CBP / Cabut Perangkat" subtitle="Manajemen Pencabutan dan Stop Permanen Layanan">
-        <div class="space-y-6">
-            <!-- Header Actions & Filters -->
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-2">
-                <div v-if="can('cbp_filter')" class="w-full md:w-auto flex flex-col sm:flex-row gap-3 flex-1">
-                    <div class="relative w-full sm:w-80">
-                        <input 
-                            type="text" 
-                            v-model="search" 
-                            placeholder="Cari ID CBP, pelanggan, catatan..." 
-                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 transition-all text-sm"
-                            @keyup.enter="performSearch"
-                        >
-                        <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
+        <div class="space-y-5">
+            <!-- Stats Overview Cards (Canggih & Interaktif) -->
+            <div v-if="can('cbp_card_stats')" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+                <!-- Card 1: Semua Data -->
+                <div 
+                    @click="filterByStatus('all')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none" 
+                    :class="(!filterStatus || filterStatus === 'all') ? 'border-slate-800 ring-2 ring-slate-200/80 shadow-sm bg-gradient-to-br from-white to-slate-50' : 'border-gray-100 hover:border-slate-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-slate-500 uppercase tracking-wider">Total CBP</span>
+                        <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                        </div>
                     </div>
-                    
-                    <select v-model="filterStatus" @change="performSearch" class="w-full sm:w-60 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 text-sm bg-gray-50/50">
-                        <option value="">Semua Status</option>
-                        <option value="not_sent">Menunggu Disposisi (Belum ke Jadwal)</option>
-                        <option value="sent_to_schedule">Sudah Masuk Jadwal CBP</option>
-                        <option value="pending">Semua Pending</option>
-                        <option value="assigned">Dalam Proses (Assigned)</option>
-                        <option value="completed">Selesai (Completed)</option>
-                        <option value="canceled">Dibatalkan</option>
-                    </select>
+                    <div class="text-2xl font-black text-slate-900 mt-2 tracking-tight">{{ counts?.all || 0 }}</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5 truncate">Semua tiket cabut</div>
                 </div>
 
-                <button v-if="can('cbp_btn_request')" @click="openModal()" class="bg-gradient-to-r from-red-600 to-rose-600 text-white px-5 py-2.5 rounded-xl font-bold shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 hover:-translate-y-0.5 transition-all w-full md:w-auto shrink-0 flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Buat Form CBP
-                </button>
+                <!-- Card 2: Menunggu Disposisi -->
+                <div 
+                    @click="filterByStatus('not_sent')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none" 
+                    :class="filterStatus === 'not_sent' ? 'border-amber-500 ring-2 ring-amber-100 shadow-sm bg-gradient-to-br from-white to-amber-50/30' : 'border-gray-100 hover:border-amber-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                            Menunggu
+                        </span>
+                        <div class="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-amber-600 mt-2 tracking-tight">{{ counts?.not_sent || 0 }}</div>
+                    <div class="text-[10px] text-amber-600/70 mt-0.5 truncate">Belum ke jadwal</div>
+                </div>
+
+                <!-- Card 3: Sudah Masuk Jadwal -->
+                <div 
+                    @click="filterByStatus('sent_to_schedule')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none" 
+                    :class="filterStatus === 'sent_to_schedule' ? 'border-sky-500 ring-2 ring-sky-100 shadow-sm bg-gradient-to-br from-white to-sky-50/30' : 'border-gray-100 hover:border-sky-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-sky-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
+                            Di Jadwal
+                        </span>
+                        <div class="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-sky-600 mt-2 tracking-tight">{{ counts?.sent_to_schedule || 0 }}</div>
+                    <div class="text-[10px] text-sky-600/70 mt-0.5 truncate">Siap penugasan</div>
+                </div>
+
+                <!-- Card 4: Ditugaskan (Assigned) -->
+                <div 
+                    @click="filterByStatus('assigned')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none" 
+                    :class="filterStatus === 'assigned' ? 'border-blue-500 ring-2 ring-blue-100 shadow-sm bg-gradient-to-br from-white to-blue-50/30' : 'border-gray-100 hover:border-blue-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                            Ditugaskan
+                        </span>
+                        <div class="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-blue-600 mt-2 tracking-tight">{{ counts?.assigned || 0 }}</div>
+                    <div class="text-[10px] text-blue-600/70 mt-0.5 truncate">Proses teknisi</div>
+                </div>
+
+                <!-- Card 5: Selesai (Completed) -->
+                <div 
+                    @click="filterByStatus('completed')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none" 
+                    :class="filterStatus === 'completed' ? 'border-emerald-500 ring-2 ring-emerald-100 shadow-sm bg-gradient-to-br from-white to-emerald-50/30' : 'border-gray-100 hover:border-emerald-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Selesai
+                        </span>
+                        <div class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-emerald-600 mt-2 tracking-tight">{{ counts?.completed || 0 }}</div>
+                    <div class="text-[10px] text-emerald-600/70 mt-0.5 truncate">Perangkat dicabut</div>
+                </div>
+
+                <!-- Card 6: Dibatalkan (Canceled) -->
+                <div 
+                    @click="filterByStatus('canceled')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none" 
+                    :class="filterStatus === 'canceled' ? 'border-rose-500 ring-2 ring-rose-100 shadow-sm bg-gradient-to-br from-white to-rose-50/30' : 'border-gray-100 hover:border-rose-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-rose-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                            Dibatalkan
+                        </span>
+                        <div class="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-rose-600 mt-2 tracking-tight">{{ counts?.canceled || 0 }}</div>
+                    <div class="text-[10px] text-rose-600/70 mt-0.5 truncate">Batal cabut</div>
+                </div>
+            </div>
+
+            <!-- Toolbar & Filter Canggih -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+                <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
+                    <!-- Left: Search & Filter Controls -->
+                    <div v-if="can('cbp_filter')" class="flex flex-wrap items-center gap-2.5 flex-1">
+                        <!-- Search Box with Clear Button -->
+                        <div class="relative flex-1 min-w-[240px] sm:max-w-xs">
+                            <input 
+                                type="text" 
+                                v-model="search" 
+                                placeholder="Cari ID CBP, pelanggan, HP, ODP..." 
+                                class="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 text-xs transition-all placeholder:text-gray-400 font-medium"
+                                @keyup.enter="performSearch"
+                            >
+                            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            <button v-if="search" @click="search = ''; performSearch()" class="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        
+                        <!-- Status Filter Dropdown -->
+                        <select v-model="filterStatus" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                            <option value="">Semua Status</option>
+                            <option value="not_sent">⏳ Menunggu Disposisi (Belum ke Jadwal)</option>
+                            <option value="sent_to_schedule">📅 Sudah Masuk Jadwal CBP</option>
+                            <option value="pending">🟡 Semua Pending</option>
+                            <option value="assigned">🔵 Dalam Proses (Assigned)</option>
+                            <option value="completed">🟢 Selesai (Completed)</option>
+                            <option value="canceled">🔴 Dibatalkan</option>
+                        </select>
+
+                        <!-- Area Filter Dropdown -->
+                        <select v-model="filterArea" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                            <option value="">Semua Wilayah / Area</option>
+                            <option v-for="area in areas" :key="area.id" :value="area.id">📍 {{ area.name }}</option>
+                        </select>
+
+                        <!-- Periode Filter Dropdown -->
+                        <select v-model="filterPeriod" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                            <option value="">Semua Periode</option>
+                            <option value="today">Hari Ini</option>
+                            <option value="this_week">Minggu Ini</option>
+                            <option value="this_month">Bulan Ini</option>
+                            <option value="last_month">Bulan Lalu</option>
+                            <option value="custom">Rentang Tanggal (Custom)...</option>
+                        </select>
+
+                        <!-- Reset Filter Button -->
+                        <button 
+                            v-if="hasActiveFilters" 
+                            @click="resetFilters" 
+                            type="button" 
+                            class="px-3 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors flex items-center gap-1.5"
+                            title="Reset Semua Filter"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>Reset Filter</span>
+                        </button>
+                    </div>
+
+                    <!-- Right: Create Form Button -->
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button v-if="can('cbp_btn_request')" @click="openModal()" class="bg-gradient-to-r from-red-600 to-rose-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 hover:-translate-y-0.5 transition-all w-full sm:w-auto flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            <span>+ Buat Form CBP</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Custom Date Range Bar (Expanded if filterPeriod === 'custom') -->
+                <transition
+                    enter-active-class="transition duration-200 ease-out"
+                    enter-from-class="transform opacity-0 -translate-y-2"
+                    enter-to-class="transform opacity-100 translate-y-0"
+                    leave-active-class="transition duration-150 ease-in"
+                    leave-from-class="transform opacity-100 translate-y-0"
+                    leave-to-class="transform opacity-0 -translate-y-2"
+                >
+                    <div v-if="filterPeriod === 'custom'" class="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-3 text-xs bg-slate-50/70 p-3 rounded-xl border border-slate-200/60">
+                        <span class="font-bold text-slate-700">Pilih Rentang Tanggal:</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-500 font-medium">Dari:</span>
+                            <input type="date" v-model="startDate" @change="performSearch" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs bg-white font-medium focus:border-red-500 focus:ring-1 focus:ring-red-200">
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-500 font-medium">Sampai:</span>
+                            <input type="date" v-model="endDate" @change="performSearch" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs bg-white font-medium focus:border-red-500 focus:ring-1 focus:ring-red-200">
+                        </div>
+                    </div>
+                </transition>
             </div>
 
             <!-- Flash Messages -->
-            <div v-if="$page.props.flash?.success" class="mb-4 flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 animate-fade-in-up">
+            <div v-if="$page.props.flash?.success" class="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 animate-fade-in-up">
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <span class="text-sm font-medium">{{ $page.props.flash.success }}</span>
             </div>
-            <div v-if="$page.props.flash?.error" class="mb-4 flex items-center gap-3 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 animate-fade-in-up">
+            <div v-if="$page.props.flash?.error" class="flex items-center gap-3 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 animate-fade-in-up">
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                 </svg>
@@ -55,7 +230,7 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-gray-50/50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            <tr class="bg-gray-50/70 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                 <th class="p-4 w-40">Nomor CBP</th>
                                 <th class="p-4">Pelanggan</th>
                                 <th class="p-4">Alasan Cabut</th>
@@ -70,8 +245,12 @@
                                 <td class="p-4 font-mono font-medium text-red-600">{{ req.cbp_number }}</td>
                                 <td class="p-4">
                                     <div class="font-bold text-gray-900">{{ req.customer?.name || '-' }}</div>
-                                    <div class="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                                        <span class="px-1.5 py-0.5 rounded bg-gray-100 border border-gray-200">{{ req.customer?.customer_code || '-' }}</span>
+                                    <div class="text-[11px] text-gray-500 flex flex-wrap items-center gap-1.5 mt-0.5">
+                                        <span class="px-1.5 py-0.5 rounded bg-gray-100 border border-gray-200 font-mono">{{ req.customer?.customer_code || '-' }}</span>
+                                        <span v-if="req.customer?.area_model" class="px-1.5 py-0.5 rounded bg-slate-100 border text-slate-600 text-[10px]">📍 {{ req.customer?.area_model?.name }}</span>
+                                    </div>
+                                    <div v-if="req.customer?.phone" class="text-[11px] text-gray-400 mt-0.5 font-mono">
+                                        📞 {{ req.customer.phone }}
                                     </div>
                                 </td>
                                 <td class="p-4">
@@ -79,6 +258,9 @@
                                     <div v-if="req.dispatch_notes" class="text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-200/60 rounded-md px-2 py-0.5 mt-1 flex items-start gap-1 max-w-xs truncate" :title="'Disposisi: ' + req.dispatch_notes">
                                         <span class="font-bold shrink-0">Disposisi:</span>
                                         <span class="truncate">{{ req.dispatch_notes }}</span>
+                                    </div>
+                                    <div v-if="req.notes" class="text-[10px] text-gray-400 mt-0.5 truncate" :title="req.notes">
+                                        Catatan: {{ req.notes }}
                                     </div>
                                 </td>
                                 <td class="p-4">
@@ -120,7 +302,7 @@
                                     <span v-else class="text-xs text-gray-400 italic">Belum ditugaskan</span>
                                 </td>
                                 <td class="p-4">
-                                    <span v-if="req.completed_at" class="text-xs text-gray-600">{{ req.completed_at }}</span>
+                                    <span v-if="req.completed_at" class="text-xs text-gray-600 font-medium">{{ formatDate(req.completed_at) }}</span>
                                     <span v-else class="text-xs text-gray-400">-</span>
                                 </td>
                                 <td class="p-4 text-center">
@@ -174,10 +356,16 @@
                                 </td>
                             </tr>
                             <tr v-if="!requests.data.length">
-                                <td colspan="7" class="p-8 text-center text-gray-500">
+                                <td colspan="7" class="p-12 text-center text-gray-500">
                                     <div class="flex flex-col items-center justify-center">
-                                        <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                        <p>Belum ada data CBP / Cabut Perangkat.</p>
+                                        <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+                                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        </div>
+                                        <p class="font-bold text-slate-700">Tidak ada data tiket CBP ditemukan.</p>
+                                        <p class="text-xs text-slate-400 mt-1 max-w-sm">Coba sesuaikan filter status, wilayah, periode, atau kata kunci pencarian Anda.</p>
+                                        <button v-if="hasActiveFilters" @click="resetFilters" class="mt-3 px-4 py-1.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors">
+                                            Reset Semua Filter
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -186,12 +374,12 @@
                 </div>
 
                 <!-- Pagination -->
-                <div v-if="requests.links?.length > 3" class="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
-                    <span class="text-sm text-gray-500">Menampilkan {{ requests.from }} - {{ requests.to }} dari {{ requests.total }} data</span>
-                    <div class="flex gap-1">
+                <div v-if="requests.links?.length > 3" class="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50/40">
+                    <span class="text-xs text-gray-500">Menampilkan <strong class="text-slate-800">{{ requests.from || 0 }}</strong> - <strong class="text-slate-800">{{ requests.to || 0 }}</strong> dari <strong class="text-slate-800">{{ requests.total || 0 }}</strong> data</span>
+                    <div class="flex gap-1 flex-wrap justify-center">
                         <template v-for="link in requests.links" :key="link.label">
-                            <Link v-if="link.url" :href="link.url" :class="['px-3 py-1.5 text-sm rounded-lg transition-colors', link.active ? 'bg-red-50 text-red-600 font-bold border border-red-200' : 'text-gray-600 hover:bg-gray-100 border border-transparent']" v-html="link.label"></Link>
-                            <span v-else class="px-3 py-1.5 text-sm text-gray-400" v-html="link.label"></span>
+                            <Link v-if="link.url" :href="link.url" :class="['px-3 py-1.5 text-xs font-medium rounded-lg transition-colors', link.active ? 'bg-red-50 text-red-600 font-bold border border-red-200 shadow-xs' : 'text-gray-600 hover:bg-gray-100 border border-transparent']" v-html="link.label"></Link>
+                            <span v-else class="px-3 py-1.5 text-xs text-gray-400" v-html="link.label"></span>
                         </template>
                     </div>
                 </div>
@@ -478,6 +666,7 @@ const { can } = usePermission();
 
 const props = defineProps({
     requests: Object,
+    counts: Object,
     areas: Array,
     customers: Array,
     filters: Object,
@@ -485,12 +674,45 @@ const props = defineProps({
 
 const search = ref(props.filters?.search || '');
 const filterStatus = ref(props.filters?.status || '');
+const filterArea = ref(props.filters?.area_id || '');
+const filterPeriod = ref(props.filters?.period || '');
+const startDate = ref(props.filters?.start_date || '');
+const endDate = ref(props.filters?.end_date || '');
+
+const hasActiveFilters = computed(() => {
+    return !!(search.value || filterStatus.value || filterArea.value || filterPeriod.value || startDate.value || endDate.value);
+});
+
+function filterByStatus(status) {
+    if (status === 'all') {
+        filterStatus.value = '';
+    } else if (filterStatus.value === status) {
+        filterStatus.value = '';
+    } else {
+        filterStatus.value = status;
+    }
+    performSearch();
+}
 
 function performSearch() {
     router.get('/cbp', {
-        search: search.value,
-        status: filterStatus.value,
+        search: search.value || undefined,
+        status: filterStatus.value || undefined,
+        area_id: filterArea.value || undefined,
+        period: filterPeriod.value || undefined,
+        start_date: filterPeriod.value === 'custom' ? (startDate.value || undefined) : undefined,
+        end_date: filterPeriod.value === 'custom' ? (endDate.value || undefined) : undefined,
     }, { preserveState: true, preserveScroll: true });
+}
+
+function resetFilters() {
+    search.value = '';
+    filterStatus.value = '';
+    filterArea.value = '';
+    filterPeriod.value = '';
+    startDate.value = '';
+    endDate.value = '';
+    router.get('/cbp', {}, { preserveState: true, preserveScroll: true });
 }
 
 // Create Modal

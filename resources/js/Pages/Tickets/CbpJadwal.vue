@@ -1,21 +1,120 @@
 <template>
     <AppLayout title="Jadwal CBP" subtitle="Manajemen Jadwal Pencabutan Perangkat">
-        <div class="space-y-6">
+        <div class="space-y-5">
+            <!-- Stats Overview Cards (Jadwal CBP) -->
+            <div v-if="can('cbp_card_stats')" class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                <!-- Card 1: Total Jadwal -->
+                <div 
+                    @click="filterByStatus('all')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none" 
+                    :class="(!filterStatus || filterStatus === 'all') ? 'border-slate-800 ring-2 ring-slate-200/80 shadow-sm bg-gradient-to-br from-white to-slate-50' : 'border-gray-100 hover:border-slate-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-slate-500 uppercase tracking-wider">Total Jadwal</span>
+                        <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-slate-900 mt-2 tracking-tight">{{ counts?.all || 0 }}</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5 truncate">Total tiket di jadwal</div>
+                </div>
+
+                <!-- Card 2: Menunggu Penugasan -->
+                <div 
+                    @click="filterByStatus('pending')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none" 
+                    :class="filterStatus === 'pending' ? 'border-orange-500 ring-2 ring-orange-100 shadow-sm bg-gradient-to-br from-white to-orange-50/30' : 'border-gray-100 hover:border-orange-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-orange-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                            Belum Ditugaskan
+                        </span>
+                        <div class="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-orange-600 mt-2 tracking-tight">{{ counts?.pending || 0 }}</div>
+                    <div class="text-[10px] text-orange-600/70 mt-0.5 truncate">Perlu teknisi</div>
+                </div>
+
+                <!-- Card 3: Sedang Dikerjakan -->
+                <div 
+                    @click="filterByStatus('assigned')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none" 
+                    :class="filterStatus === 'assigned' ? 'border-blue-500 ring-2 ring-blue-100 shadow-sm bg-gradient-to-br from-white to-blue-50/30' : 'border-gray-100 hover:border-blue-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                            Ditugaskan
+                        </span>
+                        <div class="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-blue-600 mt-2 tracking-tight">{{ counts?.assigned || 0 }}</div>
+                    <div class="text-[10px] text-blue-600/70 mt-0.5 truncate">Proses penarikan</div>
+                </div>
+
+                <!-- Card 4: Selesai Hari Ini -->
+                <div 
+                    class="bg-white p-4 rounded-2xl border border-gray-100 relative overflow-hidden group select-none"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Selesai Hari Ini
+                        </span>
+                        <div class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-emerald-600 mt-2 tracking-tight">{{ counts?.completed_today || 0 }}</div>
+                    <div class="text-[10px] text-emerald-600/70 mt-0.5 truncate">Dicabut hari ini</div>
+                </div>
+            </div>
+
             <!-- Header Actions & Filters -->
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-2">
-                <div v-if="can('cbp_filter')" class="w-full md:w-auto flex flex-col sm:flex-row gap-3 flex-1">
-                    <div class="relative w-full sm:w-80">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
+                <div v-if="can('cbp_filter')" class="flex flex-wrap items-center gap-2.5 flex-1">
+                    <div class="relative flex-1 min-w-[240px] sm:max-w-xs">
                         <input 
                             type="text" 
                             v-model="search" 
-                            placeholder="Cari ID CBP, pelanggan..." 
-                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 transition-all text-sm"
+                            placeholder="Cari ID CBP, pelanggan, HP, ODP..." 
+                            class="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 text-xs transition-all font-medium"
                             @keyup.enter="performSearch"
                         >
-                        <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
+                        <button v-if="search" @click="search = ''; performSearch()" class="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
                     </div>
+
+                    <select v-model="filterStatus" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                        <option value="">Semua Status Jadwal</option>
+                        <option value="pending">⏳ Belum Ditugaskan</option>
+                        <option value="assigned">🔵 Sedang Dikerjakan (Assigned)</option>
+                    </select>
+
+                    <select v-model="filterArea" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                        <option value="">Semua Wilayah / Area</option>
+                        <option v-for="area in areas" :key="area.id" :value="area.id">📍 {{ area.name }}</option>
+                    </select>
+
+                    <button 
+                        v-if="hasActiveFilters" 
+                        @click="resetFilters" 
+                        type="button" 
+                        class="px-3 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors flex items-center gap-1.5"
+                        title="Reset Semua Filter"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span>Reset Filter</span>
+                    </button>
                 </div>
             </div>
 
@@ -479,16 +578,44 @@ const { can } = usePermission();
 
 const props = defineProps({
     requests: Object,
+    counts: Object,
     technicians: Array,
+    areas: Array,
     filters: Object,
 });
 
-const search = ref(props.filters.search || '');
+const search = ref(props.filters?.search || '');
+const filterStatus = ref(props.filters?.status || '');
+const filterArea = ref(props.filters?.area_id || '');
+
+const hasActiveFilters = computed(() => {
+    return !!(search.value || filterStatus.value || filterArea.value);
+});
+
+function filterByStatus(status) {
+    if (status === 'all') {
+        filterStatus.value = '';
+    } else if (filterStatus.value === status) {
+        filterStatus.value = '';
+    } else {
+        filterStatus.value = status;
+    }
+    performSearch();
+}
 
 function performSearch() {
     router.get('/cbp/jadwal', {
-        search: search.value,
+        search: search.value || undefined,
+        status: filterStatus.value || undefined,
+        area_id: filterArea.value || undefined,
     }, { preserveState: true, preserveScroll: true });
+}
+
+function resetFilters() {
+    search.value = '';
+    filterStatus.value = '';
+    filterArea.value = '';
+    router.get('/cbp/jadwal', {}, { preserveState: true, preserveScroll: true });
 }
 
 // Click outside directive implementation

@@ -22,6 +22,19 @@ class CbpRequestController extends Controller
             abort(403, 'Akses ke modul CBP tidak diizinkan.');
         }
 
+        // Base query untuk statistik cards
+        $baseCountQuery = CbpRequest::query();
+        DataScopeService::applyCbpScope($baseCountQuery);
+
+        $counts = [
+            'all' => (clone $baseCountQuery)->count(),
+            'not_sent' => (clone $baseCountQuery)->where('status', 'pending')->whereNull('sent_to_schedule_at')->count(),
+            'sent_to_schedule' => (clone $baseCountQuery)->where('status', 'pending')->whereNotNull('sent_to_schedule_at')->count(),
+            'assigned' => (clone $baseCountQuery)->where('status', 'assigned')->count(),
+            'completed' => (clone $baseCountQuery)->where('status', 'completed')->count(),
+            'canceled' => (clone $baseCountQuery)->where('status', 'canceled')->count(),
+        ];
+
         $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'dispatcher', 'auditLogs']);
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
@@ -38,17 +51,45 @@ class CbpRequestController extends Controller
             }
         }
 
+        // Filter Area
+        if ($request->filled('area_id') && $request->area_id !== 'all') {
+            $query->whereHas('customer', function($cq) use ($request) {
+                $cq->where('area_id', $request->area_id);
+            });
+        }
+
+        // Filter Periode
+        if ($request->filled('period') && $request->period !== 'all') {
+            if ($request->period === 'today') {
+                $query->whereDate('created_at', today());
+            } elseif ($request->period === 'this_week') {
+                $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+            } elseif ($request->period === 'this_month') {
+                $query->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year);
+            } elseif ($request->period === 'last_month') {
+                $query->whereMonth('created_at', now()->subMonth()->month)->whereYear('created_at', now()->subMonth()->year);
+            } elseif ($request->period === 'custom' && $request->filled('start_date') && $request->filled('end_date')) {
+                $query->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+            }
+        }
+
+        // Search komprehensif
         if ($request->filled('search')) {
             $search = strtolower($request->search);
             $query->where(function($q) use ($search) {
                 $q->where('cbp_number', 'like', "%{$search}%")
                   ->orWhere('reason', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%")
                   ->orWhere('dispatch_notes', 'like', "%{$search}%")
                   ->orWhereHas('customer', function($cq) use ($search) {
                       $cq->where('name', 'like', "%{$search}%")
                         ->orWhere('customer_code', 'like', "%{$search}%")
                         ->orWhere('phone', 'like', "%{$search}%")
-                        ->orWhere('address', 'like', "%{$search}%");
+                        ->orWhere('address', 'like', "%{$search}%")
+                        ->orWhereHas('ont', function($oq) use ($search) {
+                            $oq->where('serial_number', 'like', "%{$search}%")
+                               ->orWhereHas('odp', fn($odpq) => $odpq->where('name', 'like', "%{$search}%"));
+                        });
                   });
             });
         }
@@ -65,9 +106,10 @@ class CbpRequestController extends Controller
 
         return Inertia::render('Tickets/Cbp', [
             'requests' => $cbpRequests,
+            'counts' => $counts,
             'areas' => $areas,
             'customers' => $customers,
-            'filters' => $request->only(['search', 'status']),
+            'filters' => $request->only(['search', 'status', 'area_id', 'period', 'start_date', 'end_date', 'per_page']),
         ]);
     }
 
@@ -84,13 +126,40 @@ class CbpRequestController extends Controller
             abort(403, 'Akses ke jadwal CBP tidak diizinkan.');
         }
 
+        $baseJadwalCountQuery = CbpRequest::query()->whereNotNull('sent_to_schedule_at');
+        DataScopeService::applyCbpScope($baseJadwalCountQuery);
+
+        $jadwalCounts = [
+            'all' => (clone $baseJadwalCountQuery)->whereIn('status', ['pending', 'assigned'])->count(),
+            'pending' => (clone $baseJadwalCountQuery)->where('status', 'pending')->count(),
+            'assigned' => (clone $baseJadwalCountQuery)->where('status', 'assigned')->count(),
+            'completed_today' => CbpRequest::query()
+                ->whereNotNull('sent_to_schedule_at')
+                ->where('status', 'completed')
+                ->whereDate('completed_at', today())
+                ->count(),
+        ];
+
         // Tiket yang masuk ke jadwal HANYA yang sudah dikirim ke jadwal (sent_to_schedule_at tidak null)
         $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'dispatcher', 'auditLogs'])
-            ->whereNotNull('sent_to_schedule_at')
-            ->whereIn('status', ['pending', 'assigned']);
+            ->whereNotNull('sent_to_schedule_at');
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
         DataScopeService::applyCbpScope($query);
+
+        // Filter status jadwal
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        } else {
+            $query->whereIn('status', ['pending', 'assigned']);
+        }
+
+        // Filter Area
+        if ($request->filled('area_id') && $request->area_id !== 'all') {
+            $query->whereHas('customer', function($cq) use ($request) {
+                $cq->where('area_id', $request->area_id);
+            });
+        }
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -107,16 +176,19 @@ class CbpRequestController extends Controller
             });
         }
 
-        $cbpRequests = $query->latest('id')
+        $cbpRequests = $query->latest('sent_to_schedule_at')
             ->paginate($request->per_page ?? 15)
             ->withQueryString();
 
         $technicians = \App\Models\User::role('teknisi')->get();
+        $areas = \App\Models\Area::all();
 
         return Inertia::render('Tickets/CbpJadwal', [
             'requests' => $cbpRequests,
+            'counts' => $jadwalCounts,
             'technicians' => $technicians,
-            'filters' => $request->only(['search']),
+            'areas' => $areas,
+            'filters' => $request->only(['search', 'status', 'area_id', 'per_page']),
         ]);
     }
 
@@ -138,13 +210,25 @@ class CbpRequestController extends Controller
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
         DataScopeService::applyCbpScope($query);
 
+        if ($request->filled('area_id') && $request->area_id !== 'all') {
+            $query->whereHas('customer', function($cq) use ($request) {
+                $cq->where('area_id', $request->area_id);
+            });
+        }
+
         if ($request->filled('search')) {
             $search = strtolower($request->search);
-            $query->where('cbp_number', 'like', "%{$search}%")
-                ->orWhereHas('customer', function($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('customer_code', 'like', "%{$search}%");
-                });
+            $query->where(function($q) use ($search) {
+                $q->where('cbp_number', 'like', "%{$search}%")
+                  ->orWhere('reason', 'like', "%{$search}%")
+                  ->orWhere('dispatch_notes', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function($cq) use ($search) {
+                      $cq->where('name', 'like', "%{$search}%")
+                        ->orWhere('customer_code', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%");
+                  });
+            });
         }
 
         $cbpRequests = $query->latest('id')
@@ -152,11 +236,13 @@ class CbpRequestController extends Controller
             ->withQueryString();
 
         $materials = \App\Models\Material::all();
+        $areas = \App\Models\Area::all();
 
         return Inertia::render('Tickets/CbpLaporan', [
             'requests' => $cbpRequests,
             'materials' => $materials,
-            'filters' => $request->only(['search']),
+            'areas' => $areas,
+            'filters' => $request->only(['search', 'area_id', 'per_page']),
         ]);
     }
 
