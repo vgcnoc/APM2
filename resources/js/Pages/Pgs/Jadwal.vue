@@ -1,43 +1,218 @@
 <template>
     <AppLayout title="Jadwal & Material PGS" subtitle="Penjadwalan Penanganan ke Teknisi & Penyiapan Material oleh Kepala Teknisi">
         <div class="space-y-6">
-            <!-- Toolbar & Filter -->
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                <div v-if="can('pgs_filter')" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
-                    <div class="relative flex-1 sm:w-80">
-                        <input 
-                            type="text" 
-                            v-model="search" 
-                            placeholder="Cari No. PGS, pelanggan, ODP..." 
-                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 text-sm transition-all"
-                            @keyup.enter="performSearch"
-                        >
-                        <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
+            <!-- ════════════ STATS SUMMARY CARDS ════════════ -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+                <!-- Card 1: Total Antrean -->
+                <div 
+                    @click="filterByCard('all')"
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="(filterStatus === 'all' && (!filterMaterial || filterMaterial === 'all')) ? 'border-slate-800 ring-2 ring-slate-400/30 bg-slate-50/50' : 'border-gray-200/80 hover:border-slate-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Antrean</span>
+                        <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-sm font-black group-hover:scale-110 transition-transform">
+                            📋
+                        </div>
                     </div>
-
-                    <select v-model="filterArea" @change="performSearch" class="px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 text-sm bg-gray-50/50">
-                        <option value="">Semua Area / Wilayah</option>
-                        <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
-                    </select>
+                    <div class="mt-2 text-2xl font-black text-gray-900 tracking-tight">{{ counts?.total || 0 }}</div>
+                    <div class="mt-1 text-[11px] text-gray-500 font-medium flex items-center gap-1">
+                        <span>Semua Kasus PGS</span>
+                    </div>
                 </div>
-                
-                <div class="text-xs text-gray-500 font-medium">
-                    Halaman ini menampilkan tiket yang diserahkan ke Kepala Teknisi untuk dijadwalkan & disiapkan materialnya.
+
+                <!-- Card 2: Menunggu Jadwal -->
+                <div 
+                    @click="filterByCard('waiting')"
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="filterStatus === 'waiting' ? 'border-amber-600 ring-2 ring-amber-500/30 bg-amber-50/30' : 'border-gray-200/80 hover:border-amber-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Menunggu Jadwal</span>
+                        <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center text-sm font-black group-hover:scale-110 transition-transform">
+                            ⏳
+                        </div>
+                    </div>
+                    <div class="mt-2 text-2xl font-black text-amber-900 tracking-tight">{{ counts?.waiting || 0 }}</div>
+                    <div class="mt-1 text-[11px] text-amber-600 font-medium flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        <span>Perlu Disiapkan</span>
+                    </div>
+                </div>
+
+                <!-- Card 3: Terjadwal & Lapangan -->
+                <div 
+                    @click="filterByCard('scheduled')"
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="filterStatus === 'scheduled' ? 'border-indigo-600 ring-2 ring-indigo-500/30 bg-indigo-50/30' : 'border-gray-200/80 hover:border-indigo-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">Siap & Lapangan</span>
+                        <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-sm font-black group-hover:scale-110 transition-transform">
+                            🔧
+                        </div>
+                    </div>
+                    <div class="mt-2 text-2xl font-black text-indigo-900 tracking-tight">{{ counts?.scheduled || 0 }}</div>
+                    <div class="mt-1 text-[11px] text-indigo-600 font-medium flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                        <span>Sedang Berjalan</span>
+                    </div>
+                </div>
+
+                <!-- Card 4: Selesai Dikerjakan -->
+                <div 
+                    @click="filterByCard('completed')"
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="filterStatus === 'completed' ? 'border-emerald-600 ring-2 ring-emerald-500/30 bg-emerald-50/30' : 'border-gray-200/80 hover:border-emerald-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Selesai Dikerjakan</span>
+                        <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-sm font-black group-hover:scale-110 transition-transform">
+                            ✅
+                        </div>
+                    </div>
+                    <div class="mt-2 text-2xl font-black text-emerald-900 tracking-tight">{{ counts?.completed || 0 }}</div>
+                    <div class="mt-1 text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <span>Laporan Lengkap</span>
+                    </div>
+                </div>
+
+                <!-- Card 5: Kebutuhan Material & ONT -->
+                <div 
+                    @click="filterByCard('materials')"
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 group col-span-2 sm:col-span-1"
+                    :class="filterMaterial === 'with_materials' ? 'border-orange-600 ring-2 ring-orange-500/30 bg-orange-50/30' : 'border-gray-200/80 hover:border-orange-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-orange-700 uppercase tracking-wider">Material & ONT</span>
+                        <div class="w-8 h-8 rounded-xl bg-orange-50 text-orange-700 flex items-center justify-center text-sm font-black group-hover:scale-110 transition-transform">
+                            📦
+                        </div>
+                    </div>
+                    <div class="mt-2 text-2xl font-black text-orange-900 tracking-tight">{{ counts?.with_materials || 0 }}</div>
+                    <div class="mt-1 text-[11px] text-orange-600 font-medium flex items-center gap-1">
+                        <span>Alokasi & Ganti</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Status Tabs Filter -->
+            <!-- ════════════ SMART FILTER BAR ════════════ -->
+            <div v-if="can('pgs_filter')" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                    <!-- Search Input Canggih -->
+                    <div class="relative lg:col-span-2">
+                        <input 
+                            type="text" 
+                            v-model="search" 
+                            placeholder="Cari No. PGS, pelanggan, ODP, telp, masalah..." 
+                            class="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 text-xs transition-all"
+                            @keyup.enter="applyFilters()"
+                        >
+                        <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <button v-if="search" @click="search = ''; applyFilters({ search: '' })" class="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600 text-xs font-bold cursor-pointer">✕</button>
+                    </div>
+
+                    <!-- Filter Status -->
+                    <div>
+                        <select v-model="filterStatus" @change="applyFilters()" class="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 text-xs bg-gray-50/50 cursor-pointer font-medium">
+                            <option value="active">⚡ Antrean Aktif (Default)</option>
+                            <option value="waiting">⏳ Menunggu Jadwal</option>
+                            <option value="scheduled">🔧 Sudah Dijadwalkan</option>
+                            <option value="in_progress">⚙️ Sedang di Lapangan</option>
+                            <option value="completed">✅ Selesai Dikerjakan</option>
+                            <option value="all">📋 Semua Status Tiket</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Prioritas -->
+                    <div>
+                        <select v-model="filterPriority" @change="applyFilters()" class="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 text-xs bg-gray-50/50 cursor-pointer font-medium">
+                            <option value="">Semua Prioritas</option>
+                            <option value="critical">🔴 Critical (Mendesak)</option>
+                            <option value="high">🟠 High (Tinggi)</option>
+                            <option value="medium">🟡 Medium (Normal)</option>
+                            <option value="low">🟢 Low (Rendah)</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Area -->
+                    <div>
+                        <select v-model="filterArea" @change="applyFilters()" class="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 text-xs bg-gray-50/50 cursor-pointer font-medium">
+                            <option value="">Semua Area / Wilayah</option>
+                            <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Teknisi -->
+                    <div>
+                        <select v-model="filterTechnician" @change="applyFilters()" class="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 text-xs bg-gray-50/50 cursor-pointer font-medium">
+                            <option value="">Semua Teknisi</option>
+                            <option v-for="t in technicians" :key="t.id" :value="t.id">👤 {{ t.name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Secondary Filter Row -->
+                <div class="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-gray-100 text-xs">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Filter Periode Waktu -->
+                        <select v-model="filterPeriod" @change="applyFilters()" class="px-3 py-1.5 rounded-xl border border-gray-200 focus:border-amber-500 text-xs bg-gray-50/50 cursor-pointer font-medium">
+                            <option value="">Semua Jadwal Tanggal</option>
+                            <option value="today">📅 Hari Ini</option>
+                            <option value="tomorrow">📅 Besok</option>
+                            <option value="this_week">📅 Minggu Ini</option>
+                            <option value="this_month">📅 Bulan Ini</option>
+                            <option value="custom">📅 Pilih Rentang Tanggal...</option>
+                        </select>
+
+                        <!-- Custom Date Picker -->
+                        <div v-if="filterPeriod === 'custom'" class="flex items-center gap-1.5 bg-gray-50 p-1.5 rounded-xl border border-gray-200">
+                            <input type="date" v-model="filterStartDate" class="text-xs px-2 py-1 border border-gray-300 rounded-lg" />
+                            <span class="text-xs text-gray-500">s/d</span>
+                            <input type="date" v-model="filterEndDate" class="text-xs px-2 py-1 border border-gray-300 rounded-lg" />
+                            <button @click="applyFilters()" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold cursor-pointer">Cari</button>
+                        </div>
+
+                        <!-- Filter Kebutuhan Material -->
+                        <select v-model="filterMaterial" @change="applyFilters()" class="px-3 py-1.5 rounded-xl border border-gray-200 focus:border-amber-500 text-xs bg-gray-50/50 cursor-pointer font-medium">
+                            <option value="">Semua Kebutuhan Material</option>
+                            <option value="with_materials">📦 Ada Bekal Material Gudang</option>
+                            <option value="request_pending">🔔 Ada Request Material Pending</option>
+                            <option value="with_ont">🔄 Ada Pergantian Unit ONT</option>
+                            <option value="with_dismantle">♻️ Ada Material Bongkaran</option>
+                        </select>
+
+                        <!-- Tombol Terapkan Search -->
+                        <button @click="applyFilters()" class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                            <span>Filter</span>
+                        </button>
+
+                        <!-- Reset Filter -->
+                        <button v-if="hasActiveFilters" @click="resetFilters" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1">
+                            <span>↺ Reset</span>
+                        </button>
+                    </div>
+
+                    <div class="text-xs text-gray-400 font-medium">
+                        Ditemukan <b class="text-gray-800 font-mono">{{ tickets.total || 0 }}</b> tiket
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Status Tabs -->
             <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
                 <button
                     type="button"
                     @click="setStatusFilter('active')"
                     class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shadow-xs cursor-pointer"
-                    :class="currentStatus === 'active' ? 'bg-amber-600 text-white shadow-amber-600/30 ring-2 ring-amber-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
+                    :class="filterStatus === 'active' ? 'bg-amber-600 text-white shadow-amber-600/30 ring-2 ring-amber-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
                 >
                     <span>⚡ Antrean Aktif</span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="currentStatus === 'active' ? 'bg-amber-700/60 text-white' : 'bg-gray-100 text-gray-700'">
+                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="filterStatus === 'active' ? 'bg-amber-700/60 text-white' : 'bg-gray-100 text-gray-700'">
                         {{ counts?.active || 0 }}
                     </span>
                 </button>
@@ -45,10 +220,10 @@
                     type="button"
                     @click="setStatusFilter('waiting')"
                     class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shadow-xs cursor-pointer"
-                    :class="currentStatus === 'waiting' ? 'bg-amber-600 text-white shadow-amber-600/30 ring-2 ring-amber-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
+                    :class="filterStatus === 'waiting' ? 'bg-amber-600 text-white shadow-amber-600/30 ring-2 ring-amber-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
                 >
                     <span>⏳ Menunggu Jadwal</span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="currentStatus === 'waiting' ? 'bg-amber-700/60 text-white' : 'bg-amber-50 text-amber-800 font-bold'">
+                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="filterStatus === 'waiting' ? 'bg-amber-700/60 text-white' : 'bg-amber-50 text-amber-800 font-bold'">
                         {{ counts?.waiting || 0 }}
                     </span>
                 </button>
@@ -56,10 +231,10 @@
                     type="button"
                     @click="setStatusFilter('scheduled')"
                     class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shadow-xs cursor-pointer"
-                    :class="currentStatus === 'scheduled' ? 'bg-amber-600 text-white shadow-amber-600/30 ring-2 ring-amber-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
+                    :class="filterStatus === 'scheduled' ? 'bg-amber-600 text-white shadow-amber-600/30 ring-2 ring-amber-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
                 >
                     <span>🔧 Terjadwal & Lapangan</span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="currentStatus === 'scheduled' ? 'bg-amber-700/60 text-white' : 'bg-blue-50 text-blue-800 font-bold'">
+                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="filterStatus === 'scheduled' ? 'bg-amber-700/60 text-white' : 'bg-blue-50 text-blue-800 font-bold'">
                         {{ counts?.scheduled || 0 }}
                     </span>
                 </button>
@@ -67,10 +242,10 @@
                     type="button"
                     @click="setStatusFilter('completed')"
                     class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shadow-xs cursor-pointer"
-                    :class="currentStatus === 'completed' ? 'bg-emerald-600 text-white shadow-emerald-600/30 ring-2 ring-emerald-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
+                    :class="filterStatus === 'completed' ? 'bg-emerald-600 text-white shadow-emerald-600/30 ring-2 ring-emerald-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
                 >
                     <span>✅ Selesai Dikerjakan</span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="currentStatus === 'completed' ? 'bg-emerald-700/60 text-white' : 'bg-emerald-50 text-emerald-800 font-bold'">
+                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="filterStatus === 'completed' ? 'bg-emerald-700/60 text-white' : 'bg-emerald-50 text-emerald-800 font-bold'">
                         {{ counts?.completed || 0 }}
                     </span>
                 </button>
@@ -78,11 +253,11 @@
                     type="button"
                     @click="setStatusFilter('all')"
                     class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shadow-xs cursor-pointer"
-                    :class="currentStatus === 'all' ? 'bg-slate-800 text-white shadow-slate-800/30 ring-2 ring-slate-800/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
+                    :class="filterStatus === 'all' ? 'bg-slate-800 text-white shadow-slate-800/30 ring-2 ring-slate-800/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
                 >
                     <span>📋 Semua Tiket</span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="currentStatus === 'all' ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-700'">
-                        {{ counts?.all || 0 }}
+                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="filterStatus === 'all' ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-700'">
+                        {{ counts?.total || counts?.all || 0 }}
                     </span>
                 </button>
             </div>
@@ -991,7 +1166,13 @@ const props = defineProps({
 
 const search = ref(props.filters?.search || '');
 const filterArea = ref(props.filters?.area_id || '');
-const currentStatus = ref(props.filters?.status || 'active');
+const filterStatus = ref(props.filters?.status || 'active');
+const filterPriority = ref(props.filters?.priority || '');
+const filterTechnician = ref(props.filters?.technician_id || '');
+const filterPeriod = ref(props.filters?.period || '');
+const filterStartDate = ref(props.filters?.start_date || '');
+const filterEndDate = ref(props.filters?.end_date || '');
+const filterMaterial = ref(props.filters?.material_filter || '');
 
 const showScheduleModal = ref(false);
 const selectedTicket = ref(null);
@@ -1189,21 +1370,79 @@ const scheduleForm = useForm({
     materials: [],
 });
 
-const setStatusFilter = (st) => {
-    currentStatus.value = st;
-    router.get('/pgs/jadwal', {
+const hasActiveFilters = computed(() => {
+    return Boolean(
+        search.value ||
+        (filterArea.value && filterArea.value !== '') ||
+        (filterStatus.value && filterStatus.value !== 'active') ||
+        (filterPriority.value && filterPriority.value !== '') ||
+        (filterTechnician.value && filterTechnician.value !== '') ||
+        (filterPeriod.value && filterPeriod.value !== '') ||
+        (filterMaterial.value && filterMaterial.value !== '')
+    );
+});
+
+const applyFilters = (overrides = {}) => {
+    const params = {
         search: search.value,
         area_id: filterArea.value,
-        status: st,
-    }, { preserveState: true, replace: true });
+        status: filterStatus.value,
+        priority: filterPriority.value,
+        technician_id: filterTechnician.value,
+        period: filterPeriod.value,
+        start_date: filterStartDate.value,
+        end_date: filterEndDate.value,
+        material_filter: filterMaterial.value,
+        ...overrides,
+    };
+
+    Object.keys(params).forEach(k => {
+        if (params[k] === '' || params[k] === null || params[k] === undefined) {
+            delete params[k];
+        }
+    });
+
+    router.get('/pgs/jadwal', params, { preserveState: true, replace: true });
 };
 
-const performSearch = () => {
-    router.get('/pgs/jadwal', {
-        search: search.value,
-        area_id: filterArea.value,
-        status: currentStatus.value,
-    }, { preserveState: true, replace: true });
+const filterByCard = (cardType) => {
+    if (cardType === 'all') {
+        filterStatus.value = 'all';
+        filterMaterial.value = '';
+        applyFilters({ status: 'all', material_filter: '' });
+    } else if (cardType === 'waiting') {
+        filterStatus.value = 'waiting';
+        applyFilters({ status: 'waiting' });
+    } else if (cardType === 'scheduled') {
+        filterStatus.value = 'scheduled';
+        applyFilters({ status: 'scheduled' });
+    } else if (cardType === 'completed') {
+        filterStatus.value = 'completed';
+        applyFilters({ status: 'completed' });
+    } else if (cardType === 'materials') {
+        filterStatus.value = 'all';
+        filterMaterial.value = 'with_materials';
+        applyFilters({ status: 'all', material_filter: 'with_materials' });
+    }
+};
+
+const setStatusFilter = (st) => {
+    filterStatus.value = st;
+    applyFilters({ status: st });
+};
+
+const resetFilters = () => {
+    search.value = '';
+    filterArea.value = '';
+    filterStatus.value = 'active';
+    filterPriority.value = '';
+    filterTechnician.value = '';
+    filterPeriod.value = '';
+    filterStartDate.value = '';
+    filterEndDate.value = '';
+    filterMaterial.value = '';
+
+    router.get('/pgs/jadwal', { status: 'active' }, { preserveState: true, replace: true });
 };
 
 const openScheduleModal = (ticket) => {

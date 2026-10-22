@@ -179,24 +179,19 @@ class PgsController extends Controller
         }
 
         $status = $request->get('status', 'active');
+        $priority = $request->get('priority');
+        $areaId = $request->get('area_id');
+        $technicianId = $request->get('technician_id');
+        $period = $request->get('period');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        $materialFilter = $request->get('material_filter');
 
-        // Hitung counts per tab status dengan filter search & area yang aktif
+        // Hitung counts per tab status dengan filter cakupan hak akses
         $baseCountQuery = PgsTicket::query();
         DataScopeService::applyPgsScope($baseCountQuery);
 
-        if ($request->filled('search')) {
-            $search = strtolower($request->search);
-            $baseCountQuery->where(function($q) use ($search) {
-                $q->where('ticket_number', 'like', "%{$search}%")
-                  ->orWhere('reported_issue', 'like', "%{$search}%")
-                  ->orWhereHas('customer', function($cq) use ($search) {
-                      $cq->where('name', 'like', "%{$search}%")
-                         ->orWhere('customer_code', 'like', "%{$search}%");
-                  });
-            });
-        }
-
-        if ($request->filled('area_id')) {
+        if ($request->filled('area_id') && $request->area_id !== 'all') {
             $areaModel = Area::find($request->area_id);
             $areaName = $areaModel?->name;
             $baseCountQuery->where(function($q) use ($request, $areaName) {
@@ -209,11 +204,18 @@ class PgsController extends Controller
         }
 
         $counts = [
+            'total' => (clone $baseCountQuery)->whereIn('status', ['escalated_to_lead', 'scheduled', 'in_progress', 'completed'])->count(),
             'active' => (clone $baseCountQuery)->whereIn('status', ['escalated_to_lead', 'scheduled', 'in_progress'])->count(),
             'waiting' => (clone $baseCountQuery)->where('status', 'escalated_to_lead')->count(),
             'scheduled' => (clone $baseCountQuery)->whereIn('status', ['scheduled', 'in_progress'])->count(),
             'completed' => (clone $baseCountQuery)->where('status', 'completed')->count(),
-            'all' => (clone $baseCountQuery)->whereIn('status', ['escalated_to_lead', 'scheduled', 'in_progress', 'completed'])->count(),
+            'with_materials' => (clone $baseCountQuery)->where(function($q) {
+                $q->whereHas('materials')
+                  ->orWhereHas('materialRequests')
+                  ->orWhereNotNull('prepared_ont_id')
+                  ->orWhere('ont_replacement_status', '!=', 'none')
+                  ->orWhereHas('dismantledMaterials');
+            })->count(),
         ];
 
         $query = PgsTicket::with([
@@ -237,10 +239,13 @@ class PgsController extends Controller
             'dismantledMaterials.material',
         ]);
 
+        // Filter: Status
         if ($status === 'waiting') {
             $query->where('status', 'escalated_to_lead');
         } elseif ($status === 'scheduled') {
-            $query->whereIn('status', ['scheduled', 'in_progress']);
+            $query->where('status', 'scheduled');
+        } elseif ($status === 'in_progress') {
+            $query->where('status', 'in_progress');
         } elseif ($status === 'completed') {
             $query->where('status', 'completed');
         } elseif ($status === 'all') {
@@ -253,19 +258,32 @@ class PgsController extends Controller
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
         DataScopeService::applyPgsScope($query);
 
+        // Filter: Pencarian Cerdas (No Tiket, Masalah, Eskalasi, Nama/Kode/Telp/Alamat Pelanggan, ODP)
         if ($request->filled('search')) {
-            $search = strtolower($request->search);
+            $search = strtolower(trim($request->search));
             $query->where(function($q) use ($search) {
                 $q->where('ticket_number', 'like', "%{$search}%")
                   ->orWhere('reported_issue', 'like', "%{$search}%")
+                  ->orWhere('escalation_reason', 'like', "%{$search}%")
                   ->orWhereHas('customer', function($cq) use ($search) {
                       $cq->where('name', 'like', "%{$search}%")
-                         ->orWhere('customer_code', 'like', "%{$search}%");
+                         ->orWhere('customer_code', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%")
+                         ->orWhere('address', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('customer.ont.odp', function($oq) use ($search) {
+                      $oq->where('name', 'like', "%{$search}%");
                   });
             });
         }
 
-        if ($request->filled('area_id')) {
+        // Filter: Prioritas
+        if ($request->filled('priority') && $request->priority !== 'all') {
+            $query->where('priority', $request->priority);
+        }
+
+        // Filter: Area / Wilayah
+        if ($request->filled('area_id') && $request->area_id !== 'all') {
             $areaModel = Area::find($request->area_id);
             $areaName = $areaModel?->name;
             $query->where(function($q) use ($request, $areaName) {
@@ -275,6 +293,61 @@ class PgsController extends Controller
                          ->when($areaName, fn($sub) => $sub->orWhere('area', $areaName));
                   });
             });
+        }
+
+        // Filter: Teknisi Ditugaskan
+        if ($request->filled('technician_id') && $request->technician_id !== 'all') {
+            $techId = $request->technician_id;
+            $query->whereHas('technicians', function($tq) use ($techId) {
+                $tq->where('users.id', $techId);
+            });
+        }
+
+        // Filter: Periode Jadwal
+        if ($request->filled('period') && $request->period !== 'all') {
+            if ($request->period === 'today') {
+                $query->where(function($q) {
+                    $q->whereDate('scheduled_date', today())
+                      ->orWhereDate('created_at', today());
+                });
+            } elseif ($request->period === 'tomorrow') {
+                $query->whereDate('scheduled_date', today()->addDay());
+            } elseif ($request->period === 'this_week') {
+                $query->where(function($q) {
+                    $q->whereBetween('scheduled_date', [now()->startOfWeek(), now()->endOfWeek()])
+                      ->orWhereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+                });
+            } elseif ($request->period === 'this_month') {
+                $query->where(function($q) {
+                    $q->whereMonth('scheduled_date', now()->month)
+                      ->orWhereMonth('created_at', now()->month);
+                });
+            } elseif ($request->period === 'custom') {
+                if ($request->filled('start_date') && $request->filled('end_date')) {
+                    $query->where(function($q) use ($request) {
+                        $q->whereBetween('scheduled_date', [$request->start_date, $request->end_date])
+                          ->orWhereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+                    });
+                }
+            }
+        }
+
+        // Filter: Material & Komponen
+        if ($request->filled('material_filter') && $request->material_filter !== 'all') {
+            if ($request->material_filter === 'with_materials') {
+                $query->whereHas('materials');
+            } elseif ($request->material_filter === 'request_pending') {
+                $query->whereHas('materialRequests', function($mq) {
+                    $mq->where('status', 'pending');
+                });
+            } elseif ($request->material_filter === 'with_ont') {
+                $query->where(function($q) {
+                    $q->whereNotNull('prepared_ont_id')
+                      ->orWhere('ont_replacement_status', '!=', 'none');
+                });
+            } elseif ($request->material_filter === 'with_dismantle') {
+                $query->whereHas('dismantledMaterials');
+            }
         }
 
         $tickets = $query->latest('id')->paginate($request->per_page ?? 15)->withQueryString();
@@ -306,7 +379,9 @@ class PgsController extends Controller
             'materialTransactions' => $materialTransactions,
             'availableOnts' => $availableOnts,
             'counts' => $counts,
-            'filters' => array_merge($request->only(['search', 'area_id']), ['status' => $status]),
+            'filters' => array_merge($request->only([
+                'search', 'area_id', 'priority', 'technician_id', 'period', 'start_date', 'end_date', 'material_filter'
+            ]), ['status' => $status]),
         ]);
     }
 
