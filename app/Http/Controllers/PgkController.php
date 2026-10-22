@@ -185,6 +185,45 @@ class PgkController extends Controller
             abort(403, 'Akses ke Jadwal PGK tidak diizinkan.');
         }
 
+        $status = $request->get('status', 'active');
+
+        // Hitung counts per tab status dengan filter search & area yang aktif
+        $baseCountQuery = PgkTicket::query();
+        DataScopeService::applyPgkScope($baseCountQuery);
+
+        if ($request->filled('search')) {
+            $search = strtolower($request->search);
+            $baseCountQuery->where(function($q) use ($search) {
+                $q->where('ticket_number', 'like', "%{$search}%")
+                  ->orWhere('complainant_name', 'like', "%{$search}%")
+                  ->orWhere('reported_issue', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function($cq) use ($search) {
+                      $cq->where('name', 'like', "%{$search}%")
+                         ->orWhere('customer_code', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        if ($request->filled('area_id')) {
+            $areaModel = Area::find($request->area_id);
+            $areaName = $areaModel?->name;
+            $baseCountQuery->where(function($q) use ($request, $areaName) {
+                $q->where('area_id', $request->area_id)
+                  ->orWhereHas('customer', function($cq) use ($request, $areaName) {
+                      $cq->where('area_id', $request->area_id)
+                         ->when($areaName, fn($sub) => $sub->orWhere('area', $areaName));
+                  });
+            });
+        }
+
+        $counts = [
+            'active' => (clone $baseCountQuery)->whereIn('status', ['escalated_to_lead', 'scheduled', 'in_progress'])->count(),
+            'waiting' => (clone $baseCountQuery)->where('status', 'escalated_to_lead')->count(),
+            'scheduled' => (clone $baseCountQuery)->whereIn('status', ['scheduled', 'in_progress'])->count(),
+            'completed' => (clone $baseCountQuery)->where('status', 'completed')->count(),
+            'all' => (clone $baseCountQuery)->whereIn('status', ['escalated_to_lead', 'scheduled', 'in_progress', 'completed'])->count(),
+        ];
+
         $query = PgkTicket::with([
             'area',
             'customer.areaModel',
@@ -204,7 +243,20 @@ class PgkController extends Controller
             'dismantledMaterials.receiver',
             'dismantledMaterials.technician',
             'dismantledMaterials.material',
-        ])->whereIn('status', ['escalated_to_lead', 'scheduled', 'in_progress']);
+        ]);
+
+        if ($status === 'waiting') {
+            $query->where('status', 'escalated_to_lead');
+        } elseif ($status === 'scheduled') {
+            $query->whereIn('status', ['scheduled', 'in_progress']);
+        } elseif ($status === 'completed') {
+            $query->where('status', 'completed');
+        } elseif ($status === 'all') {
+            $query->whereIn('status', ['escalated_to_lead', 'scheduled', 'in_progress', 'completed']);
+        } else {
+            $status = 'active';
+            $query->whereIn('status', ['escalated_to_lead', 'scheduled', 'in_progress']);
+        }
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
         DataScopeService::applyPgkScope($query);
@@ -262,7 +314,8 @@ class PgkController extends Controller
             'materials' => $materials,
             'materialTransactions' => $materialTransactions,
             'availableOnts' => $availableOnts,
-            'filters' => $request->only(['search', 'area_id']),
+            'counts' => $counts,
+            'filters' => array_merge($request->only(['search', 'area_id']), ['status' => $status]),
         ]);
     }
 

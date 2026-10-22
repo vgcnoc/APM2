@@ -30,6 +30,65 @@
                 </div>
             </div>
 
+            <!-- Status Tabs Filter -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                <button
+                    type="button"
+                    @click="setStatusFilter('active')"
+                    class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shadow-xs cursor-pointer"
+                    :class="currentStatus === 'active' ? 'bg-amber-600 text-white shadow-amber-600/30 ring-2 ring-amber-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
+                >
+                    <span>⚡ Antrean Aktif</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="currentStatus === 'active' ? 'bg-amber-700/60 text-white' : 'bg-gray-100 text-gray-700'">
+                        {{ counts?.active || 0 }}
+                    </span>
+                </button>
+                <button
+                    type="button"
+                    @click="setStatusFilter('waiting')"
+                    class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shadow-xs cursor-pointer"
+                    :class="currentStatus === 'waiting' ? 'bg-amber-600 text-white shadow-amber-600/30 ring-2 ring-amber-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
+                >
+                    <span>⏳ Menunggu Jadwal</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="currentStatus === 'waiting' ? 'bg-amber-700/60 text-white' : 'bg-amber-50 text-amber-800 font-bold'">
+                        {{ counts?.waiting || 0 }}
+                    </span>
+                </button>
+                <button
+                    type="button"
+                    @click="setStatusFilter('scheduled')"
+                    class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shadow-xs cursor-pointer"
+                    :class="currentStatus === 'scheduled' ? 'bg-amber-600 text-white shadow-amber-600/30 ring-2 ring-amber-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
+                >
+                    <span>🔧 Terjadwal & Lapangan</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="currentStatus === 'scheduled' ? 'bg-amber-700/60 text-white' : 'bg-blue-50 text-blue-800 font-bold'">
+                        {{ counts?.scheduled || 0 }}
+                    </span>
+                </button>
+                <button
+                    type="button"
+                    @click="setStatusFilter('completed')"
+                    class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shadow-xs cursor-pointer"
+                    :class="currentStatus === 'completed' ? 'bg-emerald-600 text-white shadow-emerald-600/30 ring-2 ring-emerald-600/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
+                >
+                    <span>✅ Selesai Dikerjakan</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="currentStatus === 'completed' ? 'bg-emerald-700/60 text-white' : 'bg-emerald-50 text-emerald-800 font-bold'">
+                        {{ counts?.completed || 0 }}
+                    </span>
+                </button>
+                <button
+                    type="button"
+                    @click="setStatusFilter('all')"
+                    class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shadow-xs cursor-pointer"
+                    :class="currentStatus === 'all' ? 'bg-slate-800 text-white shadow-slate-800/30 ring-2 ring-slate-800/20' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
+                >
+                    <span>📋 Semua Tiket</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px]" :class="currentStatus === 'all' ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-700'">
+                        {{ counts?.all || 0 }}
+                    </span>
+                </button>
+            </div>
+
             <!-- Flash Alert -->
             <div v-if="$page.props.flash?.success" class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center gap-3">
                 <svg class="w-5 h-5 shrink-0 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -147,15 +206,41 @@
 
                                 <!-- 3. Status & Jadwal -->
                                 <td class="p-4">
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider" :class="ticket.status === 'scheduled' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-amber-50 text-amber-700 border border-amber-200'">
-                                        <span class="w-1.5 h-1.5 rounded-full" :class="ticket.status === 'scheduled' ? 'bg-indigo-500' : 'bg-amber-500 animate-pulse'"></span>
-                                        {{ ticket.status === 'scheduled' ? 'Sudah Dijadwalkan' : 'Menunggu Jadwal' }}
+                                    <span 
+                                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider" 
+                                        :class="{
+                                            'bg-emerald-50 text-emerald-700 border border-emerald-200': ticket.status === 'completed',
+                                            'bg-sky-50 text-sky-700 border border-sky-200': ticket.status === 'in_progress',
+                                            'bg-indigo-50 text-indigo-700 border border-indigo-200': ticket.status === 'scheduled',
+                                            'bg-amber-50 text-amber-700 border border-amber-200': ticket.status === 'escalated_to_lead' || !ticket.status,
+                                        }"
+                                    >
+                                        <span 
+                                            class="w-1.5 h-1.5 rounded-full" 
+                                            :class="{
+                                                'bg-emerald-500': ticket.status === 'completed',
+                                                'bg-sky-500 animate-pulse': ticket.status === 'in_progress',
+                                                'bg-indigo-500': ticket.status === 'scheduled',
+                                                'bg-amber-500 animate-pulse': ticket.status === 'escalated_to_lead' || !ticket.status,
+                                            }"
+                                        ></span>
+                                        <span>
+                                            {{ 
+                                                ticket.status === 'completed' ? 'Selesai Dikerjakan' :
+                                                (ticket.status === 'in_progress' ? 'Sedang Dikerjakan' :
+                                                (ticket.status === 'scheduled' ? 'Sudah Dijadwalkan' : 'Menunggu Jadwal'))
+                                            }}
+                                        </span>
                                     </span>
 
                                     <div v-if="ticket.scheduled_date" class="mt-2 text-xs text-gray-700 font-semibold flex items-center gap-1.5">
                                         <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                         <span>{{ formatDate(ticket.scheduled_date) }}</span>
                                         <span class="text-gray-500 font-normal">({{ ticket.scheduled_time || 'Fleksibel' }})</span>
+                                    </div>
+                                    <div v-if="ticket.status === 'completed' && ticket.resolved_at" class="mt-1 text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+                                        <span>✓ Selesai:</span>
+                                        <span>{{ formatDate(ticket.resolved_at) }}</span>
                                     </div>
                                 </td>
 
@@ -179,7 +264,13 @@
                                                     <span class="font-medium text-gray-700 truncate">{{ m.material?.name }}</span>
                                                     <span v-if="m.trx_number" class="text-[9px] font-mono font-bold text-amber-700 bg-amber-100 px-1 py-0.5 rounded border border-amber-200">PO: {{ m.trx_number }}</span>
                                                 </div>
-                                                <span class="font-bold text-gray-900 shrink-0">{{ parseFloat(m.quantity_prepared) }} {{ m.unit || m.material?.unit }}</span>
+                                                <div class="shrink-0 flex items-center gap-1.5">
+                                                    <span class="text-gray-600 font-bold" title="Jumlah Disiapkan">Siap: {{ parseFloat(m.quantity_prepared) }}</span>
+                                                    <span v-if="ticket.status === 'completed'" class="font-bold text-emerald-700 bg-emerald-50 px-1 rounded border border-emerald-200" title="Jumlah Terpakai di Pelanggan">
+                                                        Pakai: {{ parseFloat(m.quantity_used || 0) }}
+                                                    </span>
+                                                    <span class="text-gray-400 text-[10px]">{{ m.unit || m.material?.unit }}</span>
+                                                </div>
                                             </div>
                                         </div>
                                         <div v-else class="text-gray-400 italic text-xs mt-0.5">Belum ada material disiapkan</div>
@@ -275,7 +366,7 @@
 
                                         <!-- Tombol Siapkan Unit ONT dari Gudang -->
                                         <button 
-                                            v-if="can('pgk_btn_assign')"
+                                            v-if="can('pgk_btn_assign') && ticket.status !== 'completed'"
                                             @click="openOntPrepareModal(ticket)" 
                                             class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border shadow-sm shrink-0"
                                             :class="ticket.ont_replacement_status === 'requested' ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600 shadow-indigo-600/20 animate-pulse' : (ticket.ont_replacement_status === 'prepared' ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200')"
@@ -284,6 +375,17 @@
                                             <span>🔄</span>
                                             <span>{{ ticket.ont_replacement_status === 'prepared' ? 'ONT Disiapkan' : 'Siapkan ONT' }}</span>
                                         </button>
+
+                                        <!-- Shortcut Laporan untuk Tiket Selesai -->
+                                        <a 
+                                            v-if="ticket.status === 'completed'"
+                                            :href="`/pgk/laporan?search=${ticket.ticket_number}`" 
+                                            class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shrink-0"
+                                            title="Buka Laporan Lengkap Penanganan"
+                                        >
+                                            <span>📋</span>
+                                            <span>Laporan</span>
+                                        </a>
 
                                         <a :href="`/pgk/${ticket.id}/print`" target="_blank" title="Cetak SPK Tugas Lapangan" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
@@ -295,7 +397,10 @@
                             <tr v-if="tickets.data.length === 0">
                                 <td colspan="5" class="p-8 text-center text-gray-400">
                                     <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                    Tidak ada tiket gangguan yang membutuhkan penjadwalan saat ini.
+                                    <span v-if="currentStatus === 'completed'">Tidak ada riwayat tiket gangguan komplain yang sudah selesai dikerjakan pada filter ini.</span>
+                                    <span v-else-if="currentStatus === 'waiting'">Tidak ada tiket gangguan yang membutuhkan penjadwalan saat ini.</span>
+                                    <span v-else-if="currentStatus === 'scheduled'">Tidak ada tiket gangguan yang sedang terjadwal/di lapangan saat ini.</span>
+                                    <span v-else>Tidak ada tiket gangguan komplain pada tab ini saat ini.</span>
                                 </td>
                             </tr>
                         </tbody>
@@ -880,11 +985,16 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    counts: {
+        type: Object,
+        default: () => ({ active: 0, waiting: 0, scheduled: 0, completed: 0, all: 0 }),
+    },
     filters: Object,
 });
 
 const search = ref(props.filters?.search || '');
 const filterArea = ref(props.filters?.area_id || '');
+const currentStatus = ref(props.filters?.status || 'active');
 
 const showScheduleModal = ref(false);
 const selectedTicket = ref(null);
@@ -1082,10 +1192,20 @@ const scheduleForm = useForm({
     materials: [],
 });
 
+const setStatusFilter = (st) => {
+    currentStatus.value = st;
+    router.get('/pgk/jadwal', {
+        search: search.value,
+        area_id: filterArea.value,
+        status: st,
+    }, { preserveState: true, replace: true });
+};
+
 const performSearch = () => {
     router.get('/pgk/jadwal', {
         search: search.value,
         area_id: filterArea.value,
+        status: currentStatus.value,
     }, { preserveState: true, replace: true });
 };
 
