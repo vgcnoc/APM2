@@ -32,7 +32,10 @@ class InvoiceController extends Controller
                   $query->whereIn('status', ['unpaid', 'partial'])
                         ->where('is_reseller_balance', false)
                         ->where('due_date', '<', $today);
-              }], 'amount');
+              }], 'amount')
+              ->withExists(['cbpRequests as has_open_cbp' => function ($query) {
+                  $query->whereIn('status', ['pending', 'assigned']);
+              }]);
         }, 'customer.areaModel', 'customer.package', 'customer.ont.odp', 'payments' => function($q) {
             $q->with('collector')->latest('payment_date');
         }])->where('is_reseller_balance', false)
@@ -192,6 +195,7 @@ class InvoiceController extends Controller
                         'register_date' => $invoice->customer->registration_date ? $invoice->customer->registration_date->format('d M Y') : ($invoice->customer->created_at ? $invoice->customer->created_at->format('d M Y') : null),
                         'activation_date' => $invoice->customer->activation_date ? $invoice->customer->activation_date->format('d M Y') : null,
                         'status' => $invoice->customer->status,
+                        'has_open_cbp' => (bool) ($invoice->customer->has_open_cbp ?? false),
                         'unpaid_count' => $invoice->customer->unpaid_invoices_count ?? 0,
                         'total_unpaid' => $invoice->customer->total_unpaid_amount ?? 0,
                         'overdue_count' => $invoice->customer->overdue_invoices_count ?? 0,
@@ -628,7 +632,8 @@ class InvoiceController extends Controller
         $notes = $request->input('notes') ?: '';
 
         // 1. Update status pelanggan menjadi terminated & putus RADIUS
-        if ($customer->status !== 'terminated') {
+        $wasAlreadyTerminated = $customer->status === 'terminated';
+        if (!$wasAlreadyTerminated) {
             \App\Services\AffiliateService::handleEarlyTerminationPenalty($customer, now()->toDateString());
 
             $customer->update([
@@ -726,7 +731,9 @@ class InvoiceController extends Controller
         }
 
         return redirect()->back()->with([
-            'success' => "Pelanggan {$customer->name} berhasil di-Stop Permanen & otomatis masuk antrean Cabut Perangkat ({$cbp->cbp_number}).",
+            'success' => $wasAlreadyTerminated
+                ? "Tiket Cabut Perangkat baru ({$cbp->cbp_number}) berhasil dibuat untuk {$customer->name} yang sudah berstatus Stop Permanen."
+                : "Pelanggan {$customer->name} berhasil di-Stop Permanen & otomatis masuk antrean Cabut Perangkat ({$cbp->cbp_number}).",
             'cbp_dispatch' => [
                 'cbp_id' => $cbp->id,
                 'cbp_number' => $cbp->cbp_number,

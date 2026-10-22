@@ -542,10 +542,10 @@
                             </div>
                         </button>
 
-                        <!-- Stop Permanen & CBP -->
+                        <!-- Stop Permanen & CBP (atau Buat Ulang CBP jika CBP sebelumnya dibatalkan) -->
                         <button 
                             v-can="'customers_active_terminate'"
-                            v-if="activeDropdownRow.customer.status !== 'terminated'"
+                            v-if="activeDropdownRow.customer.status !== 'terminated' || !activeDropdownRow.customer.has_open_cbp"
                             type="button" 
                             @click="openStopPermanenModal(activeDropdownRow); closeDropdown()"
                             class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-rose-700 hover:bg-rose-50 transition-colors font-medium cursor-pointer"
@@ -554,8 +554,8 @@
                                 <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                             </div>
                             <div>
-                                <span class="font-semibold">Stop Permanen & CBP</span>
-                                <p class="text-[10px] text-rose-400 font-normal">Putus & tarik perangkat</p>
+                                <span class="font-semibold">{{ activeDropdownRow.customer.status === 'terminated' ? 'Buat Ulang Tiket CBP' : 'Stop Permanen & CBP' }}</span>
+                                <p class="text-[10px] text-rose-400 font-normal">{{ activeDropdownRow.customer.status === 'terminated' ? 'Sudah stop, jadwalkan tarik perangkat lagi' : 'Putus & tarik perangkat' }}</p>
                             </div>
                         </button>
                     </div>
@@ -1447,8 +1447,8 @@
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                             </div>
                             <div>
-                                <h3 class="text-lg font-black text-slate-800 tracking-tight">Stop Permanen &amp; Cabut Perangkat</h3>
-                                <p class="text-xs font-medium text-rose-600 mt-0.5">Otomatis Terjadwal ke CBP &amp; Disposisi Kepala Teknisi</p>
+                                <h3 class="text-lg font-black text-slate-800 tracking-tight">{{ selectedStopPermanenInvoice?.customer?.status === 'terminated' ? 'Buat Ulang Tiket Cabut Perangkat (CBP)' : 'Stop Permanen & Cabut Perangkat' }}</h3>
+                                <p class="text-xs font-medium text-rose-600 mt-0.5">{{ selectedStopPermanenInvoice?.customer?.status === 'terminated' ? 'Tiket CBP Sebelumnya Dibatalkan - Jadwalkan Ulang Pencabutan' : 'Otomatis Terjadwal ke CBP & Disposisi Kepala Teknisi' }}</p>
                             </div>
                         </div>
                         <button @click="closeStopPermanenModal" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-white/80 transition-colors">
@@ -1549,7 +1549,7 @@
                             </button>
                             <button type="submit" :disabled="stopPermanenForm.processing" class="bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md shadow-rose-500/25 transition-all disabled:opacity-50 flex items-center gap-2">
                                 <svg v-if="stopPermanenForm.processing" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                <span>{{ stopPermanenForm.processing ? 'Memproses...' : 'Stop Permanen & Buat Tiket CBP' }}</span>
+                                <span>{{ stopPermanenForm.processing ? 'Memproses...' : (selectedStopPermanenInvoice?.customer?.status === 'terminated' ? 'Buat Ulang Tiket CBP' : 'Stop Permanen & Buat Tiket CBP') }}</span>
                             </button>
                         </div>
                     </form>
