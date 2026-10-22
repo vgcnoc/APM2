@@ -1411,7 +1411,7 @@ class PgkController extends Controller
 
         AuditLog::createLog(
             'Hapus Tiket PGK',
-            null,
+            PgkTicket::class,
             null,
             null,
             'Tiket PGK ' . $num . ' dihapus oleh user: ' . (auth()->user()?->name ?? 'System') . ' (Stok material dikembalikan ke gudang)'
@@ -1488,7 +1488,7 @@ class PgkController extends Controller
 
         AuditLog::createLog(
             'Hapus Massal Tiket PGK',
-            null,
+            PgkTicket::class,
             null,
             null,
             'Sebanyak ' . $count . ' tiket PGK dihapus massal oleh: ' . (auth()->user()?->name ?? 'System') . ' (Stok material dikembalikan ke gudang)'

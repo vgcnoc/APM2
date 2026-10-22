@@ -1392,7 +1392,7 @@ class PgsController extends Controller
 
         AuditLog::createLog(
             'Hapus Tiket PGS',
-            null,
+            PgsTicket::class,
             null,
             null,
             'Tiket PGS ' . $num . ' dihapus oleh user: ' . (auth()->user()?->name ?? 'System') . ' (Stok material dikembalikan ke gudang)'
@@ -1468,7 +1468,7 @@ class PgsController extends Controller
 
         AuditLog::createLog(
             'Hapus Massal Tiket PGS',
-            null,
+            PgsTicket::class,
             null,
             null,
             'Sebanyak ' . $count . ' tiket PGS dihapus massal oleh: ' . (auth()->user()?->name ?? 'System') . ' (Stok material dikembalikan ke gudang)'
