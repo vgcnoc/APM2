@@ -205,10 +205,23 @@ class CbpRequestController extends Controller
             abort(403, 'Akses ke laporan CBP tidak diizinkan.');
         }
 
+        $baseQuery = CbpRequest::whereIn('status', ['assigned', 'completed']);
+        DataScopeService::applyCbpScope($baseQuery);
+
+        $laporanCounts = [
+            'all' => (clone $baseQuery)->count(),
+            'assigned' => (clone $baseQuery)->where('status', 'assigned')->count(),
+            'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
+        ];
+
         $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'customer.technicianSchedules', 'technicians', 'creator', 'auditLogs'])->whereIn('status', ['assigned', 'completed']);
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
         DataScopeService::applyCbpScope($query);
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
 
         if ($request->filled('area_id') && $request->area_id !== 'all') {
             $query->whereHas('customer', function($cq) use ($request) {
@@ -240,9 +253,10 @@ class CbpRequestController extends Controller
 
         return Inertia::render('Tickets/CbpLaporan', [
             'requests' => $cbpRequests,
+            'counts' => $laporanCounts,
             'materials' => $materials,
             'areas' => $areas,
-            'filters' => $request->only(['search', 'area_id', 'per_page']),
+            'filters' => $request->only(['search', 'status', 'area_id', 'per_page']),
         ]);
     }
 
