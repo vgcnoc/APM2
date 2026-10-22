@@ -288,6 +288,39 @@ class PgjController extends Controller
             $query->where('area_id', $request->area_id);
         }
 
+        if ($request->filled('priority')) {
+            $query->where('priority', $request->priority);
+        }
+
+        if ($request->filled('segment_type')) {
+            $query->where('segment_type', $request->segment_type);
+        }
+
+        if ($request->filled('period')) {
+            switch ($request->period) {
+                case 'today':
+                    $query->whereDate('created_at', today());
+                    break;
+                case 'this_week':
+                    $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+                    break;
+                case 'this_month':
+                    $query->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year);
+                    break;
+                case 'last_month':
+                    $query->whereMonth('created_at', now()->subMonth()->month)->whereYear('created_at', now()->subMonth()->year);
+                    break;
+                case 'custom':
+                    if ($request->filled('start_date')) {
+                        $query->whereDate('created_at', '>=', $request->start_date);
+                    }
+                    if ($request->filled('end_date')) {
+                        $query->whereDate('created_at', '<=', $request->end_date);
+                    }
+                    break;
+            }
+        }
+
         $tickets = $query->orderBy('priority', 'desc')
                          ->orderBy('created_at', 'desc')
                          ->paginate(15)
@@ -318,7 +351,10 @@ class PgjController extends Controller
             'materials' => $materials,
             'materialTransactions' => $materialTransactions,
             'counts' => $counts,
-            'filters' => array_merge($request->only(['search', 'area_id']), ['status' => $status]),
+            'filters' => array_merge(
+                $request->only(['search', 'priority', 'segment_type', 'area_id', 'period', 'start_date', 'end_date']),
+                ['status' => $status]
+            ),
         ]);
     }
 
@@ -338,6 +374,18 @@ class PgjController extends Controller
             abort(403, 'Akses ke laporan PGJ tidak diizinkan.');
         }
 
+        $status = $request->get('status', 'all');
+
+        $baseCountQuery = PgjTicket::query()->whereIn('status', ['scheduled', 'completed']);
+        DataScopeService::applyPgjScope($baseCountQuery);
+
+        $counts = [
+            'all' => (clone $baseCountQuery)->count(),
+            'scheduled' => (clone $baseCountQuery)->where('status', 'scheduled')->count(),
+            'completed' => (clone $baseCountQuery)->where('status', 'completed')->count(),
+            'backbone' => (clone $baseCountQuery)->where('segment_type', 'backbone')->count(),
+        ];
+
         $query = PgjTicket::with([
             'area',
             'olt',
@@ -348,7 +396,15 @@ class PgjController extends Controller
             'technicians',
             'materials.material',
             'resolvedByUser'
-        ])->whereIn('status', ['scheduled', 'completed']);
+        ]);
+
+        if ($status === 'scheduled' || $status === 'waiting_report') {
+            $query->where('status', 'scheduled');
+        } elseif ($status === 'completed') {
+            $query->where('status', 'completed');
+        } else {
+            $query->whereIn('status', ['scheduled', 'completed']);
+        }
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
         DataScopeService::applyPgjScope($query);
@@ -379,13 +435,50 @@ class PgjController extends Controller
             $query->where('area_id', $request->area_id);
         }
 
+        if ($request->filled('priority')) {
+            $query->where('priority', $request->priority);
+        }
+
+        if ($request->filled('segment_type')) {
+            $query->where('segment_type', $request->segment_type);
+        }
+
+        if ($request->filled('period')) {
+            switch ($request->period) {
+                case 'today':
+                    $query->whereDate('created_at', today());
+                    break;
+                case 'this_week':
+                    $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
+                    break;
+                case 'this_month':
+                    $query->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year);
+                    break;
+                case 'last_month':
+                    $query->whereMonth('created_at', now()->subMonth()->month)->whereYear('created_at', now()->subMonth()->year);
+                    break;
+                case 'custom':
+                    if ($request->filled('start_date')) {
+                        $query->whereDate('created_at', '>=', $request->start_date);
+                    }
+                    if ($request->filled('end_date')) {
+                        $query->whereDate('created_at', '<=', $request->end_date);
+                    }
+                    break;
+            }
+        }
+
         $tickets = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
         $areas = Area::orderBy('name')->get();
 
         return Inertia::render('Pgj/Laporan', [
             'tickets' => $tickets,
             'areas' => $areas,
-            'filters' => $request->only(['search', 'area_id']),
+            'counts' => $counts,
+            'filters' => array_merge(
+                $request->only(['search', 'priority', 'segment_type', 'area_id', 'period', 'start_date', 'end_date']),
+                ['status' => $status]
+            ),
         ]);
     }
 

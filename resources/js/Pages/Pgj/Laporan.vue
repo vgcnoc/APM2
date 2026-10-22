@@ -3,31 +3,177 @@
         <div class="space-y-6">
 
 
-            <!-- Toolbar & Filter -->
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                <div v-if="can('pgj_filter')" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
-                    <div class="relative flex-1 sm:w-80">
-                        <input 
-                            type="text" 
-                            v-model="search" 
-                            placeholder="Cari No. PGJ, ODC, ODP, tindakan..." 
-                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm transition-all"
-                            @keyup.enter="performSearch"
+            <!-- ════════════ STATS SUMMARY CARDS ════════════ -->
+            <div v-if="can(['pgj_card_summary', 'pgj_card_stats'])" class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                <!-- 1. Semua Laporan -->
+                <div 
+                    @click="setStatusFilter('all')"
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 relative overflow-hidden group"
+                    :class="currentStatus === 'all' && !filterSegment ? 'border-slate-700 ring-2 ring-slate-700/30 shadow-md shadow-slate-900/10' : 'border-gray-100 hover:border-slate-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Laporan</span>
+                        <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-gray-900 mt-2 tracking-tight">{{ counts?.all || 0 }}</div>
+                    <p class="text-[10px] text-slate-500 font-semibold mt-0.5">Semua penugasan restorasi</p>
+                </div>
+
+                <!-- 2. Menunggu Laporan (Scheduled) -->
+                <div 
+                    @click="setStatusFilter('scheduled')"
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 relative overflow-hidden group"
+                    :class="currentStatus === 'scheduled' ? 'border-amber-400 ring-2 ring-amber-400/30 shadow-md shadow-amber-500/10' : 'border-gray-100 hover:border-amber-200'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Menunggu Laporan</span>
+                        <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-gray-900 mt-2 tracking-tight">{{ counts?.scheduled || 0 }}</div>
+                    <p class="text-[10px] text-amber-600 font-semibold mt-0.5">Sedang ditangani tim lapangan</p>
+                </div>
+
+                <!-- 3. Restorasi Selesai (Completed) -->
+                <div 
+                    @click="setStatusFilter('completed')"
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 relative overflow-hidden group"
+                    :class="currentStatus === 'completed' ? 'border-emerald-400 ring-2 ring-emerald-400/30 shadow-md shadow-emerald-500/10' : 'border-gray-100 hover:border-emerald-200'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Restorasi Selesai</span>
+                        <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-gray-900 mt-2 tracking-tight">{{ counts?.completed || 0 }}</div>
+                    <p class="text-[10px] text-emerald-600 font-semibold mt-0.5">Core & optical loss terlapor</p>
+                </div>
+
+                <!-- 4. Gangguan Backbone -->
+                <div 
+                    @click="setBackboneFilter"
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 relative overflow-hidden group"
+                    :class="filterSegment === 'backbone' ? 'border-purple-500 ring-2 ring-purple-500/30 shadow-md shadow-purple-500/10' : 'border-gray-100 hover:border-purple-200'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Gangguan Backbone</span>
+                        <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-purple-900 mt-2 tracking-tight">{{ counts?.backbone || 0 }}</div>
+                    <p class="text-[10px] text-purple-600 font-semibold mt-0.5">Downtime OLT & massal</p>
+                </div>
+            </div>
+
+            <!-- ════════════ SMART FILTER TOOLBAR ════════════ -->
+            <div v-if="can('pgj_filter')" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+                <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
+                    <!-- Left: Search & Filter Controls -->
+                    <div class="flex flex-wrap items-center gap-2.5 flex-1">
+                        <!-- Search Box -->
+                        <div class="relative w-full sm:w-64">
+                            <input 
+                                type="text" 
+                                v-model="search" 
+                                placeholder="Cari No. PGJ, ODC, ODP, tindakan..." 
+                                class="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs transition-all bg-gray-50/60 font-medium text-slate-800 placeholder-slate-400"
+                                @keyup.enter="performSearch"
+                            >
+                            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            <button v-if="search" @click="search = ''; performSearch()" class="absolute right-2.5 top-2 text-gray-400 hover:text-gray-600 font-bold text-sm">
+                                &times;
+                            </button>
+                        </div>
+
+                        <!-- Status Filter Dropdown -->
+                        <select v-model="currentStatus" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                            <option value="all">📋 Semua Status</option>
+                            <option value="scheduled">⏳ Menunggu Laporan (Lapangan)</option>
+                            <option value="completed">✅ Restorasi Selesai (Pulih)</option>
+                        </select>
+
+                        <!-- Segmen Filter Dropdown -->
+                        <select v-model="filterSegment" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                            <option value="">Semua Segmen Jaringan</option>
+                            <option value="backbone">⚡ Backbone / Sumber Internet</option>
+                            <option value="odc">Kabel Feeder ODC</option>
+                            <option value="odp">Distribusi ODP</option>
+                            <option value="distribution">Distribusi Tiang / Span</option>
+                        </select>
+
+                        <!-- Priority Filter Dropdown -->
+                        <select v-model="filterPriority" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                            <option value="">Semua Prioritas</option>
+                            <option value="critical">🚨 Kritis (Critical)</option>
+                            <option value="high">⚠️ Tinggi (High)</option>
+                            <option value="medium">Sedang (Medium)</option>
+                            <option value="low">Rendah (Low)</option>
+                        </select>
+
+                        <!-- Area Filter Dropdown -->
+                        <select v-model="filterArea" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                            <option value="">Semua Wilayah / Area</option>
+                            <option v-for="a in areas" :key="a.id" :value="a.id">📍 {{ a.name }}</option>
+                        </select>
+
+                        <!-- Periode Filter Dropdown -->
+                        <select v-model="filterPeriod" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                            <option value="">Semua Periode</option>
+                            <option value="today">Hari Ini</option>
+                            <option value="this_week">Minggu Ini</option>
+                            <option value="this_month">Bulan Ini</option>
+                            <option value="last_month">Bulan Lalu</option>
+                            <option value="custom">Rentang Tanggal (Custom)...</option>
+                        </select>
+
+                        <!-- Reset Filter Button -->
+                        <button 
+                            v-if="hasActiveFilters" 
+                            @click="resetFilters" 
+                            type="button" 
+                            class="px-3 py-2 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors flex items-center gap-1.5"
+                            title="Reset Semua Filter"
                         >
-                        <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>Reset Filter</span>
+                        </button>
                     </div>
 
-                    <select v-model="filterArea" @change="performSearch" class="px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm bg-gray-50/50">
-                        <option value="">Semua Area</option>
-                        <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
-                    </select>
+                    <!-- Right Info / Help -->
+                    <div class="text-xs text-gray-500 font-medium shrink-0 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>Pelaporan core FO, redaman optik dB, foto & material terpakai</span>
+                    </div>
                 </div>
-                
-                <div class="text-xs text-gray-500 font-medium">
-                    Halaman ini digunakan tim teknisi untuk melaporkan hasil penyambungan core FO, optical loss, foto, dan material terpakai.
-                </div>
+
+                <!-- Custom Date Range Bar (Expanded if filterPeriod === 'custom') -->
+                <transition
+                    enter-active-class="transition duration-200 ease-out"
+                    enter-from-class="transform opacity-0 -translate-y-2"
+                    enter-to-class="transform opacity-100 translate-y-0"
+                    leave-active-class="transition duration-150 ease-in"
+                    leave-from-class="transform opacity-100 translate-y-0"
+                    leave-to-class="transform opacity-0 -translate-y-2"
+                >
+                    <div v-if="filterPeriod === 'custom'" class="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-3 text-xs bg-slate-50/70 p-3 rounded-xl border border-slate-200/60">
+                        <span class="font-bold text-slate-700">Pilih Rentang Tanggal:</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-500 font-medium">Dari:</span>
+                            <input type="date" v-model="startDate" @change="performSearch" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs bg-white font-medium focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200">
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-500 font-medium">Sampai:</span>
+                            <input type="date" v-model="endDate" @change="performSearch" class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs bg-white font-medium focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200">
+                        </div>
+                    </div>
+                </transition>
             </div>
 
             <!-- Flash Alert -->
@@ -879,10 +1025,45 @@ const props = defineProps({
     tickets: Object,
     areas: Array,
     filters: Object,
+    counts: {
+        type: Object,
+        default: () => ({ all: 0, scheduled: 0, completed: 0, backbone: 0 }),
+    },
 });
 
 const search = ref(props.filters?.search || '');
+const currentStatus = ref(props.filters?.status || 'all');
 const filterArea = ref(props.filters?.area_id || '');
+const filterSegment = ref(props.filters?.segment_type || '');
+const filterPriority = ref(props.filters?.priority || '');
+const filterPeriod = ref(props.filters?.period || '');
+const startDate = ref(props.filters?.start_date || '');
+const endDate = ref(props.filters?.end_date || '');
+
+const hasActiveFilters = computed(() => {
+    return !!(
+        search.value ||
+        (currentStatus.value && currentStatus.value !== 'all') ||
+        filterArea.value ||
+        filterSegment.value ||
+        filterPriority.value ||
+        filterPeriod.value ||
+        startDate.value ||
+        endDate.value
+    );
+});
+
+const resetFilters = () => {
+    search.value = '';
+    currentStatus.value = 'all';
+    filterArea.value = '';
+    filterSegment.value = '';
+    filterPriority.value = '';
+    filterPeriod.value = '';
+    startDate.value = '';
+    endDate.value = '';
+    performSearch();
+};
 
 const showReportModal = ref(false);
 const selectedTicket = ref(null);
@@ -919,11 +1100,31 @@ const reportForm = useForm({
     materials: [],
 });
 
+const setStatusFilter = (st) => {
+    currentStatus.value = st;
+    if (filterSegment.value === 'backbone' && st !== 'all') {
+        filterSegment.value = '';
+    }
+    performSearch();
+};
+
+const setBackboneFilter = () => {
+    filterSegment.value = filterSegment.value === 'backbone' ? '' : 'backbone';
+    currentStatus.value = 'all';
+    performSearch();
+};
+
 const performSearch = () => {
     router.get('/pgj/laporan', {
         search: search.value,
+        status: currentStatus.value,
         area_id: filterArea.value,
-    }, { preserveState: true, replace: true });
+        segment_type: filterSegment.value,
+        priority: filterPriority.value,
+        period: filterPeriod.value,
+        start_date: startDate.value,
+        end_date: endDate.value,
+    }, { preserveState: true, preserveScroll: true, replace: true });
 };
 
 // ── Live Timer Logic ───────────────────────────────────────────
