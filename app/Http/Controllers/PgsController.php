@@ -1568,8 +1568,11 @@ class PgsController extends Controller
         }
 
         // 4. Hapus data serah terima bongkaran
-        \App\Models\CustomerMaterialDismantle::where('source_type', 'pgs')
-            ->where('source_id', $pgs->id)
+        \App\Models\CustomerMaterialDismantle::where('ticket_type', 'pgs')
+            ->where(function ($q) use ($pgs) {
+                $q->where('ticket_id', $pgs->id)
+                  ->orWhere('ticket_number', $pgs->ticket_number);
+            })
             ->delete();
 
         // 5. Hapus relasi teknisi, material, dan permintaan tambahan

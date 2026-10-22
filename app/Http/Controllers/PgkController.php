@@ -1588,8 +1588,11 @@ class PgkController extends Controller
         }
 
         // 4. Hapus data serah terima bongkaran
-        \App\Models\CustomerMaterialDismantle::where('source_type', 'pgk')
-            ->where('source_id', $pgk->id)
+        \App\Models\CustomerMaterialDismantle::where('ticket_type', 'pgk')
+            ->where(function ($q) use ($pgk) {
+                $q->where('ticket_id', $pgk->id)
+                  ->orWhere('ticket_number', $pgk->ticket_number);
+            })
             ->delete();
 
         // 5. Hapus relasi teknisi, material, dan permintaan tambahan
