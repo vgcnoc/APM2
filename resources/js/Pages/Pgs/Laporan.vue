@@ -854,6 +854,15 @@
                                                 {{ parseFloat(inst.quantity) }} {{ inst.unit }}
                                                 <span v-if="inst.serial_number">· SN: {{ inst.serial_number }}</span>
                                             </div>
+                                            <!-- Status Sumber Pengganti Langsung di Item -->
+                                            <div v-if="materialReplacements.some(r => r.installed_material_id === inst.id)" class="mt-1">
+                                                <span v-if="findMatchingPreparedMaterial(inst)" class="inline-flex items-center gap-1 text-[9px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded font-bold border border-emerald-300">
+                                                    ✓ Pengganti: Diambil dari Bekal Bagian A ({{ findMatchingPreparedMaterial(inst).name }})
+                                                </span>
+                                                <span v-else class="inline-flex items-center gap-1 text-[9px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded font-bold border border-amber-300">
+                                                    ⚠️ Belum ada bekal cocok di Bagian A
+                                                </span>
+                                            </div>
                                         </div>
 
                                         <button 
@@ -929,7 +938,7 @@
                                             <!-- Opsi 1: Jika cocok dengan bekal Ka. Teknisi -->
                                             <div v-if="findMatchingPreparedMaterial(rep)" class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                                 <div class="text-[11px] text-emerald-800">
-                                                    <span>✓ Tersedia di Bekal Ka. Teknisi: <b>{{ findMatchingPreparedMaterial(rep).name }}</b> (Tercatat terpakai: {{ findMatchingPreparedMaterial(rep).quantity_used }} {{ findMatchingPreparedMaterial(rep).unit }})</span>
+                                                    <span>✓ <b>Unit Baru Pengganti:</b> Diambil dari <b>Bekal Ka. Teknisi (Bagian A)</b> &rarr; <b>{{ findMatchingPreparedMaterial(rep).name }}</b> (Tercatat terpakai: {{ findMatchingPreparedMaterial(rep).quantity_used }} {{ findMatchingPreparedMaterial(rep).unit }})</span>
                                                 </div>
                                                 <button type="button" @click="syncReplacementToPrepared(rep, findMatchingPreparedMaterial(rep))" class="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-[10px] shadow-sm flex items-center gap-1 cursor-pointer shrink-0">
                                                     <span>⚡ Sinkron Terpakai Bekal (Sync Bagian A)</span>
@@ -937,7 +946,7 @@
                                             </div>
                                             <!-- Opsi 2: Jika belum ada di bekal -> Tombol Ajukan Dadakan -->
                                             <div v-else class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                                <span class="text-[11px] text-amber-800">⚠️ Belum ada bekal yang cocok untuk item ini.</span>
+                                                <span class="text-[11px] text-amber-800">⚠️ <b>Belum ada bekal yang cocok di Bagian A</b> untuk item ini.</span>
                                                 <button type="button" @click="openEmergencyRequestForReplacement(rep)" class="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded text-[10px] shadow-sm flex items-center gap-1 cursor-pointer shrink-0">
                                                     <span>📢 + Ajukan Dadakan ke Ka. Teknisi</span>
                                                 </button>
@@ -1834,6 +1843,19 @@ const initReplacementForInstalledMaterial = (installedItem) => {
     const existing = materialReplacements.value.find(r => r.installed_material_id === installedItem.id);
     if (existing) return;
 
+    // Cek kecocokan otomatis dengan bekal di Bagian A
+    const dummyRep = { item_name: installedItem.item_name, material_id: installedItem.material_id || null };
+    const matched = findMatchingPreparedMaterial(dummyRep);
+
+    // Jika ada di bekal dan kuantitas terpakai masih 0, otomatis sinkronkan terpakai
+    if (matched && (!matched.quantity_used || parseFloat(matched.quantity_used) === 0)) {
+        const qtyToUse = Math.min(parseFloat(matched.quantity_prepared) || 0, parseFloat(installedItem.quantity) || 0);
+        if (qtyToUse > 0) {
+            matched.quantity_used = qtyToUse;
+            calculateReturned(matched);
+        }
+    }
+
     materialReplacements.value.push({
         installed_material_id: installedItem.id,
         item_name: installedItem.item_name,
@@ -1844,8 +1866,8 @@ const initReplacementForInstalledMaterial = (installedItem) => {
         unit: installedItem.unit || 'pcs',
         condition: 'rusak_scrap',
         damage_reason: 'Kabel / material putus atau rusak di lapangan',
-        replacement_material_id: installedItem.material_id || null,
-        replacement_quantity: parseFloat(installedItem.quantity),
+        replacement_material_id: matched ? matched.material_id : (installedItem.material_id || null),
+        replacement_quantity: matched && parseFloat(matched.quantity_used) > 0 ? parseFloat(matched.quantity_used) : parseFloat(installedItem.quantity),
     });
     saveDraft();
 };
