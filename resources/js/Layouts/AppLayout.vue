@@ -1,15 +1,15 @@
 <template>
-    <div class="flex min-h-screen bg-gray-50 font-sans text-gray-900">
+    <div class="flex min-h-screen bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-200">
         <div v-show="mobileMenuOpen" class="fixed inset-0 bg-gray-900/50 z-40 lg:hidden transition-opacity" @click="mobileMenuOpen = false"></div>
         <aside
             :class="[
-                'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-gray-200 bg-white shadow-sm transition-transform duration-300 print:hidden',
+                'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-transform duration-300 print:hidden',
                 mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
                 sidebarOpen ? 'w-64' : 'w-20 lg:w-20 w-64'
             ]"
         >
             <!-- Logo -->
-            <div class="flex items-center justify-between px-5 py-5 border-b border-gray-200">
+            <div class="flex items-center justify-between px-5 py-5 border-b border-gray-200 dark:border-gray-800">
                 <Link href="/" class="block">
                     <AppLogo :sidebar-collapsed="!sidebarOpen" context="desktop" />
                 </Link>
@@ -163,11 +163,11 @@
             </nav>
 
             <!-- Sidebar Toggle (Desktop Only) -->
-            <div class="hidden lg:block border-t border-gray-200 p-3">
+            <div class="hidden lg:block border-t border-gray-200 dark:border-gray-800 p-3">
                 <button
                     type="button"
                     @click="sidebarOpen = !sidebarOpen"
-                    class="w-full flex items-center justify-center p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-all"
+                    class="w-full flex items-center justify-center p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 transition-all"
                 >
                     <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': !sidebarOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
@@ -181,45 +181,65 @@
             :class="['flex-1 transition-all duration-300 min-w-0 flex flex-col print:m-0 print:p-0 print:ml-0', sidebarOpen ? 'lg:ml-64' : 'lg:ml-20']"
         >
             <!-- Top Bar -->
-            <header class="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 shadow-sm flex items-center justify-between gap-4 print:hidden">
+            <header class="sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4 shadow-sm dark:shadow-gray-950/40 flex items-center justify-between gap-4 print:hidden transition-colors duration-200">
                 <div class="flex items-center gap-3 min-w-0">
-                    <button @click="mobileMenuOpen = true" class="lg:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+                    <button @click="mobileMenuOpen = true" class="lg:hidden p-2 -ml-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                         </svg>
                     </button>
                     <div class="min-w-0">
-                        <h2 class="text-lg sm:text-xl font-bold text-gray-900 truncate">{{ title }}</h2>
-                        <p v-if="subtitle" class="text-xs sm:text-sm font-medium text-gray-500 mt-0.5 truncate">{{ subtitle }}</p>
+                        <h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">{{ title }}</h2>
+                        <p v-if="subtitle" class="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mt-0.5 truncate">{{ subtitle }}</p>
                     </div>
                 </div>
-                    <div class="flex items-center gap-5">
+                    <div class="flex items-center gap-3 sm:gap-4">
+                        <!-- Theme Toggle Button (Dark / Light Mode) -->
+                        <button 
+                            type="button" 
+                            @click="toggleTheme" 
+                            class="relative p-2 rounded-xl border transition-all duration-200 cursor-pointer flex items-center justify-center group"
+                            :class="isDarkMode 
+                                ? 'bg-gray-800 border-gray-700 text-amber-400 hover:bg-gray-700 shadow-sm' 
+                                : 'bg-gray-50 border-gray-200 text-slate-600 hover:bg-gray-100 shadow-2xs'"
+                            :title="isDarkMode ? 'Beralih ke Mode Terang (Light Mode)' : 'Beralih ke Mode Gelap (Dark Mode)'"
+                        >
+                            <!-- Sun icon when dark -->
+                            <svg v-if="isDarkMode" class="w-5 h-5 text-amber-400 transition-transform duration-300 group-hover:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            <!-- Moon icon when light -->
+                            <svg v-else class="w-5 h-5 text-slate-600 transition-transform duration-300 group-hover:-rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            </svg>
+                        </button>
+
                         <!-- On Duty Toggle -->
                         <div v-if="$page.props.auth?.user?.role !== 'customer'" class="hidden sm:flex items-center gap-2">
                             <span class="text-xs font-bold" :class="$page.props.auth?.user?.is_on_duty ? 'text-green-600' : 'text-gray-400'">
                                 {{ $page.props.auth?.user?.is_on_duty ? 'ON DUTY' : 'OFF DUTY' }}
                             </span>
-                            <Link href="/profile/toggle-duty" method="post" as="button" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none" :class="$page.props.auth?.user?.is_on_duty ? 'bg-green-500' : 'bg-gray-200'" title="Toggle On Duty">
+                            <Link href="/profile/toggle-duty" method="post" as="button" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none" :class="$page.props.auth?.user?.is_on_duty ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'" title="Toggle On Duty">
                                 <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="$page.props.auth?.user?.is_on_duty ? 'translate-x-6' : 'translate-x-1'"></span>
                             </Link>
                         </div>
                         <!-- Notification Bell -->
-                        <button class="relative p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-600 transition-all">
+                        <button class="relative p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-200 transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                             </svg>
                             <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
                         </button>
                         <!-- User Menu -->
-                        <div class="flex items-center gap-3 pl-5 border-l border-gray-200">
-                            <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-700">
+                        <div class="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-800">
+                            <div class="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-sm font-bold text-blue-700 dark:text-blue-300">
                                 {{ $page.props.auth?.user?.name?.charAt(0) || 'A' }}
                             </div>
                             <div v-if="sidebarOpen" class="hidden md:block">
-                                <p class="text-sm font-bold text-gray-900 leading-tight">{{ $page.props.auth?.user?.name || 'Admin' }}</p>
-                                <p class="text-xs font-medium text-gray-500 capitalize mt-0.5">{{ $page.props.auth?.user?.role || 'admin' }}</p>
+                                <p class="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">{{ $page.props.auth?.user?.name || 'Admin' }}</p>
+                                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 capitalize mt-0.5">{{ $page.props.auth?.user?.role || 'admin' }}</p>
                             </div>
-                            <Link href="/logout" method="post" as="button" class="ml-2 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Logout">
+                            <Link href="/logout" method="post" as="button" class="ml-2 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors" title="Logout">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                             </Link>
                         </div>
@@ -262,6 +282,32 @@ const mobileMenuOpen = ref(false);
 const sidebarNav = ref(null);
 const isRestored = ref(false);
 const openDropdowns = ref([]);
+const isDarkMode = ref(false);
+
+const toggleTheme = () => {
+    isDarkMode.value = !isDarkMode.value;
+    if (isDarkMode.value) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('apm_theme', 'dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('apm_theme', 'light');
+    }
+};
+
+const initTheme = () => {
+    if (typeof window === 'undefined') return;
+    try {
+        const saved = localStorage.getItem('apm_theme');
+        if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            isDarkMode.value = true;
+            document.documentElement.classList.add('dark');
+        } else {
+            isDarkMode.value = false;
+            document.documentElement.classList.remove('dark');
+        }
+    } catch (e) {}
+};
 
 const themeDividers = {
     purple: 'bg-purple-200',
@@ -714,6 +760,9 @@ onMounted(() => {
         document.body.classList.remove('auth-device-scale');
         document.body.style.zoom = '80%';
     }
+
+    // Initialize Theme (Dark / Light)
+    initTheme();
 
     // 1. Restore open dropdowns state from storage
     const savedDropdowns = localStorage.getItem('sidebarOpenDropdowns');

@@ -23,11 +23,25 @@ const applyDeviceScale = (componentName) => {
     }
 };
 
+const applyTheme = () => {
+    if (typeof document === 'undefined') return;
+    try {
+        const theme = localStorage.getItem('apm_theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    } catch (e) {}
+};
+applyTheme();
+
 router.on('navigate', (event) => {
     if (event.detail?.page?.props) {
         window.__pageProps = event.detail.page.props;
     }
     applyDeviceScale(event.detail?.page?.component);
+    applyTheme();
 });
 
 router.on('success', (event) => {
@@ -35,6 +49,7 @@ router.on('success', (event) => {
         window.__pageProps = event.detail.page.props;
     }
     applyDeviceScale(event.detail?.page?.component);
+    applyTheme();
 });
 
 import { canDirective, checkUserPermission } from './Directives/can';
