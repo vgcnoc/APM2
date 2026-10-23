@@ -110,15 +110,31 @@ class RoleController extends Controller
     public function clone(Request $request, Role $role)
     {
         $request->validate([
-            'name' => 'required|string|max:100|unique:roles,name',
+            'name' => 'required|string|max:100',
         ]);
 
-        $newRole = Role::create(['name' => strtolower($request->name), 'guard_name' => 'web']);
-        $newRole->syncPermissions($role->permissions->pluck('name')->toArray());
+        $targetName = strtolower(trim($request->name));
+
+        if ($targetName === strtolower($role->name)) {
+            return redirect()->back()->with('error', "Nama role tujuan tidak boleh sama persis dengan role sumber.");
+        }
+
+        $sourcePermissions = $role->permissions->pluck('name')->toArray();
+        $existingRole = Role::where('name', $targetName)->first();
+
+        if ($existingRole) {
+            $existingRole->syncPermissions($sourcePermissions);
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+            return redirect()->back()->with('success', "Seluruh izin (" . count($sourcePermissions) . " izin) dari role '{$role->name}' berhasil disalin ke role '{$existingRole->name}'.");
+        }
+
+        $newRole = Role::create(['name' => $targetName, 'guard_name' => 'web']);
+        $newRole->syncPermissions($sourcePermissions);
 
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        return redirect()->back()->with('success', "Role '{$newRole->name}' berhasil diduplikasi dari '{$role->name}'.");
+        return redirect()->back()->with('success', "Role baru '{$newRole->name}' berhasil dibuat dan seluruh izin dari '{$role->name}' berhasil diduplikasi.");
     }
 
     public function applyPreset(Request $request, Role $role)

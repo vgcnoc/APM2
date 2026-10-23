@@ -105,6 +105,16 @@
 
             <!-- ── 2. MAIN: DETAIL & PENGATURAN HAK AKSES ───────────── -->
             <div class="flex-1 min-w-0 w-full space-y-5">
+                <!-- Flash Notification Banner -->
+                <div v-if="$page.props.flash?.success" class="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 animate-fade-in-up">
+                    <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span class="text-xs sm:text-sm font-semibold">{{ $page.props.flash.success }}</span>
+                </div>
+                <div v-if="$page.props.flash?.error" class="flex items-center gap-3 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-700 animate-fade-in-up">
+                    <svg class="w-5 h-5 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <span class="text-xs sm:text-sm font-semibold">{{ $page.props.flash.error }}</span>
+                </div>
+
                 <div v-if="selectedRole" class="space-y-4">
                     
                     <!-- ── A. HEADER CARD ──────────────────────────── -->
@@ -562,16 +572,34 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nama Role Baru</label>
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nama Role Baru / Role Tujuan</label>
                                 <input v-model="cloneFormName" required type="text" placeholder="Contoh: koordinator-teknisi"
                                     class="w-full rounded-xl border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm" />
-                                <p class="mt-2 text-[11px] text-gray-500">Semua pengaturan Menu, Card, Tab, Filter, dan Tombol dari role sumber akan langsung disalin ke role baru ini.</p>
+
+                                <!-- Notice if target role exists -->
+                                <div v-if="isTargetRoleExisting" class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-start gap-2">
+                                    <span class="text-base leading-none">ℹ️</span>
+                                    <div>
+                                        <p class="font-bold">Role "{{ cloneFormName }}" sudah ada di daftar role.</p>
+                                        <p class="mt-0.5 text-amber-700">Seluruh hak akses pada role ini akan <b>disalin & ditimpa</b> sama persis seperti role sumber ({{ roleToClone?.name }}).</p>
+                                    </div>
+                                </div>
+                                <p v-else class="mt-2 text-[11px] text-gray-500">Semua pengaturan Menu, Card, Tab, Filter, dan Tombol dari role sumber akan langsung disalin ke role baru ini.</p>
+
+                                <!-- Error Message if any -->
+                                <div v-if="cloneError" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 font-semibold flex items-center gap-2">
+                                    <svg class="w-4 h-4 shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span>{{ cloneError }}</span>
+                                </div>
                             </div>
                         </div>
                         <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2.5">
                             <button type="button" @click="showCloneModal = false" class="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">Batal</button>
-                            <button type="submit" :disabled="isSubmitting" class="px-5 py-2 text-xs font-bold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-all shadow-sm disabled:opacity-50">
-                                {{ isSubmitting ? 'Menduplikasi...' : 'Duplikasi Sekarang' }}
+                            <button type="submit" :disabled="isSubmitting" :class="[
+                                'px-5 py-2 text-xs font-bold text-white rounded-xl transition-all shadow-sm disabled:opacity-50',
+                                isTargetRoleExisting ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                            ]">
+                                {{ isSubmitting ? 'Memproses...' : (isTargetRoleExisting ? 'Salin & Timpa Izin Sekarang' : 'Duplikasi Sekarang') }}
                             </button>
                         </div>
                     </form>
@@ -711,6 +739,13 @@ const showPresetModal = ref(false);
 const showCloneModal = ref(false);
 const roleToClone = ref(null);
 const cloneFormName = ref('');
+const cloneError = ref('');
+
+const isTargetRoleExisting = computed(() => {
+    const name = (cloneFormName.value || '').trim().toLowerCase();
+    if (!name) return false;
+    return (props.roles || []).some(r => r.name.toLowerCase() === name);
+});
 
 // Delete Modal State
 const showDeleteModal = ref(false);
@@ -1250,11 +1285,13 @@ const submitForm = () => {
 const openCloneModal = (role) => {
     roleToClone.value = role;
     cloneFormName.value = `${role.name}-copy`;
+    cloneError.value = '';
     showCloneModal.value = true;
 };
 
 const submitCloneForm = () => {
     if (!roleToClone.value) return;
+    cloneError.value = '';
     isSubmitting.value = true;
     router.post(`/settings/roles/${roleToClone.value.id}/clone`, {
         name: cloneFormName.value,
@@ -1262,6 +1299,10 @@ const submitCloneForm = () => {
         preserveScroll: true,
         onSuccess: () => {
             showCloneModal.value = false;
+            cloneError.value = '';
+        },
+        onError: (err) => {
+            cloneError.value = err.name || Object.values(err)[0] || 'Gagal menduplikasi role.';
         },
         onFinish: () => isSubmitting.value = false,
     });
