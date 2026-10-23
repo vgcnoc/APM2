@@ -14,15 +14,12 @@ class MaterialTransactionController extends Controller
 {
     public function index(Request $request)
     {
-        $query = MaterialTransaction::with(['user', 'items.material', 'areaModel']);
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_transactions_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
 
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('material_transactions_view_all')) {
-            if (auth()->user()->can('material_transactions_view_area')) {
-                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-            } else {
-                $query->where('user_id', auth()->id());
-            }
-        }
+        $query = MaterialTransaction::with(['user', 'items.material', 'areaModel']);
+        $query = \App\Services\DataScopeService::applyMaterialTransactionScope($query, $user);
 
         if ($request->search) {
             $query->where(function($q) use ($request) {
@@ -51,15 +48,7 @@ class MaterialTransactionController extends Controller
         $transactions = $query->latest()->paginate(15)->withQueryString();
 
         // Calculations for cards
-        $baseQuery = MaterialTransaction::query();
-        
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('material_transactions_view_all')) {
-            if (auth()->user()->can('material_transactions_view_area')) {
-                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-            } else {
-                $baseQuery->where('user_id', auth()->id());
-            }
-        }
+        $baseQuery = \App\Services\DataScopeService::applyMaterialTransactionScope(MaterialTransaction::query(), $user);
 
         if ($request->start_date) {
             $baseQuery->whereDate('date', '>=', $request->start_date);
@@ -75,14 +64,8 @@ class MaterialTransactionController extends Controller
         $totalCost = (clone $baseQuery)->sum('total_cost');
         
         // Total Items
-        $totalItems = MaterialTransactionItem::whereHas('transaction', function($q) use ($request) {
-            if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('material_transactions_view_all')) {
-                if (auth()->user()->can('material_transactions_view_area')) {
-                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-                } else {
-                    $q->where('user_id', auth()->id());
-                }
-            }
+        $totalItems = MaterialTransactionItem::whereHas('transaction', function($q) use ($request, $user) {
+            \App\Services\DataScopeService::applyMaterialTransactionScope($q, $user);
             if ($request->start_date) {
                 $q->whereDate('date', '>=', $request->start_date);
             }
@@ -95,9 +78,21 @@ class MaterialTransactionController extends Controller
         })->sum('quantity');
 
         // Get unique technicians for filter
-        $technicians = MaterialTransaction::select('technician_name')->distinct()->whereNotNull('technician_name')->pluck('technician_name');
+        $techQuery = MaterialTransaction::select('technician_name')->distinct()->whereNotNull('technician_name');
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            $areaNames = \App\Models\Area::whereIn('id', $accessibleAreas)->pluck('name')->toArray();
+            $techQuery->where(function($q) use ($accessibleAreas, $areaNames) {
+                $q->whereIn('area_id', $accessibleAreas)
+                  ->orWhereIn('area', $areaNames);
+            });
+        }
+        $technicians = $techQuery->pluck('technician_name');
         
-        $areas = \App\Models\Area::orderBy('name')->get();
+        $areaQuery = \App\Models\Area::orderBy('name');
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            $areaQuery->whereIn('id', $accessibleAreas);
+        }
+        $areas = $areaQuery->get();
         $materials = \App\Models\Material::with('stocks')->orderBy('name')->get();
 
         return Inertia::render('MaterialTransactions/Index', [
@@ -116,8 +111,16 @@ class MaterialTransactionController extends Controller
 
     public function create()
     {
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_transactions_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
         $materials = Material::with('stocks')->get();
-        $areas = \App\Models\Area::orderBy('name')->get();
+        $areaQuery = \App\Models\Area::orderBy('name');
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            $areaQuery->whereIn('id', $accessibleAreas);
+        }
+        $areas = $areaQuery->get();
         
         return Inertia::render('MaterialTransactions/Create', [
             'materials' => $materials,
@@ -137,6 +140,14 @@ class MaterialTransactionController extends Controller
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.unit' => 'nullable|string|max:50',
         ]);
+
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_transactions_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+        if (!$isGlobal && !empty($accessibleAreas) && !in_array($request->area_id, $accessibleAreas)) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk area ini.');
+        }
 
         DB::transaction(function () use ($request) {
             $totalCost = 0;
@@ -323,6 +334,19 @@ class MaterialTransactionController extends Controller
             'items.*.unit' => 'nullable|string|max:50',
         ]);
 
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_transactions_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            if (!in_array($request->area_id, $accessibleAreas)) {
+                return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk area ini.');
+            }
+            if ($materialTransaction->area_id && !in_array($materialTransaction->area_id, $accessibleAreas)) {
+                return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk mengubah transaksi area ini.');
+            }
+        }
+
         \Illuminate\Support\Facades\DB::transaction(function () use ($request, $materialTransaction) {
             // Revert old stocks
             $materialTransaction->load('items.material');
@@ -465,6 +489,14 @@ class MaterialTransactionController extends Controller
     }
     public function show(MaterialTransaction $materialTransaction)
     {
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_transactions_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+        if (!$isGlobal && !empty($accessibleAreas) && $materialTransaction->area_id && !in_array($materialTransaction->area_id, $accessibleAreas)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melihat surat jalan di area ini.');
+        }
+
         $materialTransaction->load(['items.material', 'user']);
         
         return Inertia::render('MaterialTransactions/Show', [
@@ -525,6 +557,14 @@ class MaterialTransactionController extends Controller
 
     public function destroy(MaterialTransaction $materialTransaction)
     {
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_transactions_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+        if (!$isGlobal && !empty($accessibleAreas) && $materialTransaction->area_id && !in_array($materialTransaction->area_id, $accessibleAreas)) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus transaksi area ini.');
+        }
+
         try {
             DB::transaction(function () use ($materialTransaction) {
                 // Restore stock

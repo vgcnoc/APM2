@@ -50,6 +50,10 @@ class DataScopeService
         if (str_starts_with($module, 'customers_')) {
             $viewAllPerms[] = 'customers_all_view_all';
         }
+        if ($module === 'purchase_orders') {
+            $viewAllPerms[] = 'material_transactions_view_all';
+            $viewAllPerms[] = 'materials_view_all';
+        }
 
         foreach ($viewAllPerms as $perm) {
             if ($user->can($perm)) {
@@ -66,6 +70,10 @@ class DataScopeService
         // Fallback hirarki permission view_area
         if (str_starts_with($module, 'customers_')) {
             $viewAreaPerms[] = 'customers_all_view_area';
+        }
+        if ($module === 'purchase_orders') {
+            $viewAreaPerms[] = 'material_transactions_view_area';
+            $viewAreaPerms[] = 'materials_view_area';
         }
 
         foreach ($viewAreaPerms as $perm) {
@@ -84,6 +92,9 @@ class DataScopeService
 
         if (str_starts_with($module, 'customers_')) {
             $viewOwnPerms[] = 'customers_all_view_own';
+        }
+        if ($module === 'purchase_orders') {
+            $viewOwnPerms[] = 'material_transactions_view_own';
         }
 
         foreach ($viewOwnPerms as $perm) {
@@ -380,10 +391,44 @@ class DataScopeService
 
         if ($level === 'area') {
             $accessibleAreas = $user->getAccessibleAreaIds();
-            return $query->whereIn('area_id', $accessibleAreas);
+            $areaNames = Area::whereIn('id', $accessibleAreas)->pluck('name')->toArray();
+            return $query->where(function ($q) use ($accessibleAreas, $areaNames) {
+                $q->whereIn('area_id', $accessibleAreas)
+                  ->orWhereIn('area', $areaNames)
+                  ->orWhereIn('technician_name', $areaNames);
+            });
         }
 
         // Level: 'own' (Transaksi yang diinput / diajukan oleh user bersangkutan)
+        return $query->where('user_id', $user->id);
+    }
+
+    /**
+     * Terapkan filter scope pada query Order Toko (Restock)
+     */
+    public static function applyPurchaseOrderScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) {
+            return $query;
+        }
+
+        $level = self::getScopeLevel($user, 'purchase_orders');
+        if ($level === 'all') {
+            return $query;
+        }
+
+        if ($level === 'area') {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            $areaNames = Area::whereIn('id', $accessibleAreas)->pluck('name')->toArray();
+            return $query->where(function ($q) use ($accessibleAreas, $areaNames) {
+                $q->whereIn('area_id', $accessibleAreas)
+                  ->orWhereIn('area', $areaNames)
+                  ->orWhereIn('technician_name', $areaNames);
+            });
+        }
+
+        // Level: 'own'
         return $query->where('user_id', $user->id);
     }
 

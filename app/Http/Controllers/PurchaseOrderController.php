@@ -17,9 +17,16 @@ class PurchaseOrderController extends Controller
 {
     public function index(Request $request)
     {
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('purchase_orders_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
         // Only get transactions with purpose indicating it's a purchase
         $query = MaterialTransaction::where('purpose', 'Pembelian Toko / Supplier')
-                            ->with(['items.material', 'items.onts', 'expense.category']);
+                            ->with(['items.material', 'items.onts', 'expense.category', 'areaModel']);
+
+        // Terapkan filter scope pada query
+        $query = \App\Services\DataScopeService::applyPurchaseOrderScope($query, $user);
 
         // 1. Pencarian Teks Fleksibel (No PO, Area/Teknisi, Catatan, Nama Material)
         if ($request->filled('search')) {
@@ -88,7 +95,11 @@ class PurchaseOrderController extends Controller
             })
             ->orderBy('name')
             ->get();
-        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
+        $areaQuery = \App\Models\Area::orderBy('name');
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            $areaQuery->whereIn('id', $accessibleAreas);
+        }
+        $areas = $areaQuery->get(['id', 'name']);
 
         return Inertia::render('Inventory/PurchaseOrders/Index', [
             'transactions' => $transactions,
@@ -118,11 +129,21 @@ class PurchaseOrderController extends Controller
 
         DB::beginTransaction();
         try {
+            $user = auth()->user();
+            $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('purchase_orders_view_all');
+            $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+            $area = Area::where('name', $validated['area_name'])->first();
+
+            if (!$isGlobal && !empty($accessibleAreas)) {
+                if ($area && !in_array($area->id, $accessibleAreas)) {
+                    return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk wilayah ' . $validated['area_name'] . '.');
+                }
+            }
+
             // Generate Transaction Number (PO)
             $count = MaterialTransaction::whereDate('created_at', today())->count() + 1;
             $transactionNumber = 'PO-' . now()->format('Ymd') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
-
-            $area = Area::where('name', $validated['area_name'])->first();
 
             $transaction = MaterialTransaction::create([
                 'transaction_number' => $transactionNumber,
@@ -256,7 +277,20 @@ class PurchaseOrderController extends Controller
             // Hapus items lama
             $transaction->items()->delete();
 
+            $user = auth()->user();
+            $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('purchase_orders_view_all');
+            $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
             $area = Area::where('name', $validated['area_name'])->first();
+
+            if (!$isGlobal && !empty($accessibleAreas)) {
+                if ($area && !in_array($area->id, $accessibleAreas)) {
+                    return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk wilayah ' . $validated['area_name'] . '.');
+                }
+                if ($transaction->area_id && !in_array($transaction->area_id, $accessibleAreas)) {
+                    return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk mengubah order dari wilayah ini.');
+                }
+            }
 
             // 2. Update info transaksi
             $transaction->update([
@@ -346,6 +380,16 @@ class PurchaseOrderController extends Controller
     public function destroy($id)
     {
         $transaction = MaterialTransaction::findOrFail($id);
+
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('purchase_orders_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            if ($transaction->area_id && !in_array($transaction->area_id, $accessibleAreas)) {
+                return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus order wilayah ini.');
+            }
+        }
 
         DB::beginTransaction();
         try {
