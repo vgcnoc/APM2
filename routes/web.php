@@ -720,7 +720,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── Portal Khusus Mitra Afiliasi & Sales ────────────────────
-    Route::prefix('affiliate')->name('affiliate.')->group(function () {
+    Route::middleware(['permission:menu_marketing_affiliates'])->prefix('affiliate')->name('affiliate.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\AffiliatePortalController::class, 'dashboard'])->name('dashboard');
         Route::post('/bank', [\App\Http\Controllers\AffiliatePortalController::class, 'updateBank'])->name('bank');
         Route::post('/withdraw', [\App\Http\Controllers\AffiliatePortalController::class, 'withdraw'])->name('withdraw');

@@ -981,6 +981,7 @@ const menuItems = [
         label: 'Portal Mitra Saya',
         theme: 'orange',
         active: (url) => (url || '').startsWith('/affiliate'),
+        permission: 'menu_marketing_affiliates',
     },
 
     // 7. INFRASTRUKTUR JARINGAN
