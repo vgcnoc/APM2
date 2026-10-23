@@ -13,7 +13,25 @@
                     </p>
                 </div>
 
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        v-can="'affiliate_btn_import'"
+                        type="button"
+                        @click="openImportModal"
+                        class="px-3.5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                    >
+                        <span>📥</span>
+                        <span>Import Agen</span>
+                    </button>
+                    <button
+                        v-can="'affiliate_btn_export'"
+                        type="button"
+                        @click="openExportModal('affiliates')"
+                        class="px-3.5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                    >
+                        <span>📤</span>
+                        <span>Export Data</span>
+                    </button>
                     <a
                         v-can="'affiliate_btn_register_link'"
                         :href="route('register-affiliate')"
@@ -1122,7 +1140,25 @@
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                            <button
+                                v-can="'affiliate_btn_import'"
+                                type="button"
+                                @click="openImportModal"
+                                class="px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                            >
+                                <span>📥</span>
+                                <span>Import CSV</span>
+                            </button>
+                            <button
+                                v-can="'affiliate_btn_export'"
+                                type="button"
+                                @click="triggerExport('affiliates')"
+                                class="px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                            >
+                                <span>📤</span>
+                                <span>Export Agen</span>
+                            </button>
                             <button
                                 v-can="'affiliate_btn_create'"
                                 type="button"
@@ -1219,6 +1255,23 @@
 
                 <!-- ════ TAB 3: RIWAYAT LOG KOMISI ════ -->
                 <div v-if="currentTab === 'commissions'" v-can="['menu_affiliate_commissions', 'affiliate_tab_commissions']" class="p-6">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                        <div class="text-xs text-slate-500">
+                            Menampilkan riwayat pencatatan komisi booking, direct sales, dan multi-tier.
+                        </div>
+                        <div class="flex items-center gap-2 self-end sm:self-auto">
+                            <button
+                                v-can="'affiliate_btn_export'"
+                                type="button"
+                                @click="triggerExport('commissions')"
+                                class="px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                            >
+                                <span>📤</span>
+                                <span>Export Log Komisi</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <div v-if="commissions.data && commissions.data.length > 0" class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-100 text-xs">
                             <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
@@ -1282,6 +1335,23 @@
 
                 <!-- ════ TAB 4: PERMINTAAN PENARIKAN (WITHDRAWALS) ════ -->
                 <div v-if="currentTab === 'withdrawals'" v-can="['menu_affiliate_withdrawals', 'affiliate_tab_withdrawals']" class="p-6">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                        <div class="text-xs text-slate-500">
+                            Daftar pengajuan pencairan saldo komisi oleh mitra afiliasi.
+                        </div>
+                        <div class="flex items-center gap-2 self-end sm:self-auto">
+                            <button
+                                v-can="'affiliate_btn_export'"
+                                type="button"
+                                @click="triggerExport('withdrawals')"
+                                class="px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                            >
+                                <span>📤</span>
+                                <span>Export Pencairan</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <div v-if="withdrawals.data && withdrawals.data.length > 0" class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-100 text-xs">
                             <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
@@ -1965,6 +2035,191 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- ════ MODAL: EXPORT DATA ════ -->
+        <Teleport to="body">
+            <div v-if="showExportModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="showExportModal = false">
+                <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 p-6 sm:p-7">
+                    <div class="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">📤</span>
+                            <div>
+                                <h3 class="text-base font-bold text-slate-900">Export Data Afiliasi</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">Unduh data dalam format CSV / Excel</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="showExportModal = false" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">✕</button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">
+                            Pilih Data yang Ingin Diexport:
+                        </label>
+
+                        <div class="space-y-2.5">
+                            <label
+                                class="flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all"
+                                :class="exportSelectedType === 'affiliates' ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500' : 'border-slate-200 hover:bg-slate-50'"
+                            >
+                                <input type="radio" v-model="exportSelectedType" value="affiliates" class="mt-1 text-emerald-600 focus:ring-emerald-500" />
+                                <div>
+                                    <div class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                        <span>👥 Data Mitra & Agen Afiliasi</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">Daftar agen, kontak WA, kode referral, nama upline, status & saldo komisi.</p>
+                                </div>
+                            </label>
+
+                            <label
+                                class="flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all"
+                                :class="exportSelectedType === 'commissions' ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500' : 'border-slate-200 hover:bg-slate-50'"
+                            >
+                                <input type="radio" v-model="exportSelectedType" value="commissions" class="mt-1 text-emerald-600 focus:ring-emerald-500" />
+                                <div>
+                                    <div class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                        <span>📜 Riwayat Log Komisi</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">Log komisi booking, direct sales bulanan, bonus upline tier 1 & 2, serta potongan.</p>
+                                </div>
+                            </label>
+
+                            <label
+                                class="flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all"
+                                :class="exportSelectedType === 'withdrawals' ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500' : 'border-slate-200 hover:bg-slate-50'"
+                            >
+                                <input type="radio" v-model="exportSelectedType" value="withdrawals" class="mt-1 text-emerald-600 focus:ring-emerald-500" />
+                                <div>
+                                    <div class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                        <span>💸 Permintaan Pencairan Dana</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">Riwayat & pengajuan penarikan saldo komisi, data rekening bank, dan status approval.</p>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Footer Actions -->
+                        <div class="pt-3 flex justify-end gap-2 border-t border-slate-100 mt-5">
+                            <button
+                                type="button"
+                                @click="showExportModal = false"
+                                class="px-4 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-50"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                @click="triggerExport(exportSelectedType)"
+                                class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                            >
+                                <span>📥 Download File CSV</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- ════ MODAL: IMPORT AGEN AFILIASI ════ -->
+        <Teleport to="body">
+            <div v-if="showImportModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="showImportModal = false">
+                <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 p-6 sm:p-7">
+                    <div class="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg">📥</span>
+                            <div>
+                                <h3 class="text-base font-bold text-slate-900">Import Data Mitra Agen</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">Unggah file CSV untuk menambahkan / memperbarui mitra</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="showImportModal = false" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">✕</button>
+                    </div>
+
+                    <form @submit.prevent="submitImport" class="space-y-4">
+                        <!-- Step 1: Download Template -->
+                        <div class="p-4 bg-indigo-50/60 border border-indigo-100 rounded-2xl flex items-center justify-between gap-3">
+                            <div>
+                                <div class="text-xs font-bold text-indigo-950">Gunakan Format Standar</div>
+                                <div class="text-[11px] text-indigo-700/80 mt-0.5">Pastikan kolom CSV sesuai template agar impor lancar.</div>
+                            </div>
+                            <a
+                                :href="route('admin.affiliates.template')"
+                                target="_blank"
+                                class="px-3 py-1.5 bg-white border border-indigo-200 text-indigo-700 font-bold text-xs rounded-xl hover:bg-indigo-50 transition-colors shadow-2xs whitespace-nowrap flex items-center gap-1"
+                            >
+                                <span>📄 Template CSV</span>
+                            </a>
+                        </div>
+
+                        <!-- Step 2: Upload File Drag & Drop / Input -->
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                                Pilih File CSV:
+                            </label>
+                            <div class="border-2 border-dashed border-slate-300 hover:border-indigo-400 rounded-2xl p-6 text-center transition-colors bg-slate-50/50">
+                                <input
+                                    ref="importFileInput"
+                                    type="file"
+                                    accept=".csv,text/csv"
+                                    @change="onImportFileChange"
+                                    class="hidden"
+                                    id="import-csv-file"
+                                />
+                                <label for="import-csv-file" class="cursor-pointer block">
+                                    <span class="text-3xl block mb-2">📁</span>
+                                    <span v-if="importForm.file" class="text-xs font-bold text-indigo-600 block">
+                                        {{ importForm.file.name }} ({{ (importForm.file.size / 1024).toFixed(1) }} KB)
+                                    </span>
+                                    <span v-else class="text-xs font-semibold text-slate-600 block">
+                                        Klik untuk memilih file CSV atau drag &amp; drop ke sini
+                                    </span>
+                                    <span class="text-[11px] text-slate-400 mt-1 block">Format .csv maksimal 5MB</span>
+                                </label>
+                            </div>
+                            <p v-if="importForm.errors.file" class="text-rose-500 text-[11px] font-semibold mt-1">
+                                {{ importForm.errors.file }}
+                            </p>
+                        </div>
+
+                        <!-- Step 3: Panduan Kolom -->
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-600 space-y-1">
+                            <span class="font-bold text-slate-800 uppercase tracking-wider text-[10px] block">Kolom yang Didukung:</span>
+                            <div class="grid grid-cols-2 gap-x-2 gap-y-1">
+                                <div>&bull; <code class="text-indigo-600 font-semibold">name</code> (Wajib)</div>
+                                <div>&bull; <code class="text-indigo-600 font-semibold">email</code> (Wajib)</div>
+                                <div>&bull; <code class="text-indigo-600 font-semibold">whatsapp</code></div>
+                                <div>&bull; <code class="text-indigo-600 font-semibold">referral_code</code> (Unik)</div>
+                                <div>&bull; <code class="text-indigo-600 font-semibold">upline_referral_code</code></div>
+                                <div>&bull; <code class="text-indigo-600 font-semibold">bank_name</code></div>
+                                <div>&bull; <code class="text-indigo-600 font-semibold">bank_account_number</code></div>
+                                <div>&bull; <code class="text-indigo-600 font-semibold">bank_account_holder</code></div>
+                            </div>
+                            <div class="text-[10px] text-slate-400 pt-1">
+                                💡 Agen baru otomatis dibuatkan akun dengan password default <code>12345678</code> dan role <code>affiliate</code>.
+                            </div>
+                        </div>
+
+                        <!-- Footer Actions -->
+                        <div class="pt-3 flex justify-end gap-2 border-t border-slate-100">
+                            <button
+                                type="button"
+                                @click="showImportModal = false"
+                                class="px-4 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-50"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="submit"
+                                :disabled="importForm.processing || !importForm.file"
+                                class="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50"
+                            >
+                                <span v-if="importForm.processing" class="inline-block animate-spin">⏳</span>
+                                <span>{{ importForm.processing ? 'Mengunggah & Memproses...' : 'Proses Impor CSV' }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
 
@@ -2322,6 +2577,74 @@ const submitUpline = () => {
                 position: 'top-end',
                 showConfirmButton: false,
                 timer: 3000,
+            });
+        },
+    });
+};
+
+// ── Export & Import State & Methods ──
+const showExportModal = ref(false);
+const exportSelectedType = ref('affiliates');
+const showImportModal = ref(false);
+const importFileInput = ref(null);
+const importForm = useForm({
+    file: null,
+});
+
+const openExportModal = (defaultType = 'affiliates') => {
+    exportSelectedType.value = defaultType;
+    showExportModal.value = true;
+};
+
+const triggerExport = (type) => {
+    const targetType = type || exportSelectedType.value || 'affiliates';
+    showExportModal.value = false;
+    window.location.href = route('admin.affiliates.export', { type: targetType });
+};
+
+const openImportModal = () => {
+    importForm.reset();
+    importForm.clearErrors();
+    if (importFileInput.value) {
+        importFileInput.value.value = '';
+    }
+    showImportModal.value = true;
+};
+
+const onImportFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        importForm.file = file;
+    }
+};
+
+const submitImport = () => {
+    if (!importForm.file) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'File Belum Dipilih',
+            text: 'Silakan pilih file CSV yang ingin diimpor.',
+        });
+        return;
+    }
+
+    importForm.post(route('admin.affiliates.import'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showImportModal.value = false;
+            importForm.reset();
+            Swal.fire({
+                icon: 'success',
+                title: 'Impor Berhasil',
+                text: 'Data mitra afiliasi berhasil diproses dan diimpor.',
+            });
+        },
+        onError: (errors) => {
+            const msg = Object.values(errors).flat().join('\n') || 'Gagal memproses file CSV.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Impor Gagal',
+                text: msg,
             });
         },
     });

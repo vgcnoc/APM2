@@ -593,4 +593,422 @@ class AffiliateManagementController extends Controller
         $uplineName = $affiliate->upline?->name ?? 'Tanpa Upline (Upline Utama)';
         return back()->with('success', "Upline sponsor untuk {$affiliate->user?->name} berhasil diatur ke: {$uplineName}.");
     }
+
+    /**
+     * Export data Marketing & Afiliasi ke format CSV (Excel-friendly).
+     */
+    public function export(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->hasRole('super admin') && $user->role !== 'admin' && !$user->can('affiliate_btn_export'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengekspor data afiliasi.');
+        }
+
+        $type = $request->query('type', 'affiliates'); // 'affiliates' | 'commissions' | 'withdrawals'
+        $isGlobal = $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->can('marketing_affiliates_view_all');
+        $accessibleAreas = $isGlobal ? [] : $user->getAccessibleAreaIds();
+
+        $timestamp = date('Y-m-d_His');
+
+        if ($type === 'commissions') {
+            $filename = "riwayat_komisi_afiliasi_{$timestamp}.csv";
+            return response()->streamDownload(function () use ($isGlobal, $accessibleAreas) {
+                $handle = fopen('php://output', 'w');
+                fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
+                fputcsv($handle, [
+                    'ID Transaksi',
+                    'Tanggal Transaksi',
+                    'Penerima Komisi',
+                    'Email Penerima',
+                    'WhatsApp / HP',
+                    'Tipe Komisi',
+                    'Tingkat Penerima',
+                    'Sumber Pelanggan',
+                    'Deskripsi Transaksi',
+                    'Nominal Komisi (Rp)',
+                    'Status',
+                ]);
+
+                $query = AffiliateCommission::with(['affiliate.user', 'customer', 'sourceUser']);
+                if (!$isGlobal && !empty($accessibleAreas)) {
+                    $query->whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas));
+                }
+
+                $query->latest('id')->chunk(500, function ($rows) use ($handle) {
+                    foreach ($rows as $c) {
+                        fputcsv($handle, [
+                            $c->id,
+                            $c->created_at ? $c->created_at->format('Y-m-d H:i:s') : '-',
+                            $c->affiliate?->user?->name ?? 'Unknown',
+                            $c->affiliate?->user?->email ?? '-',
+                            $c->affiliate?->whatsapp ?? $c->affiliate?->user?->phone ?? '-',
+                            $c->commission_type ?? 'referral',
+                            $c->tier_level ? 'Level ' . $c->tier_level : 'Direct',
+                            $c->customer?->name ?? '-',
+                            $c->description ?? '-',
+                            (float) $c->amount,
+                            $c->status ?? 'paid',
+                        ]);
+                    }
+                });
+
+                fclose($handle);
+            }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }
+
+        if ($type === 'withdrawals') {
+            $filename = "pencairan_komisi_afiliasi_{$timestamp}.csv";
+            return response()->streamDownload(function () use ($isGlobal, $accessibleAreas) {
+                $handle = fopen('php://output', 'w');
+                fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+                fputcsv($handle, [
+                    'ID',
+                    'No. Referensi',
+                    'Tanggal Pengajuan',
+                    'Nama Mitra',
+                    'Email Mitra',
+                    'WhatsApp Mitra',
+                    'Nama Bank / E-Wallet',
+                    'Nomor Rekening',
+                    'Pemilik Rekening',
+                    'Nominal Penarikan (Rp)',
+                    'Status',
+                    'Catatan Pemohon',
+                    'Diproses Oleh',
+                    'Tanggal Diproses',
+                ]);
+
+                $query = AffiliateWithdrawal::with(['affiliate.user', 'processor']);
+                if (!$isGlobal && !empty($accessibleAreas)) {
+                    $query->whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas));
+                }
+
+                $query->latest('id')->chunk(500, function ($rows) use ($handle) {
+                    foreach ($rows as $w) {
+                        fputcsv($handle, [
+                            $w->id,
+                            $w->reference_no ?? '-',
+                            $w->created_at ? $w->created_at->format('Y-m-d H:i:s') : '-',
+                            $w->affiliate?->user?->name ?? '-',
+                            $w->affiliate?->user?->email ?? '-',
+                            $w->affiliate?->whatsapp ?? $w->affiliate?->user?->phone ?? '-',
+                            $w->bank_name ?? '-',
+                            $w->bank_account_number ?? '-',
+                            $w->bank_account_holder ?? '-',
+                            (float) $w->amount,
+                            strtoupper($w->status ?? 'pending'),
+                            $w->notes ?? '-',
+                            $w->processor?->name ?? '-',
+                            $w->processed_at ? \Carbon\Carbon::parse($w->processed_at)->format('Y-m-d H:i:s') : '-',
+                        ]);
+                    }
+                });
+
+                fclose($handle);
+            }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }
+
+        // Default: Daftar Agen Afiliasi
+        $filename = "daftar_agen_afiliasi_{$timestamp}.csv";
+        return response()->streamDownload(function () use ($isGlobal, $accessibleAreas) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+            fputcsv($handle, [
+                'ID Agen',
+                'Nama Agen',
+                'Email',
+                'Nomor WhatsApp',
+                'Kode Referral',
+                'Nama Upline Sponsor',
+                'Kode Referral Upline',
+                'Total Pelanggan Referral',
+                'Total Downline Langsung',
+                'Saldo Aktif (Rp)',
+                'Total Komisi Diterima (Rp)',
+                'Total Dana Ditarik (Rp)',
+                'Nama Bank / E-Wallet',
+                'Nomor Rekening',
+                'Nama Pemilik Rekening',
+                'Status',
+                'Tipe Akun',
+                'Tanggal Bergabung',
+            ]);
+
+            $query = AffiliateProfile::with(['user', 'upline.affiliateProfile'])->withCount(['customers', 'downlinesLevel1']);
+            if (!$isGlobal && !empty($accessibleAreas)) {
+                $query->whereHas('user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas));
+            }
+
+            $query->latest('id')->chunk(500, function ($rows) use ($handle) {
+                foreach ($rows as $a) {
+                    fputcsv($handle, [
+                        $a->id,
+                        $a->user?->name ?? 'Unknown',
+                        $a->user?->email ?? '-',
+                        $a->whatsapp ?? $a->user?->phone ?? '-',
+                        $a->referral_code ?? '-',
+                        $a->upline?->name ?? 'Tanpa Upline',
+                        $a->upline?->affiliateProfile?->referral_code ?? '-',
+                        (int) $a->customers_count,
+                        (int) $a->downlines_level1_count,
+                        (float) $a->balance,
+                        (float) $a->total_earned,
+                        (float) $a->total_withdrawn,
+                        $a->bank_name ?? '-',
+                        $a->bank_account_number ?? '-',
+                        $a->bank_account_holder ?? '-',
+                        strtoupper($a->status ?? 'active'),
+                        AffiliateService::isInternalEmployee($a->user) ? 'Internal / Karyawan' : 'Eksternal / Mitra',
+                        $a->created_at ? $a->created_at->format('Y-m-d H:i:s') : '-',
+                    ]);
+                }
+            });
+
+            fclose($handle);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * Unduh Template CSV untuk Import Data Agen Afiliasi
+     */
+    public function downloadTemplate()
+    {
+        $filename = "template_import_agen_afiliasi.csv";
+        return response()->streamDownload(function () {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+            fputcsv($handle, [
+                'Nama Lengkap',
+                'Email',
+                'Nomor WhatsApp',
+                'Password',
+                'Kode Referral',
+                'Upline (Email / Kode Referral)',
+                'Nama Bank / E-Wallet',
+                'Nomor Rekening',
+                'Nama Pemilik Rekening',
+                'Alamat',
+            ]);
+            // Sample row 1
+            fputcsv($handle, [
+                'Budi Santoso',
+                'budi.santoso@contoh.com',
+                '081234567890',
+                'password123',
+                'SL-BUDI-01',
+                '',
+                'BCA',
+                '1234567890',
+                'Budi Santoso',
+                'Jl. Mawar No. 12, Jakarta',
+            ]);
+            // Sample row 2
+            fputcsv($handle, [
+                'Siti Rahmawati',
+                'siti.rahma@contoh.com',
+                '082198765432',
+                'password123',
+                'SL-SITI-02',
+                'SL-BUDI-01',
+                'Mandiri',
+                '9876543210123',
+                'Siti Rahmawati',
+                'Jl. Melati No. 5, Bandung',
+            ]);
+            fclose($handle);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * Import Data Agen Afiliasi dari file CSV
+     */
+    public function import(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('admin') && !$user->hasRole('super admin') && $user->role !== 'admin' && !$user->can('affiliate_btn_import'))) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengimpor data agen afiliasi.');
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt|max:5120',
+        ], [
+            'file.required' => 'Pilih file CSV yang ingin diimpor.',
+            'file.mimes' => 'Format file harus berupa CSV (.csv).',
+            'file.max' => 'Ukuran file maksimal 5 MB.',
+        ]);
+
+        $file = $request->file('file');
+        $handle = fopen($file->getRealPath(), 'r');
+        if (!$handle) {
+            return back()->with('error', 'Gagal membaca file CSV yang diunggah.');
+        }
+
+        $header = fgetcsv($handle, 1000, ',');
+        if (!$header) {
+            fclose($handle);
+            return back()->with('error', 'File CSV kosong atau tidak memiliki baris header.');
+        }
+
+        // Map normalized headers
+        $headerMap = [];
+        foreach ($header as $idx => $col) {
+            $clean = strtolower(trim($col, "\xEF\xBB\xBF \t\n\r\0\x0B"));
+            $headerMap[$clean] = $idx;
+        }
+
+        $getCol = function($row, ...$keys) use ($headerMap) {
+            foreach ($keys as $k) {
+                if (isset($headerMap[$k]) && isset($row[$headerMap[$k]])) {
+                    $val = trim($row[$headerMap[$k]]);
+                    if ($val !== '') return $val;
+                }
+            }
+            return null;
+        };
+
+        $createdCount = 0;
+        $updatedCount = 0;
+        $skippedCount = 0;
+        $rowNum = 1;
+
+        $affiliateRole = Role::firstOrCreate(['name' => 'affiliate', 'guard_name' => 'web']);
+
+        DB::beginTransaction();
+        try {
+            while (($row = fgetcsv($handle, 2000, ',')) !== false) {
+                $rowNum++;
+                if (empty(array_filter($row))) continue;
+
+                $name = $getCol($row, 'nama lengkap', 'nama', 'name', 'nama agen');
+                $email = $getCol($row, 'email', 'e-mail', 'alamat email');
+                $phone = $getCol($row, 'nomor whatsapp', 'whatsapp', 'no whatsapp', 'no hp', 'phone', 'telp');
+                $password = $getCol($row, 'password', 'kata sandi') ?: '12345678';
+                $customRef = $getCol($row, 'kode referral', 'referral', 'kode ref', 'ref code');
+                $uplineQuery = $getCol($row, 'upline (email / kode referral)', 'upline', 'sponsor', 'kode upline', 'email upline');
+                $bankName = $getCol($row, 'nama bank / e-wallet', 'bank', 'nama bank', 'e-wallet');
+                $bankAccNum = $getCol($row, 'nomor rekening', 'no rekening', 'rekening', 'no rek');
+                $bankAccHolder = $getCol($row, 'nama pemilik rekening', 'pemilik rekening', 'atas nama', 'holder');
+                $address = $getCol($row, 'alamat', 'address', 'domisili');
+
+                if (!$name || !$email) {
+                    $skippedCount++;
+                    continue;
+                }
+
+                // Resolve Upline ID if provided
+                $uplineId = null;
+                if ($uplineQuery) {
+                    $uplineProfile = AffiliateProfile::where('referral_code', strtoupper($uplineQuery))->first();
+                    if ($uplineProfile) {
+                        $uplineId = $uplineProfile->user_id;
+                    } else {
+                        $uplineUser = User::where('email', $uplineQuery)->orWhere('name', $uplineQuery)->first();
+                        if ($uplineUser) {
+                            $uplineId = $uplineUser->id;
+                        }
+                    }
+                }
+
+                // Check existing user
+                $existingUser = User::where('email', $email)->first();
+                if ($existingUser) {
+                    // Update user phone if empty
+                    if ($phone && empty($existingUser->phone)) {
+                        $existingUser->update(['phone' => $phone]);
+                    }
+
+                    // Check if already affiliate
+                    $profile = AffiliateProfile::where('user_id', $existingUser->id)->first();
+                    if ($profile) {
+                        $updateData = [];
+                        if ($phone && empty($profile->whatsapp)) $updateData['whatsapp'] = $phone;
+                        if ($bankName) $updateData['bank_name'] = $bankName;
+                        if ($bankAccNum) $updateData['bank_account_number'] = $bankAccNum;
+                        if ($bankAccHolder) $updateData['bank_account_holder'] = $bankAccHolder;
+                        if ($address && empty($profile->address)) $updateData['address'] = $address;
+                        if ($uplineId && empty($profile->upline_id) && $uplineId !== $existingUser->id) {
+                            $updateData['upline_id'] = $uplineId;
+                        }
+
+                        if (!empty($updateData)) {
+                            $profile->update($updateData);
+                            $updatedCount++;
+                        } else {
+                            $skippedCount++;
+                        }
+                    } else {
+                        // Create profile for existing user
+                        $refCode = $customRef ? strtoupper($customRef) : AffiliateService::generateReferralCode($existingUser->name);
+                        // Ensure unique referral code
+                        if (AffiliateProfile::where('referral_code', $refCode)->exists()) {
+                            $refCode = AffiliateService::generateReferralCode($existingUser->name);
+                        }
+
+                        AffiliateProfile::create([
+                            'user_id' => $existingUser->id,
+                            'referral_code' => $refCode,
+                            'upline_id' => ($uplineId && $uplineId !== $existingUser->id) ? $uplineId : null,
+                            'whatsapp' => $phone ?: $existingUser->phone,
+                            'address' => $address,
+                            'bank_name' => $bankName ?: $existingUser->bank_name,
+                            'bank_account_number' => $bankAccNum ?: $existingUser->bank_account_number,
+                            'bank_account_holder' => $bankAccHolder ?: $existingUser->bank_account_holder ?? $existingUser->name,
+                            'balance' => 0,
+                            'total_earned' => 0,
+                            'total_withdrawn' => 0,
+                            'status' => 'active',
+                        ]);
+                        $createdCount++;
+                    }
+                } else {
+                    // Create New User + Affiliate Profile
+                    $newUser = User::create([
+                        'name' => $name,
+                        'email' => $email,
+                        'phone' => $phone,
+                        'password' => Hash::make($password),
+                        'role' => 'affiliate',
+                        'is_active' => true,
+                    ]);
+
+                    $newUser->assignRole($affiliateRole);
+
+                    $refCode = $customRef ? strtoupper($customRef) : AffiliateService::generateReferralCode($name);
+                    if (AffiliateProfile::where('referral_code', $refCode)->exists()) {
+                        $refCode = AffiliateService::generateReferralCode($name);
+                    }
+
+                    AffiliateProfile::create([
+                        'user_id' => $newUser->id,
+                        'referral_code' => $refCode,
+                        'upline_id' => ($uplineId && $uplineId !== $newUser->id) ? $uplineId : null,
+                        'whatsapp' => $phone,
+                        'address' => $address,
+                        'bank_name' => $bankName,
+                        'bank_account_number' => $bankAccNum,
+                        'bank_account_holder' => $bankAccHolder ?: $name,
+                        'balance' => 0,
+                        'total_earned' => 0,
+                        'total_withdrawn' => 0,
+                        'status' => 'active',
+                    ]);
+                    $createdCount++;
+                }
+            }
+
+            DB::commit();
+            fclose($handle);
+
+            $msg = "Import selesai! {$createdCount} agen baru berhasil ditambahkan";
+            if ($updatedCount > 0) $msg .= ", {$updatedCount} data mitra diperbarui";
+            if ($skippedCount > 0) $msg .= ", {$skippedCount} baris dilewati";
+            $msg .= ".";
+
+            return back()->with('success', $msg);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            fclose($handle);
+            return back()->with('error', 'Terjadi kesalahan saat mengimpor data baris ke-' . $rowNum . ': ' . $e->getMessage());
+        }
+    }
 }

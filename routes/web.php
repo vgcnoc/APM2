@@ -735,5 +735,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/withdrawals/{withdrawal}/approve', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'approveWithdrawal'])->name('withdrawals.approve');
         Route::post('/withdrawals/{withdrawal}/reject', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'rejectWithdrawal'])->name('withdrawals.reject');
         Route::post('/{affiliate}/toggle-status', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'toggleStatus'])->name('toggle-status');
+        Route::get('/export', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'export'])->name('export');
+        Route::post('/import', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'import'])->name('import');
+        Route::get('/template', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'downloadTemplate'])->name('template');
     });
 });
